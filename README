@@ -1,0 +1,28 @@
+This is the README file for the Linted distribution.
+Linted is a program for the purpose of demonstrating practical methods
+of guarding against software bugs.
+
+  Copyright (C) 2013 Steven Stewart-Gallus
+
+  Copying and distribution of this file, with or without modification,
+  are permitted in any medium without royalty provided the copyright
+  notice and this notice are preserved.
+
+See the file INSTALL for building and installation instruction. Linted
+is a program for the purpose of demonstrating usage of practical
+methods of guarding against software bugs. Just a few of these methods
+are process isolation, static analysis, and buffer overflow
+protection.
+
+Linted is licensed under the Apache License, Version 2.0 (the
+"License"); you may not use Linted except in compliance with
+the License. You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+You should have received a copy of the Licence under the file COPYING
+distributed with this program.
+
+Home page: http://www.gitorious.org/sstewartgallus/linted
+
+Linted is free software.  See the file COPYING for copying conditions.
