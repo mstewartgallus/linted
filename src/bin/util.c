@@ -77,22 +77,6 @@ void linted_pipe(int pipefd[2]) {
     }
 }
 
-pid_t linted_fork(void) {
-    const pid_t child = fork();
-    if (-1 == child) {
-        LINTED_ERROR("Could not fork child because of error: %s\n",
-                     strerror(errno));
-    }
-    return child;
-}
-
-void linted_execv(const char * const path, char *const argv[]) {
-    execv(path, argv);
-    LINTED_ERROR("Could not execute %s because of error: %s\n",
-                 path,
-                 strerror(errno));
-}
-
 pid_t linted_wait(int * status) {
 retry:;
     const pid_t result = wait(status);
@@ -100,7 +84,7 @@ retry:;
         if (errno == EINTR) {
             goto retry;
         }
-        LINTED_ERROR("Could not wait for a process to exit",
+        LINTED_ERROR("Could not wait for a process to exit: %s\n",
                      strerror(errno));
     }
     return result;

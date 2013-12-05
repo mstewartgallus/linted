@@ -15,10 +15,11 @@
  */
 #include "config.h"
 
-#include "linted/util.h"
 #include "linted/base/stdio.h"
 #include "linted/gui.h"
 #include "linted/simulator.h"
+#include "linted/spawn.h"
+#include "linted/util.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -93,8 +94,10 @@ static int spawn_children(char * binary_name) {
     const int gui_reader = gui_fds[0];
     const int gui_writer = gui_fds[1];
 
-    const pid_t simulator_pid = linted_fork();
-    if (simulator_pid == 0) {
+    {
+        const posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
+        const posix_spawnattr_t attr = linted_spawnattr();
+
         char simulator_reader_string[LONGEST_FD_STRING];
         char gui_writer_string[LONGEST_FD_STRING];
 
@@ -112,11 +115,17 @@ static int spawn_children(char * binary_name) {
             gui_writer_string,
             NULL
         };
-        linted_execv(binary_name, arguments);
+
+        linted_spawn(binary_name, file_actions, attr, arguments, environ);
+
+        linted_spawnattr_destroy(attr);
+        linted_spawn_file_actions_destroy(file_actions);
     }
 
-    const pid_t gui_pid = linted_fork();
-    if (gui_pid == 0) {
+    {
+        const posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
+        const posix_spawnattr_t attr = linted_spawnattr();
+
         char simulator_writer_string[LONGEST_FD_STRING];
         char gui_reader_string[LONGEST_FD_STRING];
 
@@ -134,7 +143,11 @@ static int spawn_children(char * binary_name) {
             simulator_writer_string,
             NULL
         };
-        linted_execv(binary_name, arguments);
+
+        linted_spawn(binary_name, file_actions, attr, arguments, environ);
+
+        linted_spawnattr_destroy(attr);
+        linted_spawn_file_actions_destroy(file_actions);
     }
 
     int first_dead_child_status;
@@ -159,7 +172,7 @@ const char USAGE_TEXT[] =
     "--help\t\tPrint this usage information\n"
     "\n"
     "The following SUBCOMMANDS are accepted:\n"
-    "simulator\t\Run the simulator\n"
+    "simulator\t\tRun the simulator\n"
     "gui\t\tRun the gui\n"
     "\n"
     "Report bugs to " PACKAGE_BUGREPORT "\n";

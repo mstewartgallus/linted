@@ -13,27 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_UTIL_H
-#define LINTED_UTIL_H
+#ifndef LINTED_SPAWN_H
+#define LINTED_SPAWN_H
 
-#include <stdio.h>
-#include <unistd.h>
+#include <spawn.h>
 
+posix_spawn_file_actions_t linted_spawn_file_actions();
 
-#define LINTED_ERROR(...)                                       \
-    linted_error(__FILE__, __func__, __LINE__,  __VA_ARGS__)
+posix_spawnattr_t linted_spawnattr();
 
-void linted_error(const char * file,
-                  const char * function,
-                  unsigned line,
-                  const char * format_string, ...);
+void linted_spawn_file_actions_destroy(posix_spawn_file_actions_t file_actions);
+void linted_spawnattr_destroy(posix_spawnattr_t attrp);
 
-int linted_open(const char *pathname, int flags);
+pid_t linted_spawn(char * path,
+                   posix_spawn_file_actions_t file_actions,
+                   posix_spawnattr_t attrp,
+                   char *const argv[], char *const envp[]);
 
-FILE * linted_fdopen(int fd, const char *mode);
-
-void linted_pipe(int pipefd[2]);
-
-pid_t linted_wait(int * status);
-
-#endif /* LINTED_UTIL_H */
+#endif /* LINTED_SPAWN_H */
