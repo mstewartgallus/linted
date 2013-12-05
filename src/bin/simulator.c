@@ -23,6 +23,11 @@
 
 #include <stdlib.h>
 
+#define USAGE_TEXT \
+    "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
+    "Run the simulator\n"\
+    "\n"\
+    "Report bugs to " PACKAGE_BUGREPORT "\n"
 
 linted_simulator_chan linted_simulator_chan_from_file(FILE * file) {
     return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = file } };
@@ -40,12 +45,22 @@ static linted_simulator_command linted_simulator_recv(linted_simulator_port list
 static int simulator_main(const char * simulator_string, const char * gui_string);
 
 int linted_simulator_main(int argc, char * argv[]) {
-    /* No global state must be modified or Frama C's assumptions will break */
-    if (argc < 4) {
+    /* Note that in this function no global state must be modified
+       until after simulator_main could have executed or Frama C's
+       assumptions will break. */
+    switch (argc) {
+    case 4:
+        return simulator_main(argv[2], argv[3]);
+    default:
+        linted_fprintf(stderr,
+                       PACKAGE_TARNAME
+                       " "
+                       LINTED_SIMULATOR_NAME
+                       " did not understand the input\n");
+        linted_fputs(USAGE_TEXT, stderr);
+        linted_fflush(stderr);
         return EXIT_FAILURE;
     }
-
-    return simulator_main(argv[2], argv[3]);
 }
 
 static linted_simulator_port linted_simulator_port_from_file(FILE * file) {

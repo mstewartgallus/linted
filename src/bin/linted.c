@@ -37,6 +37,9 @@ static int execute_subcommand(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 
 int main(int argc, char * argv[]) {
+    /* Note that in this function no global state must be modified
+       until after execute_subcommand could have executed or Frama C's
+       assumptions will break. */
     switch (argc) {
     case 0:
         linted_fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
@@ -50,6 +53,10 @@ int main(int argc, char * argv[]) {
 }
 
 static int execute_subcommand(int argc, char * argv[]) {
+    /* Note that in this function no global state must be modified
+       until after any subcommand that is verified by Frama C 
+       assumptions could have executed or Frama C's
+       assumptions will break. */
     char * const subcommand = argv[1];
     if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
         return linted_simulator_main(argc, argv);

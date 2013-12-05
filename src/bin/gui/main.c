@@ -34,6 +34,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define USAGE_TEXT \
+    "Usage: " PACKAGE_TARNAME " " LINTED_GUI_NAME " GUI_PIPE SIMULATOR_PIPE\n"\
+    "Run the gui\n"\
+    "\n"\
+    "Report bugs to " PACKAGE_BUGREPORT "\n"
 
 typedef struct { linted_actor_port x; } linted_gui_port;
 static linted_gui_port linted_gui_port_from_file(FILE * file);
@@ -60,7 +65,14 @@ static const attribute_value_pair attribute_values[ATTRIBUTE_AMOUNT];
 
 
 int linted_gui_main(int argc, char * argv[]) {
-    if (argc < 4) {
+    if (argc != 4) {
+        linted_fprintf(stderr,
+                       PACKAGE_TARNAME
+                       " "
+                       LINTED_GUI_NAME
+                       " did not understand the input\n");
+        linted_fputs(USAGE_TEXT, stderr);
+        linted_fflush(stderr);
         return EXIT_FAILURE;
     }
 
