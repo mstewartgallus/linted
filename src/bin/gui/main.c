@@ -15,8 +15,9 @@
  */
 #include "config.h"
 
-#include "linted/gui.h"
 #include "linted/actor.h"
+#include "linted/gui.h"
+#include "linted/simulator.h"
 #include "linted/util.h"
 
 #include "linted/base/stdio.h"
@@ -34,6 +35,20 @@
 #include <string.h>
 
 
+typedef struct { linted_actor_port x; } linted_gui_port;
+static linted_gui_port linted_gui_port_from_file(FILE * file);
+static linted_gui_command linted_gui_recv(linted_gui_port gui);
+
+static linted_gui_port linted_gui_port_from_file(FILE * file) {
+    return (linted_gui_port) { .x = (linted_actor_port) { .x = file } };
+}
+
+static linted_gui_command linted_gui_recv(linted_gui_port gui) {
+    const linted_actor_byte_fast type = linted_actor_recv_byte(gui.x);
+    const linted_actor_byte_fast data = linted_actor_recv_byte(gui.x);
+    return (linted_gui_command) { .type = type, .data = data };
+}
+
 typedef struct {
     SDL_GLattr attribute;
     int value;
@@ -44,21 +59,21 @@ enum { ATTRIBUTE_AMOUNT = 12 };
 static const attribute_value_pair attribute_values[ATTRIBUTE_AMOUNT];
 
 
-int main(int argc, char * argv[]) {
-    if (argc < 3) {
+int linted_gui_main(int argc, char * argv[]) {
+    if (argc < 4) {
         return EXIT_FAILURE;
     }
 
-    const char * const gui_command_input_string = argv[1];
-    const char * const gui_event_output_string = argv[2];
+    const char * const gui_string = argv[2];
+    const char * const simulator_string = argv[3];
 
-    FILE * const gui_event_fifo = linted_fdopen(atoi(gui_event_output_string), "wb");
+    FILE * const simulator_fifo = linted_fdopen(atoi(simulator_string), "wb");
 
-    const int gui_command_fd = atoi(gui_command_input_string);
-    FILE * const gui_command_fifo = linted_fdopen(gui_command_fd, "rb");
+    const int gui_fd = atoi(gui_string);
+    FILE * const gui_fifo = linted_fdopen(gui_fd, "rb");
 
-    const linted_gui_event_chan event_chan = linted_gui_event_chan_from_file(gui_event_fifo);
-    const linted_gui_command_port gui_port = linted_gui_command_port_from_file(gui_command_fifo);
+    const linted_simulator_chan simulator_chan = linted_simulator_chan_from_file(simulator_fifo);
+    const linted_gui_port gui_port = linted_gui_port_from_file(gui_fifo);
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
@@ -104,9 +119,9 @@ int main(int argc, char * argv[]) {
             const Uint32 now = SDL_GetTicks();
             if (now >= next_tick) {
                 next_tick += 1000 / 60;
-                linted_gui_event_send(event_chan, (linted_gui_event) {
+                linted_simulator_send(simulator_chan, (linted_simulator_command) {
                         .type = (linted_actor_byte_fast) {
-                            .x = LINTED_GUI_EVENT_TICK_REQUEST
+                            .x = LINTED_SIMULATOR_TICK_REQUEST
                         }
                     });
             }
@@ -131,9 +146,9 @@ int main(int argc, char * argv[]) {
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
             case SDLK_ESCAPE:
-                linted_gui_event_send(event_chan, (linted_gui_event) {
+                linted_simulator_send(simulator_chan, (linted_simulator_command) {
                         .type = (linted_actor_byte_fast) {
-                            .x = LINTED_GUI_EVENT_CLOSE_REQUEST
+                            .x = LINTED_SIMULATOR_CLOSE_REQUEST
                         }
                     });
                 break;
@@ -142,15 +157,15 @@ int main(int argc, char * argv[]) {
             break;
 
         case SDL_QUIT:
-            linted_gui_event_send(event_chan, (linted_gui_event) {
+            linted_simulator_send(simulator_chan, (linted_simulator_command) {
                     .type = (linted_actor_byte_fast) {
-                        .x = LINTED_GUI_EVENT_CLOSE_REQUEST
+                        .x = LINTED_SIMULATOR_CLOSE_REQUEST
                     }
                 });
             break;
         }
 
-        struct pollfd fifo_fd = { .fd = gui_command_fd, .events = POLLIN };
+        struct pollfd fifo_fd = { .fd = gui_fd, .events = POLLIN };
       retry:;
         const int poll_status = poll(&fifo_fd, 1, 0);
         if (-1 == poll_status) {
@@ -161,7 +176,7 @@ int main(int argc, char * argv[]) {
         }
         const bool had_gui_command = poll_status > 0;
         if (had_gui_command) {
-            linted_gui_command command = linted_gui_command_recv(gui_port);
+            linted_gui_command command = linted_gui_recv(gui_port);
             switch (command.type.x) {
             case LINTED_GUI_COMMAND_TICK_CHANGE:
                 x = ((float) command.data.x) / 255;
@@ -197,8 +212,8 @@ int main(int argc, char * argv[]) {
  shutdown_gui:
     SDL_Quit();
 
-    linted_fclose(gui_event_fifo);
-    linted_fclose(gui_command_fifo);
+    linted_fclose(simulator_fifo);
+    linted_fclose(gui_fifo);
 
     return EXIT_SUCCESS;
 }

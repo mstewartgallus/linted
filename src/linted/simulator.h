@@ -13,30 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_GUI_H
-#define LINTED_GUI_H
+#ifndef LINTED_SIMULATOR_H
+#define LINTED_SIMULATOR_H
 
 #include "linted/actor.h"
 
 #include <stdio.h>
 
-#define LINTED_GUI_NAME "gui"
+#define LINTED_SIMULATOR_NAME "simulator"
 
-int linted_gui_main(int argc, char * argv[]);
+int linted_simulator_main(int argc, char * argv[]);
 
 enum {
-    LINTED_GUI_COMMAND_SHUTDOWN = 0,
-    LINTED_GUI_COMMAND_TICK_CHANGE = 1
+    LINTED_SIMULATOR_CLOSE_REQUEST = 0,
+    LINTED_SIMULATOR_TICK_REQUEST = 1
 };
 
 typedef struct {
     linted_actor_byte_fast type;
-    linted_actor_byte_fast data;
-} linted_gui_command;
+} linted_simulator_command;
 
-typedef struct { linted_actor_chan x; } linted_gui_chan;
+typedef struct { linted_actor_chan x; } linted_simulator_chan;
 
-linted_gui_chan linted_gui_chan_from_file(FILE * file);
-void linted_gui_send(linted_gui_chan chan, linted_gui_command gui);
+linted_simulator_chan linted_simulator_chan_from_file(FILE * file);
+void linted_simulator_send(linted_simulator_chan chan, linted_simulator_command command);
 
-#endif /* LINTED_GUI_H */
+
+#endif /* LINTED_SIMULATOR_H */

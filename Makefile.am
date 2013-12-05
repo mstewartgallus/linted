@@ -18,75 +18,64 @@
 ACLOCAL_AMFLAGS=-I m4
 
 bin_PROGRAMS=linted
-pkglibexec_PROGRAMS=linted-gui linted-simulator
 
-linted_SOURCES=src/linted.c
-linted_LDADD=liblinted.la
+linted_SOURCES=\
+  src/bin/linted.c\
+  src/bin/gui/main.c\
+  $(verified_sources)
 
-linted_gui_SOURCES=src/gui.c
-linted_gui_LDADD=liblinted.la $(SDL_LIBS)
-linted_gui_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
+verified_sources=\
+  src/bin/actor.c\
+  src/bin/util.c\
+  src/bin/base/stdio.c\
+  src/bin/simulator.c\
+  src/bin/gui/control.c
 
-linted_simulator_SOURCES=src/simulator.c
-linted_simulator_LDADD=liblinted.la
-
-pkglib_LTLIBRARIES=liblinted.la
-liblinted_la_SOURCES=\
-	src/lib/gui.c\
-	src/lib/actor.c\
-	src/lib/util.c\
-	src/lib/base/stdio.c
+linted_LDADD=$(SDL_LIBS)
+linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
 	src/linted/actor.h\
 	src/linted/gui.h\
+	src/linted/simulator.h\
 	src/linted/base/stdio.h\
 	src/linted/util.h
 
+src/bin/linted.o: config.h
 
-src/linted/binaries.h: src/linted/binaries.h.in Makefile
-	$(MKDIR_P) src/linted
-	sed \
-	  -e 's|@exeext[@]|$(EXEEXT)|g' \
-	  -e 's|@pkglibexecdir[@]|$(pkglibexecdir)|g' \
-	  > $@ < $<
-
-
-src/linted.o: config.h src/linted/binaries.h
-
-src/simulator.o: config.h\
+src/bin/simulator.o: config.h\
 	src/linted/gui.h src/linted/actor.h\
 	src/linted/base/stdio.h src/linted/util.h
 
-src/lib/gui_impl.o: config.h\
+src/bin/gui/main.o: config.h\
 	src/linted/gui.h src/linted/actor.h\
 	src/linted/base/stdio.h src/linted/base/util.h
 
-src/lib/gui.o: config.h src/linted/gui.h src/linted/actor.h
-src/lib/actor.o: config.h src/linted/actor.h
-src/lib/util.o: config.h src/linted/util.h
-src/lib/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
+src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
+src/bin/actor.o: config.h src/linted/actor.h
+src/bin/util.o: config.h src/linted/util.h
+src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
 
 .PHONY:\
 	frama-c-pdg frama-c-gui frama-c-check\
 	cppcheck\
 	clang-analyzer
 
-frama-c-pdg: $(linted_simulator_SOURCES) $(liblinted_la_SOURCES)
+frama-c-pdg: $(verified_sources)
 	$(MKDIR_P) pdg
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -pdg -pdg-dot pdg/main $(FRAMAFLAGS) $^
 
-frama-c-gui: $(linted_simulator_SOURCES) $(liblinted_la_SOURCES)
+frama-c-gui: $(verified_sources)
 	$(FRAMA_C_GUI) $(linted_FRAMAFLAGS) $(FRAMAFLAGS) $^
 
-frama-c-check: $(linted_simulator_SOURCES) $(liblinted_la_SOURCES)
+frama-c-check: $(verified_sources)
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
 
 cppcheck:
 	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
 
-clang-analyzer: $(linted_simulator_SOURCES) $(liblinted_la_SOURCES)
-	$(CLANG) --analyze $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
+clang-analyzer: $(linted_SOURCES)
+	$(CLANG) --analyze $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 	- rm *.plist
 
 check: $(linted_CHECK_PHASES)
@@ -118,7 +107,7 @@ linted_FRAMAFLAGS=\
 	-warn-decimal-float all\
 	-cpp-extra-args="-I`$(FRAMA_C_GUI) -print-path`/libc"\
 	-cpp-extra-args='-C'\
-	-cpp-extra-args='$(AM_CPPFLAGS)'\
+	-cpp-extra-args='$(linted_CPPFLAGS)'\
 	-cpp-extra-args='$(CPPFLAGS)'\
 	-main simulator_main
 

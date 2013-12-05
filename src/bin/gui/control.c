@@ -13,5 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LINTED_SIMULATOR_BINARY "@pkglibexecdir@/linted-simulator@exeext@"
-#define LINTED_GUI_BINARY "@pkglibexecdir@/linted-gui@exeext@"
+#include "config.h"
+
+#include "linted/actor.h"
+#include "linted/gui.h"
+
+linted_gui_chan linted_gui_chan_from_file(FILE * file) {
+    return (linted_gui_chan) { .x = (linted_actor_chan) { .x = file } };
+}
+
+void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
+    linted_actor_send_byte(gui.x, command.type);
+    linted_actor_send_byte(gui.x, command.data);
+    linted_actor_flush(gui.x);
+}
