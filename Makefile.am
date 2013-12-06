@@ -40,7 +40,7 @@ EXTRA_DIST=\
 	src/linted/gui.h\
 	src/linted/simulator.h\
 	src/linted/base/stdio.h\
-	src/linted/spawn.h
+	src/linted/spawn.h\
 	src/linted/util.h
 
 src/bin/linted.o: config.h

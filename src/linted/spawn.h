@@ -18,9 +18,9 @@
 
 #include <spawn.h>
 
-posix_spawn_file_actions_t linted_spawn_file_actions();
+posix_spawn_file_actions_t linted_spawn_file_actions(void);
 
-posix_spawnattr_t linted_spawnattr();
+posix_spawnattr_t linted_spawnattr(void);
 
 void linted_spawn_file_actions_addclose(posix_spawn_file_actions_t * file_actions, int fildes);
 

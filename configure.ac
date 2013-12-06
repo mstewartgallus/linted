@@ -54,10 +54,6 @@ dnl
 AC_CHECK_FUNCS([strerror], [], [
  AC_MSG_ERROR([Unable to find function $ac_func])
 ])
-AC_FUNC_FORK
-AS_IF([test "x$ac_cv_func_fork_works" = "xno"],[
- AC_MSG_ERROR([Unable to find working fork function])
-])
 dnl
 LINTED_PROG_CPPCHECK
 LINTED_PROG_CLANG
