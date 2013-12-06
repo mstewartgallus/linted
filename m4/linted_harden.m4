@@ -17,16 +17,22 @@ AC_SUBST([linted_CPPFLAGS_HARDEN])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[
         [-fstack-protector-all -Wstack-protector]dnl
-        [-fsanitize=address]dnl
         [-pie -fPIE]dnl
         [-trapv]dnl
-        [-fmemsafety]])
+        [-fmemsafety]dnl
+        [-fsanitize=address-all]dnl
+])
 AC_SUBST([linted_CFLAGS_HARDEN])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[
         [-Wl,-z,relro]dnl
         [-Wl,-z,now]dnl
-        [-Wl,-z,noexecstack]])
+        [-Wl,-z,noexecstack]dnl
+        [-fsanitize=address-all]dnl This flag must appear in both the
+                                dnl linker options and compiler
+                                dnl options to link against the
+                                dnl appropriate runtime libraries.
+])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
 ])
