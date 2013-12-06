@@ -22,7 +22,10 @@ posix_spawn_file_actions_t linted_spawn_file_actions();
 
 posix_spawnattr_t linted_spawnattr();
 
+void linted_spawn_file_actions_addclose(posix_spawn_file_actions_t * file_actions, int fildes);
+
 void linted_spawn_file_actions_destroy(posix_spawn_file_actions_t file_actions);
+
 void linted_spawnattr_destroy(posix_spawnattr_t attrp);
 
 pid_t linted_spawn(char * path,

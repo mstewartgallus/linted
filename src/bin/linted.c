@@ -21,7 +21,9 @@
 #include "linted/spawn.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +38,9 @@ const char VERSION_TEXT[];
 
 static int execute_subcommand(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
+static void addclose_except(posix_spawn_file_actions_t * file_actions,
+                            size_t n, const int fildes[n]);
+static bool is_open(int fildes);
 
 int main(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
@@ -116,6 +121,9 @@ static int spawn_children(char * binary_name) {
             NULL
         };
 
+        const int open_fildes[] = { gui_writer, simulator_reader };
+        addclose_except(&file_actions, ARRAY_LENGTH(open_fildes), open_fildes);
+
         linted_spawn(binary_name, file_actions, attr, arguments, environ);
 
         linted_spawnattr_destroy(attr);
@@ -123,7 +131,7 @@ static int spawn_children(char * binary_name) {
     }
 
     {
-        const posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
+        posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
         const posix_spawnattr_t attr = linted_spawnattr();
 
         char simulator_writer_string[LONGEST_FD_STRING];
@@ -144,6 +152,9 @@ static int spawn_children(char * binary_name) {
             NULL
         };
 
+        const int open_fildes[] = { simulator_writer, gui_reader };
+        addclose_except(&file_actions, ARRAY_LENGTH(open_fildes), open_fildes);
+
         linted_spawn(binary_name, file_actions, attr, arguments, environ);
 
         linted_spawnattr_destroy(attr);
@@ -161,6 +172,38 @@ static int spawn_children(char * binary_name) {
     }
 
     return EXIT_SUCCESS;
+}
+
+static bool is_open(int fildes) {
+    int error_code;
+    do {
+        error_code = fcntl(fildes, F_GETFL);
+    } while (error_code == -1 && errno == EINTR);
+    return error_code != -1;
+}
+
+static void addclose_except(posix_spawn_file_actions_t * const file_actions,
+                            const size_t n, const int fildes[n]) {
+    const int max_fd = sysconf(_SC_OPEN_MAX);
+    for (int ii = 0; ii <= max_fd; ++ii) {
+        if (ii == STDIN_FILENO || ii == STDOUT_FILENO || ii == STDERR_FILENO) {
+            continue;
+        }
+
+        for (size_t jj = 0; jj < n; ++jj) {
+            if (fildes[jj] == ii) {
+                goto continue_closing;
+            }
+        }
+        goto close_file;
+    continue_closing:
+        continue;
+    close_file:
+
+        if (is_open(ii)) {
+            linted_spawn_file_actions_addclose(file_actions, ii);
+        }
+    }
 }
 
 const char USAGE_TEXT[] =

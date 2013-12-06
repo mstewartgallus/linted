@@ -41,6 +41,14 @@ posix_spawnattr_t linted_spawnattr() {
     return attrp;
 }
 
+void linted_spawn_file_actions_addclose(posix_spawn_file_actions_t * file_actions,
+                                        int fildes) {
+    const int error_code = posix_spawn_file_actions_addclose(file_actions, fildes);
+    if (-1 == error_code) {
+        LINTED_ERROR("Could not add close file descriptor action: %s\n", strerror(errno));
+    }
+}
+
 void linted_spawn_file_actions_destroy(posix_spawn_file_actions_t file_actions) {
     const int error_code = posix_spawn_file_actions_destroy(&file_actions);
     if (-1 == error_code) {
