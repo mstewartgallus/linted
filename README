@@ -10,9 +10,19 @@ of guarding against software bugs.
 
 See the file INSTALL for building and installation instruction. Linted
 is a program for the purpose of demonstrating usage of practical
-methods of guarding against software bugs. Just a few of these methods
-are process isolation, static analysis, and buffer overflow
-protection.
+methods of guarding against software bugs.
+
+Some of these methods include:
+- process isolation (by using posix_spawnp)
+- operating system resource limits (by using setrlimit)
+- static analysis tools including:
+  - frama-c
+  - clang
+  - cppcheck
+- toolchain hardening options
+  - The GNU linker options -z,relro, -z,now and -z,noexecstack
+  - The GNU Compiler Collection options -fstack-protector-all, -trapv,
+    -pie, and -fPIE
 
 Linted is licensed under the Apache License, Version 2.0 (the
 "License"); you may not use Linted except in compliance with
