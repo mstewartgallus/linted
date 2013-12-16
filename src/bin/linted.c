@@ -39,7 +39,7 @@ const char VERSION_TEXT[];
 static int execute_subcommand(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 static void addclose_except(posix_spawn_file_actions_t * file_actions,
-                            size_t n, const int fildes[n]);
+                            size_t n, const int fildes[]);
 static bool is_open(int fildes);
 
 int main(int argc, char * argv[]) {
@@ -65,8 +65,10 @@ static int execute_subcommand(int argc, char * argv[]) {
        assumptions will break. */
     char * const subcommand = argv[1];
     if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
+        linted_sandbox((linted_resource_limits_t){ .max_files = 0 });
         return linted_simulator_main(argc, argv);
     } else if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
+        linted_sandbox((linted_resource_limits_t){ .max_files = 8 });
         return linted_gui_main(argc, argv);
     } else if (0 == strcmp(subcommand, "--help")) {
         linted_fputs(USAGE_TEXT, stdout);
@@ -161,6 +163,8 @@ static int spawn_children(char * binary_name) {
         linted_spawn_file_actions_destroy(file_actions);
     }
 
+    linted_sandbox((linted_resource_limits_t){ .max_files = 0 });
+
     int first_dead_child_status;
     linted_wait(&first_dead_child_status);
 
@@ -183,7 +187,7 @@ static bool is_open(int fildes) {
 }
 
 static void addclose_except(posix_spawn_file_actions_t * const file_actions,
-                            const size_t n, const int fildes[n]) {
+                            const size_t n, const int fildes[]) {
     const int max_fd = sysconf(_SC_OPEN_MAX);
     for (int ii = 0; ii <= max_fd; ++ii) {
         if (ii == STDIN_FILENO || ii == STDOUT_FILENO || ii == STDERR_FILENO) {

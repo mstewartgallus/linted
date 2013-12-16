@@ -73,17 +73,14 @@ void linted_fwrite(const void * bytes, const size_t byte_count,
 }
 
 void linted_fflush(FILE * const file) {
-  retry:
-    if (fflush(file) != EOF) {
-        return;
+    int error_status;
+    do {
+        error_status = fflush(file);
+    } while (EOF == error_status && errno != EINTR);
+    if (EOF == error_status) {
+        LINTED_ERROR("Could not write to standard output because of error: %s\n",
+                     strerror(errno));
     }
-
-    if (errno == EINTR) {
-        goto retry;
-    }
-
-    LINTED_ERROR("Could not write to standard output because of error: %s\n",
-                 strerror(errno));
 }
 
 void linted_fread(void * bytes, const size_t byte_count, const size_t nmemb,

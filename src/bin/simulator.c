@@ -114,6 +114,7 @@ static int simulator_main(const char * const simulator_string,
                 .x = LINTED_GUI_COMMAND_SHUTDOWN
             }
         });
+
     linted_fclose(simulator_fifo);
     linted_fclose(gui_fifo);
 

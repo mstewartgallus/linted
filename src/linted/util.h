@@ -17,8 +17,9 @@
 #define LINTED_UTIL_H
 
 #include <stdio.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <unistd.h>
-
 
 #define LINTED_ERROR(...)                                       \
     linted_error(__FILE__, __func__, __LINE__,  __VA_ARGS__)
@@ -35,5 +36,13 @@ FILE * linted_fdopen(int fd, const char *mode);
 void linted_pipe(int pipefd[2]);
 
 pid_t linted_wait(int * status);
+
+void linted_setrlimit(int resource, const struct rlimit *rlim);
+
+typedef struct {
+    rlim_t max_files;
+} linted_resource_limits_t;
+
+void linted_sandbox(linted_resource_limits_t rlimits);
 
 #endif /* LINTED_UTIL_H */
