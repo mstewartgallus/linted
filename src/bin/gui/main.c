@@ -93,7 +93,6 @@ int linted_gui_main(int argc, char * argv[]) {
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
 
-
     for (size_t ii = 0; ii < ATTRIBUTE_AMOUNT; ++ii) {
         const attribute_value_pair pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
@@ -106,7 +105,12 @@ int linted_gui_main(int argc, char * argv[]) {
     unsigned width = 640, height = 800;
 
     /* Initialize SDL */
-    SDL_SetVideoMode(width, height, 0, sdl_flags);
+    {
+        SDL_Surface * const video_surface = SDL_SetVideoMode(width, height, 0, sdl_flags);
+        if (NULL == video_surface) {
+            LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
+        }
+    }
 
     /* Get actual window size, and not requested window size */
     const SDL_VideoInfo * const video_info = SDL_GetVideoInfo();
