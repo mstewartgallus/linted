@@ -38,8 +38,8 @@ static const char VERSION_TEXT[];
 
 static int execute_subcommand(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
-static void addclose_except(posix_spawn_file_actions_t * file_actions,
-                            size_t n, const int fildes[]);
+static int addclose_except(posix_spawn_file_actions_t * file_actions,
+                           size_t n, const int fildes_to_keep[]);
 static bool is_open(int fildes);
 
 int main(int argc, char * argv[]) {
@@ -48,8 +48,8 @@ int main(int argc, char * argv[]) {
        assumptions will break. */
     switch (argc) {
     case 0:
-        linted_fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
-        linted_fflush(stderr);
+        fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
+        fflush(stderr);
         return EXIT_FAILURE;
     case 1:
         return spawn_children(argv[0]);
@@ -156,7 +156,12 @@ static int spawn_children(char * binary_name) {
         };
 
         const int open_fildes[] = { simulator_writer, gui_reader };
-        addclose_except(&file_actions, ARRAY_LENGTH(open_fildes), open_fildes);
+        const int error_code = addclose_except(&file_actions, ARRAY_LENGTH(open_fildes),
+                                               open_fildes);
+        if (-1 == error_code) {
+            LINTED_ERROR("Could not add close file descriptor actions: %s\n",
+                         strerror(errno));
+        }
 
         linted_spawn(binary_name, file_actions, attr, arguments, environ);
 
@@ -193,28 +198,36 @@ static bool is_open(int fildes) {
     return error_code != -1;
 }
 
-static void addclose_except(posix_spawn_file_actions_t * const file_actions,
-                            const size_t n, const int fildes[]) {
+static int addclose_except(posix_spawn_file_actions_t * const file_actions,
+                           const size_t n, const int fildes_to_keep[]) {
+    int error_code = 0;
     const int max_fd = sysconf(_SC_OPEN_MAX);
-    for (int ii = 0; ii <= max_fd; ++ii) {
-        if (ii == STDIN_FILENO || ii == STDOUT_FILENO || ii == STDERR_FILENO) {
+    for (int fildes = 0; fildes <= max_fd; ++fildes) {
+        if (fildes == STDIN_FILENO || fildes == STDOUT_FILENO || fildes == STDERR_FILENO) {
             continue;
         }
 
-        for (size_t jj = 0; jj < n; ++jj) {
-            if (fildes[jj] == ii) {
-                goto continue_closing;
+        bool should_keep_fildes = false;
+        for (size_t ii = 0; ii < n; ++ii) {
+            if (fildes_to_keep[ii] == fildes) {
+                should_keep_fildes = true;
+                break;
             }
         }
-        goto close_file;
-    continue_closing:
-        continue;
-    close_file:
+        if (should_keep_fildes) {
+            continue;
+        }
 
-        if (is_open(ii)) {
-            linted_spawn_file_actions_addclose(file_actions, ii);
+        if (!is_open(fildes)) {
+            continue;
+        }
+
+        error_code = posix_spawn_file_actions_addclose(file_actions, fildes);
+        if (-1 == error_code) {
+            break;
         }
     }
+    return error_code;
 }
 
 static const char USAGE_TEXT[] =
