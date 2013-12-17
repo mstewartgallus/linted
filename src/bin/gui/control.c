@@ -23,7 +23,16 @@ linted_gui_chan linted_gui_chan_from_file(FILE * file) {
 }
 
 void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
-    linted_actor_send_byte(gui.x, command.type);
-    linted_actor_send_byte(gui.x, command.data);
+    const linted_actor_byte_fast type = command.type;
+    linted_actor_send_byte(gui.x, type);
+    switch (type.x) {
+    case LINTED_GUI_COMMAND_SHUTDOWN:
+        break;
+
+    case LINTED_GUI_COMMAND_TICK_CHANGE:
+        linted_actor_send_byte(gui.x, command.tick_change.x);
+        linted_actor_send_byte(gui.x, command.tick_change.y);
+        break;
+    }
     linted_actor_flush(gui.x);
 }

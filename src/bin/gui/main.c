@@ -49,9 +49,18 @@ static linted_gui_port linted_gui_port_from_file(FILE * file) {
 }
 
 static linted_gui_command linted_gui_recv(linted_gui_port gui) {
-    const linted_actor_byte_fast type = linted_actor_recv_byte(gui.x);
-    const linted_actor_byte_fast data = linted_actor_recv_byte(gui.x);
-    return (linted_gui_command) { .type = type, .data = data };
+    linted_gui_command command;
+    command.type = linted_actor_recv_byte(gui.x);
+    switch (command.type.x) {
+    case LINTED_GUI_COMMAND_SHUTDOWN:
+        break;
+
+    case LINTED_GUI_COMMAND_TICK_CHANGE:
+        command.tick_change.x = linted_actor_recv_byte(gui.x);
+        command.tick_change.y = linted_actor_recv_byte(gui.x);
+        break;
+    }
+    return command;
 }
 
 typedef struct {
@@ -118,6 +127,7 @@ int linted_gui_main(int argc, char * argv[]) {
     height = video_info->current_h;
 
     float x = 0;
+    float y = 0;
 
  setup_window:;
     SDL_Surface * const video_surface = SDL_SetVideoMode(width, height,
@@ -196,7 +206,8 @@ int linted_gui_main(int argc, char * argv[]) {
             linted_gui_command command = linted_gui_recv(gui_port);
             switch (command.type.x) {
             case LINTED_GUI_COMMAND_TICK_CHANGE:
-                x = ((float) command.data.x) / 255;
+                x = ((float) command.tick_change.x.x) / 255;
+                y = ((float) command.tick_change.y.x) / 255;
                 break;
 
             case LINTED_GUI_COMMAND_SHUTDOWN:
@@ -217,9 +228,9 @@ int linted_gui_main(int argc, char * argv[]) {
             glClear(GL_COLOR_BUFFER_BIT);
 
             glBegin(GL_TRIANGLES);
-            glVertex2f(x - 0.4f, -0.4f);
-            glVertex2f(x + 0.4f, -0.4f);
-            glVertex2f(x + 0.0f,  0.4f);
+            glVertex2f(x - 0.4f, y - 0.4f);
+            glVertex2f(x + 0.4f, y - 0.4f);
+            glVertex2f(x + 0.0f, y + 0.4f);
             glEnd();
             
             SDL_GL_SwapBuffers();

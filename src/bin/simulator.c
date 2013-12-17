@@ -80,25 +80,29 @@ static int simulator_main(const char * const simulator_string,
     const linted_simulator_port command_port = linted_simulator_port_from_file(simulator_fifo);
     const linted_gui_chan gui = linted_gui_chan_from_file(gui_fifo);
 
-    linted_actor_byte_fast_t byte = 0;
+    linted_actor_byte_fast x_position = { .x = 0 };
+    linted_actor_byte_fast y_position = { .x = 0 };
 
     for (;;) {
         const linted_simulator_command command = linted_simulator_recv(command_port);
         const linted_actor_byte_fast_t command_type = command.type.x;
         switch (command_type) {
-        case LINTED_SIMULATOR_TICK_REQUEST:
-            byte = (byte + 1) % 256;
-            //@ assert byte ≤ 255;
+        case LINTED_SIMULATOR_TICK_REQUEST: {
+            x_position.x = (x_position.x + 1) % 256;
+            y_position.x = (y_position.x + 1) % 256;
+            //@ assert x_position.x ≤ 255;
+            //@ assert y_position.x ≤ 255;
 
-            linted_gui_send(gui, (linted_gui_command) {
-                    .type = (linted_actor_byte_fast) {
-                        .x = LINTED_GUI_COMMAND_TICK_CHANGE
-                    },
-                    .data = (linted_actor_byte_fast) {
-                        .x = byte
-                    }
-                });
+            linted_gui_command gui_command = {
+                .type = (linted_actor_byte_fast) { .x = LINTED_GUI_COMMAND_TICK_CHANGE },
+                .tick_change = (linted_gui_tick_change) {
+                    .x = x_position,
+                    .y = y_position
+                }
+            };
+            linted_gui_send(gui, gui_command);
             break;
+        }
 
         case LINTED_SIMULATOR_CLOSE_REQUEST:
             goto quit_main_loop;
