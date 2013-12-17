@@ -28,8 +28,8 @@
 #include <string.h>
 
 
-const char USAGE_TEXT[];
-const char VERSION_TEXT[];
+static const char USAGE_TEXT[];
+static const char VERSION_TEXT[];
 
 /* TODO: Calculate exactly */
 #define LONGEST_FD_STRING 50
@@ -217,7 +217,7 @@ static void addclose_except(posix_spawn_file_actions_t * const file_actions,
     }
 }
 
-const char USAGE_TEXT[] =
+static const char USAGE_TEXT[] =
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"
     "Play the " PACKAGE_NAME " game\n"
     "\n"
@@ -231,7 +231,7 @@ const char USAGE_TEXT[] =
     "\n"
     "Report bugs to " PACKAGE_BUGREPORT "\n";
 
-const char VERSION_TEXT[] =
+static const char VERSION_TEXT[] =
     PACKAGE_STRING "\n"
     "Copyright (C) 2013 Steven Stewart-Gallus\n"
     PACKAGE_NAME " comes with ABSOLUTELY NO WARRANTY.\n"
