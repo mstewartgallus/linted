@@ -36,22 +36,22 @@ linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
-	src/linted/actor.h\
-	src/linted/gui.h\
-	src/linted/simulator.h\
-	src/linted/base/stdio.h\
-	src/linted/spawn.h\
-	src/linted/util.h
+  src/linted/actor.h\
+  src/linted/gui.h\
+  src/linted/simulator.h\
+  src/linted/base/stdio.h\
+  src/linted/spawn.h\
+  src/linted/util.h
 
 src/bin/linted.o: config.h
 
 src/bin/simulator.o: config.h\
-	src/linted/gui.h src/linted/actor.h\
-	src/linted/base/stdio.h src/linted/util.h
+  src/linted/gui.h src/linted/actor.h\
+  src/linted/base/stdio.h src/linted/util.h
 
 src/bin/gui/main.o: config.h\
-	src/linted/gui.h src/linted/actor.h\
-	src/linted/base/stdio.h src/linted/base/util.h
+  src/linted/gui.h src/linted/actor.h\
+  src/linted/base/stdio.h src/linted/base/util.h
 
 src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/actor.o: config.h src/linted/actor.h
@@ -60,9 +60,10 @@ src/bin/spawn.o: config.h src/linted/spawn.h
 src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
 
 .PHONY:\
-	frama-c-pdg frama-c-gui frama-c-check\
-	cppcheck\
-	clang-analyzer
+  frama-c-pdg frama-c-gui frama-c-check\
+  cppcheck\
+  clang-analyzer\
+  cbmc-check
 
 frama-c-pdg: $(verified_sources)
 	$(MKDIR_P) pdg
@@ -73,6 +74,9 @@ frama-c-gui: $(verified_sources)
 
 frama-c-check: $(verified_sources)
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
+
+cbmc-check: $(linted_SOURCES)
+	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 
 cppcheck:
 	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
@@ -90,11 +94,11 @@ clean-local:
 AM_CPPFLAGS=$(linted_CPPFLAGS_HARDEN) -I . -I $(srcdir)/src -I src
 
 AM_CFLAGS=\
-	$(linted_C99_STD)\
-	$(linted_CFLAGS_OPTIMIZE)\
-	$(linted_CFLAGS_HARDEN)\
-	$(linted_CFLAGS_DEBUG)\
-	$(linted_CFLAGS_WARNINGS)
+  $(linted_C99_STD)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_WARNINGS)
 if SAVE_TEMPS
 AM_CFLAGS +=-save-temps=obj
 endif
@@ -102,17 +106,22 @@ endif
 AM_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN)
 
 linted_FRAMAFLAGS=\
-	-quiet\
-	-journal-disable\
-	-warn-signed-downcast\
-	-warn-unsigned-downcast\
-	-warn-unsigned-overflow\
-	-warn-decimal-float all\
-	-cpp-extra-args="-I`$(FRAMA_C_GUI) -print-path`/libc"\
-	-cpp-extra-args='-C'\
-	-cpp-extra-args='$(linted_CPPFLAGS)'\
-	-cpp-extra-args='$(CPPFLAGS)'\
-	-main simulator_main
+  -quiet\
+  -journal-disable\
+  -warn-signed-downcast\
+  -warn-unsigned-downcast\
+  -warn-unsigned-overflow\
+  -warn-decimal-float all\
+  -cpp-extra-args="-I`$(FRAMA_C_GUI) -print-path`/libc"\
+  -cpp-extra-args='-C'\
+  -cpp-extra-args='$(linted_CPPFLAGS)'\
+  -cpp-extra-args='$(CPPFLAGS)'\
+  -main simulator_main
+
+linted_CBMCFLAGS=\
+  --no-unwinding-assertions\
+  --unwind 6\
+  --bounds-check
 
 linted_CHECK_PHASES=
 if HAS_CPPCHECK

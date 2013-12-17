@@ -56,10 +56,11 @@ AC_CHECK_FUNCS([strerror], [], [
  AC_MSG_ERROR([Unable to find function $ac_func])
 ])
 dnl
-LINTED_PROG_CPPCHECK
-LINTED_PROG_CLANG
 LINTED_PROG_FRAMA_C_GUI
 LINTED_PROG_FRAMA_C
+LINTED_PROG_CBMC
+LINTED_PROG_CLANG
+LINTED_PROG_CPPCHECK
 dnl
 LINTED_OPTIMIZE
 LINTED_HARDEN
@@ -73,8 +74,9 @@ AC_SEARCH_LIBS([glClear], [GL], [], [
 ])
 dnl
 AM_CONDITIONAL([SAVE_TEMPS], [test "x${enable_save_temps}" = "xyes"])
-AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
+AM_CONDITIONAL([HAS_CBMC], [test "x${CBMC}" != "x"])
+AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])
 AM_CONDITIONAL([HAS_CPPCHECK], [test "x${CPPCHECK}" != "x"])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
