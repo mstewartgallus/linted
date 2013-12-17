@@ -23,7 +23,7 @@
 #include <spawn.h>
 #include <string.h>
 
-posix_spawn_file_actions_t linted_spawn_file_actions() {
+posix_spawn_file_actions_t linted_spawn_file_actions(void) {
     posix_spawn_file_actions_t file_actions;
     const int error_code = posix_spawn_file_actions_init(&file_actions);
     if (-1 == error_code) {
@@ -32,7 +32,7 @@ posix_spawn_file_actions_t linted_spawn_file_actions() {
     return file_actions;
 }
 
-posix_spawnattr_t linted_spawnattr() {
+posix_spawnattr_t linted_spawnattr(void) {
     posix_spawnattr_t attrp;
     const int error_code = posix_spawnattr_init(&attrp);
     if (-1 == error_code) {

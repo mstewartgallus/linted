@@ -56,6 +56,19 @@ int linted_open(const char *pathname, int flags) {
     return fd;
 }
 
+void linted_close(int fd) {
+  retry:;
+    const int status = close(fd);
+    if (-1 == status) {
+        if (errno == EINTR) {
+            goto retry;
+        }
+
+        LINTED_ERROR("Could not close file descriptor: %s\n",
+                     strerror(errno));
+    }
+}
+
 FILE * linted_fdopen(int fd, const char *mode) {
   retry:;
     FILE * const file = fdopen(fd, mode);
@@ -95,11 +108,4 @@ void linted_setrlimit(int resource, const struct rlimit *rlim) {
         LINTED_ERROR("Could not set resource limit because of error: %s\n",
                      strerror(errno));
     }
-}
-
-void linted_sandbox(linted_resource_limits_t resource_limits) {
-    struct rlimit rlim;
-    rlim.rlim_cur = resource_limits.max_files;
-    rlim.rlim_max = resource_limits.max_files;
-    linted_setrlimit(RLIMIT_NOFILE, &rlim);
 }

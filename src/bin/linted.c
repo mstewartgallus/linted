@@ -65,10 +65,11 @@ static int execute_subcommand(int argc, char * argv[]) {
        assumptions will break. */
     char * const subcommand = argv[1];
     if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
-        linted_sandbox((linted_resource_limits_t){ .max_files = 0 });
+        linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+        linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
         return linted_simulator_main(argc, argv);
     } else if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
-        linted_sandbox((linted_resource_limits_t){ .max_files = 8 });
+        linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 8, .rlim_max = 8 });
         return linted_gui_main(argc, argv);
     } else if (0 == strcmp(subcommand, "--help")) {
         linted_fputs(USAGE_TEXT, stdout);
@@ -102,7 +103,7 @@ static int spawn_children(char * binary_name) {
     const int gui_writer = gui_fds[1];
 
     {
-        const posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
+        posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
         const posix_spawnattr_t attr = linted_spawnattr();
 
         char simulator_reader_string[LONGEST_FD_STRING];
@@ -163,7 +164,13 @@ static int spawn_children(char * binary_name) {
         linted_spawn_file_actions_destroy(file_actions);
     }
 
-    linted_sandbox((linted_resource_limits_t){ .max_files = 0 });
+    linted_close(simulator_writer);
+    linted_close(simulator_reader);
+    linted_close(gui_writer);
+    linted_close(gui_reader);
+
+    linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+    linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
 
     int first_dead_child_status;
     linted_wait(&first_dead_child_status);
