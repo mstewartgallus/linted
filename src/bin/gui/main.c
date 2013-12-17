@@ -117,6 +117,8 @@ int linted_gui_main(int argc, char * argv[]) {
     width = video_info->current_w;
     height = video_info->current_h;
 
+    float x = 0;
+
  setup_window:;
     SDL_Surface * const video_surface = SDL_SetVideoMode(width, height,
                                                          0, sdl_flags);
@@ -129,7 +131,6 @@ int linted_gui_main(int argc, char * argv[]) {
 
     bool should_resize = false;
     Uint32 next_tick = SDL_GetTicks();
-    float x = 0;
     for (;;) {
         {
             const Uint32 now = SDL_GetTicks();
