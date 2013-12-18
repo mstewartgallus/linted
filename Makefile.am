@@ -121,7 +121,11 @@ linted_FRAMAFLAGS=\
 linted_CBMCFLAGS=\
   --no-unwinding-assertions\
   --unwind 6\
-  --bounds-check
+  --bounds-check\
+  --div-by-zero-check\
+  --nan-check\
+  --pointer-check\
+  --overflow-check
 
 linted_CHECK_PHASES=
 if HAS_CPPCHECK
