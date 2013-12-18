@@ -96,12 +96,8 @@ void linted_fread(void * bytes, const size_t byte_count, const size_t nmemb,
 }
 
 void linted_fclose(FILE * const fp) {
-  retry:
-    if (EOF == fclose(fp)) {
-        if (errno == EINTR) {
-            goto retry;
-        }
-
-        LINTED_ERROR("Could not close file\n");
+    const int error_status = fclose(fp);
+    if (error_status == -1) {
+        LINTED_ERROR("Could not close file: %s\n", strerror(errno));
     }
 }
