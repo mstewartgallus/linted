@@ -11,8 +11,6 @@ dnl
 AS_IF([test "x${enable_optimize}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[
-        [-mtune=native]
-        [-march=native]
         [-O]
         [-O2]
         [-O3]

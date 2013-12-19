@@ -105,7 +105,10 @@ retry:;
 
 void linted_setrlimit(int resource, const struct rlimit *rlim) {
     if (-1 == setrlimit(resource, rlim)) {
-        LINTED_ERROR("Could not set resource limit because of error: %s\n",
-                     strerror(errno));
+        const int error_code = errno;
+        if (error_code != EPERM) {
+            LINTED_ERROR("Could not set resource limit because of error: %s\n",
+                         strerror(error_code));
+        }
     }
 }
