@@ -69,7 +69,6 @@ static int execute_subcommand(int argc, char * argv[]) {
         linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
         return linted_simulator_main(argc, argv);
     } else if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
-        linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 8, .rlim_max = 8 });
         return linted_gui_main(argc, argv);
     } else if (0 == strcmp(subcommand, "--help")) {
         linted_fputs(USAGE_TEXT, stdout);
