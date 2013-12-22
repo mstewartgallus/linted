@@ -63,7 +63,7 @@ static int execute_subcommand(int argc, char * argv[]) {
        until after any subcommand that is verified by Frama C 
        assumptions could have executed or Frama C's
        assumptions will break. */
-    char * const subcommand = argv[1];
+    const char * const subcommand = argv[1];
     if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
         linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
         linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
