@@ -119,8 +119,26 @@ static int simulator_main(const char * const simulator_string,
             }
         });
 
-    linted_fclose(simulator_fifo);
     linted_fclose(gui_fifo);
+
+    /* Drain excess commands to avoid a sigpipe error. */
+    for (;;) {
+        const linted_simulator_command command = linted_simulator_recv(command_port);
+        const linted_actor_byte_fast_t command_type = command.type.x;
+        switch (command_type) {
+        case LINTED_SIMULATOR_GUI_CLOSED:
+            goto exit;
+
+        case LINTED_SIMULATOR_TICK_REQUEST:
+        case LINTED_SIMULATOR_CLOSE_REQUEST:
+            break;
+
+        default:
+            LINTED_ERROR("Received unknown event type: %d\n", command_type);
+        }
+    }
+ exit:
+    linted_fclose(simulator_fifo);
 
     return EXIT_SUCCESS;
 }

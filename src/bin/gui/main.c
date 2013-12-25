@@ -59,6 +59,10 @@ static linted_gui_command linted_gui_recv(linted_gui_port gui) {
         command.tick_change.x = linted_actor_recv_byte(gui.x);
         command.tick_change.y = linted_actor_recv_byte(gui.x);
         break;
+
+    default:
+        LINTED_ERROR("Received unknown command: %d\n", command.type.x);
+        break;
     }
     return command;
 }
@@ -232,12 +236,18 @@ int linted_gui_main(int argc, char * argv[]) {
             glVertex2f(x + 0.4f, y - 0.4f);
             glVertex2f(x + 0.0f, y + 0.4f);
             glEnd();
-            
+
             SDL_GL_SwapBuffers();
         }
     }
 
  shutdown_gui:
+    linted_simulator_send(simulator_chan, (linted_simulator_command) {
+            .type = (linted_actor_byte_fast) {
+                .x = LINTED_SIMULATOR_GUI_CLOSED
+            }
+        });
+
     SDL_Quit();
 
     linted_fclose(simulator_fifo);

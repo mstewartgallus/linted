@@ -26,7 +26,8 @@ int linted_simulator_main(int argc, char * argv[]);
 
 enum {
     LINTED_SIMULATOR_CLOSE_REQUEST = 0,
-    LINTED_SIMULATOR_TICK_REQUEST = 1
+    LINTED_SIMULATOR_TICK_REQUEST = 1,
+    LINTED_SIMULATOR_GUI_CLOSED = 2
 };
 
 typedef struct {

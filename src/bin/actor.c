@@ -20,7 +20,6 @@
 
 #include "linted/base/stdio.h"
 
-
 void linted_actor_send_byte(const linted_actor_chan actor,
                             const linted_actor_byte_fast byte) {
     linted_fwrite(&byte, sizeof byte, 1, actor.x);
@@ -29,7 +28,6 @@ void linted_actor_send_byte(const linted_actor_chan actor,
 void linted_actor_flush(const linted_actor_chan actor) {
     linted_fflush(actor.x);
 }
-
 
 linted_actor_byte_fast linted_actor_recv_byte(const linted_actor_port actor) {
     linted_actor_byte_fast_t byte = 0;
