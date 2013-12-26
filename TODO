@@ -1,0 +1,13 @@
+Linted --- TODO
+
+* Sandbox the gui
+This process currently uses poll and so can't be sandboxed easily.
+* Sandbox all processes more effectively
+There are a few more options to explore in setrlimit.
+Also there are better options than setrlimit.
+* Move away from instant failure
+It's bad style to have library calls that terminate the applicaton.
+* Understand CBMC complaints
+It seems to complain about nonsense.
+* Use a better system of IPC
+The current system is kind of hacky.
