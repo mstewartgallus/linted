@@ -36,7 +36,6 @@ static const char VERSION_TEXT[];
 
 #define ARRAY_LENGTH(array) ((sizeof (array)) / sizeof ((array)[0]))
 
-static int execute_subcommand(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 static int addclose_except(posix_spawn_file_actions_t * file_actions,
                            size_t n, const int fildes_to_keep[]);
@@ -46,45 +45,49 @@ int main(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
        until after execute_subcommand could have executed or Frama C's
        assumptions will break. */
-    switch (argc) {
-    case 0:
+
+    /* Privileged subcommands */
+    if (1 == argc) {
+        return spawn_children(argv[0]);
+    }
+
+    if (argc >= 2) {
+        const char * const subcommand = argv[1];
+        if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
+            return linted_gui_main(argc, argv);
+        }
+    }
+
+    /* Unprivileged sub commands */
+    linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+    linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+
+    if (0 == argc) {
         fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
         fflush(stderr);
         return EXIT_FAILURE;
-    case 1:
-        return spawn_children(argv[0]);
-    default:
-        return execute_subcommand(argc, argv);
     }
-}
 
-static int execute_subcommand(int argc, char * argv[]) {
-    /* Note that in this function no global state must be modified
-       until after any subcommand that is verified by Frama C 
-       assumptions could have executed or Frama C's
-       assumptions will break. */
-    const char * const subcommand = argv[1];
-    if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
-        linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
-        linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
-        return linted_simulator_main(argc, argv);
-    } else if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
-        return linted_gui_main(argc, argv);
-    } else if (0 == strcmp(subcommand, "--help")) {
-        linted_fputs(USAGE_TEXT, stdout);
-        linted_fflush(stdout);
-        return EXIT_SUCCESS;
-    } else if (0 == strcmp(subcommand, "--version")) {
-        linted_fputs(VERSION_TEXT, stdout);
-        linted_fflush(stdout);
-        return EXIT_SUCCESS;
-    } else {
-        linted_fprintf(stderr,
-                       PACKAGE_TARNAME " did not understand the input %s\n",
-                       subcommand);
-        linted_fputs(USAGE_TEXT, stderr);
-        linted_fflush(stderr);
-        return EXIT_FAILURE;
+    if (argc >= 2) {
+        const char * const subcommand = argv[1];
+        if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
+            return linted_simulator_main(argc, argv);
+        } else if (0 == strcmp(subcommand, "--help")) {
+            linted_fputs(USAGE_TEXT, stdout);
+            linted_fflush(stdout);
+            return EXIT_SUCCESS;
+        } else if (0 == strcmp(subcommand, "--version")) {
+            linted_fputs(VERSION_TEXT, stdout);
+            linted_fflush(stdout);
+            return EXIT_SUCCESS;
+        } else {
+            linted_fprintf(stderr,
+                           PACKAGE_TARNAME " did not understand the input %s\n",
+                           subcommand);
+            linted_fputs(USAGE_TEXT, stderr);
+            linted_fflush(stderr);
+            return EXIT_FAILURE;
+        }
     }
 }
 

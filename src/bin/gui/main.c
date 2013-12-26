@@ -124,7 +124,6 @@ int linted_gui_main(int argc, char * argv[]) {
             LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
         }
     }
-
     /* Get actual window size, and not requested window size */
     const SDL_VideoInfo * const video_info = SDL_GetVideoInfo();
     width = video_info->current_w;
