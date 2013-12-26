@@ -11,3 +11,7 @@ It's bad style to have library calls that terminate the applicaton.
 It seems to complain about nonsense.
 * Use a better system of IPC
 The current system is kind of hacky.
+* Formalize our IPC
+We should be able to use temporal logic tools to formalize our message
+passing and create theorems about various safety and liveness
+properties.
