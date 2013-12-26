@@ -17,6 +17,7 @@
 
 #include "linted/base/stdio.h"
 #include "linted/gui.h"
+#include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/spawn.h"
 #include "linted/util.h"
@@ -59,8 +60,10 @@ int main(int argc, char * argv[]) {
     }
 
     /* Unprivileged sub commands */
-    linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
-    linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+    if (-1 == linted_sandbox()) {
+        LINTED_ERROR("Could not sandbox process because of error: %s\n",
+                     strerror(errno));
+    }
 
     if (0 == argc) {
         fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
@@ -176,8 +179,10 @@ static int spawn_children(char * binary_name) {
     linted_close(gui_writer);
     linted_close(gui_reader);
 
-    linted_setrlimit(RLIMIT_NOFILE, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
-    linted_setrlimit(RLIMIT_NPROC, &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
+    if (-1 == linted_sandbox()) {
+        LINTED_ERROR("Could not sandbox process because of error: %s\n",
+                     strerror(errno));
+    }
 
     int first_dead_child_status;
     linted_wait(&first_dead_child_status);

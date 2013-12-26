@@ -22,6 +22,7 @@ bin_PROGRAMS=linted
 linted_SOURCES=\
   src/bin/linted.c\
   src/bin/gui/main.c\
+  src/bin/sandbox.c\
   src/bin/spawn.c\
   $(verified_sources)
 
@@ -43,7 +44,13 @@ EXTRA_DIST=\
   src/linted/spawn.h\
   src/linted/util.h
 
-src/bin/linted.o: config.h
+src/bin/linted.o: config.h\
+  src/linted/base/stdio.h\
+  src/linted/gui.h\
+  src/linted/sandbox.h\
+  src/linted/simulator.h\
+  src/linted/spawn.h\
+  src/linted/util.h
 
 src/bin/simulator.o: config.h\
   src/linted/gui.h src/linted/actor.h\
@@ -56,6 +63,7 @@ src/bin/gui/main.o: config.h\
 src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/actor.o: config.h src/linted/actor.h
 src/bin/util.o: config.h src/linted/util.h
+src/bin/sandbox.o: config.h src/linted/sandbox.h
 src/bin/spawn.o: config.h src/linted/spawn.h
 src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
 

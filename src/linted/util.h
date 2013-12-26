@@ -18,7 +18,6 @@
 
 #include <stdio.h>
 #include <sys/time.h>
-#include <sys/resource.h>
 #include <unistd.h>
 
 #define LINTED_ERROR(...)                                       \
@@ -38,7 +37,5 @@ FILE * linted_fdopen(int fd, const char *mode);
 void linted_pipe(int pipefd[2]);
 
 pid_t linted_wait(int * status);
-
-void linted_setrlimit(int resource, const struct rlimit *rlim);
 
 #endif /* LINTED_UTIL_H */
