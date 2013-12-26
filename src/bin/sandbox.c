@@ -21,10 +21,15 @@
 
 #include <errno.h>
 #include <string.h>
+
+#ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif /* HAVE_SYS_RESOURCE_H */
 
 int linted_sandbox(void) {
     int error_status;
+
+#ifdef HAVE_SYS_RESOURCE_H
 
     /* If the error is that we don't have the permissions to sandbox
        then we're already sandboxed enough. */
@@ -40,6 +45,8 @@ int linted_sandbox(void) {
     if (-1 == error_status && errno != EPERM) {
         return -1;
     }
+
+#endif /* HAVE_SYS_RESOURCE_H */
 
     return 0;
 }
