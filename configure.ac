@@ -31,6 +31,7 @@ dnl
 AC_CHECK_HEADERS([dnl
         fcntl.h dnl
         inttypes.h dnl
+        spawn.h dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
