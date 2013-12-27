@@ -21,12 +21,13 @@
 /**
  * Spawns a process.
  *
+ * @param pid The output process id (on success).
  * @param binary_name The value of argv[0].
  * @param subcommand The subcommand to execute.
  * @param fildes The file descriptors to pass to the subcommand and
  *               leave open.
  */
-pid_t linted_spawn(char * binary_name, char const * subcommand,
-                   int const fildes[]);
+int linted_spawn(pid_t * const pid, char * const binary_name,
+                 char const * const subcommand, int const fildes[const]);
 
 #endif /* LINTED_SPAWN_H */

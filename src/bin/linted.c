@@ -99,10 +99,21 @@ static int spawn_children(char * binary_name) {
     const int gui_reader = gui_fds[0];
     const int gui_writer = gui_fds[1];
 
-    linted_spawn(binary_name, LINTED_SIMULATOR_NAME,
-                 (int[]) { simulator_reader, gui_writer, -1 });
-    linted_spawn(binary_name, LINTED_GUI_NAME,
-                 (int[]) { gui_reader, simulator_writer, -1 });
+    pid_t pid;
+    int process_status;
+    process_status = linted_spawn(&pid, binary_name, LINTED_SIMULATOR_NAME,
+                                  (int[]) { simulator_reader, gui_writer, -1 });
+    if (-1 == process_status) {
+        LINTED_ERROR("Could not spawn simulator process: %s\n",
+                     strerror(errno));
+    }
+
+    process_status = linted_spawn(&pid, binary_name, LINTED_GUI_NAME,
+                                  (int[]) { gui_reader, simulator_writer, -1 });
+    if (-1 == process_status) {
+        LINTED_ERROR("Could not spawn gui process: %s\n",
+                     strerror(errno));
+    }
 
     {
         int const fds[] = {
