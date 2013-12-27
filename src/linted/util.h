@@ -34,6 +34,4 @@ void linted_close(int fd);
 
 FILE * linted_fdopen(int fd, const char *mode);
 
-void linted_pipe(int pipefd[2]);
-
 #endif /* LINTED_UTIL_H */

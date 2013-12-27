@@ -134,10 +134,16 @@ static int go(int argc, char * argv[]) {
 
 static int spawn_children(char * const binary_name) {
     int simulator_fds[2];
-    linted_pipe(simulator_fds);
+    if (-1 == pipe(simulator_fds)) {
+        LINTED_ERROR("Could not make simulator pipe because of error: %s\n",
+                     strerror(errno));
+    }
 
     int gui_fds[2];
-    linted_pipe(gui_fds);
+    if (-1 == pipe(gui_fds)) {
+        LINTED_ERROR("Could not make gui pipe because of error: %s\n",
+                     strerror(errno));
+    }
 
     int const simulator_reader = simulator_fds[0];
     int const simulator_writer = simulator_fds[1];

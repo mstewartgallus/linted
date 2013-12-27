@@ -81,10 +81,3 @@ FILE * linted_fdopen(int fd, const char *mode) {
     }
     return file;
 }
-
-void linted_pipe(int pipefd[2]) {
-    if (-1 == pipe(pipefd)) {
-        LINTED_ERROR("Could not make pipe because of error: %s\n",
-                     strerror(errno));
-    }
-}
