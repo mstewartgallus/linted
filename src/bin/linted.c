@@ -27,8 +27,27 @@
 #include <string.h>
 
 
-static const char USAGE_TEXT[];
-static const char VERSION_TEXT[];
+#define USAGE_TEXT \
+    "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
+    "Play the " PACKAGE_NAME " game\n"\
+    "\n"\
+    "The following OPTIONS are accepted:\n"\
+    "--version\t\tJust print version info and return\n"\
+    "--help\t\tPrint this usage information\n"\
+    "\n"\
+    "The following SUBCOMMANDS are accepted:\n"\
+    "simulator\t\tRun the simulator\n"\
+    "gui\t\tRun the gui\n"\
+    "\n"\
+    "Report bugs to " PACKAGE_BUGREPORT "\n"
+
+#define VERSION_TEXT \
+    PACKAGE_STRING "\n"\
+    "Copyright (C) 2013 Steven Stewart-Gallus\n"\
+    PACKAGE_NAME " comes with ABSOLUTELY NO WARRANTY.\n"\
+    "You may redistribute copies of Linted\n"\
+    "under the terms of the Apache License.\n"\
+    "For more information about these matters, see the file named COPYING.\n"
 
 #define ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
@@ -104,9 +123,9 @@ static int go(int argc, char * argv[]) {
             return EXIT_SUCCESS;
         } else {
             linted_fprintf(stderr,
-                           PACKAGE_TARNAME " did not understand the input %s\n",
+                           PACKAGE_TARNAME " did not understand the input %s\n"
+                           USAGE_TEXT,
                            subcommand);
-            linted_fputs(USAGE_TEXT, stderr);
             return EXIT_FAILURE;
         }
     }
@@ -175,25 +194,3 @@ static int spawn_children(char * binary_name) {
 
     return EXIT_SUCCESS;
 }
-
-static const char USAGE_TEXT[] =
-    "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"
-    "Play the " PACKAGE_NAME " game\n"
-    "\n"
-    "The following OPTIONS are accepted:\n"
-    "--version\t\tJust print version info and return\n"
-    "--help\t\tPrint this usage information\n"
-    "\n"
-    "The following SUBCOMMANDS are accepted:\n"
-    "simulator\t\tRun the simulator\n"
-    "gui\t\tRun the gui\n"
-    "\n"
-    "Report bugs to " PACKAGE_BUGREPORT "\n";
-
-static const char VERSION_TEXT[] =
-    PACKAGE_STRING "\n"
-    "Copyright (C) 2013 Steven Stewart-Gallus\n"
-    PACKAGE_NAME " comes with ABSOLUTELY NO WARRANTY.\n"
-    "You may redistribute copies of Linted\n"
-    "under the terms of the Apache License.\n"
-    "For more information about these matters, see the file named COPYING.\n";
