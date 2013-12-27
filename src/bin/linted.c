@@ -104,10 +104,22 @@ static int spawn_children(char * binary_name) {
     linted_spawn(binary_name, LINTED_GUI_NAME,
                  (int[]) { gui_reader, simulator_writer, -1 });
 
-    linted_close(simulator_writer);
-    linted_close(simulator_reader);
-    linted_close(gui_writer);
-    linted_close(gui_reader);
+    {
+        int const fds[] = {
+            simulator_writer, simulator_reader,
+            gui_writer, gui_reader
+        };
+
+        for (size_t ii = 0; ii < ARRAY_LENGTH(fds); ++ii) {
+            int const fd = fds[ii];
+            int const error_status = close(fd);
+            int error_code;
+            if (-1 == error_status && (error_code = errno, error_code != EINTR)) {
+                LINTED_ERROR("Could not close pipe file descriptors because of error: %s\n",
+                             strerror(error_code));
+            }
+        }
+    }
 
     if (-1 == linted_sandbox()) {
         LINTED_ERROR("Could not sandbox process because of error: %s\n",
