@@ -59,24 +59,24 @@ int main(int argc, char * argv[]) {
     int const exit_status = go(argc, argv);
 
     int files_status = 0;
-    FILE * const files[] = { stdin, stdout };
-    for (size_t ii = 0; ii < ARRAY_SIZE(files); ++ii) {
-        int const file_status = fclose(files[ii]);
-        if (EOF == file_status) {
-            files_status = -1;
-        }
+    if (EOF == fclose(stdin)) {
+        files_status = -1;
+        fprintf(stderr, "Could not close standard input: %s\n",
+                strerror(errno));
     }
 
-    if (-1 == files_status) {
-        /* TODO: Don't exit badly here but continue on to close
-           stderr */
-        LINTED_ERROR("Could not close files: %s\n", strerror(errno));
+    if (EOF == fclose(stdout)) {
+        files_status = -1;
+        fprintf(stderr, "Could not close standard output: %s\n",
+                strerror(errno));
     }
 
-    /* This has to be done after we output our error message. */
-    int const file_status = fclose(stderr);
-    if (EOF == file_status) {
-        /* Here this is all we can do. */
+    if (EOF == fclose(stderr)) {
+        /* No error message. An error code is all we can do. */
+        files_status = -1;
+    }
+
+    if (-1 == files_status && EXIT_SUCCESS == exit_status) {
         return EXIT_FAILURE;
     }
 
