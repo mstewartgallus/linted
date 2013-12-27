@@ -32,9 +32,38 @@ static const char VERSION_TEXT[];
 
 #define ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
+static int go(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 
 int main(int argc, char * argv[]) {
+    int const exit_status = go(argc, argv);
+
+    int files_status = 0;
+    FILE * const files[] = { stdin, stdout };
+    for (size_t ii = 0; ii < ARRAY_SIZE(files); ++ii) {
+        int const file_status = fclose(files[ii]);
+        if (EOF == file_status) {
+            files_status = -1;
+        }
+    }
+
+    if (-1 == files_status) {
+        /* TODO: Don't exit badly here but continue on to close
+           stderr */
+        LINTED_ERROR("Could not close files: %s\n", strerror(errno));
+    }
+
+    /* This has to be done after we output our error message. */
+    int const file_status = fclose(stderr);
+    if (EOF == file_status) {
+        /* Here this is all we can do. */
+        return EXIT_FAILURE;
+    }
+
+    return exit_status;
+}
+
+static int go(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
        until after execute_subcommand could have executed or Frama C's
        assumptions will break. */
@@ -52,14 +81,14 @@ int main(int argc, char * argv[]) {
     }
 
     /* Unprivileged sub commands */
-    if (-1 == linted_sandbox()) {
+    int const sandbox_status = linted_sandbox();
+    if (-1 == sandbox_status) {
         LINTED_ERROR("Could not sandbox process because of error: %s\n",
                      strerror(errno));
     }
 
     if (0 == argc) {
         fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
-        fflush(stderr);
         return EXIT_FAILURE;
     }
 
@@ -69,18 +98,15 @@ int main(int argc, char * argv[]) {
             return linted_simulator_main(argc, argv);
         } else if (0 == strcmp(subcommand, "--help")) {
             linted_fputs(USAGE_TEXT, stdout);
-            linted_fflush(stdout);
             return EXIT_SUCCESS;
         } else if (0 == strcmp(subcommand, "--version")) {
             linted_fputs(VERSION_TEXT, stdout);
-            linted_fflush(stdout);
             return EXIT_SUCCESS;
         } else {
             linted_fprintf(stderr,
                            PACKAGE_TARNAME " did not understand the input %s\n",
                            subcommand);
             linted_fputs(USAGE_TEXT, stderr);
-            linted_fflush(stderr);
             return EXIT_FAILURE;
         }
     }
