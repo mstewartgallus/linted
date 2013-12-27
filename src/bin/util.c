@@ -40,34 +40,6 @@ void linted_error(const char * file,
     exit(1);
 }
 
-int linted_open(const char *pathname, int flags) {
-  retry:;
-    const int fd = open(pathname, flags);
-    if (-1 == fd) {
-        if (errno == EINTR) {
-            goto retry;
-        }
-
-        LINTED_ERROR("Could not open file descriptor to path name %s: %s\n",
-                     pathname,
-                     strerror(errno));
-    }
-    return fd;
-}
-
-void linted_close(int fd) {
-  retry:;
-    const int status = close(fd);
-    if (-1 == status) {
-        if (errno == EINTR) {
-            goto retry;
-        }
-
-        LINTED_ERROR("Could not close file descriptor: %s\n",
-                     strerror(errno));
-    }
-}
-
 FILE * linted_fdopen(int fd, const char *mode) {
   retry:;
     FILE * const file = fdopen(fd, mode);

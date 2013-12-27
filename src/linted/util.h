@@ -28,10 +28,6 @@ void linted_error(const char * file,
                   unsigned line,
                   const char * format_string, ...);
 
-int linted_open(const char *pathname, int flags);
-
-void linted_close(int fd);
-
 FILE * linted_fdopen(int fd, const char *mode);
 
 #endif /* LINTED_UTIL_H */
