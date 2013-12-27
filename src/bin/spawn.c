@@ -49,6 +49,8 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
     char * * arguments;
     char * subcommand_copy;
 
+    int close_status;
+
     for (; fildes[fildes_size] != -1; ++fildes_size) {
         /* Do Nothing */
     }
@@ -91,19 +93,23 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
     }
 
     arguments[0] = binary_name;
-    arguments[1] = subcommand;
+    arguments[1] = subcommand_copy;
     for (size_t ii = 0; ii < fildes_size; ++ii) {
         arguments[2 + ii] = fildes_strings + (LONGEST_FD_STRING + 1) * ii;
     }
     arguments[2 + fildes_size] = NULL;
 
-    addclose_except(&file_actions, fildes_size, fildes);
+    close_status = addclose_except(&file_actions, fildes_size, fildes);
+    if (-1 == close_status) {
+        goto finish_and_free_subcommand_copy;
+    }
 
     do {
         error_status = posix_spawn(pid, binary_name, &file_actions, &attr,
                                    arguments, environ);
     } while (-1 == error_status && errno == EINTR);
 
+ finish_and_free_subcommand_copy:
     free(subcommand_copy);
 
  finish_and_free_arguments:
@@ -133,9 +139,9 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
 }
 
 static int addclose_except(posix_spawn_file_actions_t * const file_actions,
-                           const size_t n, const int fildes_to_keep[]) {
+                           size_t const n, int const fildes_to_keep[const]) {
     int error_code = 0;
-    const int max_fd = sysconf(_SC_OPEN_MAX);
+    int const max_fd = sysconf(_SC_OPEN_MAX);
     for (int fildes = 0; fildes <= max_fd; ++fildes) {
         if (fildes == STDIN_FILENO || fildes == STDOUT_FILENO || fildes == STDERR_FILENO) {
             continue;
