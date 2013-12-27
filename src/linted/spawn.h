@@ -16,21 +16,17 @@
 #ifndef LINTED_SPAWN_H
 #define LINTED_SPAWN_H
 
-#include <spawn.h>
+#include <sys/types.h>
 
-posix_spawn_file_actions_t linted_spawn_file_actions(void);
-
-posix_spawnattr_t linted_spawnattr(void);
-
-void linted_spawn_file_actions_addclose(posix_spawn_file_actions_t * file_actions, int fildes);
-
-void linted_spawn_file_actions_destroy(posix_spawn_file_actions_t file_actions);
-
-void linted_spawnattr_destroy(posix_spawnattr_t attrp);
-
-pid_t linted_spawn(char * path,
-                   posix_spawn_file_actions_t file_actions,
-                   posix_spawnattr_t attrp,
-                   char *const argv[], char *const envp[]);
+/**
+ * Spawns a process.
+ *
+ * @param binary_name The value of argv[0].
+ * @param subcommand The subcommand to execute.
+ * @param fildes The file descriptors to pass to the subcommand and
+ *               leave open.
+ */
+pid_t linted_spawn(char * binary_name, char const * subcommand,
+                   int const fildes[]);
 
 #endif /* LINTED_SPAWN_H */
