@@ -30,7 +30,7 @@
 static const char USAGE_TEXT[];
 static const char VERSION_TEXT[];
 
-#define ARRAY_LENGTH(array) ((sizeof (array)) / sizeof ((array)[0]))
+#define ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
 static int spawn_children(char * binary_name);
 
@@ -110,7 +110,7 @@ static int spawn_children(char * binary_name) {
             gui_writer, gui_reader
         };
 
-        for (size_t ii = 0; ii < ARRAY_LENGTH(fds); ++ii) {
+        for (size_t ii = 0; ii < ARRAY_SIZE(fds); ++ii) {
             int const fd = fds[ii];
             int const error_status = close(fd);
             int error_code;
