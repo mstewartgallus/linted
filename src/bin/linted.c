@@ -94,7 +94,7 @@ static int go(int argc, char * argv[]) {
     }
 
     if (argc >= 2) {
-        const char * const subcommand = argv[1];
+        char const * const subcommand = argv[1];
         if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
             return linted_gui_main(argc, argv);
         }
@@ -113,7 +113,7 @@ static int go(int argc, char * argv[]) {
     }
 
     if (argc >= 2) {
-        const char * const subcommand = argv[1];
+        char const * const subcommand = argv[1];
         if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
             return linted_simulator_main(argc, argv);
         } else if (0 == strcmp(subcommand, "--help")) {
@@ -132,18 +132,18 @@ static int go(int argc, char * argv[]) {
     }
 }
 
-static int spawn_children(char * binary_name) {
+static int spawn_children(char * const binary_name) {
     int simulator_fds[2];
     linted_pipe(simulator_fds);
 
     int gui_fds[2];
     linted_pipe(gui_fds);
 
-    const int simulator_reader = simulator_fds[0];
-    const int simulator_writer = simulator_fds[1];
+    int const simulator_reader = simulator_fds[0];
+    int const simulator_writer = simulator_fds[1];
 
-    const int gui_reader = gui_fds[0];
-    const int gui_writer = gui_fds[1];
+    int const gui_reader = gui_fds[0];
+    int const gui_writer = gui_fds[1];
 
     pid_t pid;
     int process_status;
