@@ -23,7 +23,9 @@ AC_ARG_ENABLE(
                 [--enable-save-temps],
                 [save temporary files (useful for debugging)]))
 dnl
-[${CFLAGS=''}]
+AS_IF([test "x${CFLAGS}" = "x"], [
+  [CFLAGS='']
+])
 AC_PROG_CC
 AC_PROG_CC_C99
 AM_PROG_CC_C_O
