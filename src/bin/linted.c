@@ -38,6 +38,9 @@ static const char VERSION_TEXT[];
 #define ARRAY_LENGTH(array) ((sizeof (array)) / sizeof ((array)[0]))
 
 static int spawn_children(char * binary_name);
+static pid_t spawn_with_file_descriptors(char * binary_name,
+                                         const char * command_name,
+                                         int const fildes[]);
 static int addclose_except(posix_spawn_file_actions_t * file_actions,
                            size_t n, const int fildes_to_keep[]);
 static bool is_open(int fildes);
@@ -107,72 +110,10 @@ static int spawn_children(char * binary_name) {
     const int gui_reader = gui_fds[0];
     const int gui_writer = gui_fds[1];
 
-    {
-        posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
-        const posix_spawnattr_t attr = linted_spawnattr();
-
-        char simulator_reader_string[LONGEST_FD_STRING];
-        char gui_writer_string[LONGEST_FD_STRING];
-
-        linted_sprintf(simulator_reader_string, "%d", simulator_reader);
-        linted_sprintf(gui_writer_string, "%d", gui_writer);
-
-        const char subcommand[] = LINTED_SIMULATOR_NAME;
-        char subcommand_copy[ARRAY_LENGTH(subcommand)];
-        memcpy(subcommand_copy, subcommand, ARRAY_LENGTH(subcommand));
-
-        char * arguments[] = {
-            binary_name,
-            subcommand_copy,
-            simulator_reader_string,
-            gui_writer_string,
-            NULL
-        };
-
-        const int open_fildes[] = { gui_writer, simulator_reader };
-        addclose_except(&file_actions, ARRAY_LENGTH(open_fildes), open_fildes);
-
-        linted_spawn(binary_name, file_actions, attr, arguments, environ);
-
-        linted_spawnattr_destroy(attr);
-        linted_spawn_file_actions_destroy(file_actions);
-    }
-
-    {
-        posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
-        const posix_spawnattr_t attr = linted_spawnattr();
-
-        char simulator_writer_string[LONGEST_FD_STRING];
-        char gui_reader_string[LONGEST_FD_STRING];
-
-        linted_sprintf(simulator_writer_string, "%d", simulator_writer);
-        linted_sprintf(gui_reader_string, "%d", gui_reader);
-
-        const char subcommand[] = LINTED_GUI_NAME;
-        char subcommand_copy[ARRAY_LENGTH(subcommand)];
-        memcpy(subcommand_copy, subcommand, ARRAY_LENGTH(subcommand));
-
-        char * arguments[] = {
-            binary_name,
-            subcommand_copy,
-            gui_reader_string,
-            simulator_writer_string,
-            NULL
-        };
-
-        const int open_fildes[] = { simulator_writer, gui_reader };
-        const int error_code = addclose_except(&file_actions, ARRAY_LENGTH(open_fildes),
-                                               open_fildes);
-        if (-1 == error_code) {
-            LINTED_ERROR("Could not add close file descriptor actions: %s\n",
-                         strerror(errno));
-        }
-
-        linted_spawn(binary_name, file_actions, attr, arguments, environ);
-
-        linted_spawnattr_destroy(attr);
-        linted_spawn_file_actions_destroy(file_actions);
-    }
+    spawn_with_file_descriptors(binary_name, LINTED_SIMULATOR_NAME,
+                                (int[]) { simulator_reader, gui_writer, -1 });
+    spawn_with_file_descriptors(binary_name, LINTED_GUI_NAME,
+                                (int[]) { gui_reader, simulator_writer, -1 });
 
     linted_close(simulator_writer);
     linted_close(simulator_reader);
@@ -195,6 +136,60 @@ static int spawn_children(char * binary_name) {
     }
 
     return EXIT_SUCCESS;
+}
+
+static pid_t spawn_with_file_descriptors(char * const binary_name,
+                                         const char * const subcommand,
+                                         int const fildes[const]) {
+    size_t fildes_size = 0;
+    for (; fildes[fildes_size] != -1; ++fildes_size) {
+        /* Do Nothing */
+    }
+
+    posix_spawn_file_actions_t file_actions = linted_spawn_file_actions();
+    posix_spawnattr_t const attr = linted_spawnattr();
+
+    char * const fildes_strings = calloc(fildes_size, LONGEST_FD_STRING + 1);
+    if (NULL == fildes_strings && fildes_size != 0) {
+        LINTED_ERROR("Could not allocate memory to spawn process: %s\n",
+                     strerror(errno));
+    }
+
+    char * * const arguments = calloc(2 + fildes_size + 1, sizeof *arguments);
+    if (NULL == arguments) {
+        LINTED_ERROR("Could not allocate memory to spawn process: %s\n",
+                     strerror(errno));
+    }
+
+    char * last_string = fildes_strings;
+    for (size_t ii = 0; ii < fildes_size; ++ii) {
+        linted_sprintf(last_string, "%d", fildes[ii]);
+        last_string += LONGEST_FD_STRING + 1;
+    }
+
+    size_t const subcommand_size = strlen(subcommand) + 1;
+    char * const subcommand_copy = malloc(subcommand_size);
+    memcpy(subcommand_copy, subcommand, subcommand_size);
+
+    arguments[0] = binary_name;
+    arguments[1] = subcommand;
+    for (size_t ii = 0; ii < fildes_size; ++ii) {
+        arguments[2 + ii] = fildes_strings + (LONGEST_FD_STRING + 1) * ii;
+    }
+    arguments[2 + fildes_size] = NULL;
+
+    addclose_except(&file_actions, fildes_size, fildes);
+
+    pid_t const process = linted_spawn(binary_name, file_actions, attr,
+                                       arguments, environ);
+
+    free(arguments);
+    free(fildes_strings);
+
+    linted_spawnattr_destroy(attr);
+    linted_spawn_file_actions_destroy(file_actions);
+
+    return process;
 }
 
 static bool is_open(int fildes) {
