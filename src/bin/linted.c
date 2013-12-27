@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 
 #define USAGE_TEXT \
@@ -182,14 +183,22 @@ static int spawn_children(char * binary_name) {
                      strerror(errno));
     }
 
-    int first_dead_child_status;
-    linted_wait(&first_dead_child_status);
+    for (size_t ii = 0; ii < 2; ++ii) {
+        int wait_status;
+        pid_t exited_process;
+        int exit_code;
+        do {
+            exited_process = wait(&wait_status);
+        } while (-1 == exited_process && (exit_code = errno, exit_code != EINTR));
+        if (-1 == exited_process) {
+            LINTED_ERROR("Could not wait for a process to exit: %s\n",
+                         strerror(errno));
+        }
 
-    int second_dead_child_status;
-    linted_wait(&second_dead_child_status);
-
-    if (first_dead_child_status != EXIT_SUCCESS || second_dead_child_status != EXIT_SUCCESS) {
-        return EXIT_FAILURE;
+        int const exit_status = WEXITSTATUS(wait_status);
+        if (exit_status != EXIT_SUCCESS) {
+            return exit_status;
+        }
     }
 
     return EXIT_SUCCESS;

@@ -36,6 +36,4 @@ FILE * linted_fdopen(int fd, const char *mode);
 
 void linted_pipe(int pipefd[2]);
 
-pid_t linted_wait(int * status);
-
 #endif /* LINTED_UTIL_H */
