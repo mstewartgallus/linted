@@ -24,11 +24,6 @@ void linted_fprintf(FILE * file, const char * format_string, ...);
 void linted_fputs(const char * output, FILE * file);
 void linted_puts(const char * output);
 
-void linted_fwrite(const void * bytes, size_t byte_count, size_t nmemb,
-                   FILE * file);
-
-void linted_fread(void * bytes, size_t byte_count, size_t nmemb, FILE * file);
-
 void linted_fflush(FILE * file);
 
 void linted_fclose(FILE * const fp);
@@ -36,4 +31,3 @@ void linted_fclose(FILE * const fp);
 void linted_sprintf(char *str, const char *format, ...);
 
 #endif /* LINTED_BASE_STDIO_H */
-

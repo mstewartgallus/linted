@@ -64,14 +64,6 @@ void linted_puts(const char * const output) {
     LINTED_ERROR("Could not write to standard output\n");
 }
 
-void linted_fwrite(const void * bytes, const size_t byte_count,
-                   const size_t nmemb,
-                   FILE * const file) {
-    if (fwrite(bytes, byte_count, nmemb, file) != 1) {
-        LINTED_ERROR("Could not write bytes to file.\n");
-    }
-}
-
 void linted_fflush(FILE * const file) {
     int error_status;
     do {
@@ -80,18 +72,6 @@ void linted_fflush(FILE * const file) {
     if (EOF == error_status) {
         LINTED_ERROR("Could not write to standard output because of error: %s\n",
                      strerror(errno));
-    }
-}
-
-void linted_fread(void * bytes, const size_t byte_count, const size_t nmemb,
-                 FILE * const file) {
-    const size_t length = byte_count * nmemb;
-    for (size_t ii = 0; ii < length; ++ii) {
-        const int input = fgetc(file);
-        if (EOF == input) {
-            LINTED_ERROR("Could not read bytes from file.\n");
-        }
-        ((char *)bytes)[ii] = input;
     }
 }
 
