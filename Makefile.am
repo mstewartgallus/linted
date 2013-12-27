@@ -102,7 +102,7 @@ clean-local:
 AM_CPPFLAGS=$(linted_CPPFLAGS_HARDEN) -I . -I $(srcdir)/src -I src
 
 AM_CFLAGS=\
-  $(linted_C99_STD)\
+  $(linted_CFLAGS_C99_STD)\
   $(linted_CFLAGS_OPTIMIZE)\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
