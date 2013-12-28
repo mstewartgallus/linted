@@ -110,9 +110,7 @@ static int go(int argc, char * argv[]) {
     if (0 == argc) {
         fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
         return EXIT_FAILURE;
-    }
-
-    if (argc >= 2) {
+    } else {
         char const * const subcommand = argv[1];
         if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
             return linted_simulator_main(argc, argv);
