@@ -38,9 +38,10 @@ linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
   src/linted/actor.h\
-  src/linted/gui.h\
-  src/linted/simulator.h\
   src/linted/base/stdio.h\
+  src/linted/gui.h\
+  src/linted/sandbox.h\
+  src/linted/simulator.h\
   src/linted/spawn.h\
   src/linted/util.h
 
@@ -60,12 +61,12 @@ src/bin/gui/main.o: config.h\
   src/linted/gui.h src/linted/actor.h\
   src/linted/base/stdio.h src/linted/base/util.h
 
-src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/actor.o: config.h src/linted/actor.h
-src/bin/util.o: config.h src/linted/util.h
+src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
+src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/sandbox.o: config.h src/linted/sandbox.h
 src/bin/spawn.o: config.h src/linted/spawn.h
-src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
+src/bin/util.o: config.h src/linted/util.h
 
 .PHONY:\
   frama-c-pdg frama-c-gui frama-c-check\
