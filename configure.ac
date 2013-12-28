@@ -30,12 +30,6 @@ AC_PROG_CC
 AC_PROG_CC_C99
 AM_PROG_CC_C_O
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_C99_STD],[
-        [-std=c99]dnl
-        [-pedantic]dnl
-])
-AC_SUBST([linted_CFLAGS_C99_STD])
-dnl
 AC_CHECK_HEADERS([dnl
         fcntl.h dnl
         inttypes.h dnl
@@ -62,6 +56,16 @@ AC_TYPE_SIZE_T
 AS_IF([test "x$ac_cv_type_size_t" = "xno"],[
  AC_MSG_ERROR([Unable to find type size_t])
 ])
+dnl
+AC_CHECK_FUNCS([strerror], [], [
+ AC_MSG_ERROR([Unable to find function strerror])
+])
+dnl
+LINTED_CHECK_CFLAGS([linted_CFLAGS_C99_STD],[
+        [-std=c99]dnl
+        [-pedantic]dnl
+])
+AC_SUBST([linted_CFLAGS_C99_STD])
 dnl
 LINTED_PROG_FRAMA_C_GUI
 LINTED_PROG_FRAMA_C
