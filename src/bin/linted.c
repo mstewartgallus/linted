@@ -201,9 +201,13 @@ static int spawn_children(char * const binary_name) {
                          strerror(errno));
         }
 
-        int const exit_status = WEXITSTATUS(wait_status);
-        if (exit_status != EXIT_SUCCESS) {
-            return exit_status;
+        if (WIFEXITED(wait_status)) {
+            int const exit_status = WEXITSTATUS(wait_status);
+            if (exit_status != EXIT_SUCCESS) {
+                return exit_status;
+            }
+        } else {
+            return EXIT_FAILURE;
         }
     }
 
