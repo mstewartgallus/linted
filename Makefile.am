@@ -143,6 +143,3 @@ endif
 if HAS_CLANG
 linted_CHECK_PHASES +=clang-analyzer
 endif
-if HAS_FRAMA_C
-linted_CHECK_PHASES +=frama-c-check
-endif

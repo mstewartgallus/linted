@@ -18,8 +18,8 @@
 #include "linted/actor.h"
 #include "linted/gui.h"
 
-linted_gui_chan linted_gui_chan_from_file(FILE * file) {
-    return (linted_gui_chan) { .x = (linted_actor_chan) { .x = file } };
+linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
+    return (linted_gui_chan) { .x = (linted_actor_chan) { .x = fildes } };
 }
 
 void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
@@ -34,5 +34,4 @@ void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
         linted_actor_send_byte(gui.x, command.tick_change.y);
         break;
     }
-    linted_actor_flush(gui.x);
 }

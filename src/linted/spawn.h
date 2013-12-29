@@ -27,7 +27,7 @@
  * @param fildes The file descriptors to pass to the subcommand and
  *               leave open.
  */
-int linted_spawn(pid_t * const pid, char * const binary_name,
-                 char const * const subcommand, int const fildes[const]);
+int linted_spawn(pid_t * pid, char * binary_name,
+                 char const * subcommand, int const fildes[]);
 
 #endif /* LINTED_SPAWN_H */

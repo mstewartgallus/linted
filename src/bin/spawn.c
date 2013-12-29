@@ -35,7 +35,7 @@ static int addclose_except(posix_spawn_file_actions_t * file_actions,
 static bool is_open(int fildes);
 
 int linted_spawn(pid_t * const pid, char * const binary_name,
-                 char const * const subcommand, int const fildes[const]) {
+                 char const * const subcommand, int const fildes[]) {
     int error_status = -1;
     size_t fildes_size = 0;
 
@@ -139,7 +139,7 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
 }
 
 static int addclose_except(posix_spawn_file_actions_t * const file_actions,
-                           size_t const n, int const fildes_to_keep[const]) {
+                           size_t const n, int const fildes_to_keep[]) {
     int error_code = 0;
     int const max_fd = sysconf(_SC_OPEN_MAX);
     for (int fildes = 0; fildes <= max_fd; ++fildes) {

@@ -21,7 +21,9 @@
 
 #include "linted/base/stdio.h"
 
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
@@ -29,17 +31,16 @@
     "\n"\
     "Report bugs to " PACKAGE_BUGREPORT "\n"
 
-linted_simulator_chan linted_simulator_chan_from_file(FILE * file) {
-    return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = file } };
+linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
+    return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = fildes } };
 }
 
 void linted_simulator_send(linted_simulator_chan simulator, linted_simulator_command command) {
     linted_actor_send_byte(simulator.x, command.type);
-    linted_actor_flush(simulator.x);
 }
 
 typedef struct { linted_actor_port x; } linted_simulator_port;
-static linted_simulator_port linted_simulator_port_from_file(FILE * file);
+static linted_simulator_port linted_simulator_port_from_fildes(int fildes);
 static linted_simulator_command linted_simulator_recv(linted_simulator_port listener);
 
 static int simulator_main(const char * simulator_string, const char * gui_string);
@@ -63,8 +64,8 @@ int linted_simulator_main(int argc, char * argv[]) {
     }
 }
 
-static linted_simulator_port linted_simulator_port_from_file(FILE * file) {
-    return (linted_simulator_port) { .x = (linted_actor_port) { .x = file } };
+static linted_simulator_port linted_simulator_port_from_fildes(int const fildes) {
+    return (linted_simulator_port) { .x = (linted_actor_port) { .x = fildes } };
 }
 
 static linted_simulator_command linted_simulator_recv(linted_simulator_port gui) {
@@ -72,13 +73,13 @@ static linted_simulator_command linted_simulator_recv(linted_simulator_port gui)
     return (linted_simulator_command) { .type = type };
 }
 
-static int simulator_main(const char * const simulator_string,
-                          const char * const gui_string) {
-    FILE * const simulator_fifo = linted_fdopen(atoi(simulator_string), "rb");
-    FILE * const gui_fifo = linted_fdopen(atoi(gui_string), "wb");
+static int simulator_main(char const * const simulator_string,
+                          char const * const gui_string) {
+    int const simulator_fifo = atoi(simulator_string);
+    int const gui_fifo = atoi(gui_string);
 
-    const linted_simulator_port command_port = linted_simulator_port_from_file(simulator_fifo);
-    const linted_gui_chan gui = linted_gui_chan_from_file(gui_fifo);
+    const linted_simulator_port command_port = linted_simulator_port_from_fildes(simulator_fifo);
+    const linted_gui_chan gui = linted_gui_chan_from_fildes(gui_fifo);
 
     linted_actor_byte_fast x_position = { .x = 0 };
     linted_actor_byte_fast y_position = { .x = 0 };
@@ -119,7 +120,18 @@ static int simulator_main(const char * const simulator_string,
             }
         });
 
-    linted_fclose(gui_fifo);
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(gui_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close gui fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
 
     /* Drain excess commands to avoid a sigpipe error. */
     for (;;) {
@@ -138,7 +150,17 @@ static int simulator_main(const char * const simulator_string,
         }
     }
  exit:
-    linted_fclose(simulator_fifo);
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(simulator_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close simulator fifo %s\n",
+                         strerror(error_code));
+        }
+    }
 
     return EXIT_SUCCESS;
 }

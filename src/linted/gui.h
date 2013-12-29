@@ -41,7 +41,7 @@ typedef struct {
 
 typedef struct { linted_actor_chan x; } linted_gui_chan;
 
-linted_gui_chan linted_gui_chan_from_file(FILE * file);
+linted_gui_chan linted_gui_chan_from_fildes(int fildes);
 void linted_gui_send(linted_gui_chan chan, linted_gui_command gui);
 
 #endif /* LINTED_GUI_H */

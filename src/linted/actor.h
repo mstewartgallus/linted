@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 
-/* 
+/*
    First, we do not define a communication protocol, only an encoding
    of data. Any communication protocol is at a higher level. We call
    this encoding the linted network data encoding.
@@ -37,22 +37,20 @@ typedef struct { linted_actor_byte_fast_t x; } linted_actor_byte_fast;
 typedef struct { linted_actor_byte_least_t x; } linted_actor_byte_least;
 
 
-/* 
+/*
    Now, we define an API for exchanging data in the linted network
    data encoding between actors.
 */
 
 
 // An actor that can be written to.
-typedef struct { FILE * x; } linted_actor_chan;
+typedef struct { int x; } linted_actor_chan;
 
 // An actor that can be received from.
-typedef struct { FILE * x; } linted_actor_port;
+typedef struct { int x; } linted_actor_port;
 
 void linted_actor_send_byte(linted_actor_chan actor,
                             linted_actor_byte_fast byte);
-
-void linted_actor_flush(linted_actor_chan actor);
 
 linted_actor_byte_fast linted_actor_recv_byte(linted_actor_port actor);
 

@@ -41,11 +41,11 @@
     "Report bugs to " PACKAGE_BUGREPORT "\n"
 
 typedef struct { linted_actor_port x; } linted_gui_port;
-static linted_gui_port linted_gui_port_from_file(FILE * file);
+static linted_gui_port linted_gui_port_from_fildes(int fildes);
 static linted_gui_command linted_gui_recv(linted_gui_port gui);
 
-static linted_gui_port linted_gui_port_from_file(FILE * file) {
-    return (linted_gui_port) { .x = (linted_actor_port) { .x = file } };
+static linted_gui_port linted_gui_port_from_fildes(int fildes) {
+    return (linted_gui_port) { .x = (linted_actor_port) { .x = fildes } };
 }
 
 static linted_gui_command linted_gui_recv(linted_gui_port gui) {
@@ -89,16 +89,14 @@ int linted_gui_main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    const char * const gui_string = argv[2];
-    const char * const simulator_string = argv[3];
+    char const * const gui_string = argv[2];
+    char const * const simulator_string = argv[3];
 
-    FILE * const simulator_fifo = linted_fdopen(atoi(simulator_string), "wb");
+    int const simulator_fifo = atoi(simulator_string);
+    int const gui_fifo = atoi(gui_string);
 
-    const int gui_fd = atoi(gui_string);
-    FILE * const gui_fifo = linted_fdopen(gui_fd, "rb");
-
-    const linted_simulator_chan simulator_chan = linted_simulator_chan_from_file(simulator_fifo);
-    const linted_gui_port gui_port = linted_gui_port_from_file(gui_fifo);
+    linted_simulator_chan const simulator_chan = linted_simulator_chan_from_fildes(simulator_fifo);
+    linted_gui_port const gui_port = linted_gui_port_from_fildes(gui_fifo);
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
@@ -114,7 +112,7 @@ int linted_gui_main(int argc, char * argv[]) {
         }
     }
 
-    const Uint32 sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
+    Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     unsigned width = 640, height = 800;
 
     /* Initialize SDL */
@@ -195,7 +193,7 @@ int linted_gui_main(int argc, char * argv[]) {
             break;
         }
 
-        struct pollfd fifo_fd = { .fd = gui_fd, .events = POLLIN };
+        struct pollfd fifo_fd = { .fd = gui_fifo, .events = POLLIN };
       retry:;
         const int poll_status = poll(&fifo_fd, 1, 0);
         if (-1 == poll_status) {
@@ -249,8 +247,29 @@ int linted_gui_main(int argc, char * argv[]) {
 
     SDL_Quit();
 
-    linted_fclose(simulator_fifo);
-    linted_fclose(gui_fifo);
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(simulator_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close simulator fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(gui_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close gui fifo %s\n",
+                         strerror(error_code));
+        }
+    }
 
     return EXIT_SUCCESS;
 }

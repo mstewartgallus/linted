@@ -36,7 +36,7 @@ typedef struct {
 
 typedef struct { linted_actor_chan x; } linted_simulator_chan;
 
-linted_simulator_chan linted_simulator_chan_from_file(FILE * file);
+linted_simulator_chan linted_simulator_chan_from_fildes(int fildes);
 void linted_simulator_send(linted_simulator_chan chan, linted_simulator_command command);
 
 

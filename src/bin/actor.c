@@ -26,26 +26,23 @@
 
 void linted_actor_send_byte(linted_actor_chan const actor,
                             linted_actor_byte_fast const byte) {
-    if (fwrite(&byte.x, 1, 1, actor.x) != 1) {
-        LINTED_ERROR("Could not write bytes to file.\n");
-    }
-}
-
-void linted_actor_flush(const linted_actor_chan actor) {
-    int error_status;
+    ssize_t bytes_written;
     do {
-        error_status = fflush(actor.x);
-    } while (EOF == error_status && errno != EINTR);
-    if (EOF == error_status) {
-        LINTED_ERROR("Could not write to standard output because of error: %s\n",
-                     strerror(errno));
+        bytes_written = write(actor.x, &byte.x, sizeof byte.x);
+    } while (bytes_written != sizeof byte.x && (errno != EINTR));
+    if (bytes_written != sizeof byte.x) {
+        LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
     }
 }
 
 linted_actor_byte_fast linted_actor_recv_byte(linted_actor_port const actor) {
-    int const input = fgetc(actor.x);
-    if (EOF == input) {
-        LINTED_ERROR("Could not receive byte for actor.\n");
+    ssize_t bytes_read;
+    linted_actor_byte_fast byte;
+    do {
+        bytes_read = read(actor.x, &byte.x, sizeof byte.x);
+    } while (bytes_read != sizeof byte.x && (errno != EINTR));
+    if (bytes_read != sizeof byte.x) {
+        LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
     }
-    return (linted_actor_byte_fast) { .x = input };
+    return byte;
 }
