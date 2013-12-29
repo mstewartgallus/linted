@@ -19,15 +19,11 @@
 #include <stdio.h>
 
 
-void linted_fprintf(FILE * file, const char * format_string, ...);
+void linted_fprintf(FILE * file, char const * format_string, ...);
 
-void linted_fputs(const char * output, FILE * file);
-void linted_puts(const char * output);
+void linted_fputs(char const * output, FILE * file);
+void linted_puts(char const * output);
 
-void linted_fflush(FILE * file);
-
-void linted_fclose(FILE * const fp);
-
-void linted_sprintf(char *str, const char *format, ...);
+void linted_sprintf(char *str, char const * format, ...);
 
 #endif /* LINTED_BASE_STDIO_H */

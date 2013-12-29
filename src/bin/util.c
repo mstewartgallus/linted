@@ -39,17 +39,3 @@ void linted_error(const char * file,
 
     exit(1);
 }
-
-FILE * linted_fdopen(int fd, const char *mode) {
-  retry:;
-    FILE * const file = fdopen(fd, mode);
-    if (NULL == file) {
-        if (errno == EINTR) {
-            goto retry;
-        }
-        LINTED_ERROR("Could not open file descriptor in mode %s: %s\n",
-                     mode,
-                     strerror(errno));
-    }
-    return file;
-}

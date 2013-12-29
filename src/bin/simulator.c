@@ -59,7 +59,6 @@ int linted_simulator_main(int argc, char * argv[]) {
                        LINTED_SIMULATOR_NAME
                        " did not understand the input\n");
         linted_fputs(USAGE_TEXT, stderr);
-        linted_fflush(stderr);
         return EXIT_FAILURE;
     }
 }

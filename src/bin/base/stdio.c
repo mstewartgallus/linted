@@ -63,21 +63,3 @@ void linted_puts(const char * const output) {
 
     LINTED_ERROR("Could not write to standard output\n");
 }
-
-void linted_fflush(FILE * const file) {
-    int error_status;
-    do {
-        error_status = fflush(file);
-    } while (EOF == error_status && errno != EINTR);
-    if (EOF == error_status) {
-        LINTED_ERROR("Could not write to standard output because of error: %s\n",
-                     strerror(errno));
-    }
-}
-
-void linted_fclose(FILE * const fp) {
-    const int error_status = fclose(fp);
-    if (error_status == -1) {
-        LINTED_ERROR("Could not close file: %s\n", strerror(errno));
-    }
-}

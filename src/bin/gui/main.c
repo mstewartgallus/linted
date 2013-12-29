@@ -85,7 +85,6 @@ int linted_gui_main(int argc, char * argv[]) {
                        LINTED_GUI_NAME
                        " did not understand the input\n");
         linted_fputs(USAGE_TEXT, stderr);
-        linted_fflush(stderr);
         return EXIT_FAILURE;
     }
 
