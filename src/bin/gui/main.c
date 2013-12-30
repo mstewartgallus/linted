@@ -44,29 +44,6 @@ typedef struct { linted_actor_port x; } linted_gui_port;
 static linted_gui_port linted_gui_port_from_fildes(int fildes);
 static linted_gui_command linted_gui_recv(linted_gui_port gui);
 
-static linted_gui_port linted_gui_port_from_fildes(int fildes) {
-    return (linted_gui_port) { .x = (linted_actor_port) { .x = fildes } };
-}
-
-static linted_gui_command linted_gui_recv(linted_gui_port gui) {
-    linted_gui_command command;
-    command.type = linted_actor_recv_byte(gui.x);
-    switch (command.type) {
-    case LINTED_GUI_COMMAND_SHUTDOWN:
-        break;
-
-    case LINTED_GUI_COMMAND_TICK_CHANGE:
-        command.tick_change.x = linted_actor_recv_byte(gui.x);
-        command.tick_change.y = linted_actor_recv_byte(gui.x);
-        break;
-
-    default:
-        LINTED_ERROR("Received unknown command: %d\n", command.type);
-        break;
-    }
-    return command;
-}
-
 struct attribute_value_pair {
     SDL_GLattr attribute;
     int value;
@@ -75,7 +52,6 @@ struct attribute_value_pair {
 enum { ATTRIBUTE_AMOUNT = 12 };
 
 static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT];
-
 
 int linted_gui_main(int argc, char * argv[]) {
     if (argc != 4) {
@@ -149,10 +125,7 @@ int linted_gui_main(int argc, char * argv[]) {
             Uint32 const now = SDL_GetTicks();
             if (now >= next_tick) {
                 next_tick += 1000 / 60;
-                linted_simulator_send(simulator_chan,
-                                      (linted_simulator_command) {
-                                          .type = LINTED_SIMULATOR_TICK_REQUEST
-                                      });
+                linted_simulator_send_tick_request(simulator_chan);
             }
         }
 
@@ -175,20 +148,14 @@ int linted_gui_main(int argc, char * argv[]) {
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
             case SDLK_ESCAPE:
-                linted_simulator_send(simulator_chan,
-                                      (linted_simulator_command) {
-                                          .type = LINTED_SIMULATOR_CLOSE_REQUEST
-                                      });
+                linted_simulator_send_close_request(simulator_chan);
                 break;
             default: break;
             }
             break;
 
         case SDL_QUIT:
-            linted_simulator_send(simulator_chan,
-                                  (linted_simulator_command) {
-                                      .type = LINTED_SIMULATOR_CLOSE_REQUEST
-                                  });
+            linted_simulator_send_close_request(simulator_chan);
             break;
         }
 
@@ -243,10 +210,7 @@ int linted_gui_main(int argc, char * argv[]) {
     }
 
  shutdown_gui:
-    linted_simulator_send(simulator_chan,
-                          (linted_simulator_command) {
-                              .type = LINTED_SIMULATOR_GUI_CLOSED
-                          });
+    linted_simulator_send_gui_closed(simulator_chan);
 
     SDL_Quit();
 
@@ -275,6 +239,29 @@ int linted_gui_main(int argc, char * argv[]) {
     }
 
     return EXIT_SUCCESS;
+}
+
+static linted_gui_port linted_gui_port_from_fildes(int fildes) {
+    return (linted_gui_port) { .x = (linted_actor_port) { .x = fildes } };
+}
+
+static linted_gui_command linted_gui_recv(linted_gui_port gui) {
+    linted_gui_command command;
+    command.type = linted_actor_recv_byte(gui.x);
+    switch (command.type) {
+    case LINTED_GUI_COMMAND_SHUTDOWN:
+        break;
+
+    case LINTED_GUI_COMMAND_TICK_CHANGE:
+        command.tick_change.x = linted_actor_recv_byte(gui.x);
+        command.tick_change.y = linted_actor_recv_byte(gui.x);
+        break;
+
+    default:
+        LINTED_ERROR("Received unknown command: %d\n", command.type);
+        break;
+    }
+    return command;
 }
 
 static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT] = {

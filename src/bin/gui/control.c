@@ -22,17 +22,12 @@ linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
     return (linted_gui_chan) { .x = (linted_actor_chan) { .x = fildes } };
 }
 
-void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
-    uint8_t const type = command.type;
-    switch (type) {
-    case LINTED_GUI_COMMAND_SHUTDOWN:
-        linted_actor_send_byte(gui.x, type);
-        break;
+void linted_gui_send_shutdown(linted_gui_chan gui) {
+    linted_actor_send_byte(gui.x, LINTED_GUI_COMMAND_SHUTDOWN);
+}
 
-    case LINTED_GUI_COMMAND_TICK_CHANGE:
-        linted_actor_send_byte(gui.x, type);
-        linted_actor_send_byte(gui.x, command.tick_change.x);
-        linted_actor_send_byte(gui.x, command.tick_change.y);
-        break;
-    }
+void linted_gui_send_tick_change(linted_gui_chan gui, uint8_t x, uint8_t y) {
+    linted_actor_send_byte(gui.x, LINTED_GUI_COMMAND_TICK_CHANGE);
+    linted_actor_send_byte(gui.x, x);
+    linted_actor_send_byte(gui.x, y);
 }

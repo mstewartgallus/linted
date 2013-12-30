@@ -25,20 +25,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+enum {
+    LINTED_SIMULATOR_CLOSE_REQUEST = 0,
+    LINTED_SIMULATOR_TICK_REQUEST = 1,
+    LINTED_SIMULATOR_GUI_CLOSED = 2
+};
+
+typedef struct {
+    uint8_t type;
+} linted_simulator_command;
+
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
     "Run the simulator\n"\
     "\n"\
     "Report bugs to " PACKAGE_BUGREPORT "\n"
-
-linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
-    return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = fildes } };
-}
-
-void linted_simulator_send(linted_simulator_chan simulator,
-                           linted_simulator_command command) {
-    linted_actor_send_byte(simulator.x, command.type);
-}
 
 typedef struct { linted_actor_port x; } linted_simulator_port;
 static linted_simulator_port linted_simulator_port_from_fildes(int fildes);
@@ -46,6 +48,22 @@ static linted_simulator_command linted_simulator_recv(linted_simulator_port list
 
 static int simulator_main(char const * simulator_string,
                           char const * gui_string);
+
+linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
+    return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = fildes } };
+}
+
+void linted_simulator_send_close_request(linted_simulator_chan chan) {
+    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_CLOSE_REQUEST);
+}
+
+void linted_simulator_send_tick_request(linted_simulator_chan chan) {
+    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_TICK_REQUEST);
+}
+
+void linted_simulator_send_gui_closed(linted_simulator_chan chan) {
+    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_GUI_CLOSED);
+}
 
 int linted_simulator_main(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
@@ -95,14 +113,7 @@ static int simulator_main(char const * const simulator_string,
             //@ assert x_position.x ≤ 255;
             //@ assert y_position.x ≤ 255;
 
-            linted_gui_command gui_command = {
-                .type = LINTED_GUI_COMMAND_TICK_CHANGE,
-                .tick_change = (linted_gui_tick_change) {
-                    .x = x_position,
-                    .y = y_position
-                }
-            };
-            linted_gui_send(gui, gui_command);
+            linted_gui_send_tick_change(gui, x_position, y_position);
             break;
         }
 
@@ -115,9 +126,7 @@ static int simulator_main(char const * const simulator_string,
     }
 
  quit_main_loop:
-    linted_gui_send(gui, (linted_gui_command) {
-            .type = LINTED_GUI_COMMAND_SHUTDOWN
-        });
+    linted_gui_send_shutdown(gui);
 
     {
         int error_status;
