@@ -23,7 +23,7 @@ linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
 }
 
 void linted_gui_send(linted_gui_chan gui, linted_gui_command command) {
-    const linted_actor_byte_fast type = command.type;
+    linted_actor_byte_fast const type = command.type;
     linted_actor_send_byte(gui.x, type);
     switch (type.x) {
     case LINTED_GUI_COMMAND_SHUTDOWN:
