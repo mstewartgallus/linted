@@ -110,8 +110,8 @@ static int simulator_main(char const * const simulator_string,
         case LINTED_SIMULATOR_TICK_REQUEST: {
             x_position = (x_position + 1) % 256;
             y_position = (y_position + 1) % 256;
-            //@ assert x_position.x ≤ 255;
-            //@ assert y_position.x ≤ 255;
+            //@ assert x_position ≤ 255;
+            //@ assert y_position ≤ 255;
 
             linted_gui_send_tick_change(gui, x_position, y_position);
             break;
