@@ -35,7 +35,8 @@ linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
     return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = fildes } };
 }
 
-void linted_simulator_send(linted_simulator_chan simulator, linted_simulator_command command) {
+void linted_simulator_send(linted_simulator_chan simulator,
+                           linted_simulator_command command) {
     linted_actor_send_byte(simulator.x, command.type);
 }
 
@@ -43,7 +44,8 @@ typedef struct { linted_actor_port x; } linted_simulator_port;
 static linted_simulator_port linted_simulator_port_from_fildes(int fildes);
 static linted_simulator_command linted_simulator_recv(linted_simulator_port listener);
 
-static int simulator_main(const char * simulator_string, const char * gui_string);
+static int simulator_main(char const * simulator_string,
+                          char const * gui_string);
 
 int linted_simulator_main(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
@@ -77,15 +79,15 @@ static int simulator_main(char const * const simulator_string,
     int const simulator_fifo = atoi(simulator_string);
     int const gui_fifo = atoi(gui_string);
 
-    const linted_simulator_port command_port = linted_simulator_port_from_fildes(simulator_fifo);
-    const linted_gui_chan gui = linted_gui_chan_from_fildes(gui_fifo);
+    linted_simulator_port const command_port = linted_simulator_port_from_fildes(simulator_fifo);
+    linted_gui_chan const gui = linted_gui_chan_from_fildes(gui_fifo);
 
     linted_actor_byte_fast x_position = { .x = 0 };
     linted_actor_byte_fast y_position = { .x = 0 };
 
     for (;;) {
-        const linted_simulator_command command = linted_simulator_recv(command_port);
-        const linted_actor_byte_fast_t command_type = command.type.x;
+        linted_simulator_command const command = linted_simulator_recv(command_port);
+        linted_actor_byte_fast_t const command_type = command.type.x;
         switch (command_type) {
         case LINTED_SIMULATOR_TICK_REQUEST: {
             x_position.x = (x_position.x + 1) % 256;

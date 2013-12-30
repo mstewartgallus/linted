@@ -67,14 +67,14 @@ static linted_gui_command linted_gui_recv(linted_gui_port gui) {
     return command;
 }
 
-typedef struct {
+struct attribute_value_pair {
     SDL_GLattr attribute;
     int value;
-}  attribute_value_pair;
+};
 
 enum { ATTRIBUTE_AMOUNT = 12 };
 
-static const attribute_value_pair attribute_values[ATTRIBUTE_AMOUNT];
+static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT];
 
 
 int linted_gui_main(int argc, char * argv[]) {
@@ -97,14 +97,16 @@ int linted_gui_main(int argc, char * argv[]) {
     linted_simulator_chan const simulator_chan = linted_simulator_chan_from_fildes(simulator_fifo);
     linted_gui_port const gui_port = linted_gui_port_from_fildes(gui_fifo);
 
-    if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
+    int const sdl_init_status = SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO
+                                         | SDL_INIT_NOPARACHUTE);
+    if (-1 == sdl_init_status) {
         LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
     }
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
 
     for (size_t ii = 0; ii < ATTRIBUTE_AMOUNT; ++ii) {
-        const attribute_value_pair pair = attribute_values[ii];
+        struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
             LINTED_ERROR("Could not set a double buffer attribute: %s\n",
                          SDL_GetError());
@@ -116,13 +118,14 @@ int linted_gui_main(int argc, char * argv[]) {
 
     /* Initialize SDL */
     {
-        SDL_Surface * const video_surface = SDL_SetVideoMode(width, height, 0, sdl_flags);
+        SDL_Surface * const video_surface = SDL_SetVideoMode(width, height, 0,
+                                                             sdl_flags);
         if (NULL == video_surface) {
             LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
         }
     }
     /* Get actual window size, and not requested window size */
-    const SDL_VideoInfo * const video_info = SDL_GetVideoInfo();
+    SDL_VideoInfo const * const video_info = SDL_GetVideoInfo();
     width = video_info->current_w;
     height = video_info->current_h;
 
@@ -143,7 +146,7 @@ int linted_gui_main(int argc, char * argv[]) {
     Uint32 next_tick = SDL_GetTicks();
     for (;;) {
         {
-            const Uint32 now = SDL_GetTicks();
+            Uint32 const now = SDL_GetTicks();
             if (now >= next_tick) {
                 next_tick += 1000 / 60;
                 linted_simulator_send(simulator_chan, (linted_simulator_command) {
@@ -156,7 +159,7 @@ int linted_gui_main(int argc, char * argv[]) {
 
         /* Handle events first before rendering */
         SDL_Event sdl_event;
-        const bool had_sdl_event = SDL_PollEvent(&sdl_event);
+        bool const had_sdl_event = SDL_PollEvent(&sdl_event);
         switch (sdl_event.type) {
         case SDL_VIDEORESIZE:
             /*
@@ -193,17 +196,22 @@ int linted_gui_main(int argc, char * argv[]) {
         }
 
         struct pollfd fifo_fd = { .fd = gui_fifo, .events = POLLIN };
-      retry:;
-        const int poll_status = poll(&fifo_fd, 1, 0);
-        if (-1 == poll_status) {
-            if (errno == EINTR) {
-                goto retry;
+        int poll_status;
+        bool had_gui_command;
+        {
+            int error_code;
+            do {
+                poll_status = poll(&fifo_fd, 1, 0);
+            } while (-1 == poll_status
+                     && (error_code = errno, error_code != EINTR));
+            if (-1 == poll_status) {
+                LINTED_ERROR("Error polling file descriptors %s\n",
+                             strerror(errno));
             }
-            LINTED_ERROR("Error polling file descriptors %s\n", strerror(errno));
+            had_gui_command = poll_status > 0;
         }
-        const bool had_gui_command = poll_status > 0;
         if (had_gui_command) {
-            linted_gui_command command = linted_gui_recv(gui_port);
+            linted_gui_command const command = linted_gui_recv(gui_port);
             switch (command.type.x) {
             case LINTED_GUI_COMMAND_TICK_CHANGE:
                 x = ((float) command.tick_change.x.x) / 255;
@@ -273,7 +281,7 @@ int linted_gui_main(int argc, char * argv[]) {
     return EXIT_SUCCESS;
 }
 
-static const attribute_value_pair attribute_values[ATTRIBUTE_AMOUNT] = {
+static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT] = {
     { SDL_GL_RED_SIZE, 5 },
     { SDL_GL_GREEN_SIZE, 5 },
     { SDL_GL_BLUE_SIZE, 5 },
