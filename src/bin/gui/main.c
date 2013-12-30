@@ -55,12 +55,12 @@ static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT];
 
 int linted_gui_main(int argc, char * argv[]) {
     if (argc != 4) {
-        linted_fprintf(stderr,
-                       PACKAGE_TARNAME
-                       " "
-                       LINTED_GUI_NAME
-                       " did not understand the input\n");
-        linted_fputs(USAGE_TEXT, stderr);
+        fprintf(stderr,
+                PACKAGE_TARNAME
+                " "
+                LINTED_GUI_NAME
+                " did not understand the input\n");
+        fputs(USAGE_TEXT, stderr);
         return EXIT_FAILURE;
     }
 

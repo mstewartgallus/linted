@@ -115,16 +115,16 @@ static int go(int argc, char * argv[]) {
         if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
             return linted_simulator_main(argc, argv);
         } else if (0 == strcmp(subcommand, "--help")) {
-            linted_fputs(USAGE_TEXT, stdout);
+            fputs(USAGE_TEXT, stdout);
             return EXIT_SUCCESS;
         } else if (0 == strcmp(subcommand, "--version")) {
-            linted_fputs(VERSION_TEXT, stdout);
+            fputs(VERSION_TEXT, stdout);
             return EXIT_SUCCESS;
         } else {
-            linted_fprintf(stderr,
-                           PACKAGE_TARNAME " did not understand the input %s\n"
-                           USAGE_TEXT,
-                           subcommand);
+            fprintf(stderr,
+                    PACKAGE_TARNAME " did not understand the input %s\n"
+                    USAGE_TEXT,
+                    subcommand);
             return EXIT_FAILURE;
         }
     }

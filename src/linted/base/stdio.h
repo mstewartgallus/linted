@@ -16,14 +16,6 @@
 #ifndef LINTED_BASE_STDIO_H
 #define LINTED_BASE_STDIO_H
 
-#include <stdio.h>
-
-
-void linted_fprintf(FILE * file, char const * format_string, ...);
-
-void linted_fputs(char const * output, FILE * file);
-void linted_puts(char const * output);
-
 void linted_sprintf(char *str, char const * format, ...);
 
 #endif /* LINTED_BASE_STDIO_H */

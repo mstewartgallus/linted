@@ -73,12 +73,12 @@ int linted_simulator_main(int argc, char * argv[]) {
     case 4:
         return simulator_main(argv[2], argv[3]);
     default:
-        linted_fprintf(stderr,
-                       PACKAGE_TARNAME
-                       " "
-                       LINTED_SIMULATOR_NAME
-                       " did not understand the input\n");
-        linted_fputs(USAGE_TEXT, stderr);
+        fprintf(stderr,
+                PACKAGE_TARNAME
+                " "
+                LINTED_SIMULATOR_NAME
+                " did not understand the input\n");
+        fputs(USAGE_TEXT, stderr);
         return EXIT_FAILURE;
     }
 }

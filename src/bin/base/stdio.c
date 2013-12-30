@@ -36,30 +36,3 @@ void linted_sprintf(char * str, const char * format_string, ...) {
 
     va_end(arguments);
 }
-
-void linted_fprintf(FILE * const file, const char * format_string, ...) {
-    va_list arguments;
-    va_start(arguments, format_string);
-
-    if (EOF == vfprintf(file, format_string, arguments)) {
-        LINTED_ERROR("Could not write to file\n");
-    }
-
-    va_end(arguments);
-}
-
-void linted_fputs(const char * output, FILE * file) {
-    if (fputs(output, file) != EOF) {
-        return;
-    }
-
-    LINTED_ERROR("Could not write to file\n");
-}
-
-void linted_puts(const char * const output) {
-    if (puts(output) != EOF) {
-        return;
-    }
-
-    LINTED_ERROR("Could not write to standard output\n");
-}
