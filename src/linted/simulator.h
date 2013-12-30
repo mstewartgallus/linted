@@ -31,13 +31,14 @@ enum {
 };
 
 typedef struct {
-    linted_actor_byte_fast type;
+    uint8_t type;
 } linted_simulator_command;
 
 typedef struct { linted_actor_chan x; } linted_simulator_chan;
 
 linted_simulator_chan linted_simulator_chan_from_fildes(int fildes);
-void linted_simulator_send(linted_simulator_chan chan, linted_simulator_command command);
+void linted_simulator_send(linted_simulator_chan chan,
+                           linted_simulator_command command);
 
 
 #endif /* LINTED_SIMULATOR_H */

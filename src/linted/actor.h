@@ -19,39 +19,13 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-
-/*
-   First, we do not define a communication protocol, only an encoding
-   of data. Any communication protocol is at a higher level. We call
-   this encoding the linted network data encoding.
-*/
-
-/*
-  First we define the smallest possible chunk of data in our code, a
-  collection of 8 bits encoding a number in unsigned binary format.
-*/
-typedef uint_fast8_t linted_actor_byte_fast_t;
-typedef uint_least8_t linted_actor_byte_least_t;
-
-typedef struct { linted_actor_byte_fast_t x; } linted_actor_byte_fast;
-typedef struct { linted_actor_byte_least_t x; } linted_actor_byte_least;
-
-
-/*
-   Now, we define an API for exchanging data in the linted network
-   data encoding between actors.
-*/
-
-
 // An actor that can be written to.
 typedef struct { int x; } linted_actor_chan;
 
 // An actor that can be received from.
 typedef struct { int x; } linted_actor_port;
 
-void linted_actor_send_byte(linted_actor_chan actor,
-                            linted_actor_byte_fast byte);
-
-linted_actor_byte_fast linted_actor_recv_byte(linted_actor_port actor);
+void linted_actor_send_byte(linted_actor_chan actor, uint8_t byte);
+uint8_t linted_actor_recv_byte(linted_actor_port actor);
 
 #endif /* LINTED_ACTOR_H */

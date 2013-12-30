@@ -65,12 +65,12 @@ int linted_simulator_main(int argc, char * argv[]) {
     }
 }
 
-static linted_simulator_port linted_simulator_port_from_fildes(int const fildes) {
+static linted_simulator_port linted_simulator_port_from_fildes(int fildes) {
     return (linted_simulator_port) { .x = (linted_actor_port) { .x = fildes } };
 }
 
 static linted_simulator_command linted_simulator_recv(linted_simulator_port gui) {
-    const linted_actor_byte_fast type = linted_actor_recv_byte(gui.x);
+    uint8_t const type = linted_actor_recv_byte(gui.x);
     return (linted_simulator_command) { .type = type };
 }
 
@@ -82,21 +82,21 @@ static int simulator_main(char const * const simulator_string,
     linted_simulator_port const command_port = linted_simulator_port_from_fildes(simulator_fifo);
     linted_gui_chan const gui = linted_gui_chan_from_fildes(gui_fifo);
 
-    linted_actor_byte_fast x_position = { .x = 0 };
-    linted_actor_byte_fast y_position = { .x = 0 };
+    uint8_t x_position = 0;
+    uint8_t y_position = 0;
 
     for (;;) {
         linted_simulator_command const command = linted_simulator_recv(command_port);
-        linted_actor_byte_fast_t const command_type = command.type.x;
+        uint8_t const command_type = command.type;
         switch (command_type) {
         case LINTED_SIMULATOR_TICK_REQUEST: {
-            x_position.x = (x_position.x + 1) % 256;
-            y_position.x = (y_position.x + 1) % 256;
+            x_position = (x_position + 1) % 256;
+            y_position = (y_position + 1) % 256;
             //@ assert x_position.x ≤ 255;
             //@ assert y_position.x ≤ 255;
 
             linted_gui_command gui_command = {
-                .type = (linted_actor_byte_fast) { .x = LINTED_GUI_COMMAND_TICK_CHANGE },
+                .type = LINTED_GUI_COMMAND_TICK_CHANGE,
                 .tick_change = (linted_gui_tick_change) {
                     .x = x_position,
                     .y = y_position
@@ -116,9 +116,7 @@ static int simulator_main(char const * const simulator_string,
 
  quit_main_loop:
     linted_gui_send(gui, (linted_gui_command) {
-            .type = (linted_actor_byte_fast) {
-                .x = LINTED_GUI_COMMAND_SHUTDOWN
-            }
+            .type = LINTED_GUI_COMMAND_SHUTDOWN
         });
 
     {
@@ -136,8 +134,8 @@ static int simulator_main(char const * const simulator_string,
 
     /* Drain excess commands to avoid a sigpipe error. */
     for (;;) {
-        const linted_simulator_command command = linted_simulator_recv(command_port);
-        const linted_actor_byte_fast_t command_type = command.type.x;
+        linted_simulator_command const command = linted_simulator_recv(command_port);
+        uint8_t const command_type = command.type;
         switch (command_type) {
         case LINTED_SIMULATOR_GUI_CLOSED:
             goto exit;

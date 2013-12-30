@@ -30,12 +30,12 @@ enum {
 };
 
 typedef struct {
-    linted_actor_byte_fast x;
-    linted_actor_byte_fast y;
+    uint8_t x;
+    uint8_t y;
 } linted_gui_tick_change;
 
 typedef struct {
-    linted_actor_byte_fast type;
+    uint8_t type;
     linted_gui_tick_change tick_change;
 } linted_gui_command;
 

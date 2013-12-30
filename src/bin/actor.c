@@ -24,24 +24,23 @@
 #include <stdio.h>
 #include <string.h>
 
-void linted_actor_send_byte(linted_actor_chan const actor,
-                            linted_actor_byte_fast const byte) {
+void linted_actor_send_byte(linted_actor_chan const actor, uint8_t const byte) {
     ssize_t bytes_written;
     do {
-        bytes_written = write(actor.x, &byte.x, sizeof byte.x);
-    } while (bytes_written != sizeof byte.x && (errno != EINTR));
-    if (bytes_written != sizeof byte.x) {
+        bytes_written = write(actor.x, &byte, sizeof byte);
+    } while (bytes_written != sizeof byte && (errno != EINTR));
+    if (bytes_written != sizeof byte) {
         LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
     }
 }
 
-linted_actor_byte_fast linted_actor_recv_byte(linted_actor_port const actor) {
+uint8_t linted_actor_recv_byte(linted_actor_port const actor) {
     ssize_t bytes_read;
-    linted_actor_byte_fast byte;
+    uint8_t byte;
     do {
-        bytes_read = read(actor.x, &byte.x, sizeof byte.x);
-    } while (bytes_read != sizeof byte.x && (errno != EINTR));
-    if (bytes_read != sizeof byte.x) {
+        bytes_read = read(actor.x, &byte, sizeof byte);
+    } while (bytes_read != sizeof byte && (errno != EINTR));
+    if (bytes_read != sizeof byte) {
         LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
     }
     return byte;

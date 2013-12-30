@@ -51,7 +51,7 @@ static linted_gui_port linted_gui_port_from_fildes(int fildes) {
 static linted_gui_command linted_gui_recv(linted_gui_port gui) {
     linted_gui_command command;
     command.type = linted_actor_recv_byte(gui.x);
-    switch (command.type.x) {
+    switch (command.type) {
     case LINTED_GUI_COMMAND_SHUTDOWN:
         break;
 
@@ -61,7 +61,7 @@ static linted_gui_command linted_gui_recv(linted_gui_port gui) {
         break;
 
     default:
-        LINTED_ERROR("Received unknown command: %d\n", command.type.x);
+        LINTED_ERROR("Received unknown command: %d\n", command.type);
         break;
     }
     return command;
@@ -149,11 +149,10 @@ int linted_gui_main(int argc, char * argv[]) {
             Uint32 const now = SDL_GetTicks();
             if (now >= next_tick) {
                 next_tick += 1000 / 60;
-                linted_simulator_send(simulator_chan, (linted_simulator_command) {
-                        .type = (linted_actor_byte_fast) {
-                            .x = LINTED_SIMULATOR_TICK_REQUEST
-                        }
-                    });
+                linted_simulator_send(simulator_chan,
+                                      (linted_simulator_command) {
+                                          .type = LINTED_SIMULATOR_TICK_REQUEST
+                                      });
             }
         }
 
@@ -176,22 +175,20 @@ int linted_gui_main(int argc, char * argv[]) {
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
             case SDLK_ESCAPE:
-                linted_simulator_send(simulator_chan, (linted_simulator_command) {
-                        .type = (linted_actor_byte_fast) {
-                            .x = LINTED_SIMULATOR_CLOSE_REQUEST
-                        }
-                    });
+                linted_simulator_send(simulator_chan,
+                                      (linted_simulator_command) {
+                                          .type = LINTED_SIMULATOR_CLOSE_REQUEST
+                                      });
                 break;
             default: break;
             }
             break;
 
         case SDL_QUIT:
-            linted_simulator_send(simulator_chan, (linted_simulator_command) {
-                    .type = (linted_actor_byte_fast) {
-                        .x = LINTED_SIMULATOR_CLOSE_REQUEST
-                    }
-                });
+            linted_simulator_send(simulator_chan,
+                                  (linted_simulator_command) {
+                                      .type = LINTED_SIMULATOR_CLOSE_REQUEST
+                                  });
             break;
         }
 
@@ -212,17 +209,17 @@ int linted_gui_main(int argc, char * argv[]) {
         }
         if (had_gui_command) {
             linted_gui_command const command = linted_gui_recv(gui_port);
-            switch (command.type.x) {
+            switch (command.type) {
             case LINTED_GUI_COMMAND_TICK_CHANGE:
-                x = ((float) command.tick_change.x.x) / 255;
-                y = ((float) command.tick_change.y.x) / 255;
+                x = ((float) command.tick_change.x) / 255;
+                y = ((float) command.tick_change.y) / 255;
                 break;
 
             case LINTED_GUI_COMMAND_SHUTDOWN:
                 goto shutdown_gui;
 
             default:
-                LINTED_ERROR("Received unknown command: %d\n", command.type.x);
+                LINTED_ERROR("Received unknown command: %d\n", command.type);
                 break;
             }
         }
@@ -246,11 +243,10 @@ int linted_gui_main(int argc, char * argv[]) {
     }
 
  shutdown_gui:
-    linted_simulator_send(simulator_chan, (linted_simulator_command) {
-            .type = (linted_actor_byte_fast) {
-                .x = LINTED_SIMULATOR_GUI_CLOSED
-            }
-        });
+    linted_simulator_send(simulator_chan,
+                          (linted_simulator_command) {
+                              .type = LINTED_SIMULATOR_GUI_CLOSED
+                          });
 
     SDL_Quit();
 
