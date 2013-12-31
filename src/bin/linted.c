@@ -27,7 +27,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
     "Play the " PACKAGE_NAME " game\n"\
@@ -56,7 +55,15 @@ static int go(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 
 int main(int argc, char * argv[]) {
-    int const exit_status = go(argc, argv);
+    uid_t const euid = geteuid();
+    int exit_status;
+    if (euid != 0) {
+        exit_status = go(argc, argv);
+    } else {
+        fputs("Bad administrator!\n", stderr);
+        fputs("It is a violation of proper security policy to run a game as root!\n", stderr);
+        exit_status = EXIT_FAILURE;
+    }
 
     int files_status = 0;
     if (EOF == fclose(stdin)) {
