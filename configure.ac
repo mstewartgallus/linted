@@ -45,18 +45,34 @@ dnl
 AC_CHECK_HEADERS([sys/resource.h])
 dnl
 AC_HEADER_STDBOOL
-AS_IF([test "x$ac_cv_header_stdbool_h" = "xno"],[
+AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
 ])
-AC_TYPE_PID_T
-AS_IF([test "x$ac_cv_type_pid_t" = "xno"],[
- AC_MSG_ERROR([Unable to find type pid_t])
-])
 AC_TYPE_SIZE_T
-AS_IF([test "x$ac_cv_type_size_t" = "xno"],[
+AS_IF([test "x${ac_cv_type_size_t}" = "xno"],[
  AC_MSG_ERROR([Unable to find type size_t])
 ])
+AC_TYPE_SSIZE_T
+AS_IF([test "x${ac_cv_type_ssize_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type ssize_t])
+])
+AC_TYPE_PID_T
+AS_IF([test "x${ac_cv_type_pid_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type pid_t])
+])
+AC_TYPE_UID_T
+AS_IF([test "x${ac_cv_type_uid_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type uid_t])
+])
+AC_TYPE_UINT8_T
+AS_IF([test "x${ac_cv_type_uint8_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type uint8_t])
+])
 dnl
+AC_FUNC_MALLOC
+AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
+ AC_MSG_ERROR([Unable to find function malloc])
+])
 AC_CHECK_FUNCS([strerror], [], [
  AC_MSG_ERROR([Unable to find function strerror])
 ])
