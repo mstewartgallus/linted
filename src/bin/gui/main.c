@@ -22,8 +22,8 @@
 
 #include "linted/base/stdio.h"
 
-#include <SDL.h>
-#include <SDL_opengl.h>
+#include "SDL.h"
+#include "SDL_opengl.h"
 
 #include <errno.h>
 #include <fcntl.h>
