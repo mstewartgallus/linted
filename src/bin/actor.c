@@ -28,9 +28,10 @@ void linted_actor_send_byte(linted_actor_chan const actor, uint8_t const byte) {
     ssize_t bytes_written;
     do {
         bytes_written = write(actor.x, &byte, sizeof byte);
-    } while (bytes_written != sizeof byte && (errno != EINTR));
+    } while (bytes_written != sizeof byte && (errno == EINTR));
     if (bytes_written != sizeof byte) {
-        LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
+        LINTED_ERROR("Could not write bytes to file descriptor %d: %s.\n",
+                     actor.x, strerror(errno));
     }
 }
 
@@ -39,9 +40,10 @@ uint8_t linted_actor_recv_byte(linted_actor_port const actor) {
     uint8_t byte;
     do {
         bytes_read = read(actor.x, &byte, sizeof byte);
-    } while (bytes_read != sizeof byte && (errno != EINTR));
+    } while (bytes_read != sizeof byte && (errno == EINTR));
     if (bytes_read != sizeof byte) {
-        LINTED_ERROR("Could not write bytes to file: %s.\n", strerror(errno));
+        LINTED_ERROR("Could not write bytes to file descriptor %d: %s.\n",
+                     actor.x, strerror(errno));
     }
     return byte;
 }
