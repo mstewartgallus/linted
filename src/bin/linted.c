@@ -189,7 +189,8 @@ static int spawn_children(char * const binary_name) {
         }
     }
 
-    if (-1 == linted_sandbox()) {
+    int const sandbox_status = linted_sandbox();
+    if (-1 == sandbox_status) {
         LINTED_ERROR("Could not sandbox process because of error: %s\n",
                      strerror(errno));
     }
