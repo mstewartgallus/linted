@@ -23,6 +23,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -139,13 +140,13 @@ static int go(int argc, char * argv[]) {
 
 static int spawn_children(char * const binary_name) {
     int simulator_fds[2];
-    if (-1 == pipe(simulator_fds)) {
+    if (-1 == pipe2(simulator_fds, O_CLOEXEC)) {
         LINTED_ERROR("Could not make simulator pipe because of error: %s\n",
                      strerror(errno));
     }
 
     int gui_fds[2];
-    if (-1 == pipe(gui_fds)) {
+    if (-1 == pipe2(gui_fds, O_CLOEXEC)) {
         LINTED_ERROR("Could not make gui pipe because of error: %s\n",
                      strerror(errno));
     }

@@ -33,7 +33,6 @@ dnl
 AC_CHECK_HEADERS([dnl
         fcntl.h dnl
         inttypes.h dnl
-        spawn.h dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
@@ -72,6 +71,10 @@ dnl
 AC_FUNC_MALLOC
 AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
  AC_MSG_ERROR([Unable to find function malloc])
+])
+AC_FUNC_FORK
+AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+ AC_MSG_ERROR([Unable to find function fork])
 ])
 AC_CHECK_FUNCS([strerror], [], [
  AC_MSG_ERROR([Unable to find function strerror])

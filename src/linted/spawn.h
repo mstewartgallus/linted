@@ -25,7 +25,8 @@
  * @param binary_name The value of argv[0].
  * @param subcommand The subcommand to execute.
  * @param fildes The file descriptors to pass to the subcommand and
- *               leave open.
+ *               leave open (they are duplicated into the process see
+ *               dup).
  */
 int linted_spawn(pid_t * pid, char * binary_name,
                  char const * subcommand, int const fildes[]);
