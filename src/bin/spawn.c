@@ -34,26 +34,22 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
     int error_status = -1;
     size_t fildes_size = 0;
 
-    int * new_fildes;
-    char * fildes_strings;
+    char (* fildes_strings)[LONGEST_FD_STRING];
     char * * arguments;
     char * subcommand_copy;
+
+    pid_t child_pid;
 
     for (; fildes[fildes_size] != -1; ++fildes_size) {
         /* Do Nothing */
     }
 
-    fildes_strings = calloc(fildes_size, LONGEST_FD_STRING + 1);
+    fildes_strings = calloc(fildes_size, sizeof fildes_strings[0]);
     if (NULL == fildes_strings && fildes_size != 0) {
         goto finish;
     }
 
-    new_fildes = calloc(fildes_size, sizeof *new_fildes);
-    if (NULL == new_fildes) {
-        goto finish_and_free_new_fildes;
-    }
-
-    arguments = calloc(2 + fildes_size + 1, sizeof *arguments);
+    arguments = calloc(2 + fildes_size + 1, sizeof arguments[0]);
     if (NULL == arguments) {
         goto finish_and_free_fildes_strings;
     }
@@ -67,40 +63,33 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
         memcpy(subcommand_copy, subcommand, subcommand_size);
     }
 
-    pid_t const child_pid = fork();
+    child_pid = fork();
     switch (child_pid) {
     case -1:
         goto finish_and_free_subcommand_copy;
 
-    case 0:
+    case 0: {
         for (size_t ii = 0; ii < fildes_size; ++ii) {
-            int const fd = dup(fildes[ii]);
-            if (-1 == fd) {
+            int const new_fildes = dup(fildes[ii]);
+            if (-1 == new_fildes) {
                 LINTED_ERROR("Could not duplicate file descriptor: %s",
                              strerror(errno));
             }
-            new_fildes[ii] = fd;
-        }
 
-        {
-            char * last_string = fildes_strings;
-            for (size_t ii = 0; ii < fildes_size; ++ii) {
-                linted_sprintf(last_string, "%d", new_fildes[ii]);
-                last_string += LONGEST_FD_STRING + 1;
-            }
+            linted_sprintf(fildes_strings[ii], "%d", new_fildes);
         }
 
         arguments[0] = binary_name;
         arguments[1] = subcommand_copy;
         for (size_t ii = 0; ii < fildes_size; ++ii) {
-            arguments[2 + ii] = fildes_strings + (LONGEST_FD_STRING + 1) * ii;
+            arguments[2 + ii] = fildes_strings[ii];
         }
         arguments[2 + fildes_size] = NULL;
 
-
         execv(binary_name, arguments);
-        /* If couldn't execute. */
+        /* If execv does not succeed. */
         LINTED_ERROR("Could not execute: %s", strerror(errno));
+    }
 
     default:
         error_status = 0;
@@ -111,9 +100,6 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
 
  finish_and_free_arguments:
     free(arguments);
-
- finish_and_free_new_fildes:
-    free(new_fildes);
 
  finish_and_free_fildes_strings:
     free(fildes_strings);
