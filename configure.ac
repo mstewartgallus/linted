@@ -60,8 +60,9 @@ AS_IF([test "x${ac_cv_type_pid_t}" = "xno"],[
  AC_MSG_ERROR([Unable to find type pid_t])
 ])
 AC_TYPE_UID_T
-AS_IF([test "x${ac_cv_type_uid_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type uid_t])
+AS_IF([test "x${ac_cv_type_uid_t}" = "xyes"],[
+   AC_DEFINE([HAVE_UID_T], [1],
+             [Define if uid_t exists.])
 ])
 AC_TYPE_UINT8_T
 AS_IF([test "x${ac_cv_type_uint8_t}" = "xno"],[

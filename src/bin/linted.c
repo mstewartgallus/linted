@@ -56,8 +56,10 @@ static int go(int argc, char * argv[]);
 static int spawn_children(char * binary_name);
 
 int main(int argc, char * argv[]) {
-    uid_t const euid = geteuid();
     int exit_status;
+
+#ifdef HAVE_UID_T
+    uid_t const euid = geteuid();
     if (euid != 0) {
         exit_status = go(argc, argv);
     } else {
@@ -65,6 +67,9 @@ int main(int argc, char * argv[]) {
         fputs("It is a violation of proper security policy to run a game as root!\n", stderr);
         exit_status = EXIT_FAILURE;
     }
+#else
+    exit_status = go(argc, argv);
+#endif /* HAS_UID_T */
 
     int files_status = 0;
     if (EOF == fclose(stdin)) {
