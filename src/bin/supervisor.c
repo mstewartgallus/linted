@@ -84,11 +84,7 @@ int linted_supervisor_run(char * const binary_name) {
         }
     }
 
-    int const sandbox_status = linted_sandbox();
-    if (-1 == sandbox_status) {
-        LINTED_ERROR("Could not sandbox process because of error: %s\n",
-                     strerror(errno));
-    }
+    linted_sandbox();
 
     for (size_t ii = 0; ii < 2; ++ii) {
         int wait_status;

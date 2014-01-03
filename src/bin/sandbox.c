@@ -26,27 +26,28 @@
 #include <sys/resource.h>
 #endif /* HAVE_SYS_RESOURCE_H */
 
-int linted_sandbox(void) {
+/* Failing to sandbox a task is always a fatal error and should not
+   rely upon being checked. */
+void linted_sandbox(void) {
     int error_status;
 
 #ifdef HAVE_SYS_RESOURCE_H
-
     /* If the error is that we don't have the permissions to sandbox
        then we're already sandboxed enough. */
 
     error_status = setrlimit(RLIMIT_NOFILE,
                              &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
     if (-1 == error_status && errno != EPERM) {
-        return -1;
+        LINTED_ERROR("Could not sandbox process because of error: %s\n",
+                     strerror(errno));
     }
 
     error_status = setrlimit(RLIMIT_NPROC,
                              &(struct rlimit) { .rlim_cur = 0, .rlim_max = 0 });
     if (-1 == error_status && errno != EPERM) {
-        return -1;
+        LINTED_ERROR("Could not sandbox process because of error: %s\n",
+                     strerror(errno));
     }
 
 #endif /* HAVE_SYS_RESOURCE_H */
-
-    return 0;
 }

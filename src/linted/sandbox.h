@@ -16,6 +16,6 @@
 #ifndef LINTED_SANDBOX_H
 #define LINTED_SANDBOX_H
 
-int linted_sandbox(void);
+void linted_sandbox(void);
 
 #endif /* LINTED_SANDBOX_H */

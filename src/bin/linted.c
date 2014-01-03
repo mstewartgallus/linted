@@ -108,11 +108,7 @@ static int go(int argc, char * argv[]) {
     }
 
     /* Unprivileged sub commands */
-    int const sandbox_status = linted_sandbox();
-    if (-1 == sandbox_status) {
-        LINTED_ERROR("Could not sandbox process because of error: %s\n",
-                     strerror(errno));
-    }
+    linted_sandbox();
 
     if (0 == argc) {
         fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
