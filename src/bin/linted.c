@@ -19,7 +19,7 @@
 #include "linted/gui.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
-#include "linted/spawn.h"
+#include "linted/task.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -162,17 +162,19 @@ static int spawn_children(char * const binary_name) {
     int const gui_reader = gui_fds[0];
     int const gui_writer = gui_fds[1];
 
-    pid_t pid;
+    linted_task_t simulator_task;
     int process_status;
-    process_status = linted_spawn(&pid, binary_name, LINTED_SIMULATOR_NAME,
-                                  (int[]) { simulator_reader, gui_writer, -1 });
+    process_status = linted_task_spawn(&simulator_task, binary_name,
+                                       LINTED_SIMULATOR_NAME,
+                                       (int[]) { simulator_reader, gui_writer, -1 });
     if (-1 == process_status) {
         LINTED_ERROR("Could not spawn simulator process: %s\n",
                      strerror(errno));
     }
 
-    process_status = linted_spawn(&pid, binary_name, LINTED_GUI_NAME,
-                                  (int[]) { gui_reader, simulator_writer, -1 });
+    linted_task_t gui_task;
+    process_status = linted_task_spawn(&gui_task, binary_name, LINTED_GUI_NAME,
+                                       (int[]) { gui_reader, simulator_writer, -1 });
     if (-1 == process_status) {
         LINTED_ERROR("Could not spawn gui process: %s\n",
                      strerror(errno));

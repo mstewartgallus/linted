@@ -15,7 +15,7 @@
  */
 #include "config.h"
 
-#include "linted/spawn.h"
+#include "linted/task.h"
 
 #include "linted/base/stdio.h"
 #include "linted/util.h"
@@ -29,8 +29,8 @@
 /* TODO: Calculate exactly */
 #define LONGEST_FD_STRING 50
 
-int linted_spawn(pid_t * const pid, char * const binary_name,
-                 char const * const subcommand, int const fildes[]) {
+int linted_task_spawn(linted_task_t * const task, char * const binary_name,
+                      char const * const subcommand, int const fildes[]) {
     int error_status = -1;
     size_t fildes_size = 0;
 
@@ -64,6 +64,7 @@ int linted_spawn(pid_t * const pid, char * const binary_name,
     }
 
     child_pid = fork();
+    task->_process_id = child_pid;
     switch (child_pid) {
     case -1:
         goto finish_and_free_subcommand_copy;

@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_SPAWN_H
-#define LINTED_SPAWN_H
+#ifndef LINTED_TASK_H
+#define LINTED_TASK_H
 
 #include <sys/types.h>
 
+typedef struct _linted_task_t {
+    pid_t _process_id;
+} linted_task_t;
+
 /**
- * Spawns a process.
+ * Spawns a task. The task may or may not be spawned in a seperate
+ * address space.
  *
- * @param pid The output process id (on success).
+ * @param task The output task info (on success).
  * @param binary_name The value of argv[0].
  * @param subcommand The subcommand to execute.
  * @param fildes The file descriptors to pass to the subcommand and
  *               leave open (they are duplicated into the process see
  *               dup).
  */
-int linted_spawn(pid_t * pid, char * binary_name,
-                 char const * subcommand, int const fildes[]);
+int linted_task_spawn(linted_task_t * task, char * binary_name,
+                      char const * subcommand, int const fildes[]);
 
-#endif /* LINTED_SPAWN_H */
+#endif /* LINTED_TASK_H */
