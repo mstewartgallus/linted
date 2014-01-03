@@ -17,3 +17,6 @@ We should be able to use temporal logic tools to formalize our message
 passing and create theorems about various safety and liveness
 properties.
 * Port to --host=i686-w64-mingw32
+* Use unit testing
+Unit tests should probable run under Valgrind, or duma, or electric
+fence.
