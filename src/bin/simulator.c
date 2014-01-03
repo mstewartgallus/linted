@@ -132,19 +132,6 @@ static int simulator_main(char const * const simulator_string,
  quit_main_loop:
     linted_gui_send_shutdown(gui);
 
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(gui_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close gui fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
-
     /* Drain excess commands to avoid a sigpipe error. */
     for (;;) {
         linted_simulator_command const command = linted_simulator_recv(command_port);
@@ -162,6 +149,19 @@ static int simulator_main(char const * const simulator_string,
         }
     }
  exit:
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(gui_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close gui fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
     {
         int error_status;
         int error_code;
