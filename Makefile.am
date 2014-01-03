@@ -23,6 +23,7 @@ linted_SOURCES=\
   src/bin/linted.c\
   src/bin/gui/main.c\
   src/bin/sandbox.c\
+  src/bin/supervisor.c\
   src/bin/task.c\
   $(verified_sources)
 
@@ -42,6 +43,7 @@ EXTRA_DIST=\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
+  src/linted/supervisor.h\
   src/linted/task.h\
   src/linted/util.h
 
@@ -65,6 +67,7 @@ src/bin/actor.o: config.h src/linted/actor.h
 src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
 src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/sandbox.o: config.h src/linted/sandbox.h
+src/bin/supervisor.o: config.h src/linted/supervisor.h
 src/bin/task.o: config.h src/linted/task.h
 src/bin/util.o: config.h src/linted/util.h
 
