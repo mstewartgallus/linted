@@ -23,12 +23,13 @@
 #include <stdio.h>
 #include <string.h>
 
-void linted_actor_send_byte(linted_actor_chan const actor, uint8_t const byte) {
+void linted_actor_send(linted_actor_chan const actor,
+                       void const * const bytes, size_t const size) {
     ssize_t bytes_written;
     do {
-        bytes_written = write(actor.x, &byte, sizeof byte);
-    } while (bytes_written != sizeof byte && (errno == EINTR));
-    if (bytes_written != sizeof byte) {
+        bytes_written = write(actor.x, bytes, size);
+    } while (bytes_written != size && (errno == EINTR));
+    if (bytes_written != size) {
         LINTED_ERROR("Could not write bytes to file descriptor %d: %s.\n",
                      actor.x, strerror(errno));
     }
@@ -41,7 +42,7 @@ uint8_t linted_actor_recv_byte(linted_actor_port const actor) {
         bytes_read = read(actor.x, &byte, sizeof byte);
     } while (bytes_read != sizeof byte && (errno == EINTR));
     if (bytes_read != sizeof byte) {
-        LINTED_ERROR("Could not read bytes to file descriptor %d: %s.\n",
+        LINTED_ERROR("Could not read bytes from file descriptor %d: %s.\n",
                      actor.x, strerror(errno));
     }
     return byte;

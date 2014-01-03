@@ -25,7 +25,7 @@ typedef struct { int x; } linted_actor_chan;
 // An actor that can be received from.
 typedef struct { int x; } linted_actor_port;
 
-void linted_actor_send_byte(linted_actor_chan actor, uint8_t byte);
+void linted_actor_send(linted_actor_chan actor, void const * bytes, size_t size);
 uint8_t linted_actor_recv_byte(linted_actor_port actor);
 
 #endif /* LINTED_ACTOR_H */

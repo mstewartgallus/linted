@@ -17,17 +17,22 @@
 
 #include "linted/actor.h"
 #include "linted/gui.h"
+#include "linted/util.h"
 
 linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
     return (linted_gui_chan) { .x = (linted_actor_chan) { .x = fildes } };
 }
 
 void linted_gui_send_shutdown(linted_gui_chan gui) {
-    linted_actor_send_byte(gui.x, LINTED_GUI_COMMAND_SHUTDOWN);
+    uint8_t const message[] = { LINTED_GUI_COMMAND_SHUTDOWN };
+    linted_actor_send(gui.x, message, LINTED_ARRAY_SIZE(message));
 }
 
 void linted_gui_send_tick_change(linted_gui_chan gui, uint8_t x, uint8_t y) {
-    linted_actor_send_byte(gui.x, LINTED_GUI_COMMAND_TICK_CHANGE);
-    linted_actor_send_byte(gui.x, x);
-    linted_actor_send_byte(gui.x, y);
+    uint8_t const message[] = {
+        LINTED_GUI_COMMAND_TICK_CHANGE,
+        x,
+        y
+    };
+    linted_actor_send(gui.x, message, LINTED_ARRAY_SIZE(message));
 }

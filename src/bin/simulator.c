@@ -54,15 +54,18 @@ linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
 }
 
 void linted_simulator_send_close_request(linted_simulator_chan chan) {
-    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_CLOSE_REQUEST);
+    uint8_t const message[] = { LINTED_SIMULATOR_CLOSE_REQUEST };
+    linted_actor_send(chan.x, message, LINTED_ARRAY_SIZE(message));
 }
 
 void linted_simulator_send_tick_request(linted_simulator_chan chan) {
-    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_TICK_REQUEST);
+    uint8_t const message[] = { LINTED_SIMULATOR_TICK_REQUEST };
+    linted_actor_send(chan.x, message, LINTED_ARRAY_SIZE(message));
 }
 
 void linted_simulator_send_gui_closed(linted_simulator_chan chan) {
-    linted_actor_send_byte(chan.x, LINTED_SIMULATOR_GUI_CLOSED);
+    uint8_t const message[] = { LINTED_SIMULATOR_GUI_CLOSED };
+    linted_actor_send(chan.x, message, LINTED_ARRAY_SIZE(message));
 }
 
 int linted_simulator_main(int argc, char * argv[]) {
