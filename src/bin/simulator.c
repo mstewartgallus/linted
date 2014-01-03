@@ -19,8 +19,6 @@
 #include "linted/simulator.h"
 #include "linted/util.h"
 
-#include "linted/base/stdio.h"
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>

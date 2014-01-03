@@ -17,7 +17,7 @@
 
 #include "linted/task.h"
 
-#include "linted/base/stdio.h"
+#include "linted/sprintf.h"
 #include "linted/util.h"
 
 #include <errno.h>

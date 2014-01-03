@@ -30,8 +30,8 @@ linted_SOURCES=\
 verified_sources=\
   src/bin/actor.c\
   src/bin/util.c\
-  src/bin/base/stdio.c\
   src/bin/simulator.c\
+  src/bin/sprintf.c\
   src/bin/gui/control.c
 
 linted_LDADD=$(SDL_LIBS)
@@ -48,25 +48,25 @@ EXTRA_DIST=\
   src/linted/util.h
 
 src/bin/linted.o: config.h\
-  src/linted/base/stdio.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
+  src/linted/sprintf.h\
   src/linted/task.h\
   src/linted/util.h
 
 src/bin/simulator.o: config.h\
   src/linted/gui.h src/linted/actor.h\
-  src/linted/base/stdio.h src/linted/util.h
+  src/linted/sprintf.h src/linted/util.h
 
 src/bin/gui/main.o: config.h\
   src/linted/gui.h src/linted/actor.h\
-  src/linted/base/stdio.h src/linted/base/util.h
+  src/linted/sprintf.h src/linted/base/util.h
 
 src/bin/actor.o: config.h src/linted/actor.h
-src/bin/base/stdio.o: config.h src/linted/util.h src/linted/base/stdio.h
 src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/sandbox.o: config.h src/linted/sandbox.h
+src/bin/sprintf.o: config.h src/linted/util.h src/linted/sprintf.h
 src/bin/supervisor.o: config.h src/linted/supervisor.h
 src/bin/task.o: config.h src/linted/task.h
 src/bin/util.o: config.h src/linted/util.h

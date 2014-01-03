@@ -13,9 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_BASE_STDIO_H
-#define LINTED_BASE_STDIO_H
+#include "config.h"
 
-void linted_sprintf(char *str, char const * format, ...);
+#include "linted/sprintf.h"
 
-#endif /* LINTED_BASE_STDIO_H */
+#include "linted/util.h"
+
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+void linted_sprintf(char * str, const char * format_string, ...) {
+    va_list arguments;
+    va_start(arguments, format_string);
+
+    if (vsprintf(str, format_string, arguments) < 0) {
+        LINTED_ERROR("Could write format string %s\n", format_string);
+    }
+
+    va_end(arguments);
+}

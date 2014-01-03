@@ -16,7 +16,6 @@
 #include "config.h"
 
 #include "linted/actor.h"
-#include "linted/base/stdio.h"
 #include "linted/util.h"
 
 #include <errno.h>

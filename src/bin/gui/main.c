@@ -20,8 +20,6 @@
 #include "linted/simulator.h"
 #include "linted/util.h"
 
-#include "linted/base/stdio.h"
-
 #include "SDL.h"
 #include "SDL_opengl.h"
 
