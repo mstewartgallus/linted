@@ -29,6 +29,8 @@ enum {
     LINTED_GUI_COMMAND_TICK_CHANGE = 1
 };
 
+enum { LINTED_GUI_MESSAGE_SIZE = 3 };
+
 typedef struct {
     uint8_t x;
     uint8_t y;

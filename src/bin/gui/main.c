@@ -246,22 +246,15 @@ static linted_gui_port linted_gui_port_from_fildes(int fildes) {
 }
 
 static linted_gui_command linted_gui_recv(linted_gui_port gui) {
-    linted_gui_command command;
-    command.type = linted_actor_recv_byte(gui.x);
-    switch (command.type) {
-    case LINTED_GUI_COMMAND_SHUTDOWN:
-        break;
-
-    case LINTED_GUI_COMMAND_TICK_CHANGE:
-        command.tick_change.x = linted_actor_recv_byte(gui.x);
-        command.tick_change.y = linted_actor_recv_byte(gui.x);
-        break;
-
-    default:
-        LINTED_ERROR("Received unknown command: %d\n", command.type);
-        break;
-    }
-    return command;
+    uint8_t message[LINTED_GUI_MESSAGE_SIZE];
+    linted_actor_recv(gui.x, message, LINTED_GUI_MESSAGE_SIZE);
+    return (linted_gui_command) {
+        .type = message[0],
+        .tick_change = (linted_gui_tick_change) {
+            .x = message[1],
+            .y = message[2]
+        }
+    };
 }
 
 static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT] = {

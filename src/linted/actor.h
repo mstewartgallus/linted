@@ -26,6 +26,6 @@ typedef struct { int x; } linted_actor_chan;
 typedef struct { int x; } linted_actor_port;
 
 void linted_actor_send(linted_actor_chan actor, void const * bytes, size_t size);
-uint8_t linted_actor_recv_byte(linted_actor_port actor);
+void linted_actor_recv(linted_actor_port actor, void * message, size_t size);
 
 #endif /* LINTED_ACTOR_H */

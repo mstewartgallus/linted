@@ -24,15 +24,16 @@ linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
 }
 
 void linted_gui_send_shutdown(linted_gui_chan gui) {
-    uint8_t const message[] = { LINTED_GUI_COMMAND_SHUTDOWN };
-    linted_actor_send(gui.x, message, LINTED_ARRAY_SIZE(message));
+    uint8_t const message[LINTED_GUI_MESSAGE_SIZE] = {
+        LINTED_GUI_COMMAND_SHUTDOWN, 0, 0 };
+    linted_actor_send(gui.x, message, LINTED_GUI_MESSAGE_SIZE);
 }
 
 void linted_gui_send_tick_change(linted_gui_chan gui, uint8_t x, uint8_t y) {
-    uint8_t const message[] = {
+    uint8_t const message[LINTED_GUI_MESSAGE_SIZE] = {
         LINTED_GUI_COMMAND_TICK_CHANGE,
         x,
         y
     };
-    linted_actor_send(gui.x, message, LINTED_ARRAY_SIZE(message));
+    linted_actor_send(gui.x, message, LINTED_GUI_MESSAGE_SIZE);
 }
