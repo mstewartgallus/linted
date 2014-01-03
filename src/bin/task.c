@@ -29,13 +29,14 @@
 /* TODO: Calculate exactly */
 #define LONGEST_FD_STRING 50
 
-int linted_task_spawn(linted_task_t * const task, char * const binary_name,
+int linted_task_spawn(linted_task_t * const task,
+                      linted_task_spawner_t const spawner,
                       char const * const subcommand, int const fildes[]) {
     int error_status = -1;
     size_t fildes_size = 0;
 
     char (* fildes_strings)[LONGEST_FD_STRING];
-    char * * arguments;
+    char ** arguments;
     char * subcommand_copy;
 
     pid_t child_pid;
@@ -80,14 +81,14 @@ int linted_task_spawn(linted_task_t * const task, char * const binary_name,
             linted_sprintf(fildes_strings[ii], "%d", new_fildes);
         }
 
-        arguments[0] = binary_name;
+        arguments[0] = spawner._binary_name;
         arguments[1] = subcommand_copy;
         for (size_t ii = 0; ii < fildes_size; ++ii) {
             arguments[2 + ii] = fildes_strings[ii];
         }
         arguments[2 + fildes_size] = NULL;
 
-        execv(binary_name, arguments);
+        execv(spawner._binary_name, arguments);
         /* If execv does not succeed. */
         LINTED_ERROR("Could not execute: %s", strerror(errno));
     }

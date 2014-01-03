@@ -18,7 +18,11 @@
 
 #include <sys/types.h>
 
-typedef struct _linted_task_t {
+typedef struct _linted_task_spawner {
+    char * _binary_name;
+} linted_task_spawner_t;
+
+typedef struct _linted_task {
     pid_t _process_id;
 } linted_task_t;
 
@@ -33,7 +37,7 @@ typedef struct _linted_task_t {
  *               leave open (they are duplicated into the process see
  *               dup).
  */
-int linted_task_spawn(linted_task_t * task, char * binary_name,
+int linted_task_spawn(linted_task_t * task, linted_task_spawner_t spawner,
                       char const * subcommand, int const fildes[]);
 
 #endif /* LINTED_TASK_H */

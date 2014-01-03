@@ -19,7 +19,6 @@
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/supervisor.h"
-#include "linted/task.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -30,7 +29,7 @@
 
 #define ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
-int linted_supervisor_run(char * const binary_name) {
+int linted_supervisor_run(linted_task_spawner_t spawner) {
     int simulator_fds[2];
     if (-1 == pipe2(simulator_fds, O_CLOEXEC)) {
         LINTED_ERROR("Could not make simulator pipe because of error: %s\n",
@@ -51,7 +50,7 @@ int linted_supervisor_run(char * const binary_name) {
 
     linted_task_t simulator_task;
     int process_status;
-    process_status = linted_task_spawn(&simulator_task, binary_name,
+    process_status = linted_task_spawn(&simulator_task, spawner,
                                        LINTED_SIMULATOR_NAME,
                                        (int[]) { simulator_reader, gui_writer, -1 });
     if (-1 == process_status) {
@@ -60,7 +59,7 @@ int linted_supervisor_run(char * const binary_name) {
     }
 
     linted_task_t gui_task;
-    process_status = linted_task_spawn(&gui_task, binary_name, LINTED_GUI_NAME,
+    process_status = linted_task_spawn(&gui_task, spawner, LINTED_GUI_NAME,
                                        (int[]) { gui_reader, simulator_writer, -1 });
     if (-1 == process_status) {
         LINTED_ERROR("Could not spawn gui process: %s\n",

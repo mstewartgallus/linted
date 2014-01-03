@@ -16,6 +16,8 @@
 #ifndef LINTED_SUPERVISOR_H
 #define LINTED_SUPERVISOR_H
 
-int linted_supervisor_run(char * binary_name);
+#include "linted/task.h"
+
+int linted_supervisor_run(linted_task_spawner_t spawner);
 
 #endif /* LINTED_SUPERVISOR_H */

@@ -19,6 +19,7 @@
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/supervisor.h"
+#include "linted/task.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -97,7 +98,8 @@ static int go(int argc, char * argv[]) {
 
     /* Privileged subcommands */
     if (1 == argc) {
-        return linted_supervisor_run(argv[0]);
+        linted_task_spawner_t const spawner = { ._binary_name = argv[0] };
+        return linted_supervisor_run(spawner);
     }
 
     if (argc >= 2) {
