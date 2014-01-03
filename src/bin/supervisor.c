@@ -27,8 +27,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#define ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
-
 int linted_supervisor_run(linted_task_spawner_t spawner) {
     int simulator_fds[2];
     if (-1 == pipe2(simulator_fds, O_CLOEXEC)) {
@@ -72,7 +70,7 @@ int linted_supervisor_run(linted_task_spawner_t spawner) {
             gui_writer, gui_reader
         };
 
-        for (size_t ii = 0; ii < ARRAY_SIZE(fds); ++ii) {
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(fds); ++ii) {
             int const fd = fds[ii];
             int const error_status = close(fd);
             int error_code;

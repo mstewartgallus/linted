@@ -20,6 +20,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
+
 #define LINTED_ERROR(...)                                       \
     linted_error(__FILE__, __func__, __LINE__,  __VA_ARGS__)
 

@@ -16,9 +16,8 @@
 #include "config.h"
 
 #include "linted/actor.h"
-#include "linted/util.h"
-
 #include "linted/base/stdio.h"
+#include "linted/util.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -42,7 +41,7 @@ uint8_t linted_actor_recv_byte(linted_actor_port const actor) {
         bytes_read = read(actor.x, &byte, sizeof byte);
     } while (bytes_read != sizeof byte && (errno == EINTR));
     if (bytes_read != sizeof byte) {
-        LINTED_ERROR("Could not write bytes to file descriptor %d: %s.\n",
+        LINTED_ERROR("Could not read bytes to file descriptor %d: %s.\n",
                      actor.x, strerror(errno));
     }
     return byte;
