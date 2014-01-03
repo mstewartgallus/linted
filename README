@@ -15,14 +15,18 @@ methods of guarding against software bugs.
 Some of these methods include:
 - process isolation (by using posix_spawnp)
 - operating system resource limits (by using setrlimit)
-- static analysis tools including:
-  - frama-c
-  - clang
-  - cppcheck
 - toolchain hardening options
   - The GNU linker options -z,relro, -z,now and -z,noexecstack
   - The GNU Compiler Collection options -fstack-protector-all, -trapv,
     -pie, and -fPIE
+- linters including:
+  - Clang
+  - Cppcheck
+
+We plan on using:
+- static analysis tools including:
+  - Frama C
+  - CBMC
 
 Linted is licensed under the Apache License, Version 2.0 (the
 "License"); you may not use Linted except in compliance with

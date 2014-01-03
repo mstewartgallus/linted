@@ -5,6 +5,7 @@ This process currently uses poll and so can't be sandboxed easily.
 * Sandbox all processes more effectively
 There are a few more options to explore in setrlimit.
 Also there are better options than setrlimit.
+We should use seccomp and etc...
 * Move away from instant failure
 It's bad style to have library calls that terminate the applicaton.
 * Understand CBMC complaints
