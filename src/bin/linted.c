@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define USAGE_TEXT \
@@ -48,7 +49,21 @@
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
+#define SIMULATOR_USAGE_TEXT \
+    "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
+    "Run the simulator\n"\
+    "\n"\
+    "Report bugs to " PACKAGE_BUGREPORT "\n"
+
+#define GUI_USAGE_TEXT \
+    "Usage: " PACKAGE_TARNAME " " LINTED_GUI_NAME " GUI_PIPE SIMULATOR_PIPE\n"\
+    "Run the gui\n"\
+    "\n"\
+    "Report bugs to " PACKAGE_BUGREPORT "\n"
+
 static int go(int argc, char * argv[]);
+static int gui_main(int argc, char * argv[]);
+static int simulator_main(int argc, char * argv[]);
 
 int main(int argc, char * argv[]) {
     int exit_status;
@@ -105,7 +120,7 @@ static int go(int argc, char * argv[]) {
     if (argc >= 2) {
         char const * const subcommand = argv[1];
         if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
-            return linted_gui_main(argc, argv);
+            return gui_main(argc, argv);
         }
     }
 
@@ -118,7 +133,7 @@ static int go(int argc, char * argv[]) {
     } else {
         char const * const subcommand = argv[1];
         if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
-            return linted_simulator_main(argc, argv);
+            return simulator_main(argc, argv);
         } else if (0 == strcmp(subcommand, "--help")) {
             fputs(USAGE_TEXT, stdout);
             return EXIT_SUCCESS;
@@ -133,4 +148,37 @@ static int go(int argc, char * argv[]) {
             return EXIT_FAILURE;
         }
     }
+}
+
+
+static int simulator_main(int argc, char * argv[]) {
+    /* Note that in this function no global state must be modified
+       until after simulator_main could have executed or Frama C's
+       assumptions will break. */
+    switch (argc) {
+    case 4:
+        return linted_simulator_run(atoi(argv[2]), atoi(argv[3]));
+    default:
+        fprintf(stderr,
+                PACKAGE_TARNAME
+                " "
+                LINTED_SIMULATOR_NAME
+                " did not understand the input\n");
+        fputs(SIMULATOR_USAGE_TEXT, stderr);
+        return EXIT_FAILURE;
+    }
+}
+
+static int gui_main(int argc, char * argv[]) {
+    if (argc != 4) {
+        fprintf(stderr,
+                PACKAGE_TARNAME
+                " "
+                LINTED_GUI_NAME
+                " did not understand the input\n");
+        fputs(GUI_USAGE_TEXT, stderr);
+        return EXIT_FAILURE;
+    }
+
+    return linted_gui_run(atoi(argv[2]), atoi(argv[3]));
 }

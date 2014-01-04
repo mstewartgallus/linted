@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 #define LINTED_GUI_NAME "gui"
 
-int linted_gui_main(int argc, char * argv[]);
+int linted_gui_run(int gui_fifo, int simulator_fifo);
 
 enum {
     LINTED_GUI_COMMAND_SHUTDOWN = 0,
@@ -41,11 +41,11 @@ typedef struct {
     linted_gui_tick_change tick_change;
 } linted_gui_command;
 
-typedef struct { linted_actor_chan x; } linted_gui_chan;
+typedef struct _linted_gui { linted_actor_chan _x; } linted_gui_t;
 
-linted_gui_chan linted_gui_chan_from_fildes(int fildes);
+linted_gui_t linted_gui_from_fildes(int fildes);
 
-void linted_gui_send_shutdown(linted_gui_chan gui);
-void linted_gui_send_tick_change(linted_gui_chan gui, uint8_t x, uint8_t y);
+void linted_gui_send_shutdown(linted_gui_t gui);
+void linted_gui_send_tick_change(linted_gui_t gui, uint8_t x, uint8_t y);
 
 #endif /* LINTED_GUI_H */

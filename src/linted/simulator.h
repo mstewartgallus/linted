@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,17 @@
 
 #include "linted/actor.h"
 
-#include <stdio.h>
-
 #define LINTED_SIMULATOR_NAME "simulator"
 
-int linted_simulator_main(int argc, char * argv[]);
+int linted_simulator_run(int simulator_fifo, int gui_fifo);
 
-typedef struct { linted_actor_chan x; } linted_simulator_chan;
+typedef struct _linted_simulator { linted_actor_chan _x; } linted_simulator_t;
 
-linted_simulator_chan linted_simulator_chan_from_fildes(int fildes);
+linted_simulator_t linted_simulator_from_fildes(int fildes);
 
-void linted_simulator_send_close_request(linted_simulator_chan chan);
-void linted_simulator_send_tick_request(linted_simulator_chan chan);
-void linted_simulator_send_gui_closed(linted_simulator_chan chan);
+void linted_simulator_send_close_request(linted_simulator_t sim);
+void linted_simulator_send_tick_request(linted_simulator_t sim);
+void linted_simulator_send_gui_closed(linted_simulator_t sim);
 
 
 #endif /* LINTED_SIMULATOR_H */

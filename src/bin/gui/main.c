@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " " LINTED_GUI_NAME " GUI_PIPE SIMULATOR_PIPE\n"\
-    "Run the gui\n"\
-    "\n"\
-    "Report bugs to " PACKAGE_BUGREPORT "\n"
-
 typedef struct { linted_actor_port x; } linted_gui_port;
 static linted_gui_port linted_gui_port_from_fildes(int fildes);
 static linted_gui_command linted_gui_recv(linted_gui_port gui);
@@ -51,24 +45,8 @@ enum { ATTRIBUTE_AMOUNT = 12 };
 
 static struct attribute_value_pair const attribute_values[ATTRIBUTE_AMOUNT];
 
-int linted_gui_main(int argc, char * argv[]) {
-    if (argc != 4) {
-        fprintf(stderr,
-                PACKAGE_TARNAME
-                " "
-                LINTED_GUI_NAME
-                " did not understand the input\n");
-        fputs(USAGE_TEXT, stderr);
-        return EXIT_FAILURE;
-    }
-
-    char const * const gui_string = argv[2];
-    char const * const simulator_string = argv[3];
-
-    int const simulator_fifo = atoi(simulator_string);
-    int const gui_fifo = atoi(gui_string);
-
-    linted_simulator_chan const simulator_chan = linted_simulator_chan_from_fildes(simulator_fifo);
+int linted_gui_run(int const gui_fifo, int const simulator_fifo) {
+    linted_simulator_t const simulator_chan = linted_simulator_from_fildes(simulator_fifo);
     linted_gui_port const gui_port = linted_gui_port_from_fildes(gui_fifo);
 
     int const sdl_init_status = SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,21 +19,21 @@
 #include "linted/gui.h"
 #include "linted/util.h"
 
-linted_gui_chan linted_gui_chan_from_fildes(int fildes) {
-    return (linted_gui_chan) { .x = (linted_actor_chan) { .x = fildes } };
+linted_gui_t linted_gui_from_fildes(int fildes) {
+    return (linted_gui_t) { ._x = (linted_actor_chan) { .x = fildes } };
 }
 
-void linted_gui_send_shutdown(linted_gui_chan gui) {
+void linted_gui_send_shutdown(linted_gui_t gui) {
     uint8_t const message[LINTED_GUI_MESSAGE_SIZE] = {
         LINTED_GUI_COMMAND_SHUTDOWN, 0, 0 };
-    linted_actor_send(gui.x, message, LINTED_GUI_MESSAGE_SIZE);
+    linted_actor_send(gui._x, message, LINTED_GUI_MESSAGE_SIZE);
 }
 
-void linted_gui_send_tick_change(linted_gui_chan gui, uint8_t x, uint8_t y) {
+void linted_gui_send_tick_change(linted_gui_t gui, uint8_t x, uint8_t y) {
     uint8_t const message[LINTED_GUI_MESSAGE_SIZE] = {
         LINTED_GUI_COMMAND_TICK_CHANGE,
         x,
         y
     };
-    linted_actor_send(gui.x, message, LINTED_GUI_MESSAGE_SIZE);
+    linted_actor_send(gui._x, message, LINTED_GUI_MESSAGE_SIZE);
 }

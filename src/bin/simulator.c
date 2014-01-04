@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,75 +34,44 @@ typedef struct {
     uint8_t type;
 } linted_simulator_command;
 
-#define USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
-    "Run the simulator\n"\
-    "\n"\
-    "Report bugs to " PACKAGE_BUGREPORT "\n"
-
 typedef struct { linted_actor_port x; } linted_simulator_port;
 static linted_simulator_port linted_simulator_port_from_fildes(int fildes);
 static linted_simulator_command linted_simulator_recv(linted_simulator_port listener);
 
-static int simulator_main(char const * simulator_string,
-                          char const * gui_string);
-
-linted_simulator_chan linted_simulator_chan_from_fildes(int fildes) {
-    return (linted_simulator_chan) { .x = (linted_actor_chan) { .x = fildes } };
+linted_simulator_t linted_simulator_from_fildes(int fildes) {
+    return (linted_simulator_t) { ._x = (linted_actor_chan) { .x = fildes } };
 }
 
 enum { MESSAGE_SIZE = 1 };
 
-void linted_simulator_send_close_request(linted_simulator_chan chan) {
+void linted_simulator_send_close_request(linted_simulator_t sim) {
     uint8_t const message[MESSAGE_SIZE] = { LINTED_SIMULATOR_CLOSE_REQUEST };
-    linted_actor_send(chan.x, message, MESSAGE_SIZE);
+    linted_actor_send(sim._x, message, MESSAGE_SIZE);
 }
 
-void linted_simulator_send_tick_request(linted_simulator_chan chan) {
+void linted_simulator_send_tick_request(linted_simulator_t sim) {
     uint8_t const message[MESSAGE_SIZE] = { LINTED_SIMULATOR_TICK_REQUEST };
-    linted_actor_send(chan.x, message, MESSAGE_SIZE);
+    linted_actor_send(sim._x, message, MESSAGE_SIZE);
 }
 
-void linted_simulator_send_gui_closed(linted_simulator_chan chan) {
+void linted_simulator_send_gui_closed(linted_simulator_t sim) {
     uint8_t const message[MESSAGE_SIZE] = { LINTED_SIMULATOR_GUI_CLOSED };
-    linted_actor_send(chan.x, message, MESSAGE_SIZE);
+    linted_actor_send(sim._x, message, MESSAGE_SIZE);
 }
 
-static linted_simulator_command linted_simulator_recv(linted_simulator_port gui) {
+static linted_simulator_command linted_simulator_recv(linted_simulator_port sim) {
     uint8_t message[MESSAGE_SIZE];
-    linted_actor_recv(gui.x, message, MESSAGE_SIZE);
+    linted_actor_recv(sim.x, message, MESSAGE_SIZE);
     return (linted_simulator_command) { .type = message[0] };
-}
-
-int linted_simulator_main(int argc, char * argv[]) {
-    /* Note that in this function no global state must be modified
-       until after simulator_main could have executed or Frama C's
-       assumptions will break. */
-    switch (argc) {
-    case 4:
-        return simulator_main(argv[2], argv[3]);
-    default:
-        fprintf(stderr,
-                PACKAGE_TARNAME
-                " "
-                LINTED_SIMULATOR_NAME
-                " did not understand the input\n");
-        fputs(USAGE_TEXT, stderr);
-        return EXIT_FAILURE;
-    }
 }
 
 static linted_simulator_port linted_simulator_port_from_fildes(int fildes) {
     return (linted_simulator_port) { .x = (linted_actor_port) { .x = fildes } };
 }
 
-static int simulator_main(char const * const simulator_string,
-                          char const * const gui_string) {
-    int const simulator_fifo = atoi(simulator_string);
-    int const gui_fifo = atoi(gui_string);
-
+int linted_simulator_run(int const simulator_fifo, int const gui_fifo) {
     linted_simulator_port const command_port = linted_simulator_port_from_fildes(simulator_fifo);
-    linted_gui_chan const gui = linted_gui_chan_from_fildes(gui_fifo);
+    linted_gui_t const gui = linted_gui_from_fildes(gui_fifo);
 
     uint8_t x_position = 0;
     uint8_t y_position = 0;
