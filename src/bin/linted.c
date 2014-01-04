@@ -155,10 +155,7 @@ static int simulator_main(int argc, char * argv[]) {
     /* Note that in this function no global state must be modified
        until after simulator_main could have executed or Frama C's
        assumptions will break. */
-    switch (argc) {
-    case 4:
-        return linted_simulator_run(atoi(argv[2]), atoi(argv[3]));
-    default:
+    if (argc != 4) {
         fprintf(stderr,
                 PACKAGE_TARNAME
                 " "
@@ -167,6 +164,36 @@ static int simulator_main(int argc, char * argv[]) {
         fputs(SIMULATOR_USAGE_TEXT, stderr);
         return EXIT_FAILURE;
     }
+
+    int const simulator_fifo = atoi(argv[2]);
+    int const gui_fifo = atoi(argv[3]);
+    int const exit_status = linted_simulator_run(simulator_fifo, gui_fifo);
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(gui_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close gui fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(simulator_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close simulator fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
+    return exit_status;
 }
 
 static int gui_main(int argc, char * argv[]) {
@@ -180,5 +207,33 @@ static int gui_main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    return linted_gui_run(atoi(argv[2]), atoi(argv[3]));
+    int const gui_fifo = atoi(argv[2]);
+    int const simulator_fifo = atoi(argv[3]);
+    int const exit_status = linted_gui_run(gui_fifo, simulator_fifo);
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(simulator_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close simulator fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
+    {
+        int error_status;
+        int error_code;
+        do {
+            error_status = close(gui_fifo);
+        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
+        if (-1 == error_status) {
+            LINTED_ERROR("Could not close gui fifo %s\n",
+                         strerror(error_code));
+        }
+    }
+
+    return exit_status;
 }

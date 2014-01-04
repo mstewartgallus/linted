@@ -190,30 +190,6 @@ int linted_gui_run(int const gui_fifo, int const simulator_fifo) {
 
     SDL_Quit();
 
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(simulator_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close simulator fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(gui_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close gui fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
     return EXIT_SUCCESS;
 }
 
