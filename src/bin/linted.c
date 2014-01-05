@@ -15,6 +15,8 @@
  */
 #include "config.h"
 
+#include "linted/linted.h"
+
 #include "linted/gui.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
@@ -23,9 +25,12 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
 
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
@@ -61,24 +66,22 @@
     "\n"\
     "Report bugs to " PACKAGE_BUGREPORT "\n"
 
-static int go(int argc, char * argv[]);
-static int gui_main(int argc, char * argv[]);
-static int simulator_main(int argc, char * argv[]);
+static int go(linted_task_spawner_t spawner, int argc, char * argv[]);
 
-int main(int argc, char * argv[]) {
+int linted_main(linted_task_spawner_t spawner, int argc, char ** argv) {
     int exit_status;
 
 #ifdef HAVE_UID_T
     uid_t const euid = geteuid();
     if (euid != 0) {
-        exit_status = go(argc, argv);
+        exit_status = go(spawner, argc, argv);
     } else {
         fputs("Bad administrator!\n", stderr);
         fputs("It is a violation of proper security policy to run a game as root!\n", stderr);
         exit_status = EXIT_FAILURE;
     }
 #else
-    exit_status = go(argc, argv);
+    exit_status = go(spawner, argc, argv);
 #endif /* HAS_UID_T */
 
     int files_status = 0;
@@ -106,134 +109,23 @@ int main(int argc, char * argv[]) {
     return exit_status;
 }
 
-static int go(int argc, char * argv[]) {
-    /* Note that in this function no global state must be modified
-       until after execute_subcommand could have executed or Frama C's
-       assumptions will break. */
-
-    /* Privileged subcommands */
+static int go(linted_task_spawner_t spawner, int argc, char * argv[]) {
     if (1 == argc) {
-        linted_task_spawner_t const spawner = { ._binary_name = argv[0] };
         return linted_supervisor_run(spawner);
     }
 
-    if (argc >= 2) {
-        char const * const subcommand = argv[1];
-        if (0 == strcmp(subcommand, LINTED_GUI_NAME)) {
-            return gui_main(argc, argv);
-        }
-    }
-
-    /* Unprivileged sub commands */
-    linted_sandbox();
-
-    if (0 == argc) {
-        fprintf(stderr, "Did not receive implicit first argument of the binary name\n");
-        return EXIT_FAILURE;
-    } else {
-        char const * const subcommand = argv[1];
-        if (0 == strcmp(subcommand, LINTED_SIMULATOR_NAME)) {
-            return simulator_main(argc, argv);
-        } else if (0 == strcmp(subcommand, "--help")) {
+    if (2 == argc) {
+        if (0 == strcmp(argv[1], "--help")) {
             fputs(USAGE_TEXT, stdout);
             return EXIT_SUCCESS;
-        } else if (0 == strcmp(subcommand, "--version")) {
+        } else if (0 == strcmp(argv[1], "--version")) {
             fputs(VERSION_TEXT, stdout);
             return EXIT_SUCCESS;
-        } else {
-            fprintf(stderr,
-                    PACKAGE_TARNAME " did not understand the input %s\n"
-                    USAGE_TEXT,
-                    subcommand);
-            return EXIT_FAILURE;
-        }
-    }
-}
-
-
-static int simulator_main(int argc, char * argv[]) {
-    /* Note that in this function no global state must be modified
-       until after simulator_main could have executed or Frama C's
-       assumptions will break. */
-    if (argc != 4) {
-        fprintf(stderr,
-                PACKAGE_TARNAME
-                " "
-                LINTED_SIMULATOR_NAME
-                " did not understand the input\n");
-        fputs(SIMULATOR_USAGE_TEXT, stderr);
-        return EXIT_FAILURE;
-    }
-
-    int const simulator_fifo = atoi(argv[2]);
-    int const gui_fifo = atoi(argv[3]);
-    int const exit_status = linted_simulator_run(simulator_fifo, gui_fifo);
-
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(gui_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close gui fifo %s\n",
-                         strerror(error_code));
         }
     }
 
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(simulator_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close simulator fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
-    return exit_status;
-}
-
-static int gui_main(int argc, char * argv[]) {
-    if (argc != 4) {
-        fprintf(stderr,
-                PACKAGE_TARNAME
-                " "
-                LINTED_GUI_NAME
-                " did not understand the input\n");
-        fputs(GUI_USAGE_TEXT, stderr);
-        return EXIT_FAILURE;
-    }
-
-    int const gui_fifo = atoi(argv[2]);
-    int const simulator_fifo = atoi(argv[3]);
-    int const exit_status = linted_gui_run(gui_fifo, simulator_fifo);
-
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(simulator_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close simulator fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
-    {
-        int error_status;
-        int error_code;
-        do {
-            error_status = close(gui_fifo);
-        } while (-1 == error_status && (error_code = errno, error_code != EINTR));
-        if (-1 == error_status) {
-            LINTED_ERROR("Could not close gui fifo %s\n",
-                         strerror(error_code));
-        }
-    }
-
-    return exit_status;
+    fprintf(stderr,
+            PACKAGE_TARNAME " did not understand the command line input\n"
+            USAGE_TEXT);
+    return EXIT_FAILURE;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,30 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_GUI_H
-#define LINTED_GUI_H
+#ifndef LINTED_LINTED_H
+#define LINTED_LINTED_H
 
 #include "linted/task.h"
 
-#include <stdint.h>
+int linted_main(linted_task_spawner_t spawner, int argc, char **argv);
 
-typedef struct _linted_gui {
-    linted_task_t _task;
-    int _inbox;
-} linted_gui_t;
-
-enum linted_gui_event_type {
-    CLOSE_REQUEST_EVENT
-};
-struct linted_gui_event {
-    enum linted_gui_event_type type;
-};
-
-int linted_gui_spawn(linted_gui_t * gui,
-                     linted_task_spawner_t spawner);
-
-int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);
-
-int linted_gui_close(linted_gui_t gui);
-
-#endif /* LINTED_GUI_H */
+#endif /* LINTED_LINTED_H */

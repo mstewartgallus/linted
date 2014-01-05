@@ -21,7 +21,7 @@ bin_PROGRAMS=linted
 
 linted_SOURCES=\
   src/bin/linted.c\
-  src/bin/gui/main.c\
+  src/bin/gui.c\
   src/bin/sandbox.c\
   src/bin/supervisor.c\
   src/bin/task.c\
@@ -31,8 +31,7 @@ verified_sources=\
   src/bin/actor.c\
   src/bin/util.c\
   src/bin/simulator.c\
-  src/bin/sprintf.c\
-  src/bin/gui/control.c
+  src/bin/sprintf.c
 
 linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
@@ -56,15 +55,17 @@ src/bin/linted.o: config.h\
   src/linted/util.h
 
 src/bin/simulator.o: config.h\
-  src/linted/gui.h src/linted/actor.h\
-  src/linted/sprintf.h src/linted/util.h
+  src/linted/sprintf.h\
+  src/linted/simulator.h\
+  src/linted/task.h\
+  src/linted/util.h
 
-src/bin/gui/main.o: config.h\
-  src/linted/gui.h src/linted/actor.h\
-  src/linted/sprintf.h src/linted/base/util.h
+src/bin/gui.o: config.h\
+  src/linted/gui.h\
+  src/linted/sprintf.h\
+  src/linted/base/util.h
 
 src/bin/actor.o: config.h src/linted/actor.h
-src/bin/gui/control.o: config.h src/linted/gui.h src/linted/actor.h
 src/bin/sandbox.o: config.h src/linted/sandbox.h
 src/bin/sprintf.o: config.h src/linted/util.h src/linted/sprintf.h
 src/bin/supervisor.o: config.h src/linted/supervisor.h

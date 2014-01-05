@@ -18,26 +18,31 @@
 
 #include <sys/types.h>
 
+typedef struct _linted_task {
+    pid_t _pid;
+} linted_task_t;
+
 typedef struct _linted_task_spawner {
-    char * _binary_name;
+    int _request_writer;
 } linted_task_spawner_t;
 
-typedef struct _linted_task {
-    pid_t _process_id;
-} linted_task_t;
+typedef int (*linted_task_func_t)(linted_task_spawner_t spawner, int inbox);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
- * address space.
+ * address space. Returns -1 on error and a value in errno.
  *
  * @param task The output task info (on success).
- * @param binary_name The value of argv[0].
- * @param subcommand The subcommand to execute.
- * @param fildes The file descriptors to pass to the subcommand and
- *               leave open (they are duplicated into the process see
- *               dup).
+ * @param spawner The spawner.
+ * @param func The function to execute.
+ * @param inbox A file descriptor to pass to the spawned task.
  */
 int linted_task_spawn(linted_task_t * task, linted_task_spawner_t spawner,
-                      char const * subcommand, int const fildes[]);
+                      linted_task_func_t func, int inbox);
+
+/**
+ * Closes a spawner. Returns -1 on error and the error in errno.
+ */
+int linted_task_spawner_close(linted_task_spawner_t spawner);
 
 #endif /* LINTED_TASK_H */

@@ -21,88 +21,59 @@
 #include "linted/supervisor.h"
 #include "linted/util.h"
 
+#include "SDL.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
+
 
 int linted_supervisor_run(linted_task_spawner_t spawner) {
-    int simulator_fds[2];
-    if (-1 == pipe2(simulator_fds, O_CLOEXEC)) {
-        LINTED_ERROR("Could not make simulator pipe because of error: %s\n",
-                     strerror(errno));
+    linted_gui_t gui;
+    int const gui_status = linted_gui_spawn(&gui, spawner);
+    if (-1 == gui_status) {
+        LINTED_ERROR("Could not spawn gui: %s\n", strerror(errno));
     }
 
-    int gui_fds[2];
-    if (-1 == pipe2(gui_fds, O_CLOEXEC)) {
-        LINTED_ERROR("Could not make gui pipe because of error: %s\n",
-                     strerror(errno));
+    linted_simulator_t simulator;
+    int const simulator_status = linted_simulator_spawn(&simulator, spawner);
+    if (-1 == simulator_status) {
+        LINTED_ERROR("Could not spawn simulator: %s\n", strerror(errno));
     }
 
-    int const simulator_reader = simulator_fds[0];
-    int const simulator_writer = simulator_fds[1];
+    Uint32 next_tick = SDL_GetTicks();
+    for (;;) {
+        Uint32 const now = SDL_GetTicks();
+        if (now >= next_tick) {
+            next_tick += 1000 / 60;
 
-    int const gui_reader = gui_fds[0];
-    int const gui_writer = gui_fds[1];
+            struct linted_simulator_tick_results tick_results;
+            int const tick_status = linted_simulator_send_tick(&tick_results,
+                                                               simulator);
+            if (-1 == tick_status) {
+                LINTED_ERROR("Could not send tick message to simulator: %s\n",
+                             strerror(errno));
+            }
 
-    linted_task_t simulator_task;
-    int process_status;
-    process_status = linted_task_spawn(&simulator_task, spawner,
-                                       LINTED_SIMULATOR_NAME,
-                                       (int[]) { simulator_reader, gui_writer, -1 });
-    if (-1 == process_status) {
-        LINTED_ERROR("Could not spawn simulator process: %s\n",
-                     strerror(errno));
-    }
-
-    linted_task_t gui_task;
-    process_status = linted_task_spawn(&gui_task, spawner, LINTED_GUI_NAME,
-                                       (int[]) { gui_reader, simulator_writer, -1 });
-    if (-1 == process_status) {
-        LINTED_ERROR("Could not spawn gui process: %s\n",
-                     strerror(errno));
-    }
-
-    {
-        int const fds[] = {
-            simulator_writer, simulator_reader,
-            gui_writer, gui_reader
-        };
-
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(fds); ++ii) {
-            int const fd = fds[ii];
-            int const error_status = close(fd);
-            int error_code;
-            if (-1 == error_status && (error_code = errno, error_code != EINTR)) {
-                LINTED_ERROR("Could not close pipe file descriptors because of error: %s\n",
-                             strerror(error_code));
+            int const update_status = linted_gui_send_update(gui,
+                                                             tick_results.x_position,
+                                                             tick_results.y_position);
+            if (-1 == update_status) {
+                LINTED_ERROR("Could not send update message to gui: %s\n",
+                             strerror(errno));
             }
         }
     }
 
-    linted_sandbox();
+    int const simulator_close_status = linted_simulator_close(simulator);
+    if (-1 == simulator_close_status) {
+        LINTED_ERROR("Could not close simulator handle: %s\n", strerror(errno));
+    }
 
-    for (size_t ii = 0; ii < 2; ++ii) {
-        int wait_status;
-        pid_t exited_process;
-        int exit_code;
-        do {
-            exited_process = wait(&wait_status);
-        } while (-1 == exited_process && (exit_code = errno, exit_code != EINTR));
-        if (-1 == exited_process) {
-            LINTED_ERROR("Could not wait for a process to exit: %s\n",
-                         strerror(errno));
-        }
-
-        if (WIFEXITED(wait_status)) {
-            int const exit_status = WEXITSTATUS(wait_status);
-            if (exit_status != EXIT_SUCCESS) {
-                return exit_status;
-            }
-        } else {
-            return EXIT_FAILURE;
-        }
+    int const gui_close_status = linted_gui_close(gui);
+    if (-1 == gui_close_status) {
+        LINTED_ERROR("Could not close gui handle: %s\n", strerror(errno));
     }
 
     return EXIT_SUCCESS;

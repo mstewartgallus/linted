@@ -16,19 +16,24 @@
 #ifndef LINTED_SIMULATOR_H
 #define LINTED_SIMULATOR_H
 
-#include "linted/actor.h"
+#include "linted/task.h"
 
-#define LINTED_SIMULATOR_NAME "simulator"
+#include <stdint.h>
 
-int linted_simulator_run(int simulator_fifo, int gui_fifo);
+struct linted_simulator_tick_results {
+    uint8_t x_position;
+    uint8_t y_position;
+};
 
-typedef struct _linted_simulator { linted_actor_chan _x; } linted_simulator_t;
+typedef struct _linted_simulator {
+    linted_task_t _task;
+    int _inbox;
+} linted_simulator_t;
 
-linted_simulator_t linted_simulator_from_fildes(int fildes);
-
-void linted_simulator_send_close_request(linted_simulator_t sim);
-void linted_simulator_send_tick_request(linted_simulator_t sim);
-void linted_simulator_send_gui_closed(linted_simulator_t sim);
-
+int linted_simulator_spawn(linted_simulator_t * simulator,
+                           linted_task_spawner_t spawner);
+int linted_simulator_send_tick(struct linted_simulator_tick_results * tick_results,
+                               linted_simulator_t simulator);
+int linted_simulator_close(linted_simulator_t simulator);
 
 #endif /* LINTED_SIMULATOR_H */
