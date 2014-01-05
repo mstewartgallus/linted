@@ -239,10 +239,12 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 					.tick_results =
 					    (struct
 					     linted_simulator_tick_results){
-									    .x_position
+									    .
+									    x_position
 									    =
 									    x_position,
-									    .y_position
+									    .
+									    y_position
 									    =
 									    y_position}
 				};

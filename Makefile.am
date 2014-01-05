@@ -36,10 +36,11 @@ linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
-  src/linted/sprintf.h\
+  src/linted/linted.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
+  src/linted/sprintf.h\
   src/linted/supervisor.h\
   src/linted/task.h\
   src/linted/util.h

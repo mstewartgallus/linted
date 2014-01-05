@@ -20,4 +20,4 @@
 
 int linted_main(linted_task_spawner_t spawner, int argc, char **argv);
 
-#endif /* LINTED_LINTED_H */
+#endif				/* LINTED_LINTED_H */

@@ -63,8 +63,10 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 		}
 
 		int const update_status = linted_gui_send_update(gui,
-								 tick_results.x_position,
-								 tick_results.y_position);
+								 tick_results.
+								 x_position,
+								 tick_results.
+								 y_position);
 		if (-1 == update_status) {
 			LINTED_ERROR
 			    ("Could not send update message to gui: %s\n",
