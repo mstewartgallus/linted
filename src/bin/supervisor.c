@@ -30,6 +30,8 @@
 #include <string.h>
 #include <time.h>
 
+#define SIMULATOR_CLOCK CLOCK_MONOTONIC
+
 static void run_tick(linted_gui_t gui, linted_simulator_t simulator,
 		     struct timespec *next_tick);
 
@@ -48,7 +50,7 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 	}
 
 	struct timespec next_tick;
-	int const time_status = clock_gettime(CLOCK_MONOTONIC, &next_tick);
+	int const time_status = clock_gettime(SIMULATOR_CLOCK, &next_tick);
 	if (-1 == time_status) {
 		LINTED_ERROR("Could not get clock time: %s\n", strerror(errno));
 	}
@@ -93,7 +95,7 @@ static void run_tick(linted_gui_t const gui, linted_simulator_t const simulator,
 
 	int sleep_status;
 	do {
-		sleep_status = clock_nanosleep(CLOCK_MONOTONIC,
+		sleep_status = clock_nanosleep(SIMULATOR_CLOCK,
 					       TIMER_ABSTIME, next_tick, NULL);
 	} while (-1 == sleep_status && EINTR == errno);
 	if (-1 == sleep_status) {
