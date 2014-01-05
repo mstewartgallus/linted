@@ -15,7 +15,6 @@
  */
 #include "config.h"
 
-#include "linted/actor.h"
 #include "linted/gui.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
