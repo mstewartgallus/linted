@@ -198,7 +198,8 @@ static int fork_server_run(linted_task_spawner_t const spawner,
     memset(&action, 0, sizeof action);
     action.sa_handler = SIG_IGN;
 
-    int const sig_status = sigaction(SIGCHLD, &action, NULL);
+    struct sigaction old_action;
+    int const sig_status = sigaction(SIGCHLD, &action, &old_action);
     if (-1 == sig_status) {
         LINTED_ERROR("Could not ignore child processes: %s\n",
                      strerror(errno));
@@ -251,6 +252,14 @@ static int fork_server_run(linted_task_spawner_t const spawner,
 
         pid_t const child_pid = fork();
         if (0 == child_pid) {
+            /* Restore the old signal behaviour */
+            int const retry_sig_status = sigaction(SIGCHLD,
+                                                   &old_action, &action);
+            if (-1 == retry_sig_status) {
+                LINTED_ERROR("Could not restore child signal behaviour: %s\n",
+                             strerror(errno));
+            }
+
             int const reply_close_status = close(reply_writer);
             if (-1 == reply_close_status) {
                 LINTED_ERROR("Forked child could not close reply file descriptor: %s\n",
