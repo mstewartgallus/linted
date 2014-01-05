@@ -28,6 +28,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 
 int linted_supervisor_run(linted_task_spawner_t spawner) {
@@ -43,7 +44,11 @@ int linted_supervisor_run(linted_task_spawner_t spawner) {
         LINTED_ERROR("Could not spawn simulator: %s\n", strerror(errno));
     }
 
-    Uint32 next_tick = SDL_GetTicks();
+    struct timespec next_tick;
+    int const time_status = clock_gettime(CLOCK_MONOTONIC, &next_tick);
+    if (-1 == time_status) {
+        LINTED_ERROR("Could not get clock time: %s\n", strerror(errno));
+    }
     for (;;) {
         struct linted_simulator_tick_results tick_results;
         int const tick_status = linted_simulator_send_tick(&tick_results,
@@ -61,15 +66,18 @@ int linted_supervisor_run(linted_task_spawner_t spawner) {
                          strerror(errno));
         }
 
-        next_tick += 1000 / 60;
+        /* TODO: Handle overflow */
+        next_tick.tv_nsec += (1000L * 1000) / 60;
 
-        Uint32 const now = SDL_GetTicks();
-        if (next_tick > now) {
-            Uint32 const delta = next_tick - now;
-            int poll_status = poll(NULL, 0, delta);
-            if (-1 == poll_status) {
-                LINTED_ERROR("Could not poll for timeout: %s\n", strerror(errno));
-            }
+        int sleep_status;
+        do {
+            sleep_status = clock_nanosleep(CLOCK_MONOTONIC,
+                                           TIMER_ABSTIME,
+                                           &next_tick,
+                                           NULL);
+        } while (-1 == sleep_status && EINTR == errno);
+        if (-1 == sleep_status) {
+            LINTED_ERROR("Could not sleep for timeout: %s\n", strerror(errno));
         }
     }
 
