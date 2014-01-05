@@ -253,9 +253,8 @@ setup_window:;
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, width, height);
 
+    bool should_resize = false;
     for (;;) {
-        bool should_resize = false;
-
         /* Handle SDL events first before rendering */
         SDL_Event sdl_event;
         bool const had_sdl_event = SDL_PollEvent(&sdl_event);
