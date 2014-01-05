@@ -25,14 +25,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+void linted_sprintf(char *str, const char *format_string, ...)
+{
+	va_list arguments;
+	va_start(arguments, format_string);
 
-void linted_sprintf(char * str, const char * format_string, ...) {
-    va_list arguments;
-    va_start(arguments, format_string);
+	if (vsprintf(str, format_string, arguments) < 0) {
+		LINTED_ERROR("Could write format string %s\n", format_string);
+	}
 
-    if (vsprintf(str, format_string, arguments) < 0) {
-        LINTED_ERROR("Could write format string %s\n", format_string);
-    }
-
-    va_end(arguments);
+	va_end(arguments);
 }

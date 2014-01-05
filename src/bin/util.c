@@ -25,17 +25,17 @@
 #include <string.h>
 #include <unistd.h>
 
-void linted_error(const char * file,
-                  const char * function,
-                  unsigned line,
-                  const char * format_string, ...) {
-    va_list arguments;
-    va_start(arguments, format_string);
+void linted_error(const char *file,
+		  const char *function,
+		  unsigned line, const char *format_string, ...)
+{
+	va_list arguments;
+	va_start(arguments, format_string);
 
-    fprintf(stderr,
-            "Error in file %s, function %s, and line %d:\n",
-            file, function, line);
-    vfprintf(stderr, format_string, arguments);
+	fprintf(stderr,
+		"Error in file %s, function %s, and line %d:\n",
+		file, function, line);
+	vfprintf(stderr, format_string, arguments);
 
-    exit(1);
+	exit(1);
 }

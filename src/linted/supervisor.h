@@ -20,4 +20,4 @@
 
 int linted_supervisor_run(linted_task_spawner_t spawner);
 
-#endif /* LINTED_SUPERVISOR_H */
+#endif				/* LINTED_SUPERVISOR_H */

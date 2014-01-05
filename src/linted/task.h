@@ -19,14 +19,14 @@
 #include <sys/types.h>
 
 typedef struct _linted_task {
-    pid_t _pid;
+	pid_t _pid;
 } linted_task_t;
 
 typedef struct _linted_task_spawner {
-    int _request_writer;
+	int _request_writer;
 } linted_task_spawner_t;
 
-typedef int (*linted_task_func_t)(linted_task_spawner_t spawner, int inbox);
+typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int inbox);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
@@ -38,11 +38,11 @@ typedef int (*linted_task_func_t)(linted_task_spawner_t spawner, int inbox);
  * @param inbox A file descriptor to pass to the spawned task.
  */
 int linted_task_spawn(linted_task_t * task, linted_task_spawner_t spawner,
-                      linted_task_func_t func, int inbox);
+		      linted_task_func_t func, int inbox);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.
  */
 int linted_task_spawner_close(linted_task_spawner_t spawner);
 
-#endif /* LINTED_TASK_H */
+#endif				/* LINTED_TASK_H */

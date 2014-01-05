@@ -31,7 +31,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
     "Play the " PACKAGE_NAME " game\n"\
@@ -66,66 +65,70 @@
     "\n"\
     "Report bugs to " PACKAGE_BUGREPORT "\n"
 
-static int go(linted_task_spawner_t spawner, int argc, char * argv[]);
+static int go(linted_task_spawner_t spawner, int argc, char *argv[]);
 
-int linted_main(linted_task_spawner_t spawner, int argc, char ** argv) {
-    int exit_status;
+int linted_main(linted_task_spawner_t spawner, int argc, char **argv)
+{
+	int exit_status;
 
 #ifdef HAVE_UID_T
-    uid_t const euid = geteuid();
-    if (euid != 0) {
-        exit_status = go(spawner, argc, argv);
-    } else {
-        fputs("Bad administrator!\n", stderr);
-        fputs("It is a violation of proper security policy to run a game as root!\n", stderr);
-        exit_status = EXIT_FAILURE;
-    }
+	uid_t const euid = geteuid();
+	if (euid != 0) {
+		exit_status = go(spawner, argc, argv);
+	} else {
+		fputs("Bad administrator!\n", stderr);
+		fputs
+		    ("It is a violation of proper security policy to run a game as root!\n",
+		     stderr);
+		exit_status = EXIT_FAILURE;
+	}
 #else
-    exit_status = go(spawner, argc, argv);
-#endif /* HAS_UID_T */
+	exit_status = go(spawner, argc, argv);
+#endif				/* HAS_UID_T */
 
-    int files_status = 0;
-    if (EOF == fclose(stdin)) {
-        files_status = -1;
-        fprintf(stderr, "Could not close standard input: %s\n",
-                strerror(errno));
-    }
+	int files_status = 0;
+	if (EOF == fclose(stdin)) {
+		files_status = -1;
+		fprintf(stderr, "Could not close standard input: %s\n",
+			strerror(errno));
+	}
 
-    if (EOF == fclose(stdout)) {
-        files_status = -1;
-        fprintf(stderr, "Could not close standard output: %s\n",
-                strerror(errno));
-    }
+	if (EOF == fclose(stdout)) {
+		files_status = -1;
+		fprintf(stderr, "Could not close standard output: %s\n",
+			strerror(errno));
+	}
 
-    if (EOF == fclose(stderr)) {
-        /* No error message. An error code is all we can do. */
-        files_status = -1;
-    }
+	if (EOF == fclose(stderr)) {
+		/* No error message. An error code is all we can do. */
+		files_status = -1;
+	}
 
-    if (-1 == files_status && EXIT_SUCCESS == exit_status) {
-        return EXIT_FAILURE;
-    }
+	if (-1 == files_status && EXIT_SUCCESS == exit_status) {
+		return EXIT_FAILURE;
+	}
 
-    return exit_status;
+	return exit_status;
 }
 
-static int go(linted_task_spawner_t spawner, int argc, char * argv[]) {
-    if (1 == argc) {
-        return linted_supervisor_run(spawner);
-    }
+static int go(linted_task_spawner_t spawner, int argc, char *argv[])
+{
+	if (1 == argc) {
+		return linted_supervisor_run(spawner);
+	}
 
-    if (2 == argc) {
-        if (0 == strcmp(argv[1], "--help")) {
-            fputs(USAGE_TEXT, stdout);
-            return EXIT_SUCCESS;
-        } else if (0 == strcmp(argv[1], "--version")) {
-            fputs(VERSION_TEXT, stdout);
-            return EXIT_SUCCESS;
-        }
-    }
+	if (2 == argc) {
+		if (0 == strcmp(argv[1], "--help")) {
+			fputs(USAGE_TEXT, stdout);
+			return EXIT_SUCCESS;
+		} else if (0 == strcmp(argv[1], "--version")) {
+			fputs(VERSION_TEXT, stdout);
+			return EXIT_SUCCESS;
+		}
+	}
 
-    fprintf(stderr,
-            PACKAGE_TARNAME " did not understand the command line input\n"
-            USAGE_TEXT);
-    return EXIT_FAILURE;
+	fprintf(stderr,
+		PACKAGE_TARNAME " did not understand the command line input\n"
+		USAGE_TEXT);
+	return EXIT_FAILURE;
 }

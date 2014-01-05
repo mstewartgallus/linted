@@ -36,7 +36,7 @@ linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
-  src/linted/base/stdio.h\
+  src/linted/sprintf.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
@@ -70,28 +70,32 @@ src/bin/task.o: config.h src/linted/task.h
 src/bin/util.o: config.h src/linted/util.h
 
 .PHONY:\
-  frama-c-pdg frama-c-gui frama-c-check\
-  cppcheck\
-  clang-analyzer\
-  cbmc-check
+  check-frama-c-pdg check-frama-c-gui check-frama-c\
+  check-cppcheck\
+  check-clang-analyzer\
+  check-cbmc\
+  indent
 
-frama-c-pdg: $(verified_sources)
+indent: $(linted_SOURCES) $(EXTRA_DIST)
+	$(INDENT) $(linted_INDENTFLAGS) $^
+
+check-frama-c-pdg: $(verified_sources)
 	$(MKDIR_P) pdg
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -pdg -pdg-dot pdg/main $(FRAMAFLAGS) $^
 
-frama-c-gui: $(verified_sources)
+check-frama-c-gui: $(verified_sources)
 	$(FRAMA_C_GUI) $(linted_FRAMAFLAGS) $(FRAMAFLAGS) $^
 
-frama-c-check: $(verified_sources)
+check-frama-c: $(verified_sources)
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
 
-cbmc-check: $(linted_SOURCES)
+check-cbmc: $(linted_SOURCES)
 	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 
-cppcheck:
+check-cppcheck:
 	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
 
-clang-analyzer: $(linted_SOURCES)
+check-clang-analyzer: $(linted_SOURCES)
 	$(CLANG) --analyze $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 	- rm *.plist
 
@@ -114,6 +118,8 @@ AM_CFLAGS +=-save-temps=obj
 endif
 
 AM_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN)
+
+linted_INDENTFLAGS=--linux-style
 
 linted_FRAMAFLAGS=\
   -quiet\
@@ -139,8 +145,8 @@ linted_CBMCFLAGS=\
 
 linted_CHECK_PHASES=
 if HAS_CPPCHECK
-linted_CHECK_PHASES +=cppcheck
+linted_CHECK_PHASES +=check-cppcheck
 endif
 if HAS_CLANG
-linted_CHECK_PHASES +=clang-analyzer
+linted_CHECK_PHASES +=check-clang-analyzer
 endif

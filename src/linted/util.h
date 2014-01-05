@@ -25,9 +25,8 @@
 #define LINTED_ERROR(...)                                       \
     linted_error(__FILE__, __func__, __LINE__,  __VA_ARGS__)
 
-void linted_error(const char * file,
-                  const char * function,
-                  unsigned line,
-                  const char * format_string, ...);
+void linted_error(const char *file,
+		  const char *function,
+		  unsigned line, const char *format_string, ...);
 
-#endif /* LINTED_UTIL_H */
+#endif				/* LINTED_UTIL_H */

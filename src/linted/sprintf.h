@@ -16,6 +16,6 @@
 #ifndef LINTED_SPRINTF_H
 #define LINTED_SPRINTF_H
 
-void linted_sprintf(char *str, char const * format, ...);
+void linted_sprintf(char *str, char const *format, ...);
 
-#endif /* LINTED_SPRINTF_H */
+#endif				/* LINTED_SPRINTF_H */
