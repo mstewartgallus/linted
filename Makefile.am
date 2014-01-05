@@ -120,7 +120,9 @@ endif
 
 AM_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN)
 
-linted_INDENTFLAGS=--linux-style
+linted_INDENTFLAGS=\
+  --linux-style\
+  --line-length90
 
 linted_FRAMAFLAGS=\
   -quiet\

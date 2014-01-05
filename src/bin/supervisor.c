@@ -30,6 +30,9 @@
 #include <string.h>
 #include <time.h>
 
+static void run_tick(linted_gui_t gui, linted_simulator_t simulator,
+		     struct timespec *next_tick);
+
 int linted_supervisor_run(linted_task_spawner_t spawner)
 {
 	linted_gui_t gui;
@@ -39,11 +42,9 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 	}
 
 	linted_simulator_t simulator;
-	int const simulator_status =
-	    linted_simulator_spawn(&simulator, spawner);
+	int const simulator_status = linted_simulator_spawn(&simulator, spawner);
 	if (-1 == simulator_status) {
-		LINTED_ERROR("Could not spawn simulator: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not spawn simulator: %s\n", strerror(errno));
 	}
 
 	struct timespec next_tick;
@@ -52,53 +53,50 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 		LINTED_ERROR("Could not get clock time: %s\n", strerror(errno));
 	}
 	for (;;) {
-		struct linted_simulator_tick_results tick_results;
-		int const tick_status =
-		    linted_simulator_send_tick(&tick_results,
-					       simulator);
-		if (-1 == tick_status) {
-			LINTED_ERROR
-			    ("Could not send tick message to simulator: %s\n",
-			     strerror(errno));
-		}
-
-		int const update_status = linted_gui_send_update(gui,
-								 tick_results.
-								 x_position,
-								 tick_results.
-								 y_position);
-		if (-1 == update_status) {
-			LINTED_ERROR
-			    ("Could not send update message to gui: %s\n",
-			     strerror(errno));
-		}
-
-		/* TODO: Handle overflow */
-		next_tick.tv_nsec += (1000L * 1000) / 60;
-
-		int sleep_status;
-		do {
-			sleep_status = clock_nanosleep(CLOCK_MONOTONIC,
-						       TIMER_ABSTIME,
-						       &next_tick, NULL);
-		} while (-1 == sleep_status && EINTR == errno);
-		if (-1 == sleep_status) {
-			LINTED_ERROR("Could not sleep for timeout: %s\n",
-				     strerror(errno));
-		}
+		run_tick(gui, simulator, &next_tick);
 	}
 
 	int const simulator_close_status = linted_simulator_close(simulator);
 	if (-1 == simulator_close_status) {
-		LINTED_ERROR("Could not close simulator handle: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not close simulator handle: %s\n", strerror(errno));
 	}
 
 	int const gui_close_status = linted_gui_close(gui);
 	if (-1 == gui_close_status) {
-		LINTED_ERROR("Could not close gui handle: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not close gui handle: %s\n", strerror(errno));
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static void run_tick(linted_gui_t const gui, linted_simulator_t const simulator,
+		     struct timespec *const next_tick)
+{
+	struct linted_simulator_tick_results tick_results;
+	int const tick_status = linted_simulator_send_tick(&tick_results,
+							   simulator);
+	if (-1 == tick_status) {
+		LINTED_ERROR("Could not send tick message to simulator: %s\n",
+			     strerror(errno));
+	}
+
+	int const update_status = linted_gui_send_update(gui,
+							 tick_results.x_position,
+							 tick_results.y_position);
+	if (-1 == update_status) {
+		LINTED_ERROR
+		    ("Could not send update message to gui: %s\n", strerror(errno));
+	}
+
+	/* TODO: Handle overflow */
+	next_tick->tv_nsec += (1000L * 1000) / 60;
+
+	int sleep_status;
+	do {
+		sleep_status = clock_nanosleep(CLOCK_MONOTONIC,
+					       TIMER_ABSTIME, next_tick, NULL);
+	} while (-1 == sleep_status && EINTR == errno);
+	if (-1 == sleep_status) {
+		LINTED_ERROR("Could not sleep for timeout: %s\n", strerror(errno));
+	}
 }

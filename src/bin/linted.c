@@ -89,14 +89,12 @@ int linted_main(linted_task_spawner_t spawner, int argc, char **argv)
 	int files_status = 0;
 	if (EOF == fclose(stdin)) {
 		files_status = -1;
-		fprintf(stderr, "Could not close standard input: %s\n",
-			strerror(errno));
+		fprintf(stderr, "Could not close standard input: %s\n", strerror(errno));
 	}
 
 	if (EOF == fclose(stdout)) {
 		files_status = -1;
-		fprintf(stderr, "Could not close standard output: %s\n",
-			strerror(errno));
+		fprintf(stderr, "Could not close standard output: %s\n", strerror(errno));
 	}
 
 	if (EOF == fclose(stderr)) {

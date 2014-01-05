@@ -73,8 +73,7 @@ static struct attribute_value_pair const attribute_values[] = {
 
 static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
-int linted_gui_spawn(linted_gui_t * const gui,
-		     linted_task_spawner_t const spawner)
+int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
 	int exit_status = 0;
 
@@ -111,8 +110,7 @@ int linted_gui_spawn(linted_gui_t * const gui,
 	return exit_status;
 }
 
-int linted_gui_send_update(linted_gui_t const gui,
-			   uint8_t const x, uint8_t const y)
+int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
 	int error_status = -1;
 
@@ -149,14 +147,12 @@ int linted_gui_send_update(linted_gui_t const gui,
 		message.msg_control = control_message;
 		message.msg_controllen = sizeof control_message;
 
-		struct cmsghdr *const control_message_header =
-		    CMSG_FIRSTHDR(&message);
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
 		control_message_header->cmsg_level = SOL_SOCKET;
 		control_message_header->cmsg_type = SCM_RIGHTS;
 		control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
 
-		void *const control_message_data =
-		    CMSG_DATA(control_message_header);
+		void *const control_message_data = CMSG_DATA(control_message_header);
 		memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
 
 		ssize_t bytes_written;
@@ -175,8 +171,7 @@ int linted_gui_send_update(linted_gui_t const gui,
 			ssize_t bytes_read;
 			do {
 				bytes_read = read(reply_reader,
-						  &reply_data,
-						  sizeof reply_data);
+						  &reply_data, sizeof reply_data);
 			} while (-1 == bytes_read && errno == EINTR);
 			if (-1 == bytes_read) {
 				error_status = -1;
@@ -211,11 +206,9 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 	}
 
 	int const sdl_init_status =
-	    SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO |
-		     SDL_INIT_NOPARACHUTE);
+	    SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
 	if (-1 == sdl_init_status) {
-		LINTED_ERROR("Could not initialize the GUI: %s\n",
-			     SDL_GetError());
+		LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
 	}
 
 	SDL_WM_SetCaption(PACKAGE_NAME, NULL);
@@ -234,9 +227,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
 	/* Initialize SDL */
 	{
-		SDL_Surface *const video_surface =
-		    SDL_SetVideoMode(width, height, 0,
-				     sdl_flags);
+		SDL_Surface *const video_surface = SDL_SetVideoMode(width, height, 0,
+								    sdl_flags);
 		if (NULL == video_surface) {
 			LINTED_ERROR("Could not set the video mode: %s\n",
 				     SDL_GetError());
@@ -254,8 +246,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 	SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
 							    0, sdl_flags);
 	if (NULL == video_surface) {
-		LINTED_ERROR("Could not set the video mode: %s\n",
-			     SDL_GetError());
+		LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
 	}
 
 	glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
@@ -336,10 +327,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			do {
 				bytes_read = recvmsg(inbox,
 						     &message,
-						     MSG_CMSG_CLOEXEC |
-						     MSG_WAITALL);
-			} while (bytes_read != sizeof request_data
-				 && errno == EINTR);
+						     MSG_CMSG_CLOEXEC | MSG_WAITALL);
+			} while (bytes_read != sizeof request_data && errno == EINTR);
 			if (-1 == bytes_read) {
 				LINTED_ERROR
 				    ("Could not read simulator inbox: %s\n",
@@ -356,17 +345,14 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			void *const control_message_data =
 			    CMSG_DATA(control_message_header);
 
-			memcpy(sent_fildes, control_message_data,
-			       sizeof sent_fildes);
+			memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
 			int const reply_writer = sent_fildes[0];
 
 			switch (request_data.type) {
 			case GUI_UPDATE:{
-					x = ((float)request_data.x_position) /
-					    255;
-					y = ((float)request_data.y_position) /
-					    255;
+					x = ((float)request_data.x_position) / 255;
+					y = ((float)request_data.y_position) / 255;
 					struct reply_data const reply_data = {
 						.dummy = 0
 					};
@@ -374,10 +360,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 					do {
 						bytes_written =
 						    write(reply_writer,
-							  &reply_data,
-							  sizeof reply_data);
-					} while (-1 == bytes_written
-						 && errno == EINTR);
+							  &reply_data, sizeof reply_data);
+					} while (-1 == bytes_written && errno == EINTR);
 					if (-1 == bytes_written) {
 						LINTED_ERROR
 						    ("Could not read from gui inbox: %s\n",
@@ -422,8 +406,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
 	int const inbox_close_status = close(inbox);
 	if (-1 == inbox_close_status) {
-		LINTED_ERROR("Could not close simulator inbox: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not close simulator inbox: %s\n", strerror(errno));
 	}
 
 	return EXIT_SUCCESS;

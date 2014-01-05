@@ -74,11 +74,9 @@ int main(int argc, char **argv)
 	}
 
 	if (-1 == child_pid) {
-		LINTED_ERROR("Could not fork off fork server: %s",
-			     strerror(errno));
+		LINTED_ERROR("Could not fork off fork server: %s", strerror(errno));
 	} else {
-		int const request_close_status =
-		    close(fork_server_request_reader);
+		int const request_close_status = close(fork_server_request_reader);
 		if (-1 == request_close_status) {
 			LINTED_ERROR
 			    ("Could not close fork server request reader end: %s\n",
@@ -139,20 +137,17 @@ int linted_task_spawn(linted_task_t * const task,
 			    CMSG_FIRSTHDR(&message);
 			control_message_header->cmsg_level = SOL_SOCKET;
 			control_message_header->cmsg_type = SCM_RIGHTS;
-			control_message_header->cmsg_len =
-			    CMSG_LEN(sizeof sent_fildes);
+			control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
 
 			void *const control_message_data =
 			    CMSG_DATA(control_message_header);
-			memcpy(control_message_data, sent_fildes,
-			       sizeof sent_fildes);
+			memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
 
 			ssize_t bytes_written;
 			do {
 				bytes_written = sendmsg(spawner._request_writer,
 							&message, 0);
-			} while (bytes_written != sizeof message
-				 && errno == EINTR);
+			} while (bytes_written != sizeof message && errno == EINTR);
 			if (-1 == bytes_written) {
 				goto finish_and_free_reply_fds;
 			}
@@ -166,8 +161,7 @@ int linted_task_spawn(linted_task_t * const task,
 			ssize_t bytes_read;
 			do {
 				bytes_read = read(reply_reader,
-						  &reply_data,
-						  sizeof reply_data);
+						  &reply_data, sizeof reply_data);
 			} while (-1 == bytes_read && errno == EINTR);
 			if (-1 == bytes_read) {
 				error_status = -1;
@@ -196,8 +190,7 @@ int linted_task_spawn(linted_task_t * const task,
 	return error_status;
 }
 
-static int fork_server_run(linted_task_spawner_t const spawner,
-			   int const request_reader)
+static int fork_server_run(linted_task_spawner_t const spawner, int const request_reader)
 {
 	/* Posix requires an exact copy of process memory so passing
 	 * around function pointers through pipes is allowed.
@@ -210,8 +203,7 @@ static int fork_server_run(linted_task_spawner_t const spawner,
 	struct sigaction old_action;
 	int const sig_status = sigaction(SIGCHLD, &action, &old_action);
 	if (-1 == sig_status) {
-		LINTED_ERROR("Could not ignore child processes: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not ignore child processes: %s\n", strerror(errno));
 	}
 
 	for (;;) {
@@ -238,8 +230,7 @@ static int fork_server_run(linted_task_spawner_t const spawner,
 		ssize_t bytes_read;
 		do {
 			bytes_read = recvmsg(request_reader,
-					     &message,
-					     MSG_CMSG_CLOEXEC | MSG_WAITALL);
+					     &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
 		} while (bytes_read != sizeof request_data && errno == EINTR);
 		if (-1 == bytes_read) {
 			LINTED_ERROR
@@ -251,10 +242,8 @@ static int fork_server_run(linted_task_spawner_t const spawner,
 			break;
 		}
 
-		struct cmsghdr *const control_message_header =
-		    CMSG_FIRSTHDR(&message);
-		void *const control_message_data =
-		    CMSG_DATA(control_message_header);
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+		void *const control_message_data = CMSG_DATA(control_message_header);
 
 		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 

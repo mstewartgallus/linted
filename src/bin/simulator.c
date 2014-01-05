@@ -58,10 +58,9 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 		int const simulator_reader = simulator_fds[0];
 		int const simulator_writer = simulator_fds[1];
 
-		int const spawn_status =
-		    linted_task_spawn(&simulator->_task, spawner,
-				      simulator_run,
-				      simulator_reader);
+		int const spawn_status = linted_task_spawn(&simulator->_task, spawner,
+							   simulator_run,
+							   simulator_reader);
 		if (-1 == spawn_status) {
 			close(simulator_writer);
 			goto finish_and_close_reader;
@@ -69,8 +68,7 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 		simulator->_inbox = simulator_writer;
 
  finish_and_close_reader:;
-		int const simulator_reader_close_status =
-		    close(simulator_reader);
+		int const simulator_reader_close_status = close(simulator_reader);
 		if (-1 == simulator_reader_close_status) {
 			goto finish;
 		}
@@ -116,14 +114,12 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 		message.msg_control = control_message;
 		message.msg_controllen = sizeof control_message;
 
-		struct cmsghdr *const control_message_header =
-		    CMSG_FIRSTHDR(&message);
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
 		control_message_header->cmsg_level = SOL_SOCKET;
 		control_message_header->cmsg_type = SCM_RIGHTS;
 		control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
 
-		void *const control_message_data =
-		    CMSG_DATA(control_message_header);
+		void *const control_message_data = CMSG_DATA(control_message_header);
 		memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
 
 		ssize_t bytes_written;
@@ -142,8 +138,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			ssize_t bytes_read;
 			do {
 				bytes_read = read(reply_reader,
-						  &reply_data,
-						  sizeof reply_data);
+						  &reply_data, sizeof reply_data);
 			} while (-1 == bytes_read && errno == EINTR);
 			if (-1 == bytes_read) {
 				error_status = -1;
@@ -206,8 +201,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 		ssize_t bytes_read;
 		do {
 			bytes_read = recvmsg(inbox,
-					     &message,
-					     MSG_CMSG_CLOEXEC | MSG_WAITALL);
+					     &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
 		} while (bytes_read != sizeof message_data && errno == EINTR);
 		if (-1 == bytes_read) {
 			LINTED_ERROR("Could not read simulator inbox: %s\n",
@@ -219,10 +213,8 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 			goto exit;
 		}
 
-		struct cmsghdr *const control_message_header =
-		    CMSG_FIRSTHDR(&message);
-		void *const control_message_data =
-		    CMSG_DATA(control_message_header);
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+		void *const control_message_data = CMSG_DATA(control_message_header);
 
 		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
@@ -237,23 +229,21 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 
 				struct reply_data const reply_data = {
 					.tick_results =
-					    (struct
-					     linted_simulator_tick_results){
-									    .
-									    x_position
-									    =
-									    x_position,
-									    .
-									    y_position
-									    =
-									    y_position}
+					    (struct linted_simulator_tick_results){
+										   .
+										   x_position
+										   =
+										   x_position,
+										   .
+										   y_position
+										   =
+										   y_position}
 				};
 				ssize_t bytes_written;
 				do {
 					bytes_written = write(reply_writer,
 							      &reply_data,
-							      sizeof
-							      reply_data);
+							      sizeof reply_data);
 				} while (-1 == bytes_written && errno == EINTR);
 				if (-1 == bytes_written) {
 					LINTED_ERROR
@@ -276,8 +266,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
  exit:	;
 	int const inbox_close_status = close(inbox);
 	if (-1 == inbox_close_status) {
-		LINTED_ERROR("Could not close simulator inbox: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not close simulator inbox: %s\n", strerror(errno));
 	}
 
 	return EXIT_SUCCESS;

@@ -30,8 +30,7 @@ typedef struct _linted_simulator {
 	int _inbox;
 } linted_simulator_t;
 
-int linted_simulator_spawn(linted_simulator_t * simulator,
-			   linted_task_spawner_t spawner);
+int linted_simulator_spawn(linted_simulator_t * simulator, linted_task_spawner_t spawner);
 int linted_simulator_send_tick(struct linted_simulator_tick_results
 			       *tick_results, linted_simulator_t simulator);
 int linted_simulator_close(linted_simulator_t simulator);
