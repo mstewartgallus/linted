@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,24 +45,30 @@ int linted_supervisor_run(linted_task_spawner_t spawner) {
 
     Uint32 next_tick = SDL_GetTicks();
     for (;;) {
+        struct linted_simulator_tick_results tick_results;
+        int const tick_status = linted_simulator_send_tick(&tick_results,
+                                                           simulator);
+        if (-1 == tick_status) {
+            LINTED_ERROR("Could not send tick message to simulator: %s\n",
+                         strerror(errno));
+        }
+
+        int const update_status = linted_gui_send_update(gui,
+                                                         tick_results.x_position,
+                                                         tick_results.y_position);
+        if (-1 == update_status) {
+            LINTED_ERROR("Could not send update message to gui: %s\n",
+                         strerror(errno));
+        }
+
+        next_tick += 1000 / 60;
+
         Uint32 const now = SDL_GetTicks();
-        if (now >= next_tick) {
-            next_tick += 1000 / 60;
-
-            struct linted_simulator_tick_results tick_results;
-            int const tick_status = linted_simulator_send_tick(&tick_results,
-                                                               simulator);
-            if (-1 == tick_status) {
-                LINTED_ERROR("Could not send tick message to simulator: %s\n",
-                             strerror(errno));
-            }
-
-            int const update_status = linted_gui_send_update(gui,
-                                                             tick_results.x_position,
-                                                             tick_results.y_position);
-            if (-1 == update_status) {
-                LINTED_ERROR("Could not send update message to gui: %s\n",
-                             strerror(errno));
+        if (next_tick > now) {
+            Uint32 const delta = next_tick - now;
+            int poll_status = poll(NULL, 0, delta);
+            if (-1 == poll_status) {
+                LINTED_ERROR("Could not poll for timeout: %s\n", strerror(errno));
             }
         }
     }
