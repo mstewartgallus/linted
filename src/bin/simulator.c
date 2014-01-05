@@ -210,7 +210,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 
 		/* All users have closed off */
 		if (0 == bytes_read) {
-			goto exit;
+			break;
 		}
 
 		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
@@ -219,51 +219,41 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
 		int const reply_writer = sent_fildes[0];
-
+		struct reply_data reply_data;
 		switch (message_data.message_type) {
-		case SIMULATOR_TICK:{
-				x_position = x_position % 255 + 3;
-				y_position = y_position % 255 + 5;
-				//@ assert x_position ≤ 255;
-				//@ assert y_position ≤ 255;
+		case SIMULATOR_TICK:
+			x_position = x_position % 255 + 3;
+			y_position = y_position % 255 + 5;
+			//@ assert x_position ≤ 255;
+			//@ assert y_position ≤ 255;
 
-				struct reply_data const reply_data = {
-					.tick_results =
-					    (struct linted_simulator_tick_results){
-										   .
-										   x_position
-										   =
-										   x_position,
-										   .
-										   y_position
-										   =
-										   y_position}
-				};
-				ssize_t bytes_written;
-				do {
-					bytes_written = write(reply_writer,
-							      &reply_data,
-							      sizeof reply_data);
-				} while (-1 == bytes_written && errno == EINTR);
-				if (-1 == bytes_written) {
-					LINTED_ERROR
-					    ("Could not read from simulator inbox: %s\n",
-					     strerror(errno));
-				}
-				break;
-			}
+			reply_data.tick_results.x_position = x_position;
+			reply_data.tick_results.y_position = y_position;
+			break;
 
 		default:
 			LINTED_ERROR("Received unexpected message type: %d.\n",
 				     message_data.message_type);
 		}
+
+		ssize_t bytes_written;
+		do {
+			bytes_written = write(reply_writer,
+					      &reply_data, sizeof reply_data);
+		} while (-1 == bytes_written && errno == EINTR);
+		if (-1 == bytes_written) {
+			LINTED_ERROR
+			    ("Could not read from simulator inbox: %s\n",
+			     strerror(errno));
+		}
+
 		int const reply_close_status = close(reply_writer);
 		if (-1 == reply_close_status) {
 			LINTED_ERROR("Could not close reply writer: %s\n",
 				     strerror(errno));
 		}
 	}
- exit:	;
+
 	int const inbox_close_status = close(inbox);
 	if (-1 == inbox_close_status) {
 		LINTED_ERROR("Could not close simulator inbox: %s\n", strerror(errno));
