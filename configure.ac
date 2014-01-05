@@ -36,9 +36,10 @@ AC_CHECK_HEADERS([dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
+        sys/socket.h dnl
         sys/time.h dnl
         unistd.h], [], [
-  AC_MSG_ERROR([Unable to find header $ac_header])
+  AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
 AC_CHECK_HEADERS([sys/resource.h])
@@ -77,8 +78,8 @@ AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
  AC_MSG_ERROR([Unable to find function fork])
 ])
-AC_CHECK_FUNCS([strerror], [], [
- AC_MSG_ERROR([Unable to find function strerror])
+AC_CHECK_FUNCS([strerror memset], [], [
+ AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_C99_STD],[
