@@ -45,7 +45,7 @@ EXTRA_DIST=\
   src/linted/task.h\
   src/linted/util.h
 
-src/bin/linted.o: config.h\
+src/bin/linted.$(OBJEXT): config.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
@@ -53,22 +53,22 @@ src/bin/linted.o: config.h\
   src/linted/task.h\
   src/linted/util.h
 
-src/bin/simulator.o: config.h\
+src/bin/simulator.$(OBJEXT): config.h\
   src/linted/sprintf.h\
   src/linted/simulator.h\
   src/linted/task.h\
   src/linted/util.h
 
-src/bin/gui.o: config.h\
+src/bin/gui.$(OBJEXT): config.h\
   src/linted/gui.h\
   src/linted/sprintf.h\
   src/linted/base/util.h
 
-src/bin/sandbox.o: config.h src/linted/sandbox.h
-src/bin/sprintf.o: config.h src/linted/util.h src/linted/sprintf.h
-src/bin/supervisor.o: config.h src/linted/supervisor.h
-src/bin/task.o: config.h src/linted/task.h
-src/bin/util.o: config.h src/linted/util.h
+src/bin/sandbox.$(OBJEXT): config.h src/linted/sandbox.h
+src/bin/sprintf.$(OBJEXT): config.h src/linted/util.h src/linted/sprintf.h
+src/bin/supervisor.$(OBJEXT): config.h src/linted/supervisor.h
+src/bin/task.$(OBJEXT): config.h src/linted/task.h
+src/bin/util.$(OBJEXT): config.h src/linted/util.h
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\
