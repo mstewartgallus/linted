@@ -8,6 +8,8 @@ Also there are better options than setrlimit.
 We should use seccomp and etc...
 * Move away from instant failure
 It's bad style to have library calls that terminate the applicaton.
+* Don't use strerror
+It's not thread safe.
 * Understand CBMC complaints
 It seems to complain about nonsense.
 * Use a better system of IPC
