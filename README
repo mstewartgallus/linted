@@ -26,9 +26,6 @@ Some of these methods of guarding against software bugs include:
   - by forking off new processes
   - using a fork server started from a known good state which
     - protects against accidental inheritance of corrupted state
-- operating system level sandboxing of process
-  - resource limits with setrlimit
-  - capabilities using seccomp (planned not implemented yet)
 - toolchain hardening options including
   - the GNU linker options for
     - marking global symbols readonly after they are resolved with -z,relro
@@ -43,9 +40,26 @@ Some of these methods of guarding against software bugs include:
 - linters including:
   - Clang's static analysis
   - Cppcheck
+
+We plan on also guarding against bugs with:
+
+- operating system level sandboxing of process
+  - resource limits with setrlimit
+  - capabilities using seccomp
 - static analysis tools including:
   - Frama C
   - CBMC
+- a formalized system of IPC using
+  - temporal logic tools to prove theorems about various safety and
+  liveness properties
+- safe functions and easy to use functions such as
+  - not strerror (it's not thread safe)
+- extensive testing with
+  - unit tests
+  - fuzz tests
+  - under tools such as
+    - Valgrind
+    - electric fence or duma
 
 A few explicitly labeled files (such as this README) are distributed
 under much more simple and less restrictive licences than the Apache

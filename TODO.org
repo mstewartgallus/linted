@@ -1,24 +1,5 @@
-Linted --- TODO
+Linted -- TODO
 
-* Sandbox the gui
-This process currently uses poll and so can't be sandboxed easily.
-* Sandbox all processes more effectively
-There are a few more options to explore in setrlimit.
-Also there are better options than setrlimit.
-We should use seccomp and etc...
-* Move away from instant failure
-It's bad style to have library calls that terminate the applicaton.
-* Don't use strerror
-It's not thread safe.
-* Understand CBMC complaints
-It seems to complain about nonsense.
-* Use a better system of IPC
-The current system is kind of hacky.
-* Formalize our IPC
-We should be able to use temporal logic tools to formalize our message
-passing and create theorems about various safety and liveness
-properties.
 * Port to --host=i686-w64-mingw32
-* Use unit testing
-Unit tests should probable run under Valgrind, or duma, or electric
-fence.
+
+  
