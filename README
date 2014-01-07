@@ -12,21 +12,40 @@ See the file INSTALL for building and installation instruction. Linted
 is a program for the purpose of demonstrating usage of practical
 methods of guarding against software bugs.
 
-Some of these methods include:
-- process isolation (by using posix_spawnp)
-- operating system resource limits (by using setrlimit)
-- toolchain hardening options
-  - The GNU linker options -z,relro, -z,now and -z,noexecstack
-  - The GNU Compiler Collection options -fstack-protector-all, -trapv,
-    -pie, and -fPIE
-- linters including:
-  - Clang
-  - Cppcheck
+                              **IMPORTANT WARNING**
+================================================================================
 
-We plan on using:
+**Because this project is still in early development it is very broken
+and not at all secure. It is inadvisable to directly take code or
+algorithms from it. Nonetheless you may find it has a few interesting
+ideas.**
+
+Some of these methods of guarding against software bugs include:
+- process isolation
+  - by forking off new processes
+  - using a fork server started from a known good state which
+    - protects against accidental inheritance of corrupted state
+- operating system level sandboxing of process
+  - resource limits with setrlimit
+  - capabilities using seccomp (planned not implemented yet)
+- toolchain hardening options including
+  - the GNU linker options -z,relro, -z,now and -z,noexecstack
+  - the GNU Compiler Collection (GCC) options
+    - -fstack-protector-all
+    - -ftrapv (this can lead to denial of service attacks but sudden
+      exit was judged better than incorrect behaviour in this case)
+    - -pie
+    - -fPIE
+- linters including:
+  - Clang's static analysis
+  - Cppcheck
 - static analysis tools including:
   - Frama C
   - CBMC
+
+A few explicitly labeled files (such as this README) are distributed
+under much more simple and less restrictive licences than the Apache
+License. But for most files...
 
 Linted is licensed under the Apache License, Version 2.0 (the
 "License"); you may not use Linted except in compliance with
@@ -37,6 +56,6 @@ the License. You may obtain a copy of the License at
 You should have received a copy of the Licence under the file COPYING
 distributed with this program.
 
-Home page: http://www.gitorious.org/sstewartgallus/linted
+Home page: http://www.gitorious.org/linted
 
 Linted is free software.  See the file COPYING for copying conditions.

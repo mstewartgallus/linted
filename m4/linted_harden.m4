@@ -26,7 +26,7 @@ dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[dnl
         [-fstack-protector-all -Wstack-protector]dnl
         [-pie -fPIE]dnl
-        [-trapv]dnl
+        [-ftrapv]dnl
         [-fmemsafety]dnl
         [-fsanitize=address-all]dnl
 ])
