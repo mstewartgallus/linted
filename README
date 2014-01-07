@@ -45,7 +45,11 @@ We plan on also guarding against bugs with:
 
 - operating system level sandboxing of process
   - resource limits with setrlimit
-  - capabilities using seccomp
+  - capabilities using one of
+    - Seccomp
+    - Ftrace
+    - SELinux
+    - AppArmor
 - static analysis tools including:
   - Frama C
   - CBMC
