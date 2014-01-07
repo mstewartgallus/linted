@@ -21,6 +21,7 @@ algorithms from it. Nonetheless you may find it has a few interesting
 ideas.**
 
 Some of these methods of guarding against software bugs include:
+
 - process isolation
   - by forking off new processes
   - using a fork server started from a known good state which
@@ -29,13 +30,16 @@ Some of these methods of guarding against software bugs include:
   - resource limits with setrlimit
   - capabilities using seccomp (planned not implemented yet)
 - toolchain hardening options including
-  - the GNU linker options -z,relro, -z,now and -z,noexecstack
-  - the GNU Compiler Collection (GCC) options
-    - -fstack-protector-all
-    - -ftrapv (this can lead to denial of service attacks but sudden
-      exit was judged better than incorrect behaviour in this case)
-    - -pie
-    - -fPIE
+  - the GNU linker options for
+    - marking global symbols readonly after they are resolved with -z,relro
+    - resolving symbols immediately with -z,now
+    - marking the stack not executable with -z,noexecstack
+  - the GNU Compiler Collection (GCC) options for
+    - stack smashing protection with -fstack-protector-all
+    - signed overflow protection with -ftrapv
+      - this can lead to denial of service attacks but sudden exit was
+        judged better than incorrect behaviour in this case
+    - position independent executable support with -pie and -fPIE
 - linters including:
   - Clang's static analysis
   - Cppcheck
