@@ -51,7 +51,7 @@ We plan on also guarding against bugs with:
   - CBMC
 - a formalized system of IPC using
   - temporal logic tools to prove theorems about various safety and
-  liveness properties
+    liveness properties
 - safe functions and easy to use functions such as
   - not strerror (it's not thread safe)
 - extensive testing with
