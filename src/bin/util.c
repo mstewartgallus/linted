@@ -32,8 +32,9 @@ void linted_error(const char *file,
 	va_list arguments;
 	va_start(arguments, format_string);
 
-    syslog(LOG_ERR, "Error in file %s, function %s, and line %d", file, function, line);
-    vsyslog(LOG_ERR, format_string, arguments);
+	syslog(LOG_ERR, "Error in file %s, function %s, and line %d", file, function,
+	       line);
+	vsyslog(LOG_ERR, format_string, arguments);
 
 	exit(EXIT_FAILURE);
 }

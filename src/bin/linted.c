@@ -80,14 +80,13 @@ int main(int argc, char **argv)
 	}
 #endif				/* HAVE_UID_T */
 
-    /* Prepare the system logger */
-    openlog(PACKAGE_TARNAME,
-            LOG_PERROR          /* So the user can see this */
-            | LOG_CONS          /* So we know there is an error */
-            | LOG_PID           /* Because we fork several times */
-            ,
-            LOG_USER            /* This is a game and is a user program */
-        );
+	/* Prepare the system logger */
+	openlog(PACKAGE_TARNAME, LOG_PERROR	/* So the user can see this */
+		| LOG_CONS	/* So we know there is an error */
+		| LOG_PID	/* Because we fork several times */
+		| LOG_NDELAY	/* Share the connection when we fork */
+		, LOG_USER	/* This is a game and is a user program */
+	    );
 
 	/* Right after, we fork off from a known good state. */
 	linted_task_spawner_t spawner;
@@ -98,7 +97,7 @@ int main(int argc, char **argv)
 
 	int const exit_status = go(spawner, argc, argv);
 
-    int const spawner_close_status = linted_task_spawner_close(spawner);
+	int const spawner_close_status = linted_task_spawner_close(spawner);
 	if (-1 == spawner_close_status) {
 		LINTED_ERROR("Could not close spawner: %s", strerror(errno));
 	}
