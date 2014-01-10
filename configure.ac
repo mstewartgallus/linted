@@ -72,7 +72,7 @@ AS_IF([test "x${ac_cv_type_uint8_t}" = "xno"],[
 dnl
 AC_FUNC_MALLOC
 AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
- AC_MSG_ERROR([Unable to find function malloc])
+ AC_MSG_ERROR([Unable to find malloc function for which malloc(0) != NULL])
 ])
 AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
@@ -100,10 +100,14 @@ LINTED_HARDEN
 LINTED_DEBUG
 LINTED_WARNINGS
 dnl
-PKG_CHECK_MODULES([SDL], [sdl >= 1.2.14])
-dnl
 AC_SEARCH_LIBS([glClear], [GL], [], [
   AC_MSG_ERROR([Unable to find an OpenGL library])
+])
+dnl
+PKG_CHECK_MODULES([SDL], [sdl >= 1.2.14])
+dnl
+AC_SEARCH_LIBS([clock_gettime], [rt], [], [
+  AC_MSG_ERROR([Unable to find a POSIX realtime library])
 ])
 dnl
 AM_CONDITIONAL([SAVE_TEMPS], [test "x${enable_save_temps}" = "xyes"])
