@@ -234,6 +234,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 			    ("Could not read bytes from fork request socket: %s\n",
 			     strerror(errno));
 		}
+
 		/* No more listeners to serve so exit. */
 		if (0 == bytes_read) {
 			break;

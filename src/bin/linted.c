@@ -88,6 +88,11 @@ int main(int argc, char **argv)
 
 	int const exit_status = go(spawner, argc, argv);
 
+    int const spawner_close_status = linted_task_spawner_close(spawner);
+	if (-1 == spawner_close_status) {
+		LINTED_ERROR("Could not close spawner: %s", strerror(errno));
+	}
+
 	int files_status = 0;
 	if (EOF == fclose(stdin)) {
 		files_status = -1;
