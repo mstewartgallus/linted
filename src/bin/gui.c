@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/gui.h"
+#include "linted/io.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -130,35 +131,13 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 		request_data.x_position = x;
 		request_data.y_position = y;
 
-		struct iovec iovecs[] = {
-			(struct iovec){
-				       .iov_base = &request_data,
-				       .iov_len = sizeof request_data}
-		};
-
-		struct msghdr message;
-		memset(&message, 0, sizeof message);
-
-		message.msg_iov = iovecs;
-		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-
-		int const sent_fildes[] = { reply_writer };
-		char control_message[CMSG_SPACE(sizeof sent_fildes)];
-		message.msg_control = control_message;
-		message.msg_controllen = sizeof control_message;
-
-		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-		control_message_header->cmsg_level = SOL_SOCKET;
-		control_message_header->cmsg_type = SCM_RIGHTS;
-		control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
-
-		void *const control_message_data = CMSG_DATA(control_message_header);
-		memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
-
 		ssize_t bytes_written;
 		do {
-			bytes_written = sendmsg(gui._inbox, &message, 0);
-		} while (bytes_written != sizeof message && errno == EINTR);
+			bytes_written = linted_io_send_with_fd(gui._inbox,
+							       &request_data,
+							       sizeof request_data,
+							       reply_writer);
+		} while (-1 == bytes_written && EINTR == errno);
 		if (-1 == bytes_written) {
 			goto finish_and_free_reply_fds;
 		}
@@ -303,51 +282,23 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 		}
 
 		if (had_gui_command) {
-			struct msghdr message;
-			memset(&message, 0, sizeof message);
-
-			struct request_data request_data;
-
-			struct iovec iov[] = {
-				(struct iovec){
-					       .iov_base = &request_data,
-					       .iov_len = sizeof request_data}
-			};
-			message.msg_iov = iov;
-			message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
-
-			int sent_fildes[1] = { -1 };
-			char control_message[CMSG_SPACE(sizeof sent_fildes)];
-			memset(control_message, 0, sizeof control_message);
-
-			message.msg_control = control_message;
-			message.msg_controllen = sizeof control_message;
-
-			ssize_t bytes_read;
-			do {
-				bytes_read = recvmsg(inbox,
-						     &message,
-						     MSG_CMSG_CLOEXEC | MSG_WAITALL);
-			} while (bytes_read != sizeof request_data && errno == EINTR);
-			if (-1 == bytes_read) {
-				LINTED_ERROR
-				    ("Could not read simulator inbox: %s\n",
-				     strerror(errno));
-			}
+            struct request_data request_data;
+            int reply_writer;
+            ssize_t bytes_read;
+            do {
+                bytes_read = linted_io_recv_with_fd(inbox,
+                                                    &request_data, sizeof request_data,
+                                                    &reply_writer);
+            } while (-1 == bytes_read && EINTR == errno);
+            if (-1 == bytes_read) {
+                LINTED_ERROR("Could not read gui inbox: %s\n",
+                             strerror(errno));
+            }
 
 			/* All users have closed off */
 			if (0 == bytes_read) {
 				goto exit;
 			}
-
-			struct cmsghdr *const control_message_header =
-			    CMSG_FIRSTHDR(&message);
-			void *const control_message_data =
-			    CMSG_DATA(control_message_header);
-
-			memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
-
-			int const reply_writer = sent_fildes[0];
 
 			switch (request_data.type) {
 			case GUI_UPDATE:{

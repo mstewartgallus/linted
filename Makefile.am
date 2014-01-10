@@ -30,6 +30,7 @@ linted_SOURCES=\
 verified_sources=\
   src/bin/util.c\
   src/bin/simulator.c\
+  src/bin/io.c\
   src/bin/sprintf.c
 
 linted_LDADD=$(SDL_LIBS)
@@ -37,6 +38,7 @@ linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
   src/linted/linted.h\
+  src/linted/io.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
@@ -53,14 +55,19 @@ src/bin/linted.$(OBJEXT): config.h\
   src/linted/task.h\
   src/linted/util.h
 
+src/bin/io.$(OBJEXT): config.h\
+  src/linted/io.h\
+  src/linted/util.h
+
 src/bin/simulator.$(OBJEXT): config.h\
-  src/linted/sprintf.h\
+  src/linted/io.h\
   src/linted/simulator.h\
   src/linted/task.h\
   src/linted/util.h
 
 src/bin/gui.$(OBJEXT): config.h\
   src/linted/gui.h\
+  src/linted/io.h\
   src/linted/sprintf.h\
   src/linted/base/util.h
 
