@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <unistd.h>
 
 void linted_error(const char *file,
@@ -31,9 +32,8 @@ void linted_error(const char *file,
 	va_list arguments;
 	va_start(arguments, format_string);
 
-	fprintf(stderr,
-		"Error in file %s, function %s, and line %d:\n", file, function, line);
-	vfprintf(stderr, format_string, arguments);
+    syslog(LOG_ERR, "Error in file %s, function %s, and line %d", file, function, line);
+    vsyslog(LOG_ERR, format_string, arguments);
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }

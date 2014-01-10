@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #define USAGE_TEXT \
@@ -78,6 +79,15 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 #endif				/* HAVE_UID_T */
+
+    /* Prepare the system logger */
+    openlog(PACKAGE_TARNAME,
+            LOG_PERROR          /* So the user can see this */
+            | LOG_CONS          /* So we know there is an error */
+            | LOG_PID           /* Because we fork several times */
+            ,
+            LOG_USER            /* This is a game and is a user program */
+        );
 
 	/* Right after, we fork off from a known good state. */
 	linted_task_spawner_t spawner;
