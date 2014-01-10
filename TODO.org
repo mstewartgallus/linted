@@ -1,5 +1,4 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
-
-  
+* Fix bug where the spawner can't close because it keeps a handle to itself
