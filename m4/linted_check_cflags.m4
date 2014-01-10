@@ -19,7 +19,11 @@ m4_foreach_w([linted_the_flag], $2, [
         AC_MSG_CHECKING([for C compiler flag linted_the_flag])
         [CFLAGS=']linted_the_flag[']
         AC_LANG_WERROR
-        AC_COMPILE_IFELSE([AC_LANG_SOURCE([[]])], [
+
+        dnl ISO C requires a nonempty translation unit
+        AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+            void nonempty_translation_unit_E5XlWC(void) { }
+        ]])], [
                  AC_MSG_RESULT([yes])
                  $1[="$]$1[ $CFLAGS"]
         ],
