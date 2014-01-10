@@ -56,37 +56,37 @@ ssize_t linted_io_send_with_fd(int const fd,
 }
 
 ssize_t linted_io_recv_with_fd(int const fd,
-                               void * const buf, size_t const len,
-                               int * const received_fd) {
-    struct msghdr message;
-    memset(&message, 0, sizeof message);
+			       void *const buf, size_t const len, int *const received_fd)
+{
+	struct msghdr message;
+	memset(&message, 0, sizeof message);
 
-    struct iovec iov[] = {
-        (struct iovec){
-            .iov_base = buf,
-            .iov_len = len}
-    };
-    message.msg_iov = iov;
-    message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
+	struct iovec iov[] = {
+		(struct iovec){
+			       .iov_base = buf,
+			       .iov_len = len}
+	};
+	message.msg_iov = iov;
+	message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
 
-    int sent_fildes[1] = { -1 };
-    char control_message[CMSG_SPACE(sizeof sent_fildes)];
-    memset(control_message, 0, sizeof control_message);
+	int sent_fildes[1] = { -1 };
+	char control_message[CMSG_SPACE(sizeof sent_fildes)];
+	memset(control_message, 0, sizeof control_message);
 
-    message.msg_control = control_message;
-    message.msg_controllen = sizeof control_message;
+	message.msg_control = control_message;
+	message.msg_controllen = sizeof control_message;
 
-    ssize_t const bytes_read = recvmsg(fd,
-                                       &message,
-                                       MSG_CMSG_CLOEXEC | MSG_WAITALL);
+	ssize_t const bytes_read = recvmsg(fd,
+					   &message,
+					   MSG_CMSG_CLOEXEC | MSG_WAITALL);
 
-    if (bytes_read != -1 && bytes_read != 0) {
-        struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-        void *const control_message_data = CMSG_DATA(control_message_header);
+	if (bytes_read != -1 && bytes_read != 0) {
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+		void *const control_message_data = CMSG_DATA(control_message_header);
 
-        memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
+		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
-        *received_fd = sent_fildes[0];
-    }
-    return bytes_read;
+		*received_fd = sent_fildes[0];
+	}
+	return bytes_read;
 }

@@ -15,8 +15,6 @@
  */
 #include "config.h"
 
-#include "linted/linted.h"
-
 #include "linted/gui.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
@@ -67,24 +65,28 @@
 
 static int go(linted_task_spawner_t spawner, int argc, char *argv[]);
 
-int linted_main(linted_task_spawner_t spawner, int argc, char **argv)
+int main(int argc, char **argv)
 {
-	int exit_status;
-
+	/* First we check if we are run with proper security */
 #ifdef HAVE_UID_T
 	uid_t const euid = geteuid();
-	if (euid != 0) {
-		exit_status = go(spawner, argc, argv);
-	} else {
+	if (0 == euid) {
 		fputs("Bad administrator!\n", stderr);
 		fputs
 		    ("It is a violation of proper security policy to run a game as root!\n",
 		     stderr);
-		exit_status = EXIT_FAILURE;
+		return EXIT_FAILURE;
 	}
-#else
-	exit_status = go(spawner, argc, argv);
-#endif				/* HAS_UID_T */
+#endif				/* HAVE_UID_T */
+
+	/* Right after, we fork off from a known good state. */
+	linted_task_spawner_t spawner;
+	int const spawner_status = linted_task_spawner_init(&spawner);
+	if (-1 == spawner_status) {
+		LINTED_ERROR("Could not initialize spawner: %s", strerror(errno));
+	}
+
+	int const exit_status = go(spawner, argc, argv);
 
 	int files_status = 0;
 	if (EOF == fclose(stdin)) {

@@ -158,12 +158,13 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 
 	for (;;) {
 		struct message_data message_data;
-        int reply_writer;
+		int reply_writer;
 		ssize_t bytes_read;
 		do {
 			bytes_read = linted_io_recv_with_fd(inbox,
-                                                &message_data, sizeof message_data,
-                                                &reply_writer);
+							    &message_data,
+							    sizeof message_data,
+							    &reply_writer);
 		} while (-1 == bytes_read && EINTR == errno);
 		if (-1 == bytes_read) {
 			LINTED_ERROR("Could not read simulator inbox: %s\n",

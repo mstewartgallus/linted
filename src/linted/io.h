@@ -27,6 +27,6 @@ ssize_t linted_io_send_with_fd(int fd, void const *buf, size_t len, int sent_fd)
 /**
  * Like recv but receives a file descriptor received_fd as well.
  */
-ssize_t linted_io_recv_with_fd(int fd, void * buf, size_t len, int * received_fd);
+ssize_t linted_io_recv_with_fd(int fd, void *buf, size_t len, int *received_fd);
 
 #endif				/* LINTED_IO_H */

@@ -282,18 +282,19 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 		}
 
 		if (had_gui_command) {
-            struct request_data request_data;
-            int reply_writer;
-            ssize_t bytes_read;
-            do {
-                bytes_read = linted_io_recv_with_fd(inbox,
-                                                    &request_data, sizeof request_data,
-                                                    &reply_writer);
-            } while (-1 == bytes_read && EINTR == errno);
-            if (-1 == bytes_read) {
-                LINTED_ERROR("Could not read gui inbox: %s\n",
-                             strerror(errno));
-            }
+			struct request_data request_data;
+			int reply_writer;
+			ssize_t bytes_read;
+			do {
+				bytes_read = linted_io_recv_with_fd(inbox,
+								    &request_data,
+								    sizeof request_data,
+								    &reply_writer);
+			} while (-1 == bytes_read && EINTR == errno);
+			if (-1 == bytes_read) {
+				LINTED_ERROR("Could not read gui inbox: %s\n",
+					     strerror(errno));
+			}
 
 			/* All users have closed off */
 			if (0 == bytes_read) {

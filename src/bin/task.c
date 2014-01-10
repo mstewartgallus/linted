@@ -17,7 +17,6 @@
 
 #include "linted/task.h"
 
-#include "linted/linted.h"
 #include "linted/sprintf.h"
 #include "linted/util.h"
 
@@ -43,7 +42,7 @@ struct reply_data {
 
 static int fork_server_run(linted_task_spawner_t spawner, int request_reader);
 
-int main(int argc, char **argv)
+int linted_task_spawner_init(linted_task_spawner_t * spawner)
 {
 	/* First we fork from a known good state and serve out forks of
 	 * this known good state. This avoids several problems with
@@ -57,34 +56,32 @@ int main(int argc, char **argv)
 						     0,
 						     fork_server_request_fds);
 	if (-1 == request_socket_status) {
-		LINTED_ERROR("Could not create fork server socker: %s\n",
-			     strerror(errno));
+		return -1;
 	}
 
 	int const fork_server_request_reader = fork_server_request_fds[0];
 	int const fork_server_request_writer = fork_server_request_fds[1];
 
-	linted_task_spawner_t const spawner = {
-		._request_writer = fork_server_request_writer
-	};
+	spawner->_request_writer = fork_server_request_writer;
 
 	pid_t const child_pid = fork();
 	if (0 == child_pid) {
-		return fork_server_run(spawner, fork_server_request_reader);
+		int const exit_status = fork_server_run(*spawner,
+							fork_server_request_reader);
+		exit(exit_status);
 	}
 
-	if (-1 == child_pid) {
-		LINTED_ERROR("Could not fork off fork server: %s", strerror(errno));
-	} else {
-		int const request_close_status = close(fork_server_request_reader);
-		if (-1 == request_close_status) {
-			LINTED_ERROR
-			    ("Could not close fork server request reader end: %s\n",
-			     strerror(errno));
-		}
-
-		return linted_main(spawner, argc, argv);
+	int error_status = -1;
+	if (child_pid != -1) {
+		error_status = 0;
 	}
+
+	int const request_close_status = close(fork_server_request_reader);
+	if (-1 == request_close_status) {
+		error_status = -1;
+	}
+
+	return error_status;
 }
 
 int linted_task_spawner_close(linted_task_spawner_t spawner)
