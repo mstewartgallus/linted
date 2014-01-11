@@ -45,11 +45,11 @@ static int simulator_run(linted_task_spawner_t const spawner, int inbox);
 int linted_simulator_spawn(linted_simulator_t * const simulator,
 			   linted_task_spawner_t const spawner)
 {
-    sa_family_t const address_type = AF_UNIX;
+	sa_family_t const address_type = AF_UNIX;
 
 	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == server) {
-        goto error;
+		goto error;
 	}
 
 	/* Make the socket abstract and autobind */
@@ -73,73 +73,77 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
  error_and_close_server:
 	close(server);
 
-error:
+ error:
 	return -1;
 }
 
 int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
-    int error_status = -1;
+	int error_status = -1;
 
-    int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == connection) {
-        goto finish;
+		goto finish;
 	}
 
-    {
-        /* Our server socket is anonymous so we need the name */
-        struct sockaddr_un address;
-        socklen_t address_size;
+	{
+		/* Our server socket is anonymous so we need the name */
+		struct sockaddr_un address;
+		socklen_t address_size;
 
-        memset(&address, 0, sizeof address);
-        address.sun_family = AF_UNIX;
+		memset(&address, 0, sizeof address);
+		address.sun_family = AF_UNIX;
 
-        address_size = sizeof address;
-        if (-1 == getsockname(simulator._server, (struct sockaddr *)&address, &address_size)) {
-            goto finish_and_close_connection;
-        }
+		address_size = sizeof address;
+		if (-1 ==
+		    getsockname(simulator._server, (struct sockaddr *)&address,
+				&address_size)) {
+			goto finish_and_close_connection;
+		}
 
-        if (-1 == connect(connection, (struct sockaddr const *)&address, address_size)) {
-            goto finish_and_close_connection;
-        }
-    }
+		if (-1 ==
+		    connect(connection, (struct sockaddr const *)&address,
+			    address_size)) {
+			goto finish_and_close_connection;
+		}
+	}
 
-    {
-        struct message_data message_data = {
-            .message_type = SIMULATOR_TICK
-        };
+	{
+		struct message_data message_data = {
+			.message_type = SIMULATOR_TICK
+		};
 
-        ssize_t bytes_written;
-        do {
-            bytes_written = write(connection,
-                                  &message_data, sizeof message_data);
-        } while (-1 == bytes_written && EINTR == EINTR);
-        if (-1 == bytes_written) {
-            goto finish_and_close_connection;
-        }
-    }
+		ssize_t bytes_written;
+		do {
+			bytes_written = write(connection,
+					      &message_data, sizeof message_data);
+		} while (-1 == bytes_written && EINTR == EINTR);
+		if (-1 == bytes_written) {
+			goto finish_and_close_connection;
+		}
+	}
 
-    {
-        struct reply_data reply_data;
-        ssize_t bytes_read;
-        do {
-            bytes_read = read(connection, &reply_data, sizeof reply_data);
-        } while (-1 == bytes_read && EINTR == EINTR);
-        if (-1 == bytes_read) {
-            goto finish_and_close_connection;
-        }
+	{
+		struct reply_data reply_data;
+		ssize_t bytes_read;
+		do {
+			bytes_read = read(connection, &reply_data, sizeof reply_data);
+		} while (-1 == bytes_read && EINTR == EINTR);
+		if (-1 == bytes_read) {
+			goto finish_and_close_connection;
+		}
 
-        *tick_results = reply_data.tick_results;
-    }
-    error_status = 0;
+		*tick_results = reply_data.tick_results;
+	}
+	error_status = 0;
 
-finish_and_close_connection:
+ finish_and_close_connection:
 	if (-1 == close(connection)) {
-        error_status = -1;
-    }
+		error_status = -1;
+	}
 
-finish:
+ finish:
 	return error_status;
 }
 
@@ -169,49 +173,47 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 				     strerror(errno));
 		}
 
-        struct message_data message_data;
-        ssize_t bytes_read;
-        do {
-            bytes_read = read(connection,
-                              &message_data, sizeof message_data);
-        } while (-1 == bytes_read && EINTR == errno);
-        if (-1 == bytes_read) {
-            LINTED_ERROR
-                ("Could not read from simulator connection: %s\n",
-                 strerror(errno));
-        }
+		struct message_data message_data;
+		ssize_t bytes_read;
+		do {
+			bytes_read = read(connection, &message_data, sizeof message_data);
+		} while (-1 == bytes_read && EINTR == errno);
+		if (-1 == bytes_read) {
+			LINTED_ERROR
+			    ("Could not read from simulator connection: %s\n",
+			     strerror(errno));
+		}
 
-        struct reply_data reply_data;
-        switch (message_data.message_type) {
-        case SIMULATOR_TICK:
-            x_position = x_position % 255 + 3;
-            y_position = y_position % 255 + 5;
-            //@ assert x_position ≤ 255;
-            //@ assert y_position ≤ 255;
+		struct reply_data reply_data;
+		switch (message_data.message_type) {
+		case SIMULATOR_TICK:
+			x_position = x_position % 255 + 3;
+			y_position = y_position % 255 + 5;
+			//@ assert x_position ≤ 255;
+			//@ assert y_position ≤ 255;
 
-            reply_data.tick_results.x_position = x_position;
-            reply_data.tick_results.y_position = y_position;
-            break;
+			reply_data.tick_results.x_position = x_position;
+			reply_data.tick_results.y_position = y_position;
+			break;
 
-        default:
-            LINTED_ERROR("Received unexpected message type: %d.\n",
-					     message_data.message_type);
-        }
+		default:
+			LINTED_ERROR("Received unexpected message type: %d.\n",
+				     message_data.message_type);
+		}
 
-        ssize_t bytes_written;
-        do {
-            bytes_written = write(connection,
-                                  &reply_data, sizeof reply_data);
-        } while (-1 == bytes_written && errno == EINTR);
-        if (-1 == bytes_written) {
-            LINTED_ERROR("Could not write to simulator connection: %s\n",
-                 strerror(errno));
-        }
+		ssize_t bytes_written;
+		do {
+			bytes_written = write(connection, &reply_data, sizeof reply_data);
+		} while (-1 == bytes_written && errno == EINTR);
+		if (-1 == bytes_written) {
+			LINTED_ERROR("Could not write to simulator connection: %s\n",
+				     strerror(errno));
+		}
 
-        if (-1 == close(connection)) {
-            LINTED_ERROR("Could close simulator connection: %s\n",
-                 strerror(errno));
-        }
+		if (-1 == close(connection)) {
+			LINTED_ERROR("Could close simulator connection: %s\n",
+				     strerror(errno));
+		}
 	}
 
 	int const inbox_close_status = close(inbox);
