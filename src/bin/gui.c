@@ -76,7 +76,7 @@ static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
 int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
-    sa_family_t const address_type = AF_UNIX;
+	sa_family_t const address_type = AF_UNIX;
 
 	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == server) {
@@ -110,7 +110,7 @@ int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawn
 
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
-    	int error_status = -1;
+	int error_status = -1;
 
 	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == connection) {
@@ -140,7 +140,7 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 	}
 
 	{
-        struct request_data request_data;
+		struct request_data request_data;
 		memset(&request_data, 0, sizeof request_data);
 		request_data.type = GUI_UPDATE;
 		request_data.x_position = x;
@@ -166,7 +166,7 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 			goto finish_and_close_connection;
 		}
 
-        /* This is just to confirm the server updated */
+		/* This is just to confirm the server updated */
 	}
 	error_status = 0;
 
@@ -282,29 +282,28 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 				 && (error_code = errno, error_code != EINTR));
 			if (-1 == poll_status) {
 				LINTED_ERROR("Error polling file descriptors %s\n",
-				     strerror(errno));
+					     strerror(errno));
 			}
 			had_gui_command = poll_status > 0;
 		}
 
 		if (had_gui_command) {
-            /* TODO: Handle multiple connections */
-            int connection;
-            do {
-                connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
-            } while (-1 == connection && EINTR == errno);
-            if (-1 == connection) {
-                LINTED_ERROR("Could not accept gui connection: %s\n",
-                             strerror(errno));
-            }
+			/* TODO: Handle multiple connections */
+			int connection;
+			do {
+				connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
+			} while (-1 == connection && EINTR == errno);
+			if (-1 == connection) {
+				LINTED_ERROR("Could not accept gui connection: %s\n",
+					     strerror(errno));
+			}
 
 			struct request_data request_data;
 			int reply_writer;
 			ssize_t bytes_read;
 			do {
 				bytes_read = read(connection,
-								    &request_data,
-                                  sizeof request_data);
+						  &request_data, sizeof request_data);
 			} while (-1 == bytes_read && EINTR == errno);
 			if (-1 == bytes_read) {
 				LINTED_ERROR("Could not read from gui connection: %s\n",
@@ -339,8 +338,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			}
 			if (-1 == close(connection)) {
 				LINTED_ERROR
-				    ("Could not close connection: %s\n",
-				     strerror(errno));
+				    ("Could not close connection: %s\n", strerror(errno));
 			}
 		}
 
