@@ -51,7 +51,7 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 	 * exec. It also allows us to avoid the nasty command line
 	 * interface exec forces us into.
 	 */
-    sa_family_t const address_type = AF_UNIX;
+	sa_family_t const address_type = AF_UNIX;
 
 	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == server) {
@@ -70,17 +70,17 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 
 	spawner->_server = server;
 
-    {
-        pid_t const child_pid = fork();
-        if (0 == child_pid) {
-            int const exit_status = fork_server_run(*spawner);
-            exit(exit_status);
-        }
+	{
+		pid_t const child_pid = fork();
+		if (0 == child_pid) {
+			int const exit_status = fork_server_run(*spawner);
+			exit(exit_status);
+		}
 
-        if (-1 == child_pid) {
-            goto error_and_close_server;
-        }
-    }
+		if (-1 == child_pid) {
+			goto error_and_close_server;
+		}
+	}
 
 	return 0;
 
@@ -130,46 +130,43 @@ int linted_task_spawn(linted_task_t * const task,
 	}
 
 	{
-        struct request_data request_data = {
-            .func = func
-        };
+		struct request_data request_data = {
+			.func = func
+		};
 
-        struct iovec iovecs[] = {
-            (struct iovec){
-                .iov_base = &request_data,
-                .iov_len = sizeof request_data}
-        };
+		struct iovec iovecs[] = {
+			(struct iovec){
+				       .iov_base = &request_data,
+				       .iov_len = sizeof request_data}
+		};
 
-        struct msghdr message;
-        memset(&message, 0, sizeof message);
+		struct msghdr message;
+		memset(&message, 0, sizeof message);
 
-        message.msg_iov = iovecs;
-        message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
 
-        int const sent_fildes[] = { inbox };
-        char control_message[CMSG_SPACE(sizeof sent_fildes)];
-        message.msg_control = control_message;
-        message.msg_controllen = sizeof control_message;
+		int const sent_fildes[] = { inbox };
+		char control_message[CMSG_SPACE(sizeof sent_fildes)];
+		message.msg_control = control_message;
+		message.msg_controllen = sizeof control_message;
 
-        struct cmsghdr *const control_message_header =
-            CMSG_FIRSTHDR(&message);
-        control_message_header->cmsg_level = SOL_SOCKET;
-        control_message_header->cmsg_type = SCM_RIGHTS;
-        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+		control_message_header->cmsg_level = SOL_SOCKET;
+		control_message_header->cmsg_type = SCM_RIGHTS;
+		control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
 
-        void *const control_message_data =
-            CMSG_DATA(control_message_header);
-        memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
+		void *const control_message_data = CMSG_DATA(control_message_header);
+		memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
 
-        ssize_t bytes_written;
-        do {
-            bytes_written = sendmsg(connection,
-                                    &message, 0);
-        } while (bytes_written != sizeof message && errno == EINTR);
-        if (-1 == bytes_written) {
-            goto finish_and_close_connection;
-        }
-    }
+		ssize_t bytes_written;
+		do {
+			bytes_written = sendmsg(connection, &message, 0);
+		} while (bytes_written != sizeof message && errno == EINTR);
+		if (-1 == bytes_written) {
+			goto finish_and_close_connection;
+		}
+	}
 
 	{
 		struct reply_data reply_data;
@@ -181,16 +178,16 @@ int linted_task_spawn(linted_task_t * const task,
 			goto finish_and_close_connection;
 		}
 
-        int const reply_error_status = reply_data.error_status;
-        if (reply_error_status != 0) {
-            errno = reply_error_status;
-            goto finish_and_close_connection;
-        } else {
-            task->_pid = reply_data.pid;
-        }
+		int const reply_error_status = reply_data.error_status;
+		if (reply_error_status != 0) {
+			errno = reply_error_status;
+			goto finish_and_close_connection;
+		} else {
+			task->_pid = reply_data.pid;
+		}
 	}
 
-    error_status = 0;
+	error_status = 0;
 
  finish_and_close_connection:
 	if (-1 == close(connection)) {
@@ -203,7 +200,7 @@ int linted_task_spawn(linted_task_t * const task,
 
 static int fork_server_run(linted_task_spawner_t const spawner)
 {
-    int const server = spawner._server;
+	int const server = spawner._server;
 
 	/* Posix requires an exact copy of process memory so passing
 	 * around function pointers through pipes is allowed.
@@ -219,15 +216,15 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 		LINTED_ERROR("Could not ignore child processes: %s\n", strerror(errno));
 	}
 
-    /* TODO: Handle multiple connections at once */
+	/* TODO: Handle multiple connections at once */
 	for (;;) {
-        int connection;
+		int connection;
 		do {
 			connection = accept4(server, NULL, NULL, SOCK_CLOEXEC);
 		} while (-1 == connection && EINTR == errno);
 		if (-1 == connection) {
 			LINTED_ERROR("Could not accept fork request connection: %s\n",
-                         strerror(errno));
+				     strerror(errno));
 		}
 
 		struct msghdr message;
