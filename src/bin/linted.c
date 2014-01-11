@@ -38,10 +38,6 @@
     "--version\t\tJust print version info and return\n"\
     "--help\t\tPrint this usage information\n"\
     "\n"\
-    "The following SUBCOMMANDS are accepted:\n"\
-    "simulator\t\tRun the simulator\n"\
-    "gui\t\tRun the gui\n"\
-    "\n"\
     "Report bugs to " PACKAGE_BUGREPORT "\n"
 
 #define VERSION_TEXT \
