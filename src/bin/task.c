@@ -213,7 +213,7 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 	struct sigaction old_action;
 	int const sig_status = sigaction(SIGCHLD, &action, &old_action);
 	if (-1 == sig_status) {
-		LINTED_ERROR("Could not ignore child processes: %s\n", strerror(errno));
+		LINTED_ERROR("Could not ignore child processes: %m\n", errno);
 	}
 
 	/* TODO: Handle multiple connections at once */
@@ -223,8 +223,8 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 			connection = accept4(server, NULL, NULL, SOCK_CLOEXEC);
 		} while (-1 == connection && EINTR == errno);
 		if (-1 == connection) {
-			LINTED_ERROR("Could not accept fork request connection: %s\n",
-				     strerror(errno));
+			LINTED_ERROR("Could not accept fork request connection: %m",
+				     errno);
 		}
 
 		struct msghdr message;
@@ -254,8 +254,8 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 		} while (-1 == sizeof request_data && EINTR == errno);
 		if (-1 == bytes_read) {
 			LINTED_ERROR
-			    ("Could not read bytes from fork request connection: %s\n",
-			     strerror(errno));
+			    ("Could not read bytes from fork request connection: %m",
+			     errno);
 		}
 
 		/* No more listeners to serve so exit. */
@@ -278,15 +278,15 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 							       &action);
 			if (-1 == retry_sig_status) {
 				LINTED_ERROR
-				    ("Could not restore child signal behaviour: %s\n",
-				     strerror(errno));
+				    ("Could not restore child signal behaviour: %m",
+				     errno);
 			}
 
 			int const connection_close_status = close(connection);
 			if (-1 == connection_close_status) {
 				LINTED_ERROR
-				    ("Forked child could not close connection: %s\n",
-				     strerror(errno));
+				    ("Forked child could not close connection: %m",
+				     errno);
 			}
 			return request_data.func(spawner, inbox);
 		}
@@ -294,8 +294,8 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 		int const inbox_close_status = close(inbox);
 		if (-1 == inbox_close_status) {
 			LINTED_ERROR
-			    ("Fork server could not close inbox file descriptor: %s\n",
-			     strerror(errno));
+			    ("Fork server could not close inbox file descriptor: %m",
+			     errno);
 		}
 
 		{
@@ -312,22 +312,20 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 							     sizeof reply_data);
 			if (-1 == reply_write_status) {
 				LINTED_ERROR
-				    ("Fork server could not write reply to child requester: %s\n",
-				     strerror(errno));
+				    ("Fork server could not write reply to child requester: %m",
+				     errno);
 			}
 		}
 
 		int const close_status = close(connection);
 		if (-1 == close_status) {
-			LINTED_ERROR
-			    ("Fork server could not close connection: %s\n",
-			     strerror(errno));
+			LINTED_ERROR("Fork server could not close connection: %m", errno);
 		}
 	}
 
 	int const spawner_close_status = linted_task_spawner_close(spawner);
 	if (-1 == spawner_close_status) {
-		LINTED_ERROR("Could not close spawner: %s\n", strerror(errno));
+		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
 	return EXIT_SUCCESS;

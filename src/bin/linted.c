@@ -88,30 +88,30 @@ int main(int argc, char **argv)
 	linted_task_spawner_t spawner;
 	int const spawner_status = linted_task_spawner_init(&spawner);
 	if (-1 == spawner_status) {
-		LINTED_ERROR("Could not initialize spawner: %s", strerror(errno));
+		LINTED_ERROR("Could not initialize spawner: %m", errno);
 	}
 
 	int const exit_status = go(spawner, argc, argv);
 
 	int const spawner_close_status = linted_task_spawner_close(spawner);
 	if (-1 == spawner_close_status) {
-		LINTED_ERROR("Could not close spawner: %s", strerror(errno));
+		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
 	int files_status = 0;
 	if (EOF == fclose(stdin)) {
 		files_status = -1;
-		fprintf(stderr, "Could not close standard input: %s\n", strerror(errno));
+		syslog(LOG_ERR, "Could not close standard input: %m", errno);
 	}
 
 	if (EOF == fclose(stdout)) {
 		files_status = -1;
-		fprintf(stderr, "Could not close standard output: %s\n", strerror(errno));
+		syslog(LOG_ERR, "Could not close standard output: %m", errno);
 	}
 
 	if (EOF == fclose(stderr)) {
-		/* No error message. An error code is all we can do. */
 		files_status = -1;
+		syslog(LOG_ERR, "Could not close standard error: %m", errno);
 	}
 
 	if (-1 == files_status && EXIT_SUCCESS == exit_status) {

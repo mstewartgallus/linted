@@ -79,7 +79,7 @@ AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
  AC_MSG_ERROR([Unable to find function fork])
 ])
-AC_CHECK_FUNCS([strerror memset], [], [
+AC_CHECK_FUNCS([memset], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl

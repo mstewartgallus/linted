@@ -39,15 +39,13 @@ void linted_sandbox(void)
 	error_status = setrlimit(RLIMIT_NOFILE, &(struct rlimit) {
 				 .rlim_cur = 0,.rlim_max = 0});
 	if (-1 == error_status && errno != EPERM) {
-		LINTED_ERROR("Could not sandbox process because of error: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not sandbox process because of error: %m", errno);
 	}
 
 	error_status = setrlimit(RLIMIT_NPROC, &(struct rlimit) {
 				 .rlim_cur = 0,.rlim_max = 0});
 	if (-1 == error_status && errno != EPERM) {
-		LINTED_ERROR("Could not sandbox process because of error: %s\n",
-			     strerror(errno));
+		LINTED_ERROR("Could not sandbox process because of error: %m", errno);
 	}
 #endif				/* HAVE_SYS_RESOURCE_H */
 }

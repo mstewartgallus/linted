@@ -156,7 +156,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 {
 	int const spawner_close_status = linted_task_spawner_close(spawner);
 	if (-1 == spawner_close_status) {
-		LINTED_ERROR("Could not close spawner: %s\n", strerror(errno));
+		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
 	uint8_t x_position = 0;
@@ -169,8 +169,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 			connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
 		} while (-1 == connection && EINTR == errno);
 		if (-1 == connection) {
-			LINTED_ERROR("Could not accept simulator connection: %s\n",
-				     strerror(errno));
+			LINTED_ERROR("Could not accept simulator connection: %m", errno);
 		}
 
 		struct message_data message_data;
@@ -179,9 +178,8 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 			bytes_read = read(connection, &message_data, sizeof message_data);
 		} while (-1 == bytes_read && EINTR == errno);
 		if (-1 == bytes_read) {
-			LINTED_ERROR
-			    ("Could not read from simulator connection: %s\n",
-			     strerror(errno));
+			LINTED_ERROR("Could not read from simulator connection: %m",
+				     errno);
 		}
 
 		struct reply_data reply_data;
@@ -197,7 +195,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 			break;
 
 		default:
-			LINTED_ERROR("Received unexpected message type: %d.\n",
+			LINTED_ERROR("Received unexpected message type: %d",
 				     message_data.message_type);
 		}
 
@@ -206,19 +204,18 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 			bytes_written = write(connection, &reply_data, sizeof reply_data);
 		} while (-1 == bytes_written && errno == EINTR);
 		if (-1 == bytes_written) {
-			LINTED_ERROR("Could not write to simulator connection: %s\n",
-				     strerror(errno));
+			LINTED_ERROR("Could not write to simulator connection: %m",
+				     errno);
 		}
 
 		if (-1 == close(connection)) {
-			LINTED_ERROR("Could close simulator connection: %s\n",
-				     strerror(errno));
+			LINTED_ERROR("Could close simulator connection: %m", errno);
 		}
 	}
 
 	int const inbox_close_status = close(inbox);
 	if (-1 == inbox_close_status) {
-		LINTED_ERROR("Could not close simulator inbox: %s\n", strerror(errno));
+		LINTED_ERROR("Could not close simulator inbox: %m", errno);
 	}
 
 	return EXIT_SUCCESS;

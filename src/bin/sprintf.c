@@ -31,7 +31,7 @@ void linted_sprintf(char *str, const char *format_string, ...)
 	va_start(arguments, format_string);
 
 	if (vsprintf(str, format_string, arguments) < 0) {
-		LINTED_ERROR("Could write format string %s\n", format_string);
+		LINTED_ERROR("Could write format string %s", format_string);
 	}
 
 	va_end(arguments);

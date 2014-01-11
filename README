@@ -40,6 +40,8 @@ Some of these methods of guarding against software bugs include:
 - linters including:
   - Clang's static analysis
   - Cppcheck
+- avoiding unsafe functions such as
+  - strerror (it's not thread safe)
 
 We plan on also guarding against bugs with:
 
@@ -56,8 +58,6 @@ We plan on also guarding against bugs with:
 - a formalized system of IPC using
   - temporal logic tools to prove theorems about various safety and
     liveness properties
-- safe functions and easy to use functions such as
-  - not strerror (it's not thread safe)
 - extensive testing with
   - unit tests
   - fuzz tests

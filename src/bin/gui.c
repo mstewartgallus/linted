@@ -188,7 +188,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 {
 	int const spawner_close_status = linted_task_spawner_close(spawner);
 	if (-1 == spawner_close_status) {
-		LINTED_ERROR("Could not close spawner: %s\n", strerror(errno));
+		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
 	int const sdl_init_status =
@@ -281,8 +281,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			} while (-1 == poll_status
 				 && (error_code = errno, error_code != EINTR));
 			if (-1 == poll_status) {
-				LINTED_ERROR("Error polling file descriptors %s\n",
-					     strerror(errno));
+				LINTED_ERROR("Error polling file descriptors %m", errno);
 			}
 			had_gui_command = poll_status > 0;
 		}
@@ -294,8 +293,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 				connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
 			} while (-1 == connection && EINTR == errno);
 			if (-1 == connection) {
-				LINTED_ERROR("Could not accept gui connection: %s\n",
-					     strerror(errno));
+				LINTED_ERROR("Could not accept gui connection: %m",
+					     errno);
 			}
 
 			struct request_data request_data;
@@ -306,8 +305,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 						  &request_data, sizeof request_data);
 			} while (-1 == bytes_read && EINTR == errno);
 			if (-1 == bytes_read) {
-				LINTED_ERROR("Could not read from gui connection: %s\n",
-					     strerror(errno));
+				LINTED_ERROR("Could not read from gui connection: %m",
+					     errno);
 			}
 
 			switch (request_data.type) {
@@ -325,8 +324,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 					} while (-1 == bytes_written && errno == EINTR);
 					if (-1 == bytes_written) {
 						LINTED_ERROR
-						    ("Could not read from gui inbox: %s\n",
-						     strerror(errno));
+						    ("Could not read from gui inbox: %m",
+						     errno);
 					}
 					break;
 				}
@@ -337,8 +336,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 				     request_data.type);
 			}
 			if (-1 == close(connection)) {
-				LINTED_ERROR
-				    ("Could not close connection: %s\n", strerror(errno));
+				LINTED_ERROR("Could not close connection: %m", errno);
 			}
 		}
 
@@ -365,7 +363,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
 	int const inbox_close_status = close(inbox);
 	if (-1 == inbox_close_status) {
-		LINTED_ERROR("Could not close simulator inbox: %s\n", strerror(errno));
+		LINTED_ERROR("Could not close simulator inbox: %m", errno);
 	}
 
 	return EXIT_SUCCESS;
