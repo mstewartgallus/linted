@@ -298,7 +298,6 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			}
 
 			struct request_data request_data;
-			int reply_writer;
 			ssize_t bytes_read;
 			do {
 				bytes_read = read(connection,
@@ -358,7 +357,6 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 		}
 	}
 
- exit:
 	SDL_Quit();
 
 	int const inbox_close_status = close(inbox);

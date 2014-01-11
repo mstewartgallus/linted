@@ -80,11 +80,9 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
-	int error_status = -1;
-
 	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (-1 == connection) {
-		goto finish;
+		goto finish_with_error;
 	}
 
 	{
@@ -99,13 +97,13 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 		if (-1 ==
 		    getsockname(simulator._server, (struct sockaddr *)&address,
 				&address_size)) {
-			goto finish_and_close_connection;
+			goto finish_with_error_and_close_connection;
 		}
 
 		if (-1 ==
 		    connect(connection, (struct sockaddr const *)&address,
 			    address_size)) {
-			goto finish_and_close_connection;
+			goto finish_with_error_and_close_connection;
 		}
 	}
 
@@ -120,7 +118,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 					      &message_data, sizeof message_data);
 		} while (-1 == bytes_written && EINTR == EINTR);
 		if (-1 == bytes_written) {
-			goto finish_and_close_connection;
+			goto finish_with_error_and_close_connection;
 		}
 	}
 
@@ -131,20 +129,23 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			bytes_read = read(connection, &reply_data, sizeof reply_data);
 		} while (-1 == bytes_read && EINTR == EINTR);
 		if (-1 == bytes_read) {
-			goto finish_and_close_connection;
+			goto finish_with_error_and_close_connection;
 		}
 
 		*tick_results = reply_data.tick_results;
 	}
-	error_status = 0;
 
- finish_and_close_connection:
 	if (-1 == close(connection)) {
-		error_status = -1;
+		goto finish_with_error;
 	}
 
- finish:
-	return error_status;
+	return 0;
+
+ finish_with_error_and_close_connection:
+	close(connection);
+
+ finish_with_error:
+	return -1;
 }
 
 int linted_simulator_close(linted_simulator_t const simulator)
