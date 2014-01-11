@@ -27,7 +27,6 @@ struct linted_simulator_tick_results {
 
 typedef struct _linted_simulator {
 	linted_task_t _task;
-	int _connection;	/* The local nonshareable connection */
 	int _server;		/* A shareable server handle every process can use */
 } linted_simulator_t;
 
