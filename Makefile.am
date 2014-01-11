@@ -30,14 +30,12 @@ linted_SOURCES=\
 verified_sources=\
   src/bin/util.c\
   src/bin/simulator.c\
-  src/bin/io.c\
   src/bin/sprintf.c
 
 linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
-  src/linted/io.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\

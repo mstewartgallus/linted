@@ -16,7 +16,6 @@
 #include "config.h"
 
 #include "linted/gui.h"
-#include "linted/io.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -31,6 +30,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 enum request_type {
@@ -76,56 +76,71 @@ static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
 int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
-	int exit_status = 0;
+    sa_family_t const address_type = AF_UNIX;
 
-	int gui_fds[2];
-	int const gui_fds_status = socketpair(AF_UNIX,
-					      SOCK_STREAM | SOCK_CLOEXEC,
-					      0,
-					      gui_fds);
-	if (-1 == gui_fds_status) {
-		goto finish;
+	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (-1 == server) {
+		goto error;
 	}
 
-	{
-		int const gui_reader = gui_fds[0];
-		int const gui_writer = gui_fds[1];
-
-		int const spawn_status = linted_task_spawn(&gui->_task, spawner,
-							   gui_run,
-							   gui_reader);
-		if (-1 == spawn_status) {
-			close(gui_writer);
-			goto finish_and_close_reader;
-		}
-		gui->_inbox = gui_writer;
-
- finish_and_close_reader:;
-		int const gui_reader_close_status = close(gui_reader);
-		if (-1 == gui_reader_close_status) {
-			goto finish;
-		}
-		exit_status = 0;
+	/* Make the socket abstract and autobind */
+	if (-1 == bind(server,
+		       (struct sockaddr const *)&address_type, sizeof address_type)) {
+		goto error_and_close_server;
 	}
- finish:
-	return exit_status;
+
+	if (-1 == listen(server, 128)) {
+		goto error_and_close_server;
+	}
+
+	if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, server)) {
+		goto error_and_close_server;
+	}
+
+	gui->_server = server;
+
+	return 0;
+
+ error_and_close_server:
+	close(server);
+
+ error:
+	return -1;
 }
 
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
-	int error_status = -1;
+    	int error_status = -1;
 
-	int reply_fds[2];
-	int const reply_fds_status = pipe2(reply_fds, O_CLOEXEC);
-	if (-1 == reply_fds_status) {
+	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (-1 == connection) {
 		goto finish;
 	}
 
 	{
-		int const reply_reader = reply_fds[0];
-		int const reply_writer = reply_fds[1];
+		/* Our server socket is anonymous so we need the name */
+		struct sockaddr_un address;
+		socklen_t address_size;
 
-		struct request_data request_data;
+		memset(&address, 0, sizeof address);
+		address.sun_family = AF_UNIX;
+
+		address_size = sizeof address;
+		if (-1 ==
+		    getsockname(gui._server, (struct sockaddr *)&address,
+				&address_size)) {
+			goto finish_and_close_connection;
+		}
+
+		if (-1 ==
+		    connect(connection, (struct sockaddr const *)&address,
+			    address_size)) {
+			goto finish_and_close_connection;
+		}
+	}
+
+	{
+        struct request_data request_data;
 		memset(&request_data, 0, sizeof request_data);
 		request_data.type = GUI_UPDATE;
 		request_data.x_position = x;
@@ -133,39 +148,31 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 
 		ssize_t bytes_written;
 		do {
-			bytes_written = linted_io_send_with_fd(gui._inbox,
-							       &request_data,
-							       sizeof request_data,
-							       reply_writer);
-		} while (-1 == bytes_written && EINTR == errno);
+			bytes_written = write(connection,
+					      &request_data, sizeof request_data);
+		} while (-1 == bytes_written && EINTR == EINTR);
 		if (-1 == bytes_written) {
-			goto finish_and_free_reply_fds;
+			goto finish_and_close_connection;
+		}
+	}
+
+	{
+		struct reply_data reply_data;
+		ssize_t bytes_read;
+		do {
+			bytes_read = read(connection, &reply_data, sizeof reply_data);
+		} while (-1 == bytes_read && EINTR == EINTR);
+		if (-1 == bytes_read) {
+			goto finish_and_close_connection;
 		}
 
-		error_status = 0;
+        /* This is just to confirm the server updated */
+	}
+	error_status = 0;
 
- finish_and_free_reply_fds:;
-		if (error_status != -1) {
-			struct reply_data reply_data;
-			ssize_t bytes_read;
-			do {
-				bytes_read = read(reply_reader,
-						  &reply_data, sizeof reply_data);
-			} while (-1 == bytes_read && errno == EINTR);
-			if (-1 == bytes_read) {
-				error_status = -1;
-			}
-		}
-
-		int const reply_writer_close_status = close(reply_writer);
-		if (-1 == reply_writer_close_status) {
-			error_status = -1;
-		}
-
-		int const reply_reader_close_status = close(reply_reader);
-		if (-1 == reply_reader_close_status) {
-			error_status = -1;
-		}
+ finish_and_close_connection:
+	if (-1 == close(connection)) {
+		error_status = -1;
 	}
 
  finish:
@@ -174,7 +181,7 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 
 int linted_gui_close(linted_gui_t const gui)
 {
-	return close(gui._inbox);
+	return close(gui._server);
 }
 
 static int gui_run(linted_task_spawner_t const spawner, int const inbox)
@@ -274,31 +281,34 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 			} while (-1 == poll_status
 				 && (error_code = errno, error_code != EINTR));
 			if (-1 == poll_status) {
-				LINTED_ERROR
-				    ("Error polling file descriptors %s\n",
+				LINTED_ERROR("Error polling file descriptors %s\n",
 				     strerror(errno));
 			}
 			had_gui_command = poll_status > 0;
 		}
 
 		if (had_gui_command) {
+            /* TODO: Handle multiple connections */
+            int connection;
+            do {
+                connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
+            } while (-1 == connection && EINTR == errno);
+            if (-1 == connection) {
+                LINTED_ERROR("Could not accept gui connection: %s\n",
+                             strerror(errno));
+            }
+
 			struct request_data request_data;
 			int reply_writer;
 			ssize_t bytes_read;
 			do {
-				bytes_read = linted_io_recv_with_fd(inbox,
+				bytes_read = read(connection,
 								    &request_data,
-								    sizeof request_data,
-								    &reply_writer);
+                                  sizeof request_data);
 			} while (-1 == bytes_read && EINTR == errno);
 			if (-1 == bytes_read) {
-				LINTED_ERROR("Could not read gui inbox: %s\n",
+				LINTED_ERROR("Could not read from gui connection: %s\n",
 					     strerror(errno));
-			}
-
-			/* All users have closed off */
-			if (0 == bytes_read) {
-				goto exit;
 			}
 
 			switch (request_data.type) {
@@ -311,7 +321,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 					ssize_t bytes_written;
 					do {
 						bytes_written =
-						    write(reply_writer,
+						    write(connection,
 							  &reply_data, sizeof reply_data);
 					} while (-1 == bytes_written && errno == EINTR);
 					if (-1 == bytes_written) {
@@ -327,10 +337,9 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 				    ("Received unexpected request type: %d.\n",
 				     request_data.type);
 			}
-			int const reply_close_status = close(reply_writer);
-			if (-1 == reply_close_status) {
+			if (-1 == close(connection)) {
 				LINTED_ERROR
-				    ("Could not close reply writer: %s\n",
+				    ("Could not close connection: %s\n",
 				     strerror(errno));
 			}
 		}

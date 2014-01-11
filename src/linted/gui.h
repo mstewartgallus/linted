@@ -22,7 +22,7 @@
 
 typedef struct _linted_gui {
 	linted_task_t _task;
-	int _inbox;
+	int _server;
 } linted_gui_t;
 
 enum linted_gui_event_type {
