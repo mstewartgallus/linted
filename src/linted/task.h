@@ -23,7 +23,7 @@ typedef struct _linted_task {
 } linted_task_t;
 
 typedef struct _linted_task_spawner {
-	int _request_writer;
+	int _server;
 } linted_task_spawner_t;
 
 typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int inbox);

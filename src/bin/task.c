@@ -29,6 +29,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 struct request_data {
@@ -40,7 +41,7 @@ struct reply_data {
 	pid_t pid;
 };
 
-static int fork_server_run(linted_task_spawner_t spawner, int request_reader);
+static int fork_server_run(linted_task_spawner_t spawner);
 
 int linted_task_spawner_init(linted_task_spawner_t * spawner)
 {
@@ -50,43 +51,49 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 	 * exec. It also allows us to avoid the nasty command line
 	 * interface exec forces us into.
 	 */
-	int fork_server_request_fds[2];
-	int const request_socket_status = socketpair(AF_UNIX,
-						     SOCK_STREAM | SOCK_CLOEXEC,
-						     0,
-						     fork_server_request_fds);
-	if (-1 == request_socket_status) {
-		return -1;
+    sa_family_t const address_type = AF_UNIX;
+
+	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (-1 == server) {
+		goto error;
 	}
 
-	int const fork_server_request_reader = fork_server_request_fds[0];
-	int const fork_server_request_writer = fork_server_request_fds[1];
-
-	spawner->_request_writer = fork_server_request_writer;
-
-	pid_t const child_pid = fork();
-	if (0 == child_pid) {
-		int const exit_status = fork_server_run(*spawner,
-							fork_server_request_reader);
-		exit(exit_status);
+	/* Make the socket abstract and autobind */
+	if (-1 == bind(server,
+		       (struct sockaddr const *)&address_type, sizeof address_type)) {
+		goto error_and_close_server;
 	}
 
-	int error_status = -1;
-	if (child_pid != -1) {
-		error_status = 0;
+	if (-1 == listen(server, 128)) {
+		goto error_and_close_server;
 	}
 
-	int const request_close_status = close(fork_server_request_reader);
-	if (-1 == request_close_status) {
-		error_status = -1;
-	}
+	spawner->_server = server;
 
-	return error_status;
+    {
+        pid_t const child_pid = fork();
+        if (0 == child_pid) {
+            int const exit_status = fork_server_run(*spawner);
+            exit(exit_status);
+        }
+
+        if (-1 == child_pid) {
+            goto error_and_close_server;
+        }
+    }
+
+	return 0;
+
+ error_and_close_server:
+	close(server);
+
+ error:
+	return -1;
 }
 
 int linted_task_spawner_close(linted_task_spawner_t spawner)
 {
-	return close(spawner._request_writer);
+	return close(spawner._server);
 }
 
 int linted_task_spawn(linted_task_t * const task,
@@ -95,100 +102,109 @@ int linted_task_spawn(linted_task_t * const task,
 {
 	int error_status = -1;
 
-	int reply_fds[2];
-	int const reply_fds_status = pipe2(reply_fds, O_CLOEXEC);
-	if (-1 == reply_fds_status) {
+	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (-1 == connection) {
 		goto finish;
 	}
 
 	{
-		int const reply_reader = reply_fds[0];
-		int const reply_writer = reply_fds[1];
+		/* Our server socket is anonymous so we need the name */
+		struct sockaddr_un address;
+		socklen_t address_size;
 
-		{
-			struct request_data request_data = {
-				.func = func
-			};
+		memset(&address, 0, sizeof address);
+		address.sun_family = AF_UNIX;
 
-			struct iovec iovecs[] = {
-				(struct iovec){
-					       .iov_base = &request_data,
-					       .iov_len = sizeof request_data}
-			};
-
-			struct msghdr message;
-			memset(&message, 0, sizeof message);
-
-			message.msg_iov = iovecs;
-			message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-
-			int const sent_fildes[] = {
-				reply_writer,
-				inbox
-			};
-			char control_message[CMSG_SPACE(sizeof sent_fildes)];
-			message.msg_control = control_message;
-			message.msg_controllen = sizeof control_message;
-
-			struct cmsghdr *const control_message_header =
-			    CMSG_FIRSTHDR(&message);
-			control_message_header->cmsg_level = SOL_SOCKET;
-			control_message_header->cmsg_type = SCM_RIGHTS;
-			control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
-
-			void *const control_message_data =
-			    CMSG_DATA(control_message_header);
-			memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
-
-			ssize_t bytes_written;
-			do {
-				bytes_written = sendmsg(spawner._request_writer,
-							&message, 0);
-			} while (bytes_written != sizeof message && errno == EINTR);
-			if (-1 == bytes_written) {
-				goto finish_and_free_reply_fds;
-			}
+		address_size = sizeof address;
+		if (-1 ==
+		    getsockname(spawner._server, (struct sockaddr *)&address,
+				&address_size)) {
+			goto finish_and_close_connection;
 		}
 
-		error_status = 0;
-
- finish_and_free_reply_fds:;
-		if (error_status != -1) {
-			struct reply_data reply_data;
-			ssize_t bytes_read;
-			do {
-				bytes_read = read(reply_reader,
-						  &reply_data, sizeof reply_data);
-			} while (-1 == bytes_read && errno == EINTR);
-			if (-1 == bytes_read) {
-				error_status = -1;
-			}
-
-			int const reply_error_status = reply_data.error_status;
-			if (reply_error_status != 0) {
-				errno = reply_error_status;
-				error_status = -1;
-			} else {
-				task->_pid = reply_data.pid;
-			}
-		}
-
-		int const reply_writer_close_status = close(reply_writer);
-		if (-1 == reply_writer_close_status) {
-			error_status = -1;
-		}
-
-		int const reply_reader_close_status = close(reply_reader);
-		if (-1 == reply_reader_close_status) {
-			error_status = -1;
+		if (-1 ==
+		    connect(connection, (struct sockaddr const *)&address,
+			    address_size)) {
+			goto finish_and_close_connection;
 		}
 	}
+
+	{
+        struct request_data request_data = {
+            .func = func
+        };
+
+        struct iovec iovecs[] = {
+            (struct iovec){
+                .iov_base = &request_data,
+                .iov_len = sizeof request_data}
+        };
+
+        struct msghdr message;
+        memset(&message, 0, sizeof message);
+
+        message.msg_iov = iovecs;
+        message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+
+        int const sent_fildes[] = { inbox };
+        char control_message[CMSG_SPACE(sizeof sent_fildes)];
+        message.msg_control = control_message;
+        message.msg_controllen = sizeof control_message;
+
+        struct cmsghdr *const control_message_header =
+            CMSG_FIRSTHDR(&message);
+        control_message_header->cmsg_level = SOL_SOCKET;
+        control_message_header->cmsg_type = SCM_RIGHTS;
+        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
+
+        void *const control_message_data =
+            CMSG_DATA(control_message_header);
+        memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
+
+        ssize_t bytes_written;
+        do {
+            bytes_written = sendmsg(connection,
+                                    &message, 0);
+        } while (bytes_written != sizeof message && errno == EINTR);
+        if (-1 == bytes_written) {
+            goto finish_and_close_connection;
+        }
+    }
+
+	{
+		struct reply_data reply_data;
+		ssize_t bytes_read;
+		do {
+			bytes_read = read(connection, &reply_data, sizeof reply_data);
+		} while (-1 == bytes_read && EINTR == EINTR);
+		if (-1 == bytes_read) {
+			goto finish_and_close_connection;
+		}
+
+        int const reply_error_status = reply_data.error_status;
+        if (reply_error_status != 0) {
+            errno = reply_error_status;
+            goto finish_and_close_connection;
+        } else {
+            task->_pid = reply_data.pid;
+        }
+	}
+
+    error_status = 0;
+
+ finish_and_close_connection:
+	if (-1 == close(connection)) {
+		error_status = -1;
+	}
+
  finish:
 	return error_status;
 }
 
-static int fork_server_run(linted_task_spawner_t const spawner, int const request_reader)
+static int fork_server_run(linted_task_spawner_t const spawner)
 {
+    int const server = spawner._server;
+
 	/* Posix requires an exact copy of process memory so passing
 	 * around function pointers through pipes is allowed.
 	 */
@@ -203,7 +219,17 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 		LINTED_ERROR("Could not ignore child processes: %s\n", strerror(errno));
 	}
 
+    /* TODO: Handle multiple connections at once */
 	for (;;) {
+        int connection;
+		do {
+			connection = accept4(server, NULL, NULL, SOCK_CLOEXEC);
+		} while (-1 == connection && EINTR == errno);
+		if (-1 == connection) {
+			LINTED_ERROR("Could not accept fork request connection: %s\n",
+                         strerror(errno));
+		}
+
 		struct msghdr message;
 		memset(&message, 0, sizeof message);
 
@@ -226,12 +252,12 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 
 		ssize_t bytes_read;
 		do {
-			bytes_read = recvmsg(request_reader,
+			bytes_read = recvmsg(connection,
 					     &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
-		} while (bytes_read != sizeof request_data && errno == EINTR);
+		} while (-1 == sizeof request_data && EINTR == errno);
 		if (-1 == bytes_read) {
 			LINTED_ERROR
-			    ("Could not read bytes from fork request socket: %s\n",
+			    ("Could not read bytes from fork request connection: %s\n",
 			     strerror(errno));
 		}
 
@@ -245,8 +271,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 
 		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
-		int const reply_writer = sent_fildes[0];
-		int const inbox = sent_fildes[1];
+		int const inbox = sent_fildes[0];
 
 		pid_t const child_pid = fork();
 		if (0 == child_pid) {
@@ -260,10 +285,10 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 				     strerror(errno));
 			}
 
-			int const reply_close_status = close(reply_writer);
-			if (-1 == reply_close_status) {
+			int const connection_close_status = close(connection);
+			if (-1 == connection_close_status) {
 				LINTED_ERROR
-				    ("Forked child could not close reply file descriptor: %s\n",
+				    ("Forked child could not close connection: %s\n",
 				     strerror(errno));
 			}
 			return request_data.func(spawner, inbox);
@@ -285,7 +310,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 				reply_data.pid = child_pid;
 			}
 
-			int const reply_write_status = write(reply_writer,
+			int const reply_write_status = write(connection,
 							     &reply_data,
 							     sizeof reply_data);
 			if (-1 == reply_write_status) {
@@ -295,19 +320,12 @@ static int fork_server_run(linted_task_spawner_t const spawner, int const reques
 			}
 		}
 
-		int const reply_close_status = close(reply_writer);
-		if (-1 == reply_close_status) {
+		int const close_status = close(connection);
+		if (-1 == close_status) {
 			LINTED_ERROR
-			    ("Fork server could not close reply file descriptor: %s\n",
+			    ("Fork server could not close connection: %s\n",
 			     strerror(errno));
 		}
-	}
-
-	int const request_close_status = close(request_reader);
-	if (-1 == request_close_status) {
-		LINTED_ERROR
-		    ("Could not close read end of fork request socket: %s\n",
-		     strerror(errno));
 	}
 
 	int const spawner_close_status = linted_task_spawner_close(spawner);
