@@ -3,3 +3,9 @@ Linted -- TODO
 * Port to --host=i686-w64-mingw32
 * Fix bug where the spawner can't close because it keeps a handle to itself
 * Move more completely to use syslog
+* Don't do cargo cult security
+This is pretty much impossible.
+
+I'm just a young hacker playing around with technologies like
+sandboxing. I have no real knowledge of security. I hope this project
+is useful as a personal learning experience though.
