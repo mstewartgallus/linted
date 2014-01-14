@@ -52,7 +52,7 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 	 * exec. It also allows us to avoid the nasty command line
 	 * interface exec forces us into.
 	 */
-    int const server = linted_io_create_local_server();
+	int const server = linted_io_create_local_server();
 	if (-1 == server) {
 		goto error;
 	}
@@ -91,10 +91,10 @@ int linted_task_spawn(linted_task_t * const task,
 {
 	int error_status = -1;
 
-    int const connection = linted_io_connect_to_local_socket(spawner._server);
-    if (-1 == connection) {
-        goto finish;
-    }
+	int const connection = linted_io_connect_to_local_socket(spawner._server);
+	if (-1 == connection) {
+		goto finish;
+	}
 
 	{
 		struct request_data request_data = {

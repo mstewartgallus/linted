@@ -77,7 +77,7 @@ static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
 int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
-    int const server = linted_io_create_local_server();
+	int const server = linted_io_create_local_server();
 	if (-1 == server) {
 		goto error;
 	}
@@ -101,10 +101,10 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 {
 	int error_status = -1;
 
-    int const connection = linted_io_connect_to_local_socket(gui._server);
-    if (-1 == connection) {
-        goto finish;
-    }
+	int const connection = linted_io_connect_to_local_socket(gui._server);
+	if (-1 == connection) {
+		goto finish;
+	}
 
 	{
 		struct request_data request_data;

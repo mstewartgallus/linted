@@ -46,7 +46,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int inbox);
 int linted_simulator_spawn(linted_simulator_t * const simulator,
 			   linted_task_spawner_t const spawner)
 {
-    int const server = linted_io_create_local_server();
+	int const server = linted_io_create_local_server();
 	if (-1 == server) {
 		goto error;
 	}
@@ -69,10 +69,10 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
-    int const connection = linted_io_connect_to_local_socket(simulator._server);
-    if (-1 == connection) {
-        goto finish_with_error;
-    }
+	int const connection = linted_io_connect_to_local_socket(simulator._server);
+	if (-1 == connection) {
+		goto finish_with_error;
+	}
 
 	{
 		struct message_data message_data = {
