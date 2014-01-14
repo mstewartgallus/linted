@@ -28,14 +28,16 @@ linted_SOURCES=\
   $(verified_sources)
 
 verified_sources=\
-  src/bin/util.c\
+  src/bin/io.c\
   src/bin/simulator.c\
-  src/bin/sprintf.c
+  src/bin/sprintf.c\
+  src/bin/util.c
 
 linted_LDADD=$(SDL_LIBS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
+  src/linted/io.h\
   src/linted/gui.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
@@ -53,8 +55,7 @@ src/bin/linted.$(OBJEXT): config.h\
   src/linted/util.h
 
 src/bin/io.$(OBJEXT): config.h\
-  src/linted/io.h\
-  src/linted/util.h
+  src/linted/io.h
 
 src/bin/simulator.$(OBJEXT): config.h\
   src/linted/io.h\
@@ -79,6 +80,7 @@ src/bin/util.$(OBJEXT): config.h src/linted/util.h
   check-cppcheck\
   check-clang-analyzer\
   check-cbmc\
+  check-splint\
   indent
 
 indent: $(linted_SOURCES) $(EXTRA_DIST)
@@ -103,6 +105,9 @@ check-cppcheck:
 check-clang-analyzer: $(linted_SOURCES)
 	$(CLANG) --analyze $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 	- rm *.plist
+
+check-splint: $(linted_SOURCES)
+	splint +posixstrictlib $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 
 check: $(linted_CHECK_PHASES)
 

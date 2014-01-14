@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/simulator.h"
+#include "linted/io.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -45,21 +46,9 @@ static int simulator_run(linted_task_spawner_t const spawner, int inbox);
 int linted_simulator_spawn(linted_simulator_t * const simulator,
 			   linted_task_spawner_t const spawner)
 {
-	sa_family_t const address_type = AF_UNIX;
-
-	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    int const server = linted_io_create_local_server();
 	if (-1 == server) {
 		goto error;
-	}
-
-	/* Make the socket abstract and autobind */
-	if (-1 == bind(server,
-		       (struct sockaddr const *)&address_type, sizeof address_type)) {
-		goto error_and_close_server;
-	}
-
-	if (-1 == listen(server, 128)) {
-		goto error_and_close_server;
 	}
 
 	if (-1 == linted_task_spawn(&simulator->_task, spawner, simulator_run, server)) {
@@ -80,32 +69,10 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
-	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (-1 == connection) {
-		goto finish_with_error;
-	}
-
-	{
-		/* Our server socket is anonymous so we need the name */
-		struct sockaddr_un address;
-		socklen_t address_size;
-
-		memset(&address, 0, sizeof address);
-		address.sun_family = AF_UNIX;
-
-		address_size = sizeof address;
-		if (-1 ==
-		    getsockname(simulator._server, (struct sockaddr *)&address,
-				&address_size)) {
-			goto finish_with_error_and_close_connection;
-		}
-
-		if (-1 ==
-		    connect(connection, (struct sockaddr const *)&address,
-			    address_size)) {
-			goto finish_with_error_and_close_connection;
-		}
-	}
+    int const connection = linted_io_connect_to_local_socket(simulator._server);
+    if (-1 == connection) {
+        goto finish_with_error;
+    }
 
 	{
 		struct message_data message_data = {
