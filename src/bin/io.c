@@ -57,6 +57,8 @@ int linted_io_connect_to_local_socket(int const local)
 
 		int const sent_fildes[] = { sent_end };
 		char control_message[CMSG_SPACE(sizeof sent_fildes)];
+        memset(control_message, 0, sizeof control_message);
+
 		message.msg_control = control_message;
 		message.msg_controllen = sizeof control_message;
 
