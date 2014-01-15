@@ -18,7 +18,6 @@
 #include "linted/task.h"
 
 #include "linted/io.h"
-#include "linted/sprintf.h"
 #include "linted/util.h"
 
 #include <errno.h>
