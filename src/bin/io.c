@@ -16,62 +16,122 @@
 #include "config.h"
 
 #include "linted/io.h"
+#include "linted/util.h"
 
+#include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
 
-int linted_io_create_local_server(void)
+int linted_io_create_local_server(int sockets[2])
 {
-	sa_family_t const address_type = AF_UNIX;
-
-	int const server = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (-1 == server) {
-		goto error;
-	}
-
-	/* Make the socket abstract and autobind */
-	if (-1 == bind(server,
-		       (struct sockaddr const *)&address_type, sizeof address_type)) {
-		goto error_and_close_server;
-	}
-
-	if (-1 == listen(server, 128)) {
-		goto error_and_close_server;
-	}
-
-	return server;
-
- error_and_close_server:
-	close(server);
- error:
-	return -1;
+	return socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets);
 }
 
 int linted_io_connect_to_local_socket(int const local)
 {
-	/* Our server socket is anonymous so we need the name */
-	struct sockaddr_un address;
-
-	memset(&address, 0, sizeof address);
-	address.sun_family = AF_UNIX;
-
-	socklen_t address_size = sizeof address;
-	if (-1 == getsockname(local, (struct sockaddr *)&address, &address_size)) {
+	int sockets[2];
+	if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
 		return -1;
 	}
 
-	int const connection = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (-1 == connection) {
+	int sent_end = sockets[0];
+	int kept_end = sockets[1];
+
+	{
+		char dummy_data = 0;
+
+		struct iovec iovecs[] = {
+			(struct iovec){
+				       .iov_base = &dummy_data,
+				       .iov_len = sizeof dummy_data}
+		};
+
+		struct msghdr message;
+		memset(&message, 0, sizeof message);
+
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+
+		int const sent_fildes[] = { sent_end };
+		char control_message[CMSG_SPACE(sizeof sent_fildes)];
+		message.msg_control = control_message;
+		message.msg_controllen = sizeof control_message;
+
+		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+		control_message_header->cmsg_level = SOL_SOCKET;
+		control_message_header->cmsg_type = SCM_RIGHTS;
+		control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
+
+		void *const control_message_data = CMSG_DATA(control_message_header);
+		memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
+
+		ssize_t bytes_written;
+		do {
+			bytes_written = sendmsg(local, &message, 0);
+		} while (-1 == bytes_written && EINTR == errno);
+		if (-1 == bytes_written) {
+			goto error_and_close_sockets;
+		}
+	}
+
+	if (-1 == close(sent_end)) {
+		goto error_and_close_socket;
+	}
+
+	return kept_end;
+
+ error_and_close_sockets:
+	close(sent_end);
+ error_and_close_socket:
+	close(kept_end);
+
+	return -1;
+}
+
+int linted_io_recv_socket(int const inbox)
+{
+	char dummy_data = 0;
+
+	struct iovec iovecs[] = {
+		(struct iovec){
+			       .iov_base = &dummy_data,
+			       .iov_len = sizeof dummy_data}
+	};
+
+	struct msghdr message;
+	memset(&message, 0, sizeof message);
+
+	message.msg_iov = iovecs;
+	message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+
+	int sent_fildes[1] = { -1 };
+	char control_message[CMSG_SPACE(sizeof sent_fildes)];
+	memset(control_message, 0, sizeof control_message);
+
+	message.msg_control = control_message;
+	message.msg_controllen = sizeof control_message;
+
+	ssize_t bytes_read;
+	do {
+		bytes_read = recvmsg(inbox, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
+	} while (-1 == bytes_read && EINTR == errno);
+
+	if (-1 == bytes_read) {
 		return -1;
 	}
 
-	if (-1 == connect(connection, (struct sockaddr const *)&address, address_size)) {
-		close(connection);
+	if (0 == bytes_read) {
+		errno = 0;
 		return -1;
 	}
 
-	return connection;
+	struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+	void *const control_message_data = CMSG_DATA(control_message_header);
+
+	memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
+
+	return sent_fildes[0];
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-int linted_io_create_local_server(void);
+int linted_io_create_local_server(int sockets[2]);
 
 /**
  * Connects to a local socket
@@ -22,3 +22,5 @@ int linted_io_create_local_server(void);
  * @param socket the local socket that is connected to
  */
 int linted_io_connect_to_local_socket(int socket);
+
+int linted_io_recv_socket(int inbox);

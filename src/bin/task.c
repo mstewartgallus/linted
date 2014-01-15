@@ -42,7 +42,7 @@ struct reply_data {
 	pid_t pid;
 };
 
-static int fork_server_run(linted_task_spawner_t spawner);
+static int fork_server_run(linted_task_spawner_t spawner, int inbox);
 
 int linted_task_spawner_init(linted_task_spawner_t * spawner)
 {
@@ -52,31 +52,40 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 	 * exec. It also allows us to avoid the nasty command line
 	 * interface exec forces us into.
 	 */
-	int const server = linted_io_create_local_server();
-	if (-1 == server) {
-		goto error;
+	int sockets[2];
+	if (-1 == linted_io_create_local_server(sockets)) {
+		return -1;
 	}
 
-	spawner->_server = server;
+	int const spawner_writer = sockets[0];
+	int const spawner_reader = sockets[1];
+
+	spawner->_server = spawner_writer;
 
 	{
 		pid_t const child_pid = fork();
 		if (0 == child_pid) {
-			int const exit_status = fork_server_run(*spawner);
+			int const exit_status = fork_server_run(*spawner, spawner_reader);
 			exit(exit_status);
 		}
 
 		if (-1 == child_pid) {
-			goto error_and_close_server;
+			goto error_and_close_sockets;
 		}
+	}
+
+	if (-1 == close(spawner_reader)) {
+		goto error_and_close_socket;
 	}
 
 	return 0;
 
- error_and_close_server:
-	close(server);
+ error_and_close_sockets:
+	close(spawner_reader);
 
- error:
+ error_and_close_socket:
+	close(spawner_writer);
+
 	return -1;
 }
 
@@ -87,7 +96,7 @@ int linted_task_spawner_close(linted_task_spawner_t spawner)
 
 int linted_task_spawn(linted_task_t * const task,
 		      linted_task_spawner_t const spawner,
-		      linted_task_func_t const func, int const inbox)
+		      linted_task_func_t const func, int const fildes_to_send)
 {
 	int error_status = -1;
 
@@ -113,7 +122,7 @@ int linted_task_spawn(linted_task_t * const task,
 		message.msg_iov = iovecs;
 		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
 
-		int const sent_fildes[] = { inbox };
+		int const sent_fildes[] = { fildes_to_send };
 		char control_message[CMSG_SPACE(sizeof sent_fildes)];
 		message.msg_control = control_message;
 		message.msg_controllen = sizeof control_message;
@@ -129,7 +138,7 @@ int linted_task_spawn(linted_task_t * const task,
 		ssize_t bytes_written;
 		do {
 			bytes_written = sendmsg(connection, &message, 0);
-		} while (bytes_written != sizeof message && errno == EINTR);
+		} while (-1 == bytes_written && EINTR == errno);
 		if (-1 == bytes_written) {
 			goto finish_and_close_connection;
 		}
@@ -165,10 +174,8 @@ int linted_task_spawn(linted_task_t * const task,
 	return error_status;
 }
 
-static int fork_server_run(linted_task_spawner_t const spawner)
+static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 {
-	int const server = spawner._server;
-
 	/* Posix requires an exact copy of process memory so passing
 	 * around function pointers through pipes is allowed.
 	 */
@@ -185,11 +192,12 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 
 	/* TODO: Handle multiple connections at once */
 	for (;;) {
-		int connection;
-		do {
-			connection = accept4(server, NULL, NULL, SOCK_CLOEXEC);
-		} while (-1 == connection && EINTR == errno);
+		int const connection = linted_io_recv_socket(inbox);
 		if (-1 == connection) {
+			if (0 == errno) {
+				break;
+			}
+
 			LINTED_ERROR("Could not accept fork request connection: %m",
 				     errno);
 		}
@@ -207,7 +215,7 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 		message.msg_iov = iov;
 		message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
 
-		int sent_fildes[2] = { -1 };
+		int sent_fildes[1] = { -1 };
 		char control_message[CMSG_SPACE(sizeof sent_fildes)];
 		memset(control_message, 0, sizeof control_message);
 
@@ -220,14 +228,7 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 					     &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
 		} while (-1 == sizeof request_data && EINTR == errno);
 		if (-1 == bytes_read) {
-			LINTED_ERROR
-			    ("Could not read bytes from fork request connection: %m",
-			     errno);
-		}
-
-		/* No more listeners to serve so exit. */
-		if (0 == bytes_read) {
-			break;
+			LINTED_ERROR("Could not read bytes from fork request: %m", errno);
 		}
 
 		struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
@@ -235,7 +236,7 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 
 		memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
-		int const inbox = sent_fildes[0];
+		int const child_inbox = sent_fildes[0];
 
 		pid_t const child_pid = fork();
 		if (0 == child_pid) {
@@ -255,10 +256,10 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 				    ("Forked child could not close connection: %m",
 				     errno);
 			}
-			return request_data.func(spawner, inbox);
+			return request_data.func(spawner, child_inbox);
 		}
 
-		int const inbox_close_status = close(inbox);
+		int const inbox_close_status = close(child_inbox);
 		if (-1 == inbox_close_status) {
 			LINTED_ERROR
 			    ("Fork server could not close inbox file descriptor: %m",
@@ -288,6 +289,10 @@ static int fork_server_run(linted_task_spawner_t const spawner)
 		if (-1 == close_status) {
 			LINTED_ERROR("Fork server could not close connection: %m", errno);
 		}
+	}
+
+	if (-1 == close(inbox)) {
+		LINTED_ERROR("Could not close inbox: %m", errno);
 	}
 
 	int const spawner_close_status = linted_task_spawner_close(spawner);

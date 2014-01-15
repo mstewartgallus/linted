@@ -77,23 +77,32 @@ static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
 int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
-	int const server = linted_io_create_local_server();
-	if (-1 == server) {
-		goto error;
+	int sockets[2];
+	if (-1 == linted_io_create_local_server(sockets)) {
+		return -1;
 	}
 
-	if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, server)) {
-		goto error_and_close_server;
+	int const gui_reader = sockets[0];
+	int const gui_writer = sockets[1];
+
+	if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, gui_reader)) {
+		goto error_and_close_sockets;
 	}
 
-	gui->_server = server;
+	if (-1 == close(gui_reader)) {
+		goto error_and_close_socket;
+	}
+
+	gui->_server = gui_writer;
 
 	return 0;
 
- error_and_close_server:
-	close(server);
+ error_and_close_sockets:
+	close(gui_reader);
 
- error:
+ error_and_close_socket:
+	close(gui_writer);
+
 	return -1;
 }
 
@@ -255,11 +264,12 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
 		if (had_gui_command) {
 			/* TODO: Handle multiple connections */
-			int connection;
-			do {
-				connection = accept4(inbox, NULL, NULL, SOCK_CLOEXEC);
-			} while (-1 == connection && EINTR == errno);
+			int const connection = linted_io_recv_socket(inbox);
 			if (-1 == connection) {
+				if (0 == errno) {
+					break;
+				}
+
 				LINTED_ERROR("Could not accept gui connection: %m",
 					     errno);
 			}
