@@ -3,6 +3,8 @@ Linted -- TODO
 * Port to --host=i686-w64-mingw32
 * Fix bug where the spawner can't close because it keeps a handle to itself
 * Move more completely to use syslog
+* Make servers hand out the connection file descriptors not clients
+The current way is inherently fragile and insecure.
 * Don't do cargo cult security
 This is pretty much impossible.
 
