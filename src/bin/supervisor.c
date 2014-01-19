@@ -21,19 +21,17 @@
 #include "linted/supervisor.h"
 #include "linted/util.h"
 
-#include "SDL.h"
+#include "uv.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
-#define SIMULATOR_CLOCK CLOCK_MONOTONIC
+struct timer_data {
+	linted_gui_t gui;
+	linted_simulator_t simulator;
+};
 
-static void run_tick(linted_gui_t gui, linted_simulator_t simulator,
-		     struct timespec *next_tick);
+static void timer_callback(uv_timer_t * handle, int status);
 
 int linted_supervisor_run(linted_task_spawner_t spawner)
 {
@@ -49,14 +47,26 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 		LINTED_ERROR("Could not spawn simulator: %m", errno);
 	}
 
-	struct timespec next_tick;
-	int const time_status = clock_gettime(SIMULATOR_CLOCK, &next_tick);
-	if (-1 == time_status) {
-		LINTED_ERROR("Could not get clock time: %m", errno);
+	uv_loop_t *const loop = uv_default_loop();
+
+	uv_timer_t timer;
+	int const timer_status = uv_timer_init(loop, &timer);
+	if (timer_status < 0) {
+		LINTED_ERROR("Could not initialize timer: %s",
+			     uv_strerror(-timer_status));
 	}
-	for (;;) {
-		run_tick(gui, simulator, &next_tick);
+
+	struct timer_data timer_data = {
+		.simulator = simulator,
+		.gui = gui
+	};
+	timer.data = &timer_data;
+	int const start_status = uv_timer_start(&timer, timer_callback, 0, 1000L / 60);
+	if (start_status < 0) {
+		LINTED_ERROR("Could not start timer: %s", uv_strerror(-start_status));
 	}
+
+	uv_run(loop, UV_RUN_DEFAULT);
 
 	int const simulator_close_status = linted_simulator_close(simulator);
 	if (-1 == simulator_close_status) {
@@ -71,9 +81,12 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 	return EXIT_SUCCESS;
 }
 
-static void run_tick(linted_gui_t const gui, linted_simulator_t const simulator,
-		     struct timespec *const next_tick)
+static void timer_callback(uv_timer_t * const handle, int const status)
 {
+	struct timer_data *const timer_data = handle->data;
+	linted_gui_t const gui = timer_data->gui;
+	linted_simulator_t const simulator = timer_data->simulator;
+
 	struct linted_simulator_tick_results tick_results;
 	int const tick_status = linted_simulator_send_tick(&tick_results,
 							   simulator);
@@ -86,17 +99,5 @@ static void run_tick(linted_gui_t const gui, linted_simulator_t const simulator,
 							 tick_results.y_position);
 	if (-1 == update_status) {
 		LINTED_ERROR("Could not send update message to gui: %m", errno);
-	}
-
-	/* TODO: Handle overflow */
-	next_tick->tv_nsec += (1000L * 1000) / 60;
-
-	int sleep_status;
-	do {
-		sleep_status = clock_nanosleep(SIMULATOR_CLOCK,
-					       TIMER_ABSTIME, next_tick, NULL);
-	} while (-1 == sleep_status && EINTR == errno);
-	if (-1 == sleep_status) {
-		LINTED_ERROR("Could not sleep for timeout: %m", errno);
 	}
 }

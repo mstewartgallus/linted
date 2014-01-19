@@ -16,10 +16,6 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
-#include <stdio.h>
-#include <sys/time.h>
-#include <unistd.h>
-
 #define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
 #define LINTED_ERROR(...)                                       \

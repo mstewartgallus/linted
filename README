@@ -67,7 +67,9 @@ We plan on also guarding against bugs with:
 
 A few explicitly labeled files (such as this README) are distributed
 under much more simple and less restrictive licences than the Apache
-License. But for most files...
+License. The library libuv is distributed under its own license. You
+should have received a copy of libuv's license under the file LICENSE
+in the libs/libuv directory. But for most files...
 
 Linted is licensed under the Apache License, Version 2.0 (the
 "License"); you may not use Linted except in compliance with

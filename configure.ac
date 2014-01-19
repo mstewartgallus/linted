@@ -23,6 +23,10 @@ AC_ARG_ENABLE(
                 [--enable-save-temps],
                 [save temporary files (useful for debugging)]))
 dnl
+AC_DISABLE_SHARED
+AC_ENABLE_STATIC
+LT_INIT
+dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
 ])
@@ -32,12 +36,10 @@ AM_PROG_CC_C_O
 dnl
 AC_CHECK_HEADERS([dnl
         fcntl.h dnl
-        inttypes.h dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
         sys/socket.h dnl
-        sys/time.h dnl
         syslog.h dnl
         unistd.h], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
@@ -107,10 +109,6 @@ AC_SEARCH_LIBS([glClear], [GL], [], [
 dnl
 PKG_CHECK_MODULES([SDL], [sdl >= 1.2.14])
 dnl
-AC_SEARCH_LIBS([clock_gettime], [rt], [], [
-  AC_MSG_ERROR([Unable to find a POSIX realtime library])
-])
-dnl
 AM_CONDITIONAL([SAVE_TEMPS], [test "x${enable_save_temps}" = "xyes"])
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
 AM_CONDITIONAL([HAS_CBMC], [test "x${CBMC}" != "x"])
@@ -120,4 +118,5 @@ dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 dnl
+AC_CONFIG_SUBDIRS([libs/libuv])
 AC_OUTPUT

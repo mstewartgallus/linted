@@ -14,6 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+SUBDIRS=libs/libuv
 
 ACLOCAL_AMFLAGS=-I m4
 
@@ -32,7 +33,8 @@ verified_sources=\
   src/bin/simulator.c\
   src/bin/util.c
 
-linted_LDADD=$(SDL_LIBS)
+linted_LDADD=$(SDL_LIBS) libs/libuv/libuv.la
+linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
 linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 
 EXTRA_DIST=\
@@ -110,7 +112,12 @@ clean-local:
 	- rm -rf scan-report
 
 
-AM_CPPFLAGS=$(linted_CPPFLAGS_HARDEN) -I . -I $(srcdir)/src -I src
+AM_CPPFLAGS=\
+  $(linted_CPPFLAGS_HARDEN)\
+  -I .\
+  -I $(srcdir)/src\
+  -I src\
+  -I$(srcdir)/libs/libuv/include
 
 AM_CFLAGS=\
   $(linted_CFLAGS_C99_STD)\
@@ -121,8 +128,6 @@ AM_CFLAGS=\
 if SAVE_TEMPS
 AM_CFLAGS +=-save-temps=obj
 endif
-
-AM_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN)
 
 linted_INDENTFLAGS=\
   --linux-style\

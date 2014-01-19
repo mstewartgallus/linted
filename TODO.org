@@ -5,6 +5,8 @@ Linted -- TODO
 * Move more completely to use syslog
 * Make servers hand out the connection file descriptors not clients
 The current way is inherently fragile and insecure.
+* Statically link in libuv
+* Let people link in their own libuv
 * Don't do cargo cult security
 This is pretty much impossible.
 
