@@ -108,13 +108,6 @@ int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawn
 
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
-	int error_status = -1;
-
-	int const connection = linted_io_connect_to_local_socket(gui._server);
-	if (-1 == connection) {
-		goto finish;
-	}
-
 	{
 		struct request_data request_data;
 		memset(&request_data, 0, sizeof request_data);
@@ -124,11 +117,11 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 
 		ssize_t bytes_written;
 		do {
-			bytes_written = write(connection,
+			bytes_written = write(gui._server,
 					      &request_data, sizeof request_data);
 		} while (-1 == bytes_written && EINTR == EINTR);
 		if (-1 == bytes_written) {
-			goto finish_and_close_connection;
+			return -1;
 		}
 	}
 
@@ -136,23 +129,16 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 		struct reply_data reply_data;
 		ssize_t bytes_read;
 		do {
-			bytes_read = read(connection, &reply_data, sizeof reply_data);
+			bytes_read = read(gui._server, &reply_data, sizeof reply_data);
 		} while (-1 == bytes_read && EINTR == EINTR);
 		if (-1 == bytes_read) {
-			goto finish_and_close_connection;
+			return -1;
 		}
 
 		/* This is just to confirm the server updated */
 	}
-	error_status = 0;
 
- finish_and_close_connection:
-	if (-1 == close(connection)) {
-		error_status = -1;
-	}
-
- finish:
-	return error_status;
+	return 0;
 }
 
 int linted_gui_close(linted_gui_t const gui)
@@ -263,26 +249,19 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 		}
 
 		if (had_gui_command) {
-			/* TODO: Handle multiple connections */
-			int const connection = linted_io_recv_socket(inbox);
-			if (-1 == connection) {
-				if (0 == errno) {
-					break;
-				}
-
-				LINTED_ERROR("Could not accept gui connection: %m",
-					     errno);
-			}
-
 			struct request_data request_data;
 			ssize_t bytes_read;
 			do {
-				bytes_read = read(connection,
+				bytes_read = read(inbox,
 						  &request_data, sizeof request_data);
 			} while (-1 == bytes_read && EINTR == errno);
 			if (-1 == bytes_read) {
 				LINTED_ERROR("Could not read from gui connection: %m",
 					     errno);
+			}
+
+			if (0 == bytes_read) {
+				break;
 			}
 
 			switch (request_data.type) {
@@ -295,7 +274,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 					ssize_t bytes_written;
 					do {
 						bytes_written =
-						    write(connection,
+						    write(inbox,
 							  &reply_data, sizeof reply_data);
 					} while (-1 == bytes_written && errno == EINTR);
 					if (-1 == bytes_written) {
@@ -310,9 +289,6 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 				LINTED_ERROR
 				    ("Received unexpected request type: %d.\n",
 				     request_data.type);
-			}
-			if (-1 == close(connection)) {
-				LINTED_ERROR("Could not close connection: %m", errno);
 			}
 		}
 

@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "linted/simulator.h"
 #include "linted/io.h"
+#include "linted/simulator.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -79,11 +79,6 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
 int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
-	int const connection = linted_io_connect_to_local_socket(simulator._server);
-	if (-1 == connection) {
-		goto finish_with_error;
-	}
-
 	{
 		struct message_data message_data = {
 			.message_type = SIMULATOR_TICK
@@ -91,11 +86,11 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 
 		ssize_t bytes_written;
 		do {
-			bytes_written = write(connection,
+			bytes_written = write(simulator._server,
 					      &message_data, sizeof message_data);
 		} while (-1 == bytes_written && EINTR == EINTR);
 		if (-1 == bytes_written) {
-			goto finish_with_error_and_close_connection;
+			return -1;
 		}
 	}
 
@@ -103,26 +98,17 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 		struct reply_data reply_data;
 		ssize_t bytes_read;
 		do {
-			bytes_read = read(connection, &reply_data, sizeof reply_data);
+			bytes_read =
+			    read(simulator._server, &reply_data, sizeof reply_data);
 		} while (-1 == bytes_read && EINTR == EINTR);
 		if (-1 == bytes_read) {
-			goto finish_with_error_and_close_connection;
+			return -1;
 		}
 
 		*tick_results = reply_data.tick_results;
 	}
 
-	if (-1 == close(connection)) {
-		goto finish_with_error;
-	}
-
 	return 0;
-
- finish_with_error_and_close_connection:
-	close(connection);
-
- finish_with_error:
-	return -1;
 }
 
 int linted_simulator_close(linted_simulator_t const simulator)
@@ -140,25 +126,19 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 	uint8_t x_position = 0;
 	uint8_t y_position = 0;
 
-	/* TODO: Handle multiple connections at once */
 	for (;;) {
-		int const connection = linted_io_recv_socket(inbox);
-		if (-1 == connection) {
-			if (0 == errno) {
-				break;
-			}
-
-			LINTED_ERROR("Could not accept simulator connection: %m", errno);
-		}
-
 		struct message_data message_data;
 		ssize_t bytes_read;
 		do {
-			bytes_read = read(connection, &message_data, sizeof message_data);
+			bytes_read = read(inbox, &message_data, sizeof message_data);
 		} while (-1 == bytes_read && EINTR == errno);
 		if (-1 == bytes_read) {
 			LINTED_ERROR("Could not read from simulator connection: %m",
 				     errno);
+		}
+
+		if (0 == bytes_read) {
+			break;
 		}
 
 		struct reply_data reply_data;
@@ -180,15 +160,11 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 
 		ssize_t bytes_written;
 		do {
-			bytes_written = write(connection, &reply_data, sizeof reply_data);
+			bytes_written = write(inbox, &reply_data, sizeof reply_data);
 		} while (-1 == bytes_written && errno == EINTR);
 		if (-1 == bytes_written) {
 			LINTED_ERROR("Could not write to simulator connection: %m",
 				     errno);
-		}
-
-		if (-1 == close(connection)) {
-			LINTED_ERROR("Could close simulator connection: %m", errno);
 		}
 	}
 

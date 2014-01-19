@@ -20,6 +20,9 @@
 
 #include <stdint.h>
 
+/**
+ * A handle to access the gui. Is not safe to share between processes.
+ */
 typedef struct _linted_gui {
 	linted_task_t _task;
 	int _server;

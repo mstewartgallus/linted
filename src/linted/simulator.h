@@ -20,6 +20,9 @@
 
 #include <stdint.h>
 
+/**
+ * A handle to access the simulator. Is not safe to share between processes.
+ */
 struct linted_simulator_tick_results {
 	uint8_t x_position;
 	uint8_t y_position;
