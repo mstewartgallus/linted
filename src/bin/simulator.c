@@ -88,7 +88,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 		do {
 			bytes_written = write(simulator._server,
 					      &message_data, sizeof message_data);
-		} while (-1 == bytes_written && EINTR == EINTR);
+		} while (-1 == bytes_written && EINTR == errno);
 		if (-1 == bytes_written) {
 			return -1;
 		}
