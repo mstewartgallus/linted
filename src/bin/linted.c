@@ -86,15 +86,13 @@ int main(int argc, char **argv)
 
 	/* Right after, we fork off from a known good state. */
 	linted_task_spawner_t spawner;
-	int const spawner_status = linted_task_spawner_init(&spawner);
-	if (-1 == spawner_status) {
+	if (-1 == linted_task_spawner_init(&spawner)) {
 		LINTED_ERROR("Could not initialize spawner: %m", errno);
 	}
 
 	int const exit_status = go(spawner, argc, argv);
 
-	int const spawner_close_status = linted_task_spawner_close(spawner);
-	if (-1 == spawner_close_status) {
+	if (-1 == linted_task_spawner_close(spawner)) {
 		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 

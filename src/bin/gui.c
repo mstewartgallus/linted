@@ -148,14 +148,11 @@ int linted_gui_close(linted_gui_t const gui)
 
 static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 {
-	int const spawner_close_status = linted_task_spawner_close(spawner);
-	if (-1 == spawner_close_status) {
+	if (-1 == linted_task_spawner_close(spawner)) {
 		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
-	int const sdl_init_status =
-	    SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
-	if (-1 == sdl_init_status) {
+	if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
 		LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
 	}
 
@@ -174,14 +171,10 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 	unsigned width = 640, height = 800;
 
 	/* Initialize SDL */
-	{
-		SDL_Surface *const video_surface = SDL_SetVideoMode(width, height, 0,
-								    sdl_flags);
-		if (NULL == video_surface) {
-			LINTED_ERROR("Could not set the video mode: %s\n",
-				     SDL_GetError());
-		}
+	if (NULL == SDL_SetVideoMode(width, height, 0, sdl_flags)) {
+		LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
 	}
+
 	/* Get actual window size, and not requested window size */
 	SDL_VideoInfo const *const video_info = SDL_GetVideoInfo();
 	width = video_info->current_w;
@@ -312,8 +305,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
 	SDL_Quit();
 
-	int const inbox_close_status = close(inbox);
-	if (-1 == inbox_close_status) {
+	if (-1 == close(inbox)) {
 		LINTED_ERROR("Could not close simulator inbox: %m", errno);
 	}
 

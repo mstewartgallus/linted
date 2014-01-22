@@ -36,14 +36,12 @@ static void timer_callback(uv_timer_t * handle, int status);
 int linted_supervisor_run(linted_task_spawner_t spawner)
 {
 	linted_gui_t gui;
-	int const gui_status = linted_gui_spawn(&gui, spawner);
-	if (-1 == gui_status) {
+	if (-1 == linted_gui_spawn(&gui, spawner)) {
 		LINTED_ERROR("Could not spawn gui: %m", errno);
 	}
 
 	linted_simulator_t simulator;
-	int const simulator_status = linted_simulator_spawn(&simulator, spawner);
-	if (-1 == simulator_status) {
+	if (-1 == linted_simulator_spawn(&simulator, spawner)) {
 		LINTED_ERROR("Could not spawn simulator: %m", errno);
 	}
 
@@ -68,13 +66,11 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
 
 	uv_run(loop, UV_RUN_DEFAULT);
 
-	int const simulator_close_status = linted_simulator_close(simulator);
-	if (-1 == simulator_close_status) {
+	if (-1 == linted_simulator_close(simulator)) {
 		LINTED_ERROR("Could not close simulator handle: %m", errno);
 	}
 
-	int const gui_close_status = linted_gui_close(gui);
-	if (-1 == gui_close_status) {
+	if (-1 == linted_gui_close(gui)) {
 		LINTED_ERROR("Could not close gui handle: %m", errno);
 	}
 
@@ -88,16 +84,13 @@ static void timer_callback(uv_timer_t * const handle, int const status)
 	linted_simulator_t const simulator = timer_data->simulator;
 
 	struct linted_simulator_tick_results tick_results;
-	int const tick_status = linted_simulator_send_tick(&tick_results,
-							   simulator);
-	if (-1 == tick_status) {
+	if (-1 == linted_simulator_send_tick(&tick_results, simulator)) {
 		LINTED_ERROR("Could not send tick message to simulator: %m", errno);
 	}
 
-	int const update_status = linted_gui_send_update(gui,
-							 tick_results.x_position,
-							 tick_results.y_position);
-	if (-1 == update_status) {
+	if (-1 == linted_gui_send_update(gui,
+					 tick_results.x_position,
+					 tick_results.y_position)) {
 		LINTED_ERROR("Could not send update message to gui: %m", errno);
 	}
 }

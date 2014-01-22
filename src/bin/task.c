@@ -251,8 +251,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 				     errno);
 			}
 
-			int const connection_close_status = close(connection);
-			if (-1 == connection_close_status) {
+			if (-1 == close(connection)) {
 				LINTED_ERROR
 				    ("Forked child could not close connection: %m",
 				     errno);
@@ -260,8 +259,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 			return request_data.func(spawner, child_inbox);
 		}
 
-		int const inbox_close_status = close(child_inbox);
-		if (-1 == inbox_close_status) {
+		if (-1 == close(child_inbox)) {
 			LINTED_ERROR
 			    ("Fork server could not close inbox file descriptor: %m",
 			     errno);
@@ -286,8 +284,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 			}
 		}
 
-		int const close_status = close(connection);
-		if (-1 == close_status) {
+		if (-1 == close(connection)) {
 			LINTED_ERROR("Fork server could not close connection: %m", errno);
 		}
 	}
@@ -296,8 +293,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 		LINTED_ERROR("Could not close inbox: %m", errno);
 	}
 
-	int const spawner_close_status = linted_task_spawner_close(spawner);
-	if (-1 == spawner_close_status) {
+	if (-1 == linted_task_spawner_close(spawner)) {
 		LINTED_ERROR("Could not close spawner: %m", errno);
 	}
 
