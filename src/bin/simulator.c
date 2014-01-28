@@ -33,7 +33,7 @@ enum message_type {
 	SIMULATOR_TICK
 };
 
-struct message_data {
+struct request_data {
 	enum message_type message_type;
 };
 
@@ -80,14 +80,14 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 			       tick_results, linted_simulator_t const simulator)
 {
 	{
-		struct message_data message_data = {
+		struct request_data request_data = {
 			.message_type = SIMULATOR_TICK
 		};
 
 		ssize_t bytes_written;
 		do {
 			bytes_written = write(simulator._server,
-					      &message_data, sizeof message_data);
+					      &request_data, sizeof request_data);
 		} while (-1 == bytes_written && EINTR == errno);
 		if (-1 == bytes_written) {
 			return -1;
@@ -127,10 +127,10 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 	uint8_t y_position = 0;
 
 	for (;;) {
-		struct message_data message_data;
+		struct request_data request_data;
 		ssize_t bytes_read;
 		do {
-			bytes_read = read(inbox, &message_data, sizeof message_data);
+			bytes_read = read(inbox, &request_data, sizeof request_data);
 		} while (-1 == bytes_read && EINTR == errno);
 		if (-1 == bytes_read) {
 			LINTED_ERROR("Could not read from simulator connection: %m",
@@ -142,7 +142,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 		}
 
 		struct reply_data reply_data;
-		switch (message_data.message_type) {
+		switch (request_data.message_type) {
 		case SIMULATOR_TICK:
 			x_position = x_position % 255 + 3;
 			y_position = y_position % 255 + 5;
@@ -155,7 +155,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
 
 		default:
 			LINTED_ERROR("Received unexpected message type: %d",
-				     message_data.message_type);
+				     request_data.message_type);
 		}
 
 		ssize_t bytes_written;
