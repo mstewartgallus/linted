@@ -24,15 +24,15 @@
  * A handle to access the gui. Is not safe to share between processes.
  */
 typedef struct _linted_gui {
-	linted_task_t _task;
-	int _server;
+    linted_task_t _task;
+    int _server;
 } linted_gui_t;
 
 enum linted_gui_event_type {
-	CLOSE_REQUEST_EVENT
+    CLOSE_REQUEST_EVENT
 };
 struct linted_gui_event {
-	enum linted_gui_event_type type;
+    enum linted_gui_event_type type;
 };
 
 int linted_gui_spawn(linted_gui_t * gui, linted_task_spawner_t spawner);
@@ -41,4 +41,4 @@ int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);
 
 int linted_gui_close(linted_gui_t gui);
 
-#endif				/* LINTED_GUI_H */
+#endif                          /* LINTED_GUI_H */

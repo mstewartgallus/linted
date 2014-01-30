@@ -64,79 +64,78 @@ static int go(linted_task_spawner_t spawner, int argc, char *argv[]);
 
 int main(int argc, char **argv)
 {
-	/* First we check if we are run with proper security */
+    /* First we check if we are run with proper security */
 #ifdef HAVE_UID_T
-	uid_t const euid = geteuid();
-	if (0 == euid) {
-		fputs("Bad administrator!\n", stderr);
-		fputs
-		    ("It is a violation of proper security policy to run a game as root!\n",
-		     stderr);
-		return EXIT_FAILURE;
-	}
-#endif				/* HAVE_UID_T */
+    uid_t const euid = geteuid();
+    if (0 == euid) {
+        fputs("Bad administrator!\n", stderr);
+        fputs
+            ("It is a violation of proper security policy to run a game as root!\n",
+             stderr);
+        return EXIT_FAILURE;
+    }
+#endif                          /* HAVE_UID_T */
 
-	/* Prepare the system logger */
-	openlog(PACKAGE_TARNAME, LOG_PERROR	/* So the user can see this */
-		| LOG_CONS	/* So we know there is an error */
-		| LOG_PID	/* Because we fork several times */
-		| LOG_NDELAY	/* Share the connection when we fork */
-		, LOG_USER	/* This is a game and is a user program */
-	    );
+    /* Prepare the system logger */
+    openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
+            | LOG_CONS          /* So we know there is an error */
+            | LOG_PID           /* Because we fork several times */
+            | LOG_NDELAY        /* Share the connection when we fork */
+            , LOG_USER          /* This is a game and is a user program */
+        );
 
-	/* Right after, we fork off from a known good state. */
-	linted_task_spawner_t spawner;
-	if (-1 == linted_task_spawner_init(&spawner)) {
-		LINTED_ERROR("Could not initialize spawner: %m", errno);
-	}
+    /* Right after, we fork off from a known good state. */
+    linted_task_spawner_t spawner;
+    if (-1 == linted_task_spawner_init(&spawner)) {
+        LINTED_ERROR("Could not initialize spawner: %m", errno);
+    }
 
-	int const exit_status = go(spawner, argc, argv);
+    int const exit_status = go(spawner, argc, argv);
 
-	if (-1 == linted_task_spawner_close(spawner)) {
-		LINTED_ERROR("Could not close spawner: %m", errno);
-	}
+    if (-1 == linted_task_spawner_close(spawner)) {
+        LINTED_ERROR("Could not close spawner: %m", errno);
+    }
 
-	int files_status = 0;
-	if (EOF == fclose(stdin)) {
-		files_status = -1;
-		syslog(LOG_ERR, "Could not close standard input: %m", errno);
-	}
+    int files_status = 0;
+    if (EOF == fclose(stdin)) {
+        files_status = -1;
+        syslog(LOG_ERR, "Could not close standard input: %m", errno);
+    }
 
-	if (EOF == fclose(stdout)) {
-		files_status = -1;
-		syslog(LOG_ERR, "Could not close standard output: %m", errno);
-	}
+    if (EOF == fclose(stdout)) {
+        files_status = -1;
+        syslog(LOG_ERR, "Could not close standard output: %m", errno);
+    }
 
-	if (EOF == fclose(stderr)) {
-		files_status = -1;
-		syslog(LOG_ERR, "Could not close standard error: %m", errno);
-	}
+    if (EOF == fclose(stderr)) {
+        files_status = -1;
+        syslog(LOG_ERR, "Could not close standard error: %m", errno);
+    }
 
-	if (-1 == files_status && EXIT_SUCCESS == exit_status) {
-		return EXIT_FAILURE;
-	}
+    if (-1 == files_status && EXIT_SUCCESS == exit_status) {
+        return EXIT_FAILURE;
+    }
 
-	return exit_status;
+    return exit_status;
 }
 
 static int go(linted_task_spawner_t spawner, int argc, char *argv[])
 {
-	if (1 == argc) {
-		return linted_supervisor_run(spawner);
-	}
+    if (1 == argc) {
+        return linted_supervisor_run(spawner);
+    }
 
-	if (2 == argc) {
-		if (0 == strcmp(argv[1], "--help")) {
-			fputs(USAGE_TEXT, stdout);
-			return EXIT_SUCCESS;
-		} else if (0 == strcmp(argv[1], "--version")) {
-			fputs(VERSION_TEXT, stdout);
-			return EXIT_SUCCESS;
-		}
-	}
+    if (2 == argc) {
+        if (0 == strcmp(argv[1], "--help")) {
+            fputs(USAGE_TEXT, stdout);
+            return EXIT_SUCCESS;
+        } else if (0 == strcmp(argv[1], "--version")) {
+            fputs(VERSION_TEXT, stdout);
+            return EXIT_SUCCESS;
+        }
+    }
 
-	fprintf(stderr,
-		PACKAGE_TARNAME " did not understand the command line input\n"
-		USAGE_TEXT);
-	return EXIT_FAILURE;
+    fprintf(stderr,
+            PACKAGE_TARNAME " did not understand the command line input\n" USAGE_TEXT);
+    return EXIT_FAILURE;
 }

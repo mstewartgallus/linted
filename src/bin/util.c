@@ -27,14 +27,13 @@
 #include <unistd.h>
 
 void linted_error(const char *file,
-		  const char *function, unsigned line, const char *format_string, ...)
+                  const char *function, unsigned line, const char *format_string, ...)
 {
-	va_list arguments;
-	va_start(arguments, format_string);
+    va_list arguments;
+    va_start(arguments, format_string);
 
-	syslog(LOG_ERR, "Error in file %s, function %s, and line %d", file, function,
-	       line);
-	vsyslog(LOG_ERR, format_string, arguments);
+    syslog(LOG_ERR, "Error in file %s, function %s, and line %d", file, function, line);
+    vsyslog(LOG_ERR, format_string, arguments);
 
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }

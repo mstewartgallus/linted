@@ -131,6 +131,8 @@ endif
 
 linted_INDENTFLAGS=\
   --linux-style\
+  --no-tabs\
+  --indent-level4\
   --line-length90
 
 linted_FRAMAFLAGS=\
