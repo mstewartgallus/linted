@@ -19,11 +19,69 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+
+mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
+{
+    char const template_name[] = "/anonymous-mq-lP5N7IJUZDZWzQ3hjV7-XXXXXXXXXX";
+    size_t const xs_start = 35;
+
+    char random_mq_name[sizeof template_name];
+    memcpy(random_mq_name, template_name, sizeof template_name);
+
+    mqd_t new_mq;
+    do {
+        /* TODO: Replace, rand is terrible */
+        /* Seed with rand */
+        int possible_seed;
+        do {
+            /* To get an even distribution of values throw out
+             * results that don't fit.
+             */
+            possible_seed = rand();
+        } while (possible_seed > CHAR_MAX);
+
+        unsigned char state = possible_seed;
+
+        for (size_t ii = xs_start; ii < sizeof template_name - 1; ++ii) {
+            for (;;) {
+                /* Use a fast linear congruential generator */
+                state = 5 + 3 * state;
+                unsigned const possible_value = state;
+
+                /* Again, throw out results that don't fit for an even
+                 * distribution of values.
+                 */
+                if ((possible_value >= 'a' && possible_value <= 'z')
+                    || (possible_value >= 'A' && possible_value <= 'Z')
+                    || (possible_value >= '0' && possible_value <= '9')) {
+                    random_mq_name[ii] = possible_value;
+                    break;
+                }
+            }
+        }
+
+        new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL,
+                         S_IRUSR | S_IWUSR, attr);
+    } while (-1 == new_mq && EEXIST == errno);
+
+    if (new_mq != -1) {
+        /* This could only happen via programmer error */
+        if (-1 == mq_unlink(random_mq_name)) {
+            LINTED_ERROR(
+                    "Could not remove message queue with name %s because of error: %m",
+                    random_mq_name, errno);
+        }
+    }
+
+    return new_mq;
+}
 
 int linted_io_create_local_server(int sockets[2])
 {

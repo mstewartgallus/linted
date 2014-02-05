@@ -38,14 +38,10 @@ enum request_type {
     GUI_UPDATE
 };
 
-struct request_data {
+struct message_data {
     enum request_type type;
     uint8_t x_position;
     uint8_t y_position;
-};
-
-struct reply_data {
-    char dummy;
 };
 
 struct attribute_value_pair {
@@ -77,64 +73,48 @@ static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
 int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
 {
-    int sockets[2];
-    if (-1 == linted_io_create_local_server(sockets)) {
+    struct mq_attr attr;
+    memset(&attr, 0, sizeof attr);
+
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof (struct message_data);
+
+    int const gui_mq = linted_io_anonymous_mq(&attr, 0);
+    if (-1 == gui_mq) {
         return -1;
     }
 
-    int const gui_reader = sockets[0];
-    int const gui_writer = sockets[1];
-
-    if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, gui_reader)) {
-        goto error_and_close_sockets;
+    if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, gui_mq)) {
+        goto error_and_close_mqueue;
     }
 
-    if (-1 == close(gui_reader)) {
-        goto error_and_close_socket;
-    }
-
-    gui->_server = gui_writer;
+    gui->_server = gui_mq;
 
     return 0;
 
- error_and_close_sockets:
-    close(gui_reader);
-
- error_and_close_socket:
-    close(gui_writer);
+ error_and_close_mqueue:
+    close(gui_mq);
 
     return -1;
 }
 
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
-    {
-        struct request_data request_data;
-        memset(&request_data, 0, sizeof request_data);
-        request_data.type = GUI_UPDATE;
-        request_data.x_position = x;
-        request_data.y_position = y;
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
 
-        ssize_t bytes_written;
-        do {
-            bytes_written = write(gui._server, &request_data, sizeof request_data);
-        } while (-1 == bytes_written && EINTR == EINTR);
-        if (-1 == bytes_written) {
-            return -1;
-        }
-    }
+    message_data.type = GUI_UPDATE;
+    message_data.x_position = x;
+    message_data.y_position = y;
 
-    {
-        struct reply_data reply_data;
-        ssize_t bytes_read;
-        do {
-            bytes_read = read(gui._server, &reply_data, sizeof reply_data);
-        } while (-1 == bytes_read && EINTR == EINTR);
-        if (-1 == bytes_read) {
-            return -1;
-        }
-
-        /* This is just to confirm the server updated */
+    int send_status;
+    do {
+        send_status = mq_send(gui._server,
+                              (char const *) &message_data, sizeof message_data,
+                              0);
+    } while (-1 == send_status && EINTR == EINTR);
+    if (-1 == send_status) {
+        return -1;
     }
 
     return 0;
@@ -142,7 +122,7 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
 
 int linted_gui_close(linted_gui_t const gui)
 {
-    return close(gui._server);
+    return mq_close(gui._server);
 }
 
 static int gui_run(linted_task_spawner_t const spawner, int const inbox)
@@ -223,54 +203,44 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
             break;
         }
 
-        struct pollfd fifo_fd = {.fd = inbox,.events = POLLIN };
-        int poll_status;
-        bool had_gui_command;
+        bool had_gui_command = false;
         {
-            int error_code;
-            do {
-                poll_status = poll(&fifo_fd, 1, 0);
-            } while (-1 == poll_status && (error_code = errno, error_code != EINTR));
-            if (-1 == poll_status) {
-                LINTED_ERROR("Error polling file descriptors %m", errno);
-            }
-            had_gui_command = poll_status > 0;
-        }
+            struct message_data message_data;
+            struct timespec timespec = {
+                .tv_sec = 0,
+                .tv_nsec = 0
+            };
 
-        if (had_gui_command) {
-            struct request_data request_data;
             ssize_t bytes_read;
             do {
-                bytes_read = read(inbox, &request_data, sizeof request_data);
+                bytes_read = mq_timedreceive(inbox,
+                                             (char *) &message_data,
+                                             sizeof message_data,
+                                             NULL,
+                                             &timespec);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
-                LINTED_ERROR("Could not read from gui connection: %m", errno);
-            }
-
-            if (0 == bytes_read) {
-                break;
-            }
-
-            switch (request_data.type) {
-            case GUI_UPDATE:{
-                    x = ((float)request_data.x_position) / 255;
-                    y = ((float)request_data.y_position) / 255;
-                    struct reply_data const reply_data = {
-                        .dummy = 0
-                    };
-                    ssize_t bytes_written;
-                    do {
-                        bytes_written = write(inbox, &reply_data, sizeof reply_data);
-                    } while (-1 == bytes_written && errno == EINTR);
-                    if (-1 == bytes_written) {
-                        LINTED_ERROR("Could not read from gui inbox: %m", errno);
-                    }
+                if (errno != ETIMEDOUT) {
+                    LINTED_ERROR("Could not read from gui connection: %m", errno);
+                }
+            } else {
+                if (0 == bytes_read) {
                     break;
                 }
 
-            default:
-                LINTED_ERROR
-                    ("Received unexpected request type: %d.\n", request_data.type);
+                switch (message_data.type) {
+                case GUI_UPDATE:{
+                    x = ((float)message_data.x_position) / 255;
+                    y = ((float)message_data.y_position) / 255;
+                    break;
+                }
+
+                default:
+                    LINTED_ERROR
+                        ("Received unexpected request type: %d.\n", message_data.type);
+                }
+
+                had_gui_command = true;
             }
         }
 

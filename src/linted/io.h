@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef LINTED_IO_H
+#define LINTED_IO_H
+
+#include <mqueue.h>
+
+mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag);
 
 int linted_io_create_local_server(int sockets[2]);
 
@@ -24,3 +30,5 @@ int linted_io_create_local_server(int sockets[2]);
 int linted_io_connect_to_local_socket(int socket);
 
 int linted_io_recv_socket(int inbox);
+
+#endif /* LINTED_IO_H */
