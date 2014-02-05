@@ -44,38 +44,11 @@ EXTRA_DIST=\
   src/linted/task.h\
   src/linted/util.h
 
-src/bin/linted.$(OBJEXT): config.h\
-  src/linted/gui.h\
-  src/linted/sandbox.h\
-  src/linted/simulator.h\
-  src/linted/task.h\
-  src/linted/util.h
-
-src/bin/io.$(OBJEXT): config.h\
-  src/linted/io.h
-
-src/bin/simulator.$(OBJEXT): config.h\
-  src/linted/io.h\
-  src/linted/simulator.h\
-  src/linted/task.h\
-  src/linted/util.h
-
-src/bin/gui.$(OBJEXT): config.h\
-  src/linted/gui.h\
-  src/linted/io.h\
-  src/linted/base/util.h
-
-src/bin/sandbox.$(OBJEXT): config.h src/linted/sandbox.h
-src/bin/supervisor.$(OBJEXT): config.h src/linted/supervisor.h
-src/bin/task.$(OBJEXT): config.h src/linted/task.h
-src/bin/util.$(OBJEXT): config.h src/linted/util.h
-
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\
   check-cppcheck\
   check-clang-analyzer\
   check-cbmc\
-  check-splint\
   indent
 
 indent: $(linted_SOURCES) $(EXTRA_DIST)
@@ -100,9 +73,6 @@ check-cppcheck:
 check-clang-analyzer: $(linted_SOURCES)
 	$(CLANG) --analyze $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 	- rm *.plist
-
-check-splint: $(linted_SOURCES)
-	splint +posixstrictlib $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
 
 check: $(linted_CHECK_PHASES)
 
