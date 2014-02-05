@@ -68,7 +68,7 @@ mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
         }
 
         new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL,
-                         S_IRUSR | S_IWUSR, attr);
+                         0, attr);
     } while (-1 == new_mq && EEXIST == errno);
 
     if (new_mq != -1) {
