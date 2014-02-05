@@ -35,7 +35,7 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
         LINTED_ERROR("Could not spawn gui: %m", errno);
     }
 
-    linted_simulator_t const simulator = linted_simulator_spawn(spawner);
+    linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
     if (-1 == simulator) {
         LINTED_ERROR("Could not spawn simulator: %m", errno);
     }
@@ -46,19 +46,8 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
     }
 
     for (;;) {
-        struct linted_simulator_tick_results tick_results;
-        if (-1 == linted_simulator_send_tick(&tick_results, simulator)) {
+        if (-1 == linted_simulator_send_tick(simulator)) {
             LINTED_ERROR("Could not send tick message to simulator: %m", errno);
-        }
-
-        int update_status;
-        do {
-            update_status = linted_gui_send_update(gui,
-                                                   tick_results.x_position,
-                                                   tick_results.y_position);
-        } while (-1 == update_status && EINTR == errno);
-        if (-1 == update_status) {
-            LINTED_ERROR("Could not send update message to gui: %m", errno);
         }
 
         long const second = 1000000000;

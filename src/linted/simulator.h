@@ -16,6 +16,7 @@
 #ifndef LINTED_SIMULATOR_H
 #define LINTED_SIMULATOR_H
 
+#include "linted/gui.h"
 #include "linted/task.h"
 
 #include <stdint.h>
@@ -25,14 +26,9 @@
  */
 typedef int linted_simulator_t;
 
-struct linted_simulator_tick_results {
-    uint8_t x_position;
-    uint8_t y_position;
-};
-
-linted_simulator_t linted_simulator_spawn(linted_task_spawner_t spawner);
-int linted_simulator_send_tick(struct linted_simulator_tick_results
-                               *tick_results, linted_simulator_t simulator);
+linted_simulator_t linted_simulator_spawn(linted_task_spawner_t spawner,
+                                          linted_gui_t gui);
+int linted_simulator_send_tick(linted_simulator_t simulator);
 int linted_simulator_close(linted_simulator_t simulator);
 
 #endif                          /* LINTED_SIMULATOR_H */
