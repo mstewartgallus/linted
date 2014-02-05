@@ -154,7 +154,7 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
         ssize_t bytes_written;
         do {
             bytes_written = write(inbox, &reply_data, sizeof reply_data);
-        } while (-1 == bytes_written && errno == EINTR);
+        } while (-1 == bytes_written && EINTR == errno);
         if (-1 == bytes_written) {
             LINTED_ERROR("Could not write to simulator connection: %m", errno);
         }
