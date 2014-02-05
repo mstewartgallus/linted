@@ -1,6 +1,9 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
+* Allow multiple file descriptors to be sent over to a new task
+This will let us move the simulator to message queues
+* Move the gui to message queue style
 * Fix bug where the spawner can't close because it keeps a handle to itself
 * Move more completely to use syslog
 * Make servers hand out the connection file descriptors not clients
