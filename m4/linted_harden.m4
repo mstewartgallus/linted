@@ -29,6 +29,7 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[dnl
         [-ftrapv]dnl
         [-fmemsafety]dnl
         [-fsanitize=address-all]dnl
+        [-Wa,--noexecstack]dnl
 ])
 AC_SUBST([linted_CFLAGS_HARDEN])
 dnl
