@@ -4,8 +4,12 @@ Linted -- TODO
 * Allow multiple file descriptors to be sent over to a new task
 This will let us move the simulator to message queues
 * Move the gui to message queue style
+* Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
+I think I read somewhere that these force a nonexecutable stack but
+that if things are done correctly that the shouldn't be happening
+anyways. I believe what I really want is a -Wl,--warn-execstack
+option.
 * Fix bug where the spawner can't close because it keeps a handle to itself
-* Move more completely to use syslog
 * Make servers hand out the connection file descriptors not clients
 The current way is inherently fragile and insecure.
 * Remove libuv
