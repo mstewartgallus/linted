@@ -23,10 +23,6 @@ AC_ARG_ENABLE(
                 [--enable-save-temps],
                 [save temporary files (useful for debugging)]))
 dnl
-AC_DISABLE_SHARED
-AC_ENABLE_STATIC
-LT_INIT
-dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
 ])
