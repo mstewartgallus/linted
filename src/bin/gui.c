@@ -24,15 +24,9 @@
 #include "SDL_opengl.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
 enum request_type {
     GUI_UPDATE
@@ -91,7 +85,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
     return gui_mq;
 
  error_and_close_mqueue:
-    close(gui_mq);
+    mq_close(gui_mq);
 
     return -1;
 }
@@ -254,7 +248,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inbox)
 
     SDL_Quit();
 
-    if (-1 == close(inbox)) {
+    if (-1 == mq_close(inbox)) {
         LINTED_ERROR("Could not close simulator inbox: %m", errno);
     }
 
