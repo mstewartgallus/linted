@@ -18,10 +18,6 @@
 
 #include <sys/types.h>
 
-typedef struct _linted_task {
-    pid_t _pid;
-} linted_task_t;
-
 typedef struct _linted_task_spawner {
     int _server;
 } linted_task_spawner_t;
@@ -42,12 +38,11 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner);
  * Spawns a task. The task may or may not be spawned in a seperate
  * address space. Returns -1 on error and a value in errno.
  *
- * @param task The output task info (on success).
  * @param spawner The spawner.
  * @param func The function to execute.
  * @param inbox A file descriptor to pass to the spawned task.
  */
-int linted_task_spawn(linted_task_t * task, linted_task_spawner_t spawner,
+int linted_task_spawn(linted_task_spawner_t spawner,
                       linted_task_func_t func, int inbox);
 
 /**

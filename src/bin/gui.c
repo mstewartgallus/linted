@@ -84,7 +84,7 @@ int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawn
         return -1;
     }
 
-    if (-1 == linted_task_spawn(&gui->_task, spawner, gui_run, gui_mq)) {
+    if (-1 == linted_task_spawn(spawner, gui_run, gui_mq)) {
         goto error_and_close_mqueue;
     }
 

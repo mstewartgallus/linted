@@ -38,7 +38,6 @@ struct request_data {
 
 struct reply_data {
     int error_status;
-    pid_t pid;
 };
 
 static int fork_server_run(linted_task_spawner_t spawner, int inbox);
@@ -93,8 +92,7 @@ int linted_task_spawner_close(linted_task_spawner_t spawner)
     return close(spawner._server);
 }
 
-int linted_task_spawn(linted_task_t * const task,
-                      linted_task_spawner_t const spawner,
+int linted_task_spawn(linted_task_spawner_t const spawner,
                       linted_task_func_t const func, int const fildes_to_send)
 {
     int error_status = -1;
@@ -159,8 +157,6 @@ int linted_task_spawn(linted_task_t * const task,
         if (reply_error_status != 0) {
             errno = reply_error_status;
             goto finish_and_close_connection;
-        } else {
-            task->_pid = reply_data.pid;
         }
     }
 
@@ -263,7 +259,6 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                 reply_data.error_status = errno;
             } else {
                 reply_data.error_status = 0;
-                reply_data.pid = child_pid;
             }
 
             int const reply_write_status = write(connection,

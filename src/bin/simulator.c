@@ -54,7 +54,7 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
     int const sim_reader = sockets[0];
     int const sim_writer = sockets[1];
 
-    if (-1 == linted_task_spawn(&simulator->_task, spawner, simulator_run, sim_reader)) {
+    if (-1 == linted_task_spawn(spawner, simulator_run, sim_reader)) {
         goto error_and_close_sockets;
     }
 
