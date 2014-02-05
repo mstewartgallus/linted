@@ -21,14 +21,8 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
 enum message_type {
     SIMULATOR_TICK
