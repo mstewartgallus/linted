@@ -107,17 +107,9 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
     message_data.x_position = x;
     message_data.y_position = y;
 
-    int send_status;
-    do {
-        send_status = mq_send(gui._server,
-                              (char const *) &message_data, sizeof message_data,
-                              0);
-    } while (-1 == send_status && EINTR == EINTR);
-    if (-1 == send_status) {
-        return -1;
-    }
-
-    return 0;
+    return mq_send(gui._server,
+                   (char const *) &message_data, sizeof message_data,
+                   0);
 }
 
 int linted_gui_close(linted_gui_t const gui)

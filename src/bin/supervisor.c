@@ -87,8 +87,13 @@ static void timer_callback(uv_timer_t * const handle, int const status)
         LINTED_ERROR("Could not send tick message to simulator: %m", errno);
     }
 
-    if (-1 == linted_gui_send_update(gui,
-                                     tick_results.x_position, tick_results.y_position)) {
+    int update_status;
+    do {
+        update_status = linted_gui_send_update(gui,
+                                               tick_results.x_position,
+                                               tick_results.y_position);
+    } while (-1 == update_status && EINTR == errno);
+    if (-1 == update_status) {
         LINTED_ERROR("Could not send update message to gui: %m", errno);
     }
 }
