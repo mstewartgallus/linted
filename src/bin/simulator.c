@@ -43,8 +43,7 @@ struct reply_data {
 
 static int simulator_run(linted_task_spawner_t const spawner, int inbox);
 
-int linted_simulator_spawn(linted_simulator_t * const simulator,
-                           linted_task_spawner_t const spawner)
+linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner)
 {
     int sockets[2];
     if (-1 == linted_io_create_local_server(sockets)) {
@@ -62,9 +61,7 @@ int linted_simulator_spawn(linted_simulator_t * const simulator,
         goto error_and_close_socket;
     }
 
-    simulator->_server = sim_writer;
-
-    return 0;
+    return sim_writer;
 
  error_and_close_sockets:
     close(sim_reader);
@@ -85,7 +82,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 
         ssize_t bytes_written;
         do {
-            bytes_written = write(simulator._server, &request_data, sizeof request_data);
+            bytes_written = write(simulator, &request_data, sizeof request_data);
         } while (-1 == bytes_written && EINTR == errno);
         if (-1 == bytes_written) {
             return -1;
@@ -96,7 +93,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
         struct reply_data reply_data;
         ssize_t bytes_read;
         do {
-            bytes_read = read(simulator._server, &reply_data, sizeof reply_data);
+            bytes_read = read(simulator, &reply_data, sizeof reply_data);
         } while (-1 == bytes_read && EINTR == EINTR);
         if (-1 == bytes_read) {
             return -1;
@@ -110,7 +107,7 @@ int linted_simulator_send_tick(struct linted_simulator_tick_results *const
 
 int linted_simulator_close(linted_simulator_t const simulator)
 {
-    return close(simulator._server);
+    return close(simulator);
 }
 
 static int simulator_run(linted_task_spawner_t const spawner, int const inbox)

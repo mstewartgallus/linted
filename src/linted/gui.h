@@ -18,14 +18,13 @@
 
 #include "linted/task.h"
 
+#include <mqueue.h>
 #include <stdint.h>
 
 /**
- * A handle to access the gui. Is not safe to share between processes.
+ * A handle to access the gui. Is safe to share between processes.
  */
-typedef struct _linted_gui {
-    int _server;
-} linted_gui_t;
+typedef mqd_t linted_gui_t;
 
 enum linted_gui_event_type {
     CLOSE_REQUEST_EVENT
@@ -34,7 +33,7 @@ struct linted_gui_event {
     enum linted_gui_event_type type;
 };
 
-int linted_gui_spawn(linted_gui_t * gui, linted_task_spawner_t spawner);
+linted_gui_t linted_gui_spawn(linted_task_spawner_t spawner);
 
 int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);
 

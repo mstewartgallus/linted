@@ -35,13 +35,13 @@ static void timer_callback(uv_timer_t * handle, int status);
 
 int linted_supervisor_run(linted_task_spawner_t spawner)
 {
-    linted_gui_t gui;
-    if (-1 == linted_gui_spawn(&gui, spawner)) {
+    linted_gui_t gui = linted_gui_spawn(spawner);
+    if (-1 == gui) {
         LINTED_ERROR("Could not spawn gui: %m", errno);
     }
 
-    linted_simulator_t simulator;
-    if (-1 == linted_simulator_spawn(&simulator, spawner)) {
+    linted_simulator_t simulator = linted_simulator_spawn(spawner);
+    if (-1 == simulator) {
         LINTED_ERROR("Could not spawn simulator: %m", errno);
     }
 

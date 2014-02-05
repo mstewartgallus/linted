@@ -23,16 +23,14 @@
 /**
  * A handle to access the simulator. Is not safe to share between processes.
  */
+typedef int linted_simulator_t;
+
 struct linted_simulator_tick_results {
     uint8_t x_position;
     uint8_t y_position;
 };
 
-typedef struct _linted_simulator {
-    int _server;                /* A shareable server handle every process can use */
-} linted_simulator_t;
-
-int linted_simulator_spawn(linted_simulator_t * simulator, linted_task_spawner_t spawner);
+linted_simulator_t linted_simulator_spawn(linted_task_spawner_t spawner);
 int linted_simulator_send_tick(struct linted_simulator_tick_results
                                *tick_results, linted_simulator_t simulator);
 int linted_simulator_close(linted_simulator_t simulator);

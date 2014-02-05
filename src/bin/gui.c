@@ -71,7 +71,7 @@ static struct attribute_value_pair const attribute_values[] = {
 
 static int gui_run(linted_task_spawner_t const spawner, int inbox);
 
-int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawner)
+linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -88,9 +88,7 @@ int linted_gui_spawn(linted_gui_t * const gui, linted_task_spawner_t const spawn
         goto error_and_close_mqueue;
     }
 
-    gui->_server = gui_mq;
-
-    return 0;
+    return gui_mq;
 
  error_and_close_mqueue:
     close(gui_mq);
@@ -107,14 +105,14 @@ int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t cons
     message_data.x_position = x;
     message_data.y_position = y;
 
-    return mq_send(gui._server,
+    return mq_send(gui,
                    (char const *) &message_data, sizeof message_data,
                    0);
 }
 
 int linted_gui_close(linted_gui_t const gui)
 {
-    return mq_close(gui._server);
+    return mq_close(gui);
 }
 
 static int gui_run(linted_task_spawner_t const spawner, int const inbox)
