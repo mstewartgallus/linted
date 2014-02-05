@@ -103,9 +103,7 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
     }
 
     {
-        struct request_data request_data = {
-            .func = func
-        };
+        struct request_data request_data = { .func = func };
 
         struct iovec iovecs[] = {
             (struct iovec){
@@ -120,19 +118,27 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
         message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
 
         int const sent_fildes[] = { fildes_to_send };
-        char control_message[CMSG_SPACE(sizeof sent_fildes)];
-        memset(control_message, 0, sizeof control_message);
+        size_t const sent_fildes_count = 1;
+        size_t const sent_fildes_size = sizeof sent_fildes[0] * sent_fildes_count;
+
+        size_t const control_message_size = CMSG_SPACE(sent_fildes_size);
+        char * const control_message = malloc(control_message_size);
+        if (NULL == control_message) {
+            return -1;
+        }
+
+        memset(control_message, 0, control_message_size);
 
         message.msg_control = control_message;
-        message.msg_controllen = sizeof control_message;
+        message.msg_controllen = control_message_size;
 
         struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
         control_message_header->cmsg_level = SOL_SOCKET;
         control_message_header->cmsg_type = SCM_RIGHTS;
-        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
+        control_message_header->cmsg_len = CMSG_LEN(sent_fildes_size);
 
         void *const control_message_data = CMSG_DATA(control_message_header);
-        memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
+        memcpy(control_message_data, sent_fildes, sent_fildes_size);
 
         ssize_t bytes_written;
         do {
