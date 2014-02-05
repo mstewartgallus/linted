@@ -34,7 +34,7 @@ enum message_type {
     SIMULATOR_TICK
 };
 
-struct request_data {
+struct message_data {
     enum message_type message_type;
 };
 
@@ -44,54 +44,44 @@ static int simulator_run(linted_task_spawner_t const spawner,
 linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
                                           linted_gui_t gui)
 {
-    int sockets[2];
-    if (-1 == linted_io_create_local_server(sockets)) {
+    struct mq_attr attr;
+    memset(&attr, 0, sizeof attr);
+
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof (struct message_data);
+
+    mqd_t const sim_mq = linted_io_anonymous_mq(&attr, 0);
+    if (-1 == sim_mq) {
         return -1;
     }
 
-    int const sim_reader = sockets[0];
-    int const sim_writer = sockets[1];
-
     if (-1 == linted_task_spawn(spawner, simulator_run,
-                                (int[]) { sim_reader, gui, -1 })) {
-        goto error_and_close_sockets;
+                                (int[]) { sim_mq, gui, -1 })) {
+        goto error_and_close_mqueue;
     }
 
-    if (-1 == close(sim_reader)) {
-        goto error_and_close_socket;
-    }
+    return sim_mq;
 
-    return sim_writer;
-
- error_and_close_sockets:
-    close(sim_reader);
-
- error_and_close_socket:
-    close(sim_writer);
+ error_and_close_mqueue:
+    mq_close(sim_mq);
 
     return -1;
 }
 
 int linted_simulator_send_tick(linted_simulator_t const simulator)
 {
-    struct request_data request_data = {
+    struct message_data message_data = {
         .message_type = SIMULATOR_TICK
     };
 
-    ssize_t bytes_written;
-    do {
-        bytes_written = write(simulator, &request_data, sizeof request_data);
-    } while (-1 == bytes_written && EINTR == errno);
-    if (-1 == bytes_written) {
-        return -1;
-    }
-
-    return 0;
+    return mq_send(simulator,
+                   (char const *) &message_data, sizeof message_data,
+                   0);
 }
 
 int linted_simulator_close(linted_simulator_t const simulator)
 {
-    return close(simulator);
+    return mq_close(simulator);
 }
 
 static int simulator_run(linted_task_spawner_t const spawner,
@@ -102,17 +92,21 @@ static int simulator_run(linted_task_spawner_t const spawner,
         LINTED_ERROR("Could not close spawner: %m", errno);
     }
 
-    int const inbox = inboxes[0];
+    mqd_t const inbox = inboxes[0];
     linted_gui_t const gui = inboxes[1];
 
     uint8_t x_position = 0;
     uint8_t y_position = 0;
 
     for (;;) {
-        struct request_data request_data;
+        struct message_data message_data;
+
         ssize_t bytes_read;
         do {
-            bytes_read = read(inbox, &request_data, sizeof request_data);
+            bytes_read = mq_receive(inbox,
+                                    (char *) &message_data,
+                                    sizeof message_data,
+                                    NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             LINTED_ERROR("Could not read from simulator connection: %m", errno);
@@ -122,7 +116,7 @@ static int simulator_run(linted_task_spawner_t const spawner,
             break;
         }
 
-        switch (request_data.message_type) {
+        switch (message_data.message_type) {
         case SIMULATOR_TICK:{
                 x_position = x_position % 255 + 3;
                 y_position = y_position % 255 + 5;
@@ -144,16 +138,16 @@ static int simulator_run(linted_task_spawner_t const spawner,
 
         default:
             LINTED_ERROR("Received unexpected message type: %d",
-                         request_data.message_type);
+                         message_data.message_type);
         }
     }
 
 
-    if (-1 == close(inbox)) {
+    if (-1 == mq_close(inbox)) {
         LINTED_ERROR("Could not close simulator inbox: %m", errno);
     }
 
-    if (-1 == close(gui)) {
+    if (-1 == linted_gui_close(gui)) {
         LINTED_ERROR("Could not close gui: %m", errno);
     }
 

@@ -46,7 +46,11 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
     }
 
     for (;;) {
-        if (-1 == linted_simulator_send_tick(simulator)) {
+        int tick_status;
+        do {
+            tick_status = linted_simulator_send_tick(simulator);
+        } while (-1 == tick_status && EINTR == errno);
+        if (-1 == tick_status) {
             LINTED_ERROR("Could not send tick message to simulator: %m", errno);
         }
 

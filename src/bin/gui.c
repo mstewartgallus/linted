@@ -74,7 +74,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof (struct message_data);
 
-    int const gui_mq = linted_io_anonymous_mq(&attr, 0);
+    mqd_t const gui_mq = linted_io_anonymous_mq(&attr, 0);
     if (-1 == gui_mq) {
         return -1;
     }

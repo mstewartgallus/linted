@@ -19,12 +19,13 @@
 #include "linted/gui.h"
 #include "linted/task.h"
 
+#include <mqueue.h>
 #include <stdint.h>
 
 /**
- * A handle to access the simulator. Is not safe to share between processes.
+ * A handle to access the simulator. Is safe to share between processes.
  */
-typedef int linted_simulator_t;
+typedef mqd_t linted_simulator_t;
 
 linted_simulator_t linted_simulator_spawn(linted_task_spawner_t spawner,
                                           linted_gui_t gui);
