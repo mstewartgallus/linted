@@ -23,7 +23,8 @@
  **/
 typedef int linted_task_spawner_t;
 
-typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int inbox);
+typedef int (*linted_task_func_t) (linted_task_spawner_t spawner,
+                                   int const fildes[]);
 
 /**
  * Forks off a spawner from a known good state. Returns -1 on error
@@ -44,7 +45,7 @@ linted_task_spawner_t linted_task_spawner_init(void);
  * @param inbox A file descriptor to pass to the spawned task.
  */
 int linted_task_spawn(linted_task_spawner_t spawner,
-                      linted_task_func_t func, int inbox);
+                      linted_task_func_t func, int const fildes[]);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.

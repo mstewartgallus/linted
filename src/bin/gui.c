@@ -63,7 +63,8 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static int gui_run(linted_task_spawner_t const spawner, int inbox);
+static int gui_run(linted_task_spawner_t const spawner,
+                   int const inboxes[]);
 
 linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
 {
@@ -78,7 +79,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, gui_run, gui_mq)) {
+    if (-1 == linted_task_spawn(spawner, gui_run, (int[]) { gui_mq, -1 })) {
         goto error_and_close_mqueue;
     }
 
@@ -109,11 +110,14 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-static int gui_run(linted_task_spawner_t const spawner, int const inbox)
+static int gui_run(linted_task_spawner_t const spawner,
+                   int const inboxes[])
 {
     if (-1 == linted_task_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %m", errno);
     }
+
+    int const inbox = inboxes[0];
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());

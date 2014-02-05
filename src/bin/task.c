@@ -32,8 +32,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-struct request_data {
+struct request_header {
     linted_task_func_t func;
+    size_t fildes_count;
 };
 
 struct reply_data {
@@ -91,9 +92,15 @@ int linted_task_spawner_close(linted_task_spawner_t spawner)
 }
 
 int linted_task_spawn(linted_task_spawner_t const spawner,
-                      linted_task_func_t const func, int const fildes_to_send)
+                      linted_task_func_t const func,
+                      int const fildes_to_send[])
 {
     int error_status = -1;
+
+    size_t fildes_count = 0;
+    for (; fildes_to_send[fildes_count] != -1; ++fildes_count) {
+        /* Do nothing */
+    }
 
     int const connection = linted_io_connect_to_local_socket(spawner);
     if (-1 == connection) {
@@ -101,12 +108,30 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
     }
 
     {
-        struct request_data request_data = { .func = func };
+        struct request_header request_header = {
+            .func = func,
+            .fildes_count = fildes_count
+        };
 
+        ssize_t bytes_sent;
+        do {
+            bytes_sent = send(connection,
+                              &request_header, sizeof request_header,
+                              0);
+        } while (-1 == bytes_sent && EINTR == errno);
+        if (-1 == bytes_sent) {
+            goto finish_and_close_connection;
+        }
+    }
+
+    for (size_t ii = 0; ii < fildes_count; ++ii) {
+        int const sent_fildes = fildes_to_send[ii];
+
+        char dummy_data = 0;
         struct iovec iovecs[] = {
             (struct iovec){
-                           .iov_base = &request_data,
-                           .iov_len = sizeof request_data}
+                           .iov_base = &dummy_data,
+                           .iov_len = sizeof dummy_data}
         };
 
         struct msghdr message;
@@ -115,28 +140,19 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
         message.msg_iov = iovecs;
         message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
 
-        int const sent_fildes[] = { fildes_to_send };
-        size_t const sent_fildes_count = 1;
-        size_t const sent_fildes_size = sizeof sent_fildes[0] * sent_fildes_count;
+        char control_message_buffer[CMSG_SPACE(sizeof sent_fildes)];
+        memset(control_message_buffer, 0, sizeof control_message_buffer);
 
-        size_t const control_message_size = CMSG_SPACE(sent_fildes_size);
-        char * const control_message = malloc(control_message_size);
-        if (NULL == control_message) {
-            return -1;
-        }
-
-        memset(control_message, 0, control_message_size);
-
-        message.msg_control = control_message;
-        message.msg_controllen = control_message_size;
+        message.msg_control = control_message_buffer;
+        message.msg_controllen = sizeof control_message_buffer;
 
         struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
         control_message_header->cmsg_level = SOL_SOCKET;
         control_message_header->cmsg_type = SCM_RIGHTS;
-        control_message_header->cmsg_len = CMSG_LEN(sent_fildes_size);
+        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
 
         void *const control_message_data = CMSG_DATA(control_message_header);
-        memcpy(control_message_data, sent_fildes, sent_fildes_size);
+        memcpy(control_message_data, &sent_fildes, sizeof sent_fildes);
 
         ssize_t bytes_written;
         do {
@@ -202,40 +218,71 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
             LINTED_ERROR("Could not accept fork request connection: %m", errno);
         }
 
-        struct msghdr message;
-        memset(&message, 0, sizeof message);
 
-        struct request_data request_data;
+        linted_task_func_t fork_func;
+        size_t fildes_count;
+        {
+            struct request_header request_header;
 
-        struct iovec iov[] = {
-            (struct iovec){
-                           .iov_base = &request_data,
-                           .iov_len = sizeof request_data}
-        };
-        message.msg_iov = iov;
-        message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
+            ssize_t bytes_received;
+            do {
+                bytes_received = recv(connection,
+                                      &request_header, sizeof request_header,
+                                      MSG_WAITALL);
+            } while (-1 == bytes_received && EINTR == errno);
+            if (-1 == bytes_received) {
+                LINTED_ERROR("Could not receive fork request header: %m",
+                             errno);
+            }
 
-        int sent_fildes[1] = { -1 };
-        char control_message[CMSG_SPACE(sizeof sent_fildes)];
-        memset(control_message, 0, sizeof control_message);
-
-        message.msg_control = control_message;
-        message.msg_controllen = sizeof control_message;
-
-        ssize_t bytes_read;
-        do {
-            bytes_read = recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
-        } while (-1 == sizeof request_data && EINTR == errno);
-        if (-1 == bytes_read) {
-            LINTED_ERROR("Could not read bytes from fork request: %m", errno);
+            fork_func = request_header.func;
+            fildes_count = request_header.fildes_count;
         }
 
-        struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-        void *const control_message_data = CMSG_DATA(control_message_header);
+        if (fildes_count > 255) {
+            /* TODO: Send an EINVAL error back */
+            LINTED_ERROR("Fildes sent was too high");
+        }
 
-        memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
+        int sent_inboxes[fildes_count + 1];
+        sent_inboxes[fildes_count] = -1;
+        for (size_t ii = 0; ii < fildes_count; ++ii) {
+            struct msghdr message;
+            memset(&message, 0, sizeof message);
 
-        int const child_inbox = sent_fildes[0];
+            char dummy_data;
+
+            struct iovec iov[] = {
+                (struct iovec){
+                    .iov_base = &dummy_data,
+                    .iov_len = sizeof dummy_data}
+            };
+            message.msg_iov = iov;
+            message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
+
+            int sent_fildes;
+
+            char control_message_buffer[CMSG_SPACE(sizeof sent_fildes)];
+            memset(control_message_buffer, 0, sizeof control_message_buffer);
+
+            message.msg_control = control_message_buffer;
+            message.msg_controllen = sizeof control_message_buffer;
+
+            ssize_t bytes_read;
+            do {
+                bytes_read = recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
+            } while (-1 == bytes_read && EINTR == errno);
+            if (-1 == bytes_read) {
+                LINTED_ERROR("Could not read bytes from fork request: %m", errno);
+            }
+
+            struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+            void *const control_message_data = CMSG_DATA(control_message_header);
+
+            memcpy(&sent_fildes, control_message_data, sizeof sent_fildes);
+
+            sent_inboxes[ii] = sent_fildes;
+        }
 
         pid_t const child_pid = fork();
         if (0 == child_pid) {
@@ -250,11 +297,13 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
             if (-1 == close(connection)) {
                 LINTED_ERROR("Forked child could not close connection: %m", errno);
             }
-            return request_data.func(spawner, child_inbox);
+            return fork_func(spawner, sent_inboxes);
         }
 
-        if (-1 == close(child_inbox)) {
-            LINTED_ERROR("Fork server could not close inbox file descriptor: %m", errno);
+        for (size_t ii = 0; ii < fildes_count; ++ii) {
+            if (-1 == close(sent_inboxes[ii])) {
+                LINTED_ERROR("Fork server could not close inbox file descriptor: %m", errno);
+            }
         }
 
         {

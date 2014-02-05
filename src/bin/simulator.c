@@ -41,7 +41,8 @@ struct reply_data {
     struct linted_simulator_tick_results tick_results;
 };
 
-static int simulator_run(linted_task_spawner_t const spawner, int inbox);
+static int simulator_run(linted_task_spawner_t const spawner,
+                         int const inboxes[]);
 
 linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner)
 {
@@ -53,7 +54,8 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner)
     int const sim_reader = sockets[0];
     int const sim_writer = sockets[1];
 
-    if (-1 == linted_task_spawn(spawner, simulator_run, sim_reader)) {
+    if (-1 == linted_task_spawn(spawner, simulator_run,
+                                (int[]) { sim_reader, -1 })) {
         goto error_and_close_sockets;
     }
 
@@ -110,12 +112,15 @@ int linted_simulator_close(linted_simulator_t const simulator)
     return close(simulator);
 }
 
-static int simulator_run(linted_task_spawner_t const spawner, int const inbox)
+static int simulator_run(linted_task_spawner_t const spawner,
+                         int const inboxes[])
 {
     int const spawner_close_status = linted_task_spawner_close(spawner);
     if (-1 == spawner_close_status) {
         LINTED_ERROR("Could not close spawner: %m", errno);
     }
+
+    int const inbox = inboxes[0];
 
     uint8_t x_position = 0;
     uint8_t y_position = 0;
