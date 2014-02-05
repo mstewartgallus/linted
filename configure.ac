@@ -118,5 +118,4 @@ dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 dnl
-AC_CONFIG_SUBDIRS([libs/libuv])
 AC_OUTPUT

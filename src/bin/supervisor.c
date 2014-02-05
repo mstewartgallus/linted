@@ -21,49 +21,63 @@
 #include "linted/supervisor.h"
 #include "linted/util.h"
 
-#include "uv.h"
-
 #include <errno.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdio.h>
 
-struct timer_data {
-    linted_gui_t gui;
-    linted_simulator_t simulator;
-};
-
-static void timer_callback(uv_timer_t * handle, int status);
+#define SIMULATOR_CLOCK CLOCK_MONOTONIC
 
 int linted_supervisor_run(linted_task_spawner_t spawner)
 {
-    linted_gui_t gui = linted_gui_spawn(spawner);
+    linted_gui_t const gui = linted_gui_spawn(spawner);
     if (-1 == gui) {
         LINTED_ERROR("Could not spawn gui: %m", errno);
     }
 
-    linted_simulator_t simulator = linted_simulator_spawn(spawner);
+    linted_simulator_t const simulator = linted_simulator_spawn(spawner);
     if (-1 == simulator) {
         LINTED_ERROR("Could not spawn simulator: %m", errno);
     }
 
-    uv_loop_t *const loop = uv_default_loop();
-
-    uv_timer_t timer;
-    int const timer_status = uv_timer_init(loop, &timer);
-    if (timer_status < 0) {
-        LINTED_ERROR("Could not initialize timer: %s", uv_strerror(-timer_status));
+    struct timespec next_tick;
+    if (-1 == clock_gettime(SIMULATOR_CLOCK,  &next_tick)) {
+        LINTED_ERROR("Could not get the time: %m", errno);
     }
 
-    struct timer_data timer_data = {
-        .simulator = simulator,
-        .gui = gui
-    };
-    timer.data = &timer_data;
-    int const start_status = uv_timer_start(&timer, timer_callback, 0, 1000L / 60);
-    if (start_status < 0) {
-        LINTED_ERROR("Could not start timer: %s", uv_strerror(-start_status));
-    }
+    for (;;) {
+        struct linted_simulator_tick_results tick_results;
+        if (-1 == linted_simulator_send_tick(&tick_results, simulator)) {
+            LINTED_ERROR("Could not send tick message to simulator: %m", errno);
+        }
 
-    uv_run(loop, UV_RUN_DEFAULT);
+        int update_status;
+        do {
+            update_status = linted_gui_send_update(gui,
+                                                   tick_results.x_position,
+                                                   tick_results.y_position);
+        } while (-1 == update_status && EINTR == errno);
+        if (-1 == update_status) {
+            LINTED_ERROR("Could not send update message to gui: %m", errno);
+        }
+
+        long const second = 1000000000;
+        next_tick.tv_nsec += second / 60;
+        if (next_tick.tv_nsec >= second) {
+            next_tick.tv_nsec = 0;
+            next_tick.tv_sec += 1;
+        }
+        next_tick.tv_nsec += 1000;
+
+        int sleep_status;
+        do {
+            sleep_status = clock_nanosleep(SIMULATOR_CLOCK, TIMER_ABSTIME,
+                                           &next_tick, NULL);
+        } while (-1 == sleep_status && EINTR == errno);
+        if (-1 == sleep_status) {
+            LINTED_ERROR("Could not sleep: %m", errno);
+        }
+    }
 
     if (-1 == linted_simulator_close(simulator)) {
         LINTED_ERROR("Could not close simulator handle: %m", errno);
@@ -74,26 +88,4 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
     }
 
     return EXIT_SUCCESS;
-}
-
-static void timer_callback(uv_timer_t * const handle, int const status)
-{
-    struct timer_data *const timer_data = handle->data;
-    linted_gui_t const gui = timer_data->gui;
-    linted_simulator_t const simulator = timer_data->simulator;
-
-    struct linted_simulator_tick_results tick_results;
-    if (-1 == linted_simulator_send_tick(&tick_results, simulator)) {
-        LINTED_ERROR("Could not send tick message to simulator: %m", errno);
-    }
-
-    int update_status;
-    do {
-        update_status = linted_gui_send_update(gui,
-                                               tick_results.x_position,
-                                               tick_results.y_position);
-    } while (-1 == update_status && EINTR == errno);
-    if (-1 == update_status) {
-        LINTED_ERROR("Could not send update message to gui: %m", errno);
-    }
 }
