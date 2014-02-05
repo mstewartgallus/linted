@@ -42,7 +42,7 @@ struct reply_data {
 
 static int fork_server_run(linted_task_spawner_t spawner, int inbox);
 
-int linted_task_spawner_init(linted_task_spawner_t * spawner)
+linted_task_spawner_t linted_task_spawner_init(void)
 {
     /* First we fork from a known good state and serve out forks of
      * this known good state. This avoids several problems with
@@ -58,12 +58,10 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
     int const spawner_writer = sockets[0];
     int const spawner_reader = sockets[1];
 
-    spawner->_server = spawner_writer;
-
     {
         pid_t const child_pid = fork();
         if (0 == child_pid) {
-            int const exit_status = fork_server_run(*spawner, spawner_reader);
+            int const exit_status = fork_server_run(spawner_writer, spawner_reader);
             exit(exit_status);
         }
 
@@ -76,7 +74,7 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
         goto error_and_close_socket;
     }
 
-    return 0;
+    return spawner_writer;
 
  error_and_close_sockets:
     close(spawner_reader);
@@ -89,7 +87,7 @@ int linted_task_spawner_init(linted_task_spawner_t * spawner)
 
 int linted_task_spawner_close(linted_task_spawner_t spawner)
 {
-    return close(spawner._server);
+    return close(spawner);
 }
 
 int linted_task_spawn(linted_task_spawner_t const spawner,
@@ -97,7 +95,7 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
 {
     int error_status = -1;
 
-    int const connection = linted_io_connect_to_local_socket(spawner._server);
+    int const connection = linted_io_connect_to_local_socket(spawner);
     if (-1 == connection) {
         goto finish;
     }

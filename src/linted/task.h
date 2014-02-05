@@ -18,9 +18,10 @@
 
 #include <sys/types.h>
 
-typedef struct _linted_task_spawner {
-    int _server;
-} linted_task_spawner_t;
+/**
+ * Is a spawner. Is not shareable.
+ **/
+typedef int linted_task_spawner_t;
 
 typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int inbox);
 
@@ -30,9 +31,9 @@ typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int inbox);
  * files etc..) and forks off copies of this state. This is useful for
  * capturing a copy of a known good process startup state.
  *
- * @param spawner The output spawner.
+ * @returns spawner The output spawner.
  */
-int linted_task_spawner_init(linted_task_spawner_t * spawner);
+linted_task_spawner_t linted_task_spawner_init(void);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate

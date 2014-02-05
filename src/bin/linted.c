@@ -85,8 +85,8 @@ int main(int argc, char **argv)
         );
 
     /* Right after, we fork off from a known good state. */
-    linted_task_spawner_t spawner;
-    if (-1 == linted_task_spawner_init(&spawner)) {
+    linted_task_spawner_t spawner = linted_task_spawner_init();
+    if (-1 == spawner) {
         LINTED_ERROR("Could not initialize spawner: %m", errno);
     }
 
