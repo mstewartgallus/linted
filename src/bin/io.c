@@ -27,14 +27,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#define TEMPLATE_PREFIX "/anonymous-mq-"
+#define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
 
 mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
 {
-    char const template_name[] = "/anonymous-mq-lP5N7IJUZDZWzQ3hjV7-XXXXXXXXXX";
-    size_t const xs_start = 35;
-
-    char random_mq_name[sizeof template_name];
-    memcpy(random_mq_name, template_name, sizeof template_name);
+    char random_mq_name[sizeof TEMPLATE_NAME];
+    memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
     mqd_t new_mq;
     do {
@@ -50,7 +49,8 @@ mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
 
         unsigned char state = possible_seed;
 
-        for (size_t ii = xs_start; ii < sizeof template_name - 1; ++ii) {
+        for (size_t ii = sizeof TEMPLATE_PREFIX - 1;
+             ii < sizeof TEMPLATE_NAME - 1; ++ii) {
             for (;;) {
                 /* Use a fast linear congruential generator */
                 state = 5 + 3 * state;
