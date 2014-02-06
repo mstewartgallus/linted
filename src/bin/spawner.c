@@ -188,7 +188,6 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
     int const chld_sigaction_status = sigaction(SIGCHLD, &action, &old_action);
     assert(chld_sigaction_status != -1);
 
-    /* TODO: Handle multiple connections at once */
     for (;;) {
         int connection;
         switch (recv_fildes(&connection, inbox)) {
@@ -199,50 +198,36 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
             goto exit_fork_server;
         }
 
-        linted_spawner_task_t fork_func;
-        size_t fildes_count;
-        {
-            struct request_header request_header;
+        /* Happily because we already have to fork for a fork server
+         * we get asynchronous behaviour for free.
+         */
+        switch (fork()) {
+        case 0:{
+            /* Restore the old signal behaviour */
+            int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
+            assert(sigaction_status != -1);
 
-            ssize_t bytes_received;
-            do {
-                bytes_received = recv(connection,
-                                      &request_header, sizeof request_header,
-                                      MSG_WAITALL);
-            } while (-1 == bytes_received && EINTR == errno);
-            if (-1 == bytes_received) {
-                LINTED_ERROR("Could not receive fork request header: %s",
-                             linted_error_string_alloc(errno));
+            linted_spawner_task_t fork_func;
+            size_t fildes_count;
+            {
+                struct request_header request_header;
+
+                ssize_t bytes_received;
+                do {
+                    bytes_received = recv(connection,
+                                          &request_header, sizeof request_header,
+                                          MSG_WAITALL);
+                } while (-1 == bytes_received && EINTR == errno);
+                if (-1 == bytes_received) {
+                    LINTED_ERROR("Could not receive fork request header: %s",
+                                 linted_error_string_alloc(errno));
+                }
+
+                fork_func = request_header.func;
+                fildes_count = request_header.fildes_count;
             }
 
-            fork_func = request_header.func;
-            fildes_count = request_header.fildes_count;
-        }
-
-        if (fildes_count > 20) {
-            struct reply_data reply = { .error_status = EINVAL  };
-
-            int write_status;
-            do {
-                write_status = write(connection, &reply, sizeof reply);
-            } while (-1 == write_status && EINTR == errno);
-            if (-1 == write_status) {
-                LINTED_ERROR("Fork server could not reply to request: %s",
-                             linted_error_string_alloc(errno));
-            }
-            continue;
-        }
-
-        int sent_inboxes[fildes_count + 1];
-        sent_inboxes[fildes_count] = -1;
-        for (size_t ii = 0; ii < fildes_count; ++ii) {
-            int fildes;
-            switch (recv_fildes(&fildes, connection)) {
-            case -1:
-                LINTED_ERROR("Could not receive fildes from fork request: %s",
-                             linted_error_string_alloc(errno));
-
-            case 0:{
+            if (fildes_count > 20) {
                 struct reply_data reply = { .error_status = EINVAL  };
 
                 int write_status;
@@ -253,37 +238,37 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
                     LINTED_ERROR("Fork server could not reply to request: %s",
                                  linted_error_string_alloc(errno));
                 }
-                continue;
+                return EXIT_FAILURE;
             }
+
+            int sent_inboxes[fildes_count + 1];
+            sent_inboxes[fildes_count] = -1;
+            for (size_t ii = 0; ii < fildes_count; ++ii) {
+                int fildes;
+                switch (recv_fildes(&fildes, connection)) {
+                case -1:
+                    LINTED_ERROR("Could not receive fildes from fork request: %s",
+                                 linted_error_string_alloc(errno));
+
+                case 0:{
+                    struct reply_data reply = { .error_status = EINVAL  };
+
+                    int write_status;
+                    do {
+                        write_status = write(connection, &reply, sizeof reply);
+                    } while (-1 == write_status && EINTR == errno);
+                    if (-1 == write_status) {
+                        LINTED_ERROR("Fork server could not reply to request: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    return EXIT_FAILURE;
+                }
+                }
+
+                sent_inboxes[ii] = fildes;
             }
 
-            sent_inboxes[ii] = fildes;
-        }
-
-        pid_t const child_pid = fork();
-        if (0 == child_pid) {
-            /* Restore the old signal behaviour */
-            int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
-            assert(sigaction_status != -1);
-
-            if (-1 == close(connection)) {
-                LINTED_ERROR("Forked child could not close connection: %s",
-                             linted_error_string_alloc(errno));
-            }
-            return fork_func(spawner, sent_inboxes);
-        }
-
-        for (size_t ii = 0; ii < fildes_count; ++ii) {
-            if (-1 == close(sent_inboxes[ii])) {
-                LINTED_ERROR("Fork server could not close inbox file descriptor: %s",
-                             linted_error_string_alloc(errno));
-            }
-        }
-
-        {
-            struct reply_data reply = {
-                .error_status = (-1 == child_pid) ? errno : 0
-            };
+            struct reply_data reply = { .error_status = 0 };
 
             int write_status;
             do {
@@ -292,6 +277,27 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
             if (-1 == write_status) {
                 LINTED_ERROR("Fork server could not reply to request: %s",
                              linted_error_string_alloc(errno));
+            }
+
+            if (-1 == close(connection)) {
+                LINTED_ERROR("Forked child could not close connection: %s",
+                             linted_error_string_alloc(errno));
+            }
+
+            return fork_func(spawner, sent_inboxes);
+        }
+
+        case -1:{
+                struct reply_data reply = { .error_status = errno };
+
+                int write_status;
+                do {
+                    write_status = write(connection, &reply, sizeof reply);
+                } while (-1 == write_status && EINTR == errno);
+                if (-1 == write_status) {
+                    LINTED_ERROR("Fork server could not reply to request: %s",
+                                 linted_error_string_alloc(errno));
+                }
             }
         }
 
