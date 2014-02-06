@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_TASK_H
-#define LINTED_TASK_H
-
-#include <sys/types.h>
+#ifndef LINTED_SPAWNER_H
+#define LINTED_SPAWNER_H
 
 /**
- * Is a spawner. Is not shareable.
- **/
-typedef int linted_task_spawner_t;
+ * Is a spawner. Is shareable.
+ */
+typedef int linted_spawner_t;
 
-typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int const fildes[]);
+typedef int (*linted_spawner_task_t)(linted_spawner_t spawner, int const fildes[]);
 
 /**
  * Forks off a spawner from a known good state. Returns -1 on error
@@ -33,7 +31,7 @@ typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int const fild
  *
  * @returns spawner The output spawner.
  */
-linted_task_spawner_t linted_task_spawner_init(void);
+linted_spawner_t linted_spawner_init(void);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
@@ -43,12 +41,12 @@ linted_task_spawner_t linted_task_spawner_init(void);
  * @param func The function to execute.
  * @param inbox A file descriptor to pass to the spawned task.
  */
-int linted_task_spawn(linted_task_spawner_t spawner,
-                      linted_task_func_t func, int const fildes[]);
+int linted_spawner_spawn(linted_spawner_t spawner,
+                         linted_spawner_task_t func, int const fildes[]);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.
  */
-int linted_task_spawner_close(linted_task_spawner_t spawner);
+int linted_spawner_close(linted_spawner_t spawner);
 
-#endif                          /* LINTED_TASK_H */
+#endif                          /* LINTED_SPAWNER_H */

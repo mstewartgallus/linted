@@ -15,7 +15,7 @@
  */
 #include "config.h"
 
-#include "linted/task.h"
+#include "linted/spawner.h"
 
 #include "linted/io.h"
 #include "linted/util.h"
@@ -33,7 +33,7 @@
 #include <unistd.h>
 
 struct request_header {
-    linted_task_func_t func;
+    linted_spawner_task_t func;
     size_t fildes_count;
 };
 
@@ -41,9 +41,9 @@ struct reply_data {
     int error_status;
 };
 
-static int fork_server_run(linted_task_spawner_t spawner, int inbox);
+static int fork_server_run(linted_spawner_t spawner, int inbox);
 
-linted_task_spawner_t linted_task_spawner_init(void)
+linted_spawner_t linted_spawner_init(void)
 {
     /* First we fork from a known good state and serve out forks of
      * this known good state. This avoids several problems with
@@ -86,13 +86,13 @@ linted_task_spawner_t linted_task_spawner_init(void)
     return -1;
 }
 
-int linted_task_spawner_close(linted_task_spawner_t spawner)
+int linted_spawner_close(linted_spawner_t spawner)
 {
     return close(spawner);
 }
 
-int linted_task_spawn(linted_task_spawner_t const spawner,
-                      linted_task_func_t const func, int const fildes_to_send[])
+int linted_spawner_spawn(linted_spawner_t const spawner,
+                      linted_spawner_task_t const func, int const fildes_to_send[])
 {
     int error_status = -1;
 
@@ -188,7 +188,7 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
     return error_status;
 }
 
-static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
+static int fork_server_run(linted_spawner_t const spawner, int inbox)
 {
     /* Posix requires an exact copy of process memory so passing
      * around function pointers through pipes is allowed.
@@ -217,7 +217,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                          linted_error_string_alloc(errno));
         }
 
-        linted_task_func_t fork_func;
+        linted_spawner_task_t fork_func;
         size_t fildes_count;
         {
             struct request_header request_header;
@@ -338,7 +338,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                      linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_task_spawner_close(spawner)) {
+    if (-1 == linted_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %s",
                      linted_error_string_alloc(errno));
     }

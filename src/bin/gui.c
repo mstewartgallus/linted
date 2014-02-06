@@ -63,9 +63,9 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static int gui_run(linted_task_spawner_t const spawner, int const inboxes[]);
+static int gui_run(linted_spawner_t const spawner, int const inboxes[]);
 
-linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
+linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
                               linted_main_loop_t main_loop)
 {
     struct mq_attr attr;
@@ -79,7 +79,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, gui_run, (int[]) {
+    if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
                                 gui_mqs[0], main_loop, -1})) {
         goto error_and_close_mqueues;
     }
@@ -113,9 +113,9 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
+static int gui_run(linted_spawner_t const spawner, int const inboxes[])
 {
-    if (-1 == linted_task_spawner_close(spawner)) {
+    if (-1 == linted_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %s",
                      linted_error_string_alloc(errno));
     }

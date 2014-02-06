@@ -20,7 +20,7 @@
 #include "linted/mq.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
-#include "linted/task.h"
+#include "linted/spawner.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -47,7 +47,7 @@ static int linted_main_loop_send_tick(linted_main_loop_t const main_loop);
 
 static void on_clock_tick(union sigval sigev_value);
 
-int linted_main_loop_run(linted_task_spawner_t spawner)
+int linted_main_loop_run(linted_spawner_t spawner)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);

@@ -16,13 +16,13 @@
 #ifndef LINTED_MAIN_LOOP_H
 #define LINTED_MAIN_LOOP_H
 
-#include "linted/task.h"
+#include "linted/spawner.h"
 
 #include <mqueue.h>
 
 typedef mqd_t linted_main_loop_t;
 
-int linted_main_loop_run(linted_task_spawner_t spawner);
+int linted_main_loop_run(linted_spawner_t spawner);
 
 int linted_main_loop_request_close(linted_main_loop_t main_loop);
 

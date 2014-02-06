@@ -24,7 +24,7 @@ linted_SOURCES=\
   src/bin/io.c\
   src/bin/main_loop.c\
   src/bin/sandbox.c\
-  src/bin/task.c\
+  src/bin/spawner.c\
   $(verified_sources)
 
 verified_sources=\

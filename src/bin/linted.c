@@ -16,7 +16,7 @@
 #include "config.h"
 
 #include "linted/main_loop.h"
-#include "linted/task.h"
+#include "linted/spawner.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
         );
 
     /* Right after, we fork off from a known good state. */
-    linted_task_spawner_t const spawner = linted_task_spawner_init();
+    linted_spawner_t const spawner = linted_spawner_init();
     if (-1 == spawner) {
         LINTED_ERROR("Could not initialize spawner: %s",
                      linted_error_string_alloc(errno));
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
         break;
     }
 
-    if (-1 == linted_task_spawner_close(spawner)) {
+    if (-1 == linted_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %s",
                      linted_error_string_alloc(errno));
     }

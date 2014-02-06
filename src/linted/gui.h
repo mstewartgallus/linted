@@ -17,7 +17,7 @@
 #define LINTED_GUI_H
 
 #include "linted/main_loop.h"
-#include "linted/task.h"
+#include "linted/spawner.h"
 
 #include <mqueue.h>
 #include <stdint.h>
@@ -27,7 +27,7 @@
  */
 typedef mqd_t linted_gui_t;
 
-linted_gui_t linted_gui_spawn(linted_task_spawner_t spawner,
+linted_gui_t linted_gui_spawn(linted_spawner_t spawner,
                               linted_main_loop_t main_loop);
 
 int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);

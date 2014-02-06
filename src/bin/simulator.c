@@ -33,9 +33,9 @@ struct message_data {
     enum message_type message_type;
 };
 
-static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[]);
+static int simulator_run(linted_spawner_t const spawner, int const inboxes[]);
 
-linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
+linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
                                           linted_gui_t gui)
 {
     struct mq_attr attr;
@@ -49,7 +49,7 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, simulator_run, (int[]) {
+    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
                                 sim_mqs[0], gui, -1})) {
         goto error_and_close_mqueues;
     }
@@ -81,11 +81,11 @@ int linted_simulator_close(linted_simulator_t const simulator)
     return mq_close(simulator);
 }
 
-static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[])
+static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
 {
     linted_sandbox();
 
-    int const spawner_close_status = linted_task_spawner_close(spawner);
+    int const spawner_close_status = linted_spawner_close(spawner);
     if (-1 == spawner_close_status) {
         LINTED_ERROR("Could not close spawner: %s",
                      linted_error_string_alloc(errno));
