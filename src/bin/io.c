@@ -27,61 +27,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define TEMPLATE_PREFIX "/anonymous-mq-"
-#define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
-
-mqd_t linted_io_anonymous_mq(struct mq_attr * attr, int oflag)
-{
-    char random_mq_name[sizeof TEMPLATE_NAME];
-    memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
-
-    mqd_t new_mq;
-    do {
-        /* TODO: Replace, rand is terrible */
-        /* Seed with rand */
-        int possible_seed;
-        do {
-            /* To get an even distribution of values throw out
-             * results that don't fit.
-             */
-            possible_seed = rand();
-        } while (possible_seed > CHAR_MAX);
-
-        unsigned char state = possible_seed;
-
-        for (size_t ii = sizeof TEMPLATE_PREFIX - 1; ii < sizeof TEMPLATE_NAME - 1; ++ii) {
-            for (;;) {
-                /* Use a fast linear congruential generator */
-                state = 5 + 3 * state;
-                unsigned const possible_value = state;
-
-                /* Again, throw out results that don't fit for an even
-                 * distribution of values.
-                 */
-                if ((possible_value >= 'a' && possible_value <= 'z')
-                    || (possible_value >= 'A' && possible_value <= 'Z')
-                    || (possible_value >= '0' && possible_value <= '9')) {
-                    random_mq_name[ii] = possible_value;
-                    break;
-                }
-            }
-        }
-
-        new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL, 0, attr);
-    } while (-1 == new_mq && EEXIST == errno);
-
-    if (new_mq != -1) {
-        /* This could only happen via programmer error */
-        if (-1 == mq_unlink(random_mq_name)) {
-            LINTED_ERROR
-                ("Could not remove message queue with name %s because of error: %m",
-                 random_mq_name, errno);
-        }
-    }
-
-    return new_mq;
-}
-
 int linted_io_create_local_server(int sockets[2])
 {
     return socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets);

@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
 #include "linted/gui.h"
+#include "linted/mq.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -43,7 +43,7 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const sim_mq = linted_io_anonymous_mq(&attr, 0);
+    mqd_t const sim_mq = linted_mq_anonymous(&attr, 0);
     if (-1 == sim_mq) {
         return -1;
     }

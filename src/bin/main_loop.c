@@ -16,8 +16,8 @@
 #include "config.h"
 
 #include "linted/gui.h"
-#include "linted/io.h"
 #include "linted/main_loop.h"
+#include "linted/mq.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/task.h"
@@ -48,7 +48,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const main_loop = linted_io_anonymous_mq(&attr, 0);
+    mqd_t const main_loop = linted_mq_anonymous(&attr, 0);
     if (-1 == main_loop) {
         LINTED_ERROR("Could not create main loop message queue: %m", errno);
     }

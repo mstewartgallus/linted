@@ -16,7 +16,7 @@
 #include "config.h"
 
 #include "linted/gui.h"
-#include "linted/io.h"
+#include "linted/mq.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -74,7 +74,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const gui_mq = linted_io_anonymous_mq(&attr, 0);
+    mqd_t const gui_mq = linted_mq_anonymous(&attr, 0);
     if (-1 == gui_mq) {
         return -1;
     }
@@ -118,7 +118,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     linted_main_loop_t const main_loop = inboxes[1];
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
-        LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
+        LINTED_ERROR("Could not initialize the GUI: %s", SDL_GetError());
     }
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
@@ -126,7 +126,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            LINTED_ERROR("Could not set a double buffer attribute: %s\n", SDL_GetError());
+            LINTED_ERROR("Could not set a double buffer attribute: %s", SDL_GetError());
         }
     }
 
@@ -150,7 +150,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
                                                         0, sdl_flags);
     if (NULL == video_surface) {
-        LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
+        LINTED_ERROR("Could not set the video mode: %s", SDL_GetError());
     }
 
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
@@ -220,8 +220,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
                     }
 
                 default:
-                    LINTED_ERROR
-                        ("Received unexpected request type: %d.\n", message_data.type);
+                    LINTED_ERROR("Received unexpected request type: %d",
+                                 message_data.type);
                 }
 
                 had_gui_command = true;
