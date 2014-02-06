@@ -17,6 +17,7 @@
 
 #include "linted/gui.h"
 #include "linted/mq.h"
+#include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -77,6 +78,8 @@ int linted_simulator_close(linted_simulator_t const simulator)
 
 static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[])
 {
+    linted_sandbox();
+
     int const spawner_close_status = linted_task_spawner_close(spawner);
     if (-1 == spawner_close_status) {
         LINTED_ERROR("Could not close spawner: %m", errno);
