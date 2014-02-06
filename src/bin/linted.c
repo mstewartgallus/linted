@@ -15,10 +15,7 @@
  */
 #include "config.h"
 
-#include "linted/gui.h"
 #include "linted/main_loop.h"
-#include "linted/sandbox.h"
-#include "linted/simulator.h"
 #include "linted/task.h"
 #include "linted/util.h"
 
@@ -48,20 +45,6 @@
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
-#define SIMULATOR_USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " " LINTED_SIMULATOR_NAME " SIMULATOR_PIPE GUI_PIPE\n"\
-    "Run the simulator\n"\
-    "\n"\
-    "Report bugs to " PACKAGE_BUGREPORT "\n"
-
-#define GUI_USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " " LINTED_GUI_NAME " GUI_PIPE SIMULATOR_PIPE\n"\
-    "Run the gui\n"\
-    "\n"\
-    "Report bugs to " PACKAGE_BUGREPORT "\n"
-
-static int go(linted_task_spawner_t spawner, int argc, char *argv[]);
-
 int main(int argc, char **argv)
 {
     /* First we check if we are run with proper security */
@@ -85,12 +68,35 @@ int main(int argc, char **argv)
         );
 
     /* Right after, we fork off from a known good state. */
-    linted_task_spawner_t spawner = linted_task_spawner_init();
+    linted_task_spawner_t const spawner = linted_task_spawner_init();
     if (-1 == spawner) {
         LINTED_ERROR("Could not initialize spawner: %m", errno);
     }
 
-    int const exit_status = go(spawner, argc, argv);
+    int exit_status;
+    switch (argc) {
+    case 1:
+        exit_status = linted_main_loop_run(spawner);
+        break;
+
+    case 2:
+        if (0 == strcmp(argv[1], "--help")) {
+            fputs(USAGE_TEXT, stdout);
+            exit_status = EXIT_SUCCESS;
+            break;
+        } else if (0 == strcmp(argv[1], "--version")) {
+            fputs(VERSION_TEXT, stdout);
+            exit_status = EXIT_SUCCESS;
+            break;
+        }
+        /* Fallthrough */
+
+    default:
+        fprintf(stderr,
+                PACKAGE_TARNAME " did not understand the command line input\n" USAGE_TEXT);
+        exit_status = EXIT_FAILURE;
+        break;
+    }
 
     if (-1 == linted_task_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %m", errno);
@@ -117,25 +123,4 @@ int main(int argc, char **argv)
     }
 
     return exit_status;
-}
-
-static int go(linted_task_spawner_t spawner, int argc, char *argv[])
-{
-    if (1 == argc) {
-        return linted_main_loop_run(spawner);
-    }
-
-    if (2 == argc) {
-        if (0 == strcmp(argv[1], "--help")) {
-            fputs(USAGE_TEXT, stdout);
-            return EXIT_SUCCESS;
-        } else if (0 == strcmp(argv[1], "--version")) {
-            fputs(VERSION_TEXT, stdout);
-            return EXIT_SUCCESS;
-        }
-    }
-
-    fprintf(stderr,
-            PACKAGE_TARNAME " did not understand the command line input\n" USAGE_TEXT);
-    return EXIT_FAILURE;
 }
