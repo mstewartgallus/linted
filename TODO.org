@@ -10,6 +10,7 @@ option.
 Each process fork retries old mq names because they keep the old state
 of rand.
 * Fix bug where the spawner can't close because it keeps a handle to itself
+* Fix bug where forked processes don't check for bad stdin, stdout and stderr
 * Make servers hand out the connection file descriptors not clients
 The current way is inherently fragile and insecure.
 * Don't do cargo cult security
