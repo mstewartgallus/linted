@@ -18,6 +18,29 @@
 
 #include <mqueue.h>
 
+/**
+ * The linted_mq_pair call creates an unnamed pair of message queues
+ * with the specified attributes attr and flags oflag.
+ *
+ * @param mqd Returns two message queue descriptors. mqd[0] refers to
+ *            the read end. mqd[1] refers to the write end.
+ *
+ * @param oflag Can be O_NONBLOCK to open the queue in nonblocking
+ *              mode.
+ *
+ * @returns Zero on success. -1 on error, and errno is set
+ *          appropriately.
+ *
+ * @error EMFILE The process already has the maximum number of message
+ *               queues open.
+ *
+ * @error ENFILE The system already has the maximum number of message
+ *               queues open.
+ *
+ * @error ENOMEM Insufficient memory.
+ *
+ * @error ENOSPC Insufficient space.
+ */
 int linted_mq_pair(mqd_t mqs[], struct mq_attr *attr, int oflag);
 
 #endif                          /* LINTED_MQ_H */

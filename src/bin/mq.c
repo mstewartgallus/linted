@@ -36,21 +36,24 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
 
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
-    do {
-        /* TODO: Replace, rand is terrible */
-        /* Seed with rand. */
-        /* Normally using the modulus would give a bad distribution
-           but CHAR_MAX + 1 is a power of two. */
-        unsigned char state = rand() % (CHAR_MAX + 1);
+    /* Seed the generator with rand */
+    /* TODO: Replace rand which is terrible */
+    /* Use unsigned so possibly overflowing later on is defined */
+    unsigned long generator_state = rand();
 
+    do {
         for (size_t ii = sizeof TEMPLATE_PREFIX - 1; ii < sizeof TEMPLATE_NAME - 1; ++ii) {
             for (;;) {
                 /* Use a fast linear congruential generator */
-                state = 5 + 3 * state;
-                unsigned const possible_value = state;
+                generator_state = 5 + 3 * generator_state;
 
-                /* Again, throw out results that don't fit for an even
-                 * distribution of values.
+                /* Normally using the modulus would give a bad
+                 * distribution but CHAR_MAX + 1 is a power of two
+                 */
+                unsigned char const possible_value = generator_state % (CHAR_MAX + 1);
+
+                /* Throw out results and retry for an even
+                 *  distribution
                  */
                 if ((possible_value >= 'a' && possible_value <= 'z')
                     || (possible_value >= 'A' && possible_value <= 'Z')
@@ -62,9 +65,9 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
         }
 
         write_end = mq_open(random_mq_name,
-                         oflag | O_WRONLY | O_CREAT | O_EXCL,
-                         S_IRUSR,
-                         attr);
+                            oflag | O_WRONLY | O_CREAT | O_EXCL,
+                            S_IRUSR,
+                            attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
         goto exit_with_error;
