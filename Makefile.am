@@ -21,7 +21,6 @@ bin_PROGRAMS=linted
 linted_SOURCES=\
   src/bin/linted.c\
   src/bin/gui.c\
-  src/bin/io.c\
   src/bin/main_loop.c\
   src/bin/sandbox.c\
   src/bin/spawner.c\
