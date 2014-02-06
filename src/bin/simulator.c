@@ -64,9 +64,10 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
 
 int linted_simulator_send_tick(linted_simulator_t const simulator)
 {
-    struct message_data message_data = {
-        .message_type = SIMULATOR_TICK
-    };
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+
+    message_data.message_type = SIMULATOR_TICK;
 
     return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }

@@ -96,6 +96,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
     struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
 
     message_data.type = GUI_UPDATE;
     message_data.x_position = x;
