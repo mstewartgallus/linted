@@ -19,6 +19,7 @@
 
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -184,11 +185,8 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
     action.sa_handler = SIG_IGN;
 
     struct sigaction old_action;
-    int const sig_status = sigaction(SIGCHLD, &action, &old_action);
-    if (-1 == sig_status) {
-        LINTED_ERROR("Could not ignore child processes: %s",
-                     linted_error_string_alloc(errno));
-    }
+    int const chld_sigaction_status = sigaction(SIGCHLD, &action, &old_action);
+    assert(chld_sigaction_status != -1);
 
     /* TODO: Handle multiple connections at once */
     for (;;) {
@@ -221,9 +219,18 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
             fildes_count = request_header.fildes_count;
         }
 
-        if (fildes_count > 255) {
-            /* TODO: Send an EINVAL error back */
-            LINTED_ERROR("Fildes sent was too high: %lu", fildes_count);
+        if (fildes_count > 20) {
+            struct reply_data reply = { .error_status = EINVAL  };
+
+            int write_status;
+            do {
+                write_status = write(connection, &reply, sizeof reply);
+            } while (-1 == write_status && EINTR == errno);
+            if (-1 == write_status) {
+                LINTED_ERROR("Fork server could not reply to request: %s",
+                             linted_error_string_alloc(errno));
+            }
+            continue;
         }
 
         int sent_inboxes[fildes_count + 1];
@@ -235,9 +242,19 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
                 LINTED_ERROR("Could not receive fildes from fork request: %s",
                              linted_error_string_alloc(errno));
 
-            /* TODO: Report an error back */
-            case 0:
-                LINTED_ERROR("Did not receive expected fildes from fork request", NULL);
+            case 0:{
+                struct reply_data reply = { .error_status = EINVAL  };
+
+                int write_status;
+                do {
+                    write_status = write(connection, &reply, sizeof reply);
+                } while (-1 == write_status && EINTR == errno);
+                if (-1 == write_status) {
+                    LINTED_ERROR("Fork server could not reply to request: %s",
+                                 linted_error_string_alloc(errno));
+                }
+                continue;
+            }
             }
 
             sent_inboxes[ii] = fildes;
@@ -246,10 +263,8 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
         pid_t const child_pid = fork();
         if (0 == child_pid) {
             /* Restore the old signal behaviour */
-            if (-1 == sigaction(SIGCHLD, &old_action, &action)) {
-                LINTED_ERROR("Could not restore child signal behaviour: %s",
-                             linted_error_string_alloc(errno));
-            }
+            int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
+            assert(sigaction_status != -1);
 
             if (-1 == close(connection)) {
                 LINTED_ERROR("Forked child could not close connection: %s",
@@ -266,17 +281,17 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
         }
 
         {
-            struct reply_data reply_data;
-            if (-1 == child_pid) {
-                reply_data.error_status = errno;
-            } else {
-                reply_data.error_status = 0;
-            }
+            struct reply_data reply = {
+                .error_status = (-1 == child_pid) ? errno : 0
+            };
 
-            if (-1 == write(connection, &reply_data, sizeof reply_data)) {
-                LINTED_ERROR
-                    ("Fork server could not write reply to child requester: %s",
-                     linted_error_string_alloc(errno));
+            int write_status;
+            do {
+                write_status = write(connection, &reply, sizeof reply);
+            } while (-1 == write_status && EINTR == errno);
+            if (-1 == write_status) {
+                LINTED_ERROR("Fork server could not reply to request: %s",
+                             linted_error_string_alloc(errno));
             }
         }
 
