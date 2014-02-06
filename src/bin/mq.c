@@ -65,8 +65,9 @@ mqd_t linted_mq_anonymous(struct mq_attr * attr, int oflag)
         /* This could only happen via programmer error */
         if (-1 == mq_unlink(random_mq_name)) {
             LINTED_ERROR
-                ("Could not remove message queue with name %s because of error: %m",
-                 random_mq_name, errno);
+                ("Could not remove message queue with name %s because of error: %s",
+                 random_mq_name,
+                 linted_error_string_alloc(errno));
         }
     }
 

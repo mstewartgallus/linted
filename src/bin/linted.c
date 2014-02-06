@@ -70,7 +70,8 @@ int main(int argc, char **argv)
     /* Right after, we fork off from a known good state. */
     linted_task_spawner_t const spawner = linted_task_spawner_init();
     if (-1 == spawner) {
-        LINTED_ERROR("Could not initialize spawner: %m", errno);
+        LINTED_ERROR("Could not initialize spawner: %s",
+                     linted_error_string_alloc(errno));
     }
 
     int exit_status;
@@ -99,23 +100,30 @@ int main(int argc, char **argv)
     }
 
     if (-1 == linted_task_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %m", errno);
+        LINTED_ERROR("Could not close spawner: %s",
+                     linted_error_string_alloc(errno));
     }
 
     int files_status = 0;
     if (EOF == fclose(stdin)) {
         files_status = -1;
-        syslog(LOG_ERR, "Could not close standard input: %m", errno);
+        char const * const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "Could not close standard input: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stdout)) {
         files_status = -1;
-        syslog(LOG_ERR, "Could not close standard output: %m", errno);
+        char const * const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "Could not close standard output: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stderr)) {
         files_status = -1;
-        syslog(LOG_ERR, "Could not close standard error: %m", errno);
+        char const * const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "Could not close standard error: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     if (-1 == files_status && EXIT_SUCCESS == exit_status) {

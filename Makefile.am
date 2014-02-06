@@ -29,7 +29,8 @@ linted_SOURCES=\
 
 verified_sources=\
   src/bin/mq.c\
-  src/bin/simulator.c
+  src/bin/simulator.c\
+  src/bin/util.c
 
 linted_LDADD=$(SDL_LIBS)
 linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)

@@ -50,22 +50,26 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
 
     mqd_t const main_loop = linted_mq_anonymous(&attr, 0);
     if (-1 == main_loop) {
-        LINTED_ERROR("Could not create main loop message queue: %m", errno);
+        LINTED_ERROR("Could not create main loop message queue: %s",
+                     linted_error_string_alloc(errno));
     }
 
     linted_gui_t const gui = linted_gui_spawn(spawner, main_loop);
     if (-1 == gui) {
-        LINTED_ERROR("Could not spawn gui: %m", errno);
+        LINTED_ERROR("Could not spawn gui: %s",
+                     linted_error_string_alloc(errno));
     }
 
     linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
     if (-1 == simulator) {
-        LINTED_ERROR("Could not spawn simulator: %m", errno);
+        LINTED_ERROR("Could not spawn simulator: %s",
+                     linted_error_string_alloc(errno));
     }
 
     struct timespec next_tick;
     if (-1 == clock_gettime(SIMULATOR_CLOCK, &next_tick)) {
-        LINTED_ERROR("Could not get the time: %m", errno);
+        LINTED_ERROR("Could not get the time: %s",
+                     linted_error_string_alloc(errno));
     }
 
     for (;;) {
@@ -84,7 +88,8 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             if (errno != ETIMEDOUT) {
-                LINTED_ERROR("Could not read from gui connection: %m", errno);
+                LINTED_ERROR("Could not read from main loop inbox: %s",
+                             linted_error_string_alloc(errno));
             }
         } else {
             switch (message_data.type) {
@@ -102,7 +107,8 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
             tick_status = linted_simulator_send_tick(simulator);
         } while (-1 == tick_status && EINTR == errno);
         if (-1 == tick_status) {
-            LINTED_ERROR("Could not send tick message to simulator: %m", errno);
+            LINTED_ERROR("Could not send tick message to simulator: %s",
+                         linted_error_string_alloc(errno));
         }
 
         long const second = 1000000000;
@@ -119,21 +125,25 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
                                            &next_tick, NULL);
         } while (-1 == sleep_status && EINTR == errno);
         if (-1 == sleep_status) {
-            LINTED_ERROR("Could not sleep: %m", errno);
+            LINTED_ERROR("Could not sleep: %s",
+                         linted_error_string_alloc(errno));
         }
     }
 
  exit_main_loop:
     if (-1 == linted_simulator_close(simulator)) {
-        LINTED_ERROR("Could not close simulator handle: %m", errno);
+        LINTED_ERROR("Could not close simulator handle: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui handle: %m", errno);
+        LINTED_ERROR("Could not close gui handle: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(main_loop)) {
-        LINTED_ERROR("Could not close main loop handle: %m", errno);
+        LINTED_ERROR("Could not close main loop handle: %s",
+                     linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;

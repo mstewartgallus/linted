@@ -115,7 +115,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     linted_sandbox();
 
     if (-1 == linted_task_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %m", errno);
+        LINTED_ERROR("Could not close spawner: %s",
+                     linted_error_string_alloc(errno));
     }
 
     int const inbox = inboxes[0];
@@ -139,7 +140,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
 
     /* Initialize SDL */
     if (NULL == SDL_SetVideoMode(width, height, 0, sdl_flags)) {
-        LINTED_ERROR("Could not set the video mode: %s\n", SDL_GetError());
+        LINTED_ERROR("Could not set the video mode: %s", SDL_GetError());
     }
 
     /* Get actual window size, and not requested window size */
@@ -209,7 +210,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
                 if (errno != ETIMEDOUT) {
-                    LINTED_ERROR("Could not read from gui connection: %m", errno);
+                    LINTED_ERROR("Could not read from gui connection: %s",
+                                 linted_error_string_alloc(errno));
                 }
             } else {
                 if (0 == bytes_read) {
@@ -253,11 +255,13 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     SDL_Quit();
 
     if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator inbox: %m", errno);
+        LINTED_ERROR("Could not close simulator inbox: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_main_loop_close(main_loop)) {
-        LINTED_ERROR("Could not close main loop handle: %m", errno);
+        LINTED_ERROR("Could not close main loop handle: %s",
+                     linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;

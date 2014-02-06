@@ -29,4 +29,8 @@
         exit(EXIT_FAILURE);                                             \
     } while (0)
 
+char const * linted_error_string_alloc(int errnum);
+
+void linted_error_string_free(char const * error_string);
+
 #endif                          /* LINTED_UTIL_H */

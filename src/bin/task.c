@@ -201,7 +201,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
     struct sigaction old_action;
     int const sig_status = sigaction(SIGCHLD, &action, &old_action);
     if (-1 == sig_status) {
-        LINTED_ERROR("Could not ignore child processes: %m", errno);
+        LINTED_ERROR("Could not ignore child processes: %s",
+                     linted_error_string_alloc(errno));
     }
 
     /* TODO: Handle multiple connections at once */
@@ -212,7 +213,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                 break;
             }
 
-            LINTED_ERROR("Could not accept fork request connection: %m", errno);
+            LINTED_ERROR("Could not accept fork request connection: %s",
+                         linted_error_string_alloc(errno));
         }
 
         linted_task_func_t fork_func;
@@ -227,7 +229,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                                       MSG_WAITALL);
             } while (-1 == bytes_received && EINTR == errno);
             if (-1 == bytes_received) {
-                LINTED_ERROR("Could not receive fork request header: %m", errno);
+                LINTED_ERROR("Could not receive fork request header: %s",
+                             linted_error_string_alloc(errno));
             }
 
             fork_func = request_header.func;
@@ -269,7 +272,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                     recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
-                LINTED_ERROR("Could not read bytes from fork request: %m", errno);
+                LINTED_ERROR("Could not read bytes from fork request: %s",
+                             linted_error_string_alloc(errno));
             }
 
             struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
@@ -287,19 +291,21 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                                                    &old_action,
                                                    &action);
             if (-1 == retry_sig_status) {
-                LINTED_ERROR("Could not restore child signal behaviour: %m", errno);
+                LINTED_ERROR("Could not restore child signal behaviour: %s",
+                             linted_error_string_alloc(errno));
             }
 
             if (-1 == close(connection)) {
-                LINTED_ERROR("Forked child could not close connection: %m", errno);
+                LINTED_ERROR("Forked child could not close connection: %s",
+                             linted_error_string_alloc(errno));
             }
             return fork_func(spawner, sent_inboxes);
         }
 
         for (size_t ii = 0; ii < fildes_count; ++ii) {
             if (-1 == close(sent_inboxes[ii])) {
-                LINTED_ERROR("Fork server could not close inbox file descriptor: %m",
-                             errno);
+                LINTED_ERROR("Fork server could not close inbox file descriptor: %s",
+                             linted_error_string_alloc(errno));
             }
         }
 
@@ -316,21 +322,25 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                                                  sizeof reply_data);
             if (-1 == reply_write_status) {
                 LINTED_ERROR
-                    ("Fork server could not write reply to child requester: %m", errno);
+                    ("Fork server could not write reply to child requester: %s",
+                     linted_error_string_alloc(errno));
             }
         }
 
         if (-1 == close(connection)) {
-            LINTED_ERROR("Fork server could not close connection: %m", errno);
+            LINTED_ERROR("Fork server could not close connection: %s",
+                         linted_error_string_alloc(errno));
         }
     }
 
     if (-1 == close(inbox)) {
-        LINTED_ERROR("Could not close inbox: %m", errno);
+        LINTED_ERROR("Could not close inbox: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_task_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %m", errno);
+        LINTED_ERROR("Could not close spawner: %s",
+                     linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;

@@ -83,7 +83,8 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[
 
     int const spawner_close_status = linted_task_spawner_close(spawner);
     if (-1 == spawner_close_status) {
-        LINTED_ERROR("Could not close spawner: %m", errno);
+        LINTED_ERROR("Could not close spawner: %s",
+                     linted_error_string_alloc(errno));
     }
 
     mqd_t const inbox = inboxes[0];
@@ -101,7 +102,8 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[
                                     (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            LINTED_ERROR("Could not read from simulator connection: %m", errno);
+            LINTED_ERROR("Could not read from simulator connection: %s",
+                         linted_error_string_alloc(errno));
         }
 
         if (0 == bytes_read) {
@@ -120,7 +122,8 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[
                     update_status = linted_gui_send_update(gui, x_position, y_position);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
-                    LINTED_ERROR("Could not send update message to gui: %m", errno);
+                    LINTED_ERROR("Could not send update message to gui: %s",
+                                 linted_error_string_alloc(errno));
                 }
                 break;
             }
@@ -132,11 +135,13 @@ static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[
     }
 
     if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator inbox: %m", errno);
+        LINTED_ERROR("Could not close simulator inbox: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui: %m", errno);
+        LINTED_ERROR("Could not close gui: %s",
+                     linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;
