@@ -81,11 +81,6 @@ AC_CHECK_FUNCS([memset], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_C99_STD],[
-        [-std=c99]dnl
-        [-pedantic]dnl
-])
-AC_SUBST([linted_CFLAGS_C99_STD])
 dnl
 LINTED_PROG_FRAMA_C_GUI
 LINTED_PROG_FRAMA_C
@@ -94,6 +89,7 @@ LINTED_PROG_CLANG
 LINTED_PROG_CPPCHECK
 LINTED_PROG_INDENT
 dnl
+LINTED_LANGUAGE
 LINTED_OPTIMIZE
 LINTED_HARDEN
 LINTED_DEBUG

@@ -36,11 +36,8 @@ linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
 
 linted_CPPFLAGS=$(SDL_CFLAGS)
 
-# Cancel out SDL's defining of GNU source. We don't use extensions
+# Cancel out SDL's idiot defining of GNU source
 linted_CPPFLAGS +=-U_GNU_SOURCE
-
-# Use POSIX source extensions only
-linted_CPPFLAGS +=-D_POSIX_C_SOURCE=200112L
 
 linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
@@ -93,12 +90,13 @@ clean-local:
 
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_HARDEN)\
+  $(linted_CPPFLAGS_LANGUAGE)\
   -I .\
   -I $(srcdir)/src\
   -I src
 
 AM_CFLAGS=\
-  $(linted_CFLAGS_C99_STD)\
+  $(linted_CFLAGS_LANGUAGE)\
   $(linted_CFLAGS_OPTIMIZE)\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
