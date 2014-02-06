@@ -1,6 +1,9 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
+* Get rid of GNU printf %m extension usage
+* Have a better error handling scheme for processes
+I need to be able signal failure from one process to another.
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening
