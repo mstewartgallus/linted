@@ -159,6 +159,8 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
         LINTED_ERROR("Could not set the video mode: %s", SDL_GetError());
     }
 
+    glDisable(GL_DITHER);
+
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, width, height);
 
@@ -182,17 +184,33 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
         case SDL_KEYDOWN:
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
-            case SDLK_ESCAPE:
-                linted_main_loop_request_close(main_loop);
+            case SDLK_ESCAPE:{
+                int request_status;
+                do {
+                    request_status = linted_main_loop_request_close(main_loop);
+                } while (-1 == request_status && EINTR == errno);
+                if (-1 == request_status) {
+                    LINTED_ERROR("Could not send main loop request to close: %s",
+                                 linted_error_string_alloc(errno));
+                }
                 break;
+            }
             default:
                 break;
             }
             break;
 
-        case SDL_QUIT:
-            linted_main_loop_request_close(main_loop);
+        case SDL_QUIT:{
+            int request_status;
+            do {
+                request_status = linted_main_loop_request_close(main_loop);
+            } while (-1 == request_status && EINTR == errno);
+            if (-1 == request_status) {
+                LINTED_ERROR("Could not send main loop request to close: %s",
+                             linted_error_string_alloc(errno));
+            }
             break;
+        }
         }
 
         bool had_gui_command = false;
