@@ -16,6 +16,7 @@
 #ifndef LINTED_GUI_H
 #define LINTED_GUI_H
 
+#include "linted/main_loop.h"
 #include "linted/task.h"
 
 #include <mqueue.h>
@@ -26,14 +27,8 @@
  */
 typedef mqd_t linted_gui_t;
 
-enum linted_gui_event_type {
-    CLOSE_REQUEST_EVENT
-};
-struct linted_gui_event {
-    enum linted_gui_event_type type;
-};
-
-linted_gui_t linted_gui_spawn(linted_task_spawner_t spawner);
+linted_gui_t linted_gui_spawn(linted_task_spawner_t spawner,
+                              linted_main_loop_t main_loop);
 
 int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);
 

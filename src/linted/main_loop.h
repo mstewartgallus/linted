@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_SUPERVISOR_H
-#define LINTED_SUPERVISOR_H
+#ifndef LINTED_MAIN_LOOP_H
+#define LINTED_MAIN_LOOP_H
 
 #include "linted/task.h"
 
-int linted_supervisor_run(linted_task_spawner_t spawner);
+#include <mqueue.h>
 
-#endif                          /* LINTED_SUPERVISOR_H */
+typedef mqd_t linted_main_loop_t;
+
+int linted_main_loop_run(linted_task_spawner_t spawner);
+
+int linted_main_loop_request_close(linted_main_loop_t main_loop);
+
+int linted_main_loop_close(linted_main_loop_t main_loop);
+
+#endif                          /* LINTED_MAIN_LOOP_H */

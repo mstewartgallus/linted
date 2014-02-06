@@ -16,21 +16,44 @@
 #include "config.h"
 
 #include "linted/gui.h"
+#include "linted/io.h"
+#include "linted/main_loop.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
-#include "linted/supervisor.h"
+#include "linted/task.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <stdlib.h>
-#include <time.h>
+#include <mqueue.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #define SIMULATOR_CLOCK CLOCK_MONOTONIC
 
-int linted_supervisor_run(linted_task_spawner_t spawner)
+enum message_type {
+    MAIN_LOOP_CLOSE_REQUEST
+};
+
+struct message_data {
+    enum message_type type;
+};
+
+int linted_main_loop_run(linted_task_spawner_t spawner)
 {
-    linted_gui_t const gui = linted_gui_spawn(spawner);
+    struct mq_attr attr;
+    memset(&attr, 0, sizeof attr);
+
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof (struct message_data);
+
+    mqd_t const main_loop = linted_io_anonymous_mq(&attr, 0);
+    if (-1 == main_loop) {
+        LINTED_ERROR("Could not create main loop message queue: %m", errno);
+    }
+
+    linted_gui_t const gui = linted_gui_spawn(spawner, main_loop);
     if (-1 == gui) {
         LINTED_ERROR("Could not spawn gui: %m", errno);
     }
@@ -46,6 +69,37 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
     }
 
     for (;;) {
+        /* TODO: Move away from polling */
+        struct message_data message_data;
+        struct timespec timespec = {
+            .tv_sec = 0,
+            .tv_nsec = 0
+        };
+
+        ssize_t bytes_read;
+        do {
+            bytes_read = mq_timedreceive(main_loop,
+                                         (char *) &message_data,
+                                         sizeof message_data,
+                                         NULL,
+                                         &timespec);
+        } while (-1 == bytes_read && EINTR == errno);
+        if (-1 == bytes_read) {
+            if (errno != ETIMEDOUT) {
+                LINTED_ERROR("Could not read from gui connection: %m", errno);
+            }
+        } else {
+            switch (message_data.type) {
+            case MAIN_LOOP_CLOSE_REQUEST:{
+                goto exit_main_loop;
+            }
+
+            default:
+                LINTED_ERROR("Received unexpected message type: %d",
+                             message_data.type);
+            }
+        }
+
         int tick_status;
         do {
             tick_status = linted_simulator_send_tick(simulator);
@@ -72,6 +126,7 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
         }
     }
 
+exit_main_loop:
     if (-1 == linted_simulator_close(simulator)) {
         LINTED_ERROR("Could not close simulator handle: %m", errno);
     }
@@ -80,5 +135,25 @@ int linted_supervisor_run(linted_task_spawner_t spawner)
         LINTED_ERROR("Could not close gui handle: %m", errno);
     }
 
+    if (-1 == mq_close(main_loop)) {
+        LINTED_ERROR("Could not close main loop handle: %m", errno);
+    }
+
     return EXIT_SUCCESS;
+}
+
+int linted_main_loop_request_close(linted_main_loop_t const main_loop)
+{
+    struct message_data message_data;
+
+    message_data.type = MAIN_LOOP_CLOSE_REQUEST;
+
+    return mq_send(main_loop,
+                   (char const *) &message_data, sizeof message_data,
+                   0);
+}
+
+int linted_main_loop_close(linted_main_loop_t const main_loop)
+{
+    return mq_close(main_loop);
 }

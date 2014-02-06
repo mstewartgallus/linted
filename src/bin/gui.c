@@ -28,12 +28,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum request_type {
+enum message_type {
     GUI_UPDATE
 };
 
 struct message_data {
-    enum request_type type;
+    enum message_type type;
     uint8_t x_position;
     uint8_t y_position;
 };
@@ -66,7 +66,8 @@ static struct attribute_value_pair const attribute_values[] = {
 static int gui_run(linted_task_spawner_t const spawner,
                    int const inboxes[]);
 
-linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
+linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
+                              linted_main_loop_t main_loop)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -79,7 +80,8 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, gui_run, (int[]) { gui_mq, -1 })) {
+    if (-1 == linted_task_spawn(spawner, gui_run,
+                                (int[]) { gui_mq, main_loop, -1 })) {
         goto error_and_close_mqueue;
     }
 
@@ -91,10 +93,10 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner)
     return -1;
 }
 
-int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
+int linted_gui_send_update(linted_gui_t const gui,
+                           uint8_t const x, uint8_t const y)
 {
     struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
 
     message_data.type = GUI_UPDATE;
     message_data.x_position = x;
@@ -118,6 +120,7 @@ static int gui_run(linted_task_spawner_t const spawner,
     }
 
     int const inbox = inboxes[0];
+    linted_main_loop_t const main_loop = inboxes[1];
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s\n", SDL_GetError());
@@ -179,7 +182,7 @@ static int gui_run(linted_task_spawner_t const spawner,
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
             case SDLK_ESCAPE:
-                /* TODO: Something, linted_simulator_send_close_request(simulator_chan); */
+                linted_main_loop_request_close(main_loop);
                 break;
             default:
                 break;
@@ -187,7 +190,7 @@ static int gui_run(linted_task_spawner_t const spawner,
             break;
 
         case SDL_QUIT:
-            /* TODO: something, linted_simulator_send_close_request(simulator_chan); */
+            linted_main_loop_request_close(main_loop);
             break;
         }
 
@@ -254,6 +257,10 @@ static int gui_run(linted_task_spawner_t const spawner,
 
     if (-1 == mq_close(inbox)) {
         LINTED_ERROR("Could not close simulator inbox: %m", errno);
+    }
+
+    if (-1 == linted_main_loop_close(main_loop)) {
+        LINTED_ERROR("Could not close main loop handle: %m", errno);
     }
 
     return EXIT_SUCCESS;

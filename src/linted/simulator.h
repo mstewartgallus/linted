@@ -20,7 +20,6 @@
 #include "linted/task.h"
 
 #include <mqueue.h>
-#include <stdint.h>
 
 /**
  * A handle to access the simulator. Is safe to share between processes.

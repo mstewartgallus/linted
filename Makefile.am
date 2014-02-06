@@ -21,8 +21,8 @@ bin_PROGRAMS=linted
 linted_SOURCES=\
   src/bin/linted.c\
   src/bin/gui.c\
+  src/bin/main_loop.c\
   src/bin/sandbox.c\
-  src/bin/supervisor.c\
   src/bin/task.c\
   $(verified_sources)
 
@@ -38,9 +38,9 @@ linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
 EXTRA_DIST=\
   src/linted/io.h\
   src/linted/gui.h\
+  src/linted/main_loop.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
-  src/linted/supervisor.h\
   src/linted/task.h\
   src/linted/util.h
 

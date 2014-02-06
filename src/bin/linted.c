@@ -16,9 +16,9 @@
 #include "config.h"
 
 #include "linted/gui.h"
+#include "linted/main_loop.h"
 #include "linted/sandbox.h"
 #include "linted/simulator.h"
-#include "linted/supervisor.h"
 #include "linted/task.h"
 #include "linted/util.h"
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 static int go(linted_task_spawner_t spawner, int argc, char *argv[])
 {
     if (1 == argc) {
-        return linted_supervisor_run(spawner);
+        return linted_main_loop_run(spawner);
     }
 
     if (2 == argc) {
