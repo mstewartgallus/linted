@@ -16,12 +16,17 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
+#include <stdlib.h>
+#include <syslog.h>
+
 #define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
-#define LINTED_ERROR(...)                                       \
-    linted_error(__FILE__, __func__, __LINE__,  __VA_ARGS__)
 
-void linted_error(const char *file,
-                  const char *function, unsigned line, const char *format_string, ...);
+#define LINTED_ERROR(format_string, ...)                                \
+    do {                                                                \
+        syslog(LOG_ERR, "Error in file %s, function %s, and line %d: " format_string, \
+               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
+        exit(EXIT_FAILURE);                                             \
+    } while (0)
 
 #endif                          /* LINTED_UTIL_H */

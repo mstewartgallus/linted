@@ -236,7 +236,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 
         if (fildes_count > 255) {
             /* TODO: Send an EINVAL error back */
-            LINTED_ERROR("Fildes sent was too high");
+            LINTED_ERROR("Fildes sent was too high: %lu", fildes_count);
         }
 
         int sent_inboxes[fildes_count + 1];

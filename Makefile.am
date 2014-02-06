@@ -29,12 +29,21 @@ linted_SOURCES=\
 
 verified_sources=\
   src/bin/mq.c\
-  src/bin/simulator.c\
-  src/bin/util.c
+  src/bin/simulator.c
 
 linted_LDADD=$(SDL_LIBS)
 linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
-linted_CPPFLAGS=$(SDL_CFLAGS) $(AM_CPPFLAGS)
+
+linted_CPPFLAGS=$(SDL_CFLAGS)
+
+# Cancel out SDL's defining of GNU source. We don't use extensions
+linted_CPPFLAGS +=-U_GNU_SOURCE
+
+# Use POSIX source extensions only
+linted_CPPFLAGS +=-D_POSIX_C_SOURCE=200112L
+
+linted_CPPFLAGS +=$(AM_CPPFLAGS)
+
 
 EXTRA_DIST=\
   src/linted/gui.h\
