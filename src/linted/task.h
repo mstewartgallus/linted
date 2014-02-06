@@ -23,8 +23,7 @@
  **/
 typedef int linted_task_spawner_t;
 
-typedef int (*linted_task_func_t) (linted_task_spawner_t spawner,
-                                   int const fildes[]);
+typedef int (*linted_task_func_t) (linted_task_spawner_t spawner, int const fildes[]);
 
 /**
  * Forks off a spawner from a known good state. Returns -1 on error

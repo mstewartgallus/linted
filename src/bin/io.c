@@ -30,7 +30,7 @@
 #define TEMPLATE_PREFIX "/anonymous-mq-"
 #define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
 
-mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
+mqd_t linted_io_anonymous_mq(struct mq_attr * attr, int oflag)
 {
     char random_mq_name[sizeof TEMPLATE_NAME];
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
@@ -49,8 +49,7 @@ mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
 
         unsigned char state = possible_seed;
 
-        for (size_t ii = sizeof TEMPLATE_PREFIX - 1;
-             ii < sizeof TEMPLATE_NAME - 1; ++ii) {
+        for (size_t ii = sizeof TEMPLATE_PREFIX - 1; ii < sizeof TEMPLATE_NAME - 1; ++ii) {
             for (;;) {
                 /* Use a fast linear congruential generator */
                 state = 5 + 3 * state;
@@ -68,16 +67,15 @@ mqd_t linted_io_anonymous_mq(struct mq_attr *attr, int oflag)
             }
         }
 
-        new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL,
-                         0, attr);
+        new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL, 0, attr);
     } while (-1 == new_mq && EEXIST == errno);
 
     if (new_mq != -1) {
         /* This could only happen via programmer error */
         if (-1 == mq_unlink(random_mq_name)) {
-            LINTED_ERROR(
-                    "Could not remove message queue with name %s because of error: %m",
-                    random_mq_name, errno);
+            LINTED_ERROR
+                ("Could not remove message queue with name %s because of error: %m",
+                 random_mq_name, errno);
         }
     }
 

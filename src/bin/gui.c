@@ -63,8 +63,7 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static int gui_run(linted_task_spawner_t const spawner,
-                   int const inboxes[]);
+static int gui_run(linted_task_spawner_t const spawner, int const inboxes[]);
 
 linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
                               linted_main_loop_t main_loop)
@@ -73,15 +72,15 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof (struct message_data);
+    attr.mq_msgsize = sizeof(struct message_data);
 
     mqd_t const gui_mq = linted_io_anonymous_mq(&attr, 0);
     if (-1 == gui_mq) {
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, gui_run,
-                                (int[]) { gui_mq, main_loop, -1 })) {
+    if (-1 == linted_task_spawn(spawner, gui_run, (int[]) {
+                                gui_mq, main_loop, -1})) {
         goto error_and_close_mqueue;
     }
 
@@ -93,8 +92,7 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
     return -1;
 }
 
-int linted_gui_send_update(linted_gui_t const gui,
-                           uint8_t const x, uint8_t const y)
+int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
 {
     struct message_data message_data;
 
@@ -102,9 +100,7 @@ int linted_gui_send_update(linted_gui_t const gui,
     message_data.x_position = x;
     message_data.y_position = y;
 
-    return mq_send(gui,
-                   (char const *) &message_data, sizeof message_data,
-                   0);
+    return mq_send(gui, (char const *)&message_data, sizeof message_data, 0);
 }
 
 int linted_gui_close(linted_gui_t const gui)
@@ -112,8 +108,7 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-static int gui_run(linted_task_spawner_t const spawner,
-                   int const inboxes[])
+static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_task_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %m", errno);
@@ -205,10 +200,8 @@ static int gui_run(linted_task_spawner_t const spawner,
             ssize_t bytes_read;
             do {
                 bytes_read = mq_timedreceive(inbox,
-                                             (char *) &message_data,
-                                             sizeof message_data,
-                                             NULL,
-                                             &timespec);
+                                             (char *)&message_data,
+                                             sizeof message_data, NULL, &timespec);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
                 if (errno != ETIMEDOUT) {
@@ -221,10 +214,10 @@ static int gui_run(linted_task_spawner_t const spawner,
 
                 switch (message_data.type) {
                 case GUI_UPDATE:{
-                    x = ((float)message_data.x_position) / 255;
-                    y = ((float)message_data.y_position) / 255;
-                    break;
-                }
+                        x = ((float)message_data.x_position) / 255;
+                        y = ((float)message_data.y_position) / 255;
+                        break;
+                    }
 
                 default:
                     LINTED_ERROR

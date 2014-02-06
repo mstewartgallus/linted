@@ -31,4 +31,4 @@ int linted_io_connect_to_local_socket(int socket);
 
 int linted_io_recv_socket(int inbox);
 
-#endif /* LINTED_IO_H */
+#endif                          /* LINTED_IO_H */

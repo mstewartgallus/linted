@@ -32,8 +32,7 @@ struct message_data {
     enum message_type message_type;
 };
 
-static int simulator_run(linted_task_spawner_t const spawner,
-                         int const inboxes[]);
+static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[]);
 
 linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
                                           linted_gui_t gui)
@@ -42,15 +41,15 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof (struct message_data);
+    attr.mq_msgsize = sizeof(struct message_data);
 
     mqd_t const sim_mq = linted_io_anonymous_mq(&attr, 0);
     if (-1 == sim_mq) {
         return -1;
     }
 
-    if (-1 == linted_task_spawn(spawner, simulator_run,
-                                (int[]) { sim_mq, gui, -1 })) {
+    if (-1 == linted_task_spawn(spawner, simulator_run, (int[]) {
+                                sim_mq, gui, -1})) {
         goto error_and_close_mqueue;
     }
 
@@ -68,9 +67,7 @@ int linted_simulator_send_tick(linted_simulator_t const simulator)
         .message_type = SIMULATOR_TICK
     };
 
-    return mq_send(simulator,
-                   (char const *) &message_data, sizeof message_data,
-                   0);
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }
 
 int linted_simulator_close(linted_simulator_t const simulator)
@@ -78,8 +75,7 @@ int linted_simulator_close(linted_simulator_t const simulator)
     return mq_close(simulator);
 }
 
-static int simulator_run(linted_task_spawner_t const spawner,
-                         int const inboxes[])
+static int simulator_run(linted_task_spawner_t const spawner, int const inboxes[])
 {
     int const spawner_close_status = linted_task_spawner_close(spawner);
     if (-1 == spawner_close_status) {
@@ -98,9 +94,7 @@ static int simulator_run(linted_task_spawner_t const spawner,
         ssize_t bytes_read;
         do {
             bytes_read = mq_receive(inbox,
-                                    (char *) &message_data,
-                                    sizeof message_data,
-                                    NULL);
+                                    (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             LINTED_ERROR("Could not read from simulator connection: %m", errno);
@@ -119,23 +113,19 @@ static int simulator_run(linted_task_spawner_t const spawner,
 
                 int update_status;
                 do {
-                    update_status = linted_gui_send_update(gui,
-                                                           x_position,
-                                                           y_position);
+                    update_status = linted_gui_send_update(gui, x_position, y_position);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
-                    LINTED_ERROR("Could not send update message to gui: %m",
-                                 errno);
+                    LINTED_ERROR("Could not send update message to gui: %m", errno);
                 }
                 break;
-        }
+            }
 
         default:
             LINTED_ERROR("Received unexpected message type: %d",
                          message_data.message_type);
         }
     }
-
 
     if (-1 == mq_close(inbox)) {
         LINTED_ERROR("Could not close simulator inbox: %m", errno);

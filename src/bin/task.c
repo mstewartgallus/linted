@@ -92,8 +92,7 @@ int linted_task_spawner_close(linted_task_spawner_t spawner)
 }
 
 int linted_task_spawn(linted_task_spawner_t const spawner,
-                      linted_task_func_t const func,
-                      int const fildes_to_send[])
+                      linted_task_func_t const func, int const fildes_to_send[])
 {
     int error_status = -1;
 
@@ -115,9 +114,7 @@ int linted_task_spawn(linted_task_spawner_t const spawner,
 
         ssize_t bytes_sent;
         do {
-            bytes_sent = send(connection,
-                              &request_header, sizeof request_header,
-                              0);
+            bytes_sent = send(connection, &request_header, sizeof request_header, 0);
         } while (-1 == bytes_sent && EINTR == errno);
         if (-1 == bytes_sent) {
             goto finish_and_close_connection;
@@ -218,7 +215,6 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
             LINTED_ERROR("Could not accept fork request connection: %m", errno);
         }
 
-
         linted_task_func_t fork_func;
         size_t fildes_count;
         {
@@ -231,8 +227,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
                                       MSG_WAITALL);
             } while (-1 == bytes_received && EINTR == errno);
             if (-1 == bytes_received) {
-                LINTED_ERROR("Could not receive fork request header: %m",
-                             errno);
+                LINTED_ERROR("Could not receive fork request header: %m", errno);
             }
 
             fork_func = request_header.func;
@@ -254,8 +249,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 
             struct iovec iov[] = {
                 (struct iovec){
-                    .iov_base = &dummy_data,
-                    .iov_len = sizeof dummy_data}
+                               .iov_base = &dummy_data,
+                               .iov_len = sizeof dummy_data}
             };
             message.msg_iov = iov;
             message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
@@ -270,7 +265,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 
             ssize_t bytes_read;
             do {
-                bytes_read = recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
+                bytes_read =
+                    recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
                 LINTED_ERROR("Could not read bytes from fork request: %m", errno);
@@ -302,7 +298,8 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
 
         for (size_t ii = 0; ii < fildes_count; ++ii) {
             if (-1 == close(sent_inboxes[ii])) {
-                LINTED_ERROR("Fork server could not close inbox file descriptor: %m", errno);
+                LINTED_ERROR("Fork server could not close inbox file descriptor: %m",
+                             errno);
             }
         }
 

@@ -46,7 +46,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof (struct message_data);
+    attr.mq_msgsize = sizeof(struct message_data);
 
     mqd_t const main_loop = linted_io_anonymous_mq(&attr, 0);
     if (-1 == main_loop) {
@@ -64,7 +64,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
     }
 
     struct timespec next_tick;
-    if (-1 == clock_gettime(SIMULATOR_CLOCK,  &next_tick)) {
+    if (-1 == clock_gettime(SIMULATOR_CLOCK, &next_tick)) {
         LINTED_ERROR("Could not get the time: %m", errno);
     }
 
@@ -79,10 +79,8 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
         ssize_t bytes_read;
         do {
             bytes_read = mq_timedreceive(main_loop,
-                                         (char *) &message_data,
-                                         sizeof message_data,
-                                         NULL,
-                                         &timespec);
+                                         (char *)&message_data,
+                                         sizeof message_data, NULL, &timespec);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             if (errno != ETIMEDOUT) {
@@ -91,12 +89,11 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
         } else {
             switch (message_data.type) {
             case MAIN_LOOP_CLOSE_REQUEST:{
-                goto exit_main_loop;
-            }
+                    goto exit_main_loop;
+                }
 
             default:
-                LINTED_ERROR("Received unexpected message type: %d",
-                             message_data.type);
+                LINTED_ERROR("Received unexpected message type: %d", message_data.type);
             }
         }
 
@@ -126,7 +123,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
         }
     }
 
-exit_main_loop:
+ exit_main_loop:
     if (-1 == linted_simulator_close(simulator)) {
         LINTED_ERROR("Could not close simulator handle: %m", errno);
     }
@@ -148,9 +145,7 @@ int linted_main_loop_request_close(linted_main_loop_t const main_loop)
 
     message_data.type = MAIN_LOOP_CLOSE_REQUEST;
 
-    return mq_send(main_loop,
-                   (char const *) &message_data, sizeof message_data,
-                   0);
+    return mq_send(main_loop, (char const *)&message_data, sizeof message_data, 0);
 }
 
 int linted_main_loop_close(linted_main_loop_t const main_loop)
