@@ -143,7 +143,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
         ssize_t bytes_read;
         do {
             bytes_read = read(connection, &reply_data, sizeof reply_data);
-        } while (-1 == bytes_read && EINTR == EINTR);
+        } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             goto finish_and_close_connection;
         }
