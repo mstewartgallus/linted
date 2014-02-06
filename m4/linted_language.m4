@@ -20,6 +20,7 @@ dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
         [-std=c99]dnl
         [-pedantic]dnl
+        [-pthread]dnl
 ])
 AC_SUBST([linted_CFLAGS_LANGUAGE])
 ])
