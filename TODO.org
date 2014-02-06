@@ -1,6 +1,7 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
+* Handle parent process death (causes SIGHUP) properly
 * Have a better error handling scheme for processes
 I need to be able signal failure from one process to another.
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
