@@ -201,7 +201,7 @@ static int fork_server_run(linted_task_spawner_t const spawner, int inbox)
     struct sigaction old_action;
     int const sig_status = sigaction(SIGCHLD, &action, &old_action);
     if (-1 == sig_status) {
-        LINTED_ERROR("Could not ignore child processes: %m\n", errno);
+        LINTED_ERROR("Could not ignore child processes: %m", errno);
     }
 
     /* TODO: Handle multiple connections at once */
