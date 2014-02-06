@@ -35,16 +35,10 @@ mqd_t linted_mq_anonymous(struct mq_attr * attr, int oflag)
     mqd_t new_mq;
     do {
         /* TODO: Replace, rand is terrible */
-        /* Seed with rand */
-        int possible_seed;
-        do {
-            /* To get an even distribution of values throw out
-             * results that don't fit.
-             */
-            possible_seed = rand();
-        } while (possible_seed > CHAR_MAX);
-
-        unsigned char state = possible_seed;
+        /* Seed with rand. */
+        /* Normally using the modulus would give a bad distribution
+           but CHAR_MAX + 1 is a power of two. */
+        unsigned char state = rand() % (CHAR_MAX + 1);
 
         for (size_t ii = sizeof TEMPLATE_PREFIX - 1; ii < sizeof TEMPLATE_NAME - 1; ++ii) {
             for (;;) {

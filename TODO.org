@@ -6,9 +6,6 @@ I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening
 anyways. I believe what I really want is a -Wl,--warn-execstack
 option.
-* Fix speed of anonymous mq creation
-Each process fork retries old mq names because they keep the old state
-of rand.
 * Fix bug where the spawner can't close because it keeps a handle to itself
 * Fix bug where forked processes don't check for bad stdin, stdout and stderr
 * Make servers hand out the connection file descriptors not clients
