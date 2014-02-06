@@ -23,16 +23,17 @@
 #include <mqueue.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define TEMPLATE_PREFIX "/anonymous-mq-"
 #define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
 
-mqd_t linted_mq_anonymous(struct mq_attr * attr, int oflag)
+int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
 {
     char random_mq_name[sizeof TEMPLATE_NAME];
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
-    mqd_t new_mq;
+    mqd_t write_end;
     do {
         /* TODO: Replace, rand is terrible */
         /* Seed with rand. */
@@ -58,18 +59,36 @@ mqd_t linted_mq_anonymous(struct mq_attr * attr, int oflag)
             }
         }
 
-        new_mq = mq_open(random_mq_name, oflag | O_RDWR | O_CREAT | O_EXCL, 0, attr);
-    } while (-1 == new_mq && EEXIST == errno);
-
-    if (new_mq != -1) {
-        /* This could only happen via programmer error */
-        if (-1 == mq_unlink(random_mq_name)) {
-            LINTED_ERROR
-                ("Could not remove message queue with name %s because of error: %s",
-                 random_mq_name,
-                 linted_error_string_alloc(errno));
-        }
+        write_end = mq_open(random_mq_name,
+                         oflag | O_WRONLY | O_CREAT | O_EXCL,
+                         S_IRUSR,
+                         attr);
+    } while (-1 == write_end && EEXIST == errno);
+    if (-1 == write_end) {
+        return -1;
     }
 
-    return new_mq;
+    /* TODO: Handle errors properly */
+    int const read_end = mq_open(random_mq_name, oflag | O_RDONLY);
+    if (-1 == read_end) {
+        LINTED_ERROR
+            ("Could not open message queue with name %s because of error: %s",
+             random_mq_name,
+             linted_error_string_alloc(errno));
+
+    }
+
+    if (-1 == mq_unlink(random_mq_name)) {
+        LINTED_ERROR
+            ("Could not remove message queue with name %s because of error: %s",
+             random_mq_name,
+             linted_error_string_alloc(errno));
+
+
+    }
+
+    mqs[0] = read_end;
+    mqs[1] = write_end;
+
+    return 0;
 }

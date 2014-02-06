@@ -75,20 +75,24 @@ linted_gui_t linted_gui_spawn(linted_task_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const gui_mq = linted_mq_anonymous(&attr, 0);
-    if (-1 == gui_mq) {
+    mqd_t gui_mqs[2];
+    if (-1 == linted_mq_pair(gui_mqs, &attr, 0)) {
         return -1;
     }
 
     if (-1 == linted_task_spawn(spawner, gui_run, (int[]) {
-                                gui_mq, main_loop, -1})) {
-        goto error_and_close_mqueue;
+                                gui_mqs[0], main_loop, -1})) {
+        goto error_and_close_mqueues;
     }
 
-    return gui_mq;
+    mq_close(gui_mqs[0]);
 
- error_and_close_mqueue:
-    mq_close(gui_mq);
+    return gui_mqs[1];
+
+ error_and_close_mqueues:
+    mq_close(gui_mqs[0]);
+
+    mq_close(gui_mqs[1]);
 
     return -1;
 }

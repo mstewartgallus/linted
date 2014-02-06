@@ -48,11 +48,14 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const main_loop = linted_mq_anonymous(&attr, 0);
-    if (-1 == main_loop) {
+    mqd_t main_loop_mqs[2];
+    if (-1 == linted_mq_pair(main_loop_mqs, &attr, 0)) {
         LINTED_ERROR("Could not create main loop message queue: %s",
                      linted_error_string_alloc(errno));
     }
+
+    linted_main_loop_t const main_loop = main_loop_mqs[1];
+    mqd_t const main_loop_read_end = main_loop_mqs[0];
 
     linted_gui_t const gui = linted_gui_spawn(spawner, main_loop);
     if (-1 == gui) {
@@ -63,6 +66,11 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
     linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
     if (-1 == simulator) {
         LINTED_ERROR("Could not spawn simulator: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    if (-1 == linted_main_loop_close(main_loop)) {
+        LINTED_ERROR("Could not close main loop read end: %s",
                      linted_error_string_alloc(errno));
     }
 
@@ -82,7 +90,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
 
         ssize_t bytes_read;
         do {
-            bytes_read = mq_timedreceive(main_loop,
+            bytes_read = mq_timedreceive(main_loop_read_end,
                                          (char *)&message_data,
                                          sizeof message_data, NULL, &timespec);
         } while (-1 == bytes_read && EINTR == errno);
@@ -141,7 +149,7 @@ int linted_main_loop_run(linted_task_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    if (-1 == mq_close(main_loop)) {
+    if (-1 == mq_close(main_loop_read_end)) {
         LINTED_ERROR("Could not close main loop handle: %s",
                      linted_error_string_alloc(errno));
     }

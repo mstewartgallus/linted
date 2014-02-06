@@ -18,6 +18,6 @@
 
 #include <mqueue.h>
 
-mqd_t linted_mq_anonymous(struct mq_attr *attr, int oflag);
+int linted_mq_pair(mqd_t mqs[], struct mq_attr *attr, int oflag);
 
 #endif                          /* LINTED_MQ_H */

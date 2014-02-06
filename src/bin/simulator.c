@@ -44,20 +44,24 @@ linted_simulator_t linted_simulator_spawn(linted_task_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t const sim_mq = linted_mq_anonymous(&attr, 0);
-    if (-1 == sim_mq) {
+    mqd_t sim_mqs[2];
+    if (-1 == linted_mq_pair(sim_mqs, &attr, 0)) {
         return -1;
     }
 
     if (-1 == linted_task_spawn(spawner, simulator_run, (int[]) {
-                                sim_mq, gui, -1})) {
-        goto error_and_close_mqueue;
+                                sim_mqs[0], gui, -1})) {
+        goto error_and_close_mqueues;
     }
 
-    return sim_mq;
+    mq_close(sim_mqs[0]);
 
- error_and_close_mqueue:
-    mq_close(sim_mq);
+    return sim_mqs[1];
+
+ error_and_close_mqueues:
+    mq_close(sim_mqs[0]);
+
+    mq_close(sim_mqs[1]);
 
     return -1;
 }
