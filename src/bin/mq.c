@@ -31,9 +31,11 @@
 int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
 {
     char random_mq_name[sizeof TEMPLATE_NAME];
+    mqd_t write_end;
+    mqd_t read_end;
+
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
-    mqd_t write_end;
     do {
         /* TODO: Replace, rand is terrible */
         /* Seed with rand. */
@@ -65,30 +67,37 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
                          attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
-        return -1;
+        goto exit_with_error;
     }
 
-    /* TODO: Handle errors properly */
-    int const read_end = mq_open(random_mq_name, oflag | O_RDONLY);
+    read_end = mq_open(random_mq_name, oflag | O_RDONLY);
     if (-1 == read_end) {
-        LINTED_ERROR
-            ("Could not open message queue with name %s because of error: %s",
-             random_mq_name,
-             linted_error_string_alloc(errno));
-
+        goto exit_with_error_and_close_write_end;
     }
 
     if (-1 == mq_unlink(random_mq_name)) {
-        LINTED_ERROR
-            ("Could not remove message queue with name %s because of error: %s",
-             random_mq_name,
-             linted_error_string_alloc(errno));
-
-
+        goto exit_with_error_and_close_read_end;
     }
 
     mqs[0] = read_end;
     mqs[1] = write_end;
 
     return 0;
+
+exit_with_error_and_close_read_end:
+    {
+        int errnum = errno;
+        mq_close(write_end);
+        errno = errnum;
+    }
+
+exit_with_error_and_close_write_end:
+    {
+        int errnum = errno;
+        mq_close(write_end);
+        errno = errnum;
+    }
+
+exit_with_error:
+    return -1;
 }
