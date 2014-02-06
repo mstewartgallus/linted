@@ -17,7 +17,6 @@
 
 #include "linted/gui.h"
 #include "linted/mq.h"
-#include "linted/sandbox.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -116,8 +115,6 @@ int linted_gui_close(linted_gui_t const gui)
 
 static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
 {
-    linted_sandbox();
-
     if (-1 == linted_task_spawner_close(spawner)) {
         LINTED_ERROR("Could not close spawner: %s",
                      linted_error_string_alloc(errno));
@@ -126,7 +123,7 @@ static int gui_run(linted_task_spawner_t const spawner, int const inboxes[])
     int const inbox = inboxes[0];
     linted_main_loop_t const main_loop = inboxes[1];
 
-    if (-1 == SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
+    if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s", SDL_GetError());
     }
 
