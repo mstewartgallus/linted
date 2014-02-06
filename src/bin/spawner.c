@@ -31,6 +31,18 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+/*
+ * We fork from a known good state and serve out forks of this known
+ * good state. This avoids several problems with inheritance of
+ * corrupted state that aren't even fixable with exec.
+ *
+ * We send over function pointers which allows us to avoid the nasty
+ * command line interface exec forces us into.
+ *
+ * Posix requires an exact copy of process memory so I believe passing
+ * around function pointers through pipes is allowed.
+ */
+
 struct request_header {
     linted_spawner_task_t func;
     size_t fildes_count;
@@ -43,16 +55,10 @@ struct reply_data {
 static int fork_server_run(linted_spawner_t spawner, int inbox);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
-static int recv_fildes(int const inbox);
+static ssize_t recv_fildes(int * fildes, int const inbox);
 
 linted_spawner_t linted_spawner_init(void)
 {
-    /* First we fork from a known good state and serve out forks of
-     * this known good state. This avoids several problems with
-     * inheritance of corrupted state that aren't even fixable with
-     * exec. It also allows us to avoid the nasty command line
-     * interface exec forces us into.
-     */
     int sockets[2];
     if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
         return -1;
@@ -102,10 +108,9 @@ int linted_spawner_close(linted_spawner_t spawner)
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
-                      linted_spawner_task_t const func, int const fildes_to_send[])
+                         linted_spawner_task_t const func,
+                         int const fildes_to_send[])
 {
-    int error_status = -1;
-
     size_t fildes_count = 0;
     for (; fildes_to_send[fildes_count] != -1; ++fildes_count) {
         /* Do nothing */
@@ -113,7 +118,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
     int const connection = connect_socket(spawner);
     if (-1 == connection) {
-        goto finish;
+        goto exit_with_error;
     }
 
     {
@@ -127,7 +132,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             bytes_sent = send(connection, &request_header, sizeof request_header, 0);
         } while (-1 == bytes_sent && EINTR == errno);
         if (-1 == bytes_sent) {
-            goto finish_and_close_connection;
+            goto exit_with_error_and_close_connection;
         }
     }
 
@@ -145,33 +150,35 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             bytes_read = read(connection, &reply_data, sizeof reply_data);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            goto finish_and_close_connection;
+            goto exit_with_error_and_close_connection;
         }
 
         int const reply_error_status = reply_data.error_status;
         if (reply_error_status != 0) {
             errno = reply_error_status;
-            goto finish_and_close_connection;
+            goto exit_with_error_and_close_connection;
         }
     }
 
-    error_status = 0;
-
- finish_and_close_connection:
     if (-1 == close(connection)) {
-        error_status = -1;
+        return -1;
     }
 
- finish:
-    return error_status;
+    return 0;
+
+ exit_with_error_and_close_connection:
+    {
+        int errnum = errno;
+        close(connection);
+        errno = errnum;
+    }
+
+ exit_with_error:
+    return -1;
 }
 
 static int fork_server_run(linted_spawner_t const spawner, int inbox)
 {
-    /* Posix requires an exact copy of process memory so passing
-     * around function pointers through pipes is allowed.
-     */
-
     struct sigaction action;
     memset(&action, 0, sizeof action);
     action.sa_handler = SIG_IGN;
@@ -185,14 +192,13 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
 
     /* TODO: Handle multiple connections at once */
     for (;;) {
-        int const connection = recv_fildes(inbox);
-        if (-1 == connection) {
-            if (0 == errno) {
-                break;
-            }
-
+        int connection;
+        switch (recv_fildes(&connection, inbox)) {
+        case -1:
             LINTED_ERROR("Could not accept fork request connection: %s",
                          linted_error_string_alloc(errno));
+        case 0:
+            goto exit_fork_server;
         }
 
         linted_spawner_task_t fork_func;
@@ -223,21 +229,24 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
         int sent_inboxes[fildes_count + 1];
         sent_inboxes[fildes_count] = -1;
         for (size_t ii = 0; ii < fildes_count; ++ii) {
-            int const fildes = recv_fildes(connection);
-            if (-1 == fildes) {
+            int fildes;
+            switch (recv_fildes(&fildes, connection)) {
+            case -1:
                 LINTED_ERROR("Could not receive fildes from fork request: %s",
                              linted_error_string_alloc(errno));
+
+            /* TODO: Report an error back */
+            case 0:
+                LINTED_ERROR("Did not receive expected fildes from fork request", NULL);
             }
+
             sent_inboxes[ii] = fildes;
         }
 
         pid_t const child_pid = fork();
         if (0 == child_pid) {
             /* Restore the old signal behaviour */
-            int const retry_sig_status = sigaction(SIGCHLD,
-                                                   &old_action,
-                                                   &action);
-            if (-1 == retry_sig_status) {
+            if (-1 == sigaction(SIGCHLD, &old_action, &action)) {
                 LINTED_ERROR("Could not restore child signal behaviour: %s",
                              linted_error_string_alloc(errno));
             }
@@ -264,10 +273,7 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
                 reply_data.error_status = 0;
             }
 
-            int const reply_write_status = write(connection,
-                                                 &reply_data,
-                                                 sizeof reply_data);
-            if (-1 == reply_write_status) {
+            if (-1 == write(connection, &reply_data, sizeof reply_data)) {
                 LINTED_ERROR
                     ("Fork server could not write reply to child requester: %s",
                      linted_error_string_alloc(errno));
@@ -280,6 +286,7 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
         }
     }
 
+ exit_fork_server:
     if (-1 == close(inbox)) {
         LINTED_ERROR("Could not close inbox: %s",
                      linted_error_string_alloc(errno));
@@ -364,7 +371,7 @@ static int send_fildes(int const sock, int const fildes)
     return 0;
 }
 
-static int recv_fildes(int const inbox)
+static ssize_t recv_fildes(int * fildes, int const inbox)
 {
     char dummy_data = 0;
 
@@ -391,14 +398,12 @@ static int recv_fildes(int const inbox)
     do {
         bytes_read = recvmsg(inbox, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
     } while (-1 == bytes_read && EINTR == errno);
-
     if (-1 == bytes_read) {
         return -1;
     }
 
     if (0 == bytes_read) {
-        errno = 0;
-        return -1;
+        return 0;
     }
 
     struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
@@ -406,5 +411,7 @@ static int recv_fildes(int const inbox)
 
     memcpy(sent_fildes, control_message_data, sizeof sent_fildes);
 
-    return sent_fildes[0];
+    *fildes = sent_fildes[0];
+
+    return bytes_read;
 }
