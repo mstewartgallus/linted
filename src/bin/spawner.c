@@ -41,8 +41,9 @@ struct reply_data {
 };
 
 static int fork_server_run(linted_spawner_t spawner, int inbox);
-static int connect_to_local_socket(int const local);
-static int recv_socket(int const inbox);
+static int connect_socket(int const local);
+static int send_fildes(int const socket, int const fildes);
+static int recv_fildes(int const inbox);
 
 linted_spawner_t linted_spawner_init(void)
 {
@@ -79,10 +80,18 @@ linted_spawner_t linted_spawner_init(void)
     return spawner_writer;
 
  error_and_close_sockets:
-    close(spawner_reader);
+    {
+        int errnum = errno;
+        close(spawner_reader);
+        errno = errnum;
+    }
 
  error_and_close_socket:
-    close(spawner_writer);
+    {
+        int errnum = errno;
+        close(spawner_writer);
+        errno = errnum;
+    }
 
     return -1;
 }
@@ -102,7 +111,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
         /* Do nothing */
     }
 
-    int const connection = connect_to_local_socket(spawner);
+    int const connection = connect_socket(spawner);
     if (-1 == connection) {
         goto finish;
     }
@@ -123,41 +132,9 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     }
 
     for (size_t ii = 0; ii < fildes_count; ++ii) {
-        int const sent_fildes = fildes_to_send[ii];
-
-        char dummy_data = 0;
-        struct iovec iovecs[] = {
-            (struct iovec){
-                           .iov_base = &dummy_data,
-                           .iov_len = sizeof dummy_data}
-        };
-
-        struct msghdr message;
-        memset(&message, 0, sizeof message);
-
-        message.msg_iov = iovecs;
-        message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-
-        char control_message_buffer[CMSG_SPACE(sizeof sent_fildes)];
-        memset(control_message_buffer, 0, sizeof control_message_buffer);
-
-        message.msg_control = control_message_buffer;
-        message.msg_controllen = sizeof control_message_buffer;
-
-        struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-        control_message_header->cmsg_level = SOL_SOCKET;
-        control_message_header->cmsg_type = SCM_RIGHTS;
-        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
-
-        void *const control_message_data = CMSG_DATA(control_message_header);
-        memcpy(control_message_data, &sent_fildes, sizeof sent_fildes);
-
-        ssize_t bytes_written;
-        do {
-            bytes_written = sendmsg(connection, &message, 0);
-        } while (-1 == bytes_written && EINTR == errno);
-        if (-1 == bytes_written) {
-            goto finish_and_close_connection;
+        if (-1 == send_fildes(connection, fildes_to_send[ii])) {
+            LINTED_ERROR("Could not send file descriptor: %s",
+                         linted_error_string_alloc(errno));
         }
     }
 
@@ -208,7 +185,7 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
 
     /* TODO: Handle multiple connections at once */
     for (;;) {
-        int const connection = recv_socket(inbox);
+        int const connection = recv_fildes(inbox);
         if (-1 == connection) {
             if (0 == errno) {
                 break;
@@ -246,43 +223,12 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
         int sent_inboxes[fildes_count + 1];
         sent_inboxes[fildes_count] = -1;
         for (size_t ii = 0; ii < fildes_count; ++ii) {
-            struct msghdr message;
-            memset(&message, 0, sizeof message);
-
-            char dummy_data;
-
-            struct iovec iov[] = {
-                (struct iovec){
-                               .iov_base = &dummy_data,
-                               .iov_len = sizeof dummy_data}
-            };
-            message.msg_iov = iov;
-            message.msg_iovlen = LINTED_ARRAY_SIZE(iov);
-
-            int sent_fildes;
-
-            char control_message_buffer[CMSG_SPACE(sizeof sent_fildes)];
-            memset(control_message_buffer, 0, sizeof control_message_buffer);
-
-            message.msg_control = control_message_buffer;
-            message.msg_controllen = sizeof control_message_buffer;
-
-            ssize_t bytes_read;
-            do {
-                bytes_read =
-                    recvmsg(connection, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
-            } while (-1 == bytes_read && EINTR == errno);
-            if (-1 == bytes_read) {
-                LINTED_ERROR("Could not read bytes from fork request: %s",
+            int const fildes = recv_fildes(connection);
+            if (-1 == fildes) {
+                LINTED_ERROR("Could not receive fildes from fork request: %s",
                              linted_error_string_alloc(errno));
             }
-
-            struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-            void *const control_message_data = CMSG_DATA(control_message_header);
-
-            memcpy(&sent_fildes, control_message_data, sizeof sent_fildes);
-
-            sent_inboxes[ii] = sent_fildes;
+            sent_inboxes[ii] = fildes;
         }
 
         pid_t const child_pid = fork();
@@ -347,70 +293,78 @@ static int fork_server_run(linted_spawner_t const spawner, int inbox)
     return EXIT_SUCCESS;
 }
 
-static int connect_to_local_socket(int const local)
+static int connect_socket(int const sock)
 {
-    int sockets[2];
-    if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
+    int new_sockets[2];
+    if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, new_sockets)) {
         return -1;
     }
 
-    int sent_end = sockets[0];
-    int kept_end = sockets[1];
+    if (-1 == send_fildes(sock, new_sockets[0])) {
+        int errnum = errno;
 
-    {
-        char dummy_data = 0;
+        close(new_sockets[0]);
+        close(new_sockets[1]);
 
-        struct iovec iovecs[] = {
-            (struct iovec){
-                           .iov_base = &dummy_data,
-                           .iov_len = sizeof dummy_data}
-        };
-
-        struct msghdr message;
-        memset(&message, 0, sizeof message);
-
-        message.msg_iov = iovecs;
-        message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-
-        int const sent_fildes[] = { sent_end };
-        char control_message[CMSG_SPACE(sizeof sent_fildes)];
-        memset(control_message, 0, sizeof control_message);
-
-        message.msg_control = control_message;
-        message.msg_controllen = sizeof control_message;
-
-        struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
-        control_message_header->cmsg_level = SOL_SOCKET;
-        control_message_header->cmsg_type = SCM_RIGHTS;
-        control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
-
-        void *const control_message_data = CMSG_DATA(control_message_header);
-        memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
-
-        ssize_t bytes_written;
-        do {
-            bytes_written = sendmsg(local, &message, 0);
-        } while (-1 == bytes_written && EINTR == errno);
-        if (-1 == bytes_written) {
-            goto error_and_close_sockets;
-        }
+        errno = errnum;
+        return -1;
     }
 
-    if (-1 == close(sent_end)) {
-        goto error_and_close_socket;
+    if (-1 == close(new_sockets[0])) {
+        int errnum = errno;
+
+        close(new_sockets[1]);
+
+        errno = errnum;
+        return -1;
     }
 
-    return kept_end;
-
- error_and_close_sockets:
-    close(sent_end);
- error_and_close_socket:
-    close(kept_end);
-
-    return -1;
+    return new_sockets[1];
 }
 
-static int recv_socket(int const inbox)
+static int send_fildes(int const sock, int const fildes)
+{
+    char dummy_data = 0;
+
+    struct iovec iovecs[] = {
+        (struct iovec){
+            .iov_base = &dummy_data,
+            .iov_len = sizeof dummy_data}
+    };
+
+    struct msghdr message;
+    memset(&message, 0, sizeof message);
+
+    message.msg_iov = iovecs;
+    message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+
+    int const sent_fildes[] = { fildes };
+    char control_message[CMSG_SPACE(sizeof sent_fildes)];
+    memset(control_message, 0, sizeof control_message);
+
+    message.msg_control = control_message;
+    message.msg_controllen = sizeof control_message;
+
+    struct cmsghdr *const control_message_header = CMSG_FIRSTHDR(&message);
+    control_message_header->cmsg_level = SOL_SOCKET;
+    control_message_header->cmsg_type = SCM_RIGHTS;
+    control_message_header->cmsg_len = CMSG_LEN(sizeof sent_fildes);
+
+    void *const control_message_data = CMSG_DATA(control_message_header);
+    memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
+
+    ssize_t bytes_written;
+    do {
+        bytes_written = sendmsg(sock, &message, 0);
+    } while (-1 == bytes_written && EINTR == errno);
+    if (-1 == bytes_written) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int recv_fildes(int const inbox)
 {
     char dummy_data = 0;
 
