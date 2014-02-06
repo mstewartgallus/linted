@@ -76,6 +76,11 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
+    if (-1 == linted_spawner_close(spawner)) {
+        LINTED_ERROR("Could not close spawner handle: %s",
+                     linted_error_string_alloc(errno));
+    }
+
     struct timer_data timer_data = {
         .main_loop = main_loop
     };

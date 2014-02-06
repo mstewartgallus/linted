@@ -99,11 +99,6 @@ int main(int argc, char **argv)
         break;
     }
 
-    if (-1 == linted_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %s",
-                     linted_error_string_alloc(errno));
-    }
-
     int files_status = 0;
     if (EOF == fclose(stdin)) {
         files_status = -1;
