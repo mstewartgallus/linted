@@ -53,7 +53,7 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
                 unsigned char const possible_value = generator_state % (CHAR_MAX + 1);
 
                 /* Throw out results and retry for an even
-                 *  distribution
+                 * distribution
                  */
                 if ((possible_value >= 'a' && possible_value <= 'z')
                     || (possible_value >= 'A' && possible_value <= 'Z')
