@@ -29,6 +29,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -54,7 +55,8 @@ struct reply_data {
 };
 
 static int run_fork(linted_spawner_t spawner, int inbox, int connection);
-static int run_fork_server(linted_spawner_t spawner, int inbox);
+static int run_fork_server(size_t * children,
+                           linted_spawner_t spawner, int inbox);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
@@ -71,19 +73,33 @@ linted_spawner_t linted_spawner_init(void)
 
     switch (fork()) {
     case 0:{
-            int const exit_status = run_fork_server(spawner_writer, spawner_reader);
-            exit(exit_status);
+        if (-1 == close(spawner_reader)) {
+            goto exit_with_error_and_close_socket;
         }
+
+        return spawner_writer;
+    }
 
     case -1:
         goto exit_with_error_and_close_sockets;
     }
 
-    if (-1 == close(spawner_reader)) {
-        goto exit_with_error_and_close_socket;
-    }
+    /* Sneakily, hijack the starting process so we can wait on
+     * everything including the main loop.
+     */
+    {
+        size_t children;
+        int const exit_status = run_fork_server(&children,
+                                                spawner_writer, spawner_reader);
 
-    return spawner_writer;
+        /* Wait for all children to finish */
+        for (; children > 0; --children) {
+            int status;
+            wait(&status);
+        }
+
+        exit(exit_status);
+    }
 
  exit_with_error_and_close_sockets:
     {
@@ -175,7 +191,8 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     return -1;
 }
 
-static int run_fork_server(linted_spawner_t const spawner, int inbox)
+static int run_fork_server(size_t * children,
+                           linted_spawner_t const spawner, int inbox)
 {
     struct sigaction action;
     memset(&action, 0, sizeof action);
@@ -220,6 +237,8 @@ static int run_fork_server(linted_spawner_t const spawner, int inbox)
                 }
             }
         }
+
+        *children += 1;
 
         if (-1 == close(connection)) {
             LINTED_ERROR("Fork server could not close connection: %s",
