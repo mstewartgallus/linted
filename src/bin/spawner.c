@@ -55,13 +55,12 @@ struct reply_data {
 };
 
 static int run_fork(linted_spawner_t spawner, int inbox, int connection);
-static int run_fork_server(size_t * children,
-                           linted_spawner_t spawner, int inbox);
+static int run_fork_server(linted_spawner_t spawner, int inbox);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
 
-linted_spawner_t linted_spawner_init(void)
+int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
 {
     int sockets[2];
     if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
@@ -77,30 +76,17 @@ linted_spawner_t linted_spawner_init(void)
             goto exit_with_error_and_close_socket;
         }
 
-        return spawner_writer;
+        *exit_status = main_loop(spawner_writer);
+        return 0;
     }
 
     case -1:
         goto exit_with_error_and_close_sockets;
     }
 
-    /* Sneakily, hijack the starting process so we can wait on
-     * everything including the main loop.
-     */
-    {
-        /* TODO: Catch child death and lower counter */
-        size_t children;
-        int const exit_status = run_fork_server(&children,
-                                                spawner_writer, spawner_reader);
-
-        /* Wait for all children to finish */
-        for (; children > 0; --children) {
-            int status;
-            wait(&status);
-        }
-
-        exit(exit_status);
-    }
+    /* TODO: Catch child death and lower counter */
+    *exit_status = run_fork_server(spawner_writer, spawner_reader);
+    return 0;
 
  exit_with_error_and_close_sockets:
     {
@@ -192,8 +178,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     return -1;
 }
 
-static int run_fork_server(size_t * children,
-                           linted_spawner_t const spawner, int inbox)
+static int run_fork_server(linted_spawner_t const spawner, int inbox)
 {
     struct sigaction action;
     memset(&action, 0, sizeof action);
@@ -202,6 +187,9 @@ static int run_fork_server(size_t * children,
     struct sigaction old_action;
     int const chld_sigaction_status = sigaction(SIGCHLD, &action, &old_action);
     assert(chld_sigaction_status != -1);
+
+    /* Already have a main loop child */
+    unsigned children = 1;
 
     for (;;) {
         int connection;
@@ -239,7 +227,7 @@ static int run_fork_server(size_t * children,
             }
         }
 
-        *children += 1;
+        children += 1;
 
         if (-1 == close(connection)) {
             LINTED_ERROR("Fork server could not close connection: %s",
@@ -248,6 +236,12 @@ static int run_fork_server(size_t * children,
     }
 
  exit_fork_server:
+    /* Wait for all children to finish */
+    for (; children > 0; --children) {
+        int status;
+        wait(&status);
+    }
+
     if (-1 == close(inbox)) {
         LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
     }

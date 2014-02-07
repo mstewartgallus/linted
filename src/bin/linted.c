@@ -68,16 +68,13 @@ int main(int argc, char **argv)
         );
 
     /* Right after, we fork off from a known good state. */
-    linted_spawner_t const spawner = linted_spawner_init();
-    if (-1 == spawner) {
-        LINTED_ERROR("Could not initialize spawner: %s",
-                     linted_error_string_alloc(errno));
-    }
-
     int exit_status;
     switch (argc) {
     case 1:
-        exit_status = linted_main_loop_run(spawner);
+        if (-1 == linted_spawner_run(&exit_status, linted_main_loop_run)) {
+            LINTED_ERROR("Could not run spawner: %s",
+                         linted_error_string_alloc(errno));
+        }
         break;
 
     case 2:

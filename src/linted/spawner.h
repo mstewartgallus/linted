@@ -24,14 +24,16 @@ typedef int linted_spawner_t;
 typedef int (*linted_spawner_task_t) (linted_spawner_t spawner, int const fildes[]);
 
 /**
- * Forks off a spawner from a known good state. Returns -1 on error
- * and a value in errno. The spawner captures the current state (open
- * files etc..) and forks off copies of this state. This is useful for
- * capturing a copy of a known good process startup state.
+ * Runs a spawner process and starts main_loop in a separate
+ * process. Spawned processes will return from this function.
  *
- * @returns spawner The output spawner.
+ * The spawner captures the current state (open files etc..) and forks
+ * off copies of this state. This is useful for capturing a copy of a
+ * known good process startup state.
+ *
+ * @returns -1 on error and a value in errno.
  */
-linted_spawner_t linted_spawner_init(void);
+int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t));
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
