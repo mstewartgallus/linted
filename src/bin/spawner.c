@@ -88,6 +88,7 @@ linted_spawner_t linted_spawner_init(void)
      * everything including the main loop.
      */
     {
+        /* TODO: Catch child death and lower counter */
         size_t children;
         int const exit_status = run_fork_server(&children,
                                                 spawner_writer, spawner_reader);
