@@ -232,10 +232,6 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
                                  linted_error_string_alloc(errno));
                 }
             } else {
-                if (0 == bytes_read) {
-                    break;
-                }
-
                 switch (message_data.type) {
                 case GUI_UPDATE:{
                         x = ((float)message_data.x_position) / 255;

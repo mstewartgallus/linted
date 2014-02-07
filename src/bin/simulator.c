@@ -109,10 +109,6 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
                          linted_error_string_alloc(errno));
         }
 
-        if (0 == bytes_read) {
-            break;
-        }
-
         switch (message_data.message_type) {
         case SIMULATOR_TICK:{
                 x_position = x_position % 255 + 3;
