@@ -31,6 +31,7 @@ AC_PROG_CC_C99
 AM_PROG_CC_C_O
 dnl
 AC_CHECK_HEADERS([dnl
+        limits.h dnl
         fcntl.h dnl
         stdint.h dnl
         stdlib.h dnl
@@ -73,9 +74,13 @@ AC_FUNC_MALLOC
 AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
  AC_MSG_ERROR([Unable to find malloc function for which malloc(0) != NULL])
 ])
+AC_FUNC_REALLOC
+AS_IF([test "x${ac_cv_func_realloc}" = "xno"],[
+x AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
+])
 AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
- AC_MSG_ERROR([Unable to find function fork])
+ AC_MSG_ERROR([Unable to find good fork function])
 ])
 AC_CHECK_FUNCS([memset], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
