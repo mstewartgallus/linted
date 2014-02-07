@@ -21,7 +21,6 @@
 
 #define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
-
 #define LINTED_ERROR(format_string, ...)                                \
     do {                                                                \
         syslog(LOG_ERR, "Error in file %s, function %s, and line %d: " format_string, \
@@ -29,8 +28,8 @@
         exit(EXIT_FAILURE);                                             \
     } while (0)
 
-char const * linted_error_string_alloc(int errnum);
+char const *linted_error_string_alloc(int errnum);
 
-void linted_error_string_free(char const * error_string);
+void linted_error_string_free(char const *error_string);
 
 #endif                          /* LINTED_UTIL_H */

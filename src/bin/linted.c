@@ -94,7 +94,8 @@ int main(int argc, char **argv)
 
     default:
         fprintf(stderr,
-                PACKAGE_TARNAME " did not understand the command line input\n" USAGE_TEXT);
+                PACKAGE_TARNAME " did not understand the command line input\n"
+                USAGE_TEXT);
         exit_status = EXIT_FAILURE;
         break;
     }
@@ -102,21 +103,21 @@ int main(int argc, char **argv)
     int files_status = 0;
     if (EOF == fclose(stdin)) {
         files_status = -1;
-        char const * const error_string = linted_error_string_alloc(errno);
+        char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard input: %s", error_string);
         linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stdout)) {
         files_status = -1;
-        char const * const error_string = linted_error_string_alloc(errno);
+        char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard output: %s", error_string);
         linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stderr)) {
         files_status = -1;
-        char const * const error_string = linted_error_string_alloc(errno);
+        char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
     }

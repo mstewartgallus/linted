@@ -100,9 +100,6 @@ AM_CFLAGS=\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_WARNINGS)
-if SAVE_TEMPS
-AM_CFLAGS +=-save-temps=obj
-endif
 
 linted_INDENTFLAGS=\
   --linux-style\

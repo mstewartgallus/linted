@@ -28,7 +28,7 @@
 #define TEMPLATE_PREFIX "/anonymous-mq-"
 #define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
 
-int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
+int linted_mq_pair(mqd_t mqs[2], struct mq_attr *attr, int oflag)
 {
     char random_mq_name[sizeof TEMPLATE_NAME];
     mqd_t write_end;
@@ -65,9 +65,7 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
         }
 
         write_end = mq_open(random_mq_name,
-                            oflag | O_WRONLY | O_CREAT | O_EXCL,
-                            S_IRUSR,
-                            attr);
+                            oflag | O_WRONLY | O_CREAT | O_EXCL, S_IRUSR, attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
         goto exit_with_error;
@@ -87,20 +85,20 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr * attr, int oflag)
 
     return 0;
 
-exit_with_error_and_close_read_end:
+ exit_with_error_and_close_read_end:
     {
         int errnum = errno;
         mq_close(write_end);
         errno = errnum;
     }
 
-exit_with_error_and_close_write_end:
+ exit_with_error_and_close_write_end:
     {
         int errnum = errno;
         mq_close(write_end);
         errno = errnum;
     }
 
-exit_with_error:
+ exit_with_error:
     return -1;
 }

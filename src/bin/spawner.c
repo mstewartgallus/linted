@@ -57,7 +57,7 @@ static int run_fork(linted_spawner_t spawner, int inbox, int connection);
 static int run_fork_server(linted_spawner_t spawner, int inbox);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
-static ssize_t recv_fildes(int * fildes, int const inbox);
+static ssize_t recv_fildes(int *fildes, int const inbox);
 
 linted_spawner_t linted_spawner_init(void)
 {
@@ -71,9 +71,9 @@ linted_spawner_t linted_spawner_init(void)
 
     switch (fork()) {
     case 0:{
-        int const exit_status = run_fork_server(spawner_writer, spawner_reader);
-        exit(exit_status);
-    }
+            int const exit_status = run_fork_server(spawner_writer, spawner_reader);
+            exit(exit_status);
+        }
 
     case -1:
         goto exit_with_error_and_close_sockets;
@@ -108,8 +108,7 @@ int linted_spawner_close(linted_spawner_t spawner)
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
-                         linted_spawner_task_t const func,
-                         int const fildes_to_send[])
+                         linted_spawner_task_t const func, int const fildes_to_send[])
 {
     size_t fildes_count = 0;
     for (; fildes_to_send[fildes_count] != -1; ++fildes_count) {
@@ -201,15 +200,15 @@ static int run_fork_server(linted_spawner_t const spawner, int inbox)
          */
         switch (fork()) {
         case 0:{
-            /* Restore the old signal behaviour */
-            int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
-            assert(sigaction_status != -1);
+                /* Restore the old signal behaviour */
+                int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
+                assert(sigaction_status != -1);
 
-            return run_fork(spawner, inbox, connection);
-        }
+                return run_fork(spawner, inbox, connection);
+            }
 
         case -1:{
-                struct reply_data reply = { .error_status = errno };
+                struct reply_data reply = {.error_status = errno };
 
                 int write_status;
                 do {
@@ -230,13 +229,11 @@ static int run_fork_server(linted_spawner_t const spawner, int inbox)
 
  exit_fork_server:
     if (-1 == close(inbox)) {
-        LINTED_ERROR("Could not close inbox: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;
@@ -256,8 +253,7 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
         ssize_t bytes_received;
         do {
             bytes_received = recv(connection,
-                                  &request_header, sizeof request_header,
-                                  MSG_WAITALL);
+                                  &request_header, sizeof request_header, MSG_WAITALL);
         } while (-1 == bytes_received && EINTR == errno);
         if (-1 == bytes_received) {
             goto reply_with_error;
@@ -290,7 +286,7 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
         }
 
         {
-            struct reply_data reply = { .error_status = 0 };
+            struct reply_data reply = {.error_status = 0 };
 
             int write_status;
             do {
@@ -310,8 +306,8 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
         return fork_func(spawner, sent_inboxes);
     }
 
-reply_with_error:;
-    struct reply_data reply = { .error_status = errno  };
+ reply_with_error:;
+    struct reply_data reply = {.error_status = errno };
 
     int write_status;
     do {
@@ -360,8 +356,8 @@ static int send_fildes(int const sock, int const fildes)
 
     struct iovec iovecs[] = {
         (struct iovec){
-            .iov_base = &dummy_data,
-            .iov_len = sizeof dummy_data}
+                       .iov_base = &dummy_data,
+                       .iov_len = sizeof dummy_data}
     };
 
     struct msghdr message;
@@ -396,7 +392,7 @@ static int send_fildes(int const sock, int const fildes)
     return 0;
 }
 
-static ssize_t recv_fildes(int * fildes, int const inbox)
+static ssize_t recv_fildes(int *fildes, int const inbox)
 {
     char dummy_data = 0;
 

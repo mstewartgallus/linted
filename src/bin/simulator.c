@@ -50,7 +50,7 @@ linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
     }
 
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                                sim_mqs[0], gui, -1})) {
+                                   sim_mqs[0], gui, -1})) {
         goto error_and_close_mqueues;
     }
 
@@ -87,8 +87,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
 
     int const spawner_close_status = linted_spawner_close(spawner);
     if (-1 == spawner_close_status) {
-        LINTED_ERROR("Could not close spawner: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
     }
 
     mqd_t const inbox = inboxes[0];
@@ -144,8 +143,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
     if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;

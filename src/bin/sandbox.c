@@ -35,7 +35,7 @@ void linted_sandbox(void)
        then we're already sandboxed enough. */
 
     if (-1 == setrlimit(RLIMIT_NPROC, &(struct rlimit) {
-                .rlim_cur = 0,.rlim_max = 0})
+                        .rlim_cur = 0,.rlim_max = 0})
         && errno != EPERM) {
         LINTED_ERROR("Could not sandbox process because of error: %s",
                      linted_error_string_alloc(errno));

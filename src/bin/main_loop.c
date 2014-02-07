@@ -66,14 +66,12 @@ int linted_main_loop_run(linted_spawner_t spawner)
 
     linted_gui_t const gui = linted_gui_spawn(spawner, main_loop);
     if (-1 == gui) {
-        LINTED_ERROR("Could not spawn gui: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
     }
 
     linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
     if (-1 == simulator) {
-        LINTED_ERROR("Could not spawn simulator: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_spawner_close(spawner)) {
@@ -95,8 +93,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
         sevp.sigev_value.sival_ptr = &timer_data;
 
         if (-1 == timer_create(CLOCK_MONOTONIC, &sevp, &timer)) {
-            LINTED_ERROR("Could not create timer: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_ERROR("Could not create timer: %s", linted_error_string_alloc(errno));
         }
 
         struct itimerspec itimer_spec;
@@ -121,8 +118,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
         ssize_t bytes_read;
         do {
             bytes_read = mq_receive(main_loop_read_end,
-                                    (char *)&message_data,
-                                    sizeof message_data, NULL);
+                                    (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             LINTED_ERROR("Could not read from main loop inbox: %s",
@@ -131,16 +127,16 @@ int linted_main_loop_run(linted_spawner_t spawner)
 
         switch (message_data.type) {
         case MAIN_LOOP_SEND_TICK:{
-            int tick_status;
-            do {
-                tick_status = linted_simulator_send_tick(simulator);
-            } while (-1 == tick_status && EINTR == errno);
-            if (-1 == tick_status) {
-                LINTED_ERROR("Could not send tick message to simulator: %s",
-                             linted_error_string_alloc(errno));
+                int tick_status;
+                do {
+                    tick_status = linted_simulator_send_tick(simulator);
+                } while (-1 == tick_status && EINTR == errno);
+                if (-1 == tick_status) {
+                    LINTED_ERROR("Could not send tick message to simulator: %s",
+                                 linted_error_string_alloc(errno));
+                }
+                break;
             }
-            break;
-        }
 
         case MAIN_LOOP_CLOSE_REQUEST:
             goto exit_main_loop;
@@ -150,10 +146,9 @@ int linted_main_loop_run(linted_spawner_t spawner)
         }
     }
 
-exit_main_loop:
+ exit_main_loop:
     if (-1 == timer_delete(timer)) {
-        LINTED_ERROR("Could not delete timer: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not delete timer: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_simulator_close(simulator)) {
@@ -162,8 +157,7 @@ exit_main_loop:
     }
 
     if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui handle: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close gui handle: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_main_loop_close(main_loop)) {
@@ -181,7 +175,7 @@ exit_main_loop:
 
 static void on_clock_tick(union sigval sigev_value)
 {
-    struct timer_data * const timer_data = sigev_value.sival_ptr;
+    struct timer_data *const timer_data = sigev_value.sival_ptr;
     linted_main_loop_t const main_loop = timer_data->main_loop;
 
     int tick_status;

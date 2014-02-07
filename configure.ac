@@ -101,7 +101,6 @@ AC_SEARCH_LIBS([glClear], [GL], [], [
 dnl
 PKG_CHECK_MODULES([SDL], [sdl >= 1.2.14])
 dnl
-AM_CONDITIONAL([SAVE_TEMPS], [test "x${enable_save_temps}" = "xyes"])
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
 AM_CONDITIONAL([HAS_CBMC], [test "x${CBMC}" != "x"])
 AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])

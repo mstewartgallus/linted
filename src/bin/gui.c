@@ -80,7 +80,7 @@ linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
     }
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                gui_mqs[0], main_loop, -1})) {
+                                   gui_mqs[0], main_loop, -1})) {
         goto error_and_close_mqueues;
     }
 
@@ -116,8 +116,7 @@ int linted_gui_close(linted_gui_t const gui)
 static int gui_run(linted_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
     }
 
     int const inbox = inboxes[0];
@@ -185,6 +184,22 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
             case SDLK_ESCAPE:{
+                    int request_status;
+                    do {
+                        request_status = linted_main_loop_request_close(main_loop);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        LINTED_ERROR("Could not send main loop request to close: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    break;
+                }
+            default:
+                break;
+            }
+            break;
+
+        case SDL_QUIT:{
                 int request_status;
                 do {
                     request_status = linted_main_loop_request_close(main_loop);
@@ -195,22 +210,6 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
                 }
                 break;
             }
-            default:
-                break;
-            }
-            break;
-
-        case SDL_QUIT:{
-            int request_status;
-            do {
-                request_status = linted_main_loop_request_close(main_loop);
-            } while (-1 == request_status && EINTR == errno);
-            if (-1 == request_status) {
-                LINTED_ERROR("Could not send main loop request to close: %s",
-                             linted_error_string_alloc(errno));
-            }
-            break;
-        }
         }
 
         bool had_gui_command = false;
