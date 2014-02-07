@@ -29,6 +29,7 @@
 #include <string.h>
 
 enum message_type {
+    GUI_SHUTDOWN,
     GUI_UPDATE
 };
 
@@ -94,6 +95,16 @@ linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
     mq_close(gui_mqs[1]);
 
     return -1;
+}
+
+int linted_gui_send_shutdown(linted_gui_t const gui)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+
+    message_data.type = GUI_SHUTDOWN;
+
+    return mq_send(gui, (char const *)&message_data, sizeof message_data, 0);
 }
 
 int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
@@ -233,6 +244,9 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
                 }
             } else {
                 switch (message_data.type) {
+                case GUI_SHUTDOWN:
+                    goto exit_main_loop;
+
                 case GUI_UPDATE:{
                         x = ((float)message_data.x_position) / 255;
                         y = ((float)message_data.y_position) / 255;
@@ -266,6 +280,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
         }
     }
 
+ exit_main_loop:
     SDL_Quit();
 
     if (-1 == mq_close(inbox)) {

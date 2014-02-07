@@ -26,6 +26,7 @@
 #include <string.h>
 
 enum message_type {
+    SIMULATOR_SHUTDOWN,
     SIMULATOR_TICK
 };
 
@@ -76,6 +77,16 @@ int linted_simulator_send_tick(linted_simulator_t const simulator)
     return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }
 
+int linted_simulator_send_shutdown(linted_simulator_t const simulator)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+
+    message_data.message_type = SIMULATOR_SHUTDOWN;
+
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+}
+
 int linted_simulator_close(linted_simulator_t const simulator)
 {
     return mq_close(simulator);
@@ -110,6 +121,9 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
         }
 
         switch (message_data.message_type) {
+        case SIMULATOR_SHUTDOWN:
+            goto exit_main_loop;
+
         case SIMULATOR_TICK:{
                 x_position = x_position % 255 + 3;
                 y_position = y_position % 255 + 5;
@@ -125,7 +139,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
                                  linted_error_string_alloc(errno));
                 }
                 break;
-            }
+        }
 
         default:
             LINTED_ERROR("Received unexpected message type: %d",
@@ -133,6 +147,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
         }
     }
 
+exit_main_loop:
     if (-1 == mq_close(inbox)) {
         LINTED_ERROR("Could not close simulator inbox: %s",
                      linted_error_string_alloc(errno));
