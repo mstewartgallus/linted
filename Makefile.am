@@ -44,12 +44,11 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
 EXTRA_DIST=\
   src/linted/gui.h\
-  src/linted/io.h\
   src/linted/main_loop.h\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/simulator.h\
-  src/linted/task.h\
+  src/linted/spawner.h\
   src/linted/util.h
 
 .PHONY:\

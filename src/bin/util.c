@@ -33,10 +33,13 @@ char const * linted_error_string_alloc(int errnum)
     int strerror_status;
     do {
         size = (3 * size) / 2;
-        string = realloc(string, size);
-        if (NULL == string) {
+
+        char * const new_string = realloc(string, size);
+        if (NULL == new_string) {
+            free(string);
             return no_memory_string;
         }
+        string = new_string;
 
         strerror_status = strerror_r(errnum, string, size);
     } while (-1 == strerror_status && ERANGE == errno);
