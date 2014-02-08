@@ -44,6 +44,10 @@
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
  *
+ * TODO: Fix race condition where the SIGCHLD signal happens in
+ * between the wait for process death check and before the recv_fildes
+ * check.
+ *
  * TODO: Don't wait on all processes but only on one's spawned by the
  * fork server.
  *
