@@ -22,13 +22,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -68,23 +68,11 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
     int const spawner_writer = sockets[0];
     int const spawner_reader = sockets[1];
 
-    struct sigaction new_action;
-    memset(&new_action, 0, sizeof new_action);
-
-    new_action.sa_handler = SIG_IGN;
-
-    struct sigaction old_action;
-    int const sig_set_status = sigaction(SIGCHLD, &new_action, &old_action);
-    assert(sig_set_status != -1);
-
     switch (fork()) {
     case 0:{
         if (-1 == close(spawner_reader)) {
             goto exit_with_error_and_close_socket;
         }
-
-        int const sig_restore_status = sigaction(SIGCHLD, &old_action, NULL);
-        assert(sig_restore_status != -1);
 
         *exit_status = main_loop(spawner_writer);
         return 0;
@@ -111,9 +99,6 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
          */
         switch (fork()) {
         case 0:{
-            int const sig_restore_status = sigaction(SIGCHLD, &old_action, NULL);
-            assert(sig_restore_status != -1);
-
             *exit_status = run_fork(spawner_writer, spawner_reader, connection);
             return 0;
         }
@@ -202,7 +187,11 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     }
 
     for (size_t ii = 0; ii < fildes_count; ++ii) {
-        if (-1 == send_fildes(connection, fildes_to_send[ii])) {
+        int send_status;
+        do {
+            send_status = send_fildes(connection, fildes_to_send[ii]);
+        } while (-1 == send_status && EINTR == errno);
+        if (-1 == send_status) {
             goto exit_with_error_and_close_connection;
         }
     }
@@ -335,7 +324,11 @@ static int connect_socket(int const sock)
         return -1;
     }
 
-    if (-1 == send_fildes(sock, new_sockets[0])) {
+    int send_status;
+    do {
+        send_status = send_fildes(sock, new_sockets[0]);
+    } while (-1 == send_status && EINTR == errno);
+    if (-1 == send_status) {
         int errnum = errno;
 
         close(new_sockets[0]);
@@ -388,15 +381,7 @@ static int send_fildes(int const sock, int const fildes)
     void *const control_message_data = CMSG_DATA(control_message_header);
     memcpy(control_message_data, sent_fildes, sizeof sent_fildes);
 
-    ssize_t bytes_written;
-    do {
-        bytes_written = sendmsg(sock, &message, 0);
-    } while (-1 == bytes_written && EINTR == errno);
-    if (-1 == bytes_written) {
-        return -1;
-    }
-
-    return 0;
+    return -1 == sendmsg(sock, &message, 0) ? -1 : 0;
 }
 
 static ssize_t recv_fildes(int *fildes, int const inbox)
