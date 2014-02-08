@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 #ifndef LINTED_SPAWNER_H
 #define LINTED_SPAWNER_H
 
+#include "linted/server.h"
+
 /**
  * Is a spawner. Is shareable.
  */
-typedef int linted_spawner_t;
+typedef linted_server_t linted_spawner_t;
 
 typedef int (*linted_spawner_task_t) (linted_spawner_t spawner, int const fildes[]);
 
