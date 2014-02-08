@@ -77,23 +77,35 @@ linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
 
     mqd_t gui_mqs[2];
     if (-1 == linted_mq_pair(gui_mqs, &attr, 0)) {
-        return -1;
+        goto exit_with_error;
     }
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
                                    gui_mqs[0], main_loop, -1})) {
-        goto error_and_close_mqueues;
+        goto exit_with_error_and_close_mqueues;
     }
 
-    mq_close(gui_mqs[0]);
+    if (-1 == mq_close(gui_mqs[0])) {
+        goto exit_with_error_and_close_mqueue;
+    }
 
     return gui_mqs[1];
 
- error_and_close_mqueues:
-    mq_close(gui_mqs[0]);
+ exit_with_error_and_close_mqueues:
+    {
+        int errnum = errno;
+        mq_close(gui_mqs[0]);
+        errno = errnum;
+    }
 
-    mq_close(gui_mqs[1]);
+ exit_with_error_and_close_mqueue:
+    {
+        int errnum = errno;
+        mq_close(gui_mqs[1]);
+        errno = errnum;
+    }
 
+ exit_with_error:
     return -1;
 }
 
