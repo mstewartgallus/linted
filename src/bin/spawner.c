@@ -53,30 +53,32 @@ struct reply_data {
     int error_status;
 };
 
-static int run_fork(linted_spawner_t spawner, int inbox, int connection);
+static void exec_task(linted_spawner_task_t task,
+                      linted_spawner_t spawner, int const fildes[]);
+static void exec_task_from_connection(linted_spawner_t spawner, int connection);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
 
-int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
+int linted_spawner_run(linted_spawner_task_t main_loop,
+                       int const fildes[])
 {
     int sockets[2];
     if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
         return -1;
     }
 
-    int const spawner_writer = sockets[0];
-    int const spawner_reader = sockets[1];
+    linted_spawner_t const spawner = sockets[0];
+    int const inbox = sockets[1];
 
     switch (fork()) {
-    case 0:{
-        if (-1 == close(spawner_reader)) {
-            goto exit_with_error_and_close_socket;
+    case 0:
+        if (-1 == close(inbox)) {
+            LINTED_ERROR("Could not close inbox: %s",
+                         linted_error_string_alloc(errno));
         }
 
-        *exit_status = main_loop(spawner_writer);
-        return 0;
-    }
+        exec_task(main_loop, spawner, fildes);
 
     case -1:
         goto exit_with_error_and_close_sockets;
@@ -87,21 +89,23 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
         ssize_t bytes_read;
 
         do {
-            bytes_read = recv_fildes(&connection, spawner_reader);
+            bytes_read = recv_fildes(&connection, inbox);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            LINTED_ERROR("Could not accept fork request connection: %s",
-                         linted_error_string_alloc(errno));
+            goto exit_with_error_and_close_sockets;
         }
 
         /* Luckily, because we already must fork for a fork server we
          * get asynchronous behaviour for free.
          */
         switch (fork()) {
-        case 0:{
-            *exit_status = run_fork(spawner_writer, spawner_reader, connection);
-            return 0;
-        }
+        case 0:
+            if (-1 == close(inbox)) {
+                LINTED_ERROR("Could not close inbox: %s",
+                             linted_error_string_alloc(errno));
+            }
+
+            exec_task_from_connection(spawner, connection);
 
         case -1:{
                 struct reply_data reply = {.error_status = errno };
@@ -111,45 +115,43 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
                     write_status = write(connection, &reply, sizeof reply);
                 } while (-1 == write_status && EINTR == errno);
                 if (-1 == write_status) {
-                    LINTED_ERROR("Fork server could not reply to request: %s",
-                                 linted_error_string_alloc(errno));
+                    goto exit_with_error_and_close_sockets;
                 }
             }
         }
 
         if (-1 == close(connection)) {
-            LINTED_ERROR("Fork server could not close connection: %s",
-                         linted_error_string_alloc(errno));
+            goto exit_with_error_and_close_sockets;
         }
     }
 
  exit_fork_server:
 
-    if (-1 == close(spawner_reader)) {
-        LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
+    if (-1 == close(inbox)) {
+        goto exit_with_error_and_close_spawner;
     }
 
-    if (-1 == linted_spawner_close(spawner_writer)) {
-        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+    if (-1 == linted_spawner_close(spawner)) {
+        goto exit_with_error;
     }
 
-    *exit_status = EXIT_SUCCESS;
     return 0;
 
  exit_with_error_and_close_sockets:
     {
         int errnum = errno;
-        close(spawner_reader);
+        close(inbox);
         errno = errnum;
     }
 
- exit_with_error_and_close_socket:
+ exit_with_error_and_close_spawner:
     {
         int errnum = errno;
-        close(spawner_writer);
+        close(spawner);
         errno = errnum;
     }
 
+ exit_with_error:
     return -1;
 }
 
@@ -214,7 +216,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     }
 
     if (-1 == close(connection)) {
-        return -1;
+        goto exit_with_error;
     }
 
     return 0;
@@ -230,13 +232,17 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     return -1;
 }
 
-static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
-{
-    if (-1 == close(inbox)) {
-        goto reply_with_error;
-    }
 
-    linted_spawner_task_t fork_func;
+static void exec_task(linted_spawner_task_t task,
+                      linted_spawner_t spawner, int const fildes[])
+{
+    exit(task(spawner, fildes));
+}
+
+static void exec_task_from_connection(linted_spawner_t const spawner,
+                                      int connection)
+{
+    linted_spawner_task_t task;
     size_t fildes_count;
     {
         struct request_header request_header;
@@ -250,7 +256,7 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
             goto reply_with_error;
         }
 
-        fork_func = request_header.func;
+        task = request_header.func;
         fildes_count = request_header.fildes_count;
     }
 
@@ -299,7 +305,7 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
                          linted_error_string_alloc(errno));
         }
 
-        return fork_func(spawner, sent_inboxes);
+        exec_task(task, spawner, sent_inboxes);
     }
 
  reply_with_error:;
@@ -314,7 +320,7 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
                      linted_error_string_alloc(errno));
     }
 
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
 }
 
 static int connect_socket(int const sock)

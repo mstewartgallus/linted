@@ -45,6 +45,8 @@
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
+static int main_loop_wrapper(linted_spawner_t spawner, int const fildes[]);
+
 int main(int argc, char **argv)
 {
     /* First we check if we are run with proper security */
@@ -68,23 +70,24 @@ int main(int argc, char **argv)
         );
 
     /* Right after, we fork off from a known good state. */
-    int exit_status;
+    int exit_status = EXIT_SUCCESS;
     switch (argc) {
-    case 1:
-        if (-1 == linted_spawner_run(&exit_status, linted_main_loop_run)) {
-            LINTED_ERROR("Could not run spawner: %s",
-                         linted_error_string_alloc(errno));
+    case 1:{
+        if (-1 == linted_spawner_run(main_loop_wrapper,
+                                     (int[]){ -1 })) {
+            char const *const error_string = linted_error_string_alloc(errno);
+            syslog(LOG_ERR, "Could not run spawner: %s", error_string);
+            linted_error_string_free(error_string);
         }
         break;
+    }
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
             fputs(USAGE_TEXT, stdout);
-            exit_status = EXIT_SUCCESS;
             break;
         } else if (0 == strcmp(argv[1], "--version")) {
             fputs(VERSION_TEXT, stdout);
-            exit_status = EXIT_SUCCESS;
             break;
         }
         /* Fallthrough */
@@ -124,4 +127,9 @@ int main(int argc, char **argv)
     }
 
     return exit_status;
+}
+
+static int main_loop_wrapper(linted_spawner_t spawner, int const fds[])
+{
+    return linted_main_loop_run(spawner);
 }

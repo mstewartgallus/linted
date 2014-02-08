@@ -33,7 +33,8 @@ typedef int (*linted_spawner_task_t) (linted_spawner_t spawner, int const fildes
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t));
+int linted_spawner_run(linted_spawner_task_t main_loop,
+                       int const fildes[]);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
