@@ -197,7 +197,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
             case SDLK_ESCAPE:{
                     int request_status;
                     do {
-                        request_status = linted_main_loop_request_close(main_loop);
+                        request_status = linted_main_loop_send_close_request(main_loop);
                     } while (-1 == request_status && EINTR == errno);
                     if (-1 == request_status) {
                         LINTED_ERROR("Could not send main loop request to close: %s",
@@ -213,7 +213,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
         case SDL_QUIT:{
                 int request_status;
                 do {
-                    request_status = linted_main_loop_request_close(main_loop);
+                    request_status = linted_main_loop_send_close_request(main_loop);
                 } while (-1 == request_status && EINTR == errno);
                 if (-1 == request_status) {
                     LINTED_ERROR("Could not send main loop request to close: %s",

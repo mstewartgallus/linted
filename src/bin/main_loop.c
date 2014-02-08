@@ -136,7 +136,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     return EXIT_SUCCESS;
 }
 
-int linted_main_loop_request_close(linted_main_loop_t const main_loop)
+int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);

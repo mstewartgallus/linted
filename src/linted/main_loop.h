@@ -24,7 +24,7 @@ typedef mqd_t linted_main_loop_t;
 
 int linted_main_loop_run(linted_spawner_t spawner);
 
-int linted_main_loop_request_close(linted_main_loop_t main_loop);
+int linted_main_loop_send_close_request(linted_main_loop_t main_loop);
 
 int linted_main_loop_close(linted_main_loop_t main_loop);
 
