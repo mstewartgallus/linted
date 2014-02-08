@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -43,10 +44,6 @@
  *
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
- *
- * TODO: Fix race condition where the SIGCHLD signal happens in
- * between the wait for process death check and before the recv_fildes
- * check.
  *
  * TODO: Don't wait on all processes but only on one's spawned by the
  * fork server.
@@ -70,17 +67,61 @@ static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
 
+static int echild_write;
+
 static void on_sigchld(int signal_number)
 {
-    /*
-     * Do nothing. This interrupts system calls and makes them return
-     * EINTR.
-     */
+retry_wait:
+    switch (waitpid(-1, NULL, WNOHANG)) {
+    case -1:
+        switch (errno) {
+        case ECHILD:{
+            /* No more proceses to wait on */
+            char dummy = 0;
+
+            ssize_t write_status;
+            do {
+                write_status = write(echild_write, &dummy, sizeof dummy);
+            } while (-1 == write_status && EINTR == errno);
+            if (-1 == write_status) {
+                /* TOOO: Find a signal safe way of erroring out */
+                assert(false);
+            }
+            break;
+        }
+
+        case EINTR:
+            /* Implausible but some weird system might do this */
+            goto retry_wait;
+
+        default:
+            /* TOOO: Find a signal safe way of erroring out */
+            assert(false);
+        }
+
+    case 0:
+        /* Have processes that aren't dead yet to wait on, don't exit
+         * yet.
+         */
+        break;
+
+    default:
+        /* Waited on a dead process. Wait for more. */
+        goto retry_wait;
+    }
 }
 
 int linted_spawner_run(linted_spawner_task_t main_loop,
                        int const fildes[])
 {
+    int echild_fds[2];
+    /* TODO: Close pipes */
+    if (-1 == pipe(echild_fds)) {
+        return -1;
+    }
+    echild_write = echild_fds[1];
+    int const echild_read = echild_fds[0];
+
     struct sigaction new_action;
     memset(&new_action, 0, sizeof new_action);
 
@@ -118,43 +159,33 @@ int linted_spawner_run(linted_spawner_task_t main_loop,
     }
 
     for (;;) {
+        struct pollfd watched_fds[] = {
+            (struct pollfd) { .fd = echild_read, .events = POLLIN, .revents = 0 },
+            (struct pollfd) { .fd = inbox, .events = POLLIN, .revents = 0 }
+        };
+
+        int fds_active;
+        do {
+            fds_active = poll(watched_fds, LINTED_ARRAY_SIZE(watched_fds), -1);
+        } while (-1 == fds_active && EINTR == errno);
+        if (-1 == fds_active) {
+            goto exit_with_error_and_close_sockets;
+        }
+
+        if ((watched_fds[0].revents & POLLIN) != 0) {
+            goto exit_fork_server;
+        }
+
+
+        if (!((watched_fds[1].revents & POLLIN) != 0)) {
+            continue;
+        }
+
         int connection;
         ssize_t bytes_read;
-
-        for (;;) {
+        do {
             bytes_read = recv_fildes(&connection, inbox);
-            if (bytes_read != -1 && errno != EINTR) {
-                break;
-            }
-
-            /* We may have been interrupted by a SIGCHLD */
-        retry_wait:
-            switch (waitpid(-1, NULL, WNOHANG)) {
-            case -1:
-                switch (errno) {
-                case ECHILD:
-                    /* No more proceses to wait on */
-                    goto exit_fork_server;
-
-                case EINTR:
-                    /* Implausible but some weird system might do this */
-                    goto retry_wait;
-
-                default:
-                    goto exit_with_error_and_close_sockets;
-                }
-
-            case 0:
-                /* Have processes that aren't dead yet to wait on,
-                 * don't exit yet
-                 */
-                continue;
-
-            default:
-                /* Waited on a dead process. Wait for more. */
-                goto retry_wait;
-            }
-        }
+        } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             goto exit_with_error_and_close_sockets;
         }
