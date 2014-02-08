@@ -32,12 +32,18 @@ char const *linted_error_string_alloc(int errnum)
     char *string = NULL;
     int strerror_status;
     do {
-        size = (3 * size) / 2;
+        size_t const new_size = (3 * size) / 2;
+        if (new_size < size) {
+            /* Overflow, we can check this way because size_t is
+             * unsigned.
+             */
+            errno = ENOMEM;
+            goto out_of_memory;
+        }
 
         char *const new_string = realloc(string, size);
         if (NULL == new_string) {
-            free(string);
-            return no_memory_string;
+            goto out_of_memory;
         }
         string = new_string;
 
@@ -46,6 +52,14 @@ char const *linted_error_string_alloc(int errnum)
     assert(strerror_status != -1);
 
     return string;
+
+ out_of_memory:
+    {
+        int new_errnum = errno;
+        free(string);
+        errno = new_errnum;
+    }
+    return no_memory_string;
 }
 
 void linted_error_string_free(char const *error_string)
