@@ -69,8 +69,7 @@ static void on_sigchld(int signal_number);
 
 static int echild_write;
 
-int linted_spawner_run(linted_spawner_task_t main_loop,
-                       int const fildes[])
+int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
     int echild_fds[2];
     /* TODO: Close pipes */
@@ -273,7 +272,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
         }
     }
 
-    if (-1 == close(connection)) {
+    if (-1 == linted_server_conn_close(connection)) {
         goto exit_with_error;
     }
 
@@ -282,7 +281,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
  exit_with_error_and_close_connection:
     {
         int errnum = errno;
-        close(connection);
+        linted_server_conn_close(connection);
         errno = errnum;
     }
 
