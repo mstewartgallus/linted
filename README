@@ -40,8 +40,6 @@ Some of these methods of guarding against software bugs include:
 - linters including:
   - Clang's static analysis
   - Cppcheck
-- avoiding unsafe functions such as
-  - strerror (it's not thread safe)
 
 We plan on also guarding against bugs with:
 
