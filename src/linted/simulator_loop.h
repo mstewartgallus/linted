@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_SIMULATOR_H
-#define LINTED_SIMULATOR_H
+#ifndef LINTED_SIMULATOR_LOOP_H
+#define LINTED_SIMULATOR_LOOP_H
 
 #include "linted/gui.h"
 #include "linted/spawner.h"
@@ -22,14 +22,15 @@
 #include <mqueue.h>
 
 /**
- * A handle to access the simulator. Is safe to share between processes.
+ * A handle to access the simulator_loop. Is safe to share between processes.
  */
-typedef mqd_t linted_simulator_t;
+typedef mqd_t linted_simulator_loop_t;
 
-linted_simulator_t linted_simulator_spawn(linted_spawner_t spawner, linted_gui_t gui);
+linted_simulator_loop_t linted_simulator_loop_spawn(linted_spawner_t spawner,
+                                                    linted_gui_t gui);
 
-int linted_simulator_send_shutdown(linted_simulator_t simulator);
+int linted_simulator_loop_send_shutdown(linted_simulator_loop_t simulator_loop);
 
-int linted_simulator_close(linted_simulator_t simulator);
+int linted_simulator_loop_close(linted_simulator_loop_t simulator_loop);
 
-#endif                          /* LINTED_SIMULATOR_H */
+#endif                          /* LINTED_SIMULATOR_LOOP_H */

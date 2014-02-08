@@ -17,7 +17,7 @@
 
 #include "linted/gui.h"
 #include "linted/mq.h"
-#include "linted/simulator.h"
+#include "linted/simulator_loop.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -25,12 +25,12 @@
 #include <string.h>
 #include <time.h>
 
-/* TODO: Currently, other processes can send in simulator tick
+/* TODO: Currently, other processes can send in simulator_loop tick
  * events. Stop that.
  */
 enum message_type {
-    SIMULATOR_SHUTDOWN,
-    SIMULATOR_TICK
+    SIMULATOR_LOOP_SHUTDOWN,
+    SIMULATOR_LOOP_TICK
 };
 
 struct message_data {
@@ -38,15 +38,15 @@ struct message_data {
 };
 
 struct timer_data {
-    linted_simulator_t simulator;
+    linted_simulator_loop_t simulator_loop;
 };
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[]);
+static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[]);
 
-static int simulator_send_tick(linted_simulator_t simulator);
+static int simulator_loop_send_tick(linted_simulator_loop_t simulator_loop);
 static void on_clock_tick(union sigval sigev_value);
 
-linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
+linted_simulator_loop_t linted_simulator_loop_spawn(linted_spawner_t const spawner,
                                           linted_gui_t gui)
 {
     struct mq_attr attr;
@@ -60,7 +60,7 @@ linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
         return -1;
     }
 
-    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
+    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
                 sim_mqs[0], sim_mqs[1], gui, -1})) {
         goto error_and_close_mqueues;
     }
@@ -77,22 +77,22 @@ linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
     return -1;
 }
 
-int linted_simulator_send_shutdown(linted_simulator_t const simulator)
+int linted_simulator_loop_send_shutdown(linted_simulator_loop_t const simulator_loop)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
 
-    message_data.message_type = SIMULATOR_SHUTDOWN;
+    message_data.message_type = SIMULATOR_LOOP_SHUTDOWN;
 
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(simulator_loop, (char const *)&message_data, sizeof message_data, 0);
 }
 
-int linted_simulator_close(linted_simulator_t const simulator)
+int linted_simulator_loop_close(linted_simulator_loop_t const simulator_loop)
 {
-    return mq_close(simulator);
+    return mq_close(simulator_loop);
 }
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
+static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[])
 {
     int const spawner_close_status = linted_spawner_close(spawner);
     if (-1 == spawner_close_status) {
@@ -100,13 +100,13 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
     mqd_t const inbox = inboxes[0];
-    linted_simulator_t const inbox_writer = inboxes[1];
+    linted_simulator_loop_t const inbox_writer = inboxes[1];
     linted_gui_t const gui = inboxes[2];
 
     uint8_t x_position = 0;
     uint8_t y_position = 0;
 
-    struct timer_data timer_data = { .simulator = inbox_writer };
+    struct timer_data timer_data = { .simulator_loop = inbox_writer };
 
     timer_t timer;
     {
@@ -146,15 +146,15 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
                                     (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            LINTED_ERROR("Could not read from simulator connection: %s",
+            LINTED_ERROR("Could not read from simulator_loop connection: %s",
                          linted_error_string_alloc(errno));
         }
 
         switch (message_data.message_type) {
-        case SIMULATOR_SHUTDOWN:
+        case SIMULATOR_LOOP_SHUTDOWN:
             goto exit_main_loop;
 
-        case SIMULATOR_TICK:{
+        case SIMULATOR_LOOP_TICK:{
                 x_position = x_position % 255 + 3;
                 y_position = y_position % 255 + 5;
                 //@ assert x_position ≤ 255;
@@ -183,7 +183,7 @@ exit_main_loop:
     }
 
     if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator inbox: %s",
+        LINTED_ERROR("Could not close simulator_loop inbox: %s",
                      linted_error_string_alloc(errno));
     }
 
@@ -198,24 +198,24 @@ exit_main_loop:
 static void on_clock_tick(union sigval sigev_value)
 {
     struct timer_data *const timer_data = sigev_value.sival_ptr;
-    linted_simulator_t const simulator = timer_data->simulator;
+    linted_simulator_loop_t const simulator_loop = timer_data->simulator_loop;
 
     int tick_status;
     do {
-        tick_status = simulator_send_tick(simulator);
+        tick_status = simulator_loop_send_tick(simulator_loop);
     } while (-1 == tick_status && EINTR == errno);
     if (-1 == tick_status) {
-        LINTED_ERROR("Could not send simulator tick: %s",
+        LINTED_ERROR("Could not send simulator_loop tick: %s",
                      linted_error_string_alloc(errno));
     }
 }
 
-static int simulator_send_tick(linted_simulator_t const simulator)
+static int simulator_loop_send_tick(linted_simulator_loop_t const simulator_loop)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
 
-    message_data.message_type = SIMULATOR_TICK;
+    message_data.message_type = SIMULATOR_LOOP_TICK;
 
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(simulator_loop, (char const *)&message_data, sizeof message_data, 0);
 }

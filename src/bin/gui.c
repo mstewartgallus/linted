@@ -17,7 +17,7 @@
 
 #include "linted/gui.h"
 #include "linted/mq.h"
-#include "linted/simulator.h"
+#include "linted/simulator_loop.h"
 #include "linted/util.h"
 
 #include "SDL.h"
@@ -284,7 +284,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
     SDL_Quit();
 
     if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator inbox: %s",
+        LINTED_ERROR("Could not close gui inbox: %s",
                      linted_error_string_alloc(errno));
     }
 

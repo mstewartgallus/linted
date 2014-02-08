@@ -19,7 +19,7 @@
 #include "linted/main_loop.h"
 #include "linted/mq.h"
 #include "linted/sandbox.h"
-#include "linted/simulator.h"
+#include "linted/simulator_loop.h"
 #include "linted/spawner.h"
 #include "linted/util.h"
 
@@ -64,9 +64,9 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
-    if (-1 == simulator) {
-        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
+    linted_simulator_loop_t const simulator_loop = linted_simulator_loop_spawn(spawner, gui);
+    if (-1 == simulator_loop) {
+        LINTED_ERROR("Could not spawn simulator_loop: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_spawner_close(spawner)) {
@@ -100,10 +100,10 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_simulator_send_shutdown(simulator);
+            shutdown_status = linted_simulator_loop_send_shutdown(simulator_loop);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
-            LINTED_ERROR("Could not send shutdown message to simulator: %s",
+            LINTED_ERROR("Could not send shutdown message to simulator_loop: %s",
                          linted_error_string_alloc(errno));
         }
     }
@@ -119,8 +119,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
         }
     }
 
-    if (-1 == linted_simulator_close(simulator)) {
-        LINTED_ERROR("Could not close simulator handle: %s",
+    if (-1 == linted_simulator_loop_close(simulator_loop)) {
+        LINTED_ERROR("Could not close simulator loop handle: %s",
                      linted_error_string_alloc(errno));
     }
 
