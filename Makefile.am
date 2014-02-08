@@ -29,6 +29,7 @@ linted_SOURCES=\
 verified_sources=\
   src/bin/mq.c\
   src/bin/simulator_loop.c\
+  src/bin/simulator.c\
   src/bin/util.c
 
 linted_LDADD=$(SDL_LIBS)
@@ -48,6 +49,7 @@ EXTRA_DIST=\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/simulator_loop.h\
+  src/linted/simulator.h\
   src/linted/spawner.h\
   src/linted/util.h
 
