@@ -29,7 +29,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -55,7 +54,6 @@ struct reply_data {
 };
 
 static int run_fork(linted_spawner_t spawner, int inbox, int connection);
-static int run_fork_server(linted_spawner_t spawner, int inbox);
 static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
@@ -70,11 +68,23 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
     int const spawner_writer = sockets[0];
     int const spawner_reader = sockets[1];
 
+    struct sigaction new_action;
+    memset(&new_action, 0, sizeof new_action);
+
+    new_action.sa_handler = SIG_IGN;
+
+    struct sigaction old_action;
+    int const sig_set_status = sigaction(SIGCHLD, &new_action, &old_action);
+    assert(sig_set_status != -1);
+
     switch (fork()) {
     case 0:{
         if (-1 == close(spawner_reader)) {
             goto exit_with_error_and_close_socket;
         }
+
+        int const sig_restore_status = sigaction(SIGCHLD, &old_action, NULL);
+        assert(sig_restore_status != -1);
 
         *exit_status = main_loop(spawner_writer);
         return 0;
@@ -84,8 +94,61 @@ int linted_spawner_run(int * exit_status, int (*main_loop)(linted_spawner_t))
         goto exit_with_error_and_close_sockets;
     }
 
-    /* TODO: Catch child death and lower counter */
-    *exit_status = run_fork_server(spawner_writer, spawner_reader);
+    for (;;) {
+        int connection;
+        ssize_t bytes_read;
+
+        do {
+            bytes_read = recv_fildes(&connection, spawner_reader);
+        } while (-1 == bytes_read && EINTR == errno);
+        if (-1 == bytes_read) {
+            LINTED_ERROR("Could not accept fork request connection: %s",
+                         linted_error_string_alloc(errno));
+        }
+
+        /* Luckily, because we already must fork for a fork server we
+         * get asynchronous behaviour for free.
+         */
+        switch (fork()) {
+        case 0:{
+            int const sig_restore_status = sigaction(SIGCHLD, &old_action, NULL);
+            assert(sig_restore_status != -1);
+
+            *exit_status = run_fork(spawner_writer, spawner_reader, connection);
+            return 0;
+        }
+
+        case -1:{
+                struct reply_data reply = {.error_status = errno };
+
+                int write_status;
+                do {
+                    write_status = write(connection, &reply, sizeof reply);
+                } while (-1 == write_status && EINTR == errno);
+                if (-1 == write_status) {
+                    LINTED_ERROR("Fork server could not reply to request: %s",
+                                 linted_error_string_alloc(errno));
+                }
+            }
+        }
+
+        if (-1 == close(connection)) {
+            LINTED_ERROR("Fork server could not close connection: %s",
+                         linted_error_string_alloc(errno));
+        }
+    }
+
+ exit_fork_server:
+
+    if (-1 == close(spawner_reader)) {
+        LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == linted_spawner_close(spawner_writer)) {
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+    }
+
+    *exit_status = EXIT_SUCCESS;
     return 0;
 
  exit_with_error_and_close_sockets:
@@ -178,81 +241,6 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     return -1;
 }
 
-static int run_fork_server(linted_spawner_t const spawner, int inbox)
-{
-    struct sigaction action;
-    memset(&action, 0, sizeof action);
-    action.sa_handler = SIG_IGN;
-
-    struct sigaction old_action;
-    int const chld_sigaction_status = sigaction(SIGCHLD, &action, &old_action);
-    assert(chld_sigaction_status != -1);
-
-    /* Already have a main loop child */
-    unsigned children = 1;
-
-    for (;;) {
-        int connection;
-        switch (recv_fildes(&connection, inbox)) {
-        case -1:
-            LINTED_ERROR("Could not accept fork request connection: %s",
-                         linted_error_string_alloc(errno));
-        case 0:
-            goto exit_fork_server;
-        }
-
-        /* Luckily, because we already must fork for a fork server we
-         * get asynchronous behaviour for free.
-         */
-        switch (fork()) {
-        case 0:{
-                /* Restore the old signal behaviour */
-                int const sigaction_status = sigaction(SIGCHLD, &old_action, &action);
-                assert(sigaction_status != -1);
-
-                return run_fork(spawner, inbox, connection);
-            }
-
-        case -1:{
-                struct reply_data reply = {.error_status = errno };
-
-                int write_status;
-                do {
-                    write_status = write(connection, &reply, sizeof reply);
-                } while (-1 == write_status && EINTR == errno);
-                if (-1 == write_status) {
-                    LINTED_ERROR("Fork server could not reply to request: %s",
-                                 linted_error_string_alloc(errno));
-                }
-            }
-        }
-
-        children += 1;
-
-        if (-1 == close(connection)) {
-            LINTED_ERROR("Fork server could not close connection: %s",
-                         linted_error_string_alloc(errno));
-        }
-    }
-
- exit_fork_server:
-    /* Wait for all children to finish */
-    for (; children > 0; --children) {
-        int status;
-        wait(&status);
-    }
-
-    if (-1 == close(inbox)) {
-        LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
-    }
-
-    if (-1 == linted_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
-    }
-
-    return EXIT_SUCCESS;
-}
-
 static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
 {
     if (-1 == close(inbox)) {
@@ -287,7 +275,12 @@ static int run_fork(linted_spawner_t const spawner, int inbox, int connection)
         sent_inboxes[fildes_count] = -1;
         for (size_t ii = 0; ii < fildes_count; ++ii) {
             int fildes;
-            switch (recv_fildes(&fildes, connection)) {
+            ssize_t bytes_read;
+
+            do {
+                bytes_read = recv_fildes(&fildes, connection);
+            } while (-1 == bytes_read && EINTR == errno);
+            switch (bytes_read) {
             case -1:
                 goto reply_with_error;
 
@@ -429,10 +422,7 @@ static ssize_t recv_fildes(int *fildes, int const inbox)
     message.msg_control = control_message;
     message.msg_controllen = sizeof control_message;
 
-    ssize_t bytes_read;
-    do {
-        bytes_read = recvmsg(inbox, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
-    } while (-1 == bytes_read && EINTR == errno);
+    ssize_t const bytes_read = recvmsg(inbox, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
     if (-1 == bytes_read) {
         return -1;
     }
