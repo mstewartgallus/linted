@@ -91,18 +91,29 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
     linted_server_t sockets[2];
     if (-1 == linted_server(sockets)) {
-        return -1;
+        goto exit_with_error_and_close_pipes;
     }
 
-    linted_spawner_t const spawner = sockets[0];
-    linted_server_t const inbox = sockets[1];
-
-    switch (fork()) {
-    case 0:
     {
-        int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
-        assert(sigrestore_status != -1);
-    }
+        linted_spawner_t const spawner = sockets[0];
+        linted_server_t const inbox = sockets[1];
+
+        switch (fork()) {
+        case 0:
+        {
+            int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+            assert(sigrestore_status != -1);
+        }
+
+        if (-1 == close(echild_read)) {
+            LINTED_ERROR("Could not close echild read end of pipe: %s",
+                         linted_error_string_alloc(errno));
+        }
+
+        if (-1 == close(echild_write)) {
+            LINTED_ERROR("Could not close echild write end of pipe: %s",
+                         linted_error_string_alloc(errno));
+        }
 
         if (-1 == linted_server_close(inbox)) {
             LINTED_ERROR("Could not close inbox: %s",
@@ -111,51 +122,61 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
         exec_task(main_loop, spawner, fildes);
 
-    case -1:
-        goto exit_with_error_and_close_sockets;
-    }
-
-    for (;;) {
-        struct pollfd watched_fds[] = {
-            (struct pollfd) { .fd = echild_read, .events = POLLIN, .revents = 0 },
-            (struct pollfd) { .fd = inbox, .events = POLLIN, .revents = 0 }
-        };
-
-        int fds_active;
-        do {
-            fds_active = poll(watched_fds, LINTED_ARRAY_SIZE(watched_fds), -1);
-        } while (-1 == fds_active && EINTR == errno);
-        if (-1 == fds_active) {
+        case -1:
             goto exit_with_error_and_close_sockets;
         }
 
-        if ((watched_fds[0].revents & POLLIN) != 0) {
-            goto exit_fork_server;
-        }
+        for (;;) {
+            struct pollfd watched_fds[] = {
+                (struct pollfd) { .fd = echild_read, .events = POLLIN, .revents = 0 },
+                (struct pollfd) { .fd = inbox, .events = POLLIN, .revents = 0 }
+            };
+
+            int fds_active;
+            do {
+                fds_active = poll(watched_fds, LINTED_ARRAY_SIZE(watched_fds), -1);
+            } while (-1 == fds_active && EINTR == errno);
+            if (-1 == fds_active) {
+                goto exit_with_error_and_close_sockets;
+            }
+
+            if ((watched_fds[0].revents & POLLIN) != 0) {
+                goto exit_fork_server;
+            }
 
 
-        if (!((watched_fds[1].revents & POLLIN) != 0)) {
-            continue;
-        }
+            if (!((watched_fds[1].revents & POLLIN) != 0)) {
+                continue;
+            }
 
-        linted_server_conn_t connection;
-        ssize_t bytes_read;
-        do {
-            bytes_read = linted_fildes_recv(&connection, inbox);
-        } while (-1 == bytes_read && EINTR == errno);
-        if (-1 == bytes_read) {
-            goto exit_with_error_and_close_sockets;
-        }
+            linted_server_conn_t connection;
+            ssize_t bytes_read;
+            do {
+                bytes_read = linted_fildes_recv(&connection, inbox);
+            } while (-1 == bytes_read && EINTR == errno);
+            if (-1 == bytes_read) {
+                goto exit_with_error_and_close_sockets;
+            }
 
-        /* Luckily, because we already must fork for a fork server we
-         * get asynchronous behaviour for free.
-         */
-        switch (fork()) {
-        case 0:
-        {
-            int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
-            assert(sigrestore_status != -1);
-        }
+            /* Luckily, because we already must fork for a fork server we
+             * get asynchronous behaviour for free.
+             */
+            switch (fork()) {
+            case 0:
+            {
+                int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+                assert(sigrestore_status != -1);
+            }
+
+            if (-1 == close(echild_read)) {
+                LINTED_ERROR("Could not close echild read end of pipe: %s",
+                             linted_error_string_alloc(errno));
+            }
+
+            if (-1 == close(echild_write)) {
+                LINTED_ERROR("Could not close echild write end of pipe: %s",
+                             linted_error_string_alloc(errno));
+            }
 
             if (-1 == linted_server_close(inbox)) {
                 LINTED_ERROR("Could not close inbox: %s",
@@ -164,7 +185,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
             exec_task_from_connection(spawner, connection);
 
-        case -1:{
+            case -1:{
                 struct reply_data reply = {.error_status = errno };
 
                 int write_status;
@@ -175,36 +196,59 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
                     goto exit_with_error_and_close_sockets;
                 }
             }
+            }
+
+            if (-1 == linted_server_conn_close(connection)) {
+                goto exit_with_error_and_close_sockets;
+            }
         }
 
-        if (-1 == linted_server_conn_close(connection)) {
-            goto exit_with_error_and_close_sockets;
+    exit_fork_server:
+
+        if (-1 == linted_server_close(inbox)) {
+            goto exit_with_error_and_close_spawner;
+        }
+
+        if (-1 == linted_spawner_close(spawner)) {
+            goto exit_with_error_and_close_pipes;
+        }
+
+        if (-1 == close(echild_write)) {
+            goto exit_with_error_and_close_read_pipe;
+        }
+
+        if (-1 == close(echild_read)) {
+            goto exit_with_error;
+        }
+
+        return 0;
+
+     exit_with_error_and_close_sockets:
+        {
+            int errnum = errno;
+            linted_server_close(inbox);
+            errno = errnum;
+        }
+
+     exit_with_error_and_close_spawner:
+        {
+            int errnum = errno;
+            linted_spawner_close(spawner);
+            errno = errnum;
         }
     }
 
- exit_fork_server:
-
-    if (-1 == linted_server_close(inbox)) {
-        goto exit_with_error_and_close_spawner;
-    }
-
-    if (-1 == linted_spawner_close(spawner)) {
-        goto exit_with_error;
-    }
-
-    return 0;
-
- exit_with_error_and_close_sockets:
+ exit_with_error_and_close_pipes:
     {
         int errnum = errno;
-        linted_server_close(inbox);
+        close(echild_write);
         errno = errnum;
     }
 
- exit_with_error_and_close_spawner:
+ exit_with_error_and_close_read_pipe:
     {
         int errnum = errno;
-        linted_spawner_close(spawner);
+        close(echild_read);
         errno = errnum;
     }
 
