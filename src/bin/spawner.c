@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,6 +43,11 @@
  *
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
+ *
+ * TODO: Don't wait on all processes but only on one's spawned by the
+ * fork server.
+ *
+ * TODO: Don't modify the global SIGCHLD signal handler.
  */
 
 struct request_header {
@@ -60,9 +66,27 @@ static int connect_socket(int const local);
 static int send_fildes(int const socket, int const fildes);
 static ssize_t recv_fildes(int *fildes, int const inbox);
 
+static void on_sigchld(int signal_number)
+{
+    /*
+     * Do nothing. This interrupts system calls and makes them return
+     * EINTR.
+     */
+}
+
 int linted_spawner_run(linted_spawner_task_t main_loop,
                        int const fildes[])
 {
+    struct sigaction new_action;
+    memset(&new_action, 0, sizeof new_action);
+
+    new_action.sa_handler = on_sigchld;
+    new_action.sa_flags = SA_NOCLDSTOP;
+
+    struct sigaction old_action;
+    int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
+    assert (sigset_status != -1);
+
     int sockets[2];
     if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
         return -1;
@@ -73,6 +97,11 @@ int linted_spawner_run(linted_spawner_task_t main_loop,
 
     switch (fork()) {
     case 0:
+    {
+        int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+        assert (sigrestore_status != -1);
+    }
+
         if (-1 == close(inbox)) {
             LINTED_ERROR("Could not close inbox: %s",
                          linted_error_string_alloc(errno));
@@ -88,9 +117,40 @@ int linted_spawner_run(linted_spawner_task_t main_loop,
         int connection;
         ssize_t bytes_read;
 
-        do {
+        for (;;) {
             bytes_read = recv_fildes(&connection, inbox);
-        } while (-1 == bytes_read && EINTR == errno);
+            if (bytes_read != -1 && errno != EINTR) {
+                break;
+            }
+
+            /* We may have been interrupted by a SIGCHLD */
+        retry_wait:
+            switch (waitpid(-1, NULL, WNOHANG)) {
+            case -1:
+                switch (errno) {
+                case ECHILD:
+                    /* No more proceses to wait on */
+                    goto exit_fork_server;
+
+                case EINTR:
+                    /* Implausible but some weird system might do this */
+                    goto retry_wait;
+
+                default:
+                    goto exit_with_error_and_close_sockets;
+                }
+
+            case 0:
+                /* Have processes that aren't dead yet to wait on,
+                 * don't exit yet
+                 */
+                continue;
+
+            default:
+                /* Waited on a dead process. Wait for more. */
+                goto retry_wait;
+            }
+        }
         if (-1 == bytes_read) {
             goto exit_with_error_and_close_sockets;
         }
@@ -100,6 +160,11 @@ int linted_spawner_run(linted_spawner_task_t main_loop,
          */
         switch (fork()) {
         case 0:
+        {
+            int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+            assert (sigrestore_status != -1);
+        }
+
             if (-1 == close(inbox)) {
                 LINTED_ERROR("Could not close inbox: %s",
                              linted_error_string_alloc(errno));

@@ -8,7 +8,6 @@ I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening
 anyways. I believe what I really want is a -Wl,--warn-execstack
 option.
-* Fix spawner process shutdown
 * Drag message queue creation outside of task spawning
 This will later let us bind these things to message queues names that
 the user gives.
