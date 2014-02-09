@@ -11,6 +11,9 @@ option.
 * Drag message queue creation outside of task spawning
 This will later let us bind these things to message queues names that
 the user gives.
+
+This will also allow us create cyclic dependencies and let the gui
+message the simulator.
 * Make spawner forks check passed in sockets
 Because the spawner forks off processes the current protocol isn't so
 bad but there should be a little error checking.
@@ -20,3 +23,9 @@ This is pretty much impossible.
 I'm just a young hacker playing around with technologies like
 sandboxing. I have no real knowledge of security. I hope this project
 is useful as a personal learning experience though.
+* Don't do security theater
+Security theater is when people do big and impressive things with
+sandboxing but then conveniently forget a back door that lets
+attackers in.
+
+See cargo cult security for why this is impossible.
