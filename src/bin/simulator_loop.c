@@ -38,12 +38,9 @@ struct timer_data {
     linted_simulator_t simulator;
 };
 
-static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[]);
-
 static void on_clock_tick(union sigval sigev_value);
 
-linted_simulator_loop_t linted_simulator_loop_spawn(linted_spawner_t const spawner,
-                                          linted_gui_t gui)
+int linted_simulator_loop_pair(linted_simulator_loop_t simulator_loop[2])
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -51,38 +48,7 @@ linted_simulator_loop_t linted_simulator_loop_spawn(linted_spawner_t const spawn
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t sim_mqs[2];
-    if (-1 == linted_mq_pair(sim_mqs, &attr, 0)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
-                sim_mqs[0], gui, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(sim_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return sim_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
+    return linted_mq_pair(simulator_loop, &attr, 0);
 }
 
 int linted_simulator_loop_send_shutdown(linted_simulator_loop_t const simulator_loop)
@@ -100,25 +66,9 @@ int linted_simulator_loop_close(linted_simulator_loop_t const simulator_loop)
     return mq_close(simulator_loop);
 }
 
-static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[])
+int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
+                              linted_simulator_t const simulator)
 {
-    mqd_t const inbox = inboxes[0];
-    linted_gui_t const gui = inboxes[1];
-
-    linted_simulator_t const simulator = linted_simulator_spawn(spawner, gui);
-    if (-1 == simulator) {
-        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
-    }
-
-    int const spawner_close_status = linted_spawner_close(spawner);
-    if (-1 == spawner_close_status) {
-        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
-    }
-
-    if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
-    }
-
     struct timer_data timer_data = { .simulator = simulator };
 
     timer_t timer;
@@ -155,7 +105,7 @@ static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[
 
         ssize_t bytes_read;
         do {
-            bytes_read = mq_receive(inbox,
+            bytes_read = mq_receive(simulator_loop,
                                     (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
@@ -179,15 +129,6 @@ exit_main_loop:
     if (-1 == timer_delete(timer)) {
         LINTED_ERROR("Could not delete timer: %s",
                      linted_error_string_alloc(errno));
-    }
-
-    if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator_loop inbox: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    if (-1 == linted_simulator_close(simulator)) {
-        LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
     }
 
     return EXIT_SUCCESS;

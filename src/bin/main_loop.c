@@ -37,6 +37,13 @@ struct message_data {
     enum message_type type;
 };
 
+static linted_simulator_t simulator_spawn(linted_spawner_t spawner,
+                                          linted_gui_t gui);
+
+static linted_simulator_loop_t simulator_loop_spawn(linted_spawner_t spawner,
+                                                    linted_simulator_t simulator);
+static linted_gui_t gui_spawn(linted_spawner_t spawner, linted_main_loop_t main_loop);
+
 int linted_main_loop_run(linted_spawner_t spawner)
 {
     struct mq_attr attr;
@@ -54,7 +61,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_main_loop_t const main_loop = main_loop_mqs[1];
     mqd_t const main_loop_read_end = main_loop_mqs[0];
 
-    linted_gui_t const gui = linted_gui_spawn(spawner, main_loop);
+    linted_gui_t const gui = gui_spawn(spawner, main_loop);
     if (-1 == gui) {
         LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
     }
@@ -64,9 +71,15 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_simulator_loop_t const simulator_loop = linted_simulator_loop_spawn(spawner, gui);
+    linted_simulator_t const simulator = simulator_spawn(spawner, gui);
+    if (-1 == simulator) {
+        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
+    }
+
+    linted_simulator_loop_t const simulator_loop = simulator_loop_spawn(spawner,
+                                                                        simulator);
     if (-1 == simulator_loop) {
-        LINTED_ERROR("Could not spawn simulator_loop: %s", linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not spawn simulator loop: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_spawner_close(spawner)) {
@@ -149,4 +162,181 @@ int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
 int linted_main_loop_close(linted_main_loop_t const main_loop)
 {
     return mq_close(main_loop);
+}
+
+static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
+{
+    if (-1 == linted_spawner_close(spawner)) {
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+    }
+
+    int simulator = inboxes[0];
+    int gui = inboxes[1];
+    int exit_status = linted_simulator_run(simulator, gui);
+
+    if (-1 == mq_close(gui)) {
+        LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == mq_close(simulator)) {
+        LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
+    }
+
+    return exit_status;
+}
+
+static linted_simulator_t simulator_spawn(linted_spawner_t const spawner,
+                                          linted_gui_t gui)
+{
+    linted_simulator_t sim_mqs[2];
+    if (-1 == linted_simulator_pair(sim_mqs)) {
+        goto exit_with_error;
+    }
+
+    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
+                sim_mqs[0], gui, -1})) {
+        goto exit_with_error_and_close_mqueues;
+    }
+
+    if (-1 == mq_close(sim_mqs[0])) {
+        goto exit_with_error_and_close_mqueue;
+    }
+
+    return sim_mqs[1];
+
+ exit_with_error_and_close_mqueues:
+    {
+        int errnum = errno;
+        mq_close(sim_mqs[0]);
+        errno = errnum;
+    }
+
+ exit_with_error_and_close_mqueue:
+    {
+        int errnum = errno;
+        mq_close(sim_mqs[1]);
+        errno = errnum;
+    }
+
+ exit_with_error:
+    return -1;
+}
+
+static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[]);
+
+
+static linted_simulator_loop_t simulator_loop_spawn(linted_spawner_t const spawner,
+                                                    linted_simulator_t simulator)
+{
+    linted_simulator_loop_t sim_mqs[2];
+    if (-1 == linted_simulator_loop_pair(sim_mqs)) {
+        goto exit_with_error;
+    }
+
+    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
+                sim_mqs[0], simulator, -1})) {
+        goto exit_with_error_and_close_mqueues;
+    }
+
+    if (-1 == mq_close(sim_mqs[0])) {
+        goto exit_with_error_and_close_mqueue;
+    }
+
+    return sim_mqs[1];
+
+ exit_with_error_and_close_mqueues:
+    {
+        int errnum = errno;
+        mq_close(sim_mqs[0]);
+        errno = errnum;
+    }
+
+ exit_with_error_and_close_mqueue:
+    {
+        int errnum = errno;
+        mq_close(sim_mqs[1]);
+        errno = errnum;
+    }
+
+ exit_with_error:
+    return -1;
+}
+
+static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[])
+{
+    if (-1 == linted_spawner_close(spawner)) {
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+    }
+
+    int simulator_loop = inboxes[0];
+    int simulator = inboxes[1];
+    int exit_status = linted_simulator_loop_run(simulator_loop, simulator);
+
+    if (-1 == mq_close(simulator)) {
+        LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == mq_close(simulator_loop)) {
+        LINTED_ERROR("Could not close simulator loop: %s", linted_error_string_alloc(errno));
+    }
+
+    return exit_status;
+}
+
+static int gui_run(linted_spawner_t const spawner, int const inboxes[])
+{
+    if (-1 == linted_spawner_close(spawner)) {
+        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+    }
+
+    int gui = inboxes[0];
+    int main_loop = inboxes[1];
+    int exit_status = linted_gui_run(gui, main_loop);
+
+    if (-1 == mq_close(gui)) {
+        LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == mq_close(main_loop)) {
+        LINTED_ERROR("Could not close main loop: %s", linted_error_string_alloc(errno));
+    }
+
+    return exit_status;
+}
+
+static linted_gui_t gui_spawn(linted_spawner_t spawner,
+                              linted_main_loop_t main_loop)
+{
+    linted_gui_t gui_mqs[2];
+    if (-1 == linted_gui_pair(gui_mqs)) {
+        goto exit_with_error;
+    }
+
+    if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
+                                   gui_mqs[0], main_loop, -1})) {
+        goto exit_with_error_and_close_mqueues;
+    }
+
+    if (-1 == mq_close(gui_mqs[0])) {
+        goto exit_with_error_and_close_mqueue;
+    }
+
+    return gui_mqs[1];
+
+ exit_with_error_and_close_mqueues:
+    {
+        int errnum = errno;
+        mq_close(gui_mqs[0]);
+        errno = errnum;
+    }
+
+ exit_with_error_and_close_mqueue:
+    {
+        int errnum = errno;
+        mq_close(gui_mqs[1]);
+        errno = errnum;
+    }
+
+ exit_with_error:
+    return -1;
 }

@@ -64,10 +64,7 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static int gui_run(linted_spawner_t const spawner, int const inboxes[]);
-
-linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
-                              linted_main_loop_t main_loop)
+int linted_gui_pair(linted_gui_t gui[2])
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -75,38 +72,7 @@ linted_gui_t linted_gui_spawn(linted_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t gui_mqs[2];
-    if (-1 == linted_mq_pair(gui_mqs, &attr, 0)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   gui_mqs[0], main_loop, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(gui_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return gui_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(gui_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(gui_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
+    return linted_mq_pair(gui, &attr, 0);
 }
 
 int linted_gui_send_shutdown(linted_gui_t const gui)
@@ -136,15 +102,8 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-static int gui_run(linted_spawner_t const spawner, int const inboxes[])
+int linted_gui_run(linted_gui_t gui, linted_main_loop_t main_loop)
 {
-    if (-1 == linted_spawner_close(spawner)) {
-        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
-    }
-
-    int const inbox = inboxes[0];
-    linted_main_loop_t const main_loop = inboxes[1];
-
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s", SDL_GetError());
     }
@@ -245,7 +204,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
 
             ssize_t bytes_read;
             do {
-                bytes_read = mq_timedreceive(inbox,
+                bytes_read = mq_timedreceive(gui,
                                              (char *)&message_data,
                                              sizeof message_data, NULL, &timespec);
             } while (-1 == bytes_read && EINTR == errno);
@@ -294,16 +253,6 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
 
  exit_main_loop:
     SDL_Quit();
-
-    if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close gui inbox: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    if (-1 == linted_main_loop_close(main_loop)) {
-        LINTED_ERROR("Could not close main loop handle: %s",
-                     linted_error_string_alloc(errno));
-    }
 
     return EXIT_SUCCESS;
 }

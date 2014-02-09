@@ -33,10 +33,7 @@ struct message_data {
     enum message_type message_type;
 };
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[]);
-
-linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
-                                          linted_gui_t gui)
+int linted_simulator_pair(linted_simulator_t simulator[2])
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -44,38 +41,7 @@ linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    mqd_t sim_mqs[2];
-    if (-1 == linted_mq_pair(sim_mqs, &attr, 0)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                sim_mqs[0], gui, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(sim_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return sim_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
+    return linted_mq_pair(simulator, &attr, 0);
 }
 
 int linted_simulator_send_tick(linted_simulator_t const simulator)
@@ -103,16 +69,8 @@ int linted_simulator_close(linted_simulator_t const simulator)
     return mq_close(simulator);
 }
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
+int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
 {
-    int const spawner_close_status = linted_spawner_close(spawner);
-    if (-1 == spawner_close_status) {
-        LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
-    }
-
-    mqd_t const inbox = inboxes[0];
-    linted_gui_t const gui = inboxes[1];
-
     uint8_t x_position = 0;
     uint8_t y_position = 0;
 
@@ -157,14 +115,5 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
 exit_main_loop:
-    if (-1 == mq_close(inbox)) {
-        LINTED_ERROR("Could not close simulator inbox: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    if (-1 == linted_gui_close(gui)) {
-        LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
-    }
-
     return EXIT_SUCCESS;
 }

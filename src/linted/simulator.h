@@ -26,8 +26,9 @@
  */
 typedef mqd_t linted_simulator_t;
 
-linted_simulator_t linted_simulator_spawn(linted_spawner_t const spawner,
-                                          linted_gui_t gui);
+int linted_simulator_pair(linted_simulator_t simulator[2]);
+
+int linted_simulator_run(linted_simulator_t inbox, linted_gui_t gui);
 
 int linted_simulator_send_tick(linted_simulator_t simulator);
 int linted_simulator_send_shutdown(linted_simulator_t simulator);
