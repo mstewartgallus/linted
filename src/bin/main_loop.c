@@ -172,7 +172,9 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
 
     int simulator = inboxes[0];
     int gui = inboxes[1];
-    int exit_status = linted_simulator_run(simulator, gui);
+    if (-1 == linted_simulator_run(simulator, gui)) {
+        LINTED_ERROR("Running the simulator failed: %s", linted_error_string_alloc(errno));
+    }
 
     if (-1 == mq_close(gui)) {
         LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
@@ -182,7 +184,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
         LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
     }
 
-    return exit_status;
+    return EXIT_SUCCESS;
 }
 
 static linted_simulator_t simulator_spawn(linted_spawner_t const spawner,
@@ -270,7 +272,9 @@ static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[
 
     int simulator_loop = inboxes[0];
     int simulator = inboxes[1];
-    int exit_status = linted_simulator_loop_run(simulator_loop, simulator);
+    if (-1 == linted_simulator_loop_run(simulator_loop, simulator)) {
+        LINTED_ERROR("Running the simulator loop failed: %s", linted_error_string_alloc(errno));
+    }
 
     if (-1 == mq_close(simulator)) {
         LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
@@ -280,7 +284,7 @@ static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[
         LINTED_ERROR("Could not close simulator loop: %s", linted_error_string_alloc(errno));
     }
 
-    return exit_status;
+    return 0;
 }
 
 static int gui_run(linted_spawner_t const spawner, int const inboxes[])
@@ -291,7 +295,9 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
 
     int gui = inboxes[0];
     int main_loop = inboxes[1];
-    int exit_status = linted_gui_run(gui, main_loop);
+    if (-1 == linted_gui_run(gui, main_loop)) {
+        LINTED_ERROR("Running the gui failed: %s", linted_error_string_alloc(errno));
+    }
 
     if (-1 == mq_close(gui)) {
         LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
@@ -301,7 +307,7 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
         LINTED_ERROR("Could not close main loop: %s", linted_error_string_alloc(errno));
     }
 
-    return exit_status;
+    return EXIT_SUCCESS;
 }
 
 static linted_gui_t gui_spawn(linted_spawner_t spawner,

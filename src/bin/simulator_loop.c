@@ -131,7 +131,7 @@ exit_main_loop:
                      linted_error_string_alloc(errno));
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 

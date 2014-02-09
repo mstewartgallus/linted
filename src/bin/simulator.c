@@ -83,8 +83,7 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
                                     (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            LINTED_ERROR("Could not read from simulator connection: %s",
-                         linted_error_string_alloc(errno));
+            return -1;
         }
 
         switch (message_data.message_type) {
@@ -102,8 +101,7 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
                 update_status = linted_gui_send_update(gui, x_position, y_position);
             } while (-1 == update_status && EINTR == errno);
             if (-1 == update_status) {
-                LINTED_ERROR("Could not send update message to gui: %s",
-                             linted_error_string_alloc(errno));
+                return -1;
             }
             break;
         }
@@ -115,5 +113,5 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
     }
 
 exit_main_loop:
-    return EXIT_SUCCESS;
+    return 0;
 }

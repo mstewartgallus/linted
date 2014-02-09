@@ -254,5 +254,5 @@ int linted_gui_run(linted_gui_t gui, linted_main_loop_t main_loop)
  exit_main_loop:
     SDL_Quit();
 
-    return EXIT_SUCCESS;
+    return 0;
 }
