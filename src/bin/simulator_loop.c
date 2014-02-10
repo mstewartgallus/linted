@@ -55,9 +55,7 @@ int linted_simulator_loop_send_shutdown(linted_simulator_loop_t const simulator_
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
-
     message_data.message_type = SIMULATOR_LOOP_SHUTDOWN;
-
     return mq_send(simulator_loop, (char const *)&message_data, sizeof message_data, 0);
 }
 
