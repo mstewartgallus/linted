@@ -94,46 +94,45 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     struct sigaction old_action;
-    for (;;) {
-        if (0 == sigsetjmp(sigchld_jump_buffer, true)) {
-            struct sigaction new_action;
-            memset(&new_action, 0, sizeof new_action);
+    if (0 == sigsetjmp(sigchld_jump_buffer, true)) {
+        struct sigaction new_action;
+        memset(&new_action, 0, sizeof new_action);
 
-            new_action.sa_handler = on_sigchld;
-            new_action.sa_flags = SA_NOCLDSTOP;
+        new_action.sa_handler = on_sigchld;
+        new_action.sa_flags = SA_NOCLDSTOP;
 
-            int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
-            assert(sigset_status != -1);
-        }
+        int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
+        assert(sigset_status != -1);
+    }
+    /* We received a SIGCHLD */
+    /* Alternatively, we are doing this once at the start */
+retry_wait:
+    switch (waitpid(-1, NULL, WNOHANG)) {
+    case -1:
+        switch (errno) {
+        case ECHILD:
+            goto exit_fork_server;
 
-        /* We received a SIGCHLD */
-        /* Alternatively, we are doing this once at the start */
-    retry_wait:
-        switch (waitpid(-1, NULL, WNOHANG)) {
-        case -1:
-            switch (errno) {
-            case ECHILD:
-                goto exit_fork_server;
-
-            case EINTR:
-                /* Implausible but some weird system might do this */
-                goto retry_wait;
-
-            default:
-                goto exit_with_error_and_close_sockets;
-            }
-
-        case 0:
-            /* Have processes that aren't dead yet to wait on,
-             * don't exit yet.
-             */
-            break;
+        case EINTR:
+            /* Implausible but some weird system might do this */
+            goto retry_wait;
 
         default:
-            /* Waited on a dead process. Wait for more. */
-            goto retry_wait;
+            goto exit_with_error_and_close_sockets;
         }
 
+    case 0:
+        /* Have processes that aren't dead yet to wait on,
+         * don't exit yet.
+         */
+        break;
+
+    default:
+        /* Waited on a dead process. Wait for more. */
+        goto retry_wait;
+    }
+
+    for (;;) {
         linted_server_conn_t connection;
         ssize_t bytes_read;
         do {
