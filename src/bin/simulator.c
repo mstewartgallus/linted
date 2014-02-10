@@ -21,8 +21,8 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 enum message_type {
@@ -35,7 +35,12 @@ enum message_type {
 struct message_data {
     enum message_type message_type;
     enum linted_simulator_direction direction;
+    bool moving;
 };
+
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+#define SIGN(x) ((x) < 0 ? 1 : (0 == x) ? 0 : -1)
 
 int linted_simulator_pair(linted_simulator_t simulator[2])
 {
@@ -49,13 +54,15 @@ int linted_simulator_pair(linted_simulator_t simulator[2])
 }
 
 int linted_simulator_send_movement(linted_simulator_t simulator,
-                               enum linted_simulator_direction direction)
+                                   enum linted_simulator_direction direction,
+                                   bool moving)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
 
     message_data.message_type = SIMULATOR_MOVEMENT;
     message_data.direction = direction;
+    message_data.moving = moving;
 
     return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }
@@ -83,6 +90,12 @@ int linted_simulator_close(linted_simulator_t const simulator)
 
 int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
 {
+    int32_t x_left = 0;
+    int32_t x_right = 0;
+
+    int32_t y_up = 0;
+    int32_t y_down = 0;
+
     int32_t x_position = 0;
     int32_t y_position = 0;
 
@@ -108,24 +121,36 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
         case SIMULATOR_MOVEMENT:
             switch (message_data.direction) {
             case LINTED_SIMULATOR_LEFT:
-                --x_velocity;
+                x_left = message_data.moving;
                 break;
 
             case LINTED_SIMULATOR_RIGHT:
-                ++x_velocity;
+                x_right = message_data.moving;
                 break;
 
             case LINTED_SIMULATOR_UP:
-                ++y_velocity;
+                y_up = message_data.moving;
                 break;
 
             case LINTED_SIMULATOR_DOWN:
-                --y_velocity;
+                y_down = message_data.moving;
                 break;
             }
             break;
 
         case SIMULATOR_TICK:{
+                int32_t x_thrust = 2 * (x_right - x_left);
+                int32_t y_thrust = 2 * (y_up - y_down);
+
+                int32_t x_future_velocity = x_thrust + x_velocity;
+                int32_t y_future_velocity = y_thrust + y_velocity;
+
+                int32_t x_friction = MIN(imaxabs(x_future_velocity), 1) * SIGN(x_future_velocity);
+                int32_t y_friction = MIN(imaxabs(y_future_velocity), 1) * SIGN(y_future_velocity);
+
+                x_velocity += x_thrust + x_friction;
+                y_velocity += y_thrust + y_friction;
+
                 x_position += x_velocity;
                 y_position += y_velocity;
 

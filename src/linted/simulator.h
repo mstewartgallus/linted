@@ -20,6 +20,7 @@
 #include "linted/spawner.h"
 
 #include <mqueue.h>
+#include <stdbool.h>
 
 /**
  * A handle to access the simulator. Is safe to share between processes.
@@ -38,7 +39,8 @@ int linted_simulator_pair(linted_simulator_t simulator[2]);
 int linted_simulator_run(linted_simulator_t inbox, linted_gui_t gui);
 
 int linted_simulator_send_movement(linted_simulator_t simulator,
-                                   enum linted_simulator_direction direction);
+                                   enum linted_simulator_direction direction,
+                                   bool moving);
 
 int linted_simulator_send_tick(linted_simulator_t simulator);
 int linted_simulator_send_shutdown(linted_simulator_t simulator);

@@ -65,7 +65,8 @@ static struct attribute_value_pair const attribute_values[] = {
 };
 
 static void on_key_movement(linted_simulator_t simulator,
-                            enum linted_simulator_direction direction);
+                            enum linted_simulator_direction direction,
+                            bool moving);
 
 int linted_gui_pair(linted_gui_t gui[2])
 {
@@ -182,23 +183,44 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
                 }
 
             case SDLK_LEFT:
-                on_key_movement(simulator, LINTED_SIMULATOR_LEFT);
+                on_key_movement(simulator, LINTED_SIMULATOR_LEFT, true);
                 break;
 
             case SDLK_RIGHT:
-                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT);
+                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT, true);
                 break;
 
             case SDLK_UP:
-                on_key_movement(simulator, LINTED_SIMULATOR_UP);
+                on_key_movement(simulator, LINTED_SIMULATOR_UP, true);
                 break;
 
             case SDLK_DOWN:
-                on_key_movement(simulator, LINTED_SIMULATOR_DOWN);
+                on_key_movement(simulator, LINTED_SIMULATOR_DOWN, true);
                 break;
 
-            default:
+            default: break;
+            }
+            break;
+
+        case SDL_KEYUP:
+            switch (sdl_event.key.keysym.sym) {
+            case SDLK_LEFT:
+                on_key_movement(simulator, LINTED_SIMULATOR_LEFT, false);
                 break;
+
+            case SDLK_RIGHT:
+                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT, false);
+                break;
+
+            case SDLK_UP:
+                on_key_movement(simulator, LINTED_SIMULATOR_UP, false);
+                break;
+
+            case SDLK_DOWN:
+                on_key_movement(simulator, LINTED_SIMULATOR_DOWN, false);
+                break;
+
+            default: break;
             }
             break;
 
@@ -279,11 +301,13 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
 }
 
 static void on_key_movement(linted_simulator_t simulator,
-                            enum linted_simulator_direction direction)
+                            enum linted_simulator_direction direction,
+                            bool moving)
 {
     int request_status;
     do {
-        request_status = linted_simulator_send_movement(simulator, direction);
+        request_status = linted_simulator_send_movement(simulator, direction,
+                                                        moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
         LINTED_ERROR("Could not send movement command to simulator: %s",
