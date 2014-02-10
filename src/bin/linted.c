@@ -72,15 +72,13 @@ int main(int argc, char **argv)
     /* Right after, we fork off from a known good state. */
     int exit_status = EXIT_SUCCESS;
     switch (argc) {
-    case 1:{
-            if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {
-                                         -1})) {
-                char const *const error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "Could not run spawner: %s", error_string);
-                linted_error_string_free(error_string);
-            }
-            break;
+    case 1:
+        if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {-1})) {
+            char const *const error_string = linted_error_string_alloc(errno);
+            syslog(LOG_ERR, "Could not run spawner: %s", error_string);
+            linted_error_string_free(error_string);
         }
+        break;
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {

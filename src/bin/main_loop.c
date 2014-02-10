@@ -50,18 +50,11 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_main_loop_t const main_loop_read = main_loop_mqs[0];
-    linted_main_loop_t const main_loop_write = main_loop_mqs[1];
-
     linted_gui_t gui_mqs[2];
     if (-1 == linted_gui_pair(gui_mqs)) {
         LINTED_ERROR("Could not create gui message queue: %s",
                      linted_error_string_alloc(errno));
     }
-
-    linted_gui_t const gui_read = gui_mqs[0];
-    linted_gui_t const gui_write = gui_mqs[1];
-
 
     linted_simulator_t simulator_mqs[2];
     if (-1 == linted_simulator_pair(simulator_mqs)) {
@@ -69,13 +62,37 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
+    linted_simulator_loop_t simulator_loop_mqs[2];
+    if (-1 == linted_simulator_loop_pair(simulator_loop_mqs)) {
+        LINTED_ERROR("Could not create simulator loop message queue: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_main_loop_t const main_loop_read = main_loop_mqs[0];
+    linted_main_loop_t const main_loop_write = main_loop_mqs[1];
+
+    linted_gui_t const gui_read = gui_mqs[0];
+    linted_gui_t const gui_write = gui_mqs[1];
+
     linted_simulator_t const simulator_read = simulator_mqs[0];
     linted_simulator_t const simulator_write = simulator_mqs[1];
 
+    linted_simulator_loop_t const simulator_loop_read = simulator_loop_mqs[0];
+    linted_simulator_loop_t const simulator_loop_write = simulator_loop_mqs[1];
+
+    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
+                                   simulator_loop_read, simulator_write, -1})) {
+        LINTED_ERROR("Could not spawn simulator loop: %s",
+                     linted_error_string_alloc(errno));
+    }
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
                                    gui_read, simulator_write, main_loop_write, -1})) {
         LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
+    }
+    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
+                                   simulator_read, gui_write, -1})) {
+        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_gui_close(gui_read)) {
@@ -87,28 +104,9 @@ int linted_main_loop_run(linted_spawner_t spawner)
         LINTED_ERROR("Could not close main loop write end: %s",
                      linted_error_string_alloc(errno));
     }
-    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                                   simulator_read, gui_write, -1})) {
-        LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
-    }
 
     if (-1 == linted_simulator_close(simulator_read)) {
         LINTED_ERROR("Could not close simulator read end: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    linted_simulator_loop_t simulator_loop_mqs[2];
-    if (-1 == linted_simulator_loop_pair(simulator_loop_mqs)) {
-        LINTED_ERROR("Could not create simulator loop message queue: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    linted_simulator_loop_t const simulator_loop_read = simulator_loop_mqs[0];
-    linted_simulator_loop_t const simulator_loop_write = simulator_loop_mqs[1];
-
-    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
-                                   simulator_loop_read, simulator_write, -1})) {
-        LINTED_ERROR("Could not spawn simulator loop: %s",
                      linted_error_string_alloc(errno));
     }
 
