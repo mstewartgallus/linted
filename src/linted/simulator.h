@@ -26,14 +26,19 @@
  */
 typedef mqd_t linted_simulator_t;
 
+enum linted_simulator_direction {
+    LINTED_SIMULATOR_UP,
+    LINTED_SIMULATOR_DOWN,
+    LINTED_SIMULATOR_LEFT,
+    LINTED_SIMULATOR_RIGHT
+};
+
 int linted_simulator_pair(linted_simulator_t simulator[2]);
 
 int linted_simulator_run(linted_simulator_t inbox, linted_gui_t gui);
 
-int linted_simulator_send_left(linted_simulator_t simulator);
-int linted_simulator_send_right(linted_simulator_t simulator);
-int linted_simulator_send_up(linted_simulator_t simulator);
-int linted_simulator_send_down(linted_simulator_t simulator);
+int linted_simulator_send_movement(linted_simulator_t simulator,
+                                   enum linted_simulator_direction direction);
 
 int linted_simulator_send_tick(linted_simulator_t simulator);
 int linted_simulator_send_shutdown(linted_simulator_t simulator);

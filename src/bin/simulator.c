@@ -29,14 +29,12 @@ enum message_type {
     SIMULATOR_SHUTDOWN,
     SIMULATOR_TICK,
 
-    SIMULATOR_LEFT,
-    SIMULATOR_RIGHT,
-    SIMULATOR_UP,
-    SIMULATOR_DOWN,
+    SIMULATOR_MOVEMENT
 };
 
 struct message_data {
     enum message_type message_type;
+    enum linted_simulator_direction direction;
 };
 
 int linted_simulator_pair(linted_simulator_t simulator[2])
@@ -50,35 +48,15 @@ int linted_simulator_pair(linted_simulator_t simulator[2])
     return linted_mq_pair(simulator, &attr, 0);
 }
 
-int linted_simulator_send_left(linted_simulator_t const simulator)
+int linted_simulator_send_movement(linted_simulator_t simulator,
+                               enum linted_simulator_direction direction)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_LEFT;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
 
-int linted_simulator_send_right(linted_simulator_t const simulator)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_RIGHT;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
+    message_data.message_type = SIMULATOR_MOVEMENT;
+    message_data.direction = direction;
 
-int linted_simulator_send_up(linted_simulator_t const simulator)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_UP;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
-
-int linted_simulator_send_down(linted_simulator_t const simulator)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_DOWN;
     return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }
 
@@ -127,20 +105,24 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
         case SIMULATOR_SHUTDOWN:
             goto exit_main_loop;
 
-        case SIMULATOR_LEFT:
-            --x_velocity;
-            break;
+        case SIMULATOR_MOVEMENT:
+            switch (message_data.direction) {
+            case LINTED_SIMULATOR_LEFT:
+                --x_velocity;
+                break;
 
-        case SIMULATOR_RIGHT:
-            ++x_velocity;
-            break;
+            case LINTED_SIMULATOR_RIGHT:
+                ++x_velocity;
+                break;
 
-        case SIMULATOR_UP:
-            ++y_velocity;
-            break;
+            case LINTED_SIMULATOR_UP:
+                ++y_velocity;
+                break;
 
-        case SIMULATOR_DOWN:
-            --y_velocity;
+            case LINTED_SIMULATOR_DOWN:
+                --y_velocity;
+                break;
+            }
             break;
 
         case SIMULATOR_TICK:{

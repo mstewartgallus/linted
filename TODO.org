@@ -1,8 +1,7 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
-* Cleanup and remove the control movement redundancies
-* Handle the circular depdendencies between simulator.h and gui.h
+* Handle the circular dependencies between simulator.h and gui.h
 * Separate out implementations and protocols
 * Avoid deadlock where process blocks on sending message to shutdown process
 * Have a better error handling scheme for processes

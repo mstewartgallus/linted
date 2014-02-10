@@ -64,6 +64,9 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
+static void on_key_movement(linted_simulator_t simulator,
+                            enum linted_simulator_direction direction);
+
 int linted_gui_pair(linted_gui_t gui[2])
 {
     struct mq_attr attr;
@@ -178,53 +181,21 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
                     break;
                 }
 
-            case SDLK_LEFT:{
-                    int request_status;
-                    do {
-                        request_status = linted_simulator_send_left(simulator);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        LINTED_ERROR("Could not send key left command to simulator: %s",
-                                     linted_error_string_alloc(errno));
-                    }
-                    break;
-                }
+            case SDLK_LEFT:
+                on_key_movement(simulator, LINTED_SIMULATOR_LEFT);
+                break;
 
-            case SDLK_RIGHT:{
-                    int request_status;
-                    do {
-                        request_status = linted_simulator_send_right(simulator);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        LINTED_ERROR("Could not send key right command to simulator: %s",
-                                     linted_error_string_alloc(errno));
-                    }
-                    break;
-                }
+            case SDLK_RIGHT:
+                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT);
+                break;
 
-            case SDLK_UP:{
-                    int request_status;
-                    do {
-                        request_status = linted_simulator_send_up(simulator);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        LINTED_ERROR("Could not send key up command to simulator: %s",
-                                     linted_error_string_alloc(errno));
-                    }
-                    break;
-                }
+            case SDLK_UP:
+                on_key_movement(simulator, LINTED_SIMULATOR_UP);
+                break;
 
-            case SDLK_DOWN:{
-                    int request_status;
-                    do {
-                        request_status = linted_simulator_send_down(simulator);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        LINTED_ERROR("Could not send key down command to simulator: %s",
-                                     linted_error_string_alloc(errno));
-                    }
-                    break;
-                }
+            case SDLK_DOWN:
+                on_key_movement(simulator, LINTED_SIMULATOR_DOWN);
+                break;
 
             default:
                 break;
@@ -305,4 +276,17 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
     SDL_Quit();
 
     return 0;
+}
+
+static void on_key_movement(linted_simulator_t simulator,
+                            enum linted_simulator_direction direction)
+{
+    int request_status;
+    do {
+        request_status = linted_simulator_send_movement(simulator, direction);
+    } while (-1 == request_status && EINTR == errno);
+    if (-1 == request_status) {
+        LINTED_ERROR("Could not send movement command to simulator: %s",
+                     linted_error_string_alloc(errno));
+    }
 }
