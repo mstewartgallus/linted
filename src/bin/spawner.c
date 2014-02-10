@@ -177,9 +177,11 @@ retry_wait:
         }
     }
 
-exit_fork_server:;
-    int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
-    assert(sigrestore_status != -1);
+exit_fork_server:
+    {
+        int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+        assert(sigrestore_status != -1);
+    }
 
     if (-1 == linted_server_close(inbox)) {
         goto exit_with_error_and_close_spawner;
@@ -292,6 +294,7 @@ static void on_sigchld(int signal_number)
     siglongjmp(sigchld_jump_buffer, signal_number);
 }
 
+#define MAX_FORKER_FILDES_COUNT 20
 static void exec_task_from_connection(linted_spawner_t const spawner,
                                       linted_server_conn_t connection)
 {
@@ -313,13 +316,13 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         fildes_count = request_header.fildes_count;
     }
 
-    if (fildes_count > 20) {
+    if (fildes_count > MAX_FORKER_FILDES_COUNT) {
         errno = EINVAL;
         goto reply_with_error;
     }
 
     {
-        int sent_inboxes[fildes_count + 1];
+        int sent_inboxes[MAX_FORKER_FILDES_COUNT + 1];
         sent_inboxes[fildes_count] = -1;
         for (size_t ii = 0; ii < fildes_count; ++ii) {
             int fildes;
