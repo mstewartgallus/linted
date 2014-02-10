@@ -116,7 +116,18 @@ int linted_main_loop_run(linted_spawner_t spawner)
             shutdown_status = linted_simulator_loop_send_shutdown(simulator_loop);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
-            LINTED_ERROR("Could not send shutdown message to simulator_loop: %s",
+            LINTED_ERROR("Could not send shutdown message to simulator loop: %s",
+                         linted_error_string_alloc(errno));
+        }
+    }
+
+    {
+        int shutdown_status;
+        do {
+            shutdown_status = linted_simulator_send_shutdown(simulator);
+        } while (-1 == shutdown_status && EINTR == errno);
+        if (-1 == shutdown_status) {
+            LINTED_ERROR("Could not send shutdown message to simulator: %s",
                          linted_error_string_alloc(errno));
         }
     }

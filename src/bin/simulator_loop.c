@@ -124,8 +124,6 @@ int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
     }
 
 exit_main_loop:
-    linted_simulator_send_shutdown(simulator);
-
     if (-1 == timer_delete(timer)) {
         LINTED_ERROR("Could not delete timer: %s",
                      linted_error_string_alloc(errno));
