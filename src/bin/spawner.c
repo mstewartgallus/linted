@@ -79,6 +79,14 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     echild_write = echild_fds[1];
     int const echild_read = echild_fds[0];
 
+    if (-1 == fcntl(echild_read, F_SETFL, O_NONBLOCK)) {
+        goto exit_with_error_and_close_pipes;
+    }
+
+    if (-1 == fcntl(echild_write, F_SETFL, O_NONBLOCK)) {
+        goto exit_with_error_and_close_pipes;
+    }
+
     struct sigaction new_action;
     memset(&new_action, 0, sizeof new_action);
 
@@ -103,24 +111,24 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         {
             int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
             assert(sigrestore_status != -1);
-        }
 
-        if (-1 == close(echild_read)) {
-            LINTED_ERROR("Could not close echild read end of pipe: %s",
-                         linted_error_string_alloc(errno));
-        }
+            if (-1 == close(echild_read)) {
+                LINTED_ERROR("Could not close echild read end of pipe: %s",
+                             linted_error_string_alloc(errno));
+            }
 
-        if (-1 == close(echild_write)) {
-            LINTED_ERROR("Could not close echild write end of pipe: %s",
-                         linted_error_string_alloc(errno));
-        }
+            if (-1 == close(echild_write)) {
+                LINTED_ERROR("Could not close echild write end of pipe: %s",
+                             linted_error_string_alloc(errno));
+            }
 
-        if (-1 == linted_server_close(inbox)) {
-            LINTED_ERROR("Could not close inbox: %s",
-                         linted_error_string_alloc(errno));
-        }
+            if (-1 == linted_server_close(inbox)) {
+                LINTED_ERROR("Could not close inbox: %s",
+                             linted_error_string_alloc(errno));
+            }
 
-        exec_task(main_loop, spawner, fildes);
+            exec_task(main_loop, spawner, fildes);
+        }
 
         case -1:
             goto exit_with_error_and_close_sockets;
@@ -141,6 +149,46 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             }
 
             if ((watched_fds[0].revents & POLLIN) != 0) {
+                for (;;) {
+                    ssize_t bytes_read;
+                    do {
+                        char dummy;
+                        bytes_read = read(echild_read, &dummy, sizeof dummy);
+                    } while (-1 == bytes_read && EINTR == errno);
+                    if (-1 == bytes_read) {
+                        if (EAGAIN == errno) {
+                            break;
+                        }
+                        goto exit_with_error_and_close_pipes;
+                    }
+                }
+
+            retry_wait:
+                switch (waitpid(-1, NULL, WNOHANG)) {
+                case -1:
+                    switch (errno) {
+                    case ECHILD:
+                        goto exit_fork_server;
+
+                    case EINTR:
+                        /* Implausible but some weird system might do this */
+                        goto retry_wait;
+
+                    default:
+                        goto exit_with_error_and_close_sockets;
+                    }
+
+                case 0:
+                    /* Have processes that aren't dead yet to wait on,
+                     * don't exit yet.
+                     */
+                    break;
+
+                default:
+                    /* Waited on a dead process. Wait for more. */
+                    goto retry_wait;
+                }
+
                 goto exit_fork_server;
             }
 
@@ -166,24 +214,24 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             {
                 int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
                 assert(sigrestore_status != -1);
-            }
 
-            if (-1 == close(echild_read)) {
-                LINTED_ERROR("Could not close echild read end of pipe: %s",
-                             linted_error_string_alloc(errno));
-            }
+                if (-1 == close(echild_read)) {
+                    LINTED_ERROR("Could not close echild read end of pipe: %s",
+                                 linted_error_string_alloc(errno));
+                }
 
-            if (-1 == close(echild_write)) {
-                LINTED_ERROR("Could not close echild write end of pipe: %s",
-                             linted_error_string_alloc(errno));
-            }
+                if (-1 == close(echild_write)) {
+                    LINTED_ERROR("Could not close echild write end of pipe: %s",
+                                 linted_error_string_alloc(errno));
+                }
 
-            if (-1 == linted_server_close(inbox)) {
-                LINTED_ERROR("Could not close inbox: %s",
-                             linted_error_string_alloc(errno));
-            }
+                if (-1 == linted_server_close(inbox)) {
+                    LINTED_ERROR("Could not close inbox: %s",
+                                 linted_error_string_alloc(errno));
+                }
 
-            exec_task_from_connection(spawner, connection);
+                exec_task_from_connection(spawner, connection);
+            }
 
             case -1:{
                 struct reply_data reply = {.error_status = errno };
@@ -203,7 +251,9 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             }
         }
 
-    exit_fork_server:
+    exit_fork_server:;
+        int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+        assert(sigrestore_status != -1);
 
         if (-1 == linted_server_close(inbox)) {
             goto exit_with_error_and_close_spawner;
@@ -337,43 +387,16 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 static void on_sigchld(int signal_number)
 {
     int const old_errnum = errno;
-retry_wait:
-    switch (waitpid(-1, NULL, WNOHANG)) {
-    case -1:
-        switch (errno) {
-        case ECHILD:{
-            /* No more proceses to wait on */
-            char dummy = 0;
 
-            ssize_t write_status;
-            do {
-                write_status = write(echild_write, &dummy, sizeof dummy);
-            } while (-1 == write_status && EINTR == errno);
-            if (-1 == write_status) {
-                /* TOOO: Find a signal safe way of erroring out */
-                assert(false);
-            }
-            break;
-        }
+    char dummy = 0;
 
-        case EINTR:
-            /* Implausible but some weird system might do this */
-            goto retry_wait;
-
-        default:
-            /* TOOO: Find a signal safe way of erroring out */
-            assert(false);
-        }
-
-    case 0:
-        /* Have processes that aren't dead yet to wait on, don't exit
-         * yet.
-         */
-        break;
-
-    default:
-        /* Waited on a dead process. Wait for more. */
-        goto retry_wait;
+    ssize_t write_status;
+    do {
+        write_status = write(echild_write, &dummy, sizeof dummy);
+    } while (-1 == write_status && EINTR == errno);
+    if (-1 == write_status && errno != EAGAIN) {
+        /* TOOO: Find a signal safe way of erroring out */
+        assert(false);
     }
 
     /* Suppose, a system call fails and leaves an error in
