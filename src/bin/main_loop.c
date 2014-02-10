@@ -38,11 +38,9 @@ struct message_data {
 };
 
 static int main_loop_pair(linted_main_loop_t mqs[2]);
-static linted_simulator_t simulator_spawn(linted_spawner_t spawner,
-                                          linted_gui_t gui);
-static linted_simulator_loop_t simulator_loop_spawn(linted_spawner_t spawner,
-                                                    linted_simulator_t simulator);
 static int gui_run(linted_spawner_t spawner, int const inboxes[]);
+static int simulator_run(linted_spawner_t spawner, int const inboxes[]);
+static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner_t spawner)
 {
@@ -79,15 +77,42 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_simulator_t const simulator = simulator_spawn(spawner, gui_write);
-    if (-1 == simulator) {
+    linted_simulator_t simulator_mqs[2];
+    if (-1 == linted_simulator_pair(simulator_mqs)) {
+        LINTED_ERROR("Could not create simulator message queue: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_simulator_t const simulator_read = simulator_mqs[0];
+    linted_simulator_t const simulator_write = simulator_mqs[1];
+
+    if (-1 == linted_spawner_spawn(spawner, simulator_run,
+                                   (int[]) {simulator_read, gui_write, -1})) {
         LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
     }
 
-    linted_simulator_loop_t const simulator_loop = simulator_loop_spawn(spawner,
-                                                                        simulator);
-    if (-1 == simulator_loop) {
+    if (-1 == linted_simulator_close(simulator_read)) {
+        LINTED_ERROR("Could not close simulator read end: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_simulator_loop_t simulator_loop_mqs[2];
+    if (-1 == linted_simulator_loop_pair(simulator_loop_mqs)) {
+        LINTED_ERROR("Could not create simulator loop message queue: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_simulator_loop_t const simulator_loop_read = simulator_loop_mqs[0];
+    linted_simulator_loop_t const simulator_loop_write = simulator_loop_mqs[1];
+
+    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run,
+                                   (int[]) {simulator_loop_read, simulator_write, -1})) {
         LINTED_ERROR("Could not spawn simulator loop: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == linted_simulator_loop_close(simulator_loop_read)) {
+        LINTED_ERROR("Could not close simulator loop read end: %s",
+                     linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_spawner_close(spawner)) {
@@ -121,7 +146,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_simulator_loop_send_shutdown(simulator_loop);
+            shutdown_status = linted_simulator_loop_send_shutdown(simulator_loop_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
             LINTED_ERROR("Could not send shutdown message to simulator loop: %s",
@@ -132,7 +157,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_simulator_send_shutdown(simulator);
+            shutdown_status = linted_simulator_send_shutdown(simulator_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
             LINTED_ERROR("Could not send shutdown message to simulator: %s",
@@ -151,7 +176,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
         }
     }
 
-    if (-1 == linted_simulator_loop_close(simulator_loop)) {
+    if (-1 == linted_simulator_loop_close(simulator_loop_write)) {
         LINTED_ERROR("Could not close simulator loop handle: %s",
                      linted_error_string_alloc(errno));
     }
@@ -215,83 +240,6 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
     return EXIT_SUCCESS;
-}
-
-static linted_simulator_t simulator_spawn(linted_spawner_t const spawner,
-                                          linted_gui_t gui)
-{
-    linted_simulator_t sim_mqs[2];
-    if (-1 == linted_simulator_pair(sim_mqs)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                sim_mqs[0], gui, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(sim_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return sim_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
-}
-
-static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[]);
-
-
-static linted_simulator_loop_t simulator_loop_spawn(linted_spawner_t const spawner,
-                                                    linted_simulator_t simulator)
-{
-    linted_simulator_loop_t sim_mqs[2];
-    if (-1 == linted_simulator_loop_pair(sim_mqs)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, simulator_loop_run, (int[]) {
-                sim_mqs[0], simulator, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(sim_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return sim_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(sim_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
 }
 
 static int simulator_loop_run(linted_spawner_t const spawner, int const inboxes[])
