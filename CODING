@@ -1,0 +1,11 @@
+Copyright (C) 2014 Steven Stewart-Gallus
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+The following are the coding quality and style guidelines for Linted:
+
+Style (are arbitrary but should be consistent within a project):
+
+- Use %i instead of %d for format specifiers.

@@ -268,7 +268,7 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
                     }
 
                 default:
-                    LINTED_ERROR("Received unexpected request type: %d",
+                    LINTED_ERROR("Received unexpected request type: %i",
                                  message_data.type);
                 }
 

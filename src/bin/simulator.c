@@ -165,7 +165,7 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
             }
 
         default:
-            LINTED_ERROR("Received unexpected message type: %d",
+            LINTED_ERROR("Received unexpected message type: %i",
                          message_data.message_type);
         }
     }
