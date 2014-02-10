@@ -116,7 +116,7 @@ int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
             goto exit_main_loop;
 
         default:
-            LINTED_ERROR("Received unexpected message type: %d",
+            LINTED_ERROR("Received unexpected message type: %i",
                          message_data.message_type);
         }
     }

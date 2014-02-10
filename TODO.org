@@ -1,3 +1,9 @@
+Copyright (C) 2013, 2014 Steven Stewart-Gallus
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32

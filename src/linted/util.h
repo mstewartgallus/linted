@@ -23,7 +23,7 @@
 
 #define LINTED_ERROR(format_string, ...)                                \
     do {                                                                \
-        syslog(LOG_ERR, "Error in file %s, function %s, and line %d: " format_string, \
+        syslog(LOG_ERR, "Error in file %s, function %s, and line %i: " format_string, \
                __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
         exit(EXIT_FAILURE);                                             \
     } while (0)
