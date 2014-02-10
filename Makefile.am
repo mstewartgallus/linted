@@ -29,6 +29,7 @@ linted_SOURCES=\
   $(verified_sources)
 
 verified_sources=\
+  src/bin/move.c\
   src/bin/mq.c\
   src/bin/simulator_loop.c\
   src/bin/simulator.c\
@@ -49,6 +50,7 @@ EXTRA_DIST=\
   src/linted/fildes.h\
   src/linted/gui.h\
   src/linted/main_loop.h\
+  src/linted/move.h\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/server.h\
