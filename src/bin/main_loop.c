@@ -37,41 +37,49 @@ struct message_data {
     enum message_type type;
 };
 
+static int main_loop_pair(linted_main_loop_t mqs[2]);
 static linted_simulator_t simulator_spawn(linted_spawner_t spawner,
                                           linted_gui_t gui);
-
 static linted_simulator_loop_t simulator_loop_spawn(linted_spawner_t spawner,
                                                     linted_simulator_t simulator);
-static linted_gui_t gui_spawn(linted_spawner_t spawner, linted_main_loop_t main_loop);
+static int gui_run(linted_spawner_t spawner, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner_t spawner)
 {
-    struct mq_attr attr;
-    memset(&attr, 0, sizeof attr);
-
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct message_data);
-
-    mqd_t main_loop_mqs[2];
-    if (-1 == linted_mq_pair(main_loop_mqs, &attr, 0)) {
+    linted_main_loop_t main_loop_mqs[2];
+    if (-1 == main_loop_pair(main_loop_mqs)) {
         LINTED_ERROR("Could not create main loop message queue: %s",
                      linted_error_string_alloc(errno));
     }
 
-    linted_main_loop_t const main_loop = main_loop_mqs[1];
-    mqd_t const main_loop_read_end = main_loop_mqs[0];
+    linted_main_loop_t const main_loop_read = main_loop_mqs[0];
+    linted_main_loop_t const main_loop_write = main_loop_mqs[1];
 
-    linted_gui_t const gui = gui_spawn(spawner, main_loop);
-    if (-1 == gui) {
+    linted_gui_t gui_mqs[2];
+    if (-1 == linted_gui_pair(gui_mqs)) {
+         LINTED_ERROR("Could not create gui message queue: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_gui_t const gui_read = gui_mqs[0];
+    linted_gui_t const gui_write = gui_mqs[1];
+
+    if (-1 == linted_spawner_spawn(spawner, gui_run,
+                                   (int[]) { gui_read, main_loop_write, -1})) {
         LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_main_loop_close(main_loop)) {
+    if (-1 == linted_gui_close(gui_read)) {
+        LINTED_ERROR("Could not close gui read end: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    if (-1 == linted_main_loop_close(main_loop_write)) {
         LINTED_ERROR("Could not close main loop write end: %s",
                      linted_error_string_alloc(errno));
     }
 
-    linted_simulator_t const simulator = simulator_spawn(spawner, gui);
+    linted_simulator_t const simulator = simulator_spawn(spawner, gui_write);
     if (-1 == simulator) {
         LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
     }
@@ -92,7 +100,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
 
         ssize_t bytes_read;
         do {
-            bytes_read = mq_receive(main_loop_read_end,
+            bytes_read = mq_receive(main_loop_read,
                                     (char *)&message_data, sizeof message_data, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
@@ -135,7 +143,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_gui_send_shutdown(gui);
+            shutdown_status = linted_gui_send_shutdown(gui_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
             LINTED_ERROR("Could not send shutdown message to gui: %s",
@@ -148,11 +156,11 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_gui_close(gui)) {
+    if (-1 == linted_gui_close(gui_write)) {
         LINTED_ERROR("Could not close gui handle: %s", linted_error_string_alloc(errno));
     }
 
-    if (-1 == mq_close(main_loop_read_end)) {
+    if (-1 == mq_close(main_loop_read)) {
         LINTED_ERROR("Could not close main loop read end: %s",
                      linted_error_string_alloc(errno));
     }
@@ -173,6 +181,17 @@ int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
 int linted_main_loop_close(linted_main_loop_t const main_loop)
 {
     return mq_close(main_loop);
+}
+
+static int main_loop_pair(linted_main_loop_t mqs[2])
+{
+    struct mq_attr attr;
+    memset(&attr, 0, sizeof attr);
+
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof(struct message_data);
+
+    return linted_mq_pair(mqs, &attr, 0);
 }
 
 static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
@@ -319,41 +338,4 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
     return EXIT_SUCCESS;
-}
-
-static linted_gui_t gui_spawn(linted_spawner_t spawner,
-                              linted_main_loop_t main_loop)
-{
-    linted_gui_t gui_mqs[2];
-    if (-1 == linted_gui_pair(gui_mqs)) {
-        goto exit_with_error;
-    }
-
-    if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   gui_mqs[0], main_loop, -1})) {
-        goto exit_with_error_and_close_mqueues;
-    }
-
-    if (-1 == mq_close(gui_mqs[0])) {
-        goto exit_with_error_and_close_mqueue;
-    }
-
-    return gui_mqs[1];
-
- exit_with_error_and_close_mqueues:
-    {
-        int errnum = errno;
-        mq_close(gui_mqs[0]);
-        errno = errnum;
-    }
-
- exit_with_error_and_close_mqueue:
-    {
-        int errnum = errno;
-        mq_close(gui_mqs[1]);
-        errno = errnum;
-    }
-
- exit_with_error:
-    return -1;
 }
