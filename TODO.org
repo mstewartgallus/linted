@@ -1,11 +1,8 @@
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
-* Handle the error case in the signal handler in spawner.c
-I think the best way to handle this is to get rid of the potential for
-errors by using sigsetjmp to handle signals instead of the self pipe
-trick. One can jump out of a blocking signal call with a signal
-handler without any possibility of an error happening.
+* Cleanup and remove the control movement redudancies
+* Handle the circular depdendencies between simulator.h and gui.h
 * Avoid deadlock where process blocks on sending message to shutdown process
 * Have a better error handling scheme for processes
 I need to be able signal failure from one process to another.

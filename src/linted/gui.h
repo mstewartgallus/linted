@@ -29,10 +29,11 @@ typedef mqd_t linted_gui_t;
 
 int linted_gui_pair(linted_gui_t gui[2]);
 
-int linted_gui_run(linted_gui_t gui, linted_main_loop_t main_loop);
+int linted_gui_run(linted_gui_t gui, mqd_t simulator,
+                   linted_main_loop_t main_loop);
 
 int linted_gui_send_shutdown(linted_gui_t gui);
-int linted_gui_send_update(linted_gui_t gui, uint8_t x, uint8_t y);
+int linted_gui_send_update(linted_gui_t gui, int32_t x, int32_t y);
 
 int linted_gui_close(linted_gui_t gui);
 

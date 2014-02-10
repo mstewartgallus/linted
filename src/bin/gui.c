@@ -35,8 +35,8 @@ enum message_type {
 
 struct message_data {
     enum message_type type;
-    uint8_t x_position;
-    uint8_t y_position;
+    int32_t x_position;
+    int32_t y_position;
 };
 
 struct attribute_value_pair {
@@ -85,7 +85,7 @@ int linted_gui_send_shutdown(linted_gui_t const gui)
     return mq_send(gui, (char const *)&message_data, sizeof message_data, 0);
 }
 
-int linted_gui_send_update(linted_gui_t const gui, uint8_t const x, uint8_t const y)
+int linted_gui_send_update(linted_gui_t const gui, int32_t const x, int32_t const y)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
@@ -102,7 +102,8 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-int linted_gui_run(linted_gui_t gui, linted_main_loop_t main_loop)
+int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
+                   linted_main_loop_t main_loop)
 {
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         LINTED_ERROR("Could not initialize the GUI: %s", SDL_GetError());
@@ -176,6 +177,55 @@ int linted_gui_run(linted_gui_t gui, linted_main_loop_t main_loop)
                     }
                     break;
                 }
+
+            case SDLK_LEFT:{
+                    int request_status;
+                    do {
+                        request_status = linted_simulator_send_left(simulator);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        LINTED_ERROR("Could not send key left command to simulator: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    break;
+                }
+
+            case SDLK_RIGHT:{
+                    int request_status;
+                    do {
+                        request_status = linted_simulator_send_right(simulator);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        LINTED_ERROR("Could not send key right command to simulator: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    break;
+                }
+
+            case SDLK_UP:{
+                    int request_status;
+                    do {
+                        request_status = linted_simulator_send_up(simulator);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        LINTED_ERROR("Could not send key up command to simulator: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    break;
+                }
+
+            case SDLK_DOWN:{
+                    int request_status;
+                    do {
+                        request_status = linted_simulator_send_down(simulator);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        LINTED_ERROR("Could not send key down command to simulator: %s",
+                                     linted_error_string_alloc(errno));
+                    }
+                    break;
+                }
+
             default:
                 break;
             }

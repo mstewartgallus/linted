@@ -62,8 +62,19 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_gui_t const gui_read = gui_mqs[0];
     linted_gui_t const gui_write = gui_mqs[1];
 
+
+    linted_simulator_t simulator_mqs[2];
+    if (-1 == linted_simulator_pair(simulator_mqs)) {
+        LINTED_ERROR("Could not create simulator message queue: %s",
+                     linted_error_string_alloc(errno));
+    }
+
+    linted_simulator_t const simulator_read = simulator_mqs[0];
+    linted_simulator_t const simulator_write = simulator_mqs[1];
+
+
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   gui_read, main_loop_write, -1})) {
+                                   gui_read, simulator_write, main_loop_write, -1})) {
         LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
     }
 
@@ -76,16 +87,6 @@ int linted_main_loop_run(linted_spawner_t spawner)
         LINTED_ERROR("Could not close main loop write end: %s",
                      linted_error_string_alloc(errno));
     }
-
-    linted_simulator_t simulator_mqs[2];
-    if (-1 == linted_simulator_pair(simulator_mqs)) {
-        LINTED_ERROR("Could not create simulator message queue: %s",
-                     linted_error_string_alloc(errno));
-    }
-
-    linted_simulator_t const simulator_read = simulator_mqs[0];
-    linted_simulator_t const simulator_write = simulator_mqs[1];
-
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
                                    simulator_read, gui_write, -1})) {
         LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
@@ -275,14 +276,19 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
         LINTED_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
     }
 
-    int gui = inboxes[0];
-    int main_loop = inboxes[1];
-    if (-1 == linted_gui_run(gui, main_loop)) {
+    mqd_t gui = inboxes[0];
+    mqd_t simulator = inboxes[1];
+    mqd_t main_loop = inboxes[2];
+    if (-1 == linted_gui_run(gui, simulator, main_loop)) {
         LINTED_ERROR("Running the gui failed: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(gui)) {
         LINTED_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
+    }
+
+    if (-1 == mq_close(simulator)) {
+        LINTED_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(main_loop)) {

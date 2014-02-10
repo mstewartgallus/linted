@@ -22,11 +22,17 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 enum message_type {
     SIMULATOR_SHUTDOWN,
-    SIMULATOR_TICK
+    SIMULATOR_TICK,
+
+    SIMULATOR_LEFT,
+    SIMULATOR_RIGHT,
+    SIMULATOR_UP,
+    SIMULATOR_DOWN,
 };
 
 struct message_data {
@@ -44,13 +50,43 @@ int linted_simulator_pair(linted_simulator_t simulator[2])
     return linted_mq_pair(simulator, &attr, 0);
 }
 
-int linted_simulator_send_tick(linted_simulator_t const simulator)
+int linted_simulator_send_left(linted_simulator_t const simulator)
 {
     struct message_data message_data;
     memset(&message_data, 0, sizeof message_data);
+    message_data.message_type = SIMULATOR_LEFT;
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+}
 
+int linted_simulator_send_right(linted_simulator_t const simulator)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+    message_data.message_type = SIMULATOR_RIGHT;
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+}
+
+int linted_simulator_send_up(linted_simulator_t const simulator)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+    message_data.message_type = SIMULATOR_UP;
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+}
+
+int linted_simulator_send_down(linted_simulator_t const simulator)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
+    message_data.message_type = SIMULATOR_DOWN;
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+}
+
+int linted_simulator_send_tick(linted_simulator_t simulator)
+{
+    struct message_data message_data;
+    memset(&message_data, 0, sizeof message_data);
     message_data.message_type = SIMULATOR_TICK;
-
     return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
 }
 
@@ -71,8 +107,11 @@ int linted_simulator_close(linted_simulator_t const simulator)
 
 int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
 {
-    uint8_t x_position = 0;
-    uint8_t y_position = 0;
+    int32_t x_position = 0;
+    int32_t y_position = 0;
+
+    int32_t x_velocity = 0;
+    int32_t y_velocity = 0;
 
     for (;;) {
         struct message_data message_data;
@@ -90,11 +129,25 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
         case SIMULATOR_SHUTDOWN:
             goto exit_main_loop;
 
+        case SIMULATOR_LEFT:
+            --x_velocity;
+            break;
+
+        case SIMULATOR_RIGHT:
+            ++x_velocity;
+            break;
+
+        case SIMULATOR_UP:
+            ++y_velocity;
+            break;
+
+        case SIMULATOR_DOWN:
+            --y_velocity;
+            break;
+
         case SIMULATOR_TICK:{
-                x_position = x_position % 255 + 3;
-                y_position = y_position % 255 + 5;
-                //@ assert x_position ≤ 255;
-                //@ assert y_position ≤ 255;
+                x_position += x_velocity;
+                y_position += y_velocity;
 
                 int update_status;
                 do {
