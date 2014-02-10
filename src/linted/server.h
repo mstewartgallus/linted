@@ -26,5 +26,4 @@ typedef int linted_server_conn_t;
 linted_server_conn_t linted_server_connect(int local);
 int linted_server_conn_close(linted_server_conn_t local);
 
-
 #endif                          /* LINTED_SERVER_H */

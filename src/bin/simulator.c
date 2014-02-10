@@ -91,20 +91,20 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
             goto exit_main_loop;
 
         case SIMULATOR_TICK:{
-            x_position = x_position % 255 + 3;
-            y_position = y_position % 255 + 5;
-            //@ assert x_position ≤ 255;
-            //@ assert y_position ≤ 255;
+                x_position = x_position % 255 + 3;
+                y_position = y_position % 255 + 5;
+                //@ assert x_position ≤ 255;
+                //@ assert y_position ≤ 255;
 
-            int update_status;
-            do {
-                update_status = linted_gui_send_update(gui, x_position, y_position);
-            } while (-1 == update_status && EINTR == errno);
-            if (-1 == update_status) {
-                return -1;
+                int update_status;
+                do {
+                    update_status = linted_gui_send_update(gui, x_position, y_position);
+                } while (-1 == update_status && EINTR == errno);
+                if (-1 == update_status) {
+                    return -1;
+                }
+                break;
             }
-            break;
-        }
 
         default:
             LINTED_ERROR("Received unexpected message type: %d",
@@ -112,6 +112,6 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
         }
     }
 
-exit_main_loop:
+ exit_main_loop:
     return 0;
 }

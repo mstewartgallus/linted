@@ -69,7 +69,7 @@ int linted_simulator_loop_close(linted_simulator_loop_t const simulator_loop)
 int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
                               linted_simulator_t const simulator)
 {
-    struct timer_data timer_data = { .simulator = simulator };
+    struct timer_data timer_data = {.simulator = simulator };
 
     timer_t timer;
     {
@@ -123,15 +123,13 @@ int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
         }
     }
 
-exit_main_loop:
+ exit_main_loop:
     if (-1 == timer_delete(timer)) {
-        LINTED_ERROR("Could not delete timer: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_ERROR("Could not delete timer: %s", linted_error_string_alloc(errno));
     }
 
     return 0;
 }
-
 
 static void on_clock_tick(union sigval sigev_value)
 {

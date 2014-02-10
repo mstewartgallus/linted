@@ -83,8 +83,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     switch (fork()) {
     case 0:
         if (-1 == linted_server_close(inbox)) {
-            LINTED_ERROR("Could not close inbox: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
         }
 
         exec_task(main_loop, spawner, fildes);
@@ -106,7 +105,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
     /* We received a SIGCHLD */
     /* Alternatively, we are doing this once at the start */
-retry_wait:
+ retry_wait:
     switch (waitpid(-1, NULL, WNOHANG)) {
     case -1:
         switch (errno) {
@@ -147,29 +146,29 @@ retry_wait:
          */
         switch (fork()) {
         case 0:
-        {
-            int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
-            assert(sigrestore_status != -1);
+            {
+                int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+                assert(sigrestore_status != -1);
 
-            if (-1 == linted_server_close(inbox)) {
-                LINTED_ERROR("Could not close inbox: %s",
-                             linted_error_string_alloc(errno));
+                if (-1 == linted_server_close(inbox)) {
+                    LINTED_ERROR("Could not close inbox: %s",
+                                 linted_error_string_alloc(errno));
+                }
+
+                exec_task_from_connection(spawner, connection);
             }
-
-            exec_task_from_connection(spawner, connection);
-        }
 
         case -1:{
-            struct reply_data reply = {.error_status = errno };
+                struct reply_data reply = {.error_status = errno };
 
-            int write_status;
-            do {
-                write_status = write(connection, &reply, sizeof reply);
-            } while (-1 == write_status && EINTR == errno);
-            if (-1 == write_status) {
-                goto exit_with_error_and_close_sockets;
+                int write_status;
+                do {
+                    write_status = write(connection, &reply, sizeof reply);
+                } while (-1 == write_status && EINTR == errno);
+                if (-1 == write_status) {
+                    goto exit_with_error_and_close_sockets;
+                }
             }
-        }
         }
 
         if (-1 == linted_server_conn_close(connection)) {
@@ -177,7 +176,7 @@ retry_wait:
         }
     }
 
-exit_fork_server:
+ exit_fork_server:
     {
         int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
         assert(sigrestore_status != -1);
@@ -287,7 +286,6 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
  exit_with_error:
     return -1;
 }
-
 
 static void on_sigchld(int signal_number)
 {
