@@ -72,7 +72,7 @@ static int echild_write;
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
     int echild_fds[2];
-    /* TODO: Close pipes */
+
     if (-1 == pipe(echild_fds)) {
         return -1;
     }
@@ -336,6 +336,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
 static void on_sigchld(int signal_number)
 {
+    int const old_errnum = errno;
 retry_wait:
     switch (waitpid(-1, NULL, WNOHANG)) {
     case -1:
@@ -374,6 +375,13 @@ retry_wait:
         /* Waited on a dead process. Wait for more. */
         goto retry_wait;
     }
+
+    /* Suppose, a system call fails and leaves an error in
+     * errno. Suppose this signal handler is run before the value in
+     * errno is checked. Then this signal handler could clobber the
+     * old value of errno. So restore the old value of it here.
+     */
+    errno = old_errnum;
 }
 
 static void exec_task_from_connection(linted_spawner_t const spawner,
