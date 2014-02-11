@@ -53,10 +53,8 @@ int main(int argc, char **argv)
 #ifdef HAVE_UID_T
     uid_t const euid = geteuid();
     if (0 == euid) {
-        fputs("Bad administrator!\n", stderr);
-        fputs
-            ("It is a violation of proper security policy to run a game as root!\n",
-             stderr);
+        fputs("Bad administrator!\n"
+              "It is insecure to run a game as root!\n", stderr);
         return EXIT_FAILURE;
     }
 #endif                          /* HAVE_UID_T */
@@ -69,62 +67,64 @@ int main(int argc, char **argv)
             , LOG_USER          /* This is a game and is a user program */
         );
 
-    /* Right after, we fork off from a known good state. */
-    int exit_status = EXIT_SUCCESS;
+    int command_status = -1;
     switch (argc) {
     case 1:
+        /* Fork off tasks from a knonw good state */
         if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {-1})) {
             char const *const error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "Could not run spawner: %s", error_string);
             linted_error_string_free(error_string);
+            break;
         }
+        command_status = 0;
         break;
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
             fputs(USAGE_TEXT, stdout);
-            break;
+            command_status = 0;
         } else if (0 == strcmp(argv[1], "--version")) {
             fputs(VERSION_TEXT, stdout);
-            break;
+            command_status = 0;
+        } else {
+            fprintf(stderr,
+                    PACKAGE_TARNAME " did not understand the command line input\n"
+                    USAGE_TEXT);
         }
-        /* Fallthrough */
+        break;
 
     default:
         fprintf(stderr,
                 PACKAGE_TARNAME " did not understand the command line input\n"
                 USAGE_TEXT);
-        exit_status = EXIT_FAILURE;
         break;
     }
 
-    int files_status = 0;
     if (EOF == fclose(stdin)) {
-        files_status = -1;
+        command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard input: %s", error_string);
         linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stdout)) {
-        files_status = -1;
+        command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard output: %s", error_string);
         linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stderr)) {
-        files_status = -1;
+        command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
     }
 
-    if (-1 == files_status && EXIT_SUCCESS == exit_status) {
-        return EXIT_FAILURE;
-    }
+    closelog();
 
-    return exit_status;
+    return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 static int main_loop_wrapper(linted_spawner_t spawner, int const fds[])
