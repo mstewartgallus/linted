@@ -72,6 +72,8 @@ static jmp_buf sigchld_jump_buffer;
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
+    int exit_status = -1;
+
     linted_server_t sockets[2];
     if (-1 == linted_server(sockets)) {
         return -1;
@@ -89,7 +91,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         exec_task(main_loop, spawner, fildes);
 
     case -1:
-        goto exit_with_error_and_close_sockets;
+        goto close_sockets;
     }
 
     struct sigaction old_action;
@@ -117,7 +119,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             goto retry_wait;
 
         default:
-            goto exit_with_error_and_close_sockets;
+            goto restore_sigstatus;
         }
 
     case 0:
@@ -132,13 +134,14 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     for (;;) {
+        int connection_status = -1;
         linted_server_conn_t connection;
         ssize_t bytes_read;
         do {
             bytes_read = linted_fildes_recv(&connection, inbox);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            goto exit_with_error_and_close_sockets;
+            goto restore_sigstatus;
         }
 
         /* Luckily, because we already must fork for a fork server we
@@ -166,48 +169,75 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
                     write_status = write(connection, &reply, sizeof reply);
                 } while (-1 == write_status && EINTR == errno);
                 if (-1 == write_status) {
-                    goto exit_with_error_and_close_sockets;
+                    goto close_connection;
                 }
             }
         }
 
-        if (-1 == linted_server_conn_close(connection)) {
-            goto exit_with_error_and_close_sockets;
+        connection_status = 0;
+
+     close_connection:
+        {
+            int errnum = errno;
+
+            int close_status = linted_server_conn_close(connection);
+            if (-1 == connection_status) {
+                errno = errnum;
+            }
+
+            if (-1 == close_status) {
+                connection_status = -1;
+            }
+
+            if (-1 == connection_status) {
+                goto restore_sigstatus;
+            }
         }
     }
 
  exit_fork_server:
+    exit_status = 0;
+
+ restore_sigstatus:
     {
+        int errnum = errno;
+
         int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
         assert(sigrestore_status != -1);
+
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
     }
 
-    if (-1 == linted_server_close(inbox)) {
-        goto exit_with_error_and_close_spawner;
-    }
-
-    if (-1 == linted_spawner_close(spawner)) {
-        goto exit_with_error;
-    }
-
-    return 0;
-
- exit_with_error_and_close_sockets:
+ close_sockets:
     {
         int errnum = errno;
-        linted_server_close(inbox);
-        errno = errnum;
+
+        int const close_status = linted_server_close(inbox);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
- exit_with_error_and_close_spawner:
     {
         int errnum = errno;
-        linted_spawner_close(spawner);
-        errno = errnum;
+
+        int close_status = linted_spawner_close(spawner);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
- exit_with_error:
-    return -1;
+    return exit_status;
 }
 
 int linted_spawner_close(linted_spawner_t spawner)
@@ -218,6 +248,8 @@ int linted_spawner_close(linted_spawner_t spawner)
 int linted_spawner_spawn(linted_spawner_t const spawner,
                          linted_spawner_task_t const func, int const fildes_to_send[])
 {
+    int spawn_status = -1;
+
     size_t fildes_count = 0;
     for (; fildes_to_send[fildes_count] != -1; ++fildes_count) {
         /* Do nothing */
@@ -225,7 +257,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
     int const connection = linted_server_connect(spawner);
     if (-1 == connection) {
-        goto exit_with_error;
+        goto cleanup_nothing;
     }
 
     {
@@ -239,7 +271,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             bytes_sent = send(connection, &request_header, sizeof request_header, 0);
         } while (-1 == bytes_sent && EINTR == errno);
         if (-1 == bytes_sent) {
-            goto exit_with_error_and_close_connection;
+            goto cleanup_connection;
         }
     }
 
@@ -249,7 +281,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             send_status = linted_fildes_send(connection, fildes_to_send[ii]);
         } while (-1 == send_status && EINTR == errno);
         if (-1 == send_status) {
-            goto exit_with_error_and_close_connection;
+            goto cleanup_connection;
         }
     }
 
@@ -260,31 +292,35 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             bytes_read = read(connection, &reply_data, sizeof reply_data);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            goto exit_with_error_and_close_connection;
+            goto cleanup_connection;
         }
 
         int const reply_error_status = reply_data.error_status;
         if (reply_error_status != 0) {
             errno = reply_error_status;
-            goto exit_with_error_and_close_connection;
+            goto cleanup_connection;
         }
     }
 
-    if (-1 == linted_server_conn_close(connection)) {
-        goto exit_with_error;
-    }
+    spawn_status = 0;
 
-    return 0;
-
- exit_with_error_and_close_connection:
+ cleanup_connection:
     {
         int errnum = errno;
-        linted_server_conn_close(connection);
-        errno = errnum;
+
+        int close_status = linted_server_conn_close(connection);
+
+        if (-1 == spawn_status) {
+            errno = errnum;
+        }
+
+        if (-1 == close_status) {
+            spawn_status = -1;
+        }
     }
 
- exit_with_error:
-    return -1;
+ cleanup_nothing:
+    return spawn_status;
 }
 
 static void on_sigchld(int signal_number)
