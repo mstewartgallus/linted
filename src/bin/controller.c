@@ -70,3 +70,9 @@ int linted_controller_close(linted_controller_t const controller)
 {
     return mq_close(controller);
 }
+
+int linted_controller_receive(linted_controller_t queue,
+                              struct linted_controller_message * message)
+{
+    return mq_receive(queue, (char *) message, sizeof *message, NULL);
+}

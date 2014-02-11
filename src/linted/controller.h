@@ -55,4 +55,7 @@ int linted_controller_send_shutdown(linted_controller_t controller);
 
 int linted_controller_close(linted_controller_t controller);
 
+int linted_controller_receive(linted_controller_t queue,
+                              struct linted_controller_message * message);
+
 #endif                          /* LINTED_CONTROLLER_H */

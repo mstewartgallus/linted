@@ -44,12 +44,11 @@ int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui
     for (;;) {
         struct linted_controller_message message_data;
 
-        ssize_t bytes_read;
+        int read_status;
         do {
-            bytes_read = mq_receive(inbox,
-                                    (char *)&message_data, sizeof message_data, NULL);
-        } while (-1 == bytes_read && EINTR == errno);
-        if (-1 == bytes_read) {
+            read_status = linted_controller_receive(inbox, &message_data);
+        } while (-1 == read_status && EINTR == errno);
+        if (-1 == read_status) {
             return -1;
         }
 
