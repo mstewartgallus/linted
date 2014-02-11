@@ -25,8 +25,11 @@
  * @param mqd Returns two message queue descriptors. mqd[0] refers to
  *            the read end. mqd[1] refers to the write end.
  *
- * @param oflag Can be O_NONBLOCK to open the queue in nonblocking
- *              mode.
+ * @param oflaga Can be O_NONBLOCK to open the read end in nonblocking
+ *               mode.
+ *
+ * @param oflagb Can be O_NONBLOCK to open the write end in
+ *               nonblocking mode.
  *
  * @returns Zero on success. -1 on error, and errno is set
  *          appropriately.
@@ -41,6 +44,6 @@
  *
  * @error ENOSPC Insufficient space.
  */
-int linted_mq_pair(mqd_t mqs[], struct mq_attr *attr, int oflag);
+int linted_mq_pair(mqd_t mqs[], struct mq_attr *attr, int oflaga, int oflagb);
 
 #endif                          /* LINTED_MQ_H */

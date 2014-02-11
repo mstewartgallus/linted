@@ -44,7 +44,10 @@ struct linted_controller_message {
     bool moving;
 };
 
-int linted_controller_pair(linted_controller_t controller[2]);
+int linted_controller_pair(linted_controller_t controller[2],
+                           int readflags,
+                           int writeflags);
+int linted_controller_close(linted_controller_t controller);
 
 int linted_controller_send_movement(linted_controller_t controller,
                                    enum linted_controller_direction direction,
@@ -53,9 +56,10 @@ int linted_controller_send_movement(linted_controller_t controller,
 int linted_controller_send_tick(linted_controller_t controller);
 int linted_controller_send_shutdown(linted_controller_t controller);
 
-int linted_controller_close(linted_controller_t controller);
+int linted_controller_notify(linted_controller_t controller,
+                             struct sigevent const * sevp);
 
-int linted_controller_receive(linted_controller_t queue,
+int linted_controller_receive(linted_controller_t controller,
                               struct linted_controller_message * message);
 
 #endif                          /* LINTED_CONTROLLER_H */

@@ -76,7 +76,7 @@ int linted_gui_pair(linted_gui_t gui[2])
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    return linted_mq_pair(gui, &attr, 0);
+    return linted_mq_pair(gui, &attr, 0, 0);
 }
 
 int linted_gui_send_shutdown(linted_gui_t const gui)
@@ -310,7 +310,9 @@ static void on_key_movement(linted_controller_t controller,
                                                         moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
-        LINTED_ERROR("Could not send movement command to controller: %s",
-                     linted_error_string_alloc(errno));
+        if (errno != EAGAIN) {
+            LINTED_ERROR("Could not send movement command to controller: %s",
+                         linted_error_string_alloc(errno));
+        }
     }
 }

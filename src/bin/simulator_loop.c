@@ -48,7 +48,7 @@ int linted_simulator_loop_pair(linted_simulator_loop_t simulator_loop[2])
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    return linted_mq_pair(simulator_loop, &attr, 0);
+    return linted_mq_pair(simulator_loop, &attr, 0, 0);
 }
 
 int linted_simulator_loop_send_shutdown(linted_simulator_loop_t const simulator_loop)
@@ -139,7 +139,10 @@ static void on_clock_tick(union sigval sigev_value)
         tick_status = linted_controller_send_tick(simulator);
     } while (-1 == tick_status && EINTR == errno);
     if (-1 == tick_status) {
-        LINTED_ERROR("Could not send simulator tick: %s",
-                     linted_error_string_alloc(errno));
+        /* TODO: HACK! */
+        if (errno != EAGAIN) {
+            LINTED_ERROR("Could not send simulator tick: %s",
+                         linted_error_string_alloc(errno));
+        }
     }
 }

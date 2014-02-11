@@ -37,7 +37,7 @@ int linted_move_queue_pair(linted_move_queue_t move[2])
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    return linted_mq_pair(move, &attr, 0);
+    return linted_mq_pair(move, &attr, 0, 0);
 }
 
 int linted_move_queue_send(linted_move_queue_t move,

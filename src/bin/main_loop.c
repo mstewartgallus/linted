@@ -58,7 +58,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     }
 
     linted_controller_t simulator_mqs[2];
-    if (-1 == linted_controller_pair(simulator_mqs)) {
+    if (-1 == linted_controller_pair(simulator_mqs, O_NONBLOCK, O_NONBLOCK)) {
         LINTED_ERROR("Could not create simulator message queue: %s",
                      linted_error_string_alloc(errno));
     }
@@ -217,7 +217,7 @@ static int main_loop_pair(linted_main_loop_t mqs[2])
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct message_data);
 
-    return linted_mq_pair(mqs, &attr, 0);
+    return linted_mq_pair(mqs, &attr, 0, 0);
 }
 
 static int simulator_run(linted_spawner_t const spawner, int const inboxes[])

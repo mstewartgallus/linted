@@ -25,7 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-int linted_controller_pair(linted_controller_t controller[2])
+int linted_controller_pair(linted_controller_t controller[2],
+                           int readflags,
+                           int writeflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -33,7 +35,7 @@ int linted_controller_pair(linted_controller_t controller[2])
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(struct linted_controller_message);
 
-    return linted_mq_pair(controller, &attr, 0);
+    return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
 int linted_controller_send_movement(linted_controller_t controller,
@@ -75,4 +77,11 @@ int linted_controller_receive(linted_controller_t queue,
                               struct linted_controller_message * message)
 {
     return mq_receive(queue, (char *) message, sizeof *message, NULL);
+}
+
+
+int linted_controller_notify(linted_controller_t controller,
+                             struct sigevent const * sevp)
+{
+    return mq_notify(controller, sevp);
 }
