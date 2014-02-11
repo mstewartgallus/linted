@@ -15,8 +15,6 @@
  */
 #include "config.h"
 
-#include "linted/gui.h"
-#include "linted/mq.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
@@ -25,70 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum message_type {
-    SIMULATOR_SHUTDOWN,
-    SIMULATOR_TICK,
-
-    SIMULATOR_MOVEMENT
-};
-
-struct message_data {
-    enum message_type message_type;
-    enum linted_simulator_direction direction;
-    bool moving;
-};
-
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #define SIGN(x) ((x) < 0 ? 1 : (0 == x) ? 0 : -1)
 
-int linted_simulator_pair(linted_simulator_t simulator[2])
-{
-    struct mq_attr attr;
-    memset(&attr, 0, sizeof attr);
-
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct message_data);
-
-    return linted_mq_pair(simulator, &attr, 0);
-}
-
-int linted_simulator_send_movement(linted_simulator_t simulator,
-                                   enum linted_simulator_direction direction,
-                                   bool moving)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-
-    message_data.message_type = SIMULATOR_MOVEMENT;
-    message_data.direction = direction;
-    message_data.moving = moving;
-
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
-
-int linted_simulator_send_tick(linted_simulator_t simulator)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_TICK;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
-
-int linted_simulator_send_shutdown(linted_simulator_t const simulator)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.message_type = SIMULATOR_SHUTDOWN;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
-}
-
-int linted_simulator_close(linted_simulator_t const simulator)
-{
-    return mq_close(simulator);
-}
-
-int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
+int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui)
 {
     int32_t x_left = 0;
     int32_t x_right = 0;
@@ -103,7 +42,7 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
     int32_t y_velocity = 0;
 
     for (;;) {
-        struct message_data message_data;
+        struct linted_controller_message message_data;
 
         ssize_t bytes_read;
         do {
@@ -114,31 +53,31 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
             return -1;
         }
 
-        switch (message_data.message_type) {
-        case SIMULATOR_SHUTDOWN:
+        switch (message_data.type) {
+        case LINTED_CONTROLLER_SHUTDOWN:
             goto exit_main_loop;
 
-        case SIMULATOR_MOVEMENT:
+        case LINTED_CONTROLLER_MOVEMENT:
             switch (message_data.direction) {
-            case LINTED_SIMULATOR_LEFT:
+            case LINTED_CONTROLLER_LEFT:
                 x_left = message_data.moving;
                 break;
 
-            case LINTED_SIMULATOR_RIGHT:
+            case LINTED_CONTROLLER_RIGHT:
                 x_right = message_data.moving;
                 break;
 
-            case LINTED_SIMULATOR_UP:
+            case LINTED_CONTROLLER_UP:
                 y_up = message_data.moving;
                 break;
 
-            case LINTED_SIMULATOR_DOWN:
+            case LINTED_CONTROLLER_DOWN:
                 y_down = message_data.moving;
                 break;
             }
             break;
 
-        case SIMULATOR_TICK:{
+        case LINTED_CONTROLLER_TICK:{
                 int32_t x_thrust = 2 * (x_right - x_left);
                 int32_t y_thrust = 2 * (y_up - y_down);
 
@@ -166,7 +105,7 @@ int linted_simulator_run(linted_simulator_t const inbox, linted_gui_t const gui)
 
         default:
             LINTED_ERROR("Received unexpected message type: %i",
-                         message_data.message_type);
+                         message_data.type);
         }
     }
 

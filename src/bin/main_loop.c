@@ -19,6 +19,7 @@
 #include "linted/main_loop.h"
 #include "linted/mq.h"
 #include "linted/sandbox.h"
+#include "linted/simulator.h"
 #include "linted/simulator_loop.h"
 #include "linted/spawner.h"
 #include "linted/util.h"
@@ -56,8 +57,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_simulator_t simulator_mqs[2];
-    if (-1 == linted_simulator_pair(simulator_mqs)) {
+    linted_controller_t simulator_mqs[2];
+    if (-1 == linted_controller_pair(simulator_mqs)) {
         LINTED_ERROR("Could not create simulator message queue: %s",
                      linted_error_string_alloc(errno));
     }
@@ -74,8 +75,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_gui_t const gui_read = gui_mqs[0];
     linted_gui_t const gui_write = gui_mqs[1];
 
-    linted_simulator_t const simulator_read = simulator_mqs[0];
-    linted_simulator_t const simulator_write = simulator_mqs[1];
+    linted_controller_t const simulator_read = simulator_mqs[0];
+    linted_controller_t const simulator_write = simulator_mqs[1];
 
     linted_simulator_loop_t const simulator_loop_read = simulator_loop_mqs[0];
     linted_simulator_loop_t const simulator_loop_write = simulator_loop_mqs[1];
@@ -105,7 +106,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_simulator_close(simulator_read)) {
+    if (-1 == linted_controller_close(simulator_read)) {
         LINTED_ERROR("Could not close simulator read end: %s",
                      linted_error_string_alloc(errno));
     }
@@ -157,7 +158,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_simulator_send_shutdown(simulator_write);
+            shutdown_status = linted_controller_send_shutdown(simulator_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
             LINTED_ERROR("Could not send shutdown message to simulator: %s",

@@ -19,6 +19,7 @@ ACLOCAL_AMFLAGS=-I m4
 bin_PROGRAMS=linted
 
 linted_SOURCES=\
+  src/bin/controller.c\
   src/bin/fildes.c\
   src/bin/gui.c\
   src/bin/linted.c\
@@ -47,6 +48,7 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
 
 EXTRA_DIST=\
+  src/bin/controller.h\
   src/linted/fildes.h\
   src/linted/gui.h\
   src/linted/main_loop.h\

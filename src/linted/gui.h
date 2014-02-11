@@ -16,6 +16,7 @@
 #ifndef LINTED_GUI_H
 #define LINTED_GUI_H
 
+#include "linted/controller.h"
 #include "linted/main_loop.h"
 #include "linted/spawner.h"
 
@@ -29,7 +30,7 @@ typedef mqd_t linted_gui_t;
 
 int linted_gui_pair(linted_gui_t gui[2]);
 
-int linted_gui_run(linted_gui_t gui, mqd_t simulator,
+int linted_gui_run(linted_gui_t gui, linted_controller_t controller,
                    linted_main_loop_t main_loop);
 
 int linted_gui_send_shutdown(linted_gui_t gui);

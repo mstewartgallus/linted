@@ -35,7 +35,7 @@ struct message_data {
 };
 
 struct timer_data {
-    linted_simulator_t simulator;
+    linted_controller_t simulator;
 };
 
 static void on_clock_tick(union sigval sigev_value);
@@ -65,7 +65,7 @@ int linted_simulator_loop_close(linted_simulator_loop_t const simulator_loop)
 }
 
 int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
-                              linted_simulator_t const simulator)
+                              linted_controller_t const simulator)
 {
     struct timer_data timer_data = {.simulator = simulator };
 
@@ -132,11 +132,11 @@ int linted_simulator_loop_run(linted_simulator_loop_t const simulator_loop,
 static void on_clock_tick(union sigval sigev_value)
 {
     struct timer_data *const timer_data = sigev_value.sival_ptr;
-    linted_simulator_t const simulator = timer_data->simulator;
+    linted_controller_t const simulator = timer_data->simulator;
 
     int tick_status;
     do {
-        tick_status = linted_simulator_send_tick(simulator);
+        tick_status = linted_controller_send_tick(simulator);
     } while (-1 == tick_status && EINTR == errno);
     if (-1 == tick_status) {
         LINTED_ERROR("Could not send simulator tick: %s",

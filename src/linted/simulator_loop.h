@@ -16,8 +16,8 @@
 #ifndef LINTED_SIMULATOR_LOOP_H
 #define LINTED_SIMULATOR_LOOP_H
 
+#include "linted/controller.h"
 #include "linted/gui.h"
-#include "linted/simulator.h"
 #include "linted/spawner.h"
 
 #include <mqueue.h>
@@ -30,7 +30,7 @@ typedef mqd_t linted_simulator_loop_t;
 int linted_simulator_loop_pair(linted_simulator_loop_t simulator_loop[2]);
 
 int linted_simulator_loop_run(linted_simulator_loop_t simulator_loop,
-                              linted_simulator_t simulator);
+                              linted_controller_t simulator);
 
 int linted_simulator_loop_send_shutdown(linted_simulator_loop_t simulator_loop);
 

@@ -16,35 +16,9 @@
 #ifndef LINTED_SIMULATOR_H
 #define LINTED_SIMULATOR_H
 
+#include "linted/controller.h"
 #include "linted/gui.h"
-#include "linted/spawner.h"
 
-#include <mqueue.h>
-#include <stdbool.h>
-
-/**
- * A handle to access the simulator. Is safe to share between processes.
- */
-typedef mqd_t linted_simulator_t;
-
-enum linted_simulator_direction {
-    LINTED_SIMULATOR_UP,
-    LINTED_SIMULATOR_DOWN,
-    LINTED_SIMULATOR_LEFT,
-    LINTED_SIMULATOR_RIGHT
-};
-
-int linted_simulator_pair(linted_simulator_t simulator[2]);
-
-int linted_simulator_run(linted_simulator_t inbox, linted_gui_t gui);
-
-int linted_simulator_send_movement(linted_simulator_t simulator,
-                                   enum linted_simulator_direction direction,
-                                   bool moving);
-
-int linted_simulator_send_tick(linted_simulator_t simulator);
-int linted_simulator_send_shutdown(linted_simulator_t simulator);
-
-int linted_simulator_close(linted_simulator_t simulator);
+int linted_simulator_run(linted_controller_t inbox, linted_gui_t gui);
 
 #endif                          /* LINTED_SIMULATOR_H */

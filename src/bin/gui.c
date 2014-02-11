@@ -64,8 +64,8 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static void on_key_movement(linted_simulator_t simulator,
-                            enum linted_simulator_direction direction,
+static void on_key_movement(linted_controller_t controller,
+                            enum linted_controller_direction direction,
                             bool moving);
 
 int linted_gui_pair(linted_gui_t gui[2])
@@ -106,7 +106,7 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
+int linted_gui_run(linted_gui_t gui, linted_controller_t controller,
                    linted_main_loop_t main_loop)
 {
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
@@ -183,19 +183,19 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
                 }
 
             case SDLK_LEFT:
-                on_key_movement(simulator, LINTED_SIMULATOR_LEFT, true);
+                on_key_movement(controller, LINTED_CONTROLLER_LEFT, true);
                 break;
 
             case SDLK_RIGHT:
-                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT, true);
+                on_key_movement(controller, LINTED_CONTROLLER_RIGHT, true);
                 break;
 
             case SDLK_UP:
-                on_key_movement(simulator, LINTED_SIMULATOR_UP, true);
+                on_key_movement(controller, LINTED_CONTROLLER_UP, true);
                 break;
 
             case SDLK_DOWN:
-                on_key_movement(simulator, LINTED_SIMULATOR_DOWN, true);
+                on_key_movement(controller, LINTED_CONTROLLER_DOWN, true);
                 break;
 
             default: break;
@@ -205,19 +205,19 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
         case SDL_KEYUP:
             switch (sdl_event.key.keysym.sym) {
             case SDLK_LEFT:
-                on_key_movement(simulator, LINTED_SIMULATOR_LEFT, false);
+                on_key_movement(controller, LINTED_CONTROLLER_LEFT, false);
                 break;
 
             case SDLK_RIGHT:
-                on_key_movement(simulator, LINTED_SIMULATOR_RIGHT, false);
+                on_key_movement(controller, LINTED_CONTROLLER_RIGHT, false);
                 break;
 
             case SDLK_UP:
-                on_key_movement(simulator, LINTED_SIMULATOR_UP, false);
+                on_key_movement(controller, LINTED_CONTROLLER_UP, false);
                 break;
 
             case SDLK_DOWN:
-                on_key_movement(simulator, LINTED_SIMULATOR_DOWN, false);
+                on_key_movement(controller, LINTED_CONTROLLER_DOWN, false);
                 break;
 
             default: break;
@@ -300,17 +300,17 @@ int linted_gui_run(linted_gui_t gui, linted_simulator_t simulator,
     return 0;
 }
 
-static void on_key_movement(linted_simulator_t simulator,
-                            enum linted_simulator_direction direction,
+static void on_key_movement(linted_controller_t controller,
+                            enum linted_controller_direction direction,
                             bool moving)
 {
     int request_status;
     do {
-        request_status = linted_simulator_send_movement(simulator, direction,
+        request_status = linted_controller_send_movement(controller, direction,
                                                         moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
-        LINTED_ERROR("Could not send movement command to simulator: %s",
+        LINTED_ERROR("Could not send movement command to controller: %s",
                      linted_error_string_alloc(errno));
     }
 }
