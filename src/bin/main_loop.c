@@ -138,7 +138,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
             goto exit_main_loop;
 
         default:
-            LINTED_ERROR("Received unexpected message type: %0", message_data.type);
+            LINTED_ERROR("Received unexpected message type: %d", message_data.type);
         }
     }
 

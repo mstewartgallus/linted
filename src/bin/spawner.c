@@ -45,7 +45,7 @@
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
  *
- * TODO: Don't wait on all processes but only on one's spawned by the
+ * TODO: Don't wait on all processes but only on ones spawned by the
  * fork server.
  *
  * TODO: Don't modify the global SIGCHLD signal handler.
