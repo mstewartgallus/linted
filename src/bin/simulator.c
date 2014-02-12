@@ -49,7 +49,14 @@ struct controller_notify_data {
     linted_controller_t controller;
 };
 
+struct shutdowner_notify_data {
+    simulator_t simulator;
+    linted_shutdowner_t shutdowner;
+};
+
 static void on_controller_notification(union sigval sigval);
+
+static void on_shutdowner_notification(union sigval sigval);
 
 static int simulator_pair(simulator_t simulator[2]);
 static int simulator_close(simulator_t const simulator);
@@ -63,7 +70,9 @@ static int simulator_send_shutdown(simulator_t const simulator);
 static int simulator_receive(simulator_t queue,
                              struct simulator_message * message);
 
-int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui)
+int linted_simulator_run(linted_controller_t const controller,
+                         linted_shutdowner_t const shutdowner,
+                         linted_gui_t const gui)
 {
     int exit_status = -1;
 
@@ -88,15 +97,26 @@ int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui
     int simulator_write = simulator_mqs[1];
 
     struct controller_notify_data controller_notify_data = {
-        .controller = inbox,
+        .controller = controller,
         .simulator = simulator_write
     };
 
-    /* Start the process off on already queued messages */
+    struct shutdowner_notify_data shutdowner_notify_data = {
+        .shutdowner = shutdowner,
+        .simulator = simulator_write
+    };
+
+    /* Start the processes off on already queued messages */
     {
         union sigval sigvalue;
         sigvalue.sival_ptr = &controller_notify_data;
         on_controller_notification(sigvalue);
+    }
+
+    {
+        union sigval sigvalue;
+        sigvalue.sival_ptr = &shutdowner_notify_data;
+        on_shutdowner_notification(sigvalue);
     }
 
     for (;;) {
@@ -172,7 +192,18 @@ int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui
  restore_notify:
     {
         int errnum = errno;
-        int notify_status = linted_controller_notify(inbox, NULL);
+        int notify_status = linted_shutdowner_notify(shutdowner, NULL);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == notify_status) {
+            exit_status = -1;
+        }
+    }
+
+    {
+        int errnum = errno;
+        int notify_status = linted_controller_notify(controller, NULL);
         if (-1 == exit_status) {
             errno = errnum;
         }
@@ -208,7 +239,6 @@ int linted_simulator_run(linted_controller_t const inbox, linted_gui_t const gui
 
 static void on_controller_notification(union sigval sigval)
 {
-    /* TODO: Use nonblocking IO */
     struct controller_notify_data * notify_data = sigval.sival_ptr;
     simulator_t simulator = notify_data->simulator;
     linted_controller_t controller = notify_data->controller;
@@ -284,6 +314,50 @@ static void on_controller_notification(union sigval sigval)
         default:
             LINTED_ERROR("Received unexpected message type: %i",
                          message.type);
+        }
+    }
+}
+
+static void on_shutdowner_notification(union sigval sigval)
+{
+    struct shutdowner_notify_data * notify_data = sigval.sival_ptr;
+    simulator_t simulator = notify_data->simulator;
+    linted_shutdowner_t shutdowner = notify_data->shutdowner;
+    {
+        struct sigevent sigevent;
+        memset(&sigevent, 0, sizeof sigevent);
+
+        sigevent.sigev_notify = SIGEV_THREAD;
+        sigevent.sigev_notify_function = on_shutdowner_notification;
+        sigevent.sigev_value.sival_ptr = notify_data;
+
+        if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
+            LINTED_ERROR("Could not reregister for shutdowner notifications: %s",
+                         linted_error_string_alloc(errno));
+        }
+    }
+
+    for (;;) {
+        int read_status;
+        do {
+            read_status = linted_shutdowner_receive(shutdowner);
+        } while (-1 == read_status && EINTR == errno);
+        if (-1 == read_status) {
+            if (EAGAIN == errno) {
+                break;
+            }
+
+            LINTED_ERROR("Could not receive message: %s",
+                         linted_error_string_alloc(errno));
+        }
+
+        int send_status;
+        do {
+            send_status = simulator_send_shutdown(simulator);
+        } while (-1 == send_status && EINTR == errno);
+        if (-1 == send_status) {
+            LINTED_ERROR("Could not send message: %s",
+                         linted_error_string_alloc(errno));
         }
     }
 }

@@ -25,6 +25,7 @@ linted_SOURCES=\
   src/bin/linted.c\
   src/bin/main_loop.c\
   src/bin/sandbox.c\
+  src/bin/shutdowner.c\
   src/bin/server.c\
   src/bin/spawner.c\
   $(verified_sources)
@@ -48,7 +49,7 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
 
 EXTRA_DIST=\
-  src/bin/controller.h\
+  src/linted/controller.h\
   src/linted/fildes.h\
   src/linted/gui.h\
   src/linted/main_loop.h\
@@ -56,6 +57,7 @@ EXTRA_DIST=\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/server.h\
+  src/linted/shutdowner.h\
   src/linted/simulator_loop.h\
   src/linted/simulator.h\
   src/linted/spawner.h\

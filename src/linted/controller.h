@@ -54,7 +54,6 @@ int linted_controller_send_movement(linted_controller_t controller,
                                    bool moving);
 
 int linted_controller_send_tick(linted_controller_t controller);
-int linted_controller_send_shutdown(linted_controller_t controller);
 
 int linted_controller_notify(linted_controller_t controller,
                              struct sigevent const * sevp);
