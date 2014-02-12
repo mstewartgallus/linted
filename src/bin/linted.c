@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 #define USAGE_TEXT \
@@ -66,6 +67,12 @@ int main(int argc, char **argv)
             | LOG_NDELAY        /* Share the connection when we fork */
             , LOG_USER          /* This is a game and is a user program */
         );
+
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+        LINTED_ERROR("Could not run drop ability to raise privileges: %s",
+                     linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
 
     int command_status = -1;
     switch (argc) {
