@@ -19,9 +19,6 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
-#include <errno.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 
 int linted_updater_pair(linted_updater_t updater[2], int rflags, int wflags)

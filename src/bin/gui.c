@@ -194,7 +194,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
                 read_status = linted_shutdowner_receive(shutdowner);
             } while (-1 == read_status && EINTR == errno);
             if (-1 == read_status) {
-                if (errno != ETIMEDOUT && errno != EAGAIN) {
+                if (errno != EAGAIN) {
                     LINTED_ERROR("Could not read from shutdowner connection: %s",
                                  linted_error_string_alloc(errno));
                 }
@@ -207,10 +207,6 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
         bool had_gui_command = false;
         {
             struct linted_updater_update update;
-            struct timespec timespec = {
-                .tv_sec = 0,
-                .tv_nsec = 0
-            };
 
             int read_status;
             do {

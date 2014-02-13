@@ -20,9 +20,6 @@
 #include "linted/controller.h"
 #include "linted/util.h"
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stdlib.h>
 #include <string.h>
 
 int linted_controller_pair(linted_controller_t controller[2],
