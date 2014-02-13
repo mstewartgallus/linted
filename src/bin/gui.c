@@ -17,7 +17,6 @@
 
 #include "linted/gui.h"
 #include "linted/mq.h"
-#include "linted/simulator_loop.h"
 #include "linted/util.h"
 
 #include "SDL.h"

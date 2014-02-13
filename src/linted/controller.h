@@ -32,9 +32,6 @@ enum linted_controller_direction {
 };
 
 enum linted_controller_message_type {
-    LINTED_CONTROLLER_SHUTDOWN,
-    LINTED_CONTROLLER_TICK,
-
     LINTED_CONTROLLER_MOVEMENT
 };
 
@@ -52,8 +49,6 @@ int linted_controller_close(linted_controller_t controller);
 int linted_controller_send_movement(linted_controller_t controller,
                                    enum linted_controller_direction direction,
                                    bool moving);
-
-int linted_controller_send_tick(linted_controller_t controller);
 
 int linted_controller_notify(linted_controller_t controller,
                              struct sigevent const * sevp);

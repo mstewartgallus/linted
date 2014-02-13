@@ -52,14 +52,6 @@ int linted_controller_send_movement(linted_controller_t controller,
     return mq_send(controller, (char const *)&message_data, sizeof message_data, 0);
 }
 
-int linted_controller_send_tick(linted_controller_t controller)
-{
-    struct linted_controller_message message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.type = LINTED_CONTROLLER_TICK;
-    return mq_send(controller, (char const *)&message_data, sizeof message_data, 0);
-}
-
 int linted_controller_close(linted_controller_t const controller)
 {
     return mq_close(controller);

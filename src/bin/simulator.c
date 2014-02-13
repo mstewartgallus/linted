@@ -23,7 +23,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <time.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
@@ -54,9 +54,13 @@ struct shutdowner_notify_data {
     linted_shutdowner_t shutdowner;
 };
 
-static void on_controller_notification(union sigval sigval);
+struct timer_data {
+    simulator_t simulator;
+};
 
+static void on_controller_notification(union sigval sigval);
 static void on_shutdowner_notification(union sigval sigval);
+static void on_clock_tick(union sigval sigev_value);
 
 static int simulator_pair(simulator_t simulator[2]);
 static int simulator_close(simulator_t const simulator);
@@ -96,6 +100,8 @@ int linted_simulator_run(linted_controller_t const controller,
     int simulator_read = simulator_mqs[0];
     int simulator_write = simulator_mqs[1];
 
+    struct timer_data timer_data = {.simulator = simulator_write };
+
     struct controller_notify_data controller_notify_data = {
         .controller = controller,
         .simulator = simulator_write
@@ -105,6 +111,35 @@ int linted_simulator_run(linted_controller_t const controller,
         .shutdowner = shutdowner,
         .simulator = simulator_write
     };
+
+    timer_t timer;
+    {
+        struct sigevent sevp;
+        memset(&sevp, 0, sizeof sevp);
+
+        sevp.sigev_notify = SIGEV_THREAD;
+        sevp.sigev_notify_function = on_clock_tick;
+        sevp.sigev_value.sival_ptr = &timer_data;
+
+        if (-1 == timer_create(CLOCK_MONOTONIC, &sevp, &timer)) {
+            LINTED_ERROR("Could not create timer: %s", linted_error_string_alloc(errno));
+        }
+
+        struct itimerspec itimer_spec;
+        memset(&itimer_spec, 0, sizeof itimer_spec);
+
+        long const second = 1000000000;
+
+        /* Strangely, it_value has to be nozero */
+        itimer_spec.it_value.tv_nsec = 1;
+
+        itimer_spec.it_interval.tv_sec = 0;
+        itimer_spec.it_interval.tv_nsec = second / 60;
+        if (-1 == timer_settime(timer, 0, &itimer_spec, NULL)) {
+            LINTED_ERROR("Could not set timer expiry date: %s",
+                         linted_error_string_alloc(errno));
+        }
+    }
 
     /* Start the processes off on already queued messages */
     {
@@ -234,7 +269,29 @@ int linted_simulator_run(linted_controller_t const controller,
         }
     }
 
+    if (-1 == timer_delete(timer)) {
+        LINTED_ERROR("Could not delete timer: %s", linted_error_string_alloc(errno));
+    }
+
     return exit_status;
+}
+
+static void on_clock_tick(union sigval sigev_value)
+{
+    struct timer_data *const timer_data = sigev_value.sival_ptr;
+    simulator_t const simulator = timer_data->simulator;
+
+    int tick_status;
+    do {
+        tick_status = simulator_send_tick(simulator);
+    } while (-1 == tick_status && EINTR == errno);
+    if (-1 == tick_status) {
+        /* TODO: HACK! */
+        if (errno != EAGAIN) {
+            LINTED_ERROR("Could not send simulator tick: %s",
+                         linted_error_string_alloc(errno));
+        }
+    }
 }
 
 static void on_controller_notification(union sigval sigval)
@@ -273,36 +330,12 @@ static void on_controller_notification(union sigval sigval)
         }
 
         switch (message.type) {
-        case LINTED_CONTROLLER_SHUTDOWN:{
-            int send_status;
-            do {
-                send_status = simulator_send_shutdown(simulator);
-            } while (-1 == send_status && EINTR == errno);
-            if (-1 == send_status) {
-                LINTED_ERROR("Could not send message: %s",
-                             linted_error_string_alloc(errno));
-            }
-            break;
-        }
-
         case LINTED_CONTROLLER_MOVEMENT:{
             int send_status;
             do {
                 send_status = simulator_send_movement(simulator,
                                                       message.direction,
                                                       message.moving);
-            } while (-1 == send_status && EINTR == errno);
-            if (-1 == send_status) {
-                LINTED_ERROR("Could not send message: %s",
-                             linted_error_string_alloc(errno));
-            }
-            break;
-        }
-
-        case LINTED_CONTROLLER_TICK:{
-            int send_status;
-            do {
-                send_status = simulator_send_tick(simulator);
             } while (-1 == send_status && EINTR == errno);
             if (-1 == send_status) {
                 LINTED_ERROR("Could not send message: %s",
