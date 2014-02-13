@@ -50,9 +50,9 @@ int linted_main_loop_run(linted_spawner_t spawner)
                      linted_error_string_alloc(errno));
     }
 
-    linted_gui_t gui_mqs[2];
-    if (-1 == linted_gui_pair(gui_mqs)) {
-        LINTED_ERROR("Could not create gui message queue: %s",
+    linted_updater_t updater_mqs[2];
+    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
+        LINTED_ERROR("Could not create updater message queue: %s",
                      linted_error_string_alloc(errno));
     }
 
@@ -77,8 +77,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_main_loop_t const main_loop_read = main_loop_mqs[0];
     linted_main_loop_t const main_loop_write = main_loop_mqs[1];
 
-    linted_gui_t const gui_read = gui_mqs[0];
-    linted_gui_t const gui_write = gui_mqs[1];
+    linted_updater_t const updater_read = updater_mqs[0];
+    linted_updater_t const updater_write = updater_mqs[1];
 
     linted_controller_t const controller_read = controller_mqs[0];
     linted_controller_t const controller_write = controller_mqs[1];
@@ -90,15 +90,15 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_shutdowner_t const gui_shutdowner_write = gui_shutdowner_mqs[1];
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   gui_read, gui_shutdowner_read, controller_write, main_loop_write, -1})) {
+                                   updater_read, gui_shutdowner_read, controller_write, main_loop_write, -1})) {
         LINTED_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
     }
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                                   controller_read, simulator_shutdowner_read, gui_write, -1})) {
+                                   controller_read, simulator_shutdowner_read, updater_write, -1})) {
         LINTED_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_gui_close(gui_read)) {
+    if (-1 == linted_updater_close(updater_read)) {
         LINTED_ERROR("Could not close gui read end: %s",
                      linted_error_string_alloc(errno));
     }
@@ -178,8 +178,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
         }
     }
 
-    if (-1 == linted_gui_close(gui_write)) {
-        LINTED_ERROR("Could not close gui handle: %s", linted_error_string_alloc(errno));
+    if (-1 == linted_updater_close(updater_write)) {
+        LINTED_ERROR("Could not close updater handle: %s", linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_shutdowner_close(simulator_shutdowner_write)) {

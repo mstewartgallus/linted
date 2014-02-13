@@ -27,16 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum message_type {
-    GUI_UPDATE
-};
-
-struct message_data {
-    enum message_type type;
-    int32_t x_position;
-    int32_t y_position;
-};
-
 struct attribute_value_pair {
     SDL_GLattr attribute;
     int value;
@@ -66,35 +56,7 @@ static void on_key_movement(linted_controller_t controller,
                             enum linted_controller_direction direction,
                             bool moving);
 
-int linted_gui_pair(linted_gui_t gui[2])
-{
-    struct mq_attr attr;
-    memset(&attr, 0, sizeof attr);
-
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct message_data);
-
-    return linted_mq_pair(gui, &attr, 0, 0);
-}
-
-int linted_gui_send_update(linted_gui_t const gui, int32_t const x, int32_t const y)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-
-    message_data.type = GUI_UPDATE;
-    message_data.x_position = x;
-    message_data.y_position = y;
-
-    return mq_send(gui, (char const *)&message_data, sizeof message_data, 0);
-}
-
-int linted_gui_close(linted_gui_t const gui)
-{
-    return mq_close(gui);
-}
-
-int linted_gui_run(linted_gui_t gui, linted_shutdowner_t shutdowner,
+int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
                    linted_controller_t controller,
                    linted_main_loop_t main_loop)
 {
@@ -244,35 +206,24 @@ int linted_gui_run(linted_gui_t gui, linted_shutdowner_t shutdowner,
 
         bool had_gui_command = false;
         {
-            struct message_data message_data;
+            struct linted_updater_update update;
             struct timespec timespec = {
                 .tv_sec = 0,
                 .tv_nsec = 0
             };
 
-            ssize_t bytes_read;
+            int read_status;
             do {
-                bytes_read = mq_timedreceive(gui,
-                                             (char *)&message_data,
-                                             sizeof message_data, NULL, &timespec);
-            } while (-1 == bytes_read && EINTR == errno);
-            if (-1 == bytes_read) {
-                if (errno != ETIMEDOUT) {
-                    LINTED_ERROR("Could not read from gui connection: %s",
+                read_status = linted_updater_receive_update(updater, &update);
+            } while (-1 == read_status && EINTR == errno);
+            if (-1 == read_status) {
+                if (errno != EAGAIN) {
+                    LINTED_ERROR("Could not read from updater connection: %s",
                                  linted_error_string_alloc(errno));
                 }
             } else {
-                switch (message_data.type) {
-                case GUI_UPDATE:{
-                        x = ((float)message_data.x_position) / 255;
-                        y = ((float)message_data.y_position) / 255;
-                        break;
-                    }
-
-                default:
-                    LINTED_ERROR("Received unexpected request type: %i",
-                                 message_data.type);
-                }
+                x = ((float)update.x_position) / 255;
+                y = ((float)update.y_position) / 255;
 
                 had_gui_command = true;
             }

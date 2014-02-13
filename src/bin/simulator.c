@@ -76,7 +76,7 @@ static int simulator_receive(simulator_t queue,
 
 int linted_simulator_run(linted_controller_t const controller,
                          linted_shutdowner_t const shutdowner,
-                         linted_gui_t const gui)
+                         linted_updater_t const updater)
 {
     int exit_status = -1;
 
@@ -205,9 +205,14 @@ int linted_simulator_run(linted_controller_t const controller,
                 x_position += x_velocity;
                 y_position += y_velocity;
 
+                struct linted_updater_update update = {
+                    .x_position = x_position,
+                    .y_position = y_position
+                };
+
                 int update_status;
                 do {
-                    update_status = linted_gui_send_update(gui, x_position, y_position);
+                    update_status = linted_updater_send_update(updater, update);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
                     return -1;

@@ -28,6 +28,7 @@ linted_SOURCES=\
   src/bin/shutdowner.c\
   src/bin/server.c\
   src/bin/spawner.c\
+  src/bin/updater.c\
   $(verified_sources)
 
 verified_sources=\
@@ -57,7 +58,8 @@ EXTRA_DIST=\
   src/linted/shutdowner.h\
   src/linted/simulator.h\
   src/linted/spawner.h\
-  src/linted/util.h
+  src/linted/util.h\
+  src/linted/updater.h
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\

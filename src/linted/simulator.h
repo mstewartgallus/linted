@@ -17,11 +17,11 @@
 #define LINTED_SIMULATOR_H
 
 #include "linted/controller.h"
-#include "linted/gui.h"
 #include "linted/shutdowner.h"
+#include "linted/updater.h"
 
 int linted_simulator_run(linted_controller_t inbox,
                          linted_shutdowner_t shutdowner,
-                         linted_gui_t gui);
+                         linted_updater_t updater);
 
 #endif                          /* LINTED_SIMULATOR_H */
