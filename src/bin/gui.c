@@ -28,7 +28,6 @@
 #include <string.h>
 
 enum message_type {
-    GUI_SHUTDOWN,
     GUI_UPDATE
 };
 
@@ -78,16 +77,6 @@ int linted_gui_pair(linted_gui_t gui[2])
     return linted_mq_pair(gui, &attr, 0, 0);
 }
 
-int linted_gui_send_shutdown(linted_gui_t const gui)
-{
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
-
-    message_data.type = GUI_SHUTDOWN;
-
-    return mq_send(gui, (char const *)&message_data, sizeof message_data, 0);
-}
-
 int linted_gui_send_update(linted_gui_t const gui, int32_t const x, int32_t const y)
 {
     struct message_data message_data;
@@ -105,7 +94,8 @@ int linted_gui_close(linted_gui_t const gui)
     return mq_close(gui);
 }
 
-int linted_gui_run(linted_gui_t gui, linted_controller_t controller,
+int linted_gui_run(linted_gui_t gui, linted_shutdowner_t shutdowner,
+                   linted_controller_t controller,
                    linted_main_loop_t main_loop)
 {
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
@@ -236,6 +226,22 @@ int linted_gui_run(linted_gui_t gui, linted_controller_t controller,
             }
         }
 
+        {
+            int read_status;
+            do {
+                read_status = linted_shutdowner_receive(shutdowner);
+            } while (-1 == read_status && EINTR == errno);
+            if (-1 == read_status) {
+                if (errno != ETIMEDOUT && errno != EAGAIN) {
+                    LINTED_ERROR("Could not read from shutdowner connection: %s",
+                                 linted_error_string_alloc(errno));
+                }
+            } else {
+                goto exit_main_loop;
+            }
+        }
+
+
         bool had_gui_command = false;
         {
             struct message_data message_data;
@@ -257,9 +263,6 @@ int linted_gui_run(linted_gui_t gui, linted_controller_t controller,
                 }
             } else {
                 switch (message_data.type) {
-                case GUI_SHUTDOWN:
-                    goto exit_main_loop;
-
                 case GUI_UPDATE:{
                         x = ((float)message_data.x_position) / 255;
                         y = ((float)message_data.y_position) / 255;
