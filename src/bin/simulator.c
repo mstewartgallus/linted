@@ -27,7 +27,7 @@
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
-#define SIGN(x) ((x) < 0 ? 1 : (0 == x) ? 0 : -1)
+#define SIGN(x) ((x) < 0 ? 1 : (0 == (x)) ? 0 : -1)
 
 typedef mqd_t simulator_t;
 
