@@ -54,8 +54,8 @@ int main(int argc, char **argv)
 #ifdef HAVE_UID_T
     uid_t const euid = geteuid();
     if (0 == euid) {
-        fputs("Bad administrator!\n"
-              "It is insecure to run a game as root!\n", stderr);
+        fputs("Bad administrator!\n" "It is insecure to run a game as root!\n",
+              stderr);
         return EXIT_FAILURE;
     }
 #endif                          /* HAVE_UID_T */
@@ -69,8 +69,9 @@ int main(int argc, char **argv)
         );
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        LINTED_LAZY_DEV_ERROR("Could not run drop ability to raise privileges: %s",
-                              linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR
+            ("Could not run drop ability to raise privileges: %s",
+             linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
@@ -78,7 +79,8 @@ int main(int argc, char **argv)
     switch (argc) {
     case 1:
         /* Fork off tasks from a knonw good state */
-        if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {-1})) {
+        if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {
+                                     -1})) {
             char const *const error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "Could not run spawner: %s", error_string);
             linted_error_string_free(error_string);
@@ -96,8 +98,8 @@ int main(int argc, char **argv)
             command_status = 0;
         } else {
             fprintf(stderr,
-                    PACKAGE_TARNAME " did not understand the command line input\n"
-                    USAGE_TEXT);
+                    PACKAGE_TARNAME
+                    " did not understand the command line input\n" USAGE_TEXT);
         }
         break;
 

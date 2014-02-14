@@ -114,8 +114,7 @@ AM_CFLAGS=\
 linted_INDENTFLAGS=\
   --linux-style\
   --no-tabs\
-  --indent-level4\
-  --line-length90
+  --indent-level4
 
 linted_FRAMAFLAGS=\
   -quiet\

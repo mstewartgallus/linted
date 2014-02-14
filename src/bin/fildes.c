@@ -80,7 +80,8 @@ ssize_t linted_fildes_recv(int *fildes, int const inbox)
     message.msg_control = control_message;
     message.msg_controllen = sizeof control_message;
 
-    ssize_t const bytes_read = recvmsg(inbox, &message, MSG_CMSG_CLOEXEC | MSG_WAITALL);
+    ssize_t const bytes_read = recvmsg(inbox, &message,
+                                       MSG_CMSG_CLOEXEC | MSG_WAITALL);
     if (-1 == bytes_read) {
         return -1;
     }

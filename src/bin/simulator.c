@@ -72,7 +72,7 @@ static int simulator_send_tick(simulator_t simulator);
 static int simulator_send_shutdown(simulator_t const simulator);
 
 static int simulator_receive(simulator_t queue,
-                             struct simulator_message * message);
+                             struct simulator_message *message);
 
 int linted_simulator_run(linted_controller_t const controller,
                          linted_shutdowner_t const shutdowner,
@@ -196,8 +196,10 @@ int linted_simulator_run(linted_controller_t const controller,
                 int32_t x_future_velocity = x_thrust + x_velocity;
                 int32_t y_future_velocity = y_thrust + y_velocity;
 
-                int32_t x_friction = MIN(imaxabs(x_future_velocity), 1) * SIGN(x_future_velocity);
-                int32_t y_friction = MIN(imaxabs(y_future_velocity), 1) * SIGN(y_future_velocity);
+                int32_t x_friction = MIN(imaxabs(x_future_velocity),
+                                         1) * SIGN(x_future_velocity);
+                int32_t y_friction = MIN(imaxabs(y_future_velocity),
+                                         1) * SIGN(y_future_velocity);
 
                 x_velocity += x_thrust + x_friction;
                 y_velocity += y_thrust + y_friction;
@@ -222,7 +224,8 @@ int linted_simulator_run(linted_controller_t const controller,
             }
 
         default:
-            syslog(LOG_ERR, "Simulator received unexpected message type: %i", message.type);
+            syslog(LOG_ERR, "Simulator received unexpected message type: %i",
+                   message.type);
         }
     }
 
@@ -305,7 +308,7 @@ static void on_clock_tick(union sigval sigev_value)
 
 static void on_controller_notification(union sigval sigval)
 {
-    struct controller_notify_data * notify_data = sigval.sival_ptr;
+    struct controller_notify_data *notify_data = sigval.sival_ptr;
     simulator_t simulator = notify_data->simulator;
     linted_controller_t controller = notify_data->controller;
     {
@@ -340,28 +343,29 @@ static void on_controller_notification(union sigval sigval)
 
         switch (message.type) {
         case LINTED_CONTROLLER_MOVEMENT:{
-            int send_status;
-            do {
-                send_status = simulator_send_movement(simulator,
-                                                      message.direction,
-                                                      message.moving);
-            } while (-1 == send_status && EINTR == errno);
-            if (-1 == send_status) {
-                LINTED_FATAL_ERROR("Could not send message: %s",
-                                   linted_error_string_alloc(errno));
+                int send_status;
+                do {
+                    send_status = simulator_send_movement(simulator,
+                                                          message.direction,
+                                                          message.moving);
+                } while (-1 == send_status && EINTR == errno);
+                if (-1 == send_status) {
+                    LINTED_FATAL_ERROR("Could not send message: %s",
+                                       linted_error_string_alloc(errno));
+                }
+                break;
             }
-            break;
-        }
 
         default:
-            syslog(LOG_ERR, "Simulator received unexpected message type: %i", message.type);
+            syslog(LOG_ERR, "Simulator received unexpected message type: %i",
+                   message.type);
         }
     }
 }
 
 static void on_shutdowner_notification(union sigval sigval)
 {
-    struct shutdowner_notify_data * notify_data = sigval.sival_ptr;
+    struct shutdowner_notify_data *notify_data = sigval.sival_ptr;
     simulator_t simulator = notify_data->simulator;
     linted_shutdowner_t shutdowner = notify_data->shutdowner;
     {
@@ -373,8 +377,9 @@ static void on_shutdowner_notification(union sigval sigval)
         sigevent.sigev_value.sival_ptr = notify_data;
 
         if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
-            LINTED_LAZY_DEV_ERROR("Could not reregister for shutdowner notifications: %s",
-                                  linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR
+                ("Could not reregister for shutdowner notifications: %s",
+                 linted_error_string_alloc(errno));
         }
     }
 
@@ -425,7 +430,8 @@ static int simulator_send_movement(simulator_t simulator,
     message_data.direction = direction;
     message_data.moving = moving;
 
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
+                   0);
 }
 
 static int simulator_send_tick(simulator_t simulator)
@@ -433,7 +439,8 @@ static int simulator_send_tick(simulator_t simulator)
     struct simulator_message message_data;
     memset(&message_data, 0, sizeof message_data);
     message_data.type = SIMULATOR_TICK;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
+                   0);
 }
 
 static int simulator_send_shutdown(simulator_t const simulator)
@@ -441,7 +448,8 @@ static int simulator_send_shutdown(simulator_t const simulator)
     struct simulator_message message_data;
     memset(&message_data, 0, sizeof message_data);
     message_data.type = SIMULATOR_SHUTDOWN;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
+                   0);
 }
 
 static int simulator_close(simulator_t const simulator)
@@ -450,7 +458,7 @@ static int simulator_close(simulator_t const simulator)
 }
 
 static int simulator_receive(simulator_t queue,
-                             struct simulator_message * message)
+                             struct simulator_message *message)
 {
-    return mq_receive(queue, (char *) message, sizeof *message, NULL);
+    return mq_receive(queue, (char *)message, sizeof *message, NULL);
 }

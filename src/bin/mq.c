@@ -42,7 +42,8 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr *attr, int oflaga, int oflagb)
     unsigned long generator_state = rand();
 
     do {
-        for (size_t ii = sizeof TEMPLATE_PREFIX - 1; ii < sizeof TEMPLATE_NAME - 1; ++ii) {
+        for (size_t ii = sizeof TEMPLATE_PREFIX - 1;
+             ii < sizeof TEMPLATE_NAME - 1; ++ii) {
             for (;;) {
                 /* Use a fast linear congruential generator */
                 generator_state = 5 + 3 * generator_state;
@@ -50,7 +51,8 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr *attr, int oflaga, int oflagb)
                 /* Normally using the modulus would give a bad
                  * distribution but CHAR_MAX + 1 is a power of two
                  */
-                unsigned char const possible_value = generator_state % (CHAR_MAX + 1);
+                unsigned char const possible_value =
+                    generator_state % (CHAR_MAX + 1);
 
                 /* Throw out results and retry for an even
                  * distribution
@@ -65,7 +67,8 @@ int linted_mq_pair(mqd_t mqs[2], struct mq_attr *attr, int oflaga, int oflagb)
         }
 
         write_end = mq_open(random_mq_name,
-                            oflagb | O_WRONLY | O_CREAT | O_EXCL, S_IRUSR, attr);
+                            oflagb | O_WRONLY | O_CREAT | O_EXCL, S_IRUSR,
+                            attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
         goto exit_with_error;

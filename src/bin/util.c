@@ -24,7 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char const no_memory_string[] = "could not allocate memory for error string";
+static char const no_memory_string[] =
+    "could not allocate memory for error string";
 
 char const *linted_error_string_alloc(int errnum)
 {

@@ -83,7 +83,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     switch (fork()) {
     case 0:
         if (-1 == linted_server_close(inbox)) {
-            LINTED_LAZY_DEV_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
+                                  linted_error_string_alloc(errno));
         }
 
         exec_task(main_loop, spawner, fildes);
@@ -148,7 +149,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         switch (fork()) {
         case 0:
             {
-                int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
+                int const sigrestore_status =
+                    sigaction(SIGCHLD, &old_action, NULL);
                 assert(sigrestore_status != -1);
 
                 if (-1 == linted_server_close(inbox)) {
@@ -174,7 +176,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
         connection_status = 0;
 
-     close_connection:
+ close_connection:
         {
             int errnum = errno;
 
@@ -244,7 +246,8 @@ int linted_spawner_close(linted_spawner_t spawner)
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
-                         linted_spawner_task_t const func, int const fildes_to_send[])
+                         linted_spawner_task_t const func,
+                         int const fildes_to_send[])
 {
     int spawn_status = -1;
 
@@ -266,7 +269,8 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
         ssize_t bytes_sent;
         do {
-            bytes_sent = send(connection, &request_header, sizeof request_header, 0);
+            bytes_sent =
+                send(connection, &request_header, sizeof request_header, 0);
         } while (-1 == bytes_sent && EINTR == errno);
         if (-1 == bytes_sent) {
             goto cleanup_connection;
@@ -338,7 +342,8 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         ssize_t bytes_received;
         do {
             bytes_received = recv(connection,
-                                  &request_header, sizeof request_header, MSG_WAITALL);
+                                  &request_header, sizeof request_header,
+                                  MSG_WAITALL);
         } while (-1 == bytes_received && EINTR == errno);
         if (-1 == bytes_received) {
             goto reply_with_error;
@@ -383,8 +388,9 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
                 write_status = write(connection, &reply, sizeof reply);
             } while (-1 == write_status && EINTR == errno);
             if (-1 == write_status) {
-                LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
-                                      linted_error_string_alloc(errno));
+                LINTED_LAZY_DEV_ERROR
+                    ("Fork server could not reply to request: %s",
+                     linted_error_string_alloc(errno));
             }
         }
 

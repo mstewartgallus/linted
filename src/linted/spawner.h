@@ -23,7 +23,8 @@
  */
 typedef linted_server_t linted_spawner_t;
 
-typedef void (*linted_spawner_task_t) (linted_spawner_t spawner, int const fildes[]);
+typedef void (*linted_spawner_task_t) (linted_spawner_t spawner,
+                                       int const fildes[]);
 
 /**
  * Runs a spawner process and starts main_loop in a separate

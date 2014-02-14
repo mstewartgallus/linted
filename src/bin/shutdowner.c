@@ -28,8 +28,8 @@ struct message {
     char dummy;
 };
 
-int linted_shutdowner_pair(linted_shutdowner_t shutdowner[2],
-                           int rflags, int wflags)
+int linted_shutdowner_pair(linted_shutdowner_t shutdowner[2], int rflags,
+                           int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -49,7 +49,7 @@ int linted_shutdowner_send_shutdown(linted_shutdowner_t shutdowner)
 }
 
 int linted_shutdowner_notify(linted_shutdowner_t shutdowner,
-                             struct sigevent const * sevp)
+                             struct sigevent const *sevp)
 {
     return mq_notify(shutdowner, sevp);
 }
@@ -57,7 +57,7 @@ int linted_shutdowner_notify(linted_shutdowner_t shutdowner,
 int linted_shutdowner_receive(linted_shutdowner_t shutdowner)
 {
     struct message message;
-    return mq_receive(shutdowner, (char *) &message, sizeof message, NULL);
+    return mq_receive(shutdowner, (char *)&message, sizeof message, NULL);
 }
 
 int linted_shutdowner_close(linted_shutdowner_t shutdowner)

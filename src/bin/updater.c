@@ -39,7 +39,7 @@ int linted_updater_send_update(linted_updater_t updater,
 }
 
 int linted_updater_receive_update(linted_updater_t updater,
-                                  struct linted_updater_update * update)
+                                  struct linted_updater_update *update)
 {
     return mq_receive(updater, (char *)update, sizeof *update, NULL);
 }

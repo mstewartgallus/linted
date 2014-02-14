@@ -35,7 +35,7 @@ int linted_updater_send_update(linted_updater_t updater,
                                struct linted_updater_update update);
 
 int linted_updater_receive_update(linted_updater_t updater,
-                                  struct linted_updater_update * update);
+                                  struct linted_updater_update *update);
 
 int linted_updater_close(linted_updater_t updater);
 

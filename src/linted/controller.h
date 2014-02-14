@@ -42,18 +42,17 @@ struct linted_controller_message {
 };
 
 int linted_controller_pair(linted_controller_t controller[2],
-                           int readflags,
-                           int writeflags);
+                           int readflags, int writeflags);
 int linted_controller_close(linted_controller_t controller);
 
 int linted_controller_send_movement(linted_controller_t controller,
-                                   enum linted_controller_direction direction,
-                                   bool moving);
+                                    enum linted_controller_direction direction,
+                                    bool moving);
 
 int linted_controller_notify(linted_controller_t controller,
-                             struct sigevent const * sevp);
+                             struct sigevent const *sevp);
 
 int linted_controller_receive(linted_controller_t controller,
-                              struct linted_controller_message * message);
+                              struct linted_controller_message *message);
 
 #endif                          /* LINTED_CONTROLLER_H */

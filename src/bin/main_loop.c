@@ -58,20 +58,23 @@ int linted_main_loop_run(linted_spawner_t spawner)
 
     linted_controller_t controller_mqs[2];
     if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR("Could not create simulator controller message queue: %s",
-                              linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR
+            ("Could not create simulator controller message queue: %s",
+             linted_error_string_alloc(errno));
     }
 
     linted_shutdowner_t simulator_shutdowner_mqs[2];
     if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR("Could not create simulator shutdowner message queue: %s",
-                              linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR
+            ("Could not create simulator shutdowner message queue: %s",
+             linted_error_string_alloc(errno));
     }
 
     linted_shutdowner_t gui_shutdowner_mqs[2];
     if (-1 == linted_shutdowner_pair(gui_shutdowner_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR("Could not create gui shutdowner message queue: %s",
-                              linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR
+            ("Could not create gui shutdowner message queue: %s",
+             linted_error_string_alloc(errno));
     }
 
     linted_main_loop_t const main_loop_read = main_loop_mqs[0];
@@ -83,19 +86,25 @@ int linted_main_loop_run(linted_spawner_t spawner)
     linted_controller_t const controller_read = controller_mqs[0];
     linted_controller_t const controller_write = controller_mqs[1];
 
-    linted_shutdowner_t const simulator_shutdowner_read = simulator_shutdowner_mqs[0];
-    linted_shutdowner_t const simulator_shutdowner_write = simulator_shutdowner_mqs[1];
+    linted_shutdowner_t const simulator_shutdowner_read =
+        simulator_shutdowner_mqs[0];
+    linted_shutdowner_t const simulator_shutdowner_write =
+        simulator_shutdowner_mqs[1];
 
     linted_shutdowner_t const gui_shutdowner_read = gui_shutdowner_mqs[0];
     linted_shutdowner_t const gui_shutdowner_write = gui_shutdowner_mqs[1];
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   updater_read, gui_shutdowner_read, controller_write, main_loop_write, -1})) {
-        LINTED_LAZY_DEV_ERROR("Could not spawn gui: %s", linted_error_string_alloc(errno));
+                                   updater_read, gui_shutdowner_read,
+                                   controller_write, main_loop_write, -1})) {
+        LINTED_LAZY_DEV_ERROR("Could not spawn gui: %s",
+                              linted_error_string_alloc(errno));
     }
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                                   controller_read, simulator_shutdowner_read, updater_write, -1})) {
-        LINTED_LAZY_DEV_ERROR("Could not spawn simulator: %s", linted_error_string_alloc(errno));
+                                   controller_read, simulator_shutdowner_read,
+                                   updater_write, -1})) {
+        LINTED_LAZY_DEV_ERROR("Could not spawn simulator: %s",
+                              linted_error_string_alloc(errno));
     }
 
     if (-1 == linted_updater_close(updater_read)) {
@@ -151,7 +160,8 @@ int linted_main_loop_run(linted_spawner_t spawner)
             goto exit_main_loop;
 
         default:
-            syslog(LOG_ERR, "Main loop received unexpected message type: %i", message.type);
+            syslog(LOG_ERR, "Main loop received unexpected message type: %i",
+                   message.type);
         }
     }
 
@@ -159,18 +169,21 @@ int linted_main_loop_run(linted_spawner_t spawner)
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_shutdowner_send_shutdown(simulator_shutdowner_write);
+            shutdown_status =
+                linted_shutdowner_send_shutdown(simulator_shutdowner_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
-            LINTED_FATAL_ERROR("Could not send shutdown message to simulator: %s",
-                               linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR
+                ("Could not send shutdown message to simulator: %s",
+                 linted_error_string_alloc(errno));
         }
     }
 
     {
         int shutdown_status;
         do {
-            shutdown_status = linted_shutdowner_send_shutdown(gui_shutdowner_write);
+            shutdown_status =
+                linted_shutdowner_send_shutdown(gui_shutdowner_write);
         } while (-1 == shutdown_status && EINTR == errno);
         if (-1 == shutdown_status) {
             LINTED_FATAL_ERROR("Could not send shutdown message to gui: %s",
@@ -230,7 +243,8 @@ static int main_loop_pair(linted_main_loop_t mqs[2])
 static void simulator_run(linted_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_FATAL_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close spawner: %s",
+                           linted_error_string_alloc(errno));
     }
 
     int controller = inboxes[0];
@@ -242,22 +256,26 @@ static void simulator_run(linted_spawner_t const spawner, int const inboxes[])
     }
 
     if (-1 == mq_close(gui)) {
-        LINTED_FATAL_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close gui: %s",
+                           linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(shutdowner)) {
-        LINTED_FATAL_ERROR("Could not close shutdowner: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close shutdowner: %s",
+                           linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(controller)) {
-        LINTED_FATAL_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close simulator: %s",
+                           linted_error_string_alloc(errno));
     }
 }
 
 static void gui_run(linted_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_FATAL_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close spawner: %s",
+                           linted_error_string_alloc(errno));
     }
 
     mqd_t gui = inboxes[0];
@@ -265,22 +283,27 @@ static void gui_run(linted_spawner_t const spawner, int const inboxes[])
     mqd_t simulator = inboxes[2];
     mqd_t main_loop = inboxes[3];
     if (-1 == linted_gui_run(gui, shutdowner, simulator, main_loop)) {
-        LINTED_LAZY_DEV_ERROR("Running the gui failed: %s", linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR("Running the gui failed: %s",
+                              linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(gui)) {
-        LINTED_FATAL_ERROR("Could not close gui: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close gui: %s",
+                           linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(shutdowner)) {
-        LINTED_FATAL_ERROR("Could not close shutdowner: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close shutdowner: %s",
+                           linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(simulator)) {
-        LINTED_FATAL_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close simulator: %s",
+                           linted_error_string_alloc(errno));
     }
 
     if (-1 == mq_close(main_loop)) {
-        LINTED_FATAL_ERROR("Could not close main loop: %s", linted_error_string_alloc(errno));
+        LINTED_FATAL_ERROR("Could not close main loop: %s",
+                           linted_error_string_alloc(errno));
     }
 }

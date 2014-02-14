@@ -23,8 +23,7 @@
 #include <string.h>
 
 int linted_controller_pair(linted_controller_t controller[2],
-                           int readflags,
-                           int writeflags)
+                           int readflags, int writeflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -36,8 +35,8 @@ int linted_controller_pair(linted_controller_t controller[2],
 }
 
 int linted_controller_send_movement(linted_controller_t controller,
-                                   enum linted_controller_direction direction,
-                                   bool moving)
+                                    enum linted_controller_direction direction,
+                                    bool moving)
 {
     struct linted_controller_message message_data;
     memset(&message_data, 0, sizeof message_data);
@@ -46,7 +45,8 @@ int linted_controller_send_movement(linted_controller_t controller,
     message_data.direction = direction;
     message_data.moving = moving;
 
-    return mq_send(controller, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(controller, (char const *)&message_data, sizeof message_data,
+                   0);
 }
 
 int linted_controller_close(linted_controller_t const controller)
@@ -55,14 +55,13 @@ int linted_controller_close(linted_controller_t const controller)
 }
 
 int linted_controller_receive(linted_controller_t queue,
-                              struct linted_controller_message * message)
+                              struct linted_controller_message *message)
 {
-    return mq_receive(queue, (char *) message, sizeof *message, NULL);
+    return mq_receive(queue, (char *)message, sizeof *message, NULL);
 }
 
-
 int linted_controller_notify(linted_controller_t controller,
-                             struct sigevent const * sevp)
+                             struct sigevent const *sevp)
 {
     return mq_notify(controller, sevp);
 }
