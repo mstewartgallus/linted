@@ -256,7 +256,7 @@ static void on_key_movement(linted_controller_t controller,
     int request_status;
     do {
         request_status = linted_controller_send_movement(controller, direction,
-                                                        moving);
+                                                         moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
         if (errno != EAGAIN) {

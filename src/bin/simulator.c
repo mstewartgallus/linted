@@ -122,7 +122,7 @@ int linted_simulator_run(linted_controller_t const controller,
         sevp.sigev_value.sival_ptr = &timer_data;
 
         if (-1 == timer_create(CLOCK_MONOTONIC, &sevp, &timer)) {
-            LINTED_ERROR("Could not create timer: %s", linted_error_string_alloc(errno));
+            return -1;
         }
 
         struct itimerspec itimer_spec;
@@ -136,8 +136,7 @@ int linted_simulator_run(linted_controller_t const controller,
         itimer_spec.it_interval.tv_sec = 0;
         itimer_spec.it_interval.tv_nsec = second / 60;
         if (-1 == timer_settime(timer, 0, &itimer_spec, NULL)) {
-            LINTED_ERROR("Could not set timer expiry date: %s",
-                         linted_error_string_alloc(errno));
+            goto delete_timer;
         }
     }
 
@@ -274,8 +273,16 @@ int linted_simulator_run(linted_controller_t const controller,
         }
     }
 
-    if (-1 == timer_delete(timer)) {
-        LINTED_ERROR("Could not delete timer: %s", linted_error_string_alloc(errno));
+ delete_timer:
+    {
+        int errnum = errno;
+        int delete_status = timer_delete(timer);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == delete_status) {
+            exit_status = -1;
+        }
     }
 
     return exit_status;
