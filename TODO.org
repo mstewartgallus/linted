@@ -14,6 +14,8 @@ descriptors. We need to read all leaked in open files from
 error). Note that closing all files under getdtablesize or
 sysconf(_SC_OPEN_MAX) is not correct because one can lower the rlimit
 after already opening a file.
+* Sanitize environment variables
+These may contain sensitive information.
 * Avoid deadlock where process blocks on sending message to shutdown process
 * Have a better error handling scheme for processes
 I need to be able signal failure from one process to another.
