@@ -46,7 +46,7 @@
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
-static int main_loop_wrapper(linted_spawner_t spawner, int const fildes[]);
+static void main_loop_wrapper(linted_spawner_t spawner, int const fildes[]);
 
 int main(int argc, char **argv)
 {
@@ -134,7 +134,10 @@ int main(int argc, char **argv)
     return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int main_loop_wrapper(linted_spawner_t spawner, int const fds[])
+static void main_loop_wrapper(linted_spawner_t spawner, int const fds[])
 {
-    return linted_main_loop_run(spawner);
+    if (-1 == linted_main_loop_run(spawner)) {
+        LINTED_FATAL_ERROR("Running the main loop failed: %s",
+                           linted_error_string_alloc(errno));
+    }
 }

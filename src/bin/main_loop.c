@@ -39,8 +39,8 @@ struct message {
 };
 
 static int main_loop_pair(linted_main_loop_t mqs[2]);
-static int gui_run(linted_spawner_t spawner, int const inboxes[]);
-static int simulator_run(linted_spawner_t spawner, int const inboxes[]);
+static void gui_run(linted_spawner_t spawner, int const inboxes[]);
+static void simulator_run(linted_spawner_t spawner, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner_t spawner)
 {
@@ -198,7 +198,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
                            linted_error_string_alloc(errno));
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
@@ -227,7 +227,7 @@ static int main_loop_pair(linted_main_loop_t mqs[2])
     return linted_mq_pair(mqs, &attr, 0, 0);
 }
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
+static void simulator_run(linted_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
@@ -252,11 +252,9 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     if (-1 == mq_close(controller)) {
         LINTED_FATAL_ERROR("Could not close simulator: %s", linted_error_string_alloc(errno));
     }
-
-    return EXIT_SUCCESS;
 }
 
-static int gui_run(linted_spawner_t const spawner, int const inboxes[])
+static void gui_run(linted_spawner_t const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s", linted_error_string_alloc(errno));
@@ -285,6 +283,4 @@ static int gui_run(linted_spawner_t const spawner, int const inboxes[])
     if (-1 == mq_close(main_loop)) {
         LINTED_FATAL_ERROR("Could not close main loop: %s", linted_error_string_alloc(errno));
     }
-
-    return EXIT_SUCCESS;
 }

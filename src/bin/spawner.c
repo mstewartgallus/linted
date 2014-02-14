@@ -414,5 +414,7 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
 static void exec_task(linted_spawner_task_t task,
                       linted_spawner_t spawner, int const fildes[])
 {
-    exit(task(spawner, fildes));
+    task(spawner, fildes);
+
+    exit(EXIT_SUCCESS);
 }
