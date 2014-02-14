@@ -83,7 +83,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     switch (fork()) {
     case 0:
         if (-1 == linted_server_close(inbox)) {
-            LINTED_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR("Could not close inbox: %s", linted_error_string_alloc(errno));
         }
 
         exec_task(main_loop, spawner, fildes);
@@ -152,8 +152,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
                 assert(sigrestore_status != -1);
 
                 if (-1 == linted_server_close(inbox)) {
-                    LINTED_ERROR("Could not close inbox: %s",
-                                 linted_error_string_alloc(errno));
+                    LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
+                                          linted_error_string_alloc(errno));
                 }
 
                 exec_task_from_connection(spawner, connection);
@@ -383,14 +383,14 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
                 write_status = write(connection, &reply, sizeof reply);
             } while (-1 == write_status && EINTR == errno);
             if (-1 == write_status) {
-                LINTED_ERROR("Fork server could not reply to request: %s",
-                             linted_error_string_alloc(errno));
+                LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
+                                      linted_error_string_alloc(errno));
             }
         }
 
         if (-1 == linted_server_conn_close(connection)) {
-            LINTED_ERROR("Forked child could not close connection: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR("Forked child could not close connection: %s",
+                                  linted_error_string_alloc(errno));
         }
 
         exec_task(task, spawner, sent_inboxes);
@@ -404,8 +404,8 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         write_status = write(connection, &reply, sizeof reply);
     } while (-1 == write_status && EINTR == errno);
     if (-1 == write_status) {
-        LINTED_ERROR("Fork server could not reply to request: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
+                              linted_error_string_alloc(errno));
     }
 
     exit(EXIT_FAILURE);

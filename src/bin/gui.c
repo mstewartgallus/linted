@@ -61,7 +61,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
                    linted_main_loop_t main_loop)
 {
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
-        LINTED_ERROR("Could not initialize the GUI: %s", SDL_GetError());
+        LINTED_LAZY_DEV_ERROR("Could not initialize the GUI: %s", SDL_GetError());
     }
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
@@ -69,7 +69,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            LINTED_ERROR("Could not set a double buffer attribute: %s", SDL_GetError());
+            LINTED_LAZY_DEV_ERROR("Could not set a double buffer attribute: %s", SDL_GetError());
         }
     }
 
@@ -78,7 +78,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
 
     /* Initialize SDL */
     if (NULL == SDL_SetVideoMode(width, height, 0, sdl_flags)) {
-        LINTED_ERROR("Could not set the video mode: %s", SDL_GetError());
+        LINTED_LAZY_DEV_ERROR("Could not set the video mode: %s", SDL_GetError());
     }
 
     /* Get actual window size, and not requested window size */
@@ -93,7 +93,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
     SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
                                                         0, sdl_flags);
     if (NULL == video_surface) {
-        LINTED_ERROR("Could not set the video mode: %s", SDL_GetError());
+        LINTED_LAZY_DEV_ERROR("Could not set the video mode: %s", SDL_GetError());
     }
 
     glDisable(GL_DITHER);
@@ -127,8 +127,8 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
                         request_status = linted_main_loop_send_close_request(main_loop);
                     } while (-1 == request_status && EINTR == errno);
                     if (-1 == request_status) {
-                        LINTED_ERROR("Could not send main loop request to close: %s",
-                                     linted_error_string_alloc(errno));
+                        LINTED_FATAL_ERROR("Could not send main loop request to close: %s",
+                                           linted_error_string_alloc(errno));
                     }
                     break;
                 }
@@ -181,8 +181,8 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
                     request_status = linted_main_loop_send_close_request(main_loop);
                 } while (-1 == request_status && EINTR == errno);
                 if (-1 == request_status) {
-                    LINTED_ERROR("Could not send main loop request to close: %s",
-                                 linted_error_string_alloc(errno));
+                    LINTED_FATAL_ERROR("Could not send main loop request to close: %s",
+                                       linted_error_string_alloc(errno));
                 }
                 break;
             }
@@ -195,8 +195,8 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
             } while (-1 == read_status && EINTR == errno);
             if (-1 == read_status) {
                 if (errno != EAGAIN) {
-                    LINTED_ERROR("Could not read from shutdowner connection: %s",
-                                 linted_error_string_alloc(errno));
+                    LINTED_FATAL_ERROR("Could not read from shutdowner connection: %s",
+                                       linted_error_string_alloc(errno));
                 }
             } else {
                 goto exit_main_loop;
@@ -214,8 +214,8 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
             } while (-1 == read_status && EINTR == errno);
             if (-1 == read_status) {
                 if (errno != EAGAIN) {
-                    LINTED_ERROR("Could not read from updater connection: %s",
-                                 linted_error_string_alloc(errno));
+                    LINTED_FATAL_ERROR("Could not read from updater connection: %s",
+                                       linted_error_string_alloc(errno));
                 }
             } else {
                 x = ((float)update.x_position) / 255;
@@ -260,8 +260,8 @@ static void on_key_movement(linted_controller_t controller,
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
         if (errno != EAGAIN) {
-            LINTED_ERROR("Could not send movement command to controller: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Could not send movement command to controller: %s",
+                               linted_error_string_alloc(errno));
         }
     }
 }

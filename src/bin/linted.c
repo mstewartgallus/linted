@@ -69,8 +69,8 @@ int main(int argc, char **argv)
         );
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        LINTED_ERROR("Could not run drop ability to raise privileges: %s",
-                     linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR("Could not run drop ability to raise privileges: %s",
+                              linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 

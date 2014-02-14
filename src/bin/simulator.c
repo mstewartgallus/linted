@@ -161,8 +161,8 @@ int linted_simulator_run(linted_controller_t const controller,
             read_status = simulator_receive(simulator_read, &message);
         } while (-1 == read_status && EINTR == errno);
         if (-1 == read_status) {
-            LINTED_ERROR("Simulator could not receive message: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Simulator could not receive message: %s",
+                               linted_error_string_alloc(errno));
         }
 
         switch (message.type) {
@@ -215,8 +215,8 @@ int linted_simulator_run(linted_controller_t const controller,
                     update_status = linted_updater_send_update(updater, update);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
-                    LINTED_ERROR("Simulator could not send update: %s",
-                                 linted_error_string_alloc(errno));
+                    LINTED_FATAL_ERROR("Simulator could not send update: %s",
+                                       linted_error_string_alloc(errno));
                 }
                 break;
             }
@@ -300,8 +300,8 @@ static void on_clock_tick(union sigval sigev_value)
     if (-1 == tick_status) {
         /* TODO: HACK! */
         if (errno != EAGAIN) {
-            LINTED_ERROR("Could not send simulator tick: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Could not send simulator tick: %s",
+                               linted_error_string_alloc(errno));
         }
     }
 }
@@ -320,8 +320,8 @@ static void on_controller_notification(union sigval sigval)
         sigevent.sigev_value.sival_ptr = notify_data;
 
         if (-1 == linted_controller_notify(controller, &sigevent)) {
-            LINTED_ERROR("Could not reregister for notifications: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR("Could not reregister for notifications: %s",
+                                  linted_error_string_alloc(errno));
         }
     }
 
@@ -337,8 +337,8 @@ static void on_controller_notification(union sigval sigval)
                 break;
             }
 
-            LINTED_ERROR("Could not receive message: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Could not receive message: %s",
+                               linted_error_string_alloc(errno));
         }
 
         switch (message.type) {
@@ -350,8 +350,8 @@ static void on_controller_notification(union sigval sigval)
                                                       message.moving);
             } while (-1 == send_status && EINTR == errno);
             if (-1 == send_status) {
-                LINTED_ERROR("Could not send message: %s",
-                             linted_error_string_alloc(errno));
+                LINTED_FATAL_ERROR("Could not send message: %s",
+                                   linted_error_string_alloc(errno));
             }
             break;
         }
@@ -376,8 +376,8 @@ static void on_shutdowner_notification(union sigval sigval)
         sigevent.sigev_value.sival_ptr = notify_data;
 
         if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
-            LINTED_ERROR("Could not reregister for shutdowner notifications: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR("Could not reregister for shutdowner notifications: %s",
+                                  linted_error_string_alloc(errno));
         }
     }
 
@@ -391,8 +391,8 @@ static void on_shutdowner_notification(union sigval sigval)
                 break;
             }
 
-            LINTED_ERROR("Could not receive message: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Could not receive message: %s",
+                               linted_error_string_alloc(errno));
         }
 
         int send_status;
@@ -400,8 +400,8 @@ static void on_shutdowner_notification(union sigval sigval)
             send_status = simulator_send_shutdown(simulator);
         } while (-1 == send_status && EINTR == errno);
         if (-1 == send_status) {
-            LINTED_ERROR("Could not send message: %s",
-                         linted_error_string_alloc(errno));
+            LINTED_FATAL_ERROR("Could not send message: %s",
+                               linted_error_string_alloc(errno));
         }
     }
 }

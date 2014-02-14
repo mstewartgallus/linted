@@ -21,9 +21,36 @@
 
 #define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
-#define LINTED_ERROR(format_string, ...)                                \
+/**
+ * A useful utility macro for fatal errors.
+ *
+ * This should only be used for errors that should never happen or
+ * errors that might be caused by unrecoverable problems such as
+ * memory corruption. The conditions that raise this error should be
+ * documented if they are triggerable by a caller of one's
+ * function. Think twice before using this macro as aborting a
+ * function on invalid input makes that function just that little bit
+ * less useful.
+ *
+ * Permissible errors to use this for may include EINVAL or EBADF.
+ *
+ * Nonpermissible errors to use this for may include EMFILE, ENFILE
+ * and ENOMEM. These cases should be handled properly.
+ */
+#define LINTED_FATAL_ERROR(format_string, ...)                          \
     do {                                                                \
-        syslog(LOG_ERR, "Error in file %s, function %s, and line %i: " format_string, \
+        syslog(LOG_ERR, "Fatal error in file %s, function %s, and line %i: " format_string, \
+               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
+        exit(EXIT_FAILURE);                                             \
+    } while (0)
+
+/**
+ * A useful utility macro to abort to the process for errors that the
+ * developer is too lazy to handle properly.
+ */
+#define LINTED_LAZY_DEV_ERROR(format_string, ...)                       \
+    do {                                                                \
+        syslog(LOG_ERR, "Lazy developer error in file %s, function %s, and line %i:" format_string, \
                __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
         exit(EXIT_FAILURE);                                             \
     } while (0)
