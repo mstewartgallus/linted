@@ -161,7 +161,8 @@ int linted_simulator_run(linted_controller_t const controller,
             read_status = simulator_receive(simulator_read, &message);
         } while (-1 == read_status && EINTR == errno);
         if (-1 == read_status) {
-            goto restore_notify;
+            LINTED_ERROR("Simulator could not receive message: %s",
+                         linted_error_string_alloc(errno));
         }
 
         switch (message.type) {
@@ -214,7 +215,8 @@ int linted_simulator_run(linted_controller_t const controller,
                     update_status = linted_updater_send_update(updater, update);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
-                    return -1;
+                    LINTED_ERROR("Simulator could not send update: %s",
+                                 linted_error_string_alloc(errno));
                 }
                 break;
             }
@@ -227,7 +229,6 @@ int linted_simulator_run(linted_controller_t const controller,
  exit_main_loop:
     exit_status = 0;
 
- restore_notify:
     {
         int errnum = errno;
         int notify_status = linted_shutdowner_notify(shutdowner, NULL);
