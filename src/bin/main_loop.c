@@ -34,7 +34,7 @@ enum message_type {
     MAIN_LOOP_CLOSE_REQUEST
 };
 
-struct message_data {
+struct message {
     enum message_type type;
 };
 
@@ -134,24 +134,24 @@ int linted_main_loop_run(linted_spawner_t spawner)
     }
 
     for (;;) {
-        struct message_data message_data;
+        struct message message;
 
         ssize_t bytes_read;
         do {
             bytes_read = mq_receive(main_loop_read,
-                                    (char *)&message_data, sizeof message_data, NULL);
+                                    (char *)&message, sizeof message, NULL);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
             LINTED_ERROR("Could not read from main loop inbox: %s",
                          linted_error_string_alloc(errno));
         }
 
-        switch (message_data.type) {
+        switch (message.type) {
         case MAIN_LOOP_CLOSE_REQUEST:
             goto exit_main_loop;
 
         default:
-            LINTED_ERROR("Received unexpected message type: %d", message_data.type);
+            syslog(LOG_ERR, "Main loop received unexpected message type: %i", message.type);
         }
     }
 
@@ -202,12 +202,12 @@ int linted_main_loop_run(linted_spawner_t spawner)
 
 int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
 {
-    struct message_data message_data;
-    memset(&message_data, 0, sizeof message_data);
+    struct message message;
+    memset(&message, 0, sizeof message);
 
-    message_data.type = MAIN_LOOP_CLOSE_REQUEST;
+    message.type = MAIN_LOOP_CLOSE_REQUEST;
 
-    return mq_send(main_loop, (char const *)&message_data, sizeof message_data, 0);
+    return mq_send(main_loop, (char const *)&message, sizeof message, 0);
 }
 
 int linted_main_loop_close(linted_main_loop_t const main_loop)
@@ -221,7 +221,7 @@ static int main_loop_pair(linted_main_loop_t mqs[2])
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct message_data);
+    attr.mq_msgsize = sizeof(struct message);
 
     return linted_mq_pair(mqs, &attr, 0, 0);
 }

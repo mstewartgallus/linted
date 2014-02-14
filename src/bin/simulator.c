@@ -220,8 +220,7 @@ int linted_simulator_run(linted_controller_t const controller,
             }
 
         default:
-            LINTED_ERROR("Received unexpected message type: %i",
-                         message.type);
+            syslog(LOG_ERR, "Simulator received unexpected message type: %i", message.type);
         }
     }
 
@@ -357,8 +356,7 @@ static void on_controller_notification(union sigval sigval)
         }
 
         default:
-            LINTED_ERROR("Received unexpected message type: %i",
-                         message.type);
+            syslog(LOG_ERR, "Main loop received unexpected message type: %i", message.type);
         }
     }
 }
