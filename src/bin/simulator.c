@@ -354,7 +354,7 @@ static void on_controller_notification(union sigval sigval)
         }
 
         default:
-            syslog(LOG_ERR, "Main loop received unexpected message type: %i", message.type);
+            syslog(LOG_ERR, "Simulator received unexpected message type: %i", message.type);
         }
     }
 }
