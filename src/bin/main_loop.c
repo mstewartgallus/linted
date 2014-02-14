@@ -57,7 +57,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     }
 
     linted_controller_t controller_mqs[2];
-    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, O_NONBLOCK)) {
+    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
         LINTED_LAZY_DEV_ERROR("Could not create simulator controller message queue: %s",
                               linted_error_string_alloc(errno));
     }

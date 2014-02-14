@@ -259,9 +259,7 @@ static void on_key_movement(linted_controller_t controller,
                                                          moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
-        if (errno != EAGAIN) {
-            LINTED_FATAL_ERROR("Could not send movement command to controller: %s",
-                               linted_error_string_alloc(errno));
-        }
+        LINTED_FATAL_ERROR("Could not send movement command to controller: %s",
+                           linted_error_string_alloc(errno));
     }
 }

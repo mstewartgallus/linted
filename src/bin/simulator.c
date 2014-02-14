@@ -298,11 +298,8 @@ static void on_clock_tick(union sigval sigev_value)
         tick_status = simulator_send_tick(simulator);
     } while (-1 == tick_status && EINTR == errno);
     if (-1 == tick_status) {
-        /* TODO: HACK! */
-        if (errno != EAGAIN) {
-            LINTED_FATAL_ERROR("Could not send simulator tick: %s",
-                               linted_error_string_alloc(errno));
-        }
+        LINTED_FATAL_ERROR("Could not send simulator tick: %s",
+                           linted_error_string_alloc(errno));
     }
 }
 
