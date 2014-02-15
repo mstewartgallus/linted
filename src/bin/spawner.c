@@ -56,7 +56,7 @@ struct request_header {
     size_t fildes_count;
 };
 
-struct reply_data {
+struct reply {
     int error_status;
 };
 
@@ -65,7 +65,6 @@ static void exec_task(linted_spawner_task_t task,
 static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 static void on_sigchld(int signal_number);
-
 
 /**
  * The read_all function repeatedly reads from fd until buf is full or
@@ -259,7 +258,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             }
 
         case -1:{
-                struct reply_data reply = {.error_status = errno };
+                struct reply reply = {.error_status = errno };
 
                 if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
                     goto close_connection;
@@ -377,19 +376,18 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
     }
 
     {
-        struct reply_data reply_data;
+        struct reply reply;
         size_t bytes_read;
-        if (-1 == read_all(connection, &bytes_read,
-                           &reply_data, sizeof reply_data)) {
+        if (-1 == read_all(connection, &bytes_read, &reply, sizeof reply)) {
             goto cleanup_connection;
         }
-        if (bytes_read != sizeof reply_data) {
+        if (bytes_read != sizeof reply) {
             /* The connection hung up on us instead of replying */
             errno = EIO;
             goto cleanup_connection;
         }
 
-        int const reply_error_status = reply_data.error_status;
+        int const reply_error_status = reply.error_status;
         if (reply_error_status != 0) {
             errno = reply_error_status;
             goto cleanup_connection;
@@ -473,7 +471,7 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         }
 
         {
-            struct reply_data reply = {.error_status = 0 };
+            struct reply reply = {.error_status = 0 };
 
             if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
                 LINTED_LAZY_DEV_ERROR
@@ -491,12 +489,11 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
     }
 
  reply_with_error:;
-    struct reply_data reply = {.error_status = errno };
+    struct reply reply = {.error_status = errno };
 
     if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
-        LINTED_LAZY_DEV_ERROR
-            ("Fork server could not reply to request: %s",
-             linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
+                              linted_error_string_alloc(errno));
     }
 
     exit(EXIT_FAILURE);
@@ -516,7 +513,7 @@ static int read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
     size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_read = read(fd, (char *) buf + total_bytes_read,
+        ssize_t bytes_read = read(fd, (char *)buf + total_bytes_read,
                                   count - total_bytes_read);
         if (-1 == bytes_read) {
             if (EINTR == errno) {
@@ -546,13 +543,12 @@ static int read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
 
 static int write_all(int fd, size_t * bytes_wrote_out,
                      void const *buf, size_t count)
-
 {
     int exit_status = -1;
     size_t total_bytes_wrote = 0;
 
     do {
-        ssize_t bytes_wrote = write(fd, (char const *) buf + total_bytes_wrote,
+        ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
                                     count - total_bytes_wrote);
         if (-1 == bytes_wrote) {
             if (EINTR == errno) {
@@ -568,7 +564,7 @@ static int write_all(int fd, size_t * bytes_wrote_out,
     exit_status = 0;
 
  output_bytes_wrote:
-     if (bytes_wrote_out != NULL) {
+    if (bytes_wrote_out != NULL) {
         *bytes_wrote_out = total_bytes_wrote;
     }
     return exit_status;

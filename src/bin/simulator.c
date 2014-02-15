@@ -195,10 +195,10 @@ int linted_simulator_run(linted_controller_t const controller,
                 int32_t x_future_velocity = x_thrust + x_velocity;
                 int32_t y_future_velocity = y_thrust + y_velocity;
 
-                int32_t x_friction = MIN(imaxabs(x_future_velocity),
-                                         1) * SIGN(x_future_velocity);
-                int32_t y_friction = MIN(imaxabs(y_future_velocity),
-                                         1) * SIGN(y_future_velocity);
+                int32_t x_friction = MIN(imaxabs(x_future_velocity), 1)
+                    * SIGN(x_future_velocity);
+                int32_t y_friction = MIN(imaxabs(y_future_velocity), 1)
+                    * SIGN(y_future_velocity);
 
                 x_velocity += x_thrust + x_friction;
                 y_velocity += y_thrust + y_friction;
@@ -422,33 +422,30 @@ static int simulator_send_movement(simulator_t simulator,
                                    enum linted_controller_direction direction,
                                    bool moving)
 {
-    struct simulator_message message_data;
-    memset(&message_data, 0, sizeof message_data);
+    struct simulator_message message;
+    memset(&message, 0, sizeof message);
 
-    message_data.type = SIMULATOR_MOVEMENT;
-    message_data.direction = direction;
-    message_data.moving = moving;
+    message.type = SIMULATOR_MOVEMENT;
+    message.direction = direction;
+    message.moving = moving;
 
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
-                   0);
+    return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
 static int simulator_send_tick(simulator_t simulator)
 {
-    struct simulator_message message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.type = SIMULATOR_TICK;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
-                   0);
+    struct simulator_message message;
+    memset(&message, 0, sizeof message);
+    message.type = SIMULATOR_TICK;
+    return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
 static int simulator_send_shutdown(simulator_t const simulator)
 {
-    struct simulator_message message_data;
-    memset(&message_data, 0, sizeof message_data);
-    message_data.type = SIMULATOR_SHUTDOWN;
-    return mq_send(simulator, (char const *)&message_data, sizeof message_data,
-                   0);
+    struct simulator_message message;
+    memset(&message, 0, sizeof message);
+    message.type = SIMULATOR_SHUTDOWN;
+    return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
 static int simulator_close(simulator_t const simulator)
