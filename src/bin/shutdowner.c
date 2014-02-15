@@ -35,17 +35,15 @@ int linted_shutdowner_pair(linted_shutdowner_t shutdowner[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct message);
+    attr.mq_msgsize = 1;
 
     return linted_mq_pair(shutdowner, &attr, rflags, wflags);
 }
 
 int linted_shutdowner_send_shutdown(linted_shutdowner_t shutdowner)
 {
-    struct message message;
-    memset(&message, 0, sizeof message);
-
-    return mq_send(shutdowner, (char const *)&message, sizeof message, 0);
+    char dummy;
+    return mq_send(shutdowner, &dummy, 0, 0);
 }
 
 int linted_shutdowner_notify(linted_shutdowner_t shutdowner,
@@ -56,8 +54,8 @@ int linted_shutdowner_notify(linted_shutdowner_t shutdowner,
 
 int linted_shutdowner_receive(linted_shutdowner_t shutdowner)
 {
-    struct message message;
-    return mq_receive(shutdowner, (char *)&message, sizeof message, NULL);
+    char dummy;
+    return mq_receive(shutdowner, &dummy, 1, NULL);
 }
 
 int linted_shutdowner_close(linted_shutdowner_t shutdowner)
