@@ -66,6 +66,9 @@ static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 static void on_sigchld(int signal_number);
 
+static ssize_t read_all(int fd, void *buf, size_t count);
+static int write_all(int fd, void const *buf, size_t count);
+
 static jmp_buf sigchld_jump_buffer;
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
@@ -149,8 +152,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         switch (fork()) {
         case 0:
             {
-                int const sigrestore_status =
-                    sigaction(SIGCHLD, &old_action, NULL);
+                int const sigrestore_status = sigaction(SIGCHLD, &old_action,
+                                                        NULL);
                 assert(sigrestore_status != -1);
 
                 if (-1 == linted_server_close(inbox)) {
@@ -164,11 +167,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         case -1:{
                 struct reply_data reply = {.error_status = errno };
 
-                int write_status;
-                do {
-                    write_status = write(connection, &reply, sizeof reply);
-                } while (-1 == write_status && EINTR == errno);
-                if (-1 == write_status) {
+                if (-1 == write_all(connection, &reply, sizeof reply)) {
                     goto close_connection;
                 }
             }
@@ -267,12 +266,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             .fildes_count = fildes_count
         };
 
-        ssize_t bytes_sent;
-        do {
-            bytes_sent =
-                send(connection, &request_header, sizeof request_header, 0);
-        } while (-1 == bytes_sent && EINTR == errno);
-        if (-1 == bytes_sent) {
+        if (-1 == write_all(connection, &request_header, sizeof request_header)) {
             goto cleanup_connection;
         }
     }
@@ -289,11 +283,14 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
     {
         struct reply_data reply_data;
-        ssize_t bytes_read;
-        do {
-            bytes_read = read(connection, &reply_data, sizeof reply_data);
-        } while (-1 == bytes_read && EINTR == errno);
-        if (-1 == bytes_read) {
+
+        switch (read_all(connection, &reply_data, sizeof reply_data)) {
+        case -1:
+            goto cleanup_connection;
+
+        case 0:
+            /* The connection hung up on us instead of replying */
+            errno = EIO;
             goto cleanup_connection;
         }
 
@@ -339,13 +336,13 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
     {
         struct request_header request_header;
 
-        ssize_t bytes_received;
-        do {
-            bytes_received = recv(connection,
-                                  &request_header, sizeof request_header,
-                                  MSG_WAITALL);
-        } while (-1 == bytes_received && EINTR == errno);
-        if (-1 == bytes_received) {
+        switch (read_all(connection, &request_header, sizeof request_header)) {
+        case -1:
+            goto reply_with_error;
+
+        case 0:
+            /* The connection hung up on us instead of replying */
+            errno = EINVAL;
             goto reply_with_error;
         }
 
@@ -383,11 +380,7 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         {
             struct reply_data reply = {.error_status = 0 };
 
-            int write_status;
-            do {
-                write_status = write(connection, &reply, sizeof reply);
-            } while (-1 == write_status && EINTR == errno);
-            if (-1 == write_status) {
+            if (-1 == write_all(connection, &reply, sizeof reply)) {
                 LINTED_LAZY_DEV_ERROR
                     ("Fork server could not reply to request: %s",
                      linted_error_string_alloc(errno));
@@ -405,13 +398,10 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
  reply_with_error:;
     struct reply_data reply = {.error_status = errno };
 
-    int write_status;
-    do {
-        write_status = write(connection, &reply, sizeof reply);
-    } while (-1 == write_status && EINTR == errno);
-    if (-1 == write_status) {
-        LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
-                              linted_error_string_alloc(errno));
+    if (-1 == write_all(connection, &reply, sizeof reply)) {
+        LINTED_LAZY_DEV_ERROR
+            ("Fork server could not reply to request: %s",
+             linted_error_string_alloc(errno));
     }
 
     exit(EXIT_FAILURE);
@@ -423,4 +413,53 @@ static void exec_task(linted_spawner_task_t task,
     task(spawner, fildes);
 
     exit(EXIT_SUCCESS);
+}
+
+static ssize_t read_all(int fd, void *buf, size_t count)
+{
+    char *pos = buf;
+    size_t bytes_left = count;
+
+    do {
+        ssize_t bytes_wrote = read(fd, pos, bytes_left);
+        if (-1 == bytes_wrote) {
+            if (EINTR == errno) {
+                continue;
+            }
+
+            return -1;
+        }
+
+        if (0 == bytes_wrote) {
+            /* File empty or pipe hangup */
+            return 0;
+        }
+
+        pos += bytes_wrote;
+        bytes_left -= bytes_wrote;
+    } while (bytes_left != 0);
+
+    return count;
+}
+
+static int write_all(int fd, void const *buf, size_t count)
+{
+    char const *pos = buf;
+    size_t bytes_left = count;
+
+    do {
+        ssize_t bytes_wrote = write(fd, pos, bytes_left);
+        if (-1 == bytes_wrote) {
+            if (EINTR == errno) {
+                continue;
+            }
+
+            return -1;
+        }
+
+        pos += bytes_wrote;
+        bytes_left -= bytes_wrote;
+    } while (bytes_left != 0);
+
+    return 0;
 }
