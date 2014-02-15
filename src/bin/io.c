@@ -15,15 +15,17 @@
  */
 #include "config.h"
 
-#include "linted/fildes.h"
+#include "linted/io.h"
 
 #include "linted/util.h"
 
+#include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
-int linted_fildes_send(int const sock, int const fildes)
+int linted_io_send_fildes(int const sock, int const fildes)
 {
     char dummy_data = 0;
 
@@ -57,7 +59,7 @@ int linted_fildes_send(int const sock, int const fildes)
     return -1 == sendmsg(sock, &message, 0) ? -1 : 0;
 }
 
-ssize_t linted_fildes_recv(int *fildes, int const inbox)
+ssize_t linted_io_recv_fildes(int *fildes, int const inbox)
 {
     char dummy_data = 0;
 
@@ -98,4 +100,67 @@ ssize_t linted_fildes_recv(int *fildes, int const inbox)
     *fildes = sent_fildes[0];
 
     return bytes_read;
+}
+
+int linted_io_read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
+{
+    int exit_status = -1;
+    size_t total_bytes_read = 0;
+
+    do {
+        ssize_t bytes_read = read(fd, (char *)buf + total_bytes_read,
+                                  count - total_bytes_read);
+        if (-1 == bytes_read) {
+            if (EINTR == errno) {
+                continue;
+            }
+
+            goto output_bytes_read;
+        }
+
+        if (0 == bytes_read) {
+            /* File empty or pipe hangup */
+            exit_status = 0;
+            goto output_bytes_read;
+        }
+
+        total_bytes_read += bytes_read;
+    } while (total_bytes_read != count);
+
+    exit_status = 0;
+
+ output_bytes_read:
+    if (bytes_read_out != NULL) {
+        *bytes_read_out = total_bytes_read;
+    }
+    return exit_status;
+}
+
+int linted_io_write_all(int fd, size_t * bytes_wrote_out,
+                        void const *buf, size_t count)
+{
+    int exit_status = -1;
+    size_t total_bytes_wrote = 0;
+
+    do {
+        ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
+                                    count - total_bytes_wrote);
+        if (-1 == bytes_wrote) {
+            if (EINTR == errno) {
+                continue;
+            }
+
+            goto output_bytes_wrote;
+        }
+
+        total_bytes_wrote += bytes_wrote;
+    } while (total_bytes_wrote != count);
+
+    exit_status = 0;
+
+ output_bytes_wrote:
+    if (bytes_wrote_out != NULL) {
+        *bytes_wrote_out = total_bytes_wrote;
+    }
+    return exit_status;
 }

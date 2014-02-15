@@ -20,8 +20,8 @@ bin_PROGRAMS=linted
 
 linted_SOURCES=\
   src/bin/controller.c\
-  src/bin/fildes.c\
   src/bin/gui.c\
+  src/bin/io.c\
   src/bin/linted.c\
   src/bin/main_loop.c\
   src/bin/sandbox.c\
@@ -49,8 +49,8 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
 EXTRA_DIST=\
   src/linted/controller.h\
-  src/linted/fildes.h\
   src/linted/gui.h\
+  src/linted/io.h\
   src/linted/main_loop.h\
   src/linted/mq.h\
   src/linted/sandbox.h\

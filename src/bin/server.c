@@ -17,7 +17,7 @@
 
 #include "linted/server.h"
 
-#include "linted/fildes.h"
+#include "linted/io.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -50,7 +50,7 @@ linted_server_conn_t linted_server_connect(linted_server_t const sock)
 
     int send_status;
     do {
-        send_status = linted_fildes_send(sock, new_sockets[0]);
+        send_status = linted_io_send_fildes(sock, new_sockets[0]);
     } while (-1 == send_status && EINTR == errno);
     if (-1 == send_status) {
         int errnum = errno;
