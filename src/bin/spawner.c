@@ -66,8 +66,102 @@ static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 static void on_sigchld(int signal_number);
 
-static ssize_t read_all(int fd, void *buf, size_t count);
-static int write_all(int fd, void const *buf, size_t count);
+
+/**
+ * The read_all function repeatedly reads from fd until buf is full or
+ * an error occurs (except for EINTR).
+ *
+ * The read may be succesful and read less than count if the end of file is
+ * reached.
+ *
+ * For example, a bit could be read and then fd could
+ * be closed and an error would be returned but some bytes would still
+ * have been read.
+ *
+ * @param fd The file to be read from.
+ *
+ * @param bytes_read The amount read. Is set to no larger than count
+ *                   bytes and at least zero bytes. If NULL then is
+ *                   not set.
+ *
+ * @param buf The buffer to be read into. Must be at least count bytes
+ *            long.
+ *
+ * @param count The amount to read. No more than these many bytes is
+ *              read.
+ *
+ * @returns Zero on success. -1 on error, and errno is set
+ *          appropriately.
+ *
+ * @error EAGAIN The file descriptor has been marked nonblocking and
+ *               one of the reads would block.
+ *
+ * @error EWOULDBLOCK Means the same as EAGAIN but may be a different
+ *                    value.
+ *
+ * @error EBADF fd is not a valid file descriptor or is not open for
+ *              reading.
+ *
+ * @error EFAULT buf is not accessible.
+ *
+ * @error EINVAL fd is not readable or the file was opened with
+ *               O_DIRECT and alignment restrictions weren't
+ *               satisfied.
+ *
+ * @error EIO I/O error.
+ *
+ * @error EISDIR fd is a directory.
+ */
+static int read_all(int fd, size_t * bytes_read, void *buf, size_t count);
+
+/**
+ * The write_all function repeatedly writes to fd until of buf is
+ * written or an error occurs (except for EINTR).
+ *
+ * For example, a bit could be written and then fd could be closed and
+ * an error would be returned but some bytes would still have been
+ * written.
+ *
+ * @param fd The file to be written to.
+ *
+ * @param bytes_wrote The amount written. Is set to no larger than
+ *                    count bytes and at least zero bytes. If NULL
+ *                    then is not set.
+ *
+ * @param buf The buffer to be written from. Must be at least count bytes
+ *            long.
+ *
+ * @param count The amount to write. No more than these many bytes is
+ *              written.
+ *
+ * @returns Zero on success. -1 on error, and errno is set
+ *          appropriately.
+ *
+ * @error EAGAIN The file descriptor has been marked nonblocking and
+ *               one of the writes would block.
+ *
+ * @error EBADF fd is not a valid file descriptor or is not open for
+ *              writing.
+ *
+ * @error EWOULDBLOCK Means the same as EAGAIN but may be a different
+ *                    value.
+ *
+ * @error EFAULT buf is not accessible.
+ *
+ * @error EINVAL fd is not writable or the file was opened with
+ *               O_DIRECT and alignment restrictions weren't
+ *               satisfied.
+ *
+ * @error EIO I/O error.
+ *
+ * @error ENOSPC No room for the data.
+ *
+ * @error EPIPE fd is a pipe or socket with a closed read end.
+ *
+ * @error EISDIR fd is a directory.
+ */
+static int write_all(int fd, size_t * bytes_wrote,
+                     void const *buf, size_t count);
 
 static jmp_buf sigchld_jump_buffer;
 
@@ -167,7 +261,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         case -1:{
                 struct reply_data reply = {.error_status = errno };
 
-                if (-1 == write_all(connection, &reply, sizeof reply)) {
+                if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
                     goto close_connection;
                 }
             }
@@ -266,7 +360,8 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
             .fildes_count = fildes_count
         };
 
-        if (-1 == write_all(connection, &request_header, sizeof request_header)) {
+        if (-1 == write_all(connection, NULL,
+                            &request_header, sizeof request_header)) {
             goto cleanup_connection;
         }
     }
@@ -283,12 +378,12 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
     {
         struct reply_data reply_data;
-
-        switch (read_all(connection, &reply_data, sizeof reply_data)) {
-        case -1:
+        size_t bytes_read;
+        if (-1 == read_all(connection, &bytes_read,
+                           &reply_data, sizeof reply_data)) {
             goto cleanup_connection;
-
-        case 0:
+        }
+        if (bytes_read != sizeof reply_data) {
             /* The connection hung up on us instead of replying */
             errno = EIO;
             goto cleanup_connection;
@@ -335,12 +430,12 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
     size_t fildes_count;
     {
         struct request_header request_header;
-
-        switch (read_all(connection, &request_header, sizeof request_header)) {
-        case -1:
+        size_t bytes_read;
+        if (-1 == read_all(connection, &bytes_read,
+                           &request_header, sizeof request_header)) {
             goto reply_with_error;
-
-        case 0:
+        }
+        if (bytes_read != sizeof request_header) {
             /* The connection hung up on us instead of replying */
             errno = EINVAL;
             goto reply_with_error;
@@ -380,7 +475,7 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
         {
             struct reply_data reply = {.error_status = 0 };
 
-            if (-1 == write_all(connection, &reply, sizeof reply)) {
+            if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
                 LINTED_LAZY_DEV_ERROR
                     ("Fork server could not reply to request: %s",
                      linted_error_string_alloc(errno));
@@ -398,7 +493,7 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
  reply_with_error:;
     struct reply_data reply = {.error_status = errno };
 
-    if (-1 == write_all(connection, &reply, sizeof reply)) {
+    if (-1 == write_all(connection, NULL, &reply, sizeof reply)) {
         LINTED_LAZY_DEV_ERROR
             ("Fork server could not reply to request: %s",
              linted_error_string_alloc(errno));
@@ -415,51 +510,66 @@ static void exec_task(linted_spawner_task_t task,
     exit(EXIT_SUCCESS);
 }
 
-static ssize_t read_all(int fd, void *buf, size_t count)
+static int read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
 {
-    char *pos = buf;
-    size_t bytes_left = count;
+    int exit_status = -1;
+    size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_wrote = read(fd, pos, bytes_left);
-        if (-1 == bytes_wrote) {
+        ssize_t bytes_read = read(fd, (char *) buf + total_bytes_read,
+                                  count - total_bytes_read);
+        if (-1 == bytes_read) {
             if (EINTR == errno) {
                 continue;
             }
 
-            return -1;
+            goto output_bytes_read;
         }
 
-        if (0 == bytes_wrote) {
+        if (0 == bytes_read) {
             /* File empty or pipe hangup */
-            return 0;
+            exit_status = 0;
+            goto output_bytes_read;
         }
 
-        pos += bytes_wrote;
-        bytes_left -= bytes_wrote;
-    } while (bytes_left != 0);
+        total_bytes_read += bytes_read;
+    } while (total_bytes_read != count);
 
-    return count;
+    exit_status = 0;
+
+ output_bytes_read:
+    if (bytes_read_out != NULL) {
+        *bytes_read_out = total_bytes_read;
+    }
+    return exit_status;
 }
 
-static int write_all(int fd, void const *buf, size_t count)
+static int write_all(int fd, size_t * bytes_wrote_out,
+                     void const *buf, size_t count)
+
 {
-    char const *pos = buf;
-    size_t bytes_left = count;
+    int exit_status = -1;
+    size_t total_bytes_wrote = 0;
 
     do {
-        ssize_t bytes_wrote = write(fd, pos, bytes_left);
+        ssize_t bytes_wrote = write(fd, (char const *) buf + total_bytes_wrote,
+                                    count - total_bytes_wrote);
         if (-1 == bytes_wrote) {
             if (EINTR == errno) {
                 continue;
             }
 
-            return -1;
+            goto output_bytes_wrote;
         }
 
-        pos += bytes_wrote;
-        bytes_left -= bytes_wrote;
-    } while (bytes_left != 0);
+        total_bytes_wrote += bytes_wrote;
+    } while (total_bytes_wrote != count);
 
-    return 0;
+    exit_status = 0;
+
+ output_bytes_wrote:
+     if (bytes_wrote_out != NULL) {
+        *bytes_wrote_out = total_bytes_wrote;
+    }
+    return exit_status;
 }
