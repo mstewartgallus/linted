@@ -28,6 +28,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -67,7 +68,7 @@ static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 static void on_sigchld(int signal_number);
 
-static jmp_buf sigchld_jump_buffer;
+static volatile sig_atomic_t sigchld_was_set;
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
@@ -109,7 +110,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     struct sigaction old_action;
-    if (0 == sigsetjmp(sigchld_jump_buffer, true)) {
+    {
         sigset_t full_set;
 
         int fullset_status = sigfillset(&full_set);
@@ -131,6 +132,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
      * the start.
      */
  retry_wait:
+    sigchld_was_set = false;
+
     {
         int child_exit_status;
         pid_t child = waitpid(-1, &child_exit_status, WNOHANG);
@@ -183,26 +186,43 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         }
     }
 
-    /*
-     * Done dealing with SIGCHLD signals. Now we can unblock the mask
-     * and wait for more (and do other stuff).
-     */
-    {
-        sigset_t sigchld_set;
-
-        int empty_set_status = sigemptyset(&sigchld_set);
-        assert(empty_set_status != -1);
-
-        int sigchld_set_status = sigaddset(&sigchld_set, SIGCHLD);
-        assert(sigchld_set_status != -1);
-
-        int mask_status = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
-        assert(mask_status != -1);
-    }
-
     for (;;) {
         int connection_status = -1;
         linted_server_conn_t connection;
+
+        /*
+         * Done dealing with SIGCHLD signals. Now we can unblock the mask
+         * and wait for more (and do other stuff).
+         */
+        {
+         retry_pselect:;
+            sigset_t sigchld_unblocked_mask = old_sigset;
+
+            int sigchld_rm_status = sigdelset(&sigchld_unblocked_mask, SIGCHLD);
+            assert(sigchld_rm_status != -1);
+
+            fd_set watched_fds;
+
+            FD_ZERO(&watched_fds);
+            FD_SET(inbox, &watched_fds);
+
+            int poll_status = pselect(inbox + 1, &watched_fds,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      &sigchld_unblocked_mask);
+            if (-1 == poll_status) {
+                if (EINTR == errno) {
+                    if (sigchld_was_set) {
+                        goto retry_wait;
+                    }
+                    goto retry_pselect;
+                }
+
+                goto restore_sigstatus;
+            }
+        }
+
         ssize_t bytes_read;
         do {
             bytes_read = linted_io_recv_fildes(&connection, inbox);
@@ -396,7 +416,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
 static void on_sigchld(int signal_number)
 {
-    siglongjmp(sigchld_jump_buffer, signal_number);
+    sigchld_was_set = true;
 }
 
 #define MAX_FORKER_FILDES_COUNT 20
