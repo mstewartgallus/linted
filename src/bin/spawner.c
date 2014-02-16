@@ -111,8 +111,8 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         int sigchld_set_status = sigaddset(&sigchld_set, SIGCHLD);
         assert(sigchld_set_status != -1);
 
-        int mask_status = sigprocmask(SIG_BLOCK, &sigchld_set, &old_sigset);
-        assert(mask_status != -1);
+        int mask_status = pthread_sigmask(SIG_BLOCK, &sigchld_set, &old_sigset);
+        assert(0 == mask_status);
     }
 
     struct sigaction old_action;
@@ -338,8 +338,8 @@ static void restore_global_state(struct sigaction const * old_action,
     int const sigrestore_status = sigaction(SIGCHLD, old_action, NULL);
     assert(sigrestore_status != -1);
 
-    int mask_status = sigprocmask(SIG_SETMASK, old_sigset, NULL);
-    assert(mask_status != -1);
+    int mask_status = pthread_sigmask(SIG_SETMASK, old_sigset, NULL);
+    assert(0 == mask_status);
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
