@@ -111,9 +111,9 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
     struct sigaction old_action;
     {
-        sigset_t full_set;
+        sigset_t during_sigchld_mask;
 
-        int fullset_status = sigfillset(&full_set);
+        int fullset_status = sigemptyset(&during_sigchld_mask);
         assert(fullset_status != -1);
 
         struct sigaction new_action;
@@ -121,7 +121,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
         new_action.sa_handler = on_sigchld;
         new_action.sa_flags = SA_NOCLDSTOP;
-        new_action.sa_mask = full_set;
+        new_action.sa_mask = during_sigchld_mask;
 
         int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
         assert(sigset_status != -1);
