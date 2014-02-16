@@ -9,6 +9,9 @@ Linted -- TODO
 * Port to --host=i686-w64-mingw32
 * Move away from LINTED_EXIT and such
 With the scheme I have now, I should really just syslog and exit.
+* Move away from names ending in _t
+Such names are reserved by POSIX. That's silly but unfortunately we
+have to deal with it.
 * Sandbox process by closing accidentally leaked file descriptors
 A caller of our process could accidentally leak in file
 descriptors. We need to read all leaked in open files from
