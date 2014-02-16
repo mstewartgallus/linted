@@ -24,10 +24,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/signalfd.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -45,12 +45,10 @@
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
  *
+ * TODO: Move away from the Linux specific signalfd solution.
+ *
  * TODO: Don't wait on all processes but only on ones spawned by the
  * fork server.
- *
- * TODO: Don't modify the global SIGCHLD signal handler.
- *
- * TODO: Don't have a global state to use with the signal handler.
  */
 struct request_header {
     linted_spawner_task_t func;
@@ -61,20 +59,12 @@ struct reply {
     int error_status;
 };
 
-static volatile sig_atomic_t sigchld_occurred;
-
 static void exec_task(linted_spawner_task_t task,
                       linted_spawner_t spawner, int const fildes[]);
 static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
-static void on_sigchld(int signal_number);
 
-static int wait_for_sigchld_or_fildes(linted_server_t inbox,
-                                      sigset_t const * old_sigset);
 static int wait_on_children(void);
-
-static void restore_global_state(struct sigaction const * old_action,
-                                 sigset_t const * old_sigset);
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
@@ -102,6 +92,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     sigset_t old_sigset;
+    int sigchld_fd;
     {
         sigset_t sigchld_set;
 
@@ -113,24 +104,19 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
         int mask_status = pthread_sigmask(SIG_BLOCK, &sigchld_set, &old_sigset);
         assert(0 == mask_status);
-    }
 
-    struct sigaction old_action;
-    {
-        sigset_t during_sigchld_mask;
+        sigset_t sigchld_mask;
 
-        int fullset_status = sigemptyset(&during_sigchld_mask);
-        assert(fullset_status != -1);
+        int sigchld_empty_status = sigemptyset(&sigchld_mask);
+        assert(sigchld_empty_status != -1);
 
-        struct sigaction new_action;
-        memset(&new_action, 0, sizeof new_action);
+        int sigchld_add_status = sigaddset(&sigchld_mask, SIGCHLD);
+        assert(sigchld_add_status != -1);
 
-        new_action.sa_handler = on_sigchld;
-        new_action.sa_flags = SA_NOCLDSTOP;
-        new_action.sa_mask = during_sigchld_mask;
-
-        int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
-        assert(sigset_status != -1);
+        sigchld_fd = signalfd(-1, &sigchld_mask, SFD_CLOEXEC);
+        if (-1 == sigchld_fd) {
+            goto restore_signal_mask;
+        }
     }
 
  wait_for_children:
@@ -143,27 +129,41 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             goto exit_fork_server;
         }
 
-        goto restore_sigstatus;
+        goto close_sigchld_fd;
     }
 
     for (;;) {
         int connection_status = -1;
         linted_server_conn_t connection;
 
-        /*
-         * Done dealing with SIGCHLD signals. Now we can unblock the mask
-         * and wait for more (and do other stuff).
-         */
-        int wait_status;
-        do {
-            wait_status = wait_for_sigchld_or_fildes(inbox, &old_sigset);
-        } while (-1 == wait_status && EINTR == errno);
-        if (-1 == wait_status) {
-            goto restore_sigstatus;
-        }
+        {
+            int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
+            fd_set watched_fds;
+            int select_status;
 
-        if (sigchld_occurred) {
-            goto wait_for_children;
+            do {
+                FD_ZERO(&watched_fds);
+                FD_SET(inbox, &watched_fds);
+                FD_SET(sigchld_fd, &watched_fds);
+
+                select_status = select(greatest + 1, &watched_fds,
+                                       NULL,
+                                       NULL,
+                                       NULL);
+            } while (-1 == select_status && EINTR == errno);
+            if (-1 == select_status) {
+                goto close_sigchld_fd;
+            }
+
+            if (FD_ISSET(sigchld_fd, &watched_fds)) {
+                struct signalfd_siginfo siginfo;
+                if (-1 == linted_io_read_all(sigchld_fd, NULL,
+                                             &siginfo, sizeof siginfo)) {
+                    goto close_sigchld_fd;
+                }
+
+                goto wait_for_children;
+            }
         }
 
         ssize_t bytes_read;
@@ -171,7 +171,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             bytes_read = linted_io_recv_fildes(&connection, inbox);
         } while (-1 == bytes_read && EINTR == errno);
         if (-1 == bytes_read) {
-            goto restore_sigstatus;
+            goto restore_signal_mask;
         }
 
         /* Luckily, because we already must fork for a fork server we
@@ -180,12 +180,19 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         switch (fork()) {
         case 0:
         {
-            restore_global_state(&old_action, &old_sigset);
+            int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+            assert(0 == mask_status);
 
             if (-1 == linted_server_close(inbox)) {
                 LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
                                       linted_error_string_alloc(errno));
             }
+
+            if (-1 == close(sigchld_fd)) {
+                LINTED_LAZY_DEV_ERROR("Could not close signal fd: %s",
+                                      linted_error_string_alloc(errno));
+            }
+
 
             exec_task_from_connection(spawner, connection);
         }
@@ -216,7 +223,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
             }
 
             if (-1 == connection_status) {
-                goto restore_sigstatus;
+                goto close_sigchld_fd;
             }
         }
     }
@@ -224,11 +231,24 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
  exit_fork_server:
     exit_status = 0;
 
- restore_sigstatus:
+ close_sigchld_fd:
+    {
+        int errnum = errno;
+        int close_status = close(sigchld_fd);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+ restore_signal_mask:
     {
         int errnum = errno;
 
-        restore_global_state(&old_action, &old_sigset);
+        int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+        assert(0 == mask_status);
 
         errno = errnum;
     }
@@ -261,32 +281,6 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     return exit_status;
-}
-
-static int wait_for_sigchld_or_fildes(linted_server_t inbox,
-                                       sigset_t const * old_sigset)
-{
-    sigset_t sigchld_unblocked_mask = *old_sigset;
-
-    int sigchld_rm_status = sigdelset(&sigchld_unblocked_mask, SIGCHLD);
-    assert(sigchld_rm_status != -1);
-
-    fd_set watched_fds;
-
-    FD_ZERO(&watched_fds);
-    FD_SET(inbox, &watched_fds);
-
-    sigchld_occurred = false;
-    int select_status = pselect(inbox + 1, &watched_fds,
-                                NULL,
-                                NULL,
-                                NULL,
-                                &sigchld_unblocked_mask);
-    if (sigchld_occurred) {
-        return 0;
-    }
-
-    return select_status;
 }
 
 static int wait_on_children(void)
@@ -330,16 +324,6 @@ static int wait_on_children(void)
 int linted_spawner_close(linted_spawner_t spawner)
 {
     return linted_server_close(spawner);
-}
-
-static void restore_global_state(struct sigaction const * old_action,
-                                 sigset_t const * old_sigset)
-{
-    int const sigrestore_status = sigaction(SIGCHLD, old_action, NULL);
-    assert(sigrestore_status != -1);
-
-    int mask_status = pthread_sigmask(SIG_SETMASK, old_sigset, NULL);
-    assert(0 == mask_status);
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
@@ -419,11 +403,6 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
  cleanup_nothing:
     return spawn_status;
-}
-
-static void on_sigchld(int signal_number)
-{
-    sigchld_occurred = true;
 }
 
 #define MAX_FORKER_FILDES_COUNT 20
