@@ -109,7 +109,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         goto close_sockets;
     }
 
-    if (-1 == setpgid(process_group, process_group)) {
+    if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
         goto close_sockets;
     }
 
@@ -235,7 +235,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         }
         }
 
-        if (-1 == setpgid(child, process_group)) {
+        if (-1 == setpgid(child, process_group) && errno != EACCES) {
             goto close_connection;
         }
 
