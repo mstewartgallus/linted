@@ -28,6 +28,8 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
+extern char **environ;
+
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
     "Play the " PACKAGE_NAME " game\n"\
@@ -75,10 +77,26 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    /* Sanitize the environment */
+    char ** env = environ;
+    for (;*env != NULL; ++env) {
+        /* TODO: Only pass the display variable in for the gui task */
+        if (0 > strcmp("DISPLAY=", *env)) {
+            continue;
+        }
+
+        char const needle[] = "=";
+        char * sensitive_data = strstr(*env, needle) + (sizeof needle - 1);
+
+        for (char * xx = sensitive_data; *xx != '\0'; ++xx) {
+            *xx = '\0';
+        }
+    }
+
     int command_status = -1;
     switch (argc) {
     case 1:
-        /* Fork off tasks from a knonw good state */
+        /* Fork off tasks from a known good state */
         if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {
                                      -1})) {
             char const *const error_string = linted_error_string_alloc(errno);
