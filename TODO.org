@@ -7,6 +7,9 @@ notice and this notice are preserved.
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
+* Use signal safe code in spawner.c
+Unfortunately, as the trick is, using siglongjmp in a signal handler
+is undefined behaviour.
 * Move away from LINTED_EXIT and such
 With the scheme I have now, I should really just syslog and exit.
 * Move away from names ending in _t
