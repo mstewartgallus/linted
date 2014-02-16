@@ -27,6 +27,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <sys/signalfd.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -51,7 +52,10 @@
  * threads. Both the spawner and the child must set the process group
  * to avoid a race condition.
  *
- * TODO: Move away from the Linux specific signalfd solution.
+ * A prctl call is used so that the child knows about the parents
+ * death.
+ *
+ * TODO: Move away from Linux specifics such as signalfd, and prctl.
  *
  * TODO: Does signalfd listen to child death of processes spawned by
  * other threads? If so, find a way to only listen to SIGCHLD for
@@ -93,6 +97,11 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     pid_t const process_group = fork();
     switch (process_group) {
     case 0:
+        if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+            LINTED_LAZY_DEV_ERROR("Could not register for notification of parent's death: %s",
+                                  linted_error_string_alloc(errno));
+        }
+
         if (-1 == setpgid(process_group, process_group)) {
             LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
                                   linted_error_string_alloc(errno));
@@ -205,6 +214,11 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         {
             int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
             assert(0 == mask_status);
+
+            if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                LINTED_LAZY_DEV_ERROR("Could not register for notification of parent's death: %s",
+                                      linted_error_string_alloc(errno));
+            }
 
             if (-1 == setpgid(child, process_group)) {
                 LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
