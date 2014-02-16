@@ -45,10 +45,13 @@
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
  *
- * TODO: Move away from the Linux specific signalfd solution.
+ * We create and move processes to a new process group so that only
+ * these specific processes are waited on instead of processes spawned
+ * before this function is invoked or spawned by concurrent
+ * threads. Both the spawner and the child must set the process group
+ * to avoid a race condition.
  *
- * TODO: Don't wait on processes spawned before this function is
- * invoked.
+ * TODO: Move away from the Linux specific signalfd solution.
  *
  * TODO: Does signalfd listen to child death of processes spawned by
  * other threads? If so, find a way to only listen to SIGCHLD for
@@ -68,7 +71,7 @@ static void exec_task(linted_spawner_task_t task,
 static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 
-static int wait_on_children(void);
+static int wait_on_children(id_t process_group);
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
@@ -82,8 +85,19 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     linted_spawner_t const spawner = sockets[0];
     linted_server_t const inbox = sockets[1];
 
-    switch (fork()) {
+    /*
+     * This is a little bit confusing but the first processes pid is
+     * reused for the process group. We create a new process group so
+     * we can wait on that only.
+     */
+    pid_t const process_group = fork();
+    switch (process_group) {
     case 0:
+        if (-1 == setpgid(process_group, process_group)) {
+            LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
+                                  linted_error_string_alloc(errno));
+        }
+
         if (-1 == linted_server_close(inbox)) {
             LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
                                   linted_error_string_alloc(errno));
@@ -92,6 +106,10 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         exec_task(main_loop, spawner, fildes);
 
     case -1:
+        goto close_sockets;
+    }
+
+    if (-1 == setpgid(process_group, process_group)) {
         goto close_sockets;
     }
 
@@ -128,7 +146,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
      * We received a SIGCHLD. Alternatively, we are doing this once at
      * the start.
      */
-    if (-1 == wait_on_children()) {
+    if (-1 == wait_on_children(process_group)) {
         if (ECHILD == errno) {
             goto exit_fork_server;
         }
@@ -181,11 +199,17 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         /* Luckily, because we already must fork for a fork server we
          * get asynchronous behaviour for free.
          */
-        switch (fork()) {
+        pid_t child = fork();
+        switch (child) {
         case 0:
         {
             int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
             assert(0 == mask_status);
+
+            if (-1 == setpgid(child, process_group)) {
+                LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
+                                      linted_error_string_alloc(errno));
+            }
 
             if (-1 == linted_server_close(inbox)) {
                 LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
@@ -209,6 +233,10 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
                 goto close_connection;
             }
         }
+        }
+
+        if (-1 == setpgid(child, process_group)) {
+            goto close_connection;
         }
 
         connection_status = 0;
@@ -287,25 +315,38 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     return exit_status;
 }
 
-static int wait_on_children(void)
+static int wait_on_children(id_t process_group)
 {
     for (;;) {
-        int child_exit_status;
-        pid_t child;
+        siginfo_t child_info;
+
+        {
+            /*
+             * Zero out the si_pid field so it can be checked for zero
+             * and if no processes have exited.
+             */
+            pid_t * const si_pidp = &child_info.si_pid;
+            memset(si_pidp, 0, sizeof *si_pidp);
+        }
+
+        int wait_status;
         do {
-            child = waitpid(-1, &child_exit_status, WNOHANG | __WNOTHREAD);
-        } while (-1 == child && EINTR == errno);
-        if (-1 == child) {
+            wait_status = waitid(P_PGID, process_group, &child_info,
+                                 WEXITED | WNOHANG);
+        } while (-1 ==  wait_status && EINTR == errno);
+        if (-1 == wait_status) {
             return -1;
         }
 
+        pid_t const child = child_info.si_pid;
         if (0 == child) {
             return 0;
         }
 
         /* Waited on a dead process. Log and wait for more. */
-        if (WIFEXITED(child_exit_status)) {
-            int return_value = WEXITSTATUS(child_exit_status);
+        switch (child_info.si_code) {
+        case CLD_EXITED:{
+            int return_value = child_info.si_status;
             if (0 == return_value) {
                 syslog(LOG_INFO, "child %ju executed normally",
                        (uintmax_t) child);
@@ -315,12 +356,19 @@ static int wait_on_children(void)
                        (uintmax_t) child, error);
                 linted_error_string_free(error);
             }
-        } else if (WIFSIGNALED(child_exit_status)) {
+            break;
+        }
+
+        case CLD_KILLED:
             syslog(LOG_INFO, "child %ju was terminated with signal number %i",
-                   (uintmax_t) child, WTERMSIG(child_exit_status));
-        } else {
+                   (uintmax_t) child, child_info.si_status);
+            break;
+
+        default:
+            /* TODO: Possibly assert that this shouldn't happen */
             syslog(LOG_INFO, "child %ju executed abnormally",
                    (uintmax_t) child);
+            break;
         }
     }
 }
