@@ -47,8 +47,12 @@
  *
  * TODO: Move away from the Linux specific signalfd solution.
  *
- * TODO: Don't wait on all processes but only on ones spawned by the
- * fork server.
+ * TODO: Don't wait on processes spawned before this function is
+ * invoked.
+ *
+ * TODO: Does signalfd listen to child death of processes spawned by
+ * other threads? If so, find a way to only listen to SIGCHLD for
+ * processes spawned by my processes.
  */
 struct request_header {
     linted_spawner_task_t func;
@@ -289,7 +293,7 @@ static int wait_on_children(void)
         int child_exit_status;
         pid_t child;
         do {
-            child = waitpid(-1, &child_exit_status, WNOHANG);
+            child = waitpid(-1, &child_exit_status, WNOHANG | __WNOTHREAD);
         } while (-1 == child && EINTR == errno);
         if (-1 == child) {
             return -1;
