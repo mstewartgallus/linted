@@ -25,10 +25,6 @@
 #include <string.h>
 #include <time.h>
 
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-
-#define SIGN(x) ((x) < 0 ? 1 : (0 == (x)) ? 0 : -1)
-
 typedef mqd_t simulator_t;
 
 enum simulator_message_type {
@@ -61,6 +57,9 @@ struct timer_data {
 static void on_controller_notification(union sigval sigval);
 static void on_shutdowner_notification(union sigval sigval);
 static void on_clock_tick(union sigval sigev_value);
+
+static int32_t min(int32_t x, int32_t y);
+static int32_t sign(int32_t x);
 
 static int simulator_pair(simulator_t simulator[2]);
 static int simulator_close(simulator_t const simulator);
@@ -195,10 +194,10 @@ int linted_simulator_run(linted_controller_t const controller,
                 int32_t x_future_velocity = x_thrust + x_velocity;
                 int32_t y_future_velocity = y_thrust + y_velocity;
 
-                int32_t x_friction = MIN(imaxabs(x_future_velocity), 1)
-                    * SIGN(x_future_velocity);
-                int32_t y_friction = MIN(imaxabs(y_future_velocity), 1)
-                    * SIGN(y_future_velocity);
+                int32_t x_friction = min(imaxabs(x_future_velocity), 1)
+                    * sign(x_future_velocity);
+                int32_t y_friction = min(imaxabs(y_future_velocity), 1)
+                    * sign(y_future_velocity);
 
                 x_velocity += x_thrust + x_friction;
                 y_velocity += y_thrust + y_friction;
@@ -405,6 +404,18 @@ static void on_shutdowner_notification(union sigval sigval)
                                linted_error_string_alloc(errno));
         }
     }
+}
+
+static int32_t min(int32_t x, int32_t y)
+{
+    return x < y ? x : y;
+}
+
+static int32_t sign(int32_t x)
+{
+    return x < 0 ? 1
+        : 0 == x ? 0
+        : -1;
 }
 
 static int simulator_pair(simulator_t simulator[2])
