@@ -7,6 +7,8 @@ notice and this notice are preserved.
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
+* Move away from LINTED_EXIT and such
+With the scheme I have now, I should really just syslog and exit.
 * Sandbox process by closing accidentally leaked file descriptors
 A caller of our process could accidentally leak in file
 descriptors. We need to read all leaked in open files from
@@ -17,8 +19,6 @@ after already opening a file.
 * Sanitize environment variables
 These may contain sensitive information.
 * Avoid deadlock where process blocks on sending message to shutdown process
-* Have a better error handling scheme for processes
-I need to be able signal failure from one process to another.
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening

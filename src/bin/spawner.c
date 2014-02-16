@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -93,6 +94,20 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         goto close_sockets;
     }
 
+    sigset_t old_sigset;
+    {
+        sigset_t sigchld_set;
+
+        int empty_set_status = sigemptyset(&sigchld_set);
+        assert(empty_set_status != -1);
+
+        int sigchld_set_status = sigaddset(&sigchld_set, SIGCHLD);
+        assert(sigchld_set_status != -1);
+
+        int mask_status = sigprocmask(SIG_BLOCK, &sigchld_set, &old_sigset);
+        assert(mask_status != -1);
+    }
+
     struct sigaction old_action;
     if (0 == sigsetjmp(sigchld_jump_buffer, true)) {
         struct sigaction new_action;
@@ -104,32 +119,75 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
         assert(sigset_status != -1);
     }
-    /* We received a SIGCHLD */
-    /* Alternatively, we are doing this once at the start */
+
+    /*
+     * We received a SIGCHLD. Alternatively, we are doing this once at
+     * the start.
+     */
  retry_wait:
-    switch (waitpid(-1, NULL, WNOHANG)) {
-    case -1:
-        switch (errno) {
-        case ECHILD:
-            goto exit_fork_server;
+    {
+        int child_exit_status;
+        pid_t child = waitpid(-1, &child_exit_status, WNOHANG);
+        switch (child) {
+        case -1:
+            switch (errno) {
+            case ECHILD:
+                goto exit_fork_server;
 
-        case EINTR:
-            /* Implausible but some weird system might do this */
-            goto retry_wait;
+            case EINTR:
+                /* Implausible but some weird system might do this */
+                goto retry_wait;
 
-        default:
-            goto restore_sigstatus;
+            default:
+                goto restore_sigstatus;
+            }
+
+        case 0:
+            /* Have processes that aren't dead yet to wait on,
+             * don't exit yet.
+             */
+            break;
+
+        default:{
+                /* Waited on a dead process. Wait for more. */
+
+            if (WIFEXITED(child_exit_status)) {
+                    int retvalue = WEXITSTATUS(child_exit_status);
+                    if (0 == retvalue) {
+                        syslog(LOG_INFO,
+                               "child %ju executed normally",
+                               (uintmax_t) child);
+                    } else {
+                        char const * error = linted_error_string_alloc(retvalue);
+                        syslog(LOG_INFO,
+                               "child %ju executed with error: %s",
+                               (uintmax_t) child, error);
+                        linted_error_string_free(error);
+                    }
+                } else {
+                    syslog(LOG_INFO,"child %ju executed abnormally",
+                           (uintmax_t) child);
+                }
+                goto retry_wait;
+            }
         }
+    }
 
-    case 0:
-        /* Have processes that aren't dead yet to wait on,
-         * don't exit yet.
-         */
-        break;
+    /*
+     * Done dealing with SIGCHLD signals. Now we can unblock the mask
+     * and wait for more (and do other stuff).
+     */
+    {
+        sigset_t sigchld_set;
 
-    default:
-        /* Waited on a dead process. Wait for more. */
-        goto retry_wait;
+        int empty_set_status = sigemptyset(&sigchld_set);
+        assert(empty_set_status != -1);
+
+        int sigchld_set_status = sigaddset(&sigchld_set, SIGCHLD);
+        assert(sigchld_set_status != -1);
+
+        int mask_status = sigprocmask(SIG_UNBLOCK, &sigchld_set, NULL);
+        assert(mask_status != -1);
     }
 
     for (;;) {
@@ -205,6 +263,11 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         if (-1 == exit_status) {
             errno = errnum;
         }
+    }
+
+    {
+        int mask_status = sigprocmask(SIG_SETMASK, &old_sigset, NULL);
+        assert(mask_status != -1);
     }
 
  close_sockets:
