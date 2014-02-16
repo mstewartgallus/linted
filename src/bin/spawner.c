@@ -52,7 +52,6 @@
  *
  * TODO: Don't have a global state to use with the signal handler.
  */
-
 struct request_header {
     linted_spawner_task_t func;
     size_t fildes_count;
@@ -62,13 +61,17 @@ struct reply {
     int error_status;
 };
 
+static volatile sig_atomic_t sigchld_occurred;
+
 static void exec_task(linted_spawner_task_t task,
                       linted_spawner_t spawner, int const fildes[]);
 static void exec_task_from_connection(linted_spawner_t spawner,
                                       linted_server_conn_t connection);
 static void on_sigchld(int signal_number);
 
-static volatile sig_atomic_t sigchld_was_set;
+static int wait_for_sigchld_or_fildes(linted_server_t inbox,
+                                      sigset_t const * old_sigset);
+static int wait_on_children(void);
 
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
@@ -127,63 +130,18 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         assert(sigset_status != -1);
     }
 
+
+ wait_for_children:
     /*
      * We received a SIGCHLD. Alternatively, we are doing this once at
      * the start.
      */
- retry_wait:
-    sigchld_was_set = false;
-
-    {
-        int child_exit_status;
-        pid_t child = waitpid(-1, &child_exit_status, WNOHANG);
-        switch (child) {
-        case -1:
-            switch (errno) {
-            case ECHILD:
-                goto exit_fork_server;
-
-            case EINTR:
-                /* Implausible but some weird system might do this */
-                goto retry_wait;
-
-            default:
-                goto restore_sigstatus;
-            }
-
-        case 0:
-            /* Have processes that aren't dead yet to wait on,
-             * don't exit yet.
-             */
-            break;
-
-        default:{
-                /* Waited on a dead process. Wait for more. */
-
-                if (WIFEXITED(child_exit_status)) {
-                    int retvalue = WEXITSTATUS(child_exit_status);
-                    if (0 == retvalue) {
-                        syslog(LOG_INFO,
-                               "child %ju executed normally",
-                               (uintmax_t) child);
-                    } else {
-                        char const * error = linted_error_string_alloc(retvalue);
-                        syslog(LOG_INFO,
-                               "child %ju executed with error: %s",
-                               (uintmax_t) child, error);
-                        linted_error_string_free(error);
-                    }
-                } else if (WIFSIGNALED(child_exit_status)) {
-                    syslog(LOG_INFO,
-                           "child %ju was terminated with signal number %i",
-                           (uintmax_t) child, WTERMSIG(child_exit_status));
-                } else {
-                    syslog(LOG_INFO,"child %ju executed abnormally",
-                           (uintmax_t) child);
-                }
-                goto retry_wait;
-            }
+    if (-1 == wait_on_children()) {
+        if (ECHILD == errno) {
+            goto exit_fork_server;
         }
+
+        goto restore_sigstatus;
     }
 
     for (;;) {
@@ -194,33 +152,16 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
          * Done dealing with SIGCHLD signals. Now we can unblock the mask
          * and wait for more (and do other stuff).
          */
-        {
-         retry_pselect:;
-            sigset_t sigchld_unblocked_mask = old_sigset;
+        int wait_status;
+        do {
+            wait_status = wait_for_sigchld_or_fildes(inbox, &old_sigset);
+        } while (-1 == wait_status && EINTR == errno);
+        if (-1 == wait_status) {
+            goto restore_sigstatus;
+        }
 
-            int sigchld_rm_status = sigdelset(&sigchld_unblocked_mask, SIGCHLD);
-            assert(sigchld_rm_status != -1);
-
-            fd_set watched_fds;
-
-            FD_ZERO(&watched_fds);
-            FD_SET(inbox, &watched_fds);
-
-            int poll_status = pselect(inbox + 1, &watched_fds,
-                                      NULL,
-                                      NULL,
-                                      NULL,
-                                      &sigchld_unblocked_mask);
-            if (-1 == poll_status) {
-                if (EINTR == errno) {
-                    if (sigchld_was_set) {
-                        goto retry_wait;
-                    }
-                    goto retry_pselect;
-                }
-
-                goto restore_sigstatus;
-            }
+        if (sigchld_occurred) {
+            goto wait_for_children;
         }
 
         ssize_t bytes_read;
@@ -236,32 +177,32 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
          */
         switch (fork()) {
         case 0:
-            {
-                int const sigrestore_status = sigaction(SIGCHLD, &old_action,
-                                                        NULL);
-                assert(sigrestore_status != -1);
+        {
+            int const sigrestore_status = sigaction(SIGCHLD, &old_action,
+                                                    NULL);
+            assert(sigrestore_status != -1);
 
-                if (-1 == linted_server_close(inbox)) {
-                    LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
-                                          linted_error_string_alloc(errno));
-                }
-
-                exec_task_from_connection(spawner, connection);
+            if (-1 == linted_server_close(inbox)) {
+                LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
+                                      linted_error_string_alloc(errno));
             }
+
+            exec_task_from_connection(spawner, connection);
+        }
 
         case -1:{
-                struct reply reply = {.error_status = errno };
+            struct reply reply = {.error_status = errno };
 
-                if (-1 == linted_io_write_all(connection, NULL,
-                                              &reply, sizeof reply)) {
-                    goto close_connection;
-                }
+            if (-1 == linted_io_write_all(connection, NULL,
+                                          &reply, sizeof reply)) {
+                goto close_connection;
             }
+        }
         }
 
         connection_status = 0;
 
- close_connection:
+    close_connection:
         {
             int errnum = errno;
 
@@ -328,6 +269,70 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     }
 
     return exit_status;
+}
+
+static int wait_for_sigchld_or_fildes(linted_server_t inbox,
+                                       sigset_t const * old_sigset)
+{
+    sigset_t sigchld_unblocked_mask = *old_sigset;
+
+    int sigchld_rm_status = sigdelset(&sigchld_unblocked_mask, SIGCHLD);
+    assert(sigchld_rm_status != -1);
+
+    fd_set watched_fds;
+
+    FD_ZERO(&watched_fds);
+    FD_SET(inbox, &watched_fds);
+
+    sigchld_occurred = false;
+    int select_status = pselect(inbox + 1, &watched_fds,
+                                NULL,
+                                NULL,
+                                NULL,
+                                &sigchld_unblocked_mask);
+    if (sigchld_occurred) {
+        return 0;
+    }
+
+    return select_status;
+}
+
+static int wait_on_children(void)
+{
+    for (;;) {
+        int child_exit_status;
+        pid_t child;
+        do {
+            child = waitpid(-1, &child_exit_status, WNOHANG);
+        } while (-1 == child && EINTR == errno);
+        if (-1 == child) {
+            return -1;
+        }
+
+        if (0 == child) {
+            return 0;
+        }
+
+        /* Waited on a dead process. Log and wait for more. */
+        if (WIFEXITED(child_exit_status)) {
+            int return_value = WEXITSTATUS(child_exit_status);
+            if (0 == return_value) {
+                syslog(LOG_INFO, "child %ju executed normally",
+                       (uintmax_t) child);
+            } else {
+                char const * error = linted_error_string_alloc(return_value);
+                syslog(LOG_INFO, "child %ju executed with error: %s",
+                       (uintmax_t) child, error);
+                linted_error_string_free(error);
+            }
+        } else if (WIFSIGNALED(child_exit_status)) {
+            syslog(LOG_INFO, "child %ju was terminated with signal number %i",
+                   (uintmax_t) child, WTERMSIG(child_exit_status));
+        } else {
+            syslog(LOG_INFO, "child %ju executed abnormally",
+                   (uintmax_t) child);
+        }
+    }
 }
 
 int linted_spawner_close(linted_spawner_t spawner)
@@ -416,7 +421,7 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 
 static void on_sigchld(int signal_number)
 {
-    sigchld_was_set = true;
+    sigchld_occurred = true;
 }
 
 #define MAX_FORKER_FILDES_COUNT 20
