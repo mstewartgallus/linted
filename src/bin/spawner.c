@@ -151,7 +151,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         default:{
                 /* Waited on a dead process. Wait for more. */
 
-            if (WIFEXITED(child_exit_status)) {
+                if (WIFEXITED(child_exit_status)) {
                     int retvalue = WEXITSTATUS(child_exit_status);
                     if (0 == retvalue) {
                         syslog(LOG_INFO,
@@ -164,6 +164,10 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
                                (uintmax_t) child, error);
                         linted_error_string_free(error);
                     }
+                } else if (WIFSIGNALED(child_exit_status)) {
+                    syslog(LOG_INFO,
+                           "child %ju was terminated with signal number %i",
+                           (uintmax_t) child, WTERMSIG(child_exit_status));
                 } else {
                     syslog(LOG_INFO,"child %ju executed abnormally",
                            (uintmax_t) child);
