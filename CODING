@@ -4,8 +4,21 @@ Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright
 notice and this notice are preserved.
 
-The following are the coding quality and style guidelines for Linted:
+This is a list of rules for code quality and style in Linted. The
+rules for code style are very arbitrary but must be followed for
+overall code consistency although they can bent sometimes. The rules
+for code quality are not arbitrary and must be always followed.
 
-Style (are arbitrary but should be consistent within a project):
+Code quality:
 
-- Use %i instead of %d for format specifiers.
+- Understand but do not slavishly follow the CERT C coding standards
+  (as of 2014-02-15 available at
+  https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard
+  ).
+
+Coding style:
+
+- Use the Linux kernel coding style but with an indent level of 4 and
+  no tabs.
+
+- Use %i instead of %d in format specifiers.
