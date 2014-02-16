@@ -73,6 +73,9 @@ static int wait_for_sigchld_or_fildes(linted_server_t inbox,
                                       sigset_t const * old_sigset);
 static int wait_on_children(void);
 
+static void restore_global_state(struct sigaction const * old_action,
+                                 sigset_t const * old_sigset);
+
 int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 {
     int exit_status = -1;
@@ -130,7 +133,6 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         assert(sigset_status != -1);
     }
 
-
  wait_for_children:
     /*
      * We received a SIGCHLD. Alternatively, we are doing this once at
@@ -178,9 +180,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
         switch (fork()) {
         case 0:
         {
-            int const sigrestore_status = sigaction(SIGCHLD, &old_action,
-                                                    NULL);
-            assert(sigrestore_status != -1);
+            restore_global_state(&old_action, &old_sigset);
 
             if (-1 == linted_server_close(inbox)) {
                 LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
@@ -228,17 +228,9 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
     {
         int errnum = errno;
 
-        int const sigrestore_status = sigaction(SIGCHLD, &old_action, NULL);
-        assert(sigrestore_status != -1);
+        restore_global_state(&old_action, &old_sigset);
 
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-    }
-
-    {
-        int mask_status = sigprocmask(SIG_SETMASK, &old_sigset, NULL);
-        assert(mask_status != -1);
+        errno = errnum;
     }
 
  close_sockets:
@@ -338,6 +330,16 @@ static int wait_on_children(void)
 int linted_spawner_close(linted_spawner_t spawner)
 {
     return linted_server_close(spawner);
+}
+
+static void restore_global_state(struct sigaction const * old_action,
+                                 sigset_t const * old_sigset)
+{
+    int const sigrestore_status = sigaction(SIGCHLD, old_action, NULL);
+    assert(sigrestore_status != -1);
+
+    int mask_status = sigprocmask(SIG_SETMASK, old_sigset, NULL);
+    assert(mask_status != -1);
 }
 
 int linted_spawner_spawn(linted_spawner_t const spawner,
