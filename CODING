@@ -16,6 +16,14 @@ Code quality:
   https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard
   ).
 
+- Do not leak data through structure padding. When one copies data
+  from structures using mq_send, write or any other function as if
+  they are byte arrays one can leak data. See CERT rule DCL39-C. Avoid
+  information leakage in structure padding (as of 2014-02-15 available
+  at
+  https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leakage+in+structure+padding
+  ).
+
 Coding style:
 
 - Use the Linux kernel coding style but with an indent level of 4 and
