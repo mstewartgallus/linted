@@ -110,11 +110,17 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
     struct sigaction old_action;
     if (0 == sigsetjmp(sigchld_jump_buffer, true)) {
+        sigset_t full_set;
+
+        int fullset_status = sigfillset(&full_set);
+        assert(fullset_status != -1);
+
         struct sigaction new_action;
         memset(&new_action, 0, sizeof new_action);
 
         new_action.sa_handler = on_sigchld;
         new_action.sa_flags = SA_NOCLDSTOP;
+        new_action.sa_mask = full_set;
 
         int const sigset_status = sigaction(SIGCHLD, &new_action, &old_action);
         assert(sigset_status != -1);
