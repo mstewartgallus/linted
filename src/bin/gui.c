@@ -52,12 +52,12 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static void on_key_movement(linted_controller_t controller,
+static void on_key_movement(linted_controller controller,
                             enum linted_controller_direction direction,
                             bool moving);
 
-int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
-                   linted_controller_t controller, linted_main_loop_t main_loop)
+int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
+                   linted_controller controller, linted_main_loop main_loop)
 {
     if (-1 ==
         SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
@@ -261,7 +261,7 @@ int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
     return 0;
 }
 
-static void on_key_movement(linted_controller_t controller,
+static void on_key_movement(linted_controller controller,
                             enum linted_controller_direction direction,
                             bool moving)
 {

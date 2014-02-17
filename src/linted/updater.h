@@ -22,21 +22,21 @@
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
-typedef mqd_t linted_updater_t;
+typedef mqd_t linted_updater;
 
 struct linted_updater_update {
     int32_t x_position;
     int32_t y_position;
 };
 
-int linted_updater_pair(linted_updater_t updater[2], int rflags, int wflags);
+int linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
 
-int linted_updater_send_update(linted_updater_t updater,
+int linted_updater_send_update(linted_updater updater,
                                struct linted_updater_update update);
 
-int linted_updater_receive_update(linted_updater_t updater,
+int linted_updater_receive_update(linted_updater updater,
                                   struct linted_updater_update *update);
 
-int linted_updater_close(linted_updater_t updater);
+int linted_updater_close(linted_updater updater);
 
 #endif                          /* LINTED_UPDATER_H */

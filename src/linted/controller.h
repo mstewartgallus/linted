@@ -22,7 +22,7 @@
 /**
  * A handle to access the controller. Is safe to share between processes.
  */
-typedef mqd_t linted_controller_t;
+typedef mqd_t linted_controller;
 
 enum linted_controller_direction {
     LINTED_CONTROLLER_UP,
@@ -41,18 +41,18 @@ struct linted_controller_message {
     bool moving;
 };
 
-int linted_controller_pair(linted_controller_t controller[2],
+int linted_controller_pair(linted_controller controller[2],
                            int readflags, int writeflags);
-int linted_controller_close(linted_controller_t controller);
+int linted_controller_close(linted_controller controller);
 
-int linted_controller_send_movement(linted_controller_t controller,
+int linted_controller_send_movement(linted_controller controller,
                                     enum linted_controller_direction direction,
                                     bool moving);
 
-int linted_controller_notify(linted_controller_t controller,
+int linted_controller_notify(linted_controller controller,
                              struct sigevent const *sevp);
 
-int linted_controller_receive(linted_controller_t controller,
+int linted_controller_receive(linted_controller controller,
                               struct linted_controller_message *message);
 
 #endif                          /* LINTED_CONTROLLER_H */

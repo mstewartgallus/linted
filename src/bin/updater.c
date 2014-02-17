@@ -21,7 +21,7 @@
 
 #include <string.h>
 
-int linted_updater_pair(linted_updater_t updater[2], int rflags, int wflags)
+int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -32,19 +32,19 @@ int linted_updater_pair(linted_updater_t updater[2], int rflags, int wflags)
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-int linted_updater_send_update(linted_updater_t updater,
+int linted_updater_send_update(linted_updater updater,
                                struct linted_updater_update update)
 {
     return mq_send(updater, (char const *)&update, sizeof update, 0);
 }
 
-int linted_updater_receive_update(linted_updater_t updater,
+int linted_updater_receive_update(linted_updater updater,
                                   struct linted_updater_update *update)
 {
     return mq_receive(updater, (char *)update, sizeof *update, NULL);
 }
 
-int linted_updater_close(linted_updater_t const updater)
+int linted_updater_close(linted_updater const updater)
 {
     return mq_close(updater);
 }

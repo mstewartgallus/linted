@@ -31,17 +31,17 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-int linted_server(linted_server_t servers[2])
+int linted_server_pair(linted_server servers[2])
 {
     return socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, servers);
 }
 
-int linted_server_close(linted_server_t server)
+int linted_server_close(linted_server server)
 {
     return close(server);
 }
 
-linted_server_conn_t linted_server_connect(linted_server_t const sock)
+linted_server_conn linted_server_connect(linted_server const sock)
 {
     int new_sockets[2];
     if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, new_sockets)) {
@@ -74,7 +74,7 @@ linted_server_conn_t linted_server_connect(linted_server_t const sock)
     return new_sockets[1];
 }
 
-int linted_server_conn_close(linted_server_conn_t server)
+int linted_server_conn_close(linted_server_conn server)
 {
     return close(server);
 }

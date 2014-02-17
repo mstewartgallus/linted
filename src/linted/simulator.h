@@ -20,8 +20,8 @@
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 
-int linted_simulator_run(linted_controller_t inbox,
-                         linted_shutdowner_t shutdowner,
-                         linted_updater_t updater);
+int linted_simulator_run(linted_controller inbox,
+                         linted_shutdowner shutdowner,
+                         linted_updater updater);
 
 #endif                          /* LINTED_SIMULATOR_H */

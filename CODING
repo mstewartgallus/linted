@@ -16,13 +16,21 @@ Code quality:
   https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard
   ).
 
-- Do not leak data through structure padding. When one copies data
-  from structures using mq_send, write or any other function as if
-  they are byte arrays one can leak data. See CERT rule DCL39-C. Avoid
-  information leakage in structure padding (as of 2014-02-15 available
-  at
+- Do not leak data through structure padding.
+
+  When one copies data from structures using mq_send, write or any
+  other function as if they are byte arrays one can leak data. See
+  CERT rule DCL39-C. Avoid information leakage in structure padding
+  (as of 2014-02-15 available at
   https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leakage+in+structure+padding
   ).
+
+- Maintain compatibility with all supported targets
+
+  For example, names ending in _t are reserved by POSIX and should not
+  be defined in code that should be POSIX compatible (although code
+  reimplementing POSIX functionality should probable define _t ending
+  names to names of replacement types).
 
 Coding style:
 

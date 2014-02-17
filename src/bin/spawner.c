@@ -62,7 +62,7 @@
  * processes spawned by my processes.
  */
 struct request_header {
-    linted_spawner_task_t func;
+    linted_spawner_task func;
     size_t fildes_count;
 };
 
@@ -70,24 +70,24 @@ struct reply {
     int error_status;
 };
 
-static void exec_task(linted_spawner_task_t task,
-                      linted_spawner_t spawner, int const fildes[]);
-static void exec_task_from_connection(linted_spawner_t spawner,
-                                      linted_server_conn_t connection);
+static void exec_task(linted_spawner_task task,
+                      linted_spawner spawner, int const fildes[]);
+static void exec_task_from_connection(linted_spawner spawner,
+                                      linted_server_conn connection);
 
 static int wait_on_children(id_t process_group);
 
-int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
+int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
 {
     int exit_status = -1;
 
-    linted_server_t sockets[2];
-    if (-1 == linted_server(sockets)) {
+    linted_server sockets[2];
+    if (-1 == linted_server_pair(sockets)) {
         return -1;
     }
 
-    linted_spawner_t const spawner = sockets[0];
-    linted_server_t const inbox = sockets[1];
+    linted_spawner const spawner = sockets[0];
+    linted_server const inbox = sockets[1];
 
     /*
      * This is a little bit confusing but the first processes pid is
@@ -165,7 +165,7 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[])
 
     for (;;) {
         int connection_status = -1;
-        linted_server_conn_t connection;
+        linted_server_conn connection;
 
         {
             int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
@@ -387,13 +387,13 @@ static int wait_on_children(id_t process_group)
     }
 }
 
-int linted_spawner_close(linted_spawner_t spawner)
+int linted_spawner_close(linted_spawner spawner)
 {
     return linted_server_close(spawner);
 }
 
-int linted_spawner_spawn(linted_spawner_t const spawner,
-                         linted_spawner_task_t const func,
+int linted_spawner_spawn(linted_spawner const spawner,
+                         linted_spawner_task const func,
                          int const fildes_to_send[])
 {
     int spawn_status = -1;
@@ -472,10 +472,10 @@ int linted_spawner_spawn(linted_spawner_t const spawner,
 }
 
 #define MAX_FORKER_FILDES_COUNT 20
-static void exec_task_from_connection(linted_spawner_t const spawner,
-                                      linted_server_conn_t connection)
+static void exec_task_from_connection(linted_spawner const spawner,
+                                      linted_server_conn connection)
 {
-    linted_spawner_task_t task;
+    linted_spawner_task task;
     size_t fildes_count;
     {
         struct request_header request_header;
@@ -551,8 +551,8 @@ static void exec_task_from_connection(linted_spawner_t const spawner,
     exit(EXIT_FAILURE);
 }
 
-static void exec_task(linted_spawner_task_t task,
-                      linted_spawner_t spawner, int const fildes[])
+static void exec_task(linted_spawner_task task,
+                      linted_spawner spawner, int const fildes[])
 {
     task(spawner, fildes);
 

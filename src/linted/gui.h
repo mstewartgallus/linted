@@ -25,8 +25,8 @@
 #include <mqueue.h>
 #include <stdint.h>
 
-int linted_gui_run(linted_updater_t updater, linted_shutdowner_t shutdowner,
-                   linted_controller_t controller,
-                   linted_main_loop_t main_loop);
+int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
+                   linted_controller controller,
+                   linted_main_loop main_loop);
 
 #endif                          /* LINTED_GUI_H */

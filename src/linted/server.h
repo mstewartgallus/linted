@@ -16,14 +16,14 @@
 #ifndef LINTED_SERVER_H
 #define LINTED_SERVER_H
 
-typedef int linted_server_t;
+typedef int linted_server;
 
-int linted_server(linted_server_t servers[2]);
-int linted_server_close(linted_server_t local);
+int linted_server_pair(linted_server servers[2]);
+int linted_server_close(linted_server local);
 
-typedef int linted_server_conn_t;
+typedef int linted_server_conn;
 
-linted_server_conn_t linted_server_connect(int local);
-int linted_server_conn_close(linted_server_conn_t local);
+linted_server_conn linted_server_connect(int local);
+int linted_server_conn_close(linted_server_conn local);
 
 #endif                          /* LINTED_SERVER_H */

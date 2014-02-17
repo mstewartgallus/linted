@@ -22,7 +22,7 @@
 
 #include <string.h>
 
-int linted_controller_pair(linted_controller_t controller[2],
+int linted_controller_pair(linted_controller controller[2],
                            int readflags, int writeflags)
 {
     struct mq_attr attr;
@@ -34,7 +34,7 @@ int linted_controller_pair(linted_controller_t controller[2],
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-int linted_controller_send_movement(linted_controller_t controller,
+int linted_controller_send_movement(linted_controller controller,
                                     enum linted_controller_direction direction,
                                     bool moving)
 {
@@ -49,18 +49,18 @@ int linted_controller_send_movement(linted_controller_t controller,
                    0);
 }
 
-int linted_controller_close(linted_controller_t const controller)
+int linted_controller_close(linted_controller const controller)
 {
     return mq_close(controller);
 }
 
-int linted_controller_receive(linted_controller_t queue,
+int linted_controller_receive(linted_controller queue,
                               struct linted_controller_message *message)
 {
     return mq_receive(queue, (char *)message, sizeof *message, NULL);
 }
 
-int linted_controller_notify(linted_controller_t controller,
+int linted_controller_notify(linted_controller controller,
                              struct sigevent const *sevp)
 {
     return mq_notify(controller, sevp);

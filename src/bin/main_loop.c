@@ -38,61 +38,61 @@ struct message {
     enum message_type type;
 };
 
-static int main_loop_pair(linted_main_loop_t mqs[2]);
-static int gui_run(linted_spawner_t spawner, int const inboxes[]);
-static int simulator_run(linted_spawner_t spawner, int const inboxes[]);
+static int main_loop_pair(linted_main_loop mqs[2]);
+static int gui_run(linted_spawner spawner, int const inboxes[]);
+static int simulator_run(linted_spawner spawner, int const inboxes[]);
 
-int linted_main_loop_run(linted_spawner_t spawner)
+int linted_main_loop_run(linted_spawner spawner)
 {
-    linted_main_loop_t main_loop_mqs[2];
+    linted_main_loop main_loop_mqs[2];
     if (-1 == main_loop_pair(main_loop_mqs)) {
         LINTED_LAZY_DEV_ERROR("Could not create main loop message queue: %s",
                               linted_error_string_alloc(errno));
     }
 
-    linted_updater_t updater_mqs[2];
+    linted_updater updater_mqs[2];
     if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
         LINTED_LAZY_DEV_ERROR("Could not create updater message queue: %s",
                               linted_error_string_alloc(errno));
     }
 
-    linted_controller_t controller_mqs[2];
+    linted_controller controller_mqs[2];
     if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
         LINTED_LAZY_DEV_ERROR
             ("Could not create simulator controller message queue: %s",
              linted_error_string_alloc(errno));
     }
 
-    linted_shutdowner_t simulator_shutdowner_mqs[2];
+    linted_shutdowner simulator_shutdowner_mqs[2];
     if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
         LINTED_LAZY_DEV_ERROR
             ("Could not create simulator shutdowner message queue: %s",
              linted_error_string_alloc(errno));
     }
 
-    linted_shutdowner_t gui_shutdowner_mqs[2];
+    linted_shutdowner gui_shutdowner_mqs[2];
     if (-1 == linted_shutdowner_pair(gui_shutdowner_mqs, O_NONBLOCK, 0)) {
         LINTED_LAZY_DEV_ERROR
             ("Could not create gui shutdowner message queue: %s",
              linted_error_string_alloc(errno));
     }
 
-    linted_main_loop_t const main_loop_read = main_loop_mqs[0];
-    linted_main_loop_t const main_loop_write = main_loop_mqs[1];
+    linted_main_loop const main_loop_read = main_loop_mqs[0];
+    linted_main_loop const main_loop_write = main_loop_mqs[1];
 
-    linted_updater_t const updater_read = updater_mqs[0];
-    linted_updater_t const updater_write = updater_mqs[1];
+    linted_updater const updater_read = updater_mqs[0];
+    linted_updater const updater_write = updater_mqs[1];
 
-    linted_controller_t const controller_read = controller_mqs[0];
-    linted_controller_t const controller_write = controller_mqs[1];
+    linted_controller const controller_read = controller_mqs[0];
+    linted_controller const controller_write = controller_mqs[1];
 
-    linted_shutdowner_t const simulator_shutdowner_read =
+    linted_shutdowner const simulator_shutdowner_read =
         simulator_shutdowner_mqs[0];
-    linted_shutdowner_t const simulator_shutdowner_write =
+    linted_shutdowner const simulator_shutdowner_write =
         simulator_shutdowner_mqs[1];
 
-    linted_shutdowner_t const gui_shutdowner_read = gui_shutdowner_mqs[0];
-    linted_shutdowner_t const gui_shutdowner_write = gui_shutdowner_mqs[1];
+    linted_shutdowner const gui_shutdowner_read = gui_shutdowner_mqs[0];
+    linted_shutdowner const gui_shutdowner_write = gui_shutdowner_mqs[1];
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
                                    updater_read, gui_shutdowner_read,
@@ -214,7 +214,7 @@ int linted_main_loop_run(linted_spawner_t spawner)
     return 0;
 }
 
-int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
+int linted_main_loop_send_close_request(linted_main_loop const main_loop)
 {
     struct message message;
     memset(&message, 0, sizeof message);
@@ -224,12 +224,12 @@ int linted_main_loop_send_close_request(linted_main_loop_t const main_loop)
     return mq_send(main_loop, (char const *)&message, sizeof message, 0);
 }
 
-int linted_main_loop_close(linted_main_loop_t const main_loop)
+int linted_main_loop_close(linted_main_loop const main_loop)
 {
     return mq_close(main_loop);
 }
 
-static int main_loop_pair(linted_main_loop_t mqs[2])
+static int main_loop_pair(linted_main_loop mqs[2])
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -240,7 +240,7 @@ static int main_loop_pair(linted_main_loop_t mqs[2])
     return linted_mq_pair(mqs, &attr, 0, 0);
 }
 
-static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
+static int simulator_run(linted_spawner const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s",
@@ -273,7 +273,7 @@ static int simulator_run(linted_spawner_t const spawner, int const inboxes[])
     return 0;
 }
 
-static int gui_run(linted_spawner_t const spawner, int const inboxes[])
+static int gui_run(linted_spawner const spawner, int const inboxes[])
 {
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s",

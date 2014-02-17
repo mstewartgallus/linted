@@ -21,14 +21,14 @@
 /**
  * Is a spawner. Is shareable.
  */
-typedef linted_server_t linted_spawner_t;
+typedef linted_server linted_spawner;
 
 /**
  * A spawner task exits succesfully with 0 or unsuccessfully with -1
  * and an error value in errno.
  */
-typedef int (*linted_spawner_task_t) (linted_spawner_t spawner,
-                                      int const fildes[]);
+typedef int (*linted_spawner_task) (linted_spawner spawner,
+                                    int const fildes[]);
 
 /**
  * Runs a spawner process and starts main_loop in a separate
@@ -40,7 +40,7 @@ typedef int (*linted_spawner_task_t) (linted_spawner_t spawner,
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[]);
+int linted_spawner_run(linted_spawner_task main_loop, int const fildes[]);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
@@ -50,12 +50,12 @@ int linted_spawner_run(linted_spawner_task_t main_loop, int const fildes[]);
  * @param func The function to execute.
  * @param inbox A file descriptor to pass to the spawned task.
  */
-int linted_spawner_spawn(linted_spawner_t spawner,
-                         linted_spawner_task_t func, int const fildes[]);
+int linted_spawner_spawn(linted_spawner spawner,
+                         linted_spawner_task func, int const fildes[]);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.
  */
-int linted_spawner_close(linted_spawner_t spawner);
+int linted_spawner_close(linted_spawner spawner);
 
 #endif                          /* LINTED_SPAWNER_H */

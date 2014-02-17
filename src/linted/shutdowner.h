@@ -18,18 +18,18 @@
 
 #include <mqueue.h>
 
-typedef mqd_t linted_shutdowner_t;
+typedef mqd_t linted_shutdowner;
 
-int linted_shutdowner_pair(linted_shutdowner_t queues[2], int rflags,
+int linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
                            int wflags);
 
-int linted_shutdowner_send_shutdown(linted_shutdowner_t queue);
+int linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-int linted_shutdowner_notify(linted_shutdowner_t queue,
+int linted_shutdowner_notify(linted_shutdowner queue,
                              struct sigevent const *sevp);
 
-int linted_shutdowner_receive(linted_shutdowner_t queue);
+int linted_shutdowner_receive(linted_shutdowner queue);
 
-int linted_shutdowner_close(linted_shutdowner_t move);
+int linted_shutdowner_close(linted_shutdowner move);
 
 #endif                          /* LINTED_SHUTDOWNER_H */

@@ -25,11 +25,11 @@
 #include <string.h>
 #include <time.h>
 
-typedef mqd_t simulator_t;
+typedef mqd_t simulator_type;
 
 enum simulator_message_type {
     SIMULATOR_SHUTDOWN,
-    SIMULATOR_TICK,
+    SIMULATORICK,
 
     SIMULATOR_MOVEMENT
 };
@@ -41,17 +41,17 @@ struct simulator_message {
 };
 
 struct controller_notify_data {
-    simulator_t simulator;
-    linted_controller_t controller;
+    simulator_type simulator;
+    linted_controller controller;
 };
 
 struct shutdowner_notify_data {
-    simulator_t simulator;
-    linted_shutdowner_t shutdowner;
+    simulator_type simulator;
+    linted_shutdowner shutdowner;
 };
 
 struct timer_data {
-    simulator_t simulator;
+    simulator_type simulator;
 };
 
 static void on_controller_notification(union sigval sigval);
@@ -61,21 +61,21 @@ static void on_clock_tick(union sigval sigev_value);
 static int32_t min(int32_t x, int32_t y);
 static int32_t sign(int32_t x);
 
-static int simulator_pair(simulator_t simulator[2]);
-static int simulator_close(simulator_t const simulator);
+static int simulator_pair(simulator_type simulator[2]);
+static int simulator_close(simulator_type const simulator);
 
-static int simulator_send_movement(simulator_t simulator,
+static int simulator_send_movement(simulator_type simulator,
                                    enum linted_controller_direction direction,
                                    bool moving);
-static int simulator_send_tick(simulator_t simulator);
-static int simulator_send_shutdown(simulator_t const simulator);
+static int simulator_send_tick(simulator_type simulator);
+static int simulator_send_shutdown(simulator_type const simulator);
 
-static int simulator_receive(simulator_t queue,
+static int simulator_receive(simulator_type simulator,
                              struct simulator_message *message);
 
-int linted_simulator_run(linted_controller_t const controller,
-                         linted_shutdowner_t const shutdowner,
-                         linted_updater_t const updater)
+int linted_simulator_run(linted_controller const controller,
+                         linted_shutdowner const shutdowner,
+                         linted_updater const updater)
 {
     int exit_status = -1;
 
@@ -91,7 +91,7 @@ int linted_simulator_run(linted_controller_t const controller,
     int32_t x_velocity = 0;
     int32_t y_velocity = 0;
 
-    simulator_t simulator_mqs[2];
+    simulator_type simulator_mqs[2];
     if (-1 == simulator_pair(simulator_mqs)) {
         return -1;
     }
@@ -187,7 +187,7 @@ int linted_simulator_run(linted_controller_t const controller,
             }
             break;
 
-        case SIMULATOR_TICK:{
+        case SIMULATORICK:{
                 int32_t x_thrust = 2 * (x_right - x_left);
                 int32_t y_thrust = 2 * (y_up - y_down);
 
@@ -292,7 +292,7 @@ int linted_simulator_run(linted_controller_t const controller,
 static void on_clock_tick(union sigval sigev_value)
 {
     struct timer_data *const timer_data = sigev_value.sival_ptr;
-    simulator_t const simulator = timer_data->simulator;
+    simulator_type const simulator = timer_data->simulator;
 
     int tick_status;
     do {
@@ -307,8 +307,8 @@ static void on_clock_tick(union sigval sigev_value)
 static void on_controller_notification(union sigval sigval)
 {
     struct controller_notify_data *notify_data = sigval.sival_ptr;
-    simulator_t simulator = notify_data->simulator;
-    linted_controller_t controller = notify_data->controller;
+    simulator_type simulator = notify_data->simulator;
+    linted_controller controller = notify_data->controller;
     {
         struct sigevent sigevent;
         memset(&sigevent, 0, sizeof sigevent);
@@ -364,8 +364,8 @@ static void on_controller_notification(union sigval sigval)
 static void on_shutdowner_notification(union sigval sigval)
 {
     struct shutdowner_notify_data *notify_data = sigval.sival_ptr;
-    simulator_t simulator = notify_data->simulator;
-    linted_shutdowner_t shutdowner = notify_data->shutdowner;
+    simulator_type simulator = notify_data->simulator;
+    linted_shutdowner shutdowner = notify_data->shutdowner;
     {
         struct sigevent sigevent;
         memset(&sigevent, 0, sizeof sigevent);
@@ -418,7 +418,7 @@ static int32_t sign(int32_t x)
         : -1;
 }
 
-static int simulator_pair(simulator_t simulator[2])
+static int simulator_pair(simulator_type simulator[2])
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -429,7 +429,7 @@ static int simulator_pair(simulator_t simulator[2])
     return linted_mq_pair(simulator, &attr, 0, 0);
 }
 
-static int simulator_send_movement(simulator_t simulator,
+static int simulator_send_movement(simulator_type simulator,
                                    enum linted_controller_direction direction,
                                    bool moving)
 {
@@ -443,15 +443,15 @@ static int simulator_send_movement(simulator_t simulator,
     return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
-static int simulator_send_tick(simulator_t simulator)
+static int simulator_send_tick(simulator_type simulator)
 {
     struct simulator_message message;
     memset(&message, 0, sizeof message);
-    message.type = SIMULATOR_TICK;
+    message.type = SIMULATORICK;
     return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
-static int simulator_send_shutdown(simulator_t const simulator)
+static int simulator_send_shutdown(simulator_type const simulator)
 {
     struct simulator_message message;
     memset(&message, 0, sizeof message);
@@ -459,13 +459,13 @@ static int simulator_send_shutdown(simulator_t const simulator)
     return mq_send(simulator, (char const *)&message, sizeof message, 0);
 }
 
-static int simulator_close(simulator_t const simulator)
+static int simulator_close(simulator_type const simulator)
 {
     return mq_close(simulator);
 }
 
-static int simulator_receive(simulator_t queue,
+static int simulator_receive(simulator_type simulator,
                              struct simulator_message *message)
 {
-    return mq_receive(queue, (char *)message, sizeof *message, NULL);
+    return mq_receive(simulator, (char *)message, sizeof *message, NULL);
 }
