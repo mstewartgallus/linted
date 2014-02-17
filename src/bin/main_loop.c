@@ -22,6 +22,7 @@
 #include "linted/shutdowner.h"
 #include "linted/simulator.h"
 #include "linted/spawner.h"
+#include "linted/syslog.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -44,6 +45,8 @@ static int simulator_run(linted_spawner spawner, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner spawner)
 {
+    linted_syslog_open();
+
     linted_main_loop main_loop_mqs[2];
     if (-1 == main_loop_pair(main_loop_mqs)) {
         LINTED_LAZY_DEV_ERROR("Could not create main loop message queue: %s",
@@ -242,6 +245,8 @@ static int main_loop_pair(linted_main_loop mqs[2])
 
 static int simulator_run(linted_spawner const spawner, int const inboxes[])
 {
+    linted_syslog_open();
+
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s",
                            linted_error_string_alloc(errno));
@@ -275,6 +280,8 @@ static int simulator_run(linted_spawner const spawner, int const inboxes[])
 
 static int gui_run(linted_spawner const spawner, int const inboxes[])
 {
+    linted_syslog_open();
+
     if (-1 == linted_spawner_close(spawner)) {
         LINTED_FATAL_ERROR("Could not close spawner: %s",
                            linted_error_string_alloc(errno));

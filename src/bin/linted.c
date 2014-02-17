@@ -17,6 +17,7 @@
 
 #include "linted/main_loop.h"
 #include "linted/spawner.h"
+#include "linted/syslog.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -67,12 +68,7 @@ int main(int argc, char **argv)
 #endif                          /* HAVE_UID_T */
 
     /* Prepare the system logger */
-    openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
-            | LOG_CONS          /* So we know there is an error */
-            | LOG_PID           /* Because we fork several times */
-            | LOG_NDELAY        /* Share the connection when we fork */
-            , LOG_USER          /* This is a game and is a user program */
-        );
+    linted_syslog_open();
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         LINTED_LAZY_DEV_ERROR
@@ -97,16 +93,16 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Reset the the logger so it isn't shared */
+    closelog();
+
     int command_status = -1;
     switch (argc) {
     case 1:
         /* Fork off tasks from a known good state */
-        if (-1 == linted_spawner_run(main_loop_wrapper, (int[]) {
-                                     -1})) {
-            char const *const error_string = linted_error_string_alloc(errno);
-            syslog(LOG_ERR, "Could not run spawner: %s", error_string);
-            linted_error_string_free(error_string);
-            break;
+        if (-1 == linted_spawner_run(main_loop_wrapper,
+                                     (int[]) {-1})) {
+            goto after_spawner;
         }
         command_status = 0;
         break;
@@ -130,6 +126,16 @@ int main(int argc, char **argv)
                 PACKAGE_TARNAME " did not understand the command line input\n"
                 USAGE_TEXT);
         break;
+    }
+
+ after_spawner:
+    /* Open the logger again */
+    linted_syslog_open();
+
+    if (-1 == command_status) {
+        char const *const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "Could not run spawner: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     if (EOF == fclose(stdin)) {

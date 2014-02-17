@@ -26,6 +26,7 @@
 #include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/signalfd.h>
@@ -54,6 +55,10 @@
  *
  * A prctl call is used so that the child knows about the parents
  * death.
+ *
+ * Note that code running under the spawner or the spawner forks must
+ * be able to run without the system logger active. Note that spawner
+ * forks can freely invoke exit with error codes.
  *
  * TODO: Move away from Linux specifics such as signalfd, and prctl.
  *
@@ -98,20 +103,15 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
     switch (process_group) {
     case 0:
         if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-            LINTED_LAZY_DEV_ERROR
-                ("Could not register for notification of parent's death: %s",
-                 linted_error_string_alloc(errno));
+            exit(errno);
         }
 
         if (-1 == setpgid(process_group, process_group)) {
-            LINTED_LAZY_DEV_ERROR
-                ("Could not move self to new process group: %s",
-                 linted_error_string_alloc(errno));
+            exit(errno);
         }
 
         if (-1 == linted_server_close(inbox)) {
-            LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
-                                  linted_error_string_alloc(errno));
+            exit(errno);
         }
 
         exec_task(main_loop, spawner, fildes);
@@ -217,25 +217,19 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
                 assert(0 == mask_status);
 
                 if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                    LINTED_LAZY_DEV_ERROR
-                        ("Could not register for notification of parent's death: %s",
-                         linted_error_string_alloc(errno));
+                    exit(errno);
                 }
 
                 if (-1 == setpgid(child, process_group)) {
-                    LINTED_LAZY_DEV_ERROR
-                        ("Could not move self to new process group: %s",
-                         linted_error_string_alloc(errno));
+                    exit(errno);
                 }
 
                 if (-1 == linted_server_close(inbox)) {
-                    LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
-                                          linted_error_string_alloc(errno));
+                    exit(errno);
                 }
 
                 if (-1 == close(sigchld_fd)) {
-                    LINTED_LAZY_DEV_ERROR("Could not close signal fd: %s",
-                                          linted_error_string_alloc(errno));
+                    exit(errno);
                 }
 
                 exec_task_from_connection(spawner, connection);
@@ -364,11 +358,11 @@ static int wait_on_children(id_t process_group)
         case CLD_EXITED:{
                 int return_value = child_info.si_status;
                 if (0 == return_value) {
-                    syslog(LOG_INFO, "child %ju executed normally",
+                    fprintf(stderr, "child %ju executed normally\n",
                            (uintmax_t) child);
                 } else {
                     char const *error = linted_error_string_alloc(return_value);
-                    syslog(LOG_INFO, "child %ju executed with error: %s",
+                    fprintf(stderr, "child %ju executed with error: %s\n",
                            (uintmax_t) child, error);
                     linted_error_string_free(error);
                 }
@@ -376,13 +370,13 @@ static int wait_on_children(id_t process_group)
             }
 
         case CLD_KILLED:
-            syslog(LOG_INFO, "child %ju was terminated with signal number %i",
+            fprintf(stderr, "child %ju was terminated with signal number %i\n",
                    (uintmax_t) child, child_info.si_status);
             break;
 
         default:
             /* TODO: Possibly assert that this shouldn't happen */
-            syslog(LOG_INFO, "child %ju executed abnormally",
+            fprintf(stderr, "child %ju executed abnormally\n",
                    (uintmax_t) child);
             break;
         }
@@ -528,29 +522,26 @@ static void exec_task_from_connection(linted_spawner const spawner,
 
             if (-1 ==
                 linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
-                LINTED_LAZY_DEV_ERROR
-                    ("Fork server could not reply to request: %s",
-                     linted_error_string_alloc(errno));
+                    exit(errno);
             }
         }
 
         if (-1 == linted_server_conn_close(connection)) {
-            LINTED_LAZY_DEV_ERROR("Forked child could not close connection: %s",
-                                  linted_error_string_alloc(errno));
+            exit(errno);
         }
 
         exec_task(task, spawner, sent_inboxes);
     }
 
  reply_with_error:;
-    struct reply reply = {.error_status = errno };
+    int errnum = errno;
+    struct reply reply = {.error_status = errnum };
 
     if (-1 == linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
-        LINTED_LAZY_DEV_ERROR("Fork server could not reply to request: %s",
-                              linted_error_string_alloc(errno));
+        exit(errno);
     }
 
-    exit(EXIT_FAILURE);
+    exit(errnum);
 }
 
 static void exec_task(linted_spawner_task task,
