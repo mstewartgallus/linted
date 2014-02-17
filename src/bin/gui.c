@@ -126,6 +126,9 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             SDL_Event sdl_event;
             bool const had_sdl_event = SDL_PollEvent(&sdl_event);
             switch (sdl_event.type) {
+            case SDL_QUIT:
+                goto exit_main_loop;
+
             case SDL_VIDEORESIZE:
                 /*
                   Fuse multiple resize attempts into just one to prevent
@@ -138,57 +141,45 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 break;
 
             case SDL_KEYDOWN:
+            case SDL_KEYUP:{
+                bool is_down = SDL_KEYDOWN == sdl_event.type;
                 switch (sdl_event.key.keysym.sym) {
                 case SDLK_q:
                 case SDLK_ESCAPE:
-                    goto exit_main_loop;
-
-                case SDLK_LEFT:
-                    on_key_movement(controller, LINTED_CONTROLLER_LEFT, true);
+                    if (!is_down) {
+                        goto exit_main_loop;
+                    }
                     break;
 
-                case SDLK_RIGHT:
-                    on_key_movement(controller, LINTED_CONTROLLER_RIGHT, true);
-                    break;
+                    {
+                        enum linted_controller_direction direction;
 
-                case SDLK_UP:
-                    on_key_movement(controller, LINTED_CONTROLLER_UP, true);
-                    break;
+                    case SDLK_LEFT:
+                        direction = LINTED_CONTROLLER_LEFT;
+                        goto key_movement;
 
-                case SDLK_DOWN:
-                    on_key_movement(controller, LINTED_CONTROLLER_DOWN, true);
-                    break;
+                    case SDLK_RIGHT:
+                        direction = LINTED_CONTROLLER_RIGHT;
+                        goto key_movement;
+
+                    case SDLK_UP:
+                        direction = LINTED_CONTROLLER_UP;
+                        goto key_movement;
+
+                    case SDLK_DOWN:
+                        direction = LINTED_CONTROLLER_DOWN;
+                        goto key_movement;
+
+                    key_movement:
+                        on_key_movement(controller, direction, is_down);
+                        break;
+                    }
 
                 default:
                     break;
                 }
                 break;
-
-            case SDL_KEYUP:
-                switch (sdl_event.key.keysym.sym) {
-                case SDLK_LEFT:
-                    on_key_movement(controller, LINTED_CONTROLLER_LEFT, false);
-                    break;
-
-                case SDLK_RIGHT:
-                    on_key_movement(controller, LINTED_CONTROLLER_RIGHT, false);
-                    break;
-
-                case SDLK_UP:
-                    on_key_movement(controller, LINTED_CONTROLLER_UP, false);
-                    break;
-
-                case SDLK_DOWN:
-                    on_key_movement(controller, LINTED_CONTROLLER_DOWN, false);
-                    break;
-
-                default:
-                    break;
-                }
-                break;
-
-            case SDL_QUIT:
-                goto exit_main_loop;
+            }
             }
 
             bool had_gui_command = false;

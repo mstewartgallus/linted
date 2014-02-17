@@ -282,5 +282,5 @@ static int gui_run(linted_spawner const spawner, int const inboxes[])
         }
     }
 
-    return controller;
+    return exit_status;
 }
