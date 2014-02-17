@@ -127,10 +127,10 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
             case SDL_VIDEORESIZE:
                 /*
-                  Fuse multiple resize attempts into just one to prevent
-                  the worse case scenario of a whole bunch of resize
-                  events from killing the application's speed.
-                */
+                 * Fuse multiple resize attempts into just one to
+                 * prevent the worse case scenario of a whole bunch of
+                 * resize events from killing the application's speed.
+                 */
                 width = sdl_event.resize.w;
                 height = sdl_event.resize.h;
                 should_resize = true;
