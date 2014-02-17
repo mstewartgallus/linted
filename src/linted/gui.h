@@ -26,7 +26,6 @@
 #include <stdint.h>
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
-                   linted_controller controller,
-                   linted_main_loop main_loop);
+                   linted_controller controller, linted_main_loop main_loop);
 
 #endif                          /* LINTED_GUI_H */

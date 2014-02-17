@@ -98,13 +98,15 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
     switch (process_group) {
     case 0:
         if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-            LINTED_LAZY_DEV_ERROR("Could not register for notification of parent's death: %s",
-                                  linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR
+                ("Could not register for notification of parent's death: %s",
+                 linted_error_string_alloc(errno));
         }
 
         if (-1 == setpgid(process_group, process_group)) {
-            LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
-                                  linted_error_string_alloc(errno));
+            LINTED_LAZY_DEV_ERROR
+                ("Could not move self to new process group: %s",
+                 linted_error_string_alloc(errno));
         }
 
         if (-1 == linted_server_close(inbox)) {
@@ -178,9 +180,7 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
                 FD_SET(sigchld_fd, &watched_fds);
 
                 select_status = select(greatest + 1, &watched_fds,
-                                       NULL,
-                                       NULL,
-                                       NULL);
+                                       NULL, NULL, NULL);
             } while (-1 == select_status && EINTR == errno);
             if (-1 == select_status) {
                 goto close_sigchld_fd;
@@ -211,42 +211,44 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
         pid_t child = fork();
         switch (child) {
         case 0:
-        {
-            int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
-            assert(0 == mask_status);
+            {
+                int mask_status =
+                    pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+                assert(0 == mask_status);
 
-            if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                LINTED_LAZY_DEV_ERROR("Could not register for notification of parent's death: %s",
-                                      linted_error_string_alloc(errno));
+                if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                    LINTED_LAZY_DEV_ERROR
+                        ("Could not register for notification of parent's death: %s",
+                         linted_error_string_alloc(errno));
+                }
+
+                if (-1 == setpgid(child, process_group)) {
+                    LINTED_LAZY_DEV_ERROR
+                        ("Could not move self to new process group: %s",
+                         linted_error_string_alloc(errno));
+                }
+
+                if (-1 == linted_server_close(inbox)) {
+                    LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
+                                          linted_error_string_alloc(errno));
+                }
+
+                if (-1 == close(sigchld_fd)) {
+                    LINTED_LAZY_DEV_ERROR("Could not close signal fd: %s",
+                                          linted_error_string_alloc(errno));
+                }
+
+                exec_task_from_connection(spawner, connection);
             }
-
-            if (-1 == setpgid(child, process_group)) {
-                LINTED_LAZY_DEV_ERROR("Could not move self to new process group: %s",
-                                      linted_error_string_alloc(errno));
-            }
-
-            if (-1 == linted_server_close(inbox)) {
-                LINTED_LAZY_DEV_ERROR("Could not close inbox: %s",
-                                      linted_error_string_alloc(errno));
-            }
-
-            if (-1 == close(sigchld_fd)) {
-                LINTED_LAZY_DEV_ERROR("Could not close signal fd: %s",
-                                      linted_error_string_alloc(errno));
-            }
-
-
-            exec_task_from_connection(spawner, connection);
-        }
 
         case -1:{
-            struct reply reply = {.error_status = errno };
+                struct reply reply = {.error_status = errno };
 
-            if (-1 == linted_io_write_all(connection, NULL,
-                                          &reply, sizeof reply)) {
-                goto close_connection;
+                if (-1 == linted_io_write_all(connection, NULL,
+                                              &reply, sizeof reply)) {
+                    goto close_connection;
+                }
             }
-        }
         }
 
         if (-1 == setpgid(child, process_group) && errno != EACCES) {
@@ -255,7 +257,7 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
 
         connection_status = 0;
 
-    close_connection:
+ close_connection:
         {
             int errnum = errno;
 
@@ -339,7 +341,7 @@ static int wait_on_children(id_t process_group)
              * Zero out the si_pid field so it can be checked for zero
              * and if no processes have exited.
              */
-            pid_t * const si_pidp = &child_info.si_pid;
+            pid_t *const si_pidp = &child_info.si_pid;
             memset(si_pidp, 0, sizeof *si_pidp);
         }
 
@@ -347,7 +349,7 @@ static int wait_on_children(id_t process_group)
         do {
             wait_status = waitid(P_PGID, process_group, &child_info,
                                  WEXITED | WNOHANG);
-        } while (-1 ==  wait_status && EINTR == errno);
+        } while (-1 == wait_status && EINTR == errno);
         if (-1 == wait_status) {
             return -1;
         }
@@ -360,18 +362,18 @@ static int wait_on_children(id_t process_group)
         /* Waited on a dead process. Log and wait for more. */
         switch (child_info.si_code) {
         case CLD_EXITED:{
-            int return_value = child_info.si_status;
-            if (0 == return_value) {
-                syslog(LOG_INFO, "child %ju executed normally",
-                       (uintmax_t) child);
-            } else {
-                char const * error = linted_error_string_alloc(return_value);
-                syslog(LOG_INFO, "child %ju executed with error: %s",
-                       (uintmax_t) child, error);
-                linted_error_string_free(error);
+                int return_value = child_info.si_status;
+                if (0 == return_value) {
+                    syslog(LOG_INFO, "child %ju executed normally",
+                           (uintmax_t) child);
+                } else {
+                    char const *error = linted_error_string_alloc(return_value);
+                    syslog(LOG_INFO, "child %ju executed with error: %s",
+                           (uintmax_t) child, error);
+                    linted_error_string_free(error);
+                }
+                break;
             }
-            break;
-        }
 
         case CLD_KILLED:
             syslog(LOG_INFO, "child %ju was terminated with signal number %i",

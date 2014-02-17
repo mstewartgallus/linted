@@ -27,8 +27,7 @@ typedef linted_server linted_spawner;
  * A spawner task exits succesfully with 0 or unsuccessfully with -1
  * and an error value in errno.
  */
-typedef int (*linted_spawner_task) (linted_spawner spawner,
-                                    int const fildes[]);
+typedef int (*linted_spawner_task) (linted_spawner spawner, int const fildes[]);
 
 /**
  * Runs a spawner process and starts main_loop in a separate

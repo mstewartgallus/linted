@@ -21,7 +21,6 @@
 #include "linted/updater.h"
 
 int linted_simulator_run(linted_controller inbox,
-                         linted_shutdowner shutdowner,
-                         linted_updater updater);
+                         linted_shutdowner shutdowner, linted_updater updater);
 
 #endif                          /* LINTED_SIMULATOR_H */

@@ -413,9 +413,7 @@ static int32_t min(int32_t x, int32_t y)
 
 static int32_t sign(int32_t x)
 {
-    return x < 0 ? 1
-        : 0 == x ? 0
-        : -1;
+    return x < 0 ? 1 : 0 == x ? 0 : -1;
 }
 
 static int simulator_pair(simulator_type simulator[2])

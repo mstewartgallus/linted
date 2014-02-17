@@ -82,17 +82,17 @@ int main(int argc, char **argv)
     }
 
     /* Sanitize the environment */
-    char ** env = environ;
-    for (;*env != NULL; ++env) {
+    char **env = environ;
+    for (; *env != NULL; ++env) {
         /* TODO: Only pass the display variable in for the gui task */
         if (0 > strcmp("DISPLAY=", *env)) {
             continue;
         }
 
         char const needle[] = "=";
-        char * sensitive_data = strstr(*env, needle) + (sizeof needle - 1);
+        char *sensitive_data = strstr(*env, needle) + (sizeof needle - 1);
 
-        for (char * xx = sensitive_data; *xx != '\0'; ++xx) {
+        for (char *xx = sensitive_data; *xx != '\0'; ++xx) {
             *xx = '\0';
         }
     }
