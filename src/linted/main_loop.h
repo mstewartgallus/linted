@@ -20,12 +20,6 @@
 
 #include <mqueue.h>
 
-typedef mqd_t linted_main_loop;
-
 int linted_main_loop_run(linted_spawner spawner);
-
-int linted_main_loop_send_close_request(linted_main_loop main_loop);
-
-int linted_main_loop_close(linted_main_loop main_loop);
 
 #endif                          /* LINTED_MAIN_LOOP_H */

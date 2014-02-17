@@ -57,7 +57,7 @@ static void on_key_movement(linted_controller controller,
                             bool moving);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
-                   linted_controller controller, linted_main_loop main_loop)
+                   linted_controller controller)
 {
     if (-1 ==
         SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
@@ -126,19 +126,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         case SDL_KEYDOWN:
             switch (sdl_event.key.keysym.sym) {
             case SDLK_q:
-            case SDLK_ESCAPE:{
-                    int request_status;
-                    do {
-                        request_status =
-                            linted_main_loop_send_close_request(main_loop);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        LINTED_FATAL_ERROR
-                            ("Could not send main loop request to close: %s",
-                             linted_error_string_alloc(errno));
-                    }
-                    break;
-                }
+            case SDLK_ESCAPE:
+                goto exit_main_loop;
 
             case SDLK_LEFT:
                 on_key_movement(controller, LINTED_CONTROLLER_LEFT, true);
@@ -184,35 +173,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             }
             break;
 
-        case SDL_QUIT:{
-                int request_status;
-                do {
-                    request_status =
-                        linted_main_loop_send_close_request(main_loop);
-                } while (-1 == request_status && EINTR == errno);
-                if (-1 == request_status) {
-                    LINTED_FATAL_ERROR
-                        ("Could not send main loop request to close: %s",
-                         linted_error_string_alloc(errno));
-                }
-                break;
-            }
-        }
-
-        {
-            int read_status;
-            do {
-                read_status = linted_shutdowner_receive(shutdowner);
-            } while (-1 == read_status && EINTR == errno);
-            if (-1 == read_status) {
-                if (errno != EAGAIN) {
-                    LINTED_FATAL_ERROR
-                        ("Could not read from shutdowner connection: %s",
-                         linted_error_string_alloc(errno));
-                }
-            } else {
-                goto exit_main_loop;
-            }
+        case SDL_QUIT:
+            goto exit_main_loop;
         }
 
         bool had_gui_command = false;
@@ -257,6 +219,18 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
  exit_main_loop:
     SDL_Quit();
+
+    {
+        int shutdown_status;
+        do {
+            shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
+        } while (-1 == shutdown_status && EINTR == errno);
+        if (-1 == shutdown_status) {
+            LINTED_FATAL_ERROR
+                ("Could not send shutdown message to simulator: %s",
+                 linted_error_string_alloc(errno));
+        }
+    }
 
     return 0;
 }
