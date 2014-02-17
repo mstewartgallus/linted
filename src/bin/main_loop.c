@@ -77,19 +77,18 @@ int linted_main_loop_run(linted_spawner spawner)
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
                 updater_read, simulator_shutdowner_write,
                     controller_write, -1})) {
-        LINTED_LAZY_DEV_ERROR("Could not spawn gui: %s",
-                              linted_error_string_alloc(errno));
+        goto cleanup;
     }
 
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
                 controller_read, simulator_shutdowner_read,
                     updater_write, -1})) {
-        LINTED_LAZY_DEV_ERROR("Could not spawn simulator: %s",
-                              linted_error_string_alloc(errno));
+        goto cleanup;
     }
 
     exit_status = 0;
 
+ cleanup:
     {
         int errnum = errno;
         int close_status = linted_shutdowner_close(simulator_shutdowner_read);
