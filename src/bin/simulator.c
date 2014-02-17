@@ -133,26 +133,22 @@ int linted_simulator_run(linted_controller const controller,
         uint8_t event;
         if (-1 == linted_io_read_all(simulator_read, NULL,
                                      &event, sizeof event)) {
-            LINTED_FATAL_ERROR("Could not receive event: %s",
-                               linted_error_string_alloc(errno));
+            goto restore_notify;
         }
 
         switch (event) {
         case SHUTDOWN_EVENT:{
-            {
-                struct sigevent sigevent;
-                memset(&sigevent, 0, sizeof sigevent);
+            struct sigevent sigevent;
+            memset(&sigevent, 0, sizeof sigevent);
 
-                sigevent.sigev_notify = SIGEV_THREAD;
-                sigevent.sigev_notify_function = on_shutdowner_notification;
-                sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
+            sigevent.sigev_notify = SIGEV_THREAD;
+            sigevent.sigev_notify_function = on_shutdowner_notification;
+            sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
 
-                if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
-                    LINTED_LAZY_DEV_ERROR
-                        ("Could not reregister for shutdowner notifications: %s",
-                         linted_error_string_alloc(errno));
-                }
+            if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
+                goto restore_notify;
             }
+
 
             for (;;) {
                 int read_status;
@@ -164,8 +160,7 @@ int linted_simulator_run(linted_controller const controller,
                         break;
                     }
 
-                    LINTED_FATAL_ERROR("Could not receive message: %s",
-                                       linted_error_string_alloc(errno));
+                    goto restore_notify;
                 }
 
                 goto exit_main_loop;
@@ -216,8 +211,7 @@ int linted_simulator_run(linted_controller const controller,
                 sigevent.sigev_value.sival_ptr = &controller_notify_data;
 
                 if (-1 == linted_controller_notify(controller, &sigevent)) {
-                    LINTED_LAZY_DEV_ERROR("Could not reregister for notifications: %s",
-                                          linted_error_string_alloc(errno));
+                    goto restore_notify;
                 }
             }
 
