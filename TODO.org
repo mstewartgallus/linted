@@ -7,9 +7,6 @@ notice and this notice are preserved.
 Linted -- TODO
 
 * Port to --host=i686-w64-mingw32
-* Fix simulator race condition
-The asynchronous notification threads aren't notified about the stuff
-closing down.
 * Avoid information leakage in buffer copying code
 When I copy data from structures using mq_send or write as if they are
 byte arrays I can leak data. See [[https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leakage+in+structure+padding][DCL39-C. Avoid information leakage in
