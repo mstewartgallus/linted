@@ -59,11 +59,18 @@ static void on_key_movement(linted_controller controller,
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
 {
-    if (-1 ==
-        SDL_Init(SDL_INIT_EVENTTHREAD | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
+    int exit_status = -1;
+    Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
+    unsigned width = 640, height = 800;
+    SDL_VideoInfo const * video_info;
+
+    if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
+                       | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
     {
-        LINTED_LAZY_DEV_ERROR("Could not initialize the GUI: %s",
-                              SDL_GetError());
+        int errnum = errno;
+        syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
+        errno = errnum;
+        goto shutdown;
     }
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
@@ -71,168 +78,184 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            LINTED_LAZY_DEV_ERROR("Could not set a double buffer attribute: %s",
-                                  SDL_GetError());
+            int errnum = errno;
+            syslog(LOG_ERR, "could not set a double buffer attribute: %s",
+                   SDL_GetError());
+            errno = errnum;
+            goto cleanup_SDL;
         }
     }
-
-    Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
-    unsigned width = 640, height = 800;
 
     /* Initialize SDL */
     if (NULL == SDL_SetVideoMode(width, height, 0, sdl_flags)) {
-        LINTED_LAZY_DEV_ERROR("Could not set the video mode: %s",
-                              SDL_GetError());
+        int errnum = errno;
+        syslog(LOG_ERR, "could not set the video mode: %s",
+               SDL_GetError());
+        errno = errnum;
+        goto cleanup_SDL;
     }
 
     /* Get actual window size, and not requested window size */
-    SDL_VideoInfo const *const video_info = SDL_GetVideoInfo();
+    video_info = SDL_GetVideoInfo();
     width = video_info->current_w;
     height = video_info->current_h;
 
-    float x = 0;
-    float y = 0;
+    {
+        float x = 0;
+        float y = 0;
 
- setup_window:;
-    SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
-                                                        0, sdl_flags);
-    if (NULL == video_surface) {
-        LINTED_LAZY_DEV_ERROR("Could not set the video mode: %s",
-                              SDL_GetError());
-    }
-
-    glDisable(GL_DITHER);
-
-    glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
-    glViewport(0, 0, width, height);
-
-    bool should_resize = false;
-    for (;;) {
-        /* Handle SDL events first before rendering */
-        SDL_Event sdl_event;
-        bool const had_sdl_event = SDL_PollEvent(&sdl_event);
-        switch (sdl_event.type) {
-        case SDL_VIDEORESIZE:
-            /*
-               Fuse multiple resize attempts into just one to prevent
-               the worse case scenario of a whole bunch of resize
-               events from killing the application's speed.
-             */
-            width = sdl_event.resize.w;
-            height = sdl_event.resize.h;
-            should_resize = true;
-            break;
-
-        case SDL_KEYDOWN:
-            switch (sdl_event.key.keysym.sym) {
-            case SDLK_q:
-            case SDLK_ESCAPE:
-                goto exit_main_loop;
-
-            case SDLK_LEFT:
-                on_key_movement(controller, LINTED_CONTROLLER_LEFT, true);
-                break;
-
-            case SDLK_RIGHT:
-                on_key_movement(controller, LINTED_CONTROLLER_RIGHT, true);
-                break;
-
-            case SDLK_UP:
-                on_key_movement(controller, LINTED_CONTROLLER_UP, true);
-                break;
-
-            case SDLK_DOWN:
-                on_key_movement(controller, LINTED_CONTROLLER_DOWN, true);
-                break;
-
-            default:
-                break;
-            }
-            break;
-
-        case SDL_KEYUP:
-            switch (sdl_event.key.keysym.sym) {
-            case SDLK_LEFT:
-                on_key_movement(controller, LINTED_CONTROLLER_LEFT, false);
-                break;
-
-            case SDLK_RIGHT:
-                on_key_movement(controller, LINTED_CONTROLLER_RIGHT, false);
-                break;
-
-            case SDLK_UP:
-                on_key_movement(controller, LINTED_CONTROLLER_UP, false);
-                break;
-
-            case SDLK_DOWN:
-                on_key_movement(controller, LINTED_CONTROLLER_DOWN, false);
-                break;
-
-            default:
-                break;
-            }
-            break;
-
-        case SDL_QUIT:
-            goto exit_main_loop;
+    setup_window:;
+        SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
+                                                            0, sdl_flags);
+        if (NULL == video_surface) {
+            int errnum = errno;
+            syslog(LOG_ERR, "could not set the video mode: %s",
+                   SDL_GetError());
+            errno = errnum;
+            goto cleanup_SDL;
         }
 
-        bool had_gui_command = false;
-        {
-            struct linted_updater_update update;
+        glDisable(GL_DITHER);
 
-            int read_status;
-            do {
-                read_status = linted_updater_receive_update(updater, &update);
-            } while (-1 == read_status && EINTR == errno);
-            if (-1 == read_status) {
-                if (errno != EAGAIN) {
-                    LINTED_FATAL_ERROR
-                        ("Could not read from updater connection: %s",
-                         linted_error_string_alloc(errno));
+        glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
+        glViewport(0, 0, width, height);
+
+        bool should_resize = false;
+        for (;;) {
+            /* Handle SDL events first before rendering */
+            SDL_Event sdl_event;
+            bool const had_sdl_event = SDL_PollEvent(&sdl_event);
+            switch (sdl_event.type) {
+            case SDL_VIDEORESIZE:
+                /*
+                  Fuse multiple resize attempts into just one to prevent
+                  the worse case scenario of a whole bunch of resize
+                  events from killing the application's speed.
+                */
+                width = sdl_event.resize.w;
+                height = sdl_event.resize.h;
+                should_resize = true;
+                break;
+
+            case SDL_KEYDOWN:
+                switch (sdl_event.key.keysym.sym) {
+                case SDLK_q:
+                case SDLK_ESCAPE:
+                    goto exit_main_loop;
+
+                case SDLK_LEFT:
+                    on_key_movement(controller, LINTED_CONTROLLER_LEFT, true);
+                    break;
+
+                case SDLK_RIGHT:
+                    on_key_movement(controller, LINTED_CONTROLLER_RIGHT, true);
+                    break;
+
+                case SDLK_UP:
+                    on_key_movement(controller, LINTED_CONTROLLER_UP, true);
+                    break;
+
+                case SDLK_DOWN:
+                    on_key_movement(controller, LINTED_CONTROLLER_DOWN, true);
+                    break;
+
+                default:
+                    break;
                 }
-            } else {
-                x = ((float)update.x_position) / 255;
-                y = ((float)update.y_position) / 255;
+                break;
 
-                had_gui_command = true;
+            case SDL_KEYUP:
+                switch (sdl_event.key.keysym.sym) {
+                case SDLK_LEFT:
+                    on_key_movement(controller, LINTED_CONTROLLER_LEFT, false);
+                    break;
+
+                case SDLK_RIGHT:
+                    on_key_movement(controller, LINTED_CONTROLLER_RIGHT, false);
+                    break;
+
+                case SDLK_UP:
+                    on_key_movement(controller, LINTED_CONTROLLER_UP, false);
+                    break;
+
+                case SDLK_DOWN:
+                    on_key_movement(controller, LINTED_CONTROLLER_DOWN, false);
+                    break;
+
+                default:
+                    break;
+                }
+                break;
+
+            case SDL_QUIT:
+                goto exit_main_loop;
             }
-        }
 
-        /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_gui_command) {
-            if (should_resize) {
-                goto setup_window;
+            bool had_gui_command = false;
+            {
+                struct linted_updater_update update;
+
+                int read_status;
+                do {
+                    read_status = linted_updater_receive_update(updater, &update);
+                } while (-1 == read_status && EINTR == errno);
+                if (-1 == read_status) {
+                    if (errno != EAGAIN) {
+                        goto cleanup_SDL;
+                    }
+                } else {
+                    x = ((float)update.x_position) / 255;
+                    y = ((float)update.y_position) / 255;
+
+                    had_gui_command = true;
+                }
             }
 
-            glClear(GL_COLOR_BUFFER_BIT);
+            /* Only render if we have time to waste */
+            if (!had_sdl_event && !had_gui_command) {
+                if (should_resize) {
+                    goto setup_window;
+                }
 
-            glBegin(GL_TRIANGLES);
-            glVertex2f(x - 0.4f, y - 0.4f);
-            glVertex2f(x + 0.4f, y - 0.4f);
-            glVertex2f(x + 0.0f, y + 0.4f);
-            glEnd();
+                glClear(GL_COLOR_BUFFER_BIT);
 
-            SDL_GL_SwapBuffers();
+                glBegin(GL_TRIANGLES);
+                glVertex2f(x - 0.4f, y - 0.4f);
+                glVertex2f(x + 0.4f, y - 0.4f);
+                glVertex2f(x + 0.0f, y + 0.4f);
+                glEnd();
+
+                SDL_GL_SwapBuffers();
+            }
         }
     }
 
  exit_main_loop:
-    SDL_Quit();
+    exit_status = 0;
 
+ cleanup_SDL:
     {
+        int errnum = errno;
+        SDL_Quit();
+        errno = errnum;
+    }
+
+ shutdown:
+    {
+        int errnum = errno;
         int shutdown_status;
         do {
             shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
         } while (-1 == shutdown_status && EINTR == errno);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
         if (-1 == shutdown_status) {
-            LINTED_FATAL_ERROR
-                ("Could not send shutdown message to simulator: %s",
-                 linted_error_string_alloc(errno));
+            exit_status = -1;
         }
     }
 
-    return 0;
+    return exit_status;
 }
 
 static void on_key_movement(linted_controller controller,
@@ -245,7 +268,6 @@ static void on_key_movement(linted_controller controller,
             linted_controller_send_movement(controller, direction, moving);
     } while (-1 == request_status && EINTR == errno);
     if (-1 == request_status) {
-        LINTED_FATAL_ERROR("Could not send movement command to controller: %s",
-                           linted_error_string_alloc(errno));
+        exit(errno);
     }
 }
