@@ -226,6 +226,8 @@ int linted_simulator_run(linted_controller const controller,
                     if (EAGAIN == errno) {
                         break;
                     }
+
+                    goto restore_notify;
                 }
 
                 switch (message.type) {
