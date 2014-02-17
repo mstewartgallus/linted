@@ -52,10 +52,6 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-static void on_key_movement(linted_controller controller,
-                            enum linted_controller_direction direction,
-                            bool moving);
-
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
 {
@@ -170,8 +166,17 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                         direction = LINTED_CONTROLLER_DOWN;
                         goto key_movement;
 
-                    key_movement:
-                        on_key_movement(controller, direction, is_down);
+                    key_movement:;
+                        int request_status;
+                        do {
+                            request_status =
+                                linted_controller_send_movement(controller,
+                                                                direction,
+                                                                is_down);
+                        } while (-1 == request_status && EINTR == errno);
+                        if (-1 == request_status) {
+                            goto cleanup_SDL;
+                        }
                         break;
                     }
 
@@ -247,18 +252,4 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     }
 
     return exit_status;
-}
-
-static void on_key_movement(linted_controller controller,
-                            enum linted_controller_direction direction,
-                            bool moving)
-{
-    int request_status;
-    do {
-        request_status =
-            linted_controller_send_movement(controller, direction, moving);
-    } while (-1 == request_status && EINTR == errno);
-    if (-1 == request_status) {
-        exit(errno);
-    }
 }
