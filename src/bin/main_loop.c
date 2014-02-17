@@ -175,70 +175,113 @@ int linted_main_loop_run(linted_spawner spawner)
 
 static int simulator_run(linted_spawner const spawner, int const inboxes[])
 {
+    int exit_status = -1;
+
+    linted_controller controller = inboxes[0];
+    linted_shutdowner shutdowner = inboxes[1];
+    linted_updater updater = inboxes[2];
+
     linted_syslog_open();
 
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_FATAL_ERROR("Could not close spawner: %s",
-                           linted_error_string_alloc(errno));
+        goto cleanup;
+    }
+    if (-1 == linted_simulator_run(controller, shutdowner, updater)) {
+        goto cleanup;
     }
 
-    int controller = inboxes[0];
-    int shutdowner = inboxes[1];
-    int gui = inboxes[2];
-    if (-1 == linted_simulator_run(controller, shutdowner, gui)) {
-        LINTED_LAZY_DEV_ERROR("Running the simulator failed: %s",
-                              linted_error_string_alloc(errno));
+    exit_status = 0;
+
+ cleanup:
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == mq_close(gui)) {
-        LINTED_FATAL_ERROR("Could not close gui: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_shutdowner_close(shutdowner);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == mq_close(shutdowner)) {
-        LINTED_FATAL_ERROR("Could not close shutdowner: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_shutdowner_close(controller);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == mq_close(controller)) {
-        LINTED_FATAL_ERROR("Could not close simulator: %s",
-                           linted_error_string_alloc(errno));
-    }
-
-    return 0;
+    return exit_status;
 }
 
 static int gui_run(linted_spawner const spawner, int const inboxes[])
 {
+    int exit_status = -1;
+
+    linted_updater updater = inboxes[0];
+    linted_shutdowner shutdowner = inboxes[1];
+    linted_controller controller = inboxes[2];
+
     linted_syslog_open();
 
     if (-1 == linted_spawner_close(spawner)) {
-        LINTED_FATAL_ERROR("Could not close spawner: %s",
-                           linted_error_string_alloc(errno));
+        goto cleanup;
     }
 
-    mqd_t gui = inboxes[0];
-    mqd_t shutdowner = inboxes[1];
-    mqd_t simulator = inboxes[2];
-    if (-1 == linted_gui_run(gui, shutdowner, simulator)) {
-        LINTED_LAZY_DEV_ERROR("Running the gui failed: %s",
-                              linted_error_string_alloc(errno));
+    if (-1 == linted_gui_run(updater, shutdowner, controller)) {
+        goto cleanup;
     }
 
-    if (-1 == mq_close(gui)) {
-        LINTED_FATAL_ERROR("Could not close gui: %s",
-                           linted_error_string_alloc(errno));
+    exit_status = 0;
+
+ cleanup:
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == mq_close(shutdowner)) {
-        LINTED_FATAL_ERROR("Could not close shutdowner: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_shutdowner_close(shutdowner);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == mq_close(simulator)) {
-        LINTED_FATAL_ERROR("Could not close simulator: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_controller_close(controller);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    return 0;
+    return controller;
 }
