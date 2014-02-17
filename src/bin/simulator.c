@@ -193,7 +193,7 @@ int linted_simulator_run(linted_controller const controller,
 
                 int update_status;
                 do {
-                    update_status = linted_updater_send_update(updater, update);
+                    update_status = linted_updater_send_update(updater, &update);
                 } while (-1 == update_status && EINTR == errno);
                 if (-1 == update_status) {
                     goto restore_notify;

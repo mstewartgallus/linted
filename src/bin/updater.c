@@ -19,7 +19,13 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
+#include <stddef.h>
 #include <string.h>
+
+#define SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
+
+typedef char message_type[SIZEOF_MEMBER(struct linted_updater_update, x_position)
+                     + SIZEOF_MEMBER(struct linted_updater_update, y_position)];
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
@@ -27,21 +33,41 @@ int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct linted_updater_update);
+    attr.mq_msgsize = sizeof(message_type);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
 int linted_updater_send_update(linted_updater updater,
-                               struct linted_updater_update update)
+                               struct linted_updater_update const *update)
 {
-    return mq_send(updater, (char const *)&update, sizeof update, 0);
+    message_type message;
+    char * tip = message;
+
+    memcpy(tip, &update->x_position, sizeof update->x_position);
+    tip += sizeof update->x_position;
+
+    memcpy(tip, &update->y_position, sizeof update->y_position);
+
+    return mq_send(updater, message, sizeof message, 0);
 }
 
 int linted_updater_receive_update(linted_updater updater,
                                   struct linted_updater_update *update)
 {
-    return mq_receive(updater, (char *)update, sizeof *update, NULL);
+    message_type message;
+    int receive_status = mq_receive(updater, message, sizeof message, NULL);
+
+    if (receive_status != -1) {
+        char * tip = message;
+
+        memcpy(&update->x_position, tip, sizeof update->x_position);
+        tip += sizeof update->x_position;
+
+        memcpy(&update->y_position, tip, sizeof update->y_position);
+    }
+
+    return receive_status;
 }
 
 int linted_updater_close(linted_updater const updater)
