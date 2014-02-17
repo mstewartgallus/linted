@@ -36,88 +36,141 @@ static int simulator_run(linted_spawner spawner, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner spawner)
 {
-    linted_syslog_open();
+    int exit_status = -1;
 
     linted_updater updater_mqs[2];
-    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR("Could not create updater message queue: %s",
-                              linted_error_string_alloc(errno));
-    }
-
     linted_controller controller_mqs[2];
-    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR
-            ("Could not create simulator controller message queue: %s",
-             linted_error_string_alloc(errno));
-    }
-
     linted_shutdowner simulator_shutdowner_mqs[2];
-    if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
-        LINTED_LAZY_DEV_ERROR
-            ("Could not create simulator shutdowner message queue: %s",
-             linted_error_string_alloc(errno));
+
+    linted_updater updater_read;
+    linted_updater updater_write;
+
+    linted_controller controller_read;
+    linted_controller controller_write;
+
+    linted_shutdowner simulator_shutdowner_read;
+    linted_shutdowner simulator_shutdowner_write;
+
+    linted_syslog_open();
+
+    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
+        goto cleanup_spawner;
     }
 
-    linted_updater const updater_read = updater_mqs[0];
-    linted_updater const updater_write = updater_mqs[1];
+    updater_read = updater_mqs[0];
+    updater_write = updater_mqs[1];
 
-    linted_controller const controller_read = controller_mqs[0];
-    linted_controller const controller_write = controller_mqs[1];
+    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
+        goto cleanup_updater_pair;
+    }
 
-    linted_shutdowner const simulator_shutdowner_read =
-        simulator_shutdowner_mqs[0];
-    linted_shutdowner const simulator_shutdowner_write =
-        simulator_shutdowner_mqs[1];
+    controller_read = controller_mqs[0];
+    controller_write = controller_mqs[1];
+
+    if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
+        goto cleanup_controller_pair;
+    }
+
+    simulator_shutdowner_read = simulator_shutdowner_mqs[0];
+    simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
     if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                                   updater_read, simulator_shutdowner_write,
-                                   controller_write, -1})) {
+                updater_read, simulator_shutdowner_write,
+                    controller_write, -1})) {
         LINTED_LAZY_DEV_ERROR("Could not spawn gui: %s",
                               linted_error_string_alloc(errno));
     }
+
     if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                                   controller_read, simulator_shutdowner_read,
-                                   updater_write, -1})) {
+                controller_read, simulator_shutdowner_read,
+                    updater_write, -1})) {
         LINTED_LAZY_DEV_ERROR("Could not spawn simulator: %s",
                               linted_error_string_alloc(errno));
     }
 
-    if (-1 == linted_updater_close(updater_read)) {
-        LINTED_FATAL_ERROR("Could not close gui read end: %s",
-                           linted_error_string_alloc(errno));
+    exit_status = 0;
+
+    {
+        int errnum = errno;
+        int close_status = linted_shutdowner_close(simulator_shutdowner_read);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_controller_close(controller_read)) {
-        LINTED_FATAL_ERROR("Could not close controller read end: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_shutdowner_close(simulator_shutdowner_write);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_controller_close(controller_write)) {
-        LINTED_FATAL_ERROR("Could not close controller write end: %s",
-                           linted_error_string_alloc(errno));
+ cleanup_controller_pair:
+    {
+        int errnum = errno;
+        int close_status = linted_controller_close(controller_read);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_shutdowner_close(simulator_shutdowner_read)) {
-        LINTED_FATAL_ERROR("Could not close simulator shutdowner read end: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_controller_close(controller_write);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_spawner_close(spawner)) {
-        LINTED_FATAL_ERROR("Could not close spawner handle: %s",
-                           linted_error_string_alloc(errno));
+ cleanup_updater_pair:
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater_read);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_updater_close(updater_write)) {
-        LINTED_FATAL_ERROR("Could not close updater handle: %s",
-                           linted_error_string_alloc(errno));
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater_write);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    if (-1 == linted_shutdowner_close(simulator_shutdowner_write)) {
-        LINTED_FATAL_ERROR("Could not close simulator shutdowner write end: %s",
-                           linted_error_string_alloc(errno));
+ cleanup_spawner:
+    {
+        int errnum = errno;
+        int close_status = linted_spawner_close(spawner);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
-    return 0;
+    return exit_status;
 }
 
 static int simulator_run(linted_spawner const spawner, int const inboxes[])
