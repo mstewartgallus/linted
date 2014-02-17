@@ -54,6 +54,7 @@ extern char **environ;
     "For more information about these matters, see the file named COPYING.\n"
 
 static int main_loop_wrapper(linted_spawner spawner, int const fildes[]);
+static void close_in_out(void);
 
 int main(int argc, char **argv)
 {
@@ -93,31 +94,30 @@ int main(int argc, char **argv)
         }
     }
 
-    if (EOF == fclose(stdin)) {
-        LINTED_LAZY_DEV_ERROR("Could not close standard input: %s",
-                              linted_error_string_alloc(errno));
-    }
-    stdin = NULL;
-
-    if (EOF == fclose(stdout)) {
-        LINTED_LAZY_DEV_ERROR("Could not close standard output: %s",
-                              linted_error_string_alloc(errno));
-    }
-    stdout = NULL;
-
-    /* Reset the the logger so it isn't shared */
-    closelog();
-
     int command_status = -1;
     switch (argc) {
-    case 1:
-        /* Fork off tasks from a known good state */
-        if (-1 == linted_spawner_run(main_loop_wrapper,
-                                     (int[]) {-1})) {
-            goto after_spawner;
-        }
-        command_status = 0;
-        break;
+    case 1:{
+            close_in_out();
+
+            /* Reset the the logger so it isn't shared */
+            closelog();
+
+            /* Fork off tasks from a known good state */
+            int spawn_status = linted_spawner_run(main_loop_wrapper,
+                                                  (int[]) {-1});
+
+            /* Open the logger again */
+            linted_syslog_open();
+
+            if (-1 == spawn_status) {
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "Could not run spawner: %s", error_string);
+                linted_error_string_free(error_string);
+                goto after_spawner;
+            }
+            command_status = 0;
+            break;
+    }
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
@@ -131,25 +131,18 @@ int main(int argc, char **argv)
                     PACKAGE_TARNAME
                     " did not understand the command line input\n" USAGE_TEXT);
         }
+        close_in_out();
         break;
 
     default:
         fprintf(stderr,
                 PACKAGE_TARNAME " did not understand the command line input\n"
                 USAGE_TEXT);
+        close_in_out();
         break;
     }
 
  after_spawner:
-    /* Open the logger again */
-    linted_syslog_open();
-
-    if (-1 == command_status) {
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "Could not run spawner: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
     if (EOF == fclose(stderr)) {
         command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
@@ -165,4 +158,19 @@ int main(int argc, char **argv)
 static int main_loop_wrapper(linted_spawner spawner, int const fds[])
 {
     return linted_main_loop_run(spawner);
+}
+
+static void close_in_out(void)
+{
+    if (EOF == fclose(stdin)) {
+        LINTED_LAZY_DEV_ERROR("Could not close standard input: %s",
+                              linted_error_string_alloc(errno));
+    }
+    stdin = NULL;
+
+    if (EOF == fclose(stdout)) {
+        LINTED_LAZY_DEV_ERROR("Could not close standard output: %s",
+                              linted_error_string_alloc(errno));
+    }
+    stdout = NULL;
 }
