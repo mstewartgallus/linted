@@ -93,6 +93,18 @@ int main(int argc, char **argv)
         }
     }
 
+    if (EOF == fclose(stdin)) {
+        LINTED_LAZY_DEV_ERROR("Could not close standard input: %s",
+                              linted_error_string_alloc(errno));
+    }
+    stdin = NULL;
+
+    if (EOF == fclose(stdout)) {
+        LINTED_LAZY_DEV_ERROR("Could not close standard output: %s",
+                              linted_error_string_alloc(errno));
+    }
+    stdout = NULL;
+
     /* Reset the the logger so it isn't shared */
     closelog();
 
@@ -135,20 +147,6 @@ int main(int argc, char **argv)
     if (-1 == command_status) {
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not run spawner: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if (EOF == fclose(stdin)) {
-        command_status = -1;
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "Could not close standard input: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if (EOF == fclose(stdout)) {
-        command_status = -1;
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "Could not close standard output: %s", error_string);
         linted_error_string_free(error_string);
     }
 
