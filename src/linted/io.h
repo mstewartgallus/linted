@@ -25,12 +25,11 @@ ssize_t linted_io_recv_fildes(int *fildes, int socket);
  * The read_all function repeatedly reads from fd until buf is full or
  * an error occurs (except for EINTR).
  *
- * The read may be succesful and read less than count if the end of file is
- * reached.
+ * The read may be succesful and read less than count if the end of
+ * file is reached.
  *
- * For example, a bit could be read and then fd could
- * be closed and an error would be returned but some bytes would still
- * have been read.
+ * For example, a bit could be read and then fd could be closed and an
+ * error would be returned but some bytes would still have been read.
  *
  * @param fd The file to be read from.
  *
