@@ -152,65 +152,61 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
         }
     }
 
- wait_for_children:
-    /*
-     * We received a SIGCHLD. Alternatively, we are doing this once at
-     * the start.
-     */
-    if (-1 == wait_on_children(process_group)) {
-        if (ECHILD == errno) {
-            goto exit_fork_server;
-        }
-
-        goto close_sigchld_fd;
-    }
-
     for (;;) {
         int connection_status = -1;
         linted_server_conn connection;
 
-        {
-            int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
-            fd_set watched_fds;
-            int select_status;
+        int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
+        fd_set watched_fds;
+        int select_status;
 
-            do {
-                FD_ZERO(&watched_fds);
-                FD_SET(inbox, &watched_fds);
-                FD_SET(sigchld_fd, &watched_fds);
+        do {
+            FD_ZERO(&watched_fds);
+            FD_SET(inbox, &watched_fds);
+            FD_SET(sigchld_fd, &watched_fds);
 
-                select_status = select(greatest + 1, &watched_fds,
-                                       NULL, NULL, NULL);
-            } while (-1 == select_status && EINTR == errno);
-            if (-1 == select_status) {
+            select_status = select(greatest + 1, &watched_fds,
+                                   NULL, NULL, NULL);
+        } while (-1 == select_status && EINTR == errno);
+        if (-1 == select_status) {
+            goto close_sigchld_fd;
+        }
+
+        if (FD_ISSET(sigchld_fd, &watched_fds)) {
+            struct signalfd_siginfo siginfo;
+            if (-1 == linted_io_read_all(sigchld_fd, NULL,
+                                         &siginfo, sizeof siginfo)) {
                 goto close_sigchld_fd;
             }
 
-            if (FD_ISSET(sigchld_fd, &watched_fds)) {
-                struct signalfd_siginfo siginfo;
-                if (-1 == linted_io_read_all(sigchld_fd, NULL,
-                                             &siginfo, sizeof siginfo)) {
-                    goto close_sigchld_fd;
+            /*
+             * We received a SIGCHLD. Alternatively, we are doing
+             * this once at the start.
+             */
+            if (-1 == wait_on_children(process_group)) {
+                if (ECHILD == errno) {
+                    goto exit_fork_server;
                 }
 
-                goto wait_for_children;
+                goto close_sigchld_fd;
             }
         }
 
-        ssize_t bytes_read;
-        do {
-            bytes_read = linted_io_recv_fildes(&connection, inbox);
-        } while (-1 == bytes_read && EINTR == errno);
-        if (-1 == bytes_read) {
-            goto restore_signal_mask;
-        }
+        if (FD_ISSET(inbox, &watched_fds)) {
+            ssize_t bytes_read;
+            do {
+                bytes_read = linted_io_recv_fildes(&connection, inbox);
+            } while (-1 == bytes_read && EINTR == errno);
+            if (-1 == bytes_read) {
+                goto restore_signal_mask;
+            }
 
-        /* Luckily, because we already must fork for a fork server we
-         * get asynchronous behaviour for free.
-         */
-        pid_t child = fork();
-        switch (child) {
-        case 0:
+            /* Luckily, because we already must fork for a fork server we
+             * get asynchronous behaviour for free.
+             */
+            pid_t child = fork();
+            switch (child) {
+            case 0:
             {
                 int mask_status =
                     pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
@@ -235,7 +231,7 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
                 exec_task_from_connection(spawner, connection);
             }
 
-        case -1:{
+            case -1:{
                 struct reply reply = {.error_status = errno };
 
                 if (-1 == linted_io_write_all(connection, NULL,
@@ -243,29 +239,30 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
                     goto close_connection;
                 }
             }
-        }
-
-        if (-1 == setpgid(child, process_group) && errno != EACCES) {
-            goto close_connection;
-        }
-
-        connection_status = 0;
-
- close_connection:
-        {
-            int errnum = errno;
-
-            int close_status = linted_server_conn_close(connection);
-            if (-1 == connection_status) {
-                errno = errnum;
             }
 
-            if (-1 == close_status) {
-                connection_status = -1;
+            if (-1 == setpgid(child, process_group) && errno != EACCES) {
+                goto close_connection;
             }
 
-            if (-1 == connection_status) {
-                goto close_sigchld_fd;
+            connection_status = 0;
+
+        close_connection:
+            {
+                int errnum = errno;
+
+                int close_status = linted_server_conn_close(connection);
+                if (-1 == connection_status) {
+                    errno = errnum;
+                }
+
+                if (-1 == close_status) {
+                    connection_status = -1;
+                }
+
+                if (-1 == connection_status) {
+                    goto close_sigchld_fd;
+                }
             }
         }
     }
