@@ -52,12 +52,30 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
+enum transition {
+    SHOULD_EXIT,
+    SHOULD_RESIZE,
+    DO_NOTHING
+};
+
+struct gui_state {
+    unsigned width;
+    unsigned height;
+};
+
+static int on_sdl_event(SDL_Event const * sdl_event, struct gui_state * state,
+                        linted_controller controller,
+                        enum transition * transition);
+
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
 {
     int exit_status = -1;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
-    unsigned width = 640, height = 800;
+    struct gui_state state = {
+        .width = 640,
+        .height = 800
+    };
     SDL_VideoInfo const * video_info;
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
@@ -83,7 +101,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     }
 
     /* Initialize SDL */
-    if (NULL == SDL_SetVideoMode(width, height, 0, sdl_flags)) {
+    if (NULL == SDL_SetVideoMode(state.width, state.height, 0, sdl_flags)) {
         int errnum = errno;
         syslog(LOG_ERR, "could not set the video mode: %s",
                SDL_GetError());
@@ -93,15 +111,16 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
     /* Get actual window size, and not requested window size */
     video_info = SDL_GetVideoInfo();
-    width = video_info->current_w;
-    height = video_info->current_h;
+    state.width = video_info->current_w;
+    state.height = video_info->current_h;
 
     {
         float x = 0;
         float y = 0;
 
     setup_window:;
-        SDL_Surface *const video_surface = SDL_SetVideoMode(width, height,
+        SDL_Surface *const video_surface = SDL_SetVideoMode(state.width,
+                                                            state.height,
                                                             0, sdl_flags);
         if (NULL == video_surface) {
             int errnum = errno;
@@ -114,7 +133,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         glDisable(GL_DITHER);
 
         glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
-        glViewport(0, 0, width, height);
+        glViewport(0, 0, state.width, state.height);
 
         bool should_resize = false;
         for (;;) {
@@ -122,71 +141,22 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             SDL_Event sdl_event;
             bool const had_sdl_event = SDL_PollEvent(&sdl_event);
             if (had_sdl_event) {
-                switch (sdl_event.type) {
-                case SDL_QUIT:
+                enum transition transition;
+                if (-1 == on_sdl_event(&sdl_event, &state, controller,
+                                       &transition)) {
+                    goto cleanup_SDL;
+                }
+
+                switch (transition) {
+                case DO_NOTHING:
+                    break;
+
+                case SHOULD_EXIT:
                     goto exit_main_loop;
 
-                case SDL_VIDEORESIZE:
-                    /*
-                     * Fuse multiple resize attempts into just one to
-                     * prevent the worse case scenario of a whole
-                     * bunch of resize events from killing the
-                     * application's speed.
-                     */
-                    width = sdl_event.resize.w;
-                    height = sdl_event.resize.h;
+                case SHOULD_RESIZE:
                     should_resize = true;
                     break;
-
-                case SDL_KEYDOWN:
-                case SDL_KEYUP:{
-                    bool is_down = SDL_KEYDOWN == sdl_event.type;
-                    switch (sdl_event.key.keysym.sym) {
-                    case SDLK_q:
-                    case SDLK_ESCAPE:
-                        if (!is_down) {
-                            goto exit_main_loop;
-                        }
-                        break;
-
-                        {
-                            enum linted_controller_direction direction;
-
-                        case SDLK_LEFT:
-                            direction = LINTED_CONTROLLER_LEFT;
-                            goto key_movement;
-
-                        case SDLK_RIGHT:
-                            direction = LINTED_CONTROLLER_RIGHT;
-                            goto key_movement;
-
-                        case SDLK_UP:
-                            direction = LINTED_CONTROLLER_UP;
-                            goto key_movement;
-
-                        case SDLK_DOWN:
-                            direction = LINTED_CONTROLLER_DOWN;
-                            goto key_movement;
-
-                        key_movement:;
-                            int request_status;
-                            do {
-                                request_status =
-                                    linted_controller_send_movement(controller,
-                                                                    direction,
-                                                                    is_down);
-                            } while (-1 == request_status && EINTR == errno);
-                            if (-1 == request_status) {
-                                goto cleanup_SDL;
-                            }
-                            break;
-                        }
-
-                    default:
-                        break;
-                    }
-                    break;
-                }
                 }
             }
 
@@ -255,4 +225,77 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     }
 
     return exit_status;
+}
+
+static int on_sdl_event(SDL_Event const * sdl_event, struct gui_state * state,
+                        linted_controller controller,
+                        enum transition * transition)
+{
+    enum transition transition_out = DO_NOTHING;
+    switch (sdl_event->type) {
+    case SDL_QUIT:
+        transition_out = SHOULD_EXIT;
+        break;
+
+    case SDL_VIDEORESIZE:
+        /*
+         * Fuse multiple resize attempts into just one to prevent the
+         * worse case scenario of a whole bunch of resize events from
+         * killing the application's speed.
+         */
+        state->width = sdl_event->resize.w;
+        state->height = sdl_event->resize.h;
+        transition_out = SHOULD_RESIZE;
+        break;
+
+    case SDL_KEYDOWN:
+    case SDL_KEYUP:{
+        bool is_down = SDL_KEYDOWN == sdl_event->type;
+        switch (sdl_event->key.keysym.sym) {
+        default: break;
+        case SDLK_q:
+        case SDLK_ESCAPE:
+            if (!is_down) {
+                transition_out = SHOULD_EXIT;
+            }
+            break;
+
+            {
+                enum linted_controller_direction direction;
+
+            case SDLK_LEFT:
+                direction = LINTED_CONTROLLER_LEFT;
+                goto key_movement;
+
+            case SDLK_RIGHT:
+                direction = LINTED_CONTROLLER_RIGHT;
+                goto key_movement;
+
+            case SDLK_UP:
+                direction = LINTED_CONTROLLER_UP;
+                goto key_movement;
+
+            case SDLK_DOWN:
+                direction = LINTED_CONTROLLER_DOWN;
+                goto key_movement;
+
+            key_movement:;
+                int request_status;
+                do {
+                    request_status = linted_controller_send_movement(controller,
+                                                                     direction,
+                                                                     is_down);
+                } while (-1 == request_status && EINTR == errno);
+                if (-1 == request_status) {
+                    return -1;
+                }
+                break;
+            }
+        }
+        break;
+    }
+    }
+
+    *transition = transition_out;
+    return 0;
 }
