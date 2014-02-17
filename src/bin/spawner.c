@@ -57,8 +57,10 @@
  * death.
  *
  * Note that code running under the spawner or the spawner forks must
- * be able to run without the system logger active. Note that spawner
- * forks can freely invoke exit with error codes.
+ * be able to run without the system logger active.
+ *
+ * Note that it makes sense for spawner forks to directly exit on
+ * errors.
  *
  * TODO: Move away from Linux specifics such as signalfd, and prctl.
  *

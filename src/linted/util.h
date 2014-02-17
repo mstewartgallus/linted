@@ -25,8 +25,8 @@
  * A useful utility macro for fatal errors.
  *
  * This should only be used for errors that should never happen or
- * errors that might be caused by unrecoverable problems such as
- * memory corruption. The conditions that raise this error should be
+ * errors that are caused by unrecoverable problems such as memory
+ * corruption. The conditions that raise this error should be
  * documented if they are triggerable by a caller of one's
  * function. Think twice before using this macro as aborting a
  * function on invalid input makes that function just that little bit
@@ -37,22 +37,45 @@
  * Nonpermissible errors to use this for may include EMFILE, ENFILE
  * and ENOMEM. These cases should be handled properly.
  */
-#define LINTED_FATAL_ERROR(format_string, ...)                          \
+#define LINTED_FATAL_ERROR(errnum, format_string, ...)                  \
     do {                                                                \
-        syslog(LOG_ERR, "Fatal error in file %s, function %s, and line %i: " format_string, \
+        syslog(LOG_ERR, "fatal error in file %s, function %s, and line %i: " format_string, \
                __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
-        exit(EXIT_FAILURE);                                             \
+        exit(errnum);                                                   \
+    } while (0)
+
+/**
+ * A useful utility macro for errors that should never happen.
+ *
+ * This should only be used for errors that are caused by
+ * unrecoverable problems such as memory corruption. The conditions
+ * that raise this error should be documented if they are triggerable
+ * by a caller of one's function. Think twice before using this macro
+ * as aborting a function on invalid input makes that function just
+ * that little bit less useful.
+ *
+ * Permissible errors to use this for may include EINVAL or EBADF.
+ *
+ * Nonpermissible errors to use this for may include EMFILE, ENFILE
+ * and ENOMEM. These cases should be handled properly.
+ */
+#define LINTED_IMPOSSIBLE_ERROR(format_string, ...)                     \
+    do {                                                                \
+        syslog(LOG_ERR, "impossible error in file %s, function %s, and line %i: " format_string, \
+               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
+        abort();                                                        \
     } while (0)
 
 /**
  * A useful utility macro to abort to the process for errors that the
- * developer is too lazy to handle properly.
+ * developer is too lazy to handle properly. This macro should only
+ * ever be used during development and not during release.
  */
 #define LINTED_LAZY_DEV_ERROR(format_string, ...)                       \
     do {                                                                \
-        syslog(LOG_ERR, "Lazy developer error in file %s, function %s, and line %i:" format_string, \
+        syslog(LOG_ERR, "lazy developer error in file %s, function %s, and line %i:" format_string, \
                __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
-        exit(EXIT_FAILURE);                                             \
+        abort();                                                        \
     } while (0)
 
 char const *linted_error_string_alloc(int errnum);

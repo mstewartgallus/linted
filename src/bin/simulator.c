@@ -333,7 +333,8 @@ static void on_clock_tick(union sigval sigev_value)
 
     uint8_t event = TICK_EVENT;
     if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
-        exit(errno);
+        LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
+                           linted_error_string_alloc(errno));
     }
 }
 
@@ -344,7 +345,8 @@ static void on_controller_notification(union sigval sigval)
 
     uint8_t event = CONTROLLER_EVENT;
     if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
-        exit(errno);
+        LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
+                           linted_error_string_alloc(errno));
     }
 }
 
@@ -355,7 +357,8 @@ static void on_shutdowner_notification(union sigval sigval)
 
     uint8_t event = SHUTDOWN_EVENT;
     if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
-        exit(errno);
+        LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
+                           linted_error_string_alloc(errno));
     }
 }
 
