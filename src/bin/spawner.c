@@ -62,6 +62,8 @@
  * Note that it makes sense for spawner forks to directly exit on
  * errors.
  *
+ * TODO: Protect against bad clients
+ *
  * TODO: Move away from Linux specifics such as signalfd, and prctl.
  *
  * TODO: Does signalfd listen to child death of processes spawned by
@@ -77,10 +79,15 @@ struct reply {
     int error_status;
 };
 
-static void exec_task(linted_spawner_task task,
-                      linted_spawner spawner, int const fildes[]);
-static void exec_task_from_connection(linted_spawner spawner,
-                                      linted_server_conn connection);
+#define MAX_FORKER_FILDES_COUNT 20
+
+static int fork_task(pid_t * child,
+                     pid_t process_group,
+                     linted_spawner_task task,
+                     sigset_t const * old_sigset,
+                     int sigchld_fd,
+                     linted_server_conn inbox,
+                     linted_spawner spawner, int const fildes[]);
 
 static int wait_on_children(id_t process_group);
 
@@ -95,36 +102,6 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
 
     linted_spawner const spawner = sockets[0];
     linted_server const inbox = sockets[1];
-
-    /*
-     * This is a little bit confusing but the first processes pid is
-     * reused for the process group. We create a new process group so
-     * we can wait on that only.
-     */
-    pid_t const process_group = fork();
-    switch (process_group) {
-    case 0:
-        if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-            exit(errno);
-        }
-
-        if (-1 == setpgid(process_group, process_group)) {
-            exit(errno);
-        }
-
-        if (-1 == linted_server_close(inbox)) {
-            exit(errno);
-        }
-
-        exec_task(main_loop, spawner, fildes);
-
-    case -1:
-        goto close_sockets;
-    }
-
-    if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
-        goto close_sockets;
-    }
 
     sigset_t old_sigset;
     int sigchld_fd;
@@ -154,10 +131,20 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
         }
     }
 
-    for (;;) {
-        int connection_status = -1;
-        linted_server_conn connection;
+    /*
+     * This is a little bit confusing but the first processes pid is
+     * reused for the process group. We create a new process group so
+     * we can wait on that only.
+     */
+    pid_t process_group;
+    if (-1 == fork_task(&process_group, 0, main_loop, &old_sigset,
+                        sigchld_fd,
+                        inbox,
+                        spawner, fildes)) {
+        goto restore_signal_mask;
+    }
 
+    for (;;) {
         int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
         fd_set watched_fds;
         int select_status;
@@ -195,75 +182,88 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
         }
 
         if (FD_ISSET(inbox, &watched_fds)) {
+            int connection_status = -1;
+            linted_server_conn connection;
             ssize_t bytes_read;
             do {
                 bytes_read = linted_io_recv_fildes(&connection, inbox);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
-                goto restore_signal_mask;
+                goto close_sigchld_fd;
             }
 
-            /* Luckily, because we already must fork for a fork server we
-             * get asynchronous behaviour for free.
-             */
-            pid_t child = fork();
-            switch (child) {
-            case 0:
+            linted_spawner_task task;
+            size_t fildes_count;
             {
-                int mask_status =
-                    pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
-                assert(0 == mask_status);
-
-                if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                    exit(errno);
-                }
-
-                if (-1 == setpgid(child, process_group)) {
-                    exit(errno);
-                }
-
-                if (-1 == linted_server_close(inbox)) {
-                    exit(errno);
-                }
-
-                if (-1 == close(sigchld_fd)) {
-                    exit(errno);
-                }
-
-                exec_task_from_connection(spawner, connection);
-            }
-
-            case -1:{
-                struct reply reply = {.error_status = errno };
-
-                if (-1 == linted_io_write_all(connection, NULL,
-                                              &reply, sizeof reply)) {
+                struct request_header request_header;
+                size_t bytes_read;
+                if (-1 == linted_io_read_all(connection, &bytes_read,
+                                             &request_header, sizeof request_header)) {
                     goto close_connection;
                 }
-            }
+                if (bytes_read != sizeof request_header) {
+                    /* The connection hung up on us instead of replying */
+                    errno = EINVAL;
+                    goto close_connection;
+                }
+
+                task = request_header.func;
+                fildes_count = request_header.fildes_count;
             }
 
-            if (-1 == setpgid(child, process_group) && errno != EACCES) {
+            if (fildes_count > MAX_FORKER_FILDES_COUNT) {
+                errno = EINVAL;
                 goto close_connection;
             }
 
-            connection_status = 0;
-
-        close_connection:
             {
-                int errnum = errno;
+                int sent_inboxes[MAX_FORKER_FILDES_COUNT + 1];
+                sent_inboxes[fildes_count] = -1;
+                for (size_t ii = 0; ii < fildes_count; ++ii) {
+                    int fildes;
+                    ssize_t bytes_read;
 
-                int close_status = linted_server_conn_close(connection);
-                if (-1 == connection_status) {
-                    errno = errnum;
+                    do {
+                        bytes_read = linted_io_recv_fildes(&fildes, connection);
+                    } while (-1 == bytes_read && EINTR == errno);
+                    switch (bytes_read) {
+                    case -1:
+                        goto close_connection;
+
+                    case 0:
+                        errno = EINVAL;
+                        goto close_connection;
+                    }
+
+                    sent_inboxes[ii] = fildes;
                 }
 
-                if (-1 == close_status) {
-                    connection_status = -1;
+                if (-1 == fork_task(NULL, process_group, task,
+                                    &old_sigset,
+                                    sigchld_fd,
+                                    inbox,
+                                    spawner, sent_inboxes)) {
+                    goto close_connection;
                 }
 
-                if (-1 == connection_status) {
-                    goto close_sigchld_fd;
+                connection_status = 0;
+
+            close_connection:
+                {
+                    int errnum = errno;
+
+                    int close_status = linted_server_conn_close(connection);
+                    if (-1 == connection_status) {
+                        errno = errnum;
+                    }
+
+                    if (-1 == close_status) {
+                        connection_status = -1;
+                    }
+
+                    if (-1 == connection_status) {
+                        goto close_sigchld_fd;
+                    }
                 }
             }
         }
@@ -425,26 +425,6 @@ int linted_spawner_spawn(linted_spawner const spawner,
         }
     }
 
-    {
-        struct reply reply;
-        size_t bytes_read;
-        if (-1 == linted_io_read_all(connection, &bytes_read,
-                                     &reply, sizeof reply)) {
-            goto cleanup_connection;
-        }
-        if (bytes_read != sizeof reply) {
-            /* The connection hung up on us instead of replying */
-            errno = EIO;
-            goto cleanup_connection;
-        }
-
-        int const reply_error_status = reply.error_status;
-        if (reply_error_status != 0) {
-            errno = reply_error_status;
-            goto cleanup_connection;
-        }
-    }
-
     spawn_status = 0;
 
  cleanup_connection:
@@ -466,87 +446,53 @@ int linted_spawner_spawn(linted_spawner const spawner,
     return spawn_status;
 }
 
-#define MAX_FORKER_FILDES_COUNT 20
-static void exec_task_from_connection(linted_spawner const spawner,
-                                      linted_server_conn connection)
+static int fork_task(pid_t * child_out,
+                     pid_t process_group,
+                     linted_spawner_task task,
+                     sigset_t const * old_sigset,
+                     int sigchld_fd,
+                     linted_server_conn inbox,
+                     linted_spawner spawner, int const fildes[])
 {
-    linted_spawner_task task;
-    size_t fildes_count;
+    pid_t child = fork();
+    switch (child) {
+    case 0:
     {
-        struct request_header request_header;
-        size_t bytes_read;
-        if (-1 == linted_io_read_all(connection, &bytes_read,
-                                     &request_header, sizeof request_header)) {
-            goto reply_with_error;
-        }
-        if (bytes_read != sizeof request_header) {
-            /* The connection hung up on us instead of replying */
-            errno = EINVAL;
-            goto reply_with_error;
-        }
+        int mask_status = pthread_sigmask(SIG_SETMASK, old_sigset, NULL);
+        assert(0 == mask_status);
 
-        task = request_header.func;
-        fildes_count = request_header.fildes_count;
-    }
-
-    if (fildes_count > MAX_FORKER_FILDES_COUNT) {
-        errno = EINVAL;
-        goto reply_with_error;
-    }
-
-    {
-        int sent_inboxes[MAX_FORKER_FILDES_COUNT + 1];
-        sent_inboxes[fildes_count] = -1;
-        for (size_t ii = 0; ii < fildes_count; ++ii) {
-            int fildes;
-            ssize_t bytes_read;
-
-            do {
-                bytes_read = linted_io_recv_fildes(&fildes, connection);
-            } while (-1 == bytes_read && EINTR == errno);
-            switch (bytes_read) {
-            case -1:
-                goto reply_with_error;
-
-            case 0:
-                errno = EINVAL;
-                goto reply_with_error;
-            }
-
-            sent_inboxes[ii] = fildes;
-        }
-
-        {
-            struct reply reply = {.error_status = 0 };
-
-            if (-1 ==
-                linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
-                    exit(errno);
-            }
-        }
-
-        if (-1 == linted_server_conn_close(connection)) {
+        if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
             exit(errno);
         }
 
-        exec_task(task, spawner, sent_inboxes);
+        if (-1 == setpgid(child, process_group)) {
+            exit(errno);
+        }
+
+        if (-1 == linted_server_close(inbox)) {
+            exit(errno);
+        }
+
+        if (-1 == close(sigchld_fd)) {
+            exit(errno);
+        }
+
+        if (-1 == task(spawner, fildes)) {
+            exit(errno);
+        }
+        exit(EXIT_SUCCESS);
     }
 
- reply_with_error:;
-    int errnum = errno;
-    struct reply reply = {.error_status = errnum };
-
-    if (-1 == linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
-        exit(errno);
+    case -1:
+        return -1;
     }
 
-    exit(errnum);
-}
+    if (-1 == setpgid(child, process_group) && errno != EACCES) {
+        return -1;
+    }
 
-static void exec_task(linted_spawner_task task,
-                      linted_spawner spawner, int const fildes[])
-{
-    task(spawner, fildes);
-
-    exit(EXIT_SUCCESS);
+    if (child_out != NULL) {
+        *child_out = child;
+    }
+    return 0;
 }
