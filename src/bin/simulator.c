@@ -187,20 +187,27 @@ int linted_simulator_run(linted_controller const controller,
                 x_velocity += x_thrust + x_friction;
                 y_velocity += y_thrust + y_friction;
 
-                x_position += x_velocity;
-                y_position += y_velocity;
+                int32_t new_x_position = x_position + x_velocity;
+                int32_t new_y_position = y_position + y_velocity;
 
-                struct linted_updater_update update = {
-                    .x_position = x_position,
-                    .y_position = y_position
-                };
+                if (x_position != new_x_position
+                    || y_position != new_y_position) {
+                    x_position = new_x_position;
+                    y_position = new_y_position;
 
-                int update_status;
-                do {
-                    update_status = linted_updater_send_update(updater, &update);
-                } while (-1 == update_status && EINTR == errno);
-                if (-1 == update_status) {
-                    goto restore_notify;
+                    struct linted_updater_update update = {
+                        .x_position = x_position,
+                        .y_position = y_position
+                    };
+
+                    int update_status;
+                    do {
+                        update_status = linted_updater_send_update(updater,
+                                                                   &update);
+                    } while (-1 == update_status && EINTR == errno);
+                    if (-1 == update_status) {
+                        goto restore_notify;
+                    }
                 }
                 break;
             }
