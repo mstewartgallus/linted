@@ -27,6 +27,10 @@
 #include <time.h>
 #include <unistd.h>
 
+/* TODO: Fix race condition where file descriptor is closed and
+ * asynchronous tasks don't know.
+ */
+
 typedef mqd_t simulator_type;
 
 #define SHUTDOWN_EVENT ((uint8_t) 0)

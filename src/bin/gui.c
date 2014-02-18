@@ -132,6 +132,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
         glDisable(GL_DITHER);
 
+        glEnable(GL_VERTEX_ARRAY);
+
         glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
         glViewport(0, 0, state.width, state.height);
 
@@ -188,11 +190,21 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
                 glClear(GL_COLOR_BUFFER_BIT);
 
-                glBegin(GL_TRIANGLES);
-                glVertex2f(x - 0.4f, y - 0.4f);
-                glVertex2f(x + 0.4f, y - 0.4f);
-                glVertex2f(x + 0.0f, y + 0.4f);
-                glEnd();
+                GLfloat triangles[][2] = {
+                    {x - 0.4f, y - 0.4f},
+                    {x + 0.4f, y - 0.4f},
+                    {x + 0.0f, y + 0.4f}
+                };
+                glVertexPointer(2, GL_FLOAT, 0, triangles);
+                glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangles));
+
+                for (;;) {
+                    GLenum error = glGetError();
+                    if (GL_NO_ERROR == error) {
+                        break;
+                    }
+                    syslog(LOG_ERR, "GL Error: %s", glGetString(error));
+                }
 
                 SDL_GL_SwapBuffers();
             }
