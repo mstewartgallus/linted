@@ -52,6 +52,13 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
+
+static GLfloat const triangle_data[][2] = {
+    {-0.4f, -0.4f},
+    {0.4f, -0.4f},
+    {0.0f, 0.4f}
+};
+
 enum transition {
     SHOULD_EXIT,
     SHOULD_RESIZE,
@@ -137,6 +144,10 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
         glViewport(0, 0, state.width, state.height);
 
+        glVertexPointer(2, GL_FLOAT, 0, triangle_data);
+
+        glMatrixMode(GL_MODELVIEW);
+
         bool should_resize = false;
         for (;;) {
             /* Handle SDL events first before rendering */
@@ -190,13 +201,18 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
                 glClear(GL_COLOR_BUFFER_BIT);
 
-                GLfloat triangles[][2] = {
-                    {x - 0.4f, y - 0.4f},
-                    {x + 0.4f, y - 0.4f},
-                    {x + 0.0f, y + 0.4f}
-                };
-                glVertexPointer(2, GL_FLOAT, 0, triangles);
-                glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangles));
+                GLfloat modelview_matrix[] = {
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    x, y, 0, 1};
+                /*  X, Y, Z, W coords of the resultant vector are the
+                 *  sums of the columns (row major order).
+                 */
+                glLoadMatrixf(modelview_matrix);
+
+                glDrawArrays(GL_TRIANGLES,
+                             0, LINTED_ARRAY_SIZE(triangle_data));
 
                 for (;;) {
                     GLenum error = glGetError();
