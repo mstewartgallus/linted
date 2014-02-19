@@ -28,6 +28,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #if defined(__linux__)
@@ -125,24 +126,43 @@ int main(int argc, char **argv)
             /* Reset the the logger so it isn't shared */
             closelog();
 
-            /* Fork off tasks from a known good state */
-            int preserved[] = { STDERR_FILENO };
-            int main_loop_fildes[] = { spawners[1] };
-            int spawn_status = linted_process_spawner_run(spawners[0],
-                                                          preserved,
-                                                          LINTED_ARRAY_SIZE(preserved),
-                                                          main_loop_wrapper,
-                                                          main_loop_fildes,
-                                                          LINTED_ARRAY_SIZE(main_loop_fildes));
+            pid_t child = fork();
+            if (0 == child) {
+                /* Fork off tasks from a known good state */
+                if (-1 == linted_spawner_close(spawners[1])) {
+                    exit(errno);
+                }
+
+                int preserved[] = { STDERR_FILENO };
+                int spawn_status = linted_process_spawner_run(spawners[0],
+                                                              preserved,
+                                                              LINTED_ARRAY_SIZE(preserved));
+                if (-1 == spawn_status) {
+                    exit(errno);
+                }
+
+                exit(EXIT_SUCCESS);
+            }
 
             /* Open the logger again */
             linted_syslog_open();
 
-            if (-1 == spawn_status) {
+            if (-1 == child) {
                 char const * error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not run spawner: %s", error_string);
                 linted_error_string_free(error_string);
                 command_status = -1;
+
+            }
+
+            /* TODO: main loop code isn't needed any more */
+
+            int main_loop_fildes[] = { spawners[1] };
+            if (-1 == linted_spawner_spawn(spawners[1], main_loop_wrapper,
+                                           main_loop_fildes,
+                                           LINTED_ARRAY_SIZE(main_loop_fildes))) {
+                LINTED_LAZY_DEV_ERROR("could not spawn main loop: %s",
+                                      linted_error_string_alloc(errno));
             }
 
             if (-1 == linted_spawner_close(spawners[0])) {
@@ -157,6 +177,11 @@ int main(int argc, char **argv)
                 syslog(LOG_ERR, "could not close spawner writer: %s", error_string);
                 linted_error_string_free(error_string);
                 command_status = -1;
+            }
+
+            if (-1 == waitpid(child, NULL, 0)) {
+                LINTED_LAZY_DEV_ERROR("could not wait for spawner to exit: %s",
+                                      linted_error_string_alloc(errno));
             }
 
             break;
