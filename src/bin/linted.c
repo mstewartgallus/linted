@@ -79,13 +79,12 @@ int main(int argc, char **argv)
     }
 
     /* Sanitize open files */
-    int essential_fds[] = {
-        STDERR_FILENO,
-        STDIN_FILENO,
-        STDOUT_FILENO
-    };
-    if (-1 == linted_io_close_fds_except(essential_fds,
-                                         LINTED_ARRAY_SIZE(essential_fds))) {
+    fd_set essential_fds;
+    FD_ZERO(&essential_fds);
+    FD_SET(STDERR_FILENO, &essential_fds);
+    FD_SET(STDIN_FILENO, &essential_fds);
+    FD_SET(STDOUT_FILENO, &essential_fds);
+    if (-1 == linted_io_close_fds_except(&essential_fds)) {
         LINTED_LAZY_DEV_ERROR("could not close unneeded files: %s",
                               linted_error_string_alloc(errno));
     }

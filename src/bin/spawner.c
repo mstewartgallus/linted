@@ -145,24 +145,20 @@ int linted_spawner_run(linted_spawner inbox,
                 exit(errno);
             }
 
-            int * fds = calloc(fildes_size + preserved_fildes_size,
-                               sizeof fds[0]);
-            if (NULL == fds) {
-                exit(errno);
-            }
-            memcpy(fds, preserved_fildes,
-                   preserved_fildes_size * sizeof preserved_fildes[0]);
+            fd_set fds_not_to_close;
+            FD_ZERO(&fds_not_to_close);
 
-            memcpy(fds + preserved_fildes_size,
-                   fildes,
-                   fildes_size * sizeof fildes[0]);
-
-            if (-1 == linted_io_close_fds_except(fds,
-                                                 fildes_size + preserved_fildes_size)) {
-                exit(errno);
+            for (size_t ii = 0; ii < fildes_size; ++ii) {
+                FD_SET(fildes[ii], &fds_not_to_close);
             }
 
-            free(fds);
+            for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
+                FD_SET(preserved_fildes[ii], &fds_not_to_close);
+            }
+
+            if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
+                exit(errno);
+            }
 
             exec_task(main_loop, fildes);
         }
@@ -240,16 +236,16 @@ int linted_spawner_run(linted_spawner inbox,
                     exit(errno);
                 }
 
-                int * fds_not_to_close = calloc(preserved_fildes_size + 1,
-                                                sizeof fds_not_to_close[0]);
-                if (NULL == fds_not_to_close) {
-                    exit(errno);
+                fd_set fds_not_to_close;
+                FD_ZERO(&fds_not_to_close);
+
+                for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
+                    FD_SET(preserved_fildes[ii], &fds_not_to_close);
                 }
-                memcpy(fds_not_to_close + 1, preserved_fildes,
-                       preserved_fildes_size * sizeof preserved_fildes[0]);
-                fds_not_to_close[0] = connection;
-                if (-1 == linted_io_close_fds_except(fds_not_to_close,
-                                                     LINTED_ARRAY_SIZE(fds_not_to_close))) {
+
+                FD_SET(connection, &fds_not_to_close);
+
+                if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
                     exit(errno);
                 }
 

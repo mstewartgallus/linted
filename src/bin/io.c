@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -168,7 +169,7 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
-int linted_io_close_fds_except(int const fds[], size_t fds_count)
+int linted_io_close_fds_except(fd_set const * fds)
 {
     int exit_status = -1;
     char const fds_path[] = "/proc/self/fd";
@@ -214,19 +215,13 @@ int linted_io_close_fds_except(int const fds[], size_t fds_count)
                 continue;
             }
 
-            for (size_t ii = 0; ii < fds_count; ++ii) {
-                if (fd == fds[ii]) {
-                    goto skip_fd;
-                }
+            if (FD_ISSET(fd, fds)) {
+                continue;
             }
-            goto dont_skip;
-        skip_fd:
-            continue;
-        dont_skip:;
 
             ++fds_to_close_count;
             int * new_fds = realloc(fds_to_close,
-                                    fds_count * sizeof fds_to_close[0]);
+                                    fds_to_close_count * sizeof fds_to_close[0]);
             if (NULL == new_fds) {
                 goto free_fds_to_close;
             }

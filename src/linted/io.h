@@ -16,6 +16,7 @@
 #ifndef LINTED_IO_H
 #define LINTED_IO_H
 
+#include <sys/select.h>
 #include <sys/types.h>
 
 int linted_io_send_fildes(int socket, int fildes);
@@ -119,6 +120,6 @@ int linted_io_write_all(int fd, size_t * bytes_wrote,
 /**
  * NOT THREAD SAFE
  */
-int linted_io_close_fds_except(int const fds[], size_t fds_count);
+int linted_io_close_fds_except(fd_set const * fds);
 
 #endif                          /* LINTED_IO_H */
