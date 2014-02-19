@@ -268,6 +268,13 @@ int linted_process_spawner_run(linted_spawner inbox,
         int cancel_status = pthread_cancel(waiter_thread);
         assert(0 == cancel_status);
 
+        errno = errnum;
+    }
+
+    /* Always join with the thread to release it's resources */
+    {
+        int errnum = errno;
+
         int join_status = pthread_join(waiter_thread, NULL);
         assert(0 == join_status);
 
