@@ -214,7 +214,7 @@ int linted_io_close_fds_except(fd_set const *fds)
                 continue;
             }
 
-            if (FD_ISSET(fd, fds)) {
+            if (fd < FD_SETSIZE && FD_ISSET(fd, fds)) {
                 continue;
             }
 
