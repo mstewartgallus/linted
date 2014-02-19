@@ -135,147 +135,149 @@ int linted_process_spawner_run(linted_spawner inbox,
         goto close_waiter_pipes;
     }
 
-    pthread_t waiter_thread;
-    struct waiter_arguments waiter_arguments = {
-        .process_group = process_group,
-        .waiter_pipe = waiter_pipes[1]
-    };
-    if (-1 == pthread_create(&waiter_thread, NULL,
-                             waiter_loop, &waiter_arguments)) {
-        goto close_waiter_pipes;
-    }
-
-    for (;;) {
-        int greatest = (inbox > waiter_pipes[0]) ? inbox : waiter_pipes[0];
-        fd_set watched_fds;
-        int select_status;
-
-        do {
-            FD_ZERO(&watched_fds);
-            FD_SET(inbox, &watched_fds);
-            FD_SET(waiter_pipes[0], &watched_fds);
-
-            select_status = select(greatest + 1, &watched_fds,
-                                   NULL, NULL, NULL);
-        } while (-1 == select_status && EINTR == errno);
-        if (-1 == select_status) {
-            goto cancel_waiter_thread;
+    {
+        pthread_t waiter_thread;
+        struct waiter_arguments waiter_arguments = {
+            .process_group = process_group,
+            .waiter_pipe = waiter_pipes[1]
+        };
+        if (-1 == pthread_create(&waiter_thread, NULL,
+                                 waiter_loop, &waiter_arguments)) {
+            goto close_waiter_pipes;
         }
 
-        if (FD_ISSET(waiter_pipes[0], &watched_fds)) {
-            char dummy;
-            if (-1 == linted_io_read_all(waiter_pipes[0], NULL,
-                                         &dummy, sizeof dummy)) {
-                goto cancel_waiter_thread;
-            }
+        for (;;) {
+            int greatest = (inbox > waiter_pipes[0]) ? inbox : waiter_pipes[0];
+            fd_set watched_fds;
+            int select_status;
 
-            /* Waiter thread got an ECHILD */
-            goto exit_fork_server;
-        }
-
-        if (FD_ISSET(inbox, &watched_fds)) {
-            int connection_status = -1;
-            linted_server_conn connection;
-
-            ssize_t bytes_read;
             do {
-                bytes_read = linted_spawner_recv_future(inbox,
-                                                        &connection);
-            } while (-1 == bytes_read && EINTR == errno);
-            if (-1 == bytes_read) {
+                FD_ZERO(&watched_fds);
+                FD_SET(inbox, &watched_fds);
+                FD_SET(waiter_pipes[0], &watched_fds);
+
+                select_status = select(greatest + 1, &watched_fds,
+                                       NULL, NULL, NULL);
+            } while (-1 == select_status && EINTR == errno);
+            if (-1 == select_status) {
                 goto cancel_waiter_thread;
             }
 
-            /* Luckily, because we already must fork for a fork server
-             * we get asynchronous behaviour for free.
-             */
-            pid_t child = fork();
-            switch (child) {
-            case 0:
-            {
-                if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                    exit(errno);
-                }
-
-                if (-1 == setpgid(child, process_group)) {
-                    exit(errno);
-                }
-
-                fd_set fds_not_to_close;
-                FD_ZERO(&fds_not_to_close);
-
-                for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
-                    FD_SET(preserved_fildes[ii], &fds_not_to_close);
-                }
-
-                FD_SET(connection, &fds_not_to_close);
-
-                if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
-                    exit(errno);
-                }
-
-                struct linted_spawner_request request;
-                if (-1 == linted_spawner_recv_request(connection,
-                                                      &request)) {
-                    exit(errno);
-                }
-
-                exec_task(request.task, request.fildes);
-            }
-
-            case -1:
-                if (-1 == linted_spawner_deny_request(connection, errno)) {
-                    goto close_connection;
-                }
-            }
-
-            if (-1 == setpgid(child, process_group) && errno != EACCES) {
-                goto close_connection;
-            }
-
-            connection_status = 0;
-
-        close_connection:
-            {
-                int errnum = errno;
-
-                int close_status = linted_server_conn_close(connection);
-                if (-1 == connection_status) {
-                    errno = errnum;
-                }
-
-                if (-1 == close_status) {
-                    connection_status = -1;
-                }
-
-                if (-1 == connection_status) {
+            if (FD_ISSET(waiter_pipes[0], &watched_fds)) {
+                char dummy;
+                if (-1 == linted_io_read_all(waiter_pipes[0], NULL,
+                                             &dummy, sizeof dummy)) {
                     goto cancel_waiter_thread;
                 }
+
+                /* Waiter thread got an ECHILD */
+                goto exit_fork_server;
+            }
+
+            if (FD_ISSET(inbox, &watched_fds)) {
+                int connection_status = -1;
+                linted_server_conn connection;
+
+                ssize_t bytes_read;
+                do {
+                    bytes_read = linted_spawner_recv_future(inbox,
+                                                            &connection);
+                } while (-1 == bytes_read && EINTR == errno);
+                if (-1 == bytes_read) {
+                    goto cancel_waiter_thread;
+                }
+
+                /* Luckily, because we already must fork for a fork server
+                 * we get asynchronous behaviour for free.
+                 */
+                pid_t child = fork();
+                switch (child) {
+                case 0:
+                {
+                    if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                        exit(errno);
+                    }
+
+                    if (-1 == setpgid(child, process_group)) {
+                        exit(errno);
+                    }
+
+                    fd_set fds_not_to_close;
+                    FD_ZERO(&fds_not_to_close);
+
+                    for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
+                        FD_SET(preserved_fildes[ii], &fds_not_to_close);
+                    }
+
+                    FD_SET(connection, &fds_not_to_close);
+
+                    if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
+                        exit(errno);
+                    }
+
+                    struct linted_spawner_request request;
+                    if (-1 == linted_spawner_recv_request(connection,
+                                                          &request)) {
+                        exit(errno);
+                    }
+
+                    exec_task(request.task, request.fildes);
+                }
+
+                case -1:
+                    if (-1 == linted_spawner_deny_request(connection, errno)) {
+                        goto close_connection;
+                    }
+                }
+
+                if (-1 == setpgid(child, process_group) && errno != EACCES) {
+                    goto close_connection;
+                }
+
+                connection_status = 0;
+
+             close_connection:
+                {
+                    int errnum = errno;
+
+                    int close_status = linted_server_conn_close(connection);
+                    if (-1 == connection_status) {
+                        errno = errnum;
+                    }
+
+                    if (-1 == close_status) {
+                        connection_status = -1;
+                    }
+
+                    if (-1 == connection_status) {
+                        goto cancel_waiter_thread;
+                    }
+                }
             }
         }
-    }
 
- exit_fork_server:
-    exit_status = 0;
+     exit_fork_server:
+        exit_status = 0;
 
- cancel_waiter_thread:
-    if (exit_status != 0) {
-        int errnum = errno;
+     cancel_waiter_thread:
+        if (exit_status != 0) {
+            int errnum = errno;
 
-        int cancel_status = pthread_cancel(waiter_thread);
-        assert(0 == cancel_status);
+            int cancel_status = pthread_cancel(waiter_thread);
+            assert(0 == cancel_status);
 
-        errno = errnum;
-    }
+            errno = errnum;
+        }
 
-    /* Always join with the thread to release it's resources */
-    {
-        int errnum = errno;
+        /* Always join with the thread to release it's resources */
+        {
+            int errnum = errno;
 
-        int join_status = pthread_join(waiter_thread, NULL);
-        assert(0 == join_status);
+            int join_status = pthread_join(waiter_thread, NULL);
+            assert(0 == join_status);
 
-        errno = errnum;
+            errno = errnum;
+        }
     }
 
  close_waiter_pipes:
