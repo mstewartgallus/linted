@@ -57,6 +57,8 @@ extern char **environ;
 static int main_loop_wrapper(int const fildes[]);
 static void close_in_out(void);
 
+static int run_game(void);
+
 int main(int argc, char **argv)
 {
     /* First we check if we are run with proper security */
@@ -110,62 +112,27 @@ int main(int argc, char **argv)
     int command_status = -1;
     switch (argc) {
     case 1:{
-            close_in_out();
+        close_in_out();
 
-            linted_spawner spawners[2];
-            if (-1 == linted_spawner_pair(spawners)) {
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not create spawner pair: %s",
-                       error_string);
-                linted_error_string_free(error_string);
-                goto after_spawner;
-            }
+        /* Close the the logger so it isn't shared */
+        closelog();
 
-            command_status = 0;
+        int game_status = run_game();
+        int errnum = errno;
 
-            /* Reset the the logger so it isn't shared */
-            closelog();
+        /* Open the logger again */
+        linted_syslog_open();
 
-            /* Fork off tasks from a known good state */
-            int preserved[] = { STDERR_FILENO };
-            int main_loop_fildes[] = { spawners[1] };
-            int spawn_status = linted_process_spawner_run(spawners[0],
-                                                          preserved,
-                                                          LINTED_ARRAY_SIZE
-                                                          (preserved),
-                                                          main_loop_wrapper,
-                                                          main_loop_fildes,
-                                                          LINTED_ARRAY_SIZE
-                                                          (main_loop_fildes));
-
-            /* Open the logger again */
-            linted_syslog_open();
-
-            if (-1 == spawn_status) {
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not run spawner: %s", error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-            }
-
-            if (-1 == linted_spawner_close(spawners[0])) {
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner reader: %s",
-                       error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-            }
-
-            if (-1 == linted_spawner_close(spawners[1])) {
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner writer: %s",
-                       error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-            }
-
+        if (-1 == game_status) {
+            char const *error_string = linted_error_string_alloc(errnum);
+            syslog(LOG_ERR, "could not run the game: %s", error_string);
+            linted_error_string_free(error_string);
             break;
         }
+
+        command_status = 0;
+        break;
+    }
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
@@ -190,7 +157,6 @@ int main(int argc, char **argv)
         break;
     }
 
- after_spawner:
     if (EOF == fclose(stderr)) {
         command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
@@ -201,6 +167,55 @@ int main(int argc, char **argv)
     closelog();
 
     return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+static int run_game(void)
+{
+    int exit_status = -1;
+
+    linted_spawner spawners[2];
+    if (-1 == linted_spawner_pair(spawners)) {
+        return -1;
+    }
+
+    /* Fork off tasks from a known good state */
+    int preserved[] = { STDERR_FILENO };
+    int main_loop_fildes[] = { spawners[1] };
+    if (-1 == linted_process_spawner_run(spawners[0],
+                                         preserved,
+                                         LINTED_ARRAY_SIZE(preserved),
+                                         main_loop_wrapper,
+                                         main_loop_fildes,
+                                         LINTED_ARRAY_SIZE(main_loop_fildes))) {
+        goto close_spawners;
+    }
+
+    exit_status = 0;
+
+close_spawners:
+    {
+        int errnum = errno;
+        int close_status = linted_spawner_close(spawners[0]);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    {
+        int errnum = errno;
+        int close_status = linted_spawner_close(spawners[1]);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    return exit_status;
 }
 
 static int main_loop_wrapper(int const fds[])
