@@ -24,6 +24,7 @@ linted_SOURCES=\
   src/bin/io.c\
   src/bin/linted.c\
   src/bin/main_loop.c\
+  src/bin/process_spawner.c\
   src/bin/sandbox.c\
   src/bin/shutdowner.c\
   src/bin/server.c\
@@ -54,6 +55,7 @@ EXTRA_DIST=\
   src/linted/io.h\
   src/linted/main_loop.h\
   src/linted/mq.h\
+  src/linted/process_spawner.h\
   src/linted/sandbox.h\
   src/linted/server.h\
   src/linted/shutdowner.h\

@@ -17,7 +17,7 @@
 
 #include "linted/io.h"
 #include "linted/main_loop.h"
-#include "linted/spawner.h"
+#include "linted/process_spawner.h"
 #include "linted/syslog.h"
 #include "linted/util.h"
 
@@ -128,12 +128,12 @@ int main(int argc, char **argv)
             /* Fork off tasks from a known good state */
             int preserved[] = { STDERR_FILENO };
             int main_loop_fildes[] = { spawners[1] };
-            int spawn_status = linted_spawner_run(spawners[0],
-                                                  preserved,
-                                                  LINTED_ARRAY_SIZE(preserved),
-                                                  main_loop_wrapper,
-                                                  main_loop_fildes,
-                                                  LINTED_ARRAY_SIZE(main_loop_fildes));
+            int spawn_status = linted_process_spawner_run(spawners[0],
+                                                          preserved,
+                                                          LINTED_ARRAY_SIZE(preserved),
+                                                          main_loop_wrapper,
+                                                          main_loop_fildes,
+                                                          LINTED_ARRAY_SIZE(main_loop_fildes));
 
             /* Open the logger again */
             linted_syslog_open();

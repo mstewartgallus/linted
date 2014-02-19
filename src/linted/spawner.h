@@ -19,11 +19,16 @@
 #include "linted/server.h"
 
 #include <stddef.h>
+#include <sys/types.h>
+
+#define LINTED_SPAWNER_MAX_FILDES_COUNT (20)
 
 /**
  * Is a spawner. Is shareable.
  */
 typedef linted_server linted_spawner;
+
+typedef int linted_spawner_future;
 
 /**
  * A spawner task exits succesfully with 0 or unsuccessfully with -1
@@ -31,21 +36,11 @@ typedef linted_server linted_spawner;
  */
 typedef int (*linted_spawner_task) (int const fildes[]);
 
-/**
- * Runs a spawner process and starts main_loop in a separate
- * process. Spawned processes will return from this function.
- *
- * The spawner captures the current state (open files etc..) and forks
- * off copies of this state. This is useful for capturing a copy of a
- * known good process startup state.
- *
- * @returns -1 on error and a value in errno.
- */
-int linted_spawner_run(linted_spawner spawner,
-                       int const preserved_fildes[],
-                       size_t preserved_fildes_size,
-                       linted_spawner_task main_loop,
-                       int const fildes[], size_t fildes_size);
+struct linted_spawner_request {
+    int fildes[LINTED_SPAWNER_MAX_FILDES_COUNT];
+    size_t fildes_count;
+    linted_spawner_task task;
+};
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
@@ -53,7 +48,6 @@ int linted_spawner_run(linted_spawner spawner,
  *
  * @param spawner The spawner.
  * @param func The function to execute.
- * @param inbox A file descriptor to pass to the spawned task.
  */
 int linted_spawner_spawn(linted_spawner spawner, linted_spawner_task func,
                          int const fildes[], size_t fildes_size);
@@ -64,5 +58,15 @@ int linted_spawner_pair(linted_spawner spawners[2]);
  * Closes a spawner. Returns -1 on error and the error in errno.
  */
 int linted_spawner_close(linted_spawner spawner);
+
+
+ssize_t linted_spawner_recv_future(linted_spawner spawner,
+                                   linted_spawner_future * future);
+
+int linted_spawner_recv_request(linted_spawner_future future,
+                                struct linted_spawner_request * request);
+
+int linted_spawner_deny_request(linted_spawner_future future,
+                                int errnum);
 
 #endif                          /* LINTED_SPAWNER_H */
