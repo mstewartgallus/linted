@@ -23,13 +23,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/prctl.h>
-#include <sys/signalfd.h>
 #include <sys/select.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -45,11 +45,17 @@
  * Posix requires an exact copy of process memory so I believe passing
  * around function pointers through pipes is allowed.
  *
+ * A great amount of work is done so that only the processes spawned
+ * by this function and not concurrently or before are waited on.
+ *
  * We create and move processes to a new process group so that only
  * these specific processes are waited on instead of processes spawned
  * before this function is invoked or spawned by concurrent
  * threads. Both the spawner and the child must set the process group
  * to avoid a race condition.
+ *
+ * We wait on a separate thread so that we don't have to use signal
+ * handling (which messes with global state).
  *
  * A prctl call is used so that the child knows about the parents
  * death.
@@ -60,15 +66,18 @@
  * Note that it makes sense for spawner forks to directly exit on
  * errors.
  *
- * TODO: Move away from Linux specifics such as signalfd, and prctl.
+ * TODO: Shutdown child processes on error
  *
- * TODO: Does signalfd listen to child death of processes spawned by
- * other threads? If so, find a way to only listen to SIGCHLD for
- * processes spawned by my processes.
+ * TODO: Move away from Linux specifics such as prctl.
  */
-static void exec_task(linted_spawner_task task, int const fildes[]);
 
-static int wait_on_children(id_t process_group);
+struct waiter_arguments {
+    id_t process_group;
+    int waiter_pipe;
+};
+
+static void exec_task(linted_spawner_task task, int const fildes[]);
+static void * waiter_loop(void * arguments);
 
 int linted_process_spawner_run(linted_spawner inbox,
                                int const preserved_fildes[],
@@ -78,47 +87,23 @@ int linted_process_spawner_run(linted_spawner inbox,
 {
     int exit_status = -1;
 
-    sigset_t old_sigset;
-    int sigchld_fd;
-    pid_t process_group;
-
-    {
-        sigset_t sigchld_set;
-
-        int empty_set_status = sigemptyset(&sigchld_set);
-        assert(empty_set_status != -1);
-
-        int sigchld_set_status = sigaddset(&sigchld_set, SIGCHLD);
-        assert(sigchld_set_status != -1);
-
-        int mask_status = pthread_sigmask(SIG_BLOCK, &sigchld_set, &old_sigset);
-        assert(0 == mask_status);
-
-        sigset_t sigchld_mask;
-
-        int sigchld_empty_status = sigemptyset(&sigchld_mask);
-        assert(sigchld_empty_status != -1);
-
-        int sigchld_add_status = sigaddset(&sigchld_mask, SIGCHLD);
-        assert(sigchld_add_status != -1);
-
-        sigchld_fd = signalfd(-1, &sigchld_mask, SFD_CLOEXEC);
-        if (-1 == sigchld_fd) {
-            goto restore_signal_mask;
-        }
+    /* A pipe is used for simple communication. Unfortunately, a pipe
+     * is not reliable or very cheap. In the future it'd be better to
+     * use POSIX functionality such as semaphores.
+     */
+    int waiter_pipes[2];
+    if (-1 == pipe(waiter_pipes)) {
+        return -1;
     }
 
     /*
-     * This is a little bit confusing but the first processes pid is
+     * This is a little bit confusing but the first process's pid is
      * reused for the process group. We create a new process group so
      * we can wait on that only.
      */
-    process_group = fork();
+    pid_t process_group = fork();
     switch (process_group) {
     case 0:{
-            int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
-            assert(0 == mask_status);
-
             if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
                 exit(errno);
             }
@@ -146,45 +131,49 @@ int linted_process_spawner_run(linted_spawner inbox,
         }
 
     case -1:
-        goto close_sigchld_fd;
+        goto close_waiter_pipes;
     }
 
     if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
-        goto close_sigchld_fd;
+        goto close_waiter_pipes;
+    }
+
+    pthread_t waiter_thread;
+    struct waiter_arguments waiter_arguments = {
+        .process_group = process_group,
+        .waiter_pipe = waiter_pipes[1]
+    };
+    if (-1 == pthread_create(&waiter_thread, NULL,
+                             waiter_loop, &waiter_arguments)) {
+        goto close_waiter_pipes;
     }
 
     for (;;) {
-        int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
+        int greatest = (inbox > waiter_pipes[0]) ? inbox : waiter_pipes[0];
         fd_set watched_fds;
         int select_status;
 
         do {
             FD_ZERO(&watched_fds);
             FD_SET(inbox, &watched_fds);
-            FD_SET(sigchld_fd, &watched_fds);
+            FD_SET(waiter_pipes[0], &watched_fds);
 
             select_status = select(greatest + 1, &watched_fds,
                                    NULL, NULL, NULL);
         } while (-1 == select_status && EINTR == errno);
         if (-1 == select_status) {
-            goto close_sigchld_fd;
+            goto cancel_waiter_thread;
         }
 
-        if (FD_ISSET(sigchld_fd, &watched_fds)) {
-            struct signalfd_siginfo siginfo;
-            if (-1 == linted_io_read_all(sigchld_fd, NULL,
-                                         &siginfo, sizeof siginfo)) {
-                goto close_sigchld_fd;
+        if (FD_ISSET(waiter_pipes[0], &watched_fds)) {
+            char dummy;
+            if (-1 == linted_io_read_all(waiter_pipes[0], NULL,
+                                         &dummy, sizeof dummy)) {
+                goto cancel_waiter_thread;
             }
 
-            /* We received a SIGCHLD */
-            if (-1 == wait_on_children(process_group)) {
-                if (ECHILD == errno) {
-                    goto exit_fork_server;
-                }
-
-                goto close_sigchld_fd;
-            }
+            /* Waiter thread got an ECHILD */
+            goto exit_fork_server;
         }
 
         if (FD_ISSET(inbox, &watched_fds)) {
@@ -197,7 +186,7 @@ int linted_process_spawner_run(linted_spawner inbox,
                                                         &connection);
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
-                goto restore_signal_mask;
+                goto cancel_waiter_thread;
             }
 
             /* Luckily, because we already must fork for a fork server
@@ -207,10 +196,6 @@ int linted_process_spawner_run(linted_spawner inbox,
             switch (child) {
             case 0:
             {
-                int mask_status =
-                    pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
-                assert(0 == mask_status);
-
                 if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
                     exit(errno);
                 }
@@ -267,7 +252,7 @@ int linted_process_spawner_run(linted_spawner inbox,
                 }
 
                 if (-1 == connection_status) {
-                    goto close_sigchld_fd;
+                    goto cancel_waiter_thread;
                 }
             }
         }
@@ -276,10 +261,23 @@ int linted_process_spawner_run(linted_spawner inbox,
  exit_fork_server:
     exit_status = 0;
 
- close_sigchld_fd:
+ cancel_waiter_thread:
+    if (exit_status != 0) {
+        int errnum = errno;
+
+        int cancel_status = pthread_cancel(waiter_thread);
+        assert(0 == cancel_status);
+
+        int join_status = pthread_join(waiter_thread, NULL);
+        assert(0 == join_status);
+
+        errno = errnum;
+    }
+
+ close_waiter_pipes:
     {
         int errnum = errno;
-        int close_status = close(sigchld_fd);
+        int close_status = close(waiter_pipes[1]);
         if (-1 == exit_status) {
             errno = errnum;
         }
@@ -288,46 +286,49 @@ int linted_process_spawner_run(linted_spawner inbox,
         }
     }
 
- restore_signal_mask:
     {
         int errnum = errno;
-
-        int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
-        assert(0 == mask_status);
-
-        errno = errnum;
+        int close_status = close(waiter_pipes[0]);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
     return exit_status;
 }
 
-static int wait_on_children(id_t process_group)
+static void * waiter_loop(void * arguments)
 {
+    struct waiter_arguments * waiter_arguments = arguments;
+    id_t process_group = waiter_arguments->process_group;
+    int waiter_pipe = waiter_arguments->waiter_pipe;
+
     for (;;) {
         siginfo_t child_info;
 
-        {
-            /*
-             * Zero out the si_pid field so it can be checked for zero
-             * and if no processes have exited.
-             */
-            pid_t *const si_pidp = &child_info.si_pid;
-            memset(si_pidp, 0, sizeof *si_pidp);
-        }
-
         int wait_status;
         do {
-            wait_status = waitid(P_PGID, process_group, &child_info,
-                                 WEXITED | WNOHANG);
+            wait_status = waitid(P_PGID, process_group, &child_info, WEXITED);
         } while (-1 == wait_status && EINTR == errno);
         if (-1 == wait_status) {
-            return -1;
+            if (ECHILD == errno) {
+                char dummy = 0;
+                if (-1 == linted_io_write_all(waiter_pipe, NULL,
+                                              &dummy, sizeof dummy)) {
+                    /* TODO: Signal to the main loop */
+                    assert(false);
+                }
+                return NULL;
+            }
+
+            /* TODO: Signal to the main loop */
+            assert(false);
         }
 
         pid_t const child = child_info.si_pid;
-        if (0 == child) {
-            return 0;
-        }
 
         /* Waited on a dead process. Log and wait for more. */
         switch (child_info.si_code) {
