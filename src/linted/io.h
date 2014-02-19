@@ -116,4 +116,9 @@ int linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
 int linted_io_write_all(int fd, size_t * bytes_wrote,
                         void const *buf, size_t count);
 
+/**
+ * NOT THREAD SAFE
+ */
+int linted_io_close_fds_except(int const fds[], size_t fds_count);
+
 #endif                          /* LINTED_IO_H */

@@ -22,8 +22,10 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <stddef.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -155,9 +157,6 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
     }
 
     for (;;) {
-        int connection_status = -1;
-        linted_server_conn connection;
-
         int greatest = (inbox > sigchld_fd) ? inbox : sigchld_fd;
         fd_set watched_fds;
         int select_status;
@@ -195,6 +194,9 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
         }
 
         if (FD_ISSET(inbox, &watched_fds)) {
+            int connection_status = -1;
+            linted_server_conn connection;
+
             ssize_t bytes_read;
             do {
                 bytes_read = linted_io_recv_fildes(&connection, inbox);
@@ -222,11 +224,13 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
                     exit(errno);
                 }
 
-                if (-1 == linted_server_close(inbox)) {
-                    exit(errno);
-                }
-
-                if (-1 == close(sigchld_fd)) {
+                int fds_not_to_close[] = {
+                    spawner,
+                    connection,
+                    STDERR_FILENO
+                };
+                if (-1 == linted_io_close_fds_except(fds_not_to_close,
+                                                     LINTED_ARRAY_SIZE(fds_not_to_close))) {
                     exit(errno);
                 }
 

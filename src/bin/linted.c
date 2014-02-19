@@ -15,6 +15,7 @@
  */
 #include "config.h"
 
+#include "linted/io.h"
 #include "linted/main_loop.h"
 #include "linted/spawner.h"
 #include "linted/syslog.h"
@@ -75,7 +76,18 @@ int main(int argc, char **argv)
         LINTED_LAZY_DEV_ERROR
             ("Could not run drop ability to raise privileges: %s",
              linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
+    }
+
+    /* Sanitize open files */
+    int essential_fds[] = {
+        STDERR_FILENO,
+        STDIN_FILENO,
+        STDOUT_FILENO
+    };
+    if (-1 == linted_io_close_fds_except(essential_fds,
+                                         LINTED_ARRAY_SIZE(essential_fds))) {
+        LINTED_LAZY_DEV_ERROR("could not close unneeded files: %s",
+                              linted_error_string_alloc(errno));
     }
 
     /* Sanitize the environment */

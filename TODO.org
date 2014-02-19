@@ -10,13 +10,6 @@ Linted -- TODO
 * Ban assert in favour of LINTED_IMPOSSIBLE_ERROR
 assert has problems with not evaluating arguments.
 * Manage child process error streams and syslog logs
-* Sandbox process by closing accidentally leaked file descriptors
-A caller of our process could accidentally leak in file
-descriptors. We need to read all leaked in open files from
-/proc/self/fd and delete them (or we could just exit with an
-error). Note that closing all files under getdtablesize or
-sysconf(_SC_OPEN_MAX) is not correct because one can lower the rlimit
-after already opening a file.
 * Avoid deadlock where process blocks on sending message to shutdown process
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but

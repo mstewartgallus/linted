@@ -19,8 +19,11 @@
 
 #include "linted/util.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <string.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -162,5 +165,96 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     if (bytes_wrote_out != NULL) {
         *bytes_wrote_out = total_bytes_wrote;
     }
+    return exit_status;
+}
+
+int linted_io_close_fds_except(int const fds[], size_t fds_count)
+{
+    int exit_status = -1;
+    char const fds_path[] = "/proc/self/fd";
+    DIR * const fds_dir = opendir(fds_path);
+    if (NULL == fds_dir) {
+        return -1;
+    }
+
+    struct dirent * const entry = malloc(offsetof(struct dirent, d_name)
+                                         + pathconf(fds_path, _PC_NAME_MAX) + 1);
+    if (NULL == entry) {
+        goto close_fds_dir;
+    }
+
+    {
+        size_t fds_to_close_count = 0;
+        int * fds_to_close = NULL;
+
+        for (;;) {
+            struct dirent * result;
+            int const errnum = readdir_r(fds_dir, entry, &result);
+            if (errnum != 0) {
+                errno = errnum;
+                goto free_fds_to_close;
+            }
+
+            if (NULL == result) {
+                break;
+            }
+
+            char const * const d_name = result->d_name;
+            if (0 == strcmp(d_name, ".")) {
+                continue;
+            }
+
+            if (0 == strcmp(d_name, "..")) {
+                continue;
+            }
+
+            int const fd = atoi(d_name);
+
+            if (fd == dirfd(fds_dir)) {
+                continue;
+            }
+
+            for (size_t ii = 0; ii < fds_count; ++ii) {
+                if (fd == fds[ii]) {
+                    goto skip_fd;
+                }
+            }
+            goto dont_skip;
+        skip_fd:
+            continue;
+        dont_skip:;
+
+            ++fds_to_close_count;
+            int * new_fds = realloc(fds_to_close,
+                                    fds_count * sizeof fds_to_close[0]);
+            if (NULL == new_fds) {
+                goto free_fds_to_close;
+            }
+            fds_to_close = new_fds;
+
+            fds_to_close[fds_to_close_count - 1] = fd;
+        }
+
+        for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
+            if (-1 == close(fds_to_close[ii])) {
+                LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
+                                        linted_error_string_alloc(errno));
+            }
+        }
+
+        exit_status = 0;
+
+    free_fds_to_close:
+        free(fds_to_close);
+
+        free(entry);
+    }
+
+close_fds_dir:
+    if (-1 == closedir(fds_dir)) {
+        LINTED_IMPOSSIBLE_ERROR("could not close opened directory: %s",
+                                linted_error_string_alloc(errno));
+    }
+
     return exit_status;
 }
