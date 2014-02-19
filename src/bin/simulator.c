@@ -140,35 +140,34 @@ int linted_simulator_run(linted_controller const controller,
 
         switch (event) {
         case SHUTDOWN_EVENT:{
-            struct sigevent sigevent;
-            memset(&sigevent, 0, sizeof sigevent);
+                struct sigevent sigevent;
+                memset(&sigevent, 0, sizeof sigevent);
 
-            sigevent.sigev_notify = SIGEV_THREAD;
-            sigevent.sigev_notify_function = on_shutdowner_notification;
-            sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
+                sigevent.sigev_notify = SIGEV_THREAD;
+                sigevent.sigev_notify_function = on_shutdowner_notification;
+                sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
 
-            if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
-                goto restore_notify;
-            }
-
-
-            for (;;) {
-                int read_status;
-                do {
-                    read_status = linted_shutdowner_receive(shutdowner);
-                } while (-1 == read_status && EINTR == errno);
-                if (-1 == read_status) {
-                    if (EAGAIN == errno) {
-                        break;
-                    }
-
+                if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
                     goto restore_notify;
                 }
 
-                goto exit_main_loop;
+                for (;;) {
+                    int read_status;
+                    do {
+                        read_status = linted_shutdowner_receive(shutdowner);
+                    } while (-1 == read_status && EINTR == errno);
+                    if (-1 == read_status) {
+                        if (EAGAIN == errno) {
+                            break;
+                        }
+
+                        goto restore_notify;
+                    }
+
+                    goto exit_main_loop;
+                }
+                break;
             }
-            break;
-        }
 
         case TICK_EVENT:{
                 int32_t x_thrust = 2 * (x_right - x_left);
@@ -211,63 +210,64 @@ int linted_simulator_run(linted_controller const controller,
             }
 
         case CONTROLLER_EVENT:{
-            {
-                struct sigevent sigevent;
-                memset(&sigevent, 0, sizeof sigevent);
+                {
+                    struct sigevent sigevent;
+                    memset(&sigevent, 0, sizeof sigevent);
 
-                sigevent.sigev_notify = SIGEV_THREAD;
-                sigevent.sigev_notify_function = on_controller_notification;
-                sigevent.sigev_value.sival_ptr = &controller_notify_data;
+                    sigevent.sigev_notify = SIGEV_THREAD;
+                    sigevent.sigev_notify_function = on_controller_notification;
+                    sigevent.sigev_value.sival_ptr = &controller_notify_data;
 
-                if (-1 == linted_controller_notify(controller, &sigevent)) {
-                    goto restore_notify;
+                    if (-1 == linted_controller_notify(controller, &sigevent)) {
+                        goto restore_notify;
+                    }
                 }
-            }
 
-            for (;;) {
-                struct linted_controller_message message;
+                for (;;) {
+                    struct linted_controller_message message;
 
-                int read_status;
-                do {
-                    read_status = linted_controller_receive(controller, &message);
-                } while (-1 == read_status && EINTR == errno);
-                if (-1 == read_status) {
-                    if (EAGAIN == errno) {
-                        break;
+                    int read_status;
+                    do {
+                        read_status =
+                            linted_controller_receive(controller, &message);
+                    } while (-1 == read_status && EINTR == errno);
+                    if (-1 == read_status) {
+                        if (EAGAIN == errno) {
+                            break;
+                        }
+
+                        goto restore_notify;
                     }
 
-                    goto restore_notify;
-                }
+                    switch (message.type) {
+                    case LINTED_CONTROLLER_MOVEMENT:
+                        switch (message.direction) {
+                        case LINTED_CONTROLLER_LEFT:
+                            x_left = message.moving;
+                            break;
 
-                switch (message.type) {
-                case LINTED_CONTROLLER_MOVEMENT:
-                    switch (message.direction) {
-                    case LINTED_CONTROLLER_LEFT:
-                        x_left = message.moving;
+                        case LINTED_CONTROLLER_RIGHT:
+                            x_right = message.moving;
+                            break;
+
+                        case LINTED_CONTROLLER_UP:
+                            y_up = message.moving;
+                            break;
+
+                        case LINTED_CONTROLLER_DOWN:
+                            y_down = message.moving;
+                            break;
+                        }
                         break;
 
-                    case LINTED_CONTROLLER_RIGHT:
-                        x_right = message.moving;
-                        break;
-
-                    case LINTED_CONTROLLER_UP:
-                        y_up = message.moving;
-                        break;
-
-                    case LINTED_CONTROLLER_DOWN:
-                        y_down = message.moving;
-                        break;
+                    default:
+                        syslog(LOG_ERR,
+                               "Simulator received unexpected message type: %i",
+                               message.type);
                     }
-                    break;
-
-                default:
-                    syslog(LOG_ERR,
-                           "Simulator received unexpected message type: %i",
-                           message.type);
                 }
+                break;
             }
-            break;
-        }
 
         default:
             syslog(LOG_ERR, "Simulator received unexpected event: %u", event);

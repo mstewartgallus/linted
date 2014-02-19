@@ -48,7 +48,7 @@ int linted_controller_send_movement(linted_controller controller,
     uint8_t raw_direction = direction;
     uint8_t raw_moving = moving;
 
-    char * tip = message;
+    char *tip = message;
 
     memcpy(tip, &raw_type, sizeof raw_type);
     tip += sizeof raw_type;
@@ -75,14 +75,15 @@ int linted_controller_receive(linted_controller queue,
      */
     message_type raw_message;
 
-    int receive_status = mq_receive(queue, raw_message, sizeof raw_message, NULL);
+    int receive_status =
+        mq_receive(queue, raw_message, sizeof raw_message, NULL);
 
     if (receive_status != -1) {
         uint8_t raw_type;
         uint8_t raw_direction;
         uint8_t raw_moving;
 
-        char * tip = raw_message;
+        char *tip = raw_message;
 
         memcpy(&raw_type, tip, sizeof raw_type);
         tip += sizeof raw_type;

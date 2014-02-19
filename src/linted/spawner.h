@@ -59,14 +59,12 @@ int linted_spawner_pair(linted_spawner spawners[2]);
  */
 int linted_spawner_close(linted_spawner spawner);
 
-
 ssize_t linted_spawner_recv_future(linted_spawner spawner,
                                    linted_spawner_future * future);
 
 int linted_spawner_recv_request(linted_spawner_future future,
-                                struct linted_spawner_request * request);
+                                struct linted_spawner_request *request);
 
-int linted_spawner_deny_request(linted_spawner_future future,
-                                int errnum);
+int linted_spawner_deny_request(linted_spawner_future future, int errnum);
 
 #endif                          /* LINTED_SPAWNER_H */

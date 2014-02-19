@@ -74,7 +74,7 @@ struct waiter_arguments {
 };
 
 static void exec_task(linted_spawner_task task, int const fildes[]);
-static void * waiter_loop(void * arguments);
+static void *waiter_loop(void *arguments);
 
 int linted_process_spawner_run(linted_spawner inbox,
                                int const preserved_fildes[],
@@ -180,8 +180,7 @@ int linted_process_spawner_run(linted_spawner inbox,
 
                 ssize_t bytes_read;
                 do {
-                    bytes_read = linted_spawner_recv_future(inbox,
-                                                            &connection);
+                    bytes_read = linted_spawner_recv_future(inbox, &connection);
                 } while (-1 == bytes_read && EINTR == errno);
                 if (-1 == bytes_read) {
                     goto cancel_waiter_thread;
@@ -193,36 +192,36 @@ int linted_process_spawner_run(linted_spawner inbox,
                 pid_t child = fork();
                 switch (child) {
                 case 0:
-                {
-                    if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                        exit(errno);
+                    {
+                        if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                            exit(errno);
+                        }
+
+                        if (-1 == setpgid(child, process_group)) {
+                            exit(errno);
+                        }
+
+                        fd_set fds_not_to_close;
+                        FD_ZERO(&fds_not_to_close);
+
+                        for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
+                            FD_SET(preserved_fildes[ii], &fds_not_to_close);
+                        }
+
+                        FD_SET(connection, &fds_not_to_close);
+
+                        if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
+                            exit(errno);
+                        }
+
+                        struct linted_spawner_request request;
+                        if (-1 == linted_spawner_recv_request(connection,
+                                                              &request)) {
+                            exit(errno);
+                        }
+
+                        exec_task(request.task, request.fildes);
                     }
-
-                    if (-1 == setpgid(child, process_group)) {
-                        exit(errno);
-                    }
-
-                    fd_set fds_not_to_close;
-                    FD_ZERO(&fds_not_to_close);
-
-                    for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
-                        FD_SET(preserved_fildes[ii], &fds_not_to_close);
-                    }
-
-                    FD_SET(connection, &fds_not_to_close);
-
-                    if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
-                        exit(errno);
-                    }
-
-                    struct linted_spawner_request request;
-                    if (-1 == linted_spawner_recv_request(connection,
-                                                          &request)) {
-                        exit(errno);
-                    }
-
-                    exec_task(request.task, request.fildes);
-                }
 
                 case -1:
                     if (-1 == linted_spawner_deny_request(connection, errno)) {
@@ -236,7 +235,7 @@ int linted_process_spawner_run(linted_spawner inbox,
 
                 connection_status = 0;
 
-             close_connection:
+ close_connection:
                 {
                     int errnum = errno;
 
@@ -256,10 +255,10 @@ int linted_process_spawner_run(linted_spawner inbox,
             }
         }
 
-     exit_fork_server:
+ exit_fork_server:
         exit_status = 0;
 
-     cancel_waiter_thread:
+ cancel_waiter_thread:
         if (exit_status != 0) {
             int errnum = errno;
 
@@ -306,9 +305,9 @@ int linted_process_spawner_run(linted_spawner inbox,
     return exit_status;
 }
 
-static void * waiter_loop(void * arguments)
+static void *waiter_loop(void *arguments)
 {
-    struct waiter_arguments * waiter_arguments = arguments;
+    struct waiter_arguments *waiter_arguments = arguments;
     id_t process_group = waiter_arguments->process_group;
     int waiter_pipe = waiter_arguments->waiter_pipe;
 
@@ -341,11 +340,11 @@ static void * waiter_loop(void * arguments)
                 int return_value = child_info.si_status;
                 if (0 == return_value) {
                     fprintf(stderr, "child %ju executed normally\n",
-                           (uintmax_t) child);
+                            (uintmax_t) child);
                 } else {
                     char const *error = linted_error_string_alloc(return_value);
                     fprintf(stderr, "child %ju executed with error: %s\n",
-                           (uintmax_t) child, error);
+                            (uintmax_t) child, error);
                     linted_error_string_free(error);
                 }
                 break;
@@ -353,13 +352,13 @@ static void * waiter_loop(void * arguments)
 
         case CLD_KILLED:
             fprintf(stderr, "child %ju was terminated with signal number %i\n",
-                   (uintmax_t) child, child_info.si_status);
+                    (uintmax_t) child, child_info.si_status);
             break;
 
         default:
             /* TODO: Possibly assert that this shouldn't happen */
             fprintf(stderr, "child %ju executed abnormally\n",
-                   (uintmax_t) child);
+                    (uintmax_t) child);
             break;
         }
     }

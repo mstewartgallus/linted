@@ -114,8 +114,9 @@ int main(int argc, char **argv)
 
             linted_spawner spawners[2];
             if (-1 == linted_spawner_pair(spawners)) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not create spawner pair: %s", error_string);
+                char const *error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not create spawner pair: %s",
+                       error_string);
                 linted_error_string_free(error_string);
                 goto after_spawner;
             }
@@ -130,37 +131,41 @@ int main(int argc, char **argv)
             int main_loop_fildes[] = { spawners[1] };
             int spawn_status = linted_process_spawner_run(spawners[0],
                                                           preserved,
-                                                          LINTED_ARRAY_SIZE(preserved),
+                                                          LINTED_ARRAY_SIZE
+                                                          (preserved),
                                                           main_loop_wrapper,
                                                           main_loop_fildes,
-                                                          LINTED_ARRAY_SIZE(main_loop_fildes));
+                                                          LINTED_ARRAY_SIZE
+                                                          (main_loop_fildes));
 
             /* Open the logger again */
             linted_syslog_open();
 
             if (-1 == spawn_status) {
-                char const * error_string = linted_error_string_alloc(errno);
+                char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not run spawner: %s", error_string);
                 linted_error_string_free(error_string);
                 command_status = -1;
             }
 
             if (-1 == linted_spawner_close(spawners[0])) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner reader: %s", error_string);
+                char const *error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close spawner reader: %s",
+                       error_string);
                 linted_error_string_free(error_string);
                 command_status = -1;
             }
 
             if (-1 == linted_spawner_close(spawners[1])) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner writer: %s", error_string);
+                char const *error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close spawner writer: %s",
+                       error_string);
                 linted_error_string_free(error_string);
                 command_status = -1;
             }
 
             break;
-    }
+        }
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {

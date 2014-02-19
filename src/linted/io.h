@@ -120,6 +120,6 @@ int linted_io_write_all(int fd, size_t * bytes_wrote,
 /**
  * NOT THREAD SAFE
  */
-int linted_io_close_fds_except(fd_set const * fds);
+int linted_io_close_fds_except(fd_set const *fds);
 
 #endif                          /* LINTED_IO_H */

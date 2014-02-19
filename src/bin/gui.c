@@ -52,7 +52,6 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
-
 static GLfloat const triangle_data[][2] = {
     {-0.4f, -0.4f},
     {0.4f, -0.4f},
@@ -70,9 +69,9 @@ struct gui_state {
     unsigned height;
 };
 
-static int on_sdl_event(SDL_Event const * sdl_event, struct gui_state * state,
+static int on_sdl_event(SDL_Event const *sdl_event, struct gui_state *state,
                         linted_controller controller,
-                        enum transition * transition);
+                        enum transition *transition);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
@@ -83,11 +82,10 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         .width = 640,
         .height = 800
     };
-    SDL_VideoInfo const * video_info;
+    SDL_VideoInfo const *video_info;
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
-                       | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
-    {
+                       | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         int errnum = errno;
         syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
         errno = errnum;
@@ -110,8 +108,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     /* Initialize SDL */
     if (NULL == SDL_SetVideoMode(state.width, state.height, 0, sdl_flags)) {
         int errnum = errno;
-        syslog(LOG_ERR, "could not set the video mode: %s",
-               SDL_GetError());
+        syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
         errno = errnum;
         goto cleanup_SDL;
     }
@@ -125,14 +122,13 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         float x = 0;
         float y = 0;
 
-    setup_window:;
+ setup_window:;
         SDL_Surface *const video_surface = SDL_SetVideoMode(state.width,
                                                             state.height,
                                                             0, sdl_flags);
         if (NULL == video_surface) {
             int errnum = errno;
-            syslog(LOG_ERR, "could not set the video mode: %s",
-                   SDL_GetError());
+            syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
             errno = errnum;
             goto cleanup_SDL;
         }
@@ -179,7 +175,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
                 int read_status;
                 do {
-                    read_status = linted_updater_receive_update(updater, &update);
+                    read_status =
+                        linted_updater_receive_update(updater, &update);
                 } while (-1 == read_status && EINTR == errno);
                 if (-1 == read_status) {
                     if (errno != EAGAIN) {
@@ -205,14 +202,14 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                     1, 0, 0, 0,
                     0, 1, 0, 0,
                     0, 0, 1, 0,
-                    x, y, 0, 1};
+                    x, y, 0, 1
+                };
                 /*  X, Y, Z, W coords of the resultant vector are the
                  *  sums of the columns (row major order).
                  */
                 glLoadMatrixf(modelview_matrix);
 
-                glDrawArrays(GL_TRIANGLES,
-                             0, LINTED_ARRAY_SIZE(triangle_data));
+                glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangle_data));
 
                 for (;;) {
                     GLenum error = glGetError();
@@ -255,9 +252,9 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     return exit_status;
 }
 
-static int on_sdl_event(SDL_Event const * sdl_event, struct gui_state * state,
+static int on_sdl_event(SDL_Event const *sdl_event, struct gui_state *state,
                         linted_controller controller,
-                        enum transition * transition)
+                        enum transition *transition)
 {
     enum transition transition_out = DO_NOTHING;
     switch (sdl_event->type) {
@@ -278,50 +275,51 @@ static int on_sdl_event(SDL_Event const * sdl_event, struct gui_state * state,
 
     case SDL_KEYDOWN:
     case SDL_KEYUP:{
-        bool is_down = SDL_KEYDOWN == sdl_event->type;
-        switch (sdl_event->key.keysym.sym) {
-        default: break;
-        case SDLK_q:
-        case SDLK_ESCAPE:
-            if (!is_down) {
-                transition_out = SHOULD_EXIT;
-            }
-            break;
-
-            {
-                enum linted_controller_direction direction;
-
-            case SDLK_LEFT:
-                direction = LINTED_CONTROLLER_LEFT;
-                goto key_movement;
-
-            case SDLK_RIGHT:
-                direction = LINTED_CONTROLLER_RIGHT;
-                goto key_movement;
-
-            case SDLK_UP:
-                direction = LINTED_CONTROLLER_UP;
-                goto key_movement;
-
-            case SDLK_DOWN:
-                direction = LINTED_CONTROLLER_DOWN;
-                goto key_movement;
-
-            key_movement:;
-                int request_status;
-                do {
-                    request_status = linted_controller_send_movement(controller,
-                                                                     direction,
-                                                                     is_down);
-                } while (-1 == request_status && EINTR == errno);
-                if (-1 == request_status) {
-                    return -1;
+            bool is_down = SDL_KEYDOWN == sdl_event->type;
+            switch (sdl_event->key.keysym.sym) {
+            default:
+                break;
+            case SDLK_q:
+            case SDLK_ESCAPE:
+                if (!is_down) {
+                    transition_out = SHOULD_EXIT;
                 }
                 break;
+
+                {
+                    enum linted_controller_direction direction;
+
+            case SDLK_LEFT:
+                    direction = LINTED_CONTROLLER_LEFT;
+                    goto key_movement;
+
+            case SDLK_RIGHT:
+                    direction = LINTED_CONTROLLER_RIGHT;
+                    goto key_movement;
+
+            case SDLK_UP:
+                    direction = LINTED_CONTROLLER_UP;
+                    goto key_movement;
+
+            case SDLK_DOWN:
+                    direction = LINTED_CONTROLLER_DOWN;
+                    goto key_movement;
+
+ key_movement:     ;
+                    int request_status;
+                    do {
+                        request_status =
+                            linted_controller_send_movement(controller,
+                                                            direction, is_down);
+                    } while (-1 == request_status && EINTR == errno);
+                    if (-1 == request_status) {
+                        return -1;
+                    }
+                    break;
+                }
             }
+            break;
         }
-        break;
-    }
     }
 
     *transition = transition_out;

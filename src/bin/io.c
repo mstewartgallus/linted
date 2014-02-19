@@ -169,27 +169,27 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
-int linted_io_close_fds_except(fd_set const * fds)
+int linted_io_close_fds_except(fd_set const *fds)
 {
     int exit_status = -1;
     char const fds_path[] = "/proc/self/fd";
-    DIR * const fds_dir = opendir(fds_path);
+    DIR *const fds_dir = opendir(fds_path);
     if (NULL == fds_dir) {
         return -1;
     }
 
-    struct dirent * const entry = malloc(offsetof(struct dirent, d_name)
-                                         + pathconf(fds_path, _PC_NAME_MAX) + 1);
+    struct dirent *const entry = malloc(offsetof(struct dirent, d_name)
+                                        + pathconf(fds_path, _PC_NAME_MAX) + 1);
     if (NULL == entry) {
         goto close_fds_dir;
     }
 
     {
         size_t fds_to_close_count = 0;
-        int * fds_to_close = NULL;
+        int *fds_to_close = NULL;
 
         for (;;) {
-            struct dirent * result;
+            struct dirent *result;
             int const errnum = readdir_r(fds_dir, entry, &result);
             if (errnum != 0) {
                 errno = errnum;
@@ -200,7 +200,7 @@ int linted_io_close_fds_except(fd_set const * fds)
                 break;
             }
 
-            char const * const d_name = result->d_name;
+            char const *const d_name = result->d_name;
             if (0 == strcmp(d_name, ".")) {
                 continue;
             }
@@ -220,8 +220,8 @@ int linted_io_close_fds_except(fd_set const * fds)
             }
 
             ++fds_to_close_count;
-            int * new_fds = realloc(fds_to_close,
-                                    fds_to_close_count * sizeof fds_to_close[0]);
+            int *new_fds = realloc(fds_to_close,
+                                   fds_to_close_count * sizeof fds_to_close[0]);
             if (NULL == new_fds) {
                 goto free_fds_to_close;
             }
@@ -239,13 +239,13 @@ int linted_io_close_fds_except(fd_set const * fds)
 
         exit_status = 0;
 
-    free_fds_to_close:
+ free_fds_to_close:
         free(fds_to_close);
 
         free(entry);
     }
 
-close_fds_dir:
+ close_fds_dir:
     if (-1 == closedir(fds_dir)) {
         LINTED_IMPOSSIBLE_ERROR("could not close opened directory: %s",
                                 linted_error_string_alloc(errno));

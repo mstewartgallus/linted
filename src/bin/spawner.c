@@ -123,7 +123,7 @@ ssize_t linted_spawner_recv_future(linted_spawner spawner,
 }
 
 int linted_spawner_recv_request(linted_spawner_future connection,
-                                struct linted_spawner_request * request)
+                                struct linted_spawner_request *request)
 {
     linted_spawner_task task;
     size_t fildes_count;
@@ -174,8 +174,7 @@ int linted_spawner_recv_request(linted_spawner_future connection,
     {
         struct reply reply = {.error_status = 0 };
 
-        if (-1 == linted_io_write_all(connection, NULL,
-                                      &reply, sizeof reply)) {
+        if (-1 == linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
             return -1;
         }
     }
@@ -199,8 +198,7 @@ int linted_spawner_recv_request(linted_spawner_future connection,
     return -1;
 }
 
-int linted_spawner_deny_request(linted_spawner_future connection,
-                                int errnum)
+int linted_spawner_deny_request(linted_spawner_future connection, int errnum)
 {
     struct reply reply = {.error_status = errnum };
 
