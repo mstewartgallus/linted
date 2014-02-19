@@ -195,14 +195,13 @@ int linted_process_spawner_run(linted_spawner inbox,
             do {
                 bytes_read = linted_spawner_recv_future(inbox,
                                                         &connection);
-
             } while (-1 == bytes_read && EINTR == errno);
             if (-1 == bytes_read) {
                 goto restore_signal_mask;
             }
 
-            /* Luckily, because we already must fork for a fork server we
-             * get asynchronous behaviour for free.
+            /* Luckily, because we already must fork for a fork server
+             * we get asynchronous behaviour for free.
              */
             pid_t child = fork();
             switch (child) {

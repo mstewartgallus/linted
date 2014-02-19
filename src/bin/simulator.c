@@ -31,8 +31,6 @@
  * asynchronous tasks don't know.
  */
 
-typedef mqd_t simulator_type;
-
 #define SHUTDOWN_EVENT ((uint8_t) 0)
 #define TICK_EVENT ((uint8_t) (SHUTDOWN_EVENT + 1))
 #define CONTROLLER_EVENT ((uint8_t) (TICK_EVENT + 1))
