@@ -74,16 +74,29 @@ int linted_main_loop_run(linted_spawner spawner)
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    if (-1 == linted_spawner_spawn(spawner, gui_run, (int[]) {
-                updater_read, simulator_shutdowner_write,
-                    controller_write, -1})) {
-        goto cleanup;
+    {
+        int gui_fds[] = {
+            updater_read,
+            simulator_shutdowner_write,
+            controller_write
+        };
+        if (-1 == linted_spawner_spawn(spawner, gui_run,
+                                       gui_fds, LINTED_ARRAY_SIZE(gui_fds))) {
+            goto cleanup;
+        }
     }
 
-    if (-1 == linted_spawner_spawn(spawner, simulator_run, (int[]) {
-                controller_read, simulator_shutdowner_read,
-                    updater_write, -1})) {
-        goto cleanup;
+    {
+        int simulator_fds[] = {
+            controller_read,
+            simulator_shutdowner_read,
+            updater_write
+        };
+        if (-1 == linted_spawner_spawn(spawner, simulator_run,
+                                       simulator_fds,
+                                       LINTED_ARRAY_SIZE(simulator_fds))) {
+            goto cleanup;
+        }
     }
 
     exit_status = 0;

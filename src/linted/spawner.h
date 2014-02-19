@@ -18,6 +18,8 @@
 
 #include "linted/server.h"
 
+#include <stddef.h>
+
 /**
  * Is a spawner. Is shareable.
  */
@@ -39,7 +41,8 @@ typedef int (*linted_spawner_task) (linted_spawner spawner, int const fildes[]);
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_spawner_run(linted_spawner_task main_loop, int const fildes[]);
+int linted_spawner_run(linted_spawner_task main_loop,
+                       int const fildes[], size_t fildes_size);
 
 /**
  * Spawns a task. The task may or may not be spawned in a seperate
@@ -49,8 +52,8 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[]);
  * @param func The function to execute.
  * @param inbox A file descriptor to pass to the spawned task.
  */
-int linted_spawner_spawn(linted_spawner spawner,
-                         linted_spawner_task func, int const fildes[]);
+int linted_spawner_spawn(linted_spawner spawner, linted_spawner_task func,
+                         int const fildes[], size_t fildes_size);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.

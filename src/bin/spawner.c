@@ -86,7 +86,8 @@ static void exec_task_from_connection(linted_spawner spawner,
 
 static int wait_on_children(id_t process_group);
 
-int linted_spawner_run(linted_spawner_task main_loop, int const fildes[])
+int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
+                       size_t fildes_size)
 {
     int exit_status = -1;
 
@@ -393,14 +394,9 @@ int linted_spawner_close(linted_spawner spawner)
 
 int linted_spawner_spawn(linted_spawner const spawner,
                          linted_spawner_task const func,
-                         int const fildes_to_send[])
+                         int const fildes_to_send[], size_t fildes_count)
 {
     int spawn_status = -1;
-
-    size_t fildes_count = 0;
-    for (; fildes_to_send[fildes_count] != -1; ++fildes_count) {
-        /* Do nothing */
-    }
 
     int const connection = linted_server_connect(spawner);
     if (-1 == connection) {
@@ -499,8 +495,7 @@ static void exec_task_from_connection(linted_spawner const spawner,
     }
 
     {
-        int sent_inboxes[MAX_FORKER_FILDES_COUNT + 1];
-        sent_inboxes[fildes_count] = -1;
+        int sent_inboxes[MAX_FORKER_FILDES_COUNT];
         for (size_t ii = 0; ii < fildes_count; ++ii) {
             int fildes;
             ssize_t bytes_read;
@@ -523,9 +518,9 @@ static void exec_task_from_connection(linted_spawner const spawner,
         {
             struct reply reply = {.error_status = 0 };
 
-            if (-1 ==
-                linted_io_write_all(connection, NULL, &reply, sizeof reply)) {
-                    exit(errno);
+            if (-1 == linted_io_write_all(connection, NULL,
+                                          &reply, sizeof reply)) {
+                exit(errno);
             }
         }
 

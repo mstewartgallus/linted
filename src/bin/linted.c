@@ -117,8 +117,7 @@ int main(int argc, char **argv)
             closelog();
 
             /* Fork off tasks from a known good state */
-            int spawn_status = linted_spawner_run(main_loop_wrapper,
-                                                  (int[]) {-1});
+            int spawn_status = linted_spawner_run(main_loop_wrapper, NULL, 0);
 
             /* Open the logger again */
             linted_syslog_open();
