@@ -182,10 +182,7 @@ int linted_spawner_run(linted_spawner inbox,
                 goto close_sigchld_fd;
             }
 
-            /*
-             * We received a SIGCHLD. Alternatively, we are doing
-             * this once at the start.
-             */
+            /* We received a SIGCHLD */
             if (-1 == wait_on_children(process_group)) {
                 if (ECHILD == errno) {
                     goto exit_fork_server;
