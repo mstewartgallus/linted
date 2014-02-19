@@ -100,7 +100,7 @@ int linted_simulator_run(linted_controller const controller,
         sevp.sigev_value.sival_ptr = &timer_data;
 
         if (-1 == timer_create(CLOCK_MONOTONIC, &sevp, &timer)) {
-            return -1;
+            goto close_simulator;
         }
 
         struct itimerspec itimer_spec;
@@ -300,6 +300,19 @@ int linted_simulator_run(linted_controller const controller,
         }
     }
 
+ delete_timer:
+    {
+        int errnum = errno;
+        int delete_status = timer_delete(timer);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == delete_status) {
+            exit_status = -1;
+        }
+    }
+
+ close_simulator:
     {
         int errnum = errno;
         int close_status = close(simulator_read);
@@ -318,18 +331,6 @@ int linted_simulator_run(linted_controller const controller,
             errno = errnum;
         }
         if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
- delete_timer:
-    {
-        int errnum = errno;
-        int delete_status = timer_delete(timer);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == delete_status) {
             exit_status = -1;
         }
     }
