@@ -89,43 +89,15 @@ int linted_spawner_pair(linted_spawner spawners[2])
 }
 
 int linted_spawner_run(linted_spawner inbox,
-                       linted_spawner_task main_loop, int const fildes[],
-                       size_t fildes_size)
+                       linted_spawner_task main_loop,
+                       int const fildes[], size_t fildes_size)
 {
     int exit_status = -1;
 
-    /*
-     * This is a little bit confusing but the first processes pid is
-     * reused for the process group. We create a new process group so
-     * we can wait on that only.
-     */
-    pid_t const process_group = fork();
-    switch (process_group) {
-    case 0:
-        if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-            exit(errno);
-        }
-
-        if (-1 == setpgid(process_group, process_group)) {
-            exit(errno);
-        }
-
-        if (-1 == linted_server_close(inbox)) {
-            exit(errno);
-        }
-
-        exec_task(main_loop, fildes);
-
-    case -1:
-        goto close_sockets;
-    }
-
-    if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
-        goto close_sockets;
-    }
-
     sigset_t old_sigset;
     int sigchld_fd;
+    pid_t process_group;
+
     {
         sigset_t sigchld_set;
 
@@ -150,6 +122,40 @@ int linted_spawner_run(linted_spawner inbox,
         if (-1 == sigchld_fd) {
             goto restore_signal_mask;
         }
+    }
+
+    /*
+     * This is a little bit confusing but the first processes pid is
+     * reused for the process group. We create a new process group so
+     * we can wait on that only.
+     */
+    process_group = fork();
+    switch (process_group) {
+    case 0:{
+            int mask_status = pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+            assert(0 == mask_status);
+
+            if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                exit(errno);
+            }
+
+            if (-1 == setpgid(process_group, process_group)) {
+                exit(errno);
+            }
+
+            if (-1 == linted_io_close_fds_except(fildes, fildes_size)) {
+                exit(errno);
+            }
+
+            exec_task(main_loop, fildes);
+        }
+
+    case -1:
+        goto close_sigchld_fd;
+    }
+
+    if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
+        goto close_sigchld_fd;
     }
 
     for (;;) {
@@ -293,7 +299,6 @@ int linted_spawner_run(linted_spawner inbox,
         errno = errnum;
     }
 
- close_sockets:
     return exit_status;
 }
 
