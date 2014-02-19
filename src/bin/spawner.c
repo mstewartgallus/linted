@@ -18,7 +18,6 @@
 #include "linted/spawner.h"
 
 #include "linted/io.h"
-#include "linted/server.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -79,25 +78,21 @@ struct reply {
     int error_status;
 };
 
-static void exec_task(linted_spawner_task task,
-                      linted_spawner spawner, int const fildes[]);
-static void exec_task_from_connection(linted_spawner spawner,
-                                      linted_server_conn connection);
+static void exec_task(linted_spawner_task task, int const fildes[]);
+static void exec_task_from_connection(linted_server_conn connection);
 
 static int wait_on_children(id_t process_group);
 
-int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
+int linted_spawner_pair(linted_spawner spawners[2])
+{
+    return linted_server_pair(spawners);
+}
+
+int linted_spawner_run(linted_spawner inbox,
+                       linted_spawner_task main_loop, int const fildes[],
                        size_t fildes_size)
 {
     int exit_status = -1;
-
-    linted_server sockets[2];
-    if (-1 == linted_server_pair(sockets)) {
-        return -1;
-    }
-
-    linted_spawner const spawner = sockets[0];
-    linted_server const inbox = sockets[1];
 
     /*
      * This is a little bit confusing but the first processes pid is
@@ -119,7 +114,7 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
             exit(errno);
         }
 
-        exec_task(main_loop, spawner, fildes);
+        exec_task(main_loop, fildes);
 
     case -1:
         goto close_sockets;
@@ -226,7 +221,6 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
                 }
 
                 int fds_not_to_close[] = {
-                    spawner,
                     connection,
                     STDERR_FILENO
                 };
@@ -235,7 +229,7 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
                     exit(errno);
                 }
 
-                exec_task_from_connection(spawner, connection);
+                exec_task_from_connection(connection);
             }
 
             case -1:{
@@ -300,32 +294,6 @@ int linted_spawner_run(linted_spawner_task main_loop, int const fildes[],
     }
 
  close_sockets:
-    {
-        int errnum = errno;
-
-        int const close_status = linted_server_close(inbox);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
-    {
-        int errnum = errno;
-
-        int close_status = linted_spawner_close(spawner);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
     return exit_status;
 }
 
@@ -467,8 +435,7 @@ int linted_spawner_spawn(linted_spawner const spawner,
 }
 
 #define MAX_FORKER_FILDES_COUNT 20
-static void exec_task_from_connection(linted_spawner const spawner,
-                                      linted_server_conn connection)
+static void exec_task_from_connection(linted_server_conn connection)
 {
     linted_spawner_task task;
     size_t fildes_count;
@@ -528,7 +495,7 @@ static void exec_task_from_connection(linted_spawner const spawner,
             exit(errno);
         }
 
-        exec_task(task, spawner, sent_inboxes);
+        exec_task(task, sent_inboxes);
     }
 
  reply_with_error:;
@@ -542,10 +509,9 @@ static void exec_task_from_connection(linted_spawner const spawner,
     exit(errnum);
 }
 
-static void exec_task(linted_spawner_task task,
-                      linted_spawner spawner, int const fildes[])
+static void exec_task(linted_spawner_task task, int const fildes[])
 {
-    task(spawner, fildes);
+    task(fildes);
 
     exit(EXIT_SUCCESS);
 }

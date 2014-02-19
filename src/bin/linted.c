@@ -54,7 +54,7 @@ extern char **environ;
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
-static int main_loop_wrapper(linted_spawner spawner, int const fildes[]);
+static int main_loop_wrapper(int const fildes[]);
 static void close_in_out(void);
 
 int main(int argc, char **argv)
@@ -113,22 +113,52 @@ int main(int argc, char **argv)
     case 1:{
             close_in_out();
 
+            linted_spawner spawners[2];
+            if (-1 == linted_spawner_pair(spawners)) {
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not create spawner pair: %s", error_string);
+                linted_error_string_free(error_string);
+                goto after_spawner;
+            }
+
+            command_status = 0;
+
             /* Reset the the logger so it isn't shared */
             closelog();
 
             /* Fork off tasks from a known good state */
-            int spawn_status = linted_spawner_run(main_loop_wrapper, NULL, 0);
+            int main_loop_fildes[] = {
+                spawners[1]
+            };
+            int spawn_status = linted_spawner_run(spawners[0],
+                                                  main_loop_wrapper,
+                                                  main_loop_fildes,
+                                                  LINTED_ARRAY_SIZE(main_loop_fildes));
 
             /* Open the logger again */
             linted_syslog_open();
 
             if (-1 == spawn_status) {
                 char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "Could not run spawner: %s", error_string);
+                syslog(LOG_ERR, "could not run spawner: %s", error_string);
                 linted_error_string_free(error_string);
-                goto after_spawner;
+                command_status = -1;
             }
-            command_status = 0;
+
+            if (-1 == linted_spawner_close(spawners[0])) {
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close spawner reader: %s", error_string);
+                linted_error_string_free(error_string);
+                command_status = -1;
+            }
+
+            if (-1 == linted_spawner_close(spawners[1])) {
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close spawner writer: %s", error_string);
+                linted_error_string_free(error_string);
+                command_status = -1;
+            }
+
             break;
     }
 
@@ -168,9 +198,9 @@ int main(int argc, char **argv)
     return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int main_loop_wrapper(linted_spawner spawner, int const fds[])
+static int main_loop_wrapper(int const fds[])
 {
-    return linted_main_loop_run(spawner);
+    return linted_main_loop_run(fds[0]);
 }
 
 static void close_in_out(void)

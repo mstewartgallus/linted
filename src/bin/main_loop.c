@@ -31,8 +31,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int gui_run(linted_spawner spawner, int const inboxes[]);
-static int simulator_run(linted_spawner spawner, int const inboxes[]);
+static int gui_run(int const inboxes[]);
+static int simulator_run(int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner spawner)
 {
@@ -185,7 +185,7 @@ int linted_main_loop_run(linted_spawner spawner)
     return exit_status;
 }
 
-static int simulator_run(linted_spawner const spawner, int const inboxes[])
+static int simulator_run(int const inboxes[])
 {
     int exit_status = -1;
 
@@ -195,9 +195,6 @@ static int simulator_run(linted_spawner const spawner, int const inboxes[])
 
     linted_syslog_open();
 
-    if (-1 == linted_spawner_close(spawner)) {
-        goto cleanup;
-    }
     if (-1 == linted_simulator_run(controller, shutdowner, updater)) {
         goto cleanup;
     }
@@ -241,7 +238,7 @@ static int simulator_run(linted_spawner const spawner, int const inboxes[])
     return exit_status;
 }
 
-static int gui_run(linted_spawner const spawner, int const inboxes[])
+static int gui_run(int const inboxes[])
 {
     int exit_status = -1;
 
@@ -250,10 +247,6 @@ static int gui_run(linted_spawner const spawner, int const inboxes[])
     linted_controller controller = inboxes[2];
 
     linted_syslog_open();
-
-    if (-1 == linted_spawner_close(spawner)) {
-        goto cleanup;
-    }
 
     if (-1 == linted_gui_run(updater, shutdowner, controller)) {
         goto cleanup;

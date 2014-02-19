@@ -29,7 +29,7 @@ typedef linted_server linted_spawner;
  * A spawner task exits succesfully with 0 or unsuccessfully with -1
  * and an error value in errno.
  */
-typedef int (*linted_spawner_task) (linted_spawner spawner, int const fildes[]);
+typedef int (*linted_spawner_task) (int const fildes[]);
 
 /**
  * Runs a spawner process and starts main_loop in a separate
@@ -41,7 +41,7 @@ typedef int (*linted_spawner_task) (linted_spawner spawner, int const fildes[]);
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_spawner_run(linted_spawner_task main_loop,
+int linted_spawner_run(linted_spawner spawner, linted_spawner_task main_loop,
                        int const fildes[], size_t fildes_size);
 
 /**
@@ -54,6 +54,8 @@ int linted_spawner_run(linted_spawner_task main_loop,
  */
 int linted_spawner_spawn(linted_spawner spawner, linted_spawner_task func,
                          int const fildes[], size_t fildes_size);
+
+int linted_spawner_pair(linted_spawner spawners[2]);
 
 /**
  * Closes a spawner. Returns -1 on error and the error in errno.
