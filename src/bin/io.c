@@ -172,14 +172,13 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
 int linted_io_close_fds_except(fd_set const *fds)
 {
     int exit_status = -1;
-    char const fds_path[] = "/proc/self/fd";
-    DIR *const fds_dir = opendir(fds_path);
+    DIR *const fds_dir = opendir("/proc/self/fd");
     if (NULL == fds_dir) {
         return -1;
     }
 
     struct dirent *const entry = malloc(offsetof(struct dirent, d_name)
-                                        + pathconf(fds_path, _PC_NAME_MAX) + 1);
+                                        + fpathconf(dirfd(fds_dir), _PC_NAME_MAX) + 1);
     if (NULL == entry) {
         goto close_fds_dir;
     }
