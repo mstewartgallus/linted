@@ -57,6 +57,7 @@ extern char **environ;
 
 static int main_loop_wrapper(int const fildes[]);
 static void close_in_out(void);
+static int main_loop(void);
 
 int main(int argc, char **argv)
 {
@@ -111,80 +112,24 @@ int main(int argc, char **argv)
     int command_status = -1;
     switch (argc) {
     case 1:{
-            close_in_out();
+        close_in_out();
 
-            linted_spawner spawners[2];
-            if (-1 == linted_spawner_pair(spawners)) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not create spawner pair: %s", error_string);
-                linted_error_string_free(error_string);
-                goto after_spawner;
-            }
+        /* close the the logger so it isn't shared */
+        closelog();
 
-            command_status = 0;
+        int main_loop_status = main_loop();
 
-            /* Reset the the logger so it isn't shared */
-            closelog();
+        /* open the logger again */
+        linted_syslog_open();
 
-            pid_t child = fork();
-            if (0 == child) {
-                /* Fork off tasks from a known good state */
-                if (-1 == linted_spawner_close(spawners[1])) {
-                    exit(errno);
-                }
-
-                int preserved[] = { STDERR_FILENO };
-                int spawn_status = linted_process_spawner_run(spawners[0],
-                                                              preserved,
-                                                              LINTED_ARRAY_SIZE(preserved));
-                if (-1 == spawn_status) {
-                    exit(errno);
-                }
-
-                exit(EXIT_SUCCESS);
-            }
-
-            /* Open the logger again */
-            linted_syslog_open();
-
-            if (-1 == child) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not run spawner: %s", error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-
-            }
-
-            /* TODO: main loop code isn't needed any more */
-
-            int main_loop_fildes[] = { spawners[1] };
-            if (-1 == linted_spawner_spawn(spawners[1], main_loop_wrapper,
-                                           main_loop_fildes,
-                                           LINTED_ARRAY_SIZE(main_loop_fildes))) {
-                LINTED_LAZY_DEV_ERROR("could not spawn main loop: %s",
-                                      linted_error_string_alloc(errno));
-            }
-
-            if (-1 == linted_spawner_close(spawners[0])) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner reader: %s", error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-            }
-
-            if (-1 == linted_spawner_close(spawners[1])) {
-                char const * error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close spawner writer: %s", error_string);
-                linted_error_string_free(error_string);
-                command_status = -1;
-            }
-
-            if (-1 == waitpid(child, NULL, 0)) {
-                LINTED_LAZY_DEV_ERROR("could not wait for spawner to exit: %s",
-                                      linted_error_string_alloc(errno));
-            }
-
+        if (-1 == main_loop_status) {
+            char const * error_string = linted_error_string_alloc(errno);
+            syslog(LOG_ERR, "could not run main loop: %s", error_string);
+            linted_error_string_free(error_string);
             break;
+        }
+        command_status = 0;
+        break;
     }
 
     case 2:
@@ -210,8 +155,7 @@ int main(int argc, char **argv)
         break;
     }
 
- after_spawner:
-    if (EOF == fclose(stderr)) {
+     if (EOF == fclose(stderr)) {
         command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard error: %s", error_string);
@@ -221,6 +165,85 @@ int main(int argc, char **argv)
     closelog();
 
     return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+static int main_loop(void)
+{
+    int exit_status = -1;
+    linted_spawner spawners[2];
+    if (-1 == linted_spawner_pair(spawners)) {
+        return -1;
+    }
+
+    /* Fork off tasks from a known good state */
+    pid_t child = fork();
+    if (0 == child) {
+        if (-1 == linted_spawner_close(spawners[1])) {
+            exit(errno);
+        }
+
+        int preserved[] = { STDERR_FILENO };
+        if (-1 == linted_process_spawner_run(spawners[0],
+                                             preserved,
+                                             LINTED_ARRAY_SIZE(preserved))) {
+            exit(errno);
+        }
+
+        exit(EXIT_SUCCESS);
+    }
+
+    if (-1 == child) {
+        goto close_spawners;
+    }
+
+    /* TODO: main loop code isn't needed any more */
+
+    int main_loop_fildes[] = { spawners[1] };
+    if (-1 == linted_spawner_spawn(spawners[1], main_loop_wrapper,
+                                   main_loop_fildes,
+                                   LINTED_ARRAY_SIZE(main_loop_fildes))) {
+        goto close_spawners;
+    }
+
+    exit_status = 0;
+
+close_spawners:
+    {
+        int errnum = errno;
+        int close_status = linted_spawner_close(spawners[0]);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    {
+        int errnum = errno;
+        int close_status = linted_spawner_close(spawners[1]);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    if (-1 == exit_status) {
+        return -1;
+    }
+
+    /* TODO: Use the spawenrs exit status */
+    int wait_status;
+    do {
+        wait_status = waitpid(child, NULL, 0);
+    } while (-1 == wait_status && EINTR == errno);
+    if (-1 == wait_status) {
+        return -1;
+    }
+
+    return 0;
 }
 
 static int main_loop_wrapper(int const fds[])
