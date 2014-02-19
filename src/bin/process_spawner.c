@@ -24,11 +24,8 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <pthread.h>
-#include <stddef.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/prctl.h>
 #include <sys/select.h>
 #include <sys/wait.h>
@@ -323,11 +320,10 @@ static void * waiter_loop(void * arguments)
         if (-1 == wait_status) {
             if (ECHILD == errno) {
                 char dummy = 0;
-                if (-1 == linted_io_write_all(waiter_pipe, NULL,
-                                              &dummy, sizeof dummy)) {
-                    /* TODO: Signal to the main loop */
-                    assert(false);
-                }
+                int write_status = linted_io_write_all(waiter_pipe, NULL,
+                                                       &dummy, sizeof dummy);
+                /* TODO: Signal to the main loop */
+                assert(0 == write_status);
                 return NULL;
             }
 
