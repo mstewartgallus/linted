@@ -41,7 +41,10 @@ typedef int (*linted_spawner_task) (int const fildes[]);
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_spawner_run(linted_spawner spawner, linted_spawner_task main_loop,
+int linted_spawner_run(linted_spawner spawner,
+                       int const preserved_fildes[],
+                       size_t preserved_fildes_size,
+                       linted_spawner_task main_loop,
                        int const fildes[], size_t fildes_size);
 
 /**

@@ -89,6 +89,8 @@ int linted_spawner_pair(linted_spawner spawners[2])
 }
 
 int linted_spawner_run(linted_spawner inbox,
+                       int const preserved_fildes[],
+                       size_t preserved_fildes_size,
                        linted_spawner_task main_loop,
                        int const fildes[], size_t fildes_size)
 {
@@ -143,9 +145,24 @@ int linted_spawner_run(linted_spawner inbox,
                 exit(errno);
             }
 
-            if (-1 == linted_io_close_fds_except(fildes, fildes_size)) {
+            int * fds = calloc(fildes_size + preserved_fildes_size,
+                               sizeof fds[0]);
+            if (NULL == fds) {
                 exit(errno);
             }
+            memcpy(fds, preserved_fildes,
+                   preserved_fildes_size * sizeof preserved_fildes[0]);
+
+            memcpy(fds + preserved_fildes_size,
+                   fildes,
+                   fildes_size * sizeof fildes[0]);
+
+            if (-1 == linted_io_close_fds_except(fds,
+                                                 fildes_size + preserved_fildes_size)) {
+                exit(errno);
+            }
+
+            free(fds);
 
             exec_task(main_loop, fildes);
         }
@@ -223,10 +240,14 @@ int linted_spawner_run(linted_spawner inbox,
                     exit(errno);
                 }
 
-                int fds_not_to_close[] = {
-                    connection,
-                    STDERR_FILENO
-                };
+                int * fds_not_to_close = calloc(preserved_fildes_size + 1,
+                                                sizeof fds_not_to_close[0]);
+                if (NULL == fds_not_to_close) {
+                    exit(errno);
+                }
+                memcpy(fds_not_to_close + 1, preserved_fildes,
+                       preserved_fildes_size * sizeof preserved_fildes[0]);
+                fds_not_to_close[0] = connection;
                 if (-1 == linted_io_close_fds_except(fds_not_to_close,
                                                      LINTED_ARRAY_SIZE(fds_not_to_close))) {
                     exit(errno);
