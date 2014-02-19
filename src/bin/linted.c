@@ -127,10 +127,7 @@ int main(int argc, char **argv)
             closelog();
 
             /* Fork off tasks from a known good state */
-            int main_loop_fildes[] = {
-                spawners[1],
-                STDERR_FILENO
-            };
+            int main_loop_fildes[] = { spawners[1] };
             int spawn_status = linted_spawner_run(spawners[0],
                                                   main_loop_wrapper,
                                                   main_loop_fildes,
