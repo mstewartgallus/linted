@@ -21,7 +21,8 @@
 #include <stddef.h>
 
 /**
- * Runs a spawner process.
+ * Runs a spawner process and starts main_loop in a separate
+ * process. Spawned processes will return from this function.
  *
  * The process_spawner captures the current state (open files etc..)
  * and forks off copies of this state. This is useful for capturing a
@@ -31,6 +32,8 @@
  */
 int linted_process_spawner_run(linted_spawner spawner,
                                int const preserved_fildes[],
-                               size_t preserved_fildes_size);
+                               size_t preserved_fildes_size,
+                               linted_spawner_task main_loop,
+                               int const fildes[], size_t fildes_size);
 
 #endif                          /* LINTED_PROCESS_SPAWNER_H */
