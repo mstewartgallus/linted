@@ -132,7 +132,7 @@ int linted_process_spawner_run(linted_spawner inbox,
     }
 
     if (-1 == setpgid(process_group, process_group) && errno != EACCES) {
-        goto close_waiter_pipes;
+        goto kill_processes;
     }
 
     {
@@ -143,7 +143,7 @@ int linted_process_spawner_run(linted_spawner inbox,
         };
         if (-1 == pthread_create(&waiter_thread, NULL,
                                  waiter_loop, &waiter_arguments)) {
-            goto close_waiter_pipes;
+            goto kill_processes;
         }
 
         for (;;) {
@@ -235,7 +235,7 @@ int linted_process_spawner_run(linted_spawner inbox,
 
                 connection_status = 0;
 
- close_connection:
+             close_connection:
                 {
                     int errnum = errno;
 
@@ -255,10 +255,11 @@ int linted_process_spawner_run(linted_spawner inbox,
             }
         }
 
- exit_fork_server:
+     exit_fork_server:
         exit_status = 0;
 
- cancel_waiter_thread:
+     cancel_waiter_thread:
+        /* Cancel the thread on error */
         if (exit_status != 0) {
             int errnum = errno;
 
@@ -277,6 +278,20 @@ int linted_process_spawner_run(linted_spawner inbox,
 
             errno = errnum;
         }
+    }
+
+ kill_processes:
+    /* Notify all spawned processes on error */
+    if (exit_status != 0) {
+        int errnum = errno;
+
+        int kill_status = kill(-process_group, SIGHUP);
+        if (-1 == kill_status) {
+            assert(errno != EINVAL);
+            assert(ESRCH == errno || EPERM == errno);
+        }
+
+        errno = errnum;
     }
 
  close_waiter_pipes:
