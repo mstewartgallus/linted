@@ -16,8 +16,6 @@
 #ifndef LINTED_SPAWNER_H
 #define LINTED_SPAWNER_H
 
-#include "linted/server.h"
-
 #include <stddef.h>
 #include <sys/types.h>
 
@@ -26,7 +24,7 @@
 /**
  * Is a spawner. Is shareable.
  */
-typedef linted_server linted_spawner;
+typedef int linted_spawner;
 
 typedef int linted_spawner_future;
 

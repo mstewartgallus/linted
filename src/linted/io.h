@@ -19,9 +19,6 @@
 #include <sys/select.h>
 #include <sys/types.h>
 
-int linted_io_send_fildes(int socket, int fildes);
-ssize_t linted_io_recv_fildes(int *fildes, int socket);
-
 /**
  * The read_all function repeatedly reads from fd until buf is full or
  * an error occurs (except for EINTR).

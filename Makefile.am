@@ -27,7 +27,6 @@ linted_SOURCES=\
   src/bin/process_spawner.c\
   src/bin/sandbox.c\
   src/bin/shutdowner.c\
-  src/bin/server.c\
   src/bin/spawner.c\
   src/bin/syslog.c\
   src/bin/unimq.c\
@@ -58,7 +57,6 @@ EXTRA_DIST=\
   src/linted/mq.h\
   src/linted/process_spawner.h\
   src/linted/sandbox.h\
-  src/linted/server.h\
   src/linted/shutdowner.h\
   src/linted/simulator.h\
   src/linted/spawner.h\

@@ -176,7 +176,7 @@ int linted_process_spawner_run(linted_spawner inbox,
 
             if (FD_ISSET(inbox, &watched_fds)) {
                 int connection_status = -1;
-                linted_server_conn connection;
+                linted_spawner_future connection;
 
                 ssize_t bytes_read;
                 do {
@@ -239,7 +239,7 @@ int linted_process_spawner_run(linted_spawner inbox,
                 {
                     int errnum = errno;
 
-                    int close_status = linted_server_conn_close(connection);
+                    int close_status = close(connection);
                     if (-1 == connection_status) {
                         errno = errnum;
                     }
