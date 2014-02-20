@@ -10,6 +10,9 @@ Linted -- TODO
 * Ban assert in favour of LINTED_IMPOSSIBLE_ERROR
 assert has problems with not evaluating arguments.
 * Manage child process error streams and syslog logs
+* Make unimq respect EINTR
+Currently it uses condition variables which don't work well with
+it. POSIX semaphores do however respect EINTR.
 * Avoid deadlock where process blocks on sending message to shutdown process
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but
