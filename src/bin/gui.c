@@ -256,11 +256,14 @@ static int on_sdl_event(SDL_Event const *sdl_event, struct gui_state *state,
                         linted_controller controller,
                         enum transition *transition)
 {
-    enum transition transition_out = DO_NOTHING;
     switch (sdl_event->type) {
+    default:
+        *transition = DO_NOTHING;
+        return 0;
+
     case SDL_QUIT:
-        transition_out = SHOULD_EXIT;
-        break;
+        *transition = SHOULD_EXIT;
+        return 0;
 
     case SDL_VIDEORESIZE:
         /*
@@ -270,58 +273,61 @@ static int on_sdl_event(SDL_Event const *sdl_event, struct gui_state *state,
          */
         state->width = sdl_event->resize.w;
         state->height = sdl_event->resize.h;
-        transition_out = SHOULD_RESIZE;
-        break;
+        *transition = SHOULD_RESIZE;
+        return 0;
 
     case SDL_KEYDOWN:
-    case SDL_KEYUP:{
-            bool is_down = SDL_KEYDOWN == sdl_event->type;
-            switch (sdl_event->key.keysym.sym) {
-            default:
-                break;
-            case SDLK_q:
-            case SDLK_ESCAPE:
-                if (!is_down) {
-                    transition_out = SHOULD_EXIT;
-                }
-                break;
-
-                {
-                    enum linted_controller_direction direction;
-
-            case SDLK_LEFT:
-                    direction = LINTED_CONTROLLER_LEFT;
-                    goto key_movement;
-
-            case SDLK_RIGHT:
-                    direction = LINTED_CONTROLLER_RIGHT;
-                    goto key_movement;
-
-            case SDLK_UP:
-                    direction = LINTED_CONTROLLER_UP;
-                    goto key_movement;
-
-            case SDLK_DOWN:
-                    direction = LINTED_CONTROLLER_DOWN;
-                    goto key_movement;
-
- key_movement:     ;
-                    int request_status;
-                    do {
-                        request_status =
-                            linted_controller_send_movement(controller,
-                                                            direction, is_down);
-                    } while (-1 == request_status && EINTR == errno);
-                    if (-1 == request_status) {
-                        return -1;
-                    }
-                    break;
-                }
-            }
-            break;
-        }
+    case SDL_KEYUP:
+        goto on_keypress;
     }
 
-    *transition = transition_out;
+on_keypress:;
+    bool is_key_down = SDL_KEYDOWN == sdl_event->type;
+
+    switch (sdl_event->key.keysym.sym) {
+    default:
+        *transition = DO_NOTHING;
+        return 0;
+
+    case SDLK_q:
+    case SDLK_ESCAPE:
+        *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
+        return 0;
+
+    case SDLK_LEFT: goto on_key_left;
+    case SDLK_RIGHT: goto on_key_right;
+    case SDLK_UP: goto on_key_up;
+    case SDLK_DOWN: goto on_key_down;
+    }
+
+    enum linted_controller_direction direction;
+
+on_key_left:
+    direction = LINTED_CONTROLLER_LEFT;
+    goto update_controller;
+
+on_key_right:
+    direction = LINTED_CONTROLLER_RIGHT;
+    goto update_controller;
+
+on_key_up:
+    direction = LINTED_CONTROLLER_UP;
+    goto update_controller;
+
+on_key_down:
+    direction = LINTED_CONTROLLER_DOWN;
+    goto update_controller;
+
+update_controller:;
+    int send_status;
+    do {
+        send_status = linted_controller_send_movement(controller, direction,
+                                                      is_key_down);
+    } while (-1 == send_status && EINTR == errno);
+    if (-1 == send_status) {
+        return -1;
+    }
+
+    *transition = DO_NOTHING;
     return 0;
 }
