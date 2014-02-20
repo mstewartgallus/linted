@@ -94,7 +94,11 @@ int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
     }
 
     while (*message_count >= attr->max_message_count) {
-        pthread_cond_wait(is_full, mutex);
+        int wait_error = pthread_cond_wait(is_full, mutex);
+        if (wait_error != 0) {
+            errno = wait_error;
+            return -1;
+        }
     }
 
     memcpy(messages + *message_count * attr->message_size, msg_ptr,
@@ -129,7 +133,11 @@ int linted_unimq_receive(linted_unimq mq, void *msg_ptr)
     }
 
     while (0 == *message_count) {
-        pthread_cond_wait(is_empty, mutex);
+        int wait_error = pthread_cond_wait(is_empty, mutex);
+        if (wait_error != 0) {
+            errno = wait_error;
+            return -1;
+        }
     }
 
     --*message_count;
