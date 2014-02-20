@@ -80,7 +80,7 @@ int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
 
 int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
 {
-    struct linted_unimq_attr const * const attr = &mq->attributes;
+    struct linted_unimq_attr const attr = mq->attributes;
     pthread_mutex_t * const mutex = &mq->mutex;
     pthread_cond_t * const is_empty = &mq->is_empty;
     pthread_cond_t * const is_full = &mq->is_full;
@@ -93,16 +93,12 @@ int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
         return -1;
     }
 
-    while (*message_count >= attr->max_message_count) {
-        int wait_error = pthread_cond_wait(is_full, mutex);
-        if (wait_error != 0) {
-            errno = wait_error;
-            return -1;
-        }
+    while (*message_count >= attr.max_message_count) {
+        pthread_cond_wait(is_full, mutex);
     }
 
-    memcpy(messages + *message_count * attr->message_size, msg_ptr,
-           attr->message_size);
+    memcpy(messages + *message_count * attr.message_size, msg_ptr,
+           attr.message_size);
 
     ++*message_count;
 
@@ -119,7 +115,7 @@ int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
 
 int linted_unimq_receive(linted_unimq mq, void *msg_ptr)
 {
-    struct linted_unimq_attr const * const attr = &mq->attributes;
+    struct linted_unimq_attr const attr = mq->attributes;
     pthread_mutex_t * const mutex = &mq->mutex;
     pthread_cond_t * const is_empty = &mq->is_empty;
     pthread_cond_t * const is_full = &mq->is_full;
@@ -133,17 +129,13 @@ int linted_unimq_receive(linted_unimq mq, void *msg_ptr)
     }
 
     while (0 == *message_count) {
-        int wait_error = pthread_cond_wait(is_empty, mutex);
-        if (wait_error != 0) {
-            errno = wait_error;
-            return -1;
-        }
+        pthread_cond_wait(is_empty, mutex);
     }
 
     --*message_count;
 
-    memcpy(msg_ptr, messages + *message_count * attr->message_size,
-           attr->message_size);
+    memcpy(msg_ptr, messages + *message_count * attr.message_size,
+           attr.message_size);
 
     pthread_cond_signal(is_full);
 
