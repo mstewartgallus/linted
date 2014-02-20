@@ -30,12 +30,14 @@ linted_SOURCES=\
   src/bin/server.c\
   src/bin/spawner.c\
   src/bin/syslog.c\
+  src/bin/unimq.c\
   src/bin/updater.c\
   $(verified_sources)
 
 verified_sources=\
   src/bin/mq.c\
   src/bin/simulator.c\
+  src/bin/unimq.h\
   src/bin/util.c
 
 linted_LDADD=$(SDL_LIBS)
