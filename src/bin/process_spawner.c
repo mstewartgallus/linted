@@ -84,9 +84,12 @@ int linted_process_spawner_run(linted_spawner inbox,
 {
     int exit_status = -1;
 
-    /* A pipe is used for simple communication. Unfortunately, a pipe
+    /*
+     * A pipe is used for simple communication. Unfortunately, a pipe
      * is not reliable or very cheap. In the future it'd be better to
      * use POSIX functionality such as semaphores.
+     *
+     * Unfortunately, a pipe is needed to do the select business.
      */
     int waiter_pipes[2];
     if (-1 == pipe(waiter_pipes)) {
@@ -334,17 +337,16 @@ static void *waiter_loop(void *arguments)
             wait_status = waitid(P_PGID, process_group, &child_info, WEXITED);
         } while (-1 == wait_status && EINTR == errno);
         if (-1 == wait_status) {
-            if (ECHILD == errno) {
-                char dummy = 0;
-                int write_status = linted_io_write_all(waiter_pipe, NULL,
-                                                       &dummy, sizeof dummy);
-                /* TODO: Signal to the main loop */
-                assert(0 == write_status);
-                return NULL;
-            }
+            /* POSIX errors are ECHILD, EINTR and EINVAL */
+            assert(errno != EINVAL);
+            assert(ECHILD == errno);
 
+            char dummy = 0;
+            int write_status = linted_io_write_all(waiter_pipe, NULL,
+                                                   &dummy, sizeof dummy);
             /* TODO: Signal to the main loop */
-            assert(false);
+            assert(0 == write_status);
+            return NULL;
         }
 
         pid_t const child = child_info.si_pid;
