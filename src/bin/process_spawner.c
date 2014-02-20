@@ -238,7 +238,7 @@ int linted_process_spawner_run(linted_spawner inbox,
 
                 connection_status = 0;
 
-             close_connection:
+ close_connection:
                 {
                     int errnum = errno;
 
@@ -258,10 +258,10 @@ int linted_process_spawner_run(linted_spawner inbox,
             }
         }
 
-     exit_fork_server:
+ exit_fork_server:
         exit_status = 0;
 
-     cancel_waiter_thread:
+ cancel_waiter_thread:
         /* Cancel the thread on error */
         if (exit_status != 0) {
             int errnum = errno;

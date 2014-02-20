@@ -26,7 +26,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 struct request_header {
     linted_spawner_task func;
     size_t fildes_count;
@@ -40,7 +39,6 @@ static int server_connect(int local);
 
 static int send_fildes(int socket, int fildes);
 static ssize_t recv_fildes(int *fildes, int socket);
-
 
 int linted_spawner_pair(linted_spawner spawners[2])
 {

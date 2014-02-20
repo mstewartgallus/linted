@@ -112,27 +112,27 @@ int main(int argc, char **argv)
     int command_status = -1;
     switch (argc) {
     case 1:{
-        close_in_out();
+            close_in_out();
 
-        /* Close the the logger so it isn't shared */
-        closelog();
+            /* Close the the logger so it isn't shared */
+            closelog();
 
-        int game_status = run_game();
-        int errnum = errno;
+            int game_status = run_game();
+            int errnum = errno;
 
-        /* Open the logger again */
-        linted_syslog_open();
+            /* Open the logger again */
+            linted_syslog_open();
 
-        if (-1 == game_status) {
-            char const *error_string = linted_error_string_alloc(errnum);
-            syslog(LOG_ERR, "could not run the game: %s", error_string);
-            linted_error_string_free(error_string);
+            if (-1 == game_status) {
+                char const *error_string = linted_error_string_alloc(errnum);
+                syslog(LOG_ERR, "could not run the game: %s", error_string);
+                linted_error_string_free(error_string);
+                break;
+            }
+
+            command_status = 0;
             break;
         }
-
-        command_status = 0;
-        break;
-    }
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
@@ -192,7 +192,7 @@ static int run_game(void)
 
     exit_status = 0;
 
-close_spawners:
+ close_spawners:
     {
         int errnum = errno;
         int close_status = linted_spawner_close(spawners[0]);

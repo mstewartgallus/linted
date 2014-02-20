@@ -98,7 +98,8 @@ int linted_io_close_fds_except(fd_set const *fds)
     }
 
     struct dirent *const entry = malloc(offsetof(struct dirent, d_name)
-                                        + fpathconf(dirfd(fds_dir), _PC_NAME_MAX) + 1);
+                                        + fpathconf(dirfd(fds_dir),
+                                                    _PC_NAME_MAX) + 1);
     if (NULL == entry) {
         goto close_fds_dir;
     }

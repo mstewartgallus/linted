@@ -281,7 +281,7 @@ static int on_sdl_event(SDL_Event const *sdl_event, struct gui_state *state,
         goto on_keypress;
     }
 
-on_keypress:;
+ on_keypress:;
     bool is_key_down = SDL_KEYDOWN == sdl_event->type;
 
     switch (sdl_event->key.keysym.sym) {
@@ -294,31 +294,35 @@ on_keypress:;
         *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
         return 0;
 
-    case SDLK_LEFT: goto on_key_left;
-    case SDLK_RIGHT: goto on_key_right;
-    case SDLK_UP: goto on_key_up;
-    case SDLK_DOWN: goto on_key_down;
+    case SDLK_LEFT:
+        goto on_key_left;
+    case SDLK_RIGHT:
+        goto on_key_right;
+    case SDLK_UP:
+        goto on_key_up;
+    case SDLK_DOWN:
+        goto on_key_down;
     }
 
     enum linted_controller_direction direction;
 
-on_key_left:
+ on_key_left:
     direction = LINTED_CONTROLLER_LEFT;
     goto update_controller;
 
-on_key_right:
+ on_key_right:
     direction = LINTED_CONTROLLER_RIGHT;
     goto update_controller;
 
-on_key_up:
+ on_key_up:
     direction = LINTED_CONTROLLER_UP;
     goto update_controller;
 
-on_key_down:
+ on_key_down:
     direction = LINTED_CONTROLLER_DOWN;
     goto update_controller;
 
-update_controller:;
+ update_controller:;
     int send_status;
     do {
         send_status = linted_controller_send_movement(controller, direction,

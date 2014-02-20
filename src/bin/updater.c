@@ -25,8 +25,8 @@
 #define SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
 
 typedef char
-    message_type[SIZEOF_MEMBER(struct linted_updater_update, x_position)
-                 + SIZEOF_MEMBER(struct linted_updater_update, y_position)];
+ message_type[SIZEOF_MEMBER(struct linted_updater_update, x_position)
+              + SIZEOF_MEMBER(struct linted_updater_update, y_position)];
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {

@@ -19,14 +19,14 @@
 #include <stddef.h>
 
 struct linted__unimq;
-typedef struct linted__unimq * linted_unimq;
+typedef struct linted__unimq *linted_unimq;
 
 struct linted_unimq_attr {
     size_t max_message_count;
     size_t message_size;
 };
 
-int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr);
+int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr *attr);
 
 int linted_unimq_send(linted_unimq mq, void const *msg_ptr);
 

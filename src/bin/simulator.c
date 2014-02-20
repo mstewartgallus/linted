@@ -76,7 +76,7 @@ int linted_simulator_run(linted_controller const controller,
     linted_unimq simulator;
     struct linted_unimq_attr attr = {
         .max_message_count = 2,
-        .message_size = sizeof (struct message)
+        .message_size = sizeof(struct message)
     };
     if (-1 == linted_unimq_init(&simulator, &attr)) {
         return -1;

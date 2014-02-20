@@ -31,7 +31,7 @@ struct linted__unimq {
     char messages[];
 };
 
-int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
+int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr *attr)
 {
     if (NULL == attr) {
         errno = EINVAL;
@@ -57,8 +57,9 @@ int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
         return -1;
     }
 
-    size_t const unimq_size = sizeof (struct linted__unimq) + message_buffer_size;
-    if (unimq_size < sizeof (struct linted__unimq)) {
+    size_t const unimq_size =
+        sizeof(struct linted__unimq) + message_buffer_size;
+    if (unimq_size < sizeof(struct linted__unimq)) {
         return -1;
     }
 
@@ -81,11 +82,11 @@ int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
 int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
 {
     struct linted_unimq_attr const attr = mq->attributes;
-    pthread_mutex_t * const mutex = &mq->mutex;
-    pthread_cond_t * const is_empty = &mq->is_empty;
-    pthread_cond_t * const is_full = &mq->is_full;
-    size_t * const message_count = &mq->message_count;
-    char * const messages = mq->messages;
+    pthread_mutex_t *const mutex = &mq->mutex;
+    pthread_cond_t *const is_empty = &mq->is_empty;
+    pthread_cond_t *const is_full = &mq->is_full;
+    size_t *const message_count = &mq->message_count;
+    char *const messages = mq->messages;
 
     int lock_status = pthread_mutex_lock(mutex);
     if (lock_status != 0) {
@@ -116,11 +117,11 @@ int linted_unimq_send(linted_unimq mq, void const *msg_ptr)
 int linted_unimq_receive(linted_unimq mq, void *msg_ptr)
 {
     struct linted_unimq_attr const attr = mq->attributes;
-    pthread_mutex_t * const mutex = &mq->mutex;
-    pthread_cond_t * const is_empty = &mq->is_empty;
-    pthread_cond_t * const is_full = &mq->is_full;
-    size_t * const message_count = &mq->message_count;
-    char const * const messages = mq->messages;
+    pthread_mutex_t *const mutex = &mq->mutex;
+    pthread_cond_t *const is_empty = &mq->is_empty;
+    pthread_cond_t *const is_full = &mq->is_full;
+    size_t *const message_count = &mq->message_count;
+    char const *const messages = mq->messages;
 
     int lock_status = pthread_mutex_lock(mutex);
     if (lock_status != 0) {
@@ -152,9 +153,9 @@ int linted_unimq_destroy(linted_unimq mq)
 {
     int exit_status = 0;
 
-    pthread_mutex_t * const mutex = &mq->mutex;
-    pthread_cond_t * const is_empty = &mq->is_empty;
-    pthread_cond_t * const is_full = &mq->is_full;
+    pthread_mutex_t *const mutex = &mq->mutex;
+    pthread_cond_t *const is_empty = &mq->is_empty;
+    pthread_cond_t *const is_full = &mq->is_full;
 
     int lock_status = pthread_mutex_lock(mutex);
     if (lock_status != 0) {
