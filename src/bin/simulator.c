@@ -28,10 +28,6 @@
 #include <time.h>
 #include <unistd.h>
 
-/* TODO: Fix race condition where file descriptor is closed and
- * asynchronous tasks don't know.
- */
-
 #define SHUTDOWN_EVENT ((uint8_t) 0)
 #define TICK_EVENT ((uint8_t) (SHUTDOWN_EVENT + 1))
 #define CONTROLLER_EVENT ((uint8_t) (TICK_EVENT + 1))
