@@ -33,6 +33,11 @@ struct linted__unimq {
 
 int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
 {
+    if (NULL == attr) {
+        errno = EINVAL;
+        return -1;
+    }
+
     size_t const max_message_count = attr->max_message_count;
     size_t const message_size = attr->message_size;
 
@@ -67,6 +72,8 @@ int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr)
     pthread_cond_init(&allocated->is_empty, NULL);
     pthread_cond_init(&allocated->is_full, NULL);
     allocated->message_count = 0;
+
+    *mq = allocated;
 
     return 0;
 }

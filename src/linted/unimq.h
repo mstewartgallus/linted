@@ -26,4 +26,12 @@ struct linted_unimq_attr {
     size_t message_size;
 };
 
+int linted_unimq_init(linted_unimq * mq, struct linted_unimq_attr * attr);
+
+int linted_unimq_send(linted_unimq mq, void const *msg_ptr);
+
+int linted_unimq_receive(linted_unimq mq, void *msg_ptr);
+
+int linted_unimq_destroy(linted_unimq mq);
+
 #endif                          /* LINTED_UNIMQ_H */

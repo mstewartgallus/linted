@@ -18,6 +18,7 @@
 #include "linted/io.h"
 #include "linted/mq.h"
 #include "linted/simulator.h"
+#include "linted/unimq.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -35,16 +36,20 @@
 #define TICK_EVENT ((uint8_t) (SHUTDOWN_EVENT + 1))
 #define CONTROLLER_EVENT ((uint8_t) (TICK_EVENT + 1))
 
+struct message {
+    uint8_t event;
+};
+
 struct controller_notify_data {
-    int simulator;
+    linted_unimq simulator;
 };
 
 struct shutdowner_notify_data {
-    int simulator;
+    linted_unimq simulator;
 };
 
 struct timer_data {
-    int simulator;
+    linted_unimq simulator;
 };
 
 static void on_controller_notification(union sigval sigval);
@@ -72,22 +77,23 @@ int linted_simulator_run(linted_controller const controller,
     int32_t x_velocity = 0;
     int32_t y_velocity = 0;
 
-    int simulator_fds[2];
-    if (-1 == pipe(simulator_fds)) {
+    linted_unimq simulator;
+    struct linted_unimq_attr attr = {
+        .max_message_count = 2,
+        .message_size = sizeof (struct message)
+    };
+    if (-1 == linted_unimq_init(&simulator, &attr)) {
         return -1;
     }
 
-    int simulator_read = simulator_fds[0];
-    int simulator_write = simulator_fds[1];
-
-    struct timer_data timer_data = {.simulator = simulator_write };
+    struct timer_data timer_data = {.simulator = simulator };
 
     struct controller_notify_data controller_notify_data = {
-        .simulator = simulator_write
+        .simulator = simulator
     };
 
     struct shutdowner_notify_data shutdowner_notify_data = {
-        .simulator = simulator_write
+        .simulator = simulator
     };
 
     timer_t timer;
@@ -132,13 +138,12 @@ int linted_simulator_run(linted_controller const controller,
     }
 
     for (;;) {
-        uint8_t event;
-        if (-1 == linted_io_read_all(simulator_read, NULL,
-                                     &event, sizeof event)) {
+        struct message sim_message;
+        if (-1 == linted_unimq_receive(simulator, &sim_message)) {
             goto restore_notify;
         }
 
-        switch (event) {
+        switch (sim_message.event) {
         case SHUTDOWN_EVENT:{
                 struct sigevent sigevent;
                 memset(&sigevent, 0, sizeof sigevent);
@@ -270,7 +275,8 @@ int linted_simulator_run(linted_controller const controller,
             }
 
         default:
-            syslog(LOG_ERR, "Simulator received unexpected event: %u", event);
+            syslog(LOG_ERR, "Simulator received unexpected event: %u",
+                   sim_message.event);
         }
     }
 
@@ -300,28 +306,6 @@ int linted_simulator_run(linted_controller const controller,
         }
     }
 
-    {
-        int errnum = errno;
-        int close_status = close(simulator_read);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
-    {
-        int errnum = errno;
-        int close_status = close(simulator_write);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
  delete_timer:
     {
         int errnum = errno;
@@ -334,16 +318,27 @@ int linted_simulator_run(linted_controller const controller,
         }
     }
 
+    {
+        int errnum = errno;
+        int destroy_status = linted_unimq_destroy(simulator);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == destroy_status) {
+            exit_status = -1;
+        }
+    }
+
     return exit_status;
 }
 
 static void on_clock_tick(union sigval sigev_value)
 {
     struct timer_data *const timer_data = sigev_value.sival_ptr;
-    int const simulator = timer_data->simulator;
+    linted_unimq const simulator = timer_data->simulator;
 
-    uint8_t event = TICK_EVENT;
-    if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
+    struct message message = {.event = TICK_EVENT };
+    if (-1 == linted_unimq_send(simulator, &message)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
@@ -352,10 +347,10 @@ static void on_clock_tick(union sigval sigev_value)
 static void on_controller_notification(union sigval sigval)
 {
     struct controller_notify_data *notify_data = sigval.sival_ptr;
-    int simulator = notify_data->simulator;
+    linted_unimq const simulator = notify_data->simulator;
 
-    uint8_t event = CONTROLLER_EVENT;
-    if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
+    struct message message = {.event = CONTROLLER_EVENT };
+    if (-1 == linted_unimq_send(simulator, &message)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
@@ -364,10 +359,10 @@ static void on_controller_notification(union sigval sigval)
 static void on_shutdowner_notification(union sigval sigval)
 {
     struct shutdowner_notify_data *notify_data = sigval.sival_ptr;
-    int simulator = notify_data->simulator;
+    linted_unimq const simulator = notify_data->simulator;
 
-    uint8_t event = SHUTDOWN_EVENT;
-    if (-1 == linted_io_write_all(simulator, NULL, &event, sizeof event)) {
+    struct message message = {.event = SHUTDOWN_EVENT };
+    if (-1 == linted_unimq_send(simulator, &message)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
