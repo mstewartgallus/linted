@@ -18,8 +18,6 @@
 
 #include "linted/spawner.h"
 
-#include <mqueue.h>
-
 int linted_main_loop_run(linted_spawner spawner);
 
 #endif                          /* LINTED_MAIN_LOOP_H */

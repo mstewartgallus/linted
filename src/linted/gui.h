@@ -17,13 +17,8 @@
 #define LINTED_GUI_H
 
 #include "linted/controller.h"
-#include "linted/main_loop.h"
-#include "linted/shutdowner.h"
-#include "linted/spawner.h"
 #include "linted/updater.h"
-
-#include <mqueue.h>
-#include <stdint.h>
+#include "linted/shutdowner.h"
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller);
