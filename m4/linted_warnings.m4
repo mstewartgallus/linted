@@ -20,7 +20,6 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
         [-Wold-style-definition]dnl
         [-Wredundant-decls]dnl
         [-Wnested-externs]
-        [-Wjump-misses-init]dnl
         [-Wlogical-op]dnl
 ])
 AC_SUBST([linted_CFLAGS_WARNINGS])

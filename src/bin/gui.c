@@ -82,7 +82,6 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         .width = 640,
         .height = 800
     };
-    SDL_VideoInfo const *video_info;
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
                        | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
@@ -114,113 +113,115 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     }
 
     /* Get actual window size, and not requested window size */
-    video_info = SDL_GetVideoInfo();
+    SDL_VideoInfo const *video_info = SDL_GetVideoInfo();
     state.width = video_info->current_w;
     state.height = video_info->current_h;
 
-    {
-        float x = 0;
-        float y = 0;
+    float x = 0;
+    float y = 0;
 
  setup_window:;
-        SDL_Surface *const video_surface = SDL_SetVideoMode(state.width,
-                                                            state.height,
-                                                            0, sdl_flags);
-        if (NULL == video_surface) {
-            int errnum = errno;
-            syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
-            errno = errnum;
-            goto cleanup_SDL;
+    SDL_Surface *const video_surface = SDL_SetVideoMode(state.width,
+                                                        state.height,
+                                                        0, sdl_flags);
+    if (NULL == video_surface) {
+        int errnum = errno;
+        syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
+        errno = errnum;
+        goto cleanup_SDL;
+    }
+
+    glDisable(GL_DITHER);
+
+    glEnable(GL_VERTEX_ARRAY);
+
+    glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
+    glViewport(0, 0, state.width, state.height);
+
+    glVertexPointer(2, GL_FLOAT, 0, triangle_data);
+
+    glMatrixMode(GL_MODELVIEW);
+
+    bool should_resize = false;
+    for (;;) {
+        /* Handle SDL events first before rendering */
+        SDL_Event sdl_event;
+        bool const had_sdl_event = SDL_PollEvent(&sdl_event);
+        if (had_sdl_event) {
+            enum transition transition;
+            if (-1 == on_sdl_event(&sdl_event, &state, controller,
+                                   &transition)) {
+                goto cleanup_SDL;
+            }
+
+            switch (transition) {
+            case DO_NOTHING:
+                break;
+
+            case SHOULD_EXIT:
+                goto exit_main_loop;
+
+            case SHOULD_RESIZE:
+                should_resize = true;
+                break;
+            }
         }
 
-        glDisable(GL_DITHER);
+        bool had_gui_command = false;
 
-        glEnable(GL_VERTEX_ARRAY);
+        {
+            struct linted_updater_update update;
 
-        glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
-        glViewport(0, 0, state.width, state.height);
-
-        glVertexPointer(2, GL_FLOAT, 0, triangle_data);
-
-        glMatrixMode(GL_MODELVIEW);
-
-        bool should_resize = false;
-        for (;;) {
-            /* Handle SDL events first before rendering */
-            SDL_Event sdl_event;
-            bool const had_sdl_event = SDL_PollEvent(&sdl_event);
-            if (had_sdl_event) {
-                enum transition transition;
-                if (-1 == on_sdl_event(&sdl_event, &state, controller,
-                                       &transition)) {
-                    goto cleanup_SDL;
+            int read_status;
+            do {
+                read_status = linted_updater_receive_update(updater, &update);
+            } while (-1 == read_status && EINTR == errno);
+            if (-1 == read_status) {
+                if (EAGAIN == errno) {
+                    goto skip_update;
                 }
 
-                switch (transition) {
-                case DO_NOTHING:
+                goto cleanup_SDL;
+            }
+
+            x = ((float)update.x_position) / 255;
+            y = ((float)update.y_position) / 255;
+
+            had_gui_command = true;
+
+         skip_update:;
+        }
+
+        /* Only render if we have time to waste */
+        if (!had_sdl_event && !had_gui_command) {
+            if (should_resize) {
+                goto setup_window;
+            }
+
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            GLfloat modelview_matrix[] = {
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                x, y, 0, 1
+            };
+            /*  X, Y, Z, W coords of the resultant vector are the
+             *  sums of the columns (row major order).
+             */
+            glLoadMatrixf(modelview_matrix);
+
+            glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangle_data));
+
+            for (;;) {
+                GLenum error = glGetError();
+                if (GL_NO_ERROR == error) {
                     break;
-
-                case SHOULD_EXIT:
-                    goto exit_main_loop;
-
-                case SHOULD_RESIZE:
-                    should_resize = true;
-                    break;
                 }
+                syslog(LOG_ERR, "GL Error: %s", glGetString(error));
             }
 
-            bool had_gui_command = false;
-            {
-                struct linted_updater_update update;
-
-                int read_status;
-                do {
-                    read_status =
-                        linted_updater_receive_update(updater, &update);
-                } while (-1 == read_status && EINTR == errno);
-                if (-1 == read_status) {
-                    if (errno != EAGAIN) {
-                        goto cleanup_SDL;
-                    }
-                } else {
-                    x = ((float)update.x_position) / 255;
-                    y = ((float)update.y_position) / 255;
-
-                    had_gui_command = true;
-                }
-            }
-
-            /* Only render if we have time to waste */
-            if (!had_sdl_event && !had_gui_command) {
-                if (should_resize) {
-                    goto setup_window;
-                }
-
-                glClear(GL_COLOR_BUFFER_BIT);
-
-                GLfloat modelview_matrix[] = {
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    x, y, 0, 1
-                };
-                /*  X, Y, Z, W coords of the resultant vector are the
-                 *  sums of the columns (row major order).
-                 */
-                glLoadMatrixf(modelview_matrix);
-
-                glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangle_data));
-
-                for (;;) {
-                    GLenum error = glGetError();
-                    if (GL_NO_ERROR == error) {
-                        break;
-                    }
-                    syslog(LOG_ERR, "GL Error: %s", glGetString(error));
-                }
-
-                SDL_GL_SwapBuffers();
-            }
+            SDL_GL_SwapBuffers();
         }
     }
 
