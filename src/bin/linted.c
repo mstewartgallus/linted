@@ -75,9 +75,8 @@ int main(int argc, char **argv)
     linted_syslog_open();
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        LINTED_LAZY_DEV_ERROR
-            ("Could not run drop ability to raise privileges: %s",
-             linted_error_string_alloc(errno));
+        LINTED_LAZY_DEV_ERROR("could not drop ability to raise privileges: %s",
+                              linted_error_string_alloc(errno));
     }
 
     /* Sanitize open files */
@@ -226,13 +225,13 @@ static int main_loop_wrapper(int const fds[])
 static void close_in_out(void)
 {
     if (EOF == fclose(stdin)) {
-        LINTED_LAZY_DEV_ERROR("Could not close standard input: %s",
+        LINTED_LAZY_DEV_ERROR("could not close standard input: %s",
                               linted_error_string_alloc(errno));
     }
     stdin = NULL;
 
     if (EOF == fclose(stdout)) {
-        LINTED_LAZY_DEV_ERROR("Could not close standard output: %s",
+        LINTED_LAZY_DEV_ERROR("could not close standard output: %s",
                               linted_error_string_alloc(errno));
     }
     stdout = NULL;
