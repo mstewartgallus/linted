@@ -75,8 +75,8 @@ int linted_controller_receive(linted_controller queue,
      */
     message_type raw_message;
 
-    int receive_status =
-        mq_receive(queue, raw_message, sizeof raw_message, NULL);
+    int receive_status = mq_receive(queue, raw_message, sizeof raw_message,
+                                    NULL);
 
     if (receive_status != -1) {
         uint8_t raw_type;
