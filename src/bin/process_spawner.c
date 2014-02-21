@@ -367,6 +367,7 @@ static void *waiter_loop(void *arguments)
                 break;
             }
 
+        case CLD_DUMPED:
         case CLD_KILLED:
             fprintf(stderr, "child %ju was terminated with signal number %i\n",
                     (uintmax_t) child, child_info.si_status);
