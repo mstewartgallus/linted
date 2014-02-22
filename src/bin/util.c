@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,14 +34,14 @@ char const *linted_error_string_alloc(int errnum)
     char *string = NULL;
     int strerror_status;
     do {
-        size_t const new_size = (3 * size) / 2;
-        if (new_size < size) {
-            /* Overflow, we can check this way because size_t is
-             * unsigned.
-             */
+        size_t const multiplicand = 3;
+
+        if (size > SIZE_MAX / multiplicand) {
             errno = ENOMEM;
             goto out_of_memory;
         }
+
+        size = (multiplicand * size) / 2;
 
         char *const new_string = realloc(string, size);
         if (NULL == new_string) {
