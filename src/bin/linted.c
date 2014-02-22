@@ -63,8 +63,9 @@ int main(int argc, char **argv)
 {
     /* First we check if we are run with proper security */
 #ifdef HAVE_UID_T
+    uid_t const uid = getuid();
     uid_t const euid = geteuid();
-    if (0 == euid) {
+    if (0 == euid || 0 == uid) {
         fputs("Bad administrator!\n" "It is insecure to run a game as root!\n",
               stderr);
         return EXIT_FAILURE;
