@@ -48,9 +48,25 @@ struct timer_data {
     linted_unimq simulator;
 };
 
+struct controller_state {
+    int32_t x_left;
+    int32_t x_right;
+
+    int32_t y_up;
+    int32_t y_down;
+};
+
 static void on_controller_notification(union sigval sigval);
 static void on_shutdowner_notification(union sigval sigval);
 static void on_clock_tick(union sigval sigev_value);
+
+static int handle_shutdown_messages(linted_shutdowner shutdowner,
+                                    struct sigevent const * sigevent,
+                                    bool * should_exit);
+
+static int handle_controller_messages(linted_controller controller,
+                                      struct sigevent * sigevent,
+                                      struct controller_state * controller_state);
 
 static int32_t min(int32_t x, int32_t y);
 static int32_t sign(int32_t x);
@@ -61,11 +77,13 @@ int linted_simulator_run(linted_controller const controller,
 {
     int exit_status = -1;
 
-    int32_t x_left = 0;
-    int32_t x_right = 0;
+    struct controller_state controller_state = {
+        .x_left = 0,
+        .x_right = 0,
 
-    int32_t y_up = 0;
-    int32_t y_down = 0;
+        .y_up = 0,
+        .y_down = 0
+    };
 
     int32_t x_position = 0;
     int32_t y_position = 0;
@@ -75,7 +93,7 @@ int linted_simulator_run(linted_controller const controller,
 
     linted_unimq simulator;
     struct linted_unimq_attr attr = {
-        .max_message_count = 2,
+        .max_message_count = 1,
         .message_size = sizeof(struct message)
     };
     if (-1 == linted_unimq_init(&simulator, &attr)) {
@@ -91,6 +109,20 @@ int linted_simulator_run(linted_controller const controller,
     struct shutdowner_notify_data shutdowner_notify_data = {
         .simulator = simulator
     };
+
+    struct sigevent shutdowner_sigevent;
+    memset(&shutdowner_sigevent, 0, sizeof shutdowner_sigevent);
+
+    shutdowner_sigevent.sigev_notify = SIGEV_THREAD;
+    shutdowner_sigevent.sigev_notify_function = on_shutdowner_notification;
+    shutdowner_sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
+
+    struct sigevent controller_sigevent;
+    memset(&controller_sigevent, 0, sizeof controller_sigevent);
+
+    controller_sigevent.sigev_notify = SIGEV_THREAD;
+    controller_sigevent.sigev_notify_function = on_controller_notification;
+    controller_sigevent.sigev_value.sival_ptr = &controller_notify_data;
 
     timer_t timer;
     {
@@ -121,16 +153,22 @@ int linted_simulator_run(linted_controller const controller,
     }
 
     /* Start the processes off on already queued messages */
-    {
-        union sigval sigvalue;
-        sigvalue.sival_ptr = &controller_notify_data;
-        on_controller_notification(sigvalue);
+    if (-1 == handle_controller_messages(controller,
+                                         &controller_sigevent,
+                                         &controller_state)) {
+        goto restore_notify;
     }
 
     {
-        union sigval sigvalue;
-        sigvalue.sival_ptr = &shutdowner_notify_data;
-        on_shutdowner_notification(sigvalue);
+        bool should_exit;
+        if (-1 == handle_shutdown_messages(shutdowner,
+                                           &shutdowner_sigevent,
+                                           &should_exit)) {
+            goto restore_notify;
+        }
+        if (should_exit) {
+            goto exit_main_loop;
+        }
     }
 
     for (;;) {
@@ -141,38 +179,21 @@ int linted_simulator_run(linted_controller const controller,
 
         switch (sim_message.event) {
         case SHUTDOWN_EVENT:{
-                struct sigevent sigevent;
-                memset(&sigevent, 0, sizeof sigevent);
-
-                sigevent.sigev_notify = SIGEV_THREAD;
-                sigevent.sigev_notify_function = on_shutdowner_notification;
-                sigevent.sigev_value.sival_ptr = &shutdowner_notify_data;
-
-                if (-1 == linted_shutdowner_notify(shutdowner, &sigevent)) {
+                bool should_exit;
+                if (-1 == handle_shutdown_messages(shutdowner,
+                                                   &shutdowner_sigevent,
+                                                   &should_exit)) {
                     goto restore_notify;
                 }
-
-                for (;;) {
-                    int read_status;
-                    do {
-                        read_status = linted_shutdowner_receive(shutdowner);
-                    } while (-1 == read_status && EINTR == errno);
-                    if (-1 == read_status) {
-                        if (EAGAIN == errno) {
-                            break;
-                        }
-
-                        goto restore_notify;
-                    }
-
+                if (should_exit) {
                     goto exit_main_loop;
                 }
                 break;
             }
 
         case TICK_EVENT:{
-                int32_t x_thrust = 2 * (x_right - x_left);
-                int32_t y_thrust = 2 * (y_up - y_down);
+                int32_t x_thrust = 2 * (controller_state.x_right - controller_state.x_left);
+                int32_t y_thrust = 2 * (controller_state.y_up - controller_state.y_down);
 
                 int32_t x_future_velocity = x_thrust + x_velocity;
                 int32_t y_future_velocity = y_thrust + y_velocity;
@@ -210,65 +231,13 @@ int linted_simulator_run(linted_controller const controller,
                 break;
             }
 
-        case CONTROLLER_EVENT:{
-                {
-                    struct sigevent sigevent;
-                    memset(&sigevent, 0, sizeof sigevent);
-
-                    sigevent.sigev_notify = SIGEV_THREAD;
-                    sigevent.sigev_notify_function = on_controller_notification;
-                    sigevent.sigev_value.sival_ptr = &controller_notify_data;
-
-                    if (-1 == linted_controller_notify(controller, &sigevent)) {
-                        goto restore_notify;
-                    }
-                }
-
-                for (;;) {
-                    struct linted_controller_message message;
-
-                    int read_status;
-                    do {
-                        read_status =
-                            linted_controller_receive(controller, &message);
-                    } while (-1 == read_status && EINTR == errno);
-                    if (-1 == read_status) {
-                        if (EAGAIN == errno) {
-                            break;
-                        }
-
-                        goto restore_notify;
-                    }
-
-                    switch (message.type) {
-                    case LINTED_CONTROLLER_MOVEMENT:
-                        switch (message.direction) {
-                        case LINTED_CONTROLLER_LEFT:
-                            x_left = message.moving;
-                            break;
-
-                        case LINTED_CONTROLLER_RIGHT:
-                            x_right = message.moving;
-                            break;
-
-                        case LINTED_CONTROLLER_UP:
-                            y_up = message.moving;
-                            break;
-
-                        case LINTED_CONTROLLER_DOWN:
-                            y_down = message.moving;
-                            break;
-                        }
-                        break;
-
-                    default:
-                        syslog(LOG_ERR,
-                               "Simulator received unexpected message type: %i",
-                               message.type);
-                    }
-                }
-                break;
+        case CONTROLLER_EVENT:
+            if (-1 == handle_controller_messages(controller,
+                                                 &controller_sigevent,
+                                                 &controller_state)) {
+                goto restore_notify;
             }
+            break;
 
         default:
             syslog(LOG_ERR, "Simulator received unexpected event: %u",
@@ -326,6 +295,89 @@ int linted_simulator_run(linted_controller const controller,
     }
 
     return exit_status;
+}
+
+static int handle_shutdown_messages(linted_shutdowner shutdowner,
+                                    struct sigevent const * sigevent,
+                                    bool * should_exit)
+{
+    if (-1 == linted_shutdowner_notify(shutdowner, sigevent)) {
+        return -1;
+    }
+
+    bool should_exit_out = false;
+    for (;;) {
+        int read_status;
+        do {
+            read_status = linted_shutdowner_receive(shutdowner);
+        } while (-1 == read_status && EINTR == errno);
+        if (-1 == read_status) {
+            if (EAGAIN == errno) {
+                break;
+            }
+
+            return -1;
+        }
+
+        should_exit_out = true;
+    }
+
+    *should_exit = should_exit_out;
+    return 0;
+}
+
+static int handle_controller_messages(linted_controller controller,
+                                      struct sigevent * sigevent,
+                                      struct controller_state * controller_state)
+{
+    if (-1 == linted_controller_notify(controller, sigevent)) {
+        return -1;
+    }
+
+    for (;;) {
+        struct linted_controller_message message;
+
+        int read_status;
+        do {
+            read_status = linted_controller_receive(controller, &message);
+        } while (-1 == read_status && EINTR == errno);
+        if (-1 == read_status) {
+            if (EAGAIN == errno) {
+                break;
+            }
+
+            return -1;
+        }
+
+        switch (message.type) {
+        case LINTED_CONTROLLER_MOVEMENT:
+            switch (message.direction) {
+            case LINTED_CONTROLLER_LEFT:
+                controller_state->x_left = message.moving;
+                break;
+
+            case LINTED_CONTROLLER_RIGHT:
+                controller_state->x_right = message.moving;
+                break;
+
+            case LINTED_CONTROLLER_UP:
+                controller_state->y_up = message.moving;
+                break;
+
+            case LINTED_CONTROLLER_DOWN:
+                controller_state->y_down = message.moving;
+                break;
+            }
+            break;
+
+        default:
+            syslog(LOG_ERR,
+                   "Simulator received unexpected message type: %i",
+                   message.type);
+        }
+    }
+
+    return 0;
 }
 
 static void on_clock_tick(union sigval sigev_value)
