@@ -28,12 +28,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#define SHUTDOWN_EVENT ((uint8_t) 0)
-#define TICK_EVENT ((uint8_t) (SHUTDOWN_EVENT + 1))
-#define CONTROLLER_EVENT ((uint8_t) (TICK_EVENT + 1))
-
-struct message {
-    uint8_t event;
+enum event {
+    SHUTDOWN_EVENT,
+    TICK_EVENT,
+    CONTROLLER_EVENT
 };
 
 struct controller_notify_data {
@@ -94,7 +92,7 @@ int linted_simulator_run(linted_controller const controller,
     linted_unimq simulator;
     struct linted_unimq_attr attr = {
         .max_message_count = 1,
-        .message_size = sizeof(struct message)
+        .message_size = sizeof(enum event)
     };
     if (-1 == linted_unimq_init(&simulator, &attr)) {
         return -1;
@@ -172,12 +170,12 @@ int linted_simulator_run(linted_controller const controller,
     }
 
     for (;;) {
-        struct message sim_message;
-        if (-1 == linted_unimq_receive(simulator, &sim_message)) {
+        enum event event;
+        if (-1 == linted_unimq_receive(simulator, &event)) {
             goto restore_notify;
         }
 
-        switch (sim_message.event) {
+        switch (event) {
         case SHUTDOWN_EVENT:{
                 bool should_exit;
                 if (-1 == handle_shutdown_messages(shutdowner,
@@ -240,8 +238,7 @@ int linted_simulator_run(linted_controller const controller,
             break;
 
         default:
-            syslog(LOG_ERR, "Simulator received unexpected event: %u",
-                   sim_message.event);
+            syslog(LOG_ERR, "Simulator received unexpected event: %u", event);
         }
     }
 
@@ -385,8 +382,8 @@ static void on_clock_tick(union sigval sigev_value)
     struct timer_data *const timer_data = sigev_value.sival_ptr;
     linted_unimq const simulator = timer_data->simulator;
 
-    struct message message = {.event = TICK_EVENT };
-    if (-1 == linted_unimq_send(simulator, &message)) {
+    enum event event = TICK_EVENT;
+    if (-1 == linted_unimq_send(simulator, &event)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
@@ -397,8 +394,8 @@ static void on_controller_notification(union sigval sigval)
     struct controller_notify_data *notify_data = sigval.sival_ptr;
     linted_unimq const simulator = notify_data->simulator;
 
-    struct message message = {.event = CONTROLLER_EVENT };
-    if (-1 == linted_unimq_send(simulator, &message)) {
+    enum event event = CONTROLLER_EVENT;
+    if (-1 == linted_unimq_send(simulator, &event)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
@@ -409,8 +406,8 @@ static void on_shutdowner_notification(union sigval sigval)
     struct shutdowner_notify_data *notify_data = sigval.sival_ptr;
     linted_unimq const simulator = notify_data->simulator;
 
-    struct message message = {.event = SHUTDOWN_EVENT };
-    if (-1 == linted_unimq_send(simulator, &message)) {
+    enum event event = SHUTDOWN_EVENT;
+    if (-1 == linted_unimq_send(simulator, &event)) {
         LINTED_FATAL_ERROR(errno, "could not send simulator event: %s",
                            linted_error_string_alloc(errno));
     }
