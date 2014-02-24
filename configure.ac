@@ -112,6 +112,6 @@ AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])
 AM_CONDITIONAL([HAS_CPPCHECK], [test "x${CPPCHECK}" != "x"])
 dnl
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_FILES([Makefile Doxyfile])
+AC_CONFIG_FILES([Makefile])
 dnl
 AC_OUTPUT

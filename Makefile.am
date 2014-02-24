@@ -70,10 +70,18 @@ EXTRA_DIST=\
   check-cppcheck\
   check-clang-analyzer\
   check-cbmc\
-  indent
+  indent\
+  doxygen
 
 indent: $(linted_SOURCES) $(EXTRA_DIST)
 	$(INDENT) $(linted_INDENTFLAGS) $^
+
+doxygen:
+	sed \
+	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
+	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
+	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
+	  $(srcdir)/Doxyfile.in | doxygen -
 
 check-frama-c-pdg: $(verified_sources)
 	$(MKDIR_P) pdg
