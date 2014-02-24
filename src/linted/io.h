@@ -20,10 +20,16 @@
 #include <sys/types.h>
 
 /**
+ * @file
+ *
+ * Utility functions for working with file descriptors.
+ */
+
+/**
  * The read_all function repeatedly reads from fd until buf is full or
  * an error occurs (except for EINTR).
  *
- * The read may be succesful and read less than count if the end of
+ * The read may be successful and read less than count if the end of
  * file is reached.
  *
  * For example, a bit could be read and then fd could be closed and an
@@ -115,8 +121,27 @@ int linted_io_write_all(int fd, size_t * bytes_wrote,
                         void const *buf, size_t count);
 
 /**
- * NOT THREAD SAFE
- */
+ *
+ * The linted_io_close_fds_except function closes all file descriptors
+ * in the process except for those listed in fds.
+ *
+ * @warning This function is not thread safe.
+ *
+ * @par
+ *
+ * @warning On error, only some files may be closed.
+ *
+ * @param fds The files not to close.
+ *
+ * @returns Zero on success. -1 on error, and errno is set
+ *          appropriately.
+ *
+ * @error EMFILE Too many process file descriptors in use.
+ *
+ * @error ENFILE Too many system file descriptors in use.
+ *
+ * @error ENOMEM Insufficient memory.
+*/
 int linted_io_close_fds_except(fd_set const *fds);
 
 #endif                          /* LINTED_IO_H */
