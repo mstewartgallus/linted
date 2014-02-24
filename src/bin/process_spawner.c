@@ -63,8 +63,6 @@
  * Note that it makes sense for spawner forks to directly exit on
  * errors.
  *
- * TODO: Shutdown child processes on error
- *
  * TODO: Move away from Linux specifics such as prctl.
  */
 
