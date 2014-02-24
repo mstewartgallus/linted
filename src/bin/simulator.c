@@ -54,16 +54,28 @@ struct controller_state {
     int32_t y_down;
 };
 
+struct simulator_state {
+    int32_t x_position;
+    int32_t y_position;
+
+    int32_t x_velocity;
+    int32_t y_velocity;
+};
+
 static void on_controller_notification(union sigval sigval);
 static void on_shutdowner_notification(union sigval sigval);
 static void on_clock_tick(union sigval sigev_value);
+
+static int handle_tick(linted_updater updater,
+                       struct controller_state const * controller_state,
+                       struct simulator_state * simulator_state);
 
 static int handle_shutdown_messages(linted_shutdowner shutdowner,
                                     struct sigevent const * sigevent,
                                     bool * should_exit);
 
 static int handle_controller_messages(linted_controller controller,
-                                      struct sigevent * sigevent,
+                                      struct sigevent const * sigevent,
                                       struct controller_state * controller_state);
 
 static int32_t min(int32_t x, int32_t y);
@@ -83,11 +95,13 @@ int linted_simulator_run(linted_controller const controller,
         .y_down = 0
     };
 
-    int32_t x_position = 0;
-    int32_t y_position = 0;
+    struct simulator_state simulator_state = {
+        .x_position = 0,
+        .y_position = 0,
 
-    int32_t x_velocity = 0;
-    int32_t y_velocity = 0;
+        .x_velocity = 0,
+        .y_velocity = 0
+    };
 
     linted_unimq simulator;
     struct linted_unimq_attr attr = {
@@ -189,45 +203,12 @@ int linted_simulator_run(linted_controller const controller,
                 break;
             }
 
-        case TICK_EVENT:{
-                int32_t x_thrust = 2 * (controller_state.x_right - controller_state.x_left);
-                int32_t y_thrust = 2 * (controller_state.y_up - controller_state.y_down);
-
-                int32_t x_future_velocity = x_thrust + x_velocity;
-                int32_t y_future_velocity = y_thrust + y_velocity;
-
-                int32_t x_friction = min(imaxabs(x_future_velocity), 1)
-                    * sign(x_future_velocity);
-                int32_t y_friction = min(imaxabs(y_future_velocity), 1)
-                    * sign(y_future_velocity);
-
-                x_velocity += x_thrust + x_friction;
-                y_velocity += y_thrust + y_friction;
-
-                int32_t new_x_position = x_position + x_velocity;
-                int32_t new_y_position = y_position + y_velocity;
-
-                if (x_position != new_x_position
-                    || y_position != new_y_position) {
-                    x_position = new_x_position;
-                    y_position = new_y_position;
-
-                    struct linted_updater_update update = {
-                        .x_position = x_position,
-                        .y_position = y_position
-                    };
-
-                    int update_status;
-                    do {
-                        update_status = linted_updater_send_update(updater,
-                                                                   &update);
-                    } while (-1 == update_status && EINTR == errno);
-                    if (-1 == update_status) {
-                        goto restore_notify;
-                    }
-                }
-                break;
+        case TICK_EVENT:
+            if (-1 == handle_tick(updater, &controller_state,
+                                  &simulator_state)) {
+                goto restore_notify;
             }
+            break;
 
         case CONTROLLER_EVENT:
             if (-1 == handle_controller_messages(controller,
@@ -294,6 +275,57 @@ int linted_simulator_run(linted_controller const controller,
     return exit_status;
 }
 
+static int handle_tick(linted_updater updater,
+                       struct controller_state const * controller_state,
+                       struct simulator_state * simulator_state)
+{
+    int32_t x_position = simulator_state->x_position;
+    int32_t y_position = simulator_state->y_position;
+
+    int32_t x_velocity = simulator_state->x_velocity;
+    int32_t y_velocity = simulator_state->y_velocity;
+
+    int32_t x_thrust = 2 * (controller_state->x_right - controller_state->x_left);
+    int32_t y_thrust = 2 * (controller_state->y_up - controller_state->y_down);
+
+    int32_t guess_x_velocity = x_thrust + x_velocity;
+    int32_t guess_y_velocity = y_thrust + y_velocity;
+
+    int32_t x_friction = min(imaxabs(guess_x_velocity), 1)
+        * sign(guess_x_velocity);
+    int32_t y_friction = min(imaxabs(guess_y_velocity), 1)
+        * sign(guess_y_velocity);
+
+    int32_t new_x_velocity = x_velocity + x_thrust + x_friction;
+    int32_t new_y_velocity = y_velocity + y_thrust + y_friction;
+
+    int32_t new_x_position = x_position + new_x_velocity;
+    int32_t new_y_position = y_position + new_y_velocity;
+
+    if (x_position != new_x_position || y_position != new_y_position) {
+        struct linted_updater_update update = {
+            .x_position = new_x_position,
+            .y_position = new_y_position
+        };
+
+        int update_status;
+        do {
+            update_status = linted_updater_send_update(updater, &update);
+        } while (-1 == update_status && EINTR == errno);
+        if (-1 == update_status) {
+            return -1;
+        }
+    }
+
+    simulator_state->x_position = new_x_position;
+    simulator_state->y_position = new_y_position;
+
+    simulator_state->x_velocity = new_x_velocity;
+    simulator_state->y_velocity = new_y_velocity;
+
+    return 0;
+}
+
 static int handle_shutdown_messages(linted_shutdowner shutdowner,
                                     struct sigevent const * sigevent,
                                     bool * should_exit)
@@ -324,7 +356,7 @@ static int handle_shutdown_messages(linted_shutdowner shutdowner,
 }
 
 static int handle_controller_messages(linted_controller controller,
-                                      struct sigevent * sigevent,
+                                      struct sigevent const * sigevent,
                                       struct controller_state * controller_state)
 {
     if (-1 == linted_controller_notify(controller, sigevent)) {
