@@ -28,3 +28,5 @@ STRIP_FROM_PATH = "@srcdir@"
 EXCLUDE_SYMBOLS = *_
 
 SOURCE_BROWSER = YES
+
+ALIASES += error="\par Error:\n"

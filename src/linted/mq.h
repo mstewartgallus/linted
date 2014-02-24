@@ -19,16 +19,23 @@
 #include <mqueue.h>
 
 /**
+ * @file
+ * Utility functions for POSIX message queues.
+ */
+
+/**
  * The linted_mq_pair call creates an unnamed pair of message queues
- * with the specified attributes attr and flags oflag.
+ * with the specified attributes attr and flags rflags and wflags.
  *
- * @param mqd Returns two message queue descriptors. mqd[0] refers to
- *            the read end. mqd[1] refers to the write end.
+ * @param mqdes Returns two message queue descriptors. mqdes[0] refers
+ *              to the read end. mqdes[1] refers to the write end.
  *
- * @param oflaga Can be O_NONBLOCK to open the read end in nonblocking
+ * @param attr The attributes for the created message queue.
+ *
+ * @param rflags Can be O_NONBLOCK to open the read end in nonblocking
  *               mode.
  *
- * @param oflagb Can be O_NONBLOCK to open the write end in
+ * @param wflags Can be O_NONBLOCK to open the write end in
  *               nonblocking mode.
  *
  * @returns Zero on success. -1 on error, and errno is set
@@ -44,6 +51,6 @@
  *
  * @error ENOSPC Insufficient space.
  */
-int linted_mq_pair(mqd_t mqs[], struct mq_attr *attr, int oflaga, int oflagb);
+int linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags, int wflags);
 
 #endif                          /* LINTED_MQ_H */
