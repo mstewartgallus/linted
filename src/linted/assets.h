@@ -18,7 +18,9 @@
 
 #include "SDL_opengl.h"
 
-size_t const triangle_data_size;
-GLfloat const triangle_data[][2];
+size_t const linted_assets_triangle_data_size;
+
+typedef GLfloat linted_assets_point[2];
+linted_assets_point const * const linted_assets_triangle_data;
 
 #endif                          /* LINTED_ASSETS_H */

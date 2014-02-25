@@ -320,7 +320,7 @@ static void init_graphics(struct window_state const * window_state)
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, window_state->width, window_state->height);
 
-    glVertexPointer(2, GL_FLOAT, 0, triangle_data);
+    glVertexPointer(2, GL_FLOAT, 0, linted_assets_triangle_data);
 
     glMatrixMode(GL_MODELVIEW);
 }
@@ -340,7 +340,7 @@ static void render_graphics(struct gui_state const * gui_state)
      */
     glLoadMatrixf(modelview_matrix);
 
-    glDrawArrays(GL_TRIANGLES, 0, triangle_data_size);
+    glDrawArrays(GL_TRIANGLES, 0, linted_assets_triangle_data_size);
 
     for (;;) {
         GLenum error = glGetError();
