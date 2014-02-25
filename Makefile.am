@@ -19,6 +19,7 @@ ACLOCAL_AMFLAGS=-I m4
 bin_PROGRAMS=linted
 
 linted_SOURCES=\
+  src/bin/assets.c\
   src/bin/controller.c\
   src/bin/gui.c\
   src/bin/io.c\
@@ -50,6 +51,7 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
 
 EXTRA_DIST=\
+  src/linted/assets.h\
   src/linted/controller.h\
   src/linted/gui.h\
   src/linted/io.h\
@@ -63,7 +65,22 @@ EXTRA_DIST=\
   src/linted/syslog.h\
   src/linted/unimq.h\
   src/linted/util.h\
-  src/linted/updater.h
+  src/linted/updater.h\
+  \
+  src/assets/assets.py\
+  \
+  src/assets_generator/linted_assets_generator\
+  src/assets_generator/linted_assets_generator.py
+
+MOSTLYCLEANFILES = src/bin/assets.c
+src/bin/assets.c:\
+  src/assets/assets.py\
+  \
+  src/assets_generator/linted_assets_generator\
+  src/assets_generator/linted_assets_generator.py
+	$(srcdir)/src/assets_generator/linted_assets_generator\
+	  $(srcdir)/src/assets/assets.py\
+	  --output=$@
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\

@@ -15,6 +15,7 @@
  */
 #include "config.h"
 
+#include "linted/assets.h"
 #include "linted/gui.h"
 #include "linted/mq.h"
 #include "linted/util.h"
@@ -50,12 +51,6 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_GREEN_SIZE, 0},
     {SDL_GL_ACCUM_BLUE_SIZE, 0},
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
-};
-
-static GLfloat const triangle_data[][2] = {
-    {-0.4f, -0.4f},
-    {0.4f, -0.4f},
-    {0.0f, 0.4f}
 };
 
 enum transition {
@@ -345,7 +340,7 @@ static void render_graphics(struct gui_state const * gui_state)
      */
     glLoadMatrixf(modelview_matrix);
 
-    glDrawArrays(GL_TRIANGLES, 0, LINTED_ARRAY_SIZE(triangle_data));
+    glDrawArrays(GL_TRIANGLES, 0, triangle_data_size);
 
     for (;;) {
         GLenum error = glGetError();
