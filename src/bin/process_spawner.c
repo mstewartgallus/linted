@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* Access pipe2 */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/spawner.h"
@@ -22,6 +25,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -90,7 +94,7 @@ int linted_process_spawner_run(linted_spawner inbox,
      * Unfortunately, a pipe is needed to do the select business.
      */
     int waiter_pipes[2];
-    if (-1 == pipe(waiter_pipes)) {
+    if (-1 == pipe2(waiter_pipes, O_CLOEXEC)) {
         return -1;
     }
 
