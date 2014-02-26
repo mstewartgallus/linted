@@ -97,9 +97,13 @@ int linted_io_close_fds_except(fd_set const *fds)
         return -1;
     }
 
-    struct dirent *const entry = malloc(offsetof(struct dirent, d_name)
-                                        + fpathconf(dirfd(fds_dir),
-                                                    _PC_NAME_MAX) + 1);
+    long const name_max = fpathconf(dirfd(fds_dir), _PC_NAME_MAX);
+    if (-1 == name_max) {
+        LINTED_IMPOSSIBLE_ERROR("could not find the maximum name length of a subdirectory: %s",
+                                linted_error_string_alloc(errno));
+    }
+
+    struct dirent *const entry = malloc(offsetof(struct dirent, d_name) + name_max + 1);
     if (NULL == entry) {
         goto close_fds_dir;
     }
