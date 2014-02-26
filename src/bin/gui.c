@@ -340,7 +340,9 @@ static void render_graphics(struct gui_state const * gui_state)
      */
     glLoadMatrixf(modelview_matrix);
 
-    glDrawArrays(GL_TRIANGLES, 0, linted_assets_triangle_data_size);
+    glDrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
+                   GL_UNSIGNED_INT,
+                   linted_assets_triangle_indices);
 
     for (;;) {
         GLenum error = glGetError();
