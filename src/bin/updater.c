@@ -33,7 +33,7 @@ int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 1;
+    attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(message_type);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);

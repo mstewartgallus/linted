@@ -32,7 +32,7 @@ int linted_controller_pair(linted_controller controller[2],
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 1;
+    attr.mq_maxmsg = 10;
     attr.mq_msgsize = sizeof(message_type);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
