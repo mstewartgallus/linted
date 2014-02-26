@@ -11,10 +11,14 @@ Linted -- TODO
 assert has problems with not evaluating arguments.
 * Manage child process error streams and syslog logs
 * Fix simulator use after free race on message queue
+* Make a hang check timer
+This timer will periodically make sure tasks are reaching their
+deadlines by sending a message to every message queue and seeing if
+the owner of the queue responds within appropriate deadlines. It will
+then kill and restart the process if it is not responding.
 * Make unimq respect EINTR
 Currently it uses condition variables which don't work well with
 it. POSIX semaphores do however respect EINTR.
-* Avoid deadlock where process blocks on sending message to shutdown process
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening
