@@ -34,7 +34,7 @@ int linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 10;
+    attr.mq_maxmsg = 1;
     attr.mq_msgsize = 1;
 
     return linted_mq_pair(shutdowner, &attr, rflags, wflags);
