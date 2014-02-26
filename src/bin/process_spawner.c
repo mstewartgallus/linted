@@ -286,8 +286,7 @@ int linted_process_spawner_run(linted_spawner inbox,
     if (exit_status != 0) {
         int errnum = errno;
 
-        int kill_status = kill(-process_group, SIGHUP);
-        if (-1 == kill_status) {
+        if (-1 == kill(-process_group, SIGHUP)) {
             assert(errno != EINVAL);
             assert(ESRCH == errno || EPERM == errno);
         }
