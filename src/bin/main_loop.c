@@ -54,7 +54,7 @@ int linted_main_loop_run(linted_spawner spawner)
     linted_syslog_open();
 
     if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
-        goto cleanup_spawner;
+        return -1;
     }
 
     updater_read = updater_mqs[0];
@@ -162,18 +162,6 @@ int linted_main_loop_run(linted_spawner spawner)
     {
         int errnum = errno;
         int close_status = linted_updater_close(updater_write);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
-
- cleanup_spawner:
-    {
-        int errnum = errno;
-        int close_status = linted_spawner_close(spawner);
         if (-1 == exit_status) {
             errno = errnum;
         }

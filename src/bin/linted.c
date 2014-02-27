@@ -28,6 +28,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #if defined(__linux__)
@@ -54,7 +55,6 @@ extern char **environ;
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
-static int main_loop_wrapper(int const fildes[]);
 static void close_in_out(void);
 
 static int run_game(void);
@@ -178,24 +178,36 @@ static int run_game(void)
         return -1;
     }
 
-    /* Fork off tasks from a known good state */
-    int preserved[] = { STDERR_FILENO };
-    int main_loop_fildes[] = { spawners[1] };
-    if (-1 == linted_process_spawner_run(spawners[0],
-                                         preserved,
-                                         LINTED_ARRAY_SIZE(preserved),
-                                         main_loop_wrapper,
-                                         main_loop_fildes,
-                                         LINTED_ARRAY_SIZE(main_loop_fildes))) {
-        goto close_spawners;
+    pid_t spawner = fork();
+    if (-1 == spawner) {
+        goto close_spawner_handles;
+    }
+
+    if (0 == spawner) {
+        close(spawners[1]);
+
+        /* Fork off tasks from a known good state */
+        int preserved[] = { STDERR_FILENO };
+        int spawner_status = linted_process_spawner_run(spawners[0],
+                                                        preserved,
+                                                        LINTED_ARRAY_SIZE(preserved));
+
+        if (-1 == spawner_status) {
+            exit(errno);
+        }
+        exit(0);
+    }
+
+    if (-1 == linted_main_loop_run(spawners[1])) {
+        goto close_spawner_handles;
     }
 
     exit_status = 0;
 
- close_spawners:
+ close_spawner_handles:
     {
         int errnum = errno;
-        int close_status = linted_spawner_close(spawners[0]);
+        int close_status = close(spawners[0]);
         if (-1 == exit_status) {
             errno = errnum;
         }
@@ -206,21 +218,20 @@ static int run_game(void)
 
     {
         int errnum = errno;
-        int close_status = linted_spawner_close(spawners[1]);
+        int close_status = close(spawners[1]);
         if (-1 == exit_status) {
             errno = errnum;
         }
         if (-1 == close_status) {
             exit_status = -1;
         }
+    }
+
+    if (exit_status != -1) {
+        waitpid(spawner, NULL, 0);
     }
 
     return exit_status;
-}
-
-static int main_loop_wrapper(int const fds[])
-{
-    return linted_main_loop_run(fds[0]);
 }
 
 static void close_in_out(void)

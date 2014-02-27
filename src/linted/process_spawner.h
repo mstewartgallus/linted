@@ -32,8 +32,6 @@
  */
 int linted_process_spawner_run(linted_spawner spawner,
                                int const preserved_fildes[],
-                               size_t preserved_fildes_size,
-                               linted_spawner_task main_loop,
-                               int const fildes[], size_t fildes_size);
+                               size_t preserved_fildes_size);
 
 #endif                          /* LINTED_PROCESS_SPAWNER_H */
