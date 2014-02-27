@@ -22,7 +22,6 @@
 #include "linted/shutdowner.h"
 #include "linted/simulator.h"
 #include "linted/spawner.h"
-#include "linted/syslog.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -31,8 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int gui_run(int const inboxes[]);
-static int simulator_run(int const inboxes[]);
+static int gui_run(void * context, int const inboxes[]);
+static int simulator_run(void * context, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner spawner)
 {
@@ -50,8 +49,6 @@ int linted_main_loop_run(linted_spawner spawner)
 
     linted_shutdowner simulator_shutdowner_read;
     linted_shutdowner simulator_shutdowner_write;
-
-    linted_syslog_open();
 
     if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
         return -1;
@@ -173,15 +170,13 @@ int linted_main_loop_run(linted_spawner spawner)
     return exit_status;
 }
 
-static int simulator_run(int const inboxes[])
+static int simulator_run(void * context, int const inboxes[])
 {
     int exit_status = -1;
 
     linted_controller controller = inboxes[0];
     linted_shutdowner shutdowner = inboxes[1];
     linted_updater updater = inboxes[2];
-
-    linted_syslog_open();
 
     if (-1 == linted_simulator_run(controller, shutdowner, updater)) {
         goto cleanup;
@@ -226,15 +221,13 @@ static int simulator_run(int const inboxes[])
     return exit_status;
 }
 
-static int gui_run(int const inboxes[])
+static int gui_run(void * context, int const inboxes[])
 {
     int exit_status = -1;
 
     linted_updater updater = inboxes[0];
     linted_shutdowner shutdowner = inboxes[1];
     linted_controller controller = inboxes[2];
-
-    linted_syslog_open();
 
     if (-1 == linted_gui_run(updater, shutdowner, controller)) {
         goto cleanup;

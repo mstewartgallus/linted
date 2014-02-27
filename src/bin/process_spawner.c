@@ -76,12 +76,9 @@ struct waiter_arguments {
     int waiter_pipe;
 };
 
-static void exec_task(linted_spawner_task task, int const fildes[]);
 static void handle_child_info(siginfo_t * child_info);
 
-int linted_process_spawner_run(linted_spawner inbox,
-                               int const preserved_fildes[],
-                               size_t preserved_fildes_size)
+int linted_process_spawner_run(linted_spawner inbox, void * context)
 {
     int exit_status = -1;
 
@@ -181,6 +178,8 @@ int linted_process_spawner_run(linted_spawner inbox,
             switch (child) {
             case 0:
             {
+                pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+
                 if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
                     exit(errno);
                 }
@@ -189,16 +188,12 @@ int linted_process_spawner_run(linted_spawner inbox,
                     exit(errno);
                 }
 
-                fd_set fds_not_to_close;
-                FD_ZERO(&fds_not_to_close);
 
-                for (size_t ii = 0; ii < preserved_fildes_size; ++ii) {
-                    FD_SET(preserved_fildes[ii], &fds_not_to_close);
+                if (-1 == close(sfd)) {
+                    exit(errno);
                 }
 
-                FD_SET(connection, &fds_not_to_close);
-
-                if (-1 == linted_io_close_fds_except(&fds_not_to_close)) {
+                if (-1 == close(inbox)) {
                     exit(errno);
                 }
 
@@ -208,7 +203,11 @@ int linted_process_spawner_run(linted_spawner inbox,
                     exit(errno);
                 }
 
-                exec_task(request.task, request.fildes);
+                if (-1 == request.task(context, request.fildes)) {
+                    exit(errno);
+                }
+
+                exit(0);
             }
 
             case -1:
@@ -330,11 +329,4 @@ static void handle_child_info(siginfo_t * child_info) {
                 (uintmax_t) child);
         break;
     }
-}
-
-static void exec_task(linted_spawner_task task, int const fildes[])
-{
-    task(fildes);
-
-    exit(EXIT_SUCCESS);
 }

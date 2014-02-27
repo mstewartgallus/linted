@@ -114,14 +114,8 @@ int main(int argc, char **argv)
     case 1:{
             close_in_out();
 
-            /* Close the the logger so it isn't shared */
-            closelog();
-
             int game_status = run_game();
             int errnum = errno;
-
-            /* Open the logger again */
-            linted_syslog_open();
 
             if (-1 == game_status) {
                 char const *error_string = linted_error_string_alloc(errnum);
@@ -187,10 +181,7 @@ static int run_game(void)
         close(spawners[1]);
 
         /* Fork off tasks from a known good state */
-        int preserved[] = { STDERR_FILENO };
-        int spawner_status = linted_process_spawner_run(spawners[0],
-                                                        preserved,
-                                                        LINTED_ARRAY_SIZE(preserved));
+        int spawner_status = linted_process_spawner_run(spawners[0], NULL);
 
         if (-1 == spawner_status) {
             exit(errno);

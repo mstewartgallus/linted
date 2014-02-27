@@ -30,8 +30,6 @@
  *
  * @returns -1 on error and a value in errno.
  */
-int linted_process_spawner_run(linted_spawner spawner,
-                               int const preserved_fildes[],
-                               size_t preserved_fildes_size);
+int linted_process_spawner_run(linted_spawner spawner, void * context);
 
 #endif                          /* LINTED_PROCESS_SPAWNER_H */

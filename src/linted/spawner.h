@@ -32,7 +32,7 @@ typedef int linted_spawner_future;
  * A spawner task exits succesfully with 0 or unsuccessfully with -1
  * and an error value in errno.
  */
-typedef int (*linted_spawner_task) (int const fildes[]);
+typedef int (*linted_spawner_task) (void * context, int const fildes[]);
 
 struct linted_spawner_request {
     int fildes[LINTED_SPAWNER_MAX_FILDES_COUNT];
