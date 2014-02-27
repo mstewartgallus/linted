@@ -62,9 +62,6 @@
  * A prctl call is used so that the child knows about the parents
  * death.
  *
- * Note that code running under the spawner or the spawner forks must
- * be able to run without the system logger active.
- *
  * Note that it makes sense for spawner forks to directly exit on
  * errors.
  *
@@ -122,8 +119,10 @@ int linted_process_spawner_run(linted_spawner inbox, void * context)
         if (FD_ISSET(sfd, &watched_fds)) {
             pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
             /*
-             * Don't actually consume the signals just let them be
-             * consumed if they should be.
+             * Don't directly consume the signals but let them be
+             * consumed if they should be. If the current thread was
+             * blocking SIGCHLD in the beginning it'll still be
+             * blocking here.
              */
             pthread_sigmask(SIG_BLOCK, &sigchld_sigset, NULL);
 
