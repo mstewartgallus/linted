@@ -24,30 +24,23 @@
  */
 typedef mqd_t linted_controller;
 
-enum linted_controller_direction {
+enum linted_controller_key {
     LINTED_CONTROLLER_UP,
     LINTED_CONTROLLER_DOWN,
     LINTED_CONTROLLER_LEFT,
     LINTED_CONTROLLER_RIGHT
 };
 
-enum linted_controller_message_type {
-    LINTED_CONTROLLER_MOVEMENT
-};
-
 struct linted_controller_message {
-    enum linted_controller_message_type type;
-    enum linted_controller_direction direction;
-    bool moving;
+    bool keys[4];
 };
 
 int linted_controller_pair(linted_controller controller[2],
                            int readflags, int writeflags);
 int linted_controller_close(linted_controller controller);
 
-int linted_controller_send_movement(linted_controller controller,
-                                    enum linted_controller_direction direction,
-                                    bool moving);
+int linted_controller_send(linted_controller controller,
+                           struct linted_controller_message const *message);
 
 int linted_controller_notify(linted_controller controller,
                              struct sigevent const *sevp);

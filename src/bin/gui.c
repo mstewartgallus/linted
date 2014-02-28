@@ -86,6 +86,8 @@ enum transition {
 struct window_state {
     unsigned width;
     unsigned height;
+
+    struct linted_controller_message controller_state;
 };
 
 struct gui_state {
@@ -108,7 +110,11 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {
         .width = 640,
-        .height = 800
+        .height = 800,
+
+        .controller_state = {
+            .keys = { false, false, false, false }
+        }
     };
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
@@ -313,29 +319,31 @@ static int on_sdl_event(SDL_Event const *sdl_event,
         goto on_key_down;
     }
 
-    enum linted_controller_direction direction;
+    enum linted_controller_key key;
 
  on_key_left:
-    direction = LINTED_CONTROLLER_LEFT;
+    key = LINTED_CONTROLLER_LEFT;
     goto update_controller;
 
  on_key_right:
-    direction = LINTED_CONTROLLER_RIGHT;
+    key = LINTED_CONTROLLER_RIGHT;
     goto update_controller;
 
  on_key_up:
-    direction = LINTED_CONTROLLER_UP;
+    key = LINTED_CONTROLLER_UP;
     goto update_controller;
 
  on_key_down:
-    direction = LINTED_CONTROLLER_DOWN;
+    key = LINTED_CONTROLLER_DOWN;
     goto update_controller;
 
  update_controller:;
+    window_state->controller_state.keys[key] = is_key_down;
+
     int send_status;
     do {
-        send_status = linted_controller_send_movement(controller, direction,
-                                                      is_key_down);
+        send_status = linted_controller_send(controller,
+                                             &window_state->controller_state);
     } while (-1 == send_status && EINTR == errno);
     if (-1 == send_status) {
         return -1;

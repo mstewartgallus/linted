@@ -315,32 +315,10 @@ static int handle_controller_messages(linted_controller controller,
             return -1;
         }
 
-        switch (message.type) {
-        case LINTED_CONTROLLER_MOVEMENT:
-            switch (message.direction) {
-            case LINTED_CONTROLLER_LEFT:
-                controller_state->x_left = message.moving;
-                break;
-
-            case LINTED_CONTROLLER_RIGHT:
-                controller_state->x_right = message.moving;
-                break;
-
-            case LINTED_CONTROLLER_UP:
-                controller_state->y_up = message.moving;
-                break;
-
-            case LINTED_CONTROLLER_DOWN:
-                controller_state->y_down = message.moving;
-                break;
-            }
-            break;
-
-        default:
-            syslog(LOG_ERR,
-                   "Simulator received unexpected message type: %i",
-                   message.type);
-        }
+        controller_state->x_left = message.keys[LINTED_CONTROLLER_LEFT];
+        controller_state->x_right = message.keys[LINTED_CONTROLLER_RIGHT];
+        controller_state->y_up = message.keys[LINTED_CONTROLLER_UP];
+        controller_state->y_down = message.keys[LINTED_CONTROLLER_DOWN];
     }
 
     return 0;

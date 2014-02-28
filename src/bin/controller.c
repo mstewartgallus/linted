@@ -22,9 +22,7 @@
 
 #include <string.h>
 
-typedef char message_type[sizeof(uint8_t)
-                          + sizeof(uint8_t)
-                          + sizeof(uint8_t)];
+/* TODO: Don't leak information from structure padding */
 
 int linted_controller_pair(linted_controller controller[2],
                            int readflags, int writeflags)
@@ -33,32 +31,15 @@ int linted_controller_pair(linted_controller controller[2],
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = sizeof(message_type);
+    attr.mq_msgsize = sizeof(struct linted_controller_message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-int linted_controller_send_movement(linted_controller controller,
-                                    enum linted_controller_direction direction,
-                                    bool moving)
+int linted_controller_send(linted_controller controller,
+                           struct linted_controller_message const *message)
 {
-    message_type message;
-
-    uint8_t raw_type = LINTED_CONTROLLER_MOVEMENT;
-    uint8_t raw_direction = direction;
-    uint8_t raw_moving = moving;
-
-    char *tip = message;
-
-    memcpy(tip, &raw_type, sizeof raw_type);
-    tip += sizeof raw_type;
-
-    memcpy(tip, &raw_direction, sizeof raw_direction);
-    tip += sizeof raw_direction;
-
-    memcpy(tip, &raw_moving, sizeof raw_moving);
-
-    return mq_send(controller, message, sizeof message, 0);
+    return mq_send(controller, (char const *) message, sizeof *message, 0);
 }
 
 int linted_controller_close(linted_controller const controller)
@@ -69,36 +50,7 @@ int linted_controller_close(linted_controller const controller)
 int linted_controller_receive(linted_controller queue,
                               struct linted_controller_message *message)
 {
-    /*
-     * TODO: Return an error if we receive incorrectly formatted
-     * data
-     */
-    message_type raw_message;
-
-    int receive_status = mq_receive(queue, raw_message, sizeof raw_message,
-                                    NULL);
-
-    if (receive_status != -1) {
-        uint8_t raw_type;
-        uint8_t raw_direction;
-        uint8_t raw_moving;
-
-        char *tip = raw_message;
-
-        memcpy(&raw_type, tip, sizeof raw_type);
-        tip += sizeof raw_type;
-
-        memcpy(&raw_direction, tip, sizeof raw_direction);
-        tip += sizeof raw_direction;
-
-        memcpy(&raw_moving, tip, sizeof raw_moving);
-
-        message->type = raw_type;
-        message->direction = raw_direction;
-        message->moving = raw_moving;
-    }
-
-    return receive_status;
+    return mq_receive(queue, (char*) message, sizeof *message, NULL);
 }
 
 int linted_controller_notify(linted_controller controller,
