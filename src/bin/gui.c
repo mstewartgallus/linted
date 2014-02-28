@@ -53,6 +53,30 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_ALPHA_SIZE, 0}
 };
 
+static Uint8 const default_events[] = {
+    SDL_ACTIVEEVENT,
+    SDL_KEYDOWN, SDL_KEYUP,
+    SDL_MOUSEMOTION,
+    SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
+    SDL_JOYAXISMOTION, SDL_JOYBALLMOTION,
+    SDL_JOYHATMOTION,
+    SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP,
+    SDL_QUIT,
+    SDL_SYSWMEVENT,
+    SDL_VIDEORESIZE,
+    SDL_VIDEOEXPOSE,
+    SDL_USEREVENT
+};
+
+static Uint8 const enabled_events[] = {
+    SDL_VIDEORESIZE,
+
+    SDL_KEYDOWN,
+    SDL_KEYUP,
+
+    SDL_QUIT
+};
+
 enum transition {
     SHOULD_EXIT,
     SHOULD_RESIZE,
@@ -93,6 +117,14 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
         errno = errnum;
         goto shutdown;
+    }
+
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(default_events); ++ii) {
+        SDL_EventState(default_events[ii], SDL_IGNORE);
+    }
+
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(enabled_events); ++ii) {
+        SDL_EventState(enabled_events[ii], SDL_ENABLE);
     }
 
     SDL_WM_SetCaption(PACKAGE_NAME, NULL);
