@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+#define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
+
 #define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
 
 /**

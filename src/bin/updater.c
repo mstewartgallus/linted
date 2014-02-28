@@ -22,11 +22,11 @@
 #include <stddef.h>
 #include <string.h>
 
-#define SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
+#define MESSAGE_SIZE                                            \
+    (LINTED_SIZEOF_MEMBER(struct linted_updater_update, x_position) \
+     + LINTED_SIZEOF_MEMBER(struct linted_updater_update, y_position))
 
-typedef char
- message_type[SIZEOF_MEMBER(struct linted_updater_update, x_position)
-              + SIZEOF_MEMBER(struct linted_updater_update, y_position)];
+typedef char message_type[MESSAGE_SIZE];
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
@@ -58,7 +58,6 @@ int linted_updater_receive_update(linted_updater updater,
 {
     message_type message;
     int receive_status = mq_receive(updater, message, sizeof message, NULL);
-
     if (receive_status != -1) {
         char *tip = message;
 
@@ -67,7 +66,6 @@ int linted_updater_receive_update(linted_updater updater,
 
         memcpy(&update->y_position, tip, sizeof update->y_position);
     }
-
     return receive_status;
 }
 

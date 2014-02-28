@@ -22,7 +22,10 @@
 
 #include <string.h>
 
-/* TODO: Don't leak information from structure padding */
+#define MESSAGE_SIZE                                            \
+    LINTED_SIZEOF_MEMBER(struct linted_controller_message, keys)
+
+typedef char message_type[MESSAGE_SIZE];
 
 int linted_controller_pair(linted_controller controller[2],
                            int readflags, int writeflags)
@@ -31,7 +34,7 @@ int linted_controller_pair(linted_controller controller[2],
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = sizeof(struct linted_controller_message);
+    attr.mq_msgsize = sizeof(message_type);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
@@ -39,7 +42,12 @@ int linted_controller_pair(linted_controller controller[2],
 int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message)
 {
-    return mq_send(controller, (char const *) message, sizeof *message, 0);
+    message_type raw_message;
+    char *tip = raw_message;
+
+    memcpy(tip, &message->keys, sizeof message->keys);
+
+    return mq_send(controller, raw_message, sizeof raw_message, 0);
 }
 
 int linted_controller_close(linted_controller const controller)
@@ -50,7 +58,16 @@ int linted_controller_close(linted_controller const controller)
 int linted_controller_receive(linted_controller queue,
                               struct linted_controller_message *message)
 {
-    return mq_receive(queue, (char*) message, sizeof *message, NULL);
+    message_type raw_message;
+    int receive_status = mq_receive(queue, raw_message, sizeof raw_message,
+                                    NULL);
+    if (receive_status != -1) {
+        char *tip = raw_message;
+
+        memcpy(&message->keys, tip, sizeof message->keys);
+    }
+
+    return receive_status;
 }
 
 int linted_controller_notify(linted_controller controller,
