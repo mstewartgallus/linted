@@ -50,7 +50,7 @@ int linted_main_loop_run(linted_spawner spawner)
     linted_shutdowner simulator_shutdowner_read;
     linted_shutdowner simulator_shutdowner_write;
 
-    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, 0)) {
+    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, O_NONBLOCK)) {
         return -1;
     }
 

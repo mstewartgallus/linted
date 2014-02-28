@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
@@ -38,6 +39,8 @@ struct controller_state {
 };
 
 struct simulator_state {
+    bool update_pending;
+
     int32_t x_position;
     int32_t y_position;
 
@@ -45,15 +48,17 @@ struct simulator_state {
     int32_t y_velocity;
 };
 
-static int handle_tick(linted_updater updater,
-                       struct controller_state const *controller_state,
+static int handle_tick(struct controller_state const *controller_state,
                        struct simulator_state *simulator_state);
+
+static int handle_pending_update(linted_updater updater,
+                                 struct simulator_state * simulator_state);
 
 static int handle_shutdown_messages(linted_shutdowner shutdowner,
                                     bool * should_exit);
 
-static int handle_controller_messages(linted_controller controller, struct controller_state
-                                      *controller_state);
+static int handle_controller_messages(linted_controller controller,
+                                      struct controller_state *controller_state);
 
 static int32_t min(int32_t x, int32_t y);
 static int32_t sign(int32_t x);
@@ -73,6 +78,8 @@ int linted_simulator_run(linted_controller const controller,
     };
 
     struct simulator_state simulator_state = {
+        .update_pending = false,
+
         .x_position = 0,
         .y_position = 0,
 
@@ -103,31 +110,49 @@ int linted_simulator_run(linted_controller const controller,
     }
 
     for (;;) {
-        int fds[] = { controller, shutdowner, timer };
+        int read_fds[] = { controller, shutdowner, timer };
+        int write_fds[] = { updater };
         int greatest = -1;
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(fds); ++ii) {
-            if (greatest < fds[ii]) {
-                greatest = fds[ii];
+
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+            if (greatest < read_fds[ii]) {
+                greatest = read_fds[ii];
             }
         }
 
-        fd_set watched_fds;
+        if (simulator_state.update_pending) {
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                if (greatest < write_fds[ii]) {
+                    greatest = write_fds[ii];
+                }
+            }
+        }
+
+        fd_set watched_read_fds;
+        fd_set watched_write_fds;
         int select_status;
 
         do {
-            FD_ZERO(&watched_fds);
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(fds); ++ii) {
-                FD_SET(fds[ii], &watched_fds);
+            FD_ZERO(&watched_read_fds);
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+                FD_SET(read_fds[ii], &watched_read_fds);
             }
 
-            select_status = select(greatest + 1, &watched_fds,
-                                   NULL, NULL, NULL);
+            FD_ZERO(&watched_write_fds);
+            if (simulator_state.update_pending) {
+                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                    FD_SET(write_fds[ii], &watched_write_fds);
+                }
+            }
+
+            select_status = select(greatest + 1, &watched_read_fds,
+                                   &watched_write_fds, NULL, NULL);
         } while (-1 == select_status && EINTR == errno);
         if (-1 == select_status) {
             goto close_timer;
         }
 
-        if (FD_ISSET(shutdowner, &watched_fds)) {
+        if (FD_ISSET(shutdowner, &watched_read_fds)) {
             bool should_exit;
             if (-1 == handle_shutdown_messages(shutdowner, &should_exit)) {
                 goto close_timer;
@@ -137,23 +162,30 @@ int linted_simulator_run(linted_controller const controller,
             }
         }
 
-        if (FD_ISSET(timer, &watched_fds)) {
+        if (FD_ISSET(timer, &watched_read_fds)) {
             uint64_t ticks;
             if (-1 == read(timer, &ticks, sizeof ticks)) {
                 goto close_timer;
             }
 
             for (size_t ii = 0; ii < ticks; ++ii) {
-                if (-1 == handle_tick(updater, &controller_state,
-                                      &simulator_state)) {
+                if (-1 == handle_tick(&controller_state, &simulator_state)) {
                     goto close_timer;
                 }
             }
         }
 
-        if (FD_ISSET(controller, &watched_fds)) {
+        if (FD_ISSET(controller, &watched_read_fds)) {
             if (-1 == handle_controller_messages(controller, &controller_state)) {
                 goto close_timer;
+            }
+        }
+
+        if (simulator_state.update_pending) {
+            if (FD_ISSET(updater, &watched_write_fds)) {
+                if (-1 == handle_pending_update(updater, &simulator_state)) {
+                    goto close_timer;
+                }
             }
         }
     }
@@ -176,8 +208,7 @@ int linted_simulator_run(linted_controller const controller,
     return exit_status;
 }
 
-static int handle_tick(linted_updater updater,
-                       struct controller_state const *controller_state,
+static int handle_tick(struct controller_state const *controller_state,
                        struct simulator_state *simulator_state)
 {
     int32_t x_position = simulator_state->x_position;
@@ -205,18 +236,7 @@ static int handle_tick(linted_updater updater,
     int32_t new_y_position = y_position + new_y_velocity;
 
     if (x_position != new_x_position || y_position != new_y_position) {
-        struct linted_updater_update update = {
-            .x_position = new_x_position,
-            .y_position = new_y_position
-        };
-
-        int update_status;
-        do {
-            update_status = linted_updater_send_update(updater, &update);
-        } while (-1 == update_status && EINTR == errno);
-        if (-1 == update_status) {
-            return -1;
-        }
+        simulator_state->update_pending = true;
     }
 
     simulator_state->x_position = new_x_position;
@@ -224,6 +244,31 @@ static int handle_tick(linted_updater updater,
 
     simulator_state->x_velocity = new_x_velocity;
     simulator_state->y_velocity = new_y_velocity;
+
+    return 0;
+}
+
+static int handle_pending_update(linted_updater updater,
+                                 struct simulator_state * simulator_state)
+{
+    struct linted_updater_update update = {
+        .x_position = simulator_state->x_position,
+        .y_position = simulator_state->y_position
+    };
+
+    int update_status;
+    do {
+        update_status = linted_updater_send_update(updater, &update);
+    } while (-1 == update_status && EINTR == errno);
+    if (-1 == update_status) {
+        if (EAGAIN == errno) {
+            return 0;
+        }
+
+        return -1;
+    }
+
+    simulator_state->update_pending = false;
 
     return 0;
 }
