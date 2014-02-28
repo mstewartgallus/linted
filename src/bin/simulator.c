@@ -197,8 +197,8 @@ int linted_simulator_run(linted_controller const controller,
     {
         int errnum = errno;
         if (-1 == close(timer)) {
-            LINTED_FATAL_ERROR(errno, "could not close created timer: %s",
-                               linted_error_string_alloc(errno));
+            LINTED_IMPOSSIBLE_ERROR("could not close created timer: %s",
+                                    linted_error_string_alloc(errno));
         }
         errno = errnum;
     }
