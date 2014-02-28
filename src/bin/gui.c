@@ -88,7 +88,9 @@ struct window_state {
     unsigned height;
 
     struct linted_controller_message controller_state;
+    bool controller_update_pending;
 };
+
 
 struct gui_state {
     float x;
@@ -114,7 +116,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
         .controller_state = {
             .keys = { false, false, false, false }
-        }
+        },
+        .controller_update_pending = false
     };
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
@@ -180,6 +183,9 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
     bool should_resize = false;
     for (;;) {
+        bool had_gui_command = false;
+        bool updated_controller = false;
+
         /* Handle SDL events first before rendering */
         SDL_Event sdl_event;
         bool const had_sdl_event = SDL_PollEvent(&sdl_event);
@@ -202,8 +208,6 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 break;
             }
         }
-
-        bool had_gui_command = false;
 
         {
             struct linted_updater_update update;
@@ -228,8 +232,26 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
  skip_update:;
         }
 
+        if (window_state.controller_update_pending) {
+            int send_status;
+            do {
+                send_status = linted_controller_send(controller,
+                                                     &window_state.controller_state);
+            } while (-1 == send_status && EINTR == errno);
+            if (-1 == send_status) {
+                if (EAGAIN == errno) {
+                    goto done_with_updating;
+                }
+
+                goto cleanup_SDL;
+            }
+
+            window_state.controller_update_pending = false;
+        done_with_updating:;
+        }
+
         /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_gui_command) {
+        if (!had_sdl_event && !had_gui_command && !updated_controller) {
             if (should_resize) {
                 goto setup_window;
             }
@@ -339,15 +361,7 @@ static int on_sdl_event(SDL_Event const *sdl_event,
 
  update_controller:;
     window_state->controller_state.keys[key] = is_key_down;
-
-    int send_status;
-    do {
-        send_status = linted_controller_send(controller,
-                                             &window_state->controller_state);
-    } while (-1 == send_status && EINTR == errno);
-    if (-1 == send_status) {
-        return -1;
-    }
+    window_state->controller_update_pending = true;
 
     *transition = DO_NOTHING;
     return 0;

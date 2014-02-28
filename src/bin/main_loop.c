@@ -57,7 +57,7 @@ int linted_main_loop_run(linted_spawner spawner)
     updater_read = updater_mqs[0];
     updater_write = updater_mqs[1];
 
-    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, 0)) {
+    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, O_NONBLOCK)) {
         goto cleanup_updater_pair;
     }
 
