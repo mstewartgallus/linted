@@ -233,9 +233,8 @@ static int handle_tick(struct controller_state const *controller_state,
     int32_t new_x_position = x_position + new_x_velocity;
     int32_t new_y_position = y_position + new_y_velocity;
 
-    if (x_position != new_x_position || y_position != new_y_position) {
-        simulator_state->update_pending = true;
-    }
+    simulator_state->update_pending |= x_position != new_x_position
+        || y_position != new_y_position;
 
     simulator_state->x_position = new_x_position;
     simulator_state->y_position = new_y_position;
