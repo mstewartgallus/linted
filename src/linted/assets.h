@@ -19,9 +19,9 @@
 #include "SDL_opengl.h"
 
 typedef GLfloat linted_assets_point[2];
-linted_assets_point const * const linted_assets_triangle_data;
+linted_assets_point const *const linted_assets_triangle_data;
 
-GLuint const * const linted_assets_triangle_indices;
+GLuint const *const linted_assets_triangle_indices;
 size_t const linted_assets_triangle_indices_size;
 
 #endif                          /* LINTED_ASSETS_H */

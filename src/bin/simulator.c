@@ -46,14 +46,14 @@ struct simulator_state {
 };
 
 static int handle_tick(linted_updater updater,
-                       struct controller_state const * controller_state,
-                       struct simulator_state * simulator_state);
+                       struct controller_state const *controller_state,
+                       struct simulator_state *simulator_state);
 
 static int handle_shutdown_messages(linted_shutdowner shutdowner,
                                     bool * should_exit);
 
-static int handle_controller_messages(linted_controller controller,
-                                      struct controller_state * controller_state);
+static int handle_controller_messages(linted_controller controller, struct controller_state
+                                      *controller_state);
 
 static int32_t min(int32_t x, int32_t y);
 static int32_t sign(int32_t x);
@@ -101,7 +101,6 @@ int linted_simulator_run(linted_controller const controller,
             goto close_timer;
         }
     }
-
 
     for (;;) {
         int fds[] = { controller, shutdowner, timer };
@@ -153,8 +152,7 @@ int linted_simulator_run(linted_controller const controller,
         }
 
         if (FD_ISSET(controller, &watched_fds)) {
-            if (-1 == handle_controller_messages(controller,
-                                                 &controller_state)) {
+            if (-1 == handle_controller_messages(controller, &controller_state)) {
                 goto close_timer;
             }
         }
@@ -179,8 +177,8 @@ int linted_simulator_run(linted_controller const controller,
 }
 
 static int handle_tick(linted_updater updater,
-                       struct controller_state const * controller_state,
-                       struct simulator_state * simulator_state)
+                       struct controller_state const *controller_state,
+                       struct simulator_state *simulator_state)
 {
     int32_t x_position = simulator_state->x_position;
     int32_t y_position = simulator_state->y_position;
@@ -188,7 +186,8 @@ static int handle_tick(linted_updater updater,
     int32_t x_velocity = simulator_state->x_velocity;
     int32_t y_velocity = simulator_state->y_velocity;
 
-    int32_t x_thrust = 2 * (controller_state->x_right - controller_state->x_left);
+    int32_t x_thrust =
+        2 * (controller_state->x_right - controller_state->x_left);
     int32_t y_thrust = 2 * (controller_state->y_up - controller_state->y_down);
 
     int32_t guess_x_velocity = x_thrust + x_velocity;
@@ -254,7 +253,7 @@ static int handle_shutdown_messages(linted_shutdowner shutdowner,
 }
 
 static int handle_controller_messages(linted_controller controller,
-                                      struct controller_state * controller_state)
+                                      struct controller_state *controller_state)
 {
     for (;;) {
         struct linted_controller_message message;

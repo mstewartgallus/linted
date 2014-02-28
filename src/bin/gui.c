@@ -69,12 +69,13 @@ struct gui_state {
     float y;
 };
 
-static int on_sdl_event(SDL_Event const *sdl_event, struct window_state *window_state,
+static int on_sdl_event(SDL_Event const *sdl_event,
+                        struct window_state *window_state,
                         linted_controller controller,
                         enum transition *transition);
 
-static void init_graphics(struct window_state const * window_state);
-static void render_graphics(struct gui_state const * gui_state);
+static void init_graphics(struct window_state const *window_state);
+static void render_graphics(struct gui_state const *gui_state);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
@@ -186,7 +187,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
             had_gui_command = true;
 
-         skip_update:;
+ skip_update:;
         }
 
         /* Only render if we have time to waste */
@@ -227,7 +228,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     return exit_status;
 }
 
-static int on_sdl_event(SDL_Event const *sdl_event, struct window_state *window_state,
+static int on_sdl_event(SDL_Event const *sdl_event,
+                        struct window_state *window_state,
                         linted_controller controller,
                         enum transition *transition)
 {
@@ -311,7 +313,7 @@ static int on_sdl_event(SDL_Event const *sdl_event, struct window_state *window_
     return 0;
 }
 
-static void init_graphics(struct window_state const * window_state)
+static void init_graphics(struct window_state const *window_state)
 {
     glDisable(GL_DITHER);
 
@@ -325,7 +327,7 @@ static void init_graphics(struct window_state const * window_state)
     glMatrixMode(GL_MODELVIEW);
 }
 
-static void render_graphics(struct gui_state const * gui_state)
+static void render_graphics(struct gui_state const *gui_state)
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -341,8 +343,7 @@ static void render_graphics(struct gui_state const * gui_state)
     glLoadMatrixf(modelview_matrix);
 
     glDrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
-                   GL_UNSIGNED_INT,
-                   linted_assets_triangle_indices);
+                   GL_UNSIGNED_INT, linted_assets_triangle_indices);
 
     for (;;) {
         GLenum error = glGetError();

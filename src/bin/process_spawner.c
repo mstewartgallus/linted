@@ -72,10 +72,9 @@ struct waiter_arguments {
 
 static void handle_child_info(siginfo_t * child_info);
 
-int linted_process_spawner_run(linted_spawner inbox, void * context)
+int linted_process_spawner_run(linted_spawner inbox, void *context)
 {
     int exit_status = -1;
-
 
     sigset_t sigchld_sigset;
     sigemptyset(&sigchld_sigset);
@@ -173,38 +172,36 @@ int linted_process_spawner_run(linted_spawner inbox, void * context)
             }
             switch (child) {
             case 0:
-            {
-                pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+                {
+                    pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
 
-                if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
-                    exit(errno);
+                    if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
+                        exit(errno);
+                    }
+
+                    if (-1 == setpgid(child, process_group)) {
+                        exit(errno);
+                    }
+
+                    if (-1 == close(sfd)) {
+                        exit(errno);
+                    }
+
+                    if (-1 == close(inbox)) {
+                        exit(errno);
+                    }
+
+                    struct linted_spawner_request request;
+                    if (-1 == linted_spawner_recv_request(connection, &request)) {
+                        exit(errno);
+                    }
+
+                    if (-1 == request.task(context, request.fildes)) {
+                        exit(errno);
+                    }
+
+                    exit(0);
                 }
-
-                if (-1 == setpgid(child, process_group)) {
-                    exit(errno);
-                }
-
-
-                if (-1 == close(sfd)) {
-                    exit(errno);
-                }
-
-                if (-1 == close(inbox)) {
-                    exit(errno);
-                }
-
-                struct linted_spawner_request request;
-                if (-1 == linted_spawner_recv_request(connection,
-                                                      &request)) {
-                    exit(errno);
-                }
-
-                if (-1 == request.task(context, request.fildes)) {
-                    exit(errno);
-                }
-
-                exit(0);
-            }
 
             case -1:
                 if (-1 == linted_spawner_deny_request(connection, errno)) {
@@ -218,7 +215,7 @@ int linted_process_spawner_run(linted_spawner inbox, void * context)
 
             connection_status = 0;
 
-        close_connection:
+ close_connection:
             {
                 int errnum = errno;
 
@@ -238,14 +235,15 @@ int linted_process_spawner_run(linted_spawner inbox, void * context)
         }
     }
 
-wait_for_processes_exit:
+ wait_for_processes_exit:
     if (process_group != -1) {
         for (;;) {
             siginfo_t child_info;
 
             int wait_status;
             do {
-                wait_status = waitid(P_PGID, process_group, &child_info, WEXITED);
+                wait_status =
+                    waitid(P_PGID, process_group, &child_info, WEXITED);
             } while (-1 == wait_status && EINTR == errno);
             if (-1 == wait_status) {
                 /* POSIX errors are ECHILD, EINTR and EINVAL */
@@ -294,24 +292,25 @@ wait_for_processes_exit:
     return exit_status;
 }
 
-static void handle_child_info(siginfo_t * child_info) {
+static void handle_child_info(siginfo_t * child_info)
+{
     pid_t child = child_info->si_pid;
 
     /* Waited on a dead process. Log and wait for more. */
     switch (child_info->si_code) {
     case CLD_EXITED:{
-        int return_value = child_info->si_status;
-        if (0 == return_value) {
-            fprintf(stderr, "child %ju executed normally\n",
-                    (uintmax_t) child);
-        } else {
-            char const *error = linted_error_string_alloc(return_value);
-            fprintf(stderr, "child %ju executed with error: %s\n",
-                    (uintmax_t) child, error);
-            linted_error_string_free(error);
+            int return_value = child_info->si_status;
+            if (0 == return_value) {
+                fprintf(stderr, "child %ju executed normally\n",
+                        (uintmax_t) child);
+            } else {
+                char const *error = linted_error_string_alloc(return_value);
+                fprintf(stderr, "child %ju executed with error: %s\n",
+                        (uintmax_t) child, error);
+                linted_error_string_free(error);
+            }
+            break;
         }
-        break;
-    }
 
     case CLD_DUMPED:
     case CLD_KILLED:
@@ -321,8 +320,7 @@ static void handle_child_info(siginfo_t * child_info) {
 
     default:
         /* TODO: Possibly assert that this shouldn't happen */
-        fprintf(stderr, "child %ju executed abnormally\n",
-                (uintmax_t) child);
+        fprintf(stderr, "child %ju executed abnormally\n", (uintmax_t) child);
         break;
     }
 }

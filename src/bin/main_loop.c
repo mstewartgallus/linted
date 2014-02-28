@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int gui_run(void * context, int const inboxes[]);
-static int simulator_run(void * context, int const inboxes[]);
+static int gui_run(void *context, int const inboxes[]);
+static int simulator_run(void *context, int const inboxes[]);
 
 int linted_main_loop_run(linted_spawner spawner)
 {
@@ -170,7 +170,7 @@ int linted_main_loop_run(linted_spawner spawner)
     return exit_status;
 }
 
-static int simulator_run(void * context, int const inboxes[])
+static int simulator_run(void *context, int const inboxes[])
 {
     int exit_status = -1;
 
@@ -221,7 +221,7 @@ static int simulator_run(void * context, int const inboxes[])
     return exit_status;
 }
 
-static int gui_run(void * context, int const inboxes[])
+static int gui_run(void *context, int const inboxes[])
 {
     int exit_status = -1;
 

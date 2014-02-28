@@ -49,8 +49,7 @@ linted_CPPFLAGS +=-U_GNU_SOURCE
 
 linted_CPPFLAGS +=$(AM_CPPFLAGS)
 
-
-EXTRA_DIST=\
+headers=\
   src/linted/assets.h\
   src/linted/controller.h\
   src/linted/gui.h\
@@ -65,14 +64,17 @@ EXTRA_DIST=\
   src/linted/syslog.h\
   src/linted/unimq.h\
   src/linted/util.h\
-  src/linted/updater.h\
+  src/linted/updater.h
+
+EXTRA_DIST=\
+  $(headers)\
   \
   src/assets/assets.py\
   \
   src/assets_generator/linted_assets_generator\
   src/assets_generator/linted_assets_generator.py
 
-MOSTLYCLEANFILES = src/bin/assets.c
+MOSTLYCLEANFILES=src/bin/assets.c
 src/bin/assets.c:\
   src/assets/assets.py\
   \
@@ -90,7 +92,7 @@ src/bin/assets.c:\
   indent\
   doxygen
 
-indent: $(linted_SOURCES) $(EXTRA_DIST)
+indent: $(linted_SOURCES) $(headers)
 	$(INDENT) $(linted_INDENTFLAGS) $^
 
 doxygen:
