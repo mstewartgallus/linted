@@ -106,11 +106,11 @@ def StaticArray(T: type):
         # out over multiple lines.
         separator = "\n" + _spacing * indent
         return (
-            "&'static [" + separator + ("," + separator).join(member_list)
-            + "]")
+            "&'static {" + separator + ("," + separator).join(member_list)
+            + "}")
 
     return type("StaticArray(" + str(T) + ")", (object,), {
-        "name": "&'static [" + T.name + "]",
+        "name": "&'static {" + T.name + "}",
         "__init__": __init__,
         "flatten": flatten
     })
@@ -130,10 +130,10 @@ def Array(T, size):
 
         # Heuristic: Fixed sized arrays are small, and so should not
         # be spread out over multiple lines.
-        return "[" + ", ".join(member_list) + "]"
+        return "{" + ", ".join(member_list) + "}"
 
     return type("Array(" + str(T) + ", " + str(size) + ")", (object,), {
-        "name": "[" + T.name + ", .." + str(size) + "]",
+        "name": "{" + T.name + ", .." + str(size) + "}",
         "__init__": __init__,
         "flatten": flatten
     })
