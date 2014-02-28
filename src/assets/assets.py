@@ -13,20 +13,26 @@
 # permissions and limitations under the License.
 
 import os
+from string import Template
 import linted_assets_generator
 
-output = """#include "linted/assets.h"
-#include "linted/util.h"
 
-static linted_assets_point const raw_data[] = {
+vertices = """{
     {-0.4f, -0.4f},
     {0.4f, -0.4f},
     {0.0f, 0.4f}
-};
+}"""
+
+indices = """{ 0, 1, 2 }"""
+
+output = Template("""#include "linted/assets.h"
+#include "linted/util.h"
+
+static linted_assets_point const raw_data[] = $vertices;
 linted_assets_point const * const linted_assets_triangle_data = raw_data;
 
-static GLuint const indices_data[] = { 0, 1, 2 };
+static GLuint const indices_data[] = $indices;
 
 GLuint const * const linted_assets_triangle_indices = indices_data;
 size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_data);
-"""
+""").substitute(vertices=vertices, indices=indices)
