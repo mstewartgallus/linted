@@ -17,12 +17,12 @@ from string import Template
 from linted_assets_generator import *
 
 
-vertices = Array(3, Array(2, Float))([
-    Array(2, Float)([Float(-0.4), Float(-0.4)]),
-    Array(2, Float)([Float(0.4), Float(-0.4)]),
-    Array(2, Float)([Float(0.0), Float(0.4)])]).flatten(0)
+vertices = Array(3, Array(2, GLfloat))([
+    Array(2, GLfloat)([GLfloat(-0.4), GLfloat(-0.4)]),
+    Array(2, GLfloat)([GLfloat(0.4), GLfloat(-0.4)]),
+    Array(2, GLfloat)([GLfloat(0.0), GLfloat(0.4)])]).flatten(0)
 
-indices = Array(3, Uint)([Uint(0), Uint(1), Uint(2)]).flatten(0)
+indices = Array(3, GLuint)([GLuint(0), GLuint(1), GLuint(2)]).flatten(0)
 
 output = Template("""#include "linted/assets.h"
 #include "linted/util.h"

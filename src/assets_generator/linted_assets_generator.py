@@ -138,7 +138,7 @@ def Array(size, T):
         "flatten": flatten
     })
 
-class Float:
+class GLfloat:
     name = "float"
 
     def __init__(self, contents: float):
@@ -148,8 +148,8 @@ class Float:
         return str(self.contents)
 
 
-class Uint:
-    name = "uint"
+class GLuint:
+    name = "GLuint"
 
     def __init__(self, contents: int):
         assert contents >= 0
@@ -184,16 +184,16 @@ class Shader:
 
 Faces = structure("Faces", [
     ("indices", StaticArray(Array(3, U16))),
-    ("vertices", StaticArray(Array(3, Float)))])
+    ("vertices", StaticArray(Array(3, GLfloat)))])
 
 SimulatorData = structure("SimulatorData", [
-    ("dynamic_objects", StaticArray(Array(3, Float))),
+    ("dynamic_objects", StaticArray(Array(3, GLfloat))),
     ("static_objects", Faces)])
 
 
 Vertex = structure("Vertex", [
-    ("position", Array(3, Float)),
-    ("normal", Array(3, Float))])
+    ("position", Array(3, GLfloat)),
+    ("normal", Array(3, GLfloat))])
 
 MeshCollection = structure("MeshCollection", [
     ("indices", StaticArray(StaticArray(Array(3, U16)))),
@@ -201,8 +201,8 @@ MeshCollection = structure("MeshCollection", [
 
 RenderData = structure("RenderData", [
     ("mesh_collection", MeshCollection),
-    ("objects_for_mesh", StaticArray(StaticArray(Uint))),
-    ("object_matrices", StaticArray(Array(4, Array(4, Float))))])
+    ("objects_for_mesh", StaticArray(StaticArray(GLuint))),
+    ("object_matrices", StaticArray(Array(4, Array(4, GLfloat))))])
 
 BlendFile = structure("BlendFile", [
         ("simulator_data", SimulatorData),
@@ -239,8 +239,8 @@ def load_blend_file(filename):
 
 
 def object_set_locations(objects):
-    return StaticArray(Array(3, Float))([Array(3, Float)(
-        [Float(value) for value in objct.location]) for objct in objects])
+    return StaticArray(Array(3, GLfloat))([Array(3, GLfloat)(
+        [GLfloat(value) for value in objct.location]) for objct in objects])
 
 def object_set_faces(objects):
     mesh_vertices = []
@@ -254,15 +254,15 @@ def object_set_faces(objects):
                                           for index in polygon.vertices])
                            for polygon in polygons(mesh)]
 
-                vertices = [Array(3, Float)(
-                    [Float(part) for part in (matrix * vertex.co).to_tuple()])
+                vertices = [Array(3, GLfloat)(
+                    [GLfloat(part) for part in (matrix * vertex.co).to_tuple()])
                             for vertex in mesh.vertices]
 
                 mesh_vertices += vertices
                 mesh_indices.extend(indices)
     return Faces(
         indices=StaticArray(Array(3, U16))(mesh_indices),
-        vertices=StaticArray(Array(3, Float))(mesh_vertices))
+        vertices=StaticArray(Array(3, GLfloat))(mesh_vertices))
 
 
 def mesh_collection():
@@ -279,19 +279,19 @@ def mesh_collection():
 
 
 def objects_for_mesh(objects):
-    mesh_indices = [StaticArray(Uint)([Uint(ii)
+    mesh_indices = [StaticArray(GLuint)([GLuint(ii)
         for ii in range(0, len(objects)) if mesh == objects[ii].data])
                     for mesh in bpy.data.meshes]
-    return StaticArray(StaticArray(Uint))(mesh_indices)
+    return StaticArray(StaticArray(GLuint))(mesh_indices)
 
 
 def object_matrices(objects):
-    matrices = [Array(4, Array(4, Float))([Array(4, Float)([Float(value)
+    matrices = [Array(4, Array(4, GLfloat))([Array(4, GLfloat)([GLfloat(value)
         for value in vertex])
         for vertex in objct.matrix_world])
         for objct in objects]
 
-    return StaticArray(Array(4, Array(4, Float)))(matrices)
+    return StaticArray(Array(4, Array(4, GLfloat)))(matrices)
 
 
 def process_mesh(mesh, last_index):
@@ -300,8 +300,8 @@ def process_mesh(mesh, last_index):
                for polygon in polygons(mesh)]
 
     vertices = [Vertex(
-            position=Array(3, Float)([Float(part) for part in vertex.co.to_tuple()]),
-            normal=Array(3, Float)([Float(part) for part in vertex.normal.to_tuple()]))
+            position=Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()]),
+            normal=Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()]))
         for vertex in mesh.vertices]
 
     return vertices, indices
