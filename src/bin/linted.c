@@ -18,7 +18,6 @@
 #include "linted/io.h"
 #include "linted/main_loop.h"
 #include "linted/process_spawner.h"
-#include "linted/syslog.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -72,8 +71,11 @@ int main(int argc, char **argv)
     }
 #endif                          /* HAVE_UID_T */
 
-    /* Prepare the system logger */
-    linted_syslog_open();
+    openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
+            | LOG_CONS          /* So we know there is an error */
+            | LOG_PID           /* Because we fork several times */
+            , LOG_USER          /* This is a game and is a user program */
+        );
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         LINTED_LAZY_DEV_ERROR("could not drop ability to raise privileges: %s",

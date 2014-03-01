@@ -29,7 +29,6 @@ linted_SOURCES=\
   src/bin/sandbox.c\
   src/bin/shutdowner.c\
   src/bin/spawner.c\
-  src/bin/syslog.c\
   src/bin/unimq.c\
   src/bin/updater.c\
   $(linted_SOURCES_verified)
@@ -54,7 +53,6 @@ headers=\
   src/linted/shutdowner.h\
   src/linted/simulator.h\
   src/linted/spawner.h\
-  src/linted/syslog.h\
   src/linted/unimq.h\
   src/linted/util.h\
   src/linted/updater.h
