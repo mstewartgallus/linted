@@ -116,14 +116,14 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
-check-frama-c-pdg: $(verified_sources)
+check-frama-c-pdg: $(linted_SOURCES_verified)
 	$(MKDIR_P) pdg
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -pdg -pdg-dot pdg/main $(FRAMAFLAGS) $^
 
-check-frama-c-gui: $(verified_sources)
+check-frama-c-gui: $(linted_SOURCES_verified)
 	$(FRAMA_C_GUI) $(linted_FRAMAFLAGS) $(FRAMAFLAGS) $^
 
-check-frama-c: $(verified_sources)
+check-frama-c: $(linted_SOURCES_verified)
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
 
 check-cbmc: $(linted_SOURCES)

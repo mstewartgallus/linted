@@ -17,11 +17,6 @@ AC_PREREQ([2.62])
 AC_CONFIG_SRCDIR([src/bin/linted.c])
 dnl
 AC_ARG_VAR([CLANG], [The clang compiler used for static analysis])
-AC_ARG_ENABLE(
-        [save-temps],
-        AS_HELP_STRING(
-                [--enable-save-temps],
-                [save temporary files (useful for debugging)]))
 dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
