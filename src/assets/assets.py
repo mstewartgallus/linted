@@ -17,10 +17,10 @@ from string import Template
 from linted_assets_generator import *
 
 
-vertices = Array(Array(Float, 2), 3)([
-    Array(Float, 2)([Float(-0.4), Float(-0.4)]),
-    Array(Float, 2)([Float(0.4), Float(-0.4)]),
-    Array(Float, 2)([Float(0.0), Float(0.4)])]).flatten(0)
+vertices = Array(3, Array(2, Float))([
+    Array(2, Float)([Float(-0.4), Float(-0.4)]),
+    Array(2, Float)([Float(0.4), Float(-0.4)]),
+    Array(2, Float)([Float(0.0), Float(0.4)])]).flatten(0)
 
 indices = """{ 0, 1, 2 }"""
 

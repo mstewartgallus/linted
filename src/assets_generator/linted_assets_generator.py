@@ -117,7 +117,7 @@ def StaticArray(T: type):
 
 # Semantics: Every class returned must be the same.
 @functools.lru_cache(maxsize = None)
-def Array(T, size):
+def Array(size, T):
     def __init__(self, children: list):
         assert len(children) == size
         for child in children:
@@ -132,7 +132,7 @@ def Array(T, size):
         # be spread out over multiple lines.
         return "{" + ", ".join(member_list) + "}"
 
-    return type("Array(" + str(T) + ", " + str(size) + ")", (object,), {
+    return type("Array(" + str(size) + ", " + str(T) + ")", (object,), {
         "name": "{" + T.name + ", .." + str(size) + "}",
         "__init__": __init__,
         "flatten": flatten
@@ -183,26 +183,26 @@ class Shader:
         return "\"" + quotation + "\""
 
 Faces = structure("Faces", [
-    ("indices", StaticArray(Array(U16, 3))),
-    ("vertices", StaticArray(Array(Float, 3)))])
+    ("indices", StaticArray(Array(3, U16))),
+    ("vertices", StaticArray(Array(3, Float)))])
 
 SimulatorData = structure("SimulatorData", [
-    ("dynamic_objects", StaticArray(Array(Float, 3))),
+    ("dynamic_objects", StaticArray(Array(3, Float))),
     ("static_objects", Faces)])
 
 
 Vertex = structure("Vertex", [
-    ("position", Array(Float, 3)),
-    ("normal", Array(Float, 3))])
+    ("position", Array(3, Float)),
+    ("normal", Array(3, Float))])
 
 MeshCollection = structure("MeshCollection", [
-    ("indices", StaticArray(StaticArray(Array(U16, 3)))),
+    ("indices", StaticArray(StaticArray(Array(3, U16)))),
     ("vertices", StaticArray(Vertex))])
 
 RenderData = structure("RenderData", [
     ("mesh_collection", MeshCollection),
     ("objects_for_mesh", StaticArray(StaticArray(Uint))),
-    ("object_matrices", StaticArray(Array(Array(Float, 4), 4)))])
+    ("object_matrices", StaticArray(Array(4, Array(4, Float))))])
 
 BlendFile = structure("BlendFile", [
         ("simulator_data", SimulatorData),
@@ -239,7 +239,7 @@ def load_blend_file(filename):
 
 
 def object_set_locations(objects):
-    return StaticArray(Array(Float, 3))([Array(Float, 3)(
+    return StaticArray(Array(3, Float))([Array(3, Float)(
         [Float(value) for value in objct.location]) for objct in objects])
 
 def object_set_faces(objects):
@@ -250,19 +250,19 @@ def object_set_faces(objects):
 
         for mesh in bpy.data.meshes:
             if mesh == objct.data:
-                indices = [Array(U16, 3)([process_index(index, len(mesh_vertices))
+                indices = [Array(3, U16)([process_index(index, len(mesh_vertices))
                                           for index in polygon.vertices])
                            for polygon in polygons(mesh)]
 
-                vertices = [Array(Float, 3)(
+                vertices = [Array(3, Float)(
                     [Float(part) for part in (matrix * vertex.co).to_tuple()])
                             for vertex in mesh.vertices]
 
                 mesh_vertices += vertices
                 mesh_indices.extend(indices)
     return Faces(
-        indices=StaticArray(Array(U16, 3))(mesh_indices),
-        vertices=StaticArray(Array(Float, 3))(mesh_vertices))
+        indices=StaticArray(Array(3, U16))(mesh_indices),
+        vertices=StaticArray(Array(3, Float))(mesh_vertices))
 
 
 def mesh_collection():
@@ -271,10 +271,10 @@ def mesh_collection():
     for mesh in bpy.data.meshes:
         vertices, indices = process_mesh(mesh, len(mesh_vertices))
         mesh_vertices += vertices
-        mesh_indices.append(StaticArray(Array(U16, 3))(indices))
+        mesh_indices.append(StaticArray(Array(3, U16))(indices))
 
     return MeshCollection(
-        indices=StaticArray(StaticArray(Array(U16, 3)))(mesh_indices),
+        indices=StaticArray(StaticArray(Array(3, U16)))(mesh_indices),
         vertices=StaticArray(Vertex)(mesh_vertices))
 
 
@@ -286,22 +286,22 @@ def objects_for_mesh(objects):
 
 
 def object_matrices(objects):
-    matrices = [Array(Array(Float, 4), 4)([Array(Float, 4)([Float(value)
+    matrices = [Array(4, Array(4, Float))([Array(4, Float)([Float(value)
         for value in vertex])
         for vertex in objct.matrix_world])
         for objct in objects]
 
-    return StaticArray(Array(Array(Float, 4), 4))(matrices)
+    return StaticArray(Array(4, Array(4, Float)))(matrices)
 
 
 def process_mesh(mesh, last_index):
-    indices = [Array(U16, 3)([process_index(index, last_index)
+    indices = [Array(3, U16)([process_index(index, last_index)
                        for index in polygon.vertices])
                for polygon in polygons(mesh)]
 
     vertices = [Vertex(
-            position=Array(Float, 3)([Float(part) for part in vertex.co.to_tuple()]),
-            normal=Array(Float, 3)([Float(part) for part in vertex.normal.to_tuple()]))
+            position=Array(3, Float)([Float(part) for part in vertex.co.to_tuple()]),
+            normal=Array(3, Float)([Float(part) for part in vertex.normal.to_tuple()]))
         for vertex in mesh.vertices]
 
     return vertices, indices
