@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 
 struct attribute_value_pair {
     SDL_GLattr attribute;
@@ -103,8 +104,9 @@ static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
                         struct controller_state *controller_state,
                         enum transition *transition);
-static int update_controller(linted_controller controller,
-                             struct controller_state *controller_state);
+static int on_update(linted_updater updater, struct gui_state *gui_state);
+static int on_controller_updateable(linted_controller controller,
+                                    struct controller_state *controller_state);
 
 static int init_graphics(struct window_state const *window_state);
 static void render_graphics(struct gui_state const *gui_state);
@@ -192,8 +194,6 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
     bool should_resize = false;
     for (;;) {
-        bool had_gui_command = false;
-
         /* Handle SDL events first before rendering */
         SDL_Event sdl_event;
         bool const had_sdl_event = SDL_PollEvent(&sdl_event);
@@ -217,37 +217,68 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             }
         }
 
-        {
-            struct linted_updater_update update;
+        int read_fds[] = { updater };
+        int write_fds[] = { controller };
+        int greatest = -1;
 
-            int read_status;
-            do {
-                read_status = linted_updater_receive_update(updater, &update);
-            } while (-1 == read_status && EINTR == errno);
-            if (-1 == read_status) {
-                if (EAGAIN == errno) {
-                    goto skip_update;
-                }
-
-                goto cleanup_SDL;
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+            if (greatest < read_fds[ii]) {
+                greatest = read_fds[ii];
             }
-
-            gui_state.x = ((float)update.x_position) / 255;
-            gui_state.y = ((float)update.y_position) / 255;
-
-            had_gui_command = true;
-
- skip_update:;
         }
 
         if (controller_state.update_pending) {
-            if (-1 == update_controller(controller, &controller_state)) {
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                if (greatest < write_fds[ii]) {
+                    greatest = write_fds[ii];
+                }
+            }
+        }
+
+        fd_set watched_read_fds;
+        fd_set watched_write_fds;
+        int select_status;
+
+        do {
+            FD_ZERO(&watched_read_fds);
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+                FD_SET(read_fds[ii], &watched_read_fds);
+            }
+
+            FD_ZERO(&watched_write_fds);
+            if (controller_state.update_pending) {
+                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                    FD_SET(write_fds[ii], &watched_write_fds);
+                }
+            }
+
+            struct timeval timeval = {.tv_sec = 0, .tv_usec = 0};
+            select_status = select(greatest + 1, &watched_read_fds,
+                                   &watched_write_fds, NULL, &timeval);
+        } while (-1 == select_status && EINTR == errno);
+        if (-1 == select_status) {
+            goto cleanup_SDL;
+        }
+
+        bool const had_selected_event = select_status > 0;
+
+        if (FD_ISSET(updater, &watched_read_fds)) {
+            if (-1 == on_update(updater, &gui_state)) {
                 goto cleanup_SDL;
+            }
+        }
+
+        if (controller_state.update_pending) {
+            if (FD_ISSET(controller, &watched_write_fds)) {
+                if (-1 == on_controller_updateable(controller,
+                                                   &controller_state)) {
+                    goto cleanup_SDL;
+                }
             }
         }
 
         /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_gui_command) {
+        if (!had_sdl_event && !had_selected_event) {
             if (should_resize) {
                 goto setup_window;
             }
@@ -363,8 +394,30 @@ static int on_sdl_event(SDL_Event const *sdl_event,
     return 0;
 }
 
-static int update_controller(linted_controller controller,
-                             struct controller_state *controller_state)
+static int on_update(linted_updater updater, struct gui_state *gui_state)
+{
+    struct linted_updater_update update;
+
+    int read_status;
+    do {
+        read_status = linted_updater_receive_update(updater, &update);
+    } while (-1 == read_status && EINTR == errno);
+    if (-1 == read_status) {
+        if (EAGAIN == errno) {
+            return 0;
+        }
+
+        return -1;
+    }
+
+    gui_state->x = ((float)update.x_position) / 255;
+    gui_state->y = ((float)update.y_position) / 255;
+
+    return 0;
+}
+
+static int on_controller_updateable(linted_controller controller,
+                                    struct controller_state *controller_state)
 {
     int send_status;
     do {
