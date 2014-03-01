@@ -87,11 +87,12 @@ enum transition {
 struct window_state {
     unsigned width;
     unsigned height;
-
-    struct linted_controller_message controller_state;
-    bool controller_update_pending;
 };
 
+struct controller_state {
+    struct linted_controller_message update;
+    bool update_pending;
+};
 
 struct gui_state {
     float x;
@@ -100,8 +101,10 @@ struct gui_state {
 
 static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
-                        linted_controller controller,
+                        struct controller_state *controller_state,
                         enum transition *transition);
+static int update_controller(linted_controller controller,
+                             struct controller_state *controller_state);
 
 static int init_graphics(struct window_state const *window_state);
 static void render_graphics(struct gui_state const *gui_state);
@@ -115,10 +118,13 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         .width = 640,
         .height = 800,
 
-        .controller_state = {
+    };
+
+    struct controller_state controller_state = {
+        .update = {
             .keys = { false, false, false, false }
         },
-        .controller_update_pending = false
+        .update_pending = false
     };
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
@@ -187,14 +193,13 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     bool should_resize = false;
     for (;;) {
         bool had_gui_command = false;
-        bool updated_controller = false;
 
         /* Handle SDL events first before rendering */
         SDL_Event sdl_event;
         bool const had_sdl_event = SDL_PollEvent(&sdl_event);
         if (had_sdl_event) {
             enum transition transition;
-            if (-1 == on_sdl_event(&sdl_event, &window_state, controller,
+            if (-1 == on_sdl_event(&sdl_event, &window_state, &controller_state,
                                    &transition)) {
                 goto cleanup_SDL;
             }
@@ -235,26 +240,14 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
  skip_update:;
         }
 
-        if (window_state.controller_update_pending) {
-            int send_status;
-            do {
-                send_status = linted_controller_send(controller,
-                                                     &window_state.controller_state);
-            } while (-1 == send_status && EINTR == errno);
-            if (-1 == send_status) {
-                if (EAGAIN == errno) {
-                    goto done_with_updating;
-                }
-
+        if (controller_state.update_pending) {
+            if (-1 == update_controller(controller, &controller_state)) {
                 goto cleanup_SDL;
             }
-
-            window_state.controller_update_pending = false;
-        done_with_updating:;
         }
 
         /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_gui_command && !updated_controller) {
+        if (!had_sdl_event && !had_gui_command) {
             if (should_resize) {
                 goto setup_window;
             }
@@ -293,7 +286,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
 static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
-                        linted_controller controller,
+                        struct controller_state *controller_state,
                         enum transition *transition)
 {
     switch (sdl_event->type) {
@@ -362,11 +355,32 @@ static int on_sdl_event(SDL_Event const *sdl_event,
     key = LINTED_CONTROLLER_DOWN;
     goto update_controller;
 
- update_controller:;
-    window_state->controller_state.keys[key] = is_key_down;
-    window_state->controller_update_pending = true;
+ update_controller:
+    controller_state->update.keys[key] = is_key_down;
+    controller_state->update_pending = true;
 
     *transition = DO_NOTHING;
+    return 0;
+}
+
+static int update_controller(linted_controller controller,
+                             struct controller_state *controller_state)
+{
+    int send_status;
+    do {
+        send_status = linted_controller_send(controller,
+                                             &controller_state->update);
+    } while (-1 == send_status && EINTR == errno);
+    if (-1 == send_status) {
+        if (EAGAIN == errno) {
+            return 0;
+        }
+
+        return -1;
+    }
+
+    controller_state->update_pending = false;
+
     return 0;
 }
 
