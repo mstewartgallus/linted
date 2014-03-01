@@ -48,17 +48,18 @@ struct simulator_state {
     int32_t y_velocity;
 };
 
-static int handle_tick(struct controller_state const *controller_state,
-                       struct simulator_state *simulator_state);
+static int on_timer_readable(int timer,
+                             struct controller_state const *controller_state,
+                             struct simulator_state *simulator_state);
 
-static int handle_pending_update(linted_updater updater,
-                                 struct simulator_state * simulator_state);
+static int on_updater_writeable(linted_updater updater,
+                                struct simulator_state * simulator_state);
 
-static int handle_shutdown_messages(linted_shutdowner shutdowner,
-                                    bool * should_exit);
+static int on_shutdowner_readable(linted_shutdowner shutdowner,
+                                  bool * should_exit);
 
-static int handle_controller_messages(linted_controller controller,
-                                      struct controller_state *controller_state);
+static int on_controller_readable(linted_controller controller,
+                                  struct controller_state *controller_state);
 
 static int32_t min(int32_t x, int32_t y);
 static int32_t sign(int32_t x);
@@ -154,7 +155,7 @@ int linted_simulator_run(linted_controller const controller,
 
         if (FD_ISSET(shutdowner, &watched_read_fds)) {
             bool should_exit;
-            if (-1 == handle_shutdown_messages(shutdowner, &should_exit)) {
+            if (-1 == on_shutdowner_readable(shutdowner, &should_exit)) {
                 goto close_timer;
             }
             if (should_exit) {
@@ -163,27 +164,21 @@ int linted_simulator_run(linted_controller const controller,
         }
 
         if (FD_ISSET(timer, &watched_read_fds)) {
-            uint64_t ticks;
-            if (-1 == read(timer, &ticks, sizeof ticks)) {
+            if (-1 == on_timer_readable(timer, &controller_state, &simulator_state)) {
                 goto close_timer;
-            }
-
-            for (size_t ii = 0; ii < ticks; ++ii) {
-                if (-1 == handle_tick(&controller_state, &simulator_state)) {
-                    goto close_timer;
-                }
             }
         }
 
         if (FD_ISSET(controller, &watched_read_fds)) {
-            if (-1 == handle_controller_messages(controller, &controller_state)) {
+            if (-1 == on_controller_readable(controller,
+                                                      &controller_state)) {
                 goto close_timer;
             }
         }
 
         if (simulator_state.update_pending) {
             if (FD_ISSET(updater, &watched_write_fds)) {
-                if (-1 == handle_pending_update(updater, &simulator_state)) {
+                if (-1 == on_updater_writeable(updater, &simulator_state)) {
                     goto close_timer;
                 }
             }
@@ -206,47 +201,56 @@ int linted_simulator_run(linted_controller const controller,
     return exit_status;
 }
 
-static int handle_tick(struct controller_state const *controller_state,
-                       struct simulator_state *simulator_state)
+static int on_timer_readable(int timer,
+                             struct controller_state const *controller_state,
+                             struct simulator_state *simulator_state)
 {
-    int32_t x_position = simulator_state->x_position;
-    int32_t y_position = simulator_state->y_position;
+    uint64_t ticks;
+    if (-1 == read(timer, &ticks, sizeof ticks)) {
+        return -1;
+    }
 
-    int32_t x_velocity = simulator_state->x_velocity;
-    int32_t y_velocity = simulator_state->y_velocity;
+    for (size_t ii = 0; ii < ticks; ++ii) {
+        int32_t x_position = simulator_state->x_position;
+        int32_t y_position = simulator_state->y_position;
 
-    int32_t x_thrust =
-        2 * (controller_state->x_right - controller_state->x_left);
-    int32_t y_thrust = 2 * (controller_state->y_up - controller_state->y_down);
+        int32_t x_velocity = simulator_state->x_velocity;
+        int32_t y_velocity = simulator_state->y_velocity;
 
-    int32_t guess_x_velocity = x_thrust + x_velocity;
-    int32_t guess_y_velocity = y_thrust + y_velocity;
+        int32_t x_thrust =
+            2 * (controller_state->x_right - controller_state->x_left);
+        int32_t y_thrust =
+            2 * (controller_state->y_up - controller_state->y_down);
 
-    int32_t x_friction = min(imaxabs(guess_x_velocity), 1)
-        * sign(guess_x_velocity);
-    int32_t y_friction = min(imaxabs(guess_y_velocity), 1)
-        * sign(guess_y_velocity);
+        int32_t guess_x_velocity = x_thrust + x_velocity;
+        int32_t guess_y_velocity = y_thrust + y_velocity;
 
-    int32_t new_x_velocity = x_velocity + x_thrust + x_friction;
-    int32_t new_y_velocity = y_velocity + y_thrust + y_friction;
+        int32_t x_friction = min(imaxabs(guess_x_velocity), 1)
+            * sign(guess_x_velocity);
+        int32_t y_friction = min(imaxabs(guess_y_velocity), 1)
+            * sign(guess_y_velocity);
 
-    int32_t new_x_position = x_position + new_x_velocity;
-    int32_t new_y_position = y_position + new_y_velocity;
+        int32_t new_x_velocity = x_velocity + x_thrust + x_friction;
+        int32_t new_y_velocity = y_velocity + y_thrust + y_friction;
 
-    simulator_state->update_pending |= x_position != new_x_position
-        || y_position != new_y_position;
+        int32_t new_x_position = x_position + new_x_velocity;
+        int32_t new_y_position = y_position + new_y_velocity;
 
-    simulator_state->x_position = new_x_position;
-    simulator_state->y_position = new_y_position;
+        simulator_state->update_pending |= x_position != new_x_position
+            || y_position != new_y_position;
 
-    simulator_state->x_velocity = new_x_velocity;
-    simulator_state->y_velocity = new_y_velocity;
+        simulator_state->x_position = new_x_position;
+        simulator_state->y_position = new_y_position;
+
+        simulator_state->x_velocity = new_x_velocity;
+        simulator_state->y_velocity = new_y_velocity;
+    }
 
     return 0;
 }
 
-static int handle_pending_update(linted_updater updater,
-                                 struct simulator_state * simulator_state)
+static int on_updater_writeable(linted_updater updater,
+                                struct simulator_state * simulator_state)
 {
     struct linted_updater_update update = {
         .x_position = simulator_state->x_position,
@@ -270,53 +274,47 @@ static int handle_pending_update(linted_updater updater,
     return 0;
 }
 
-static int handle_shutdown_messages(linted_shutdowner shutdowner,
-                                    bool * should_exit)
+static int on_shutdowner_readable(linted_shutdowner shutdowner,
+                                  bool * should_exit)
 {
-    bool should_exit_out = false;
-    for (;;) {
-        int read_status;
-        do {
-            read_status = linted_shutdowner_receive(shutdowner);
-        } while (-1 == read_status && EINTR == errno);
-        if (-1 == read_status) {
-            if (EAGAIN == errno) {
-                break;
-            }
-
-            return -1;
+    int read_status;
+    do {
+        read_status = linted_shutdowner_receive(shutdowner);
+    } while (-1 == read_status && EINTR == errno);
+    if (-1 == read_status) {
+        if (EAGAIN == errno) {
+            *should_exit = false;
+            return 0;
         }
 
-        should_exit_out = true;
+        return -1;
     }
 
-    *should_exit = should_exit_out;
+    *should_exit = true;
     return 0;
 }
 
-static int handle_controller_messages(linted_controller controller,
-                                      struct controller_state *controller_state)
+static int on_controller_readable(linted_controller controller,
+                                  struct controller_state *controller_state)
 {
-    for (;;) {
-        struct linted_controller_message message;
+    struct linted_controller_message message;
 
-        int read_status;
-        do {
-            read_status = linted_controller_receive(controller, &message);
-        } while (-1 == read_status && EINTR == errno);
-        if (-1 == read_status) {
-            if (EAGAIN == errno) {
-                break;
-            }
-
-            return -1;
+    int read_status;
+    do {
+        read_status = linted_controller_receive(controller, &message);
+    } while (-1 == read_status && EINTR == errno);
+    if (-1 == read_status) {
+        if (EAGAIN == errno) {
+            return 0;
         }
 
-        controller_state->x_left = message.keys[LINTED_CONTROLLER_LEFT];
-        controller_state->x_right = message.keys[LINTED_CONTROLLER_RIGHT];
-        controller_state->y_up = message.keys[LINTED_CONTROLLER_UP];
-        controller_state->y_down = message.keys[LINTED_CONTROLLER_DOWN];
+        return -1;
     }
+
+    controller_state->x_left = message.keys[LINTED_CONTROLLER_LEFT];
+    controller_state->x_right = message.keys[LINTED_CONTROLLER_RIGHT];
+    controller_state->y_up = message.keys[LINTED_CONTROLLER_UP];
+    controller_state->y_down = message.keys[LINTED_CONTROLLER_DOWN];
 
     return 0;
 }
