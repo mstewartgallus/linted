@@ -10,7 +10,6 @@ Linted -- TODO
 * Ban assert in favour of LINTED_IMPOSSIBLE_ERROR
 assert has problems with not evaluating arguments.
 * Port to SDL 2.0
-* Automatically generate OpenGL function pointer types and loading code
 * Manage child process error streams and syslog logs
 * Make a hang check timer
 This timer will periodically make sure tasks are reaching their
