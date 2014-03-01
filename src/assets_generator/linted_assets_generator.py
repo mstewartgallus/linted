@@ -147,6 +147,30 @@ class GLfloat:
     def flatten(self, indent):
         return str(self.contents)
 
+# This weirdness is to assert at compile time that the value is small
+# enough to fit into a type. Only works for unsigned types.
+def _assert_less_than_max(t, constant):
+    return "(0u / (" + constant + " <= ((" + t.name + ") -1)) + " + constant + ")"
+
+class GLubyte:
+    name = "GLubyte"
+
+    def __init__(self, contents: int):
+        assert contents >= 0
+        self.contents = contents
+
+    def flatten(self, indent):
+        return _assert_less_than_max(self, str(self.contents) + "u")
+
+class GLushort:
+    name = "GLushort"
+
+    def __init__(self, contents: int):
+        assert contents >= 0
+        self.contents = contents
+
+    def flatten(self, indent):
+        return _assert_less_than_max(self, str(self.contents) + "u")
 
 class GLuint:
     name = "GLuint"
@@ -156,11 +180,7 @@ class GLuint:
         self.contents = contents
 
     def flatten(self, indent):
-        constant = str(self.contents) + "u"
-        # This weirdness is to assert at compile time that the value
-        # is small enough to fit into GLuint.
-        return "(0u / (" + constant + " <= ((GLuint) -1)) + " + constant + ")"
-
+        return _assert_less_than_max(self, str(self.contents) + "u")
 
 class U16:
     name = "u16"

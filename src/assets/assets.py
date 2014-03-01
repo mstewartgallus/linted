@@ -22,7 +22,7 @@ vertices = Array(3, Array(2, GLfloat))([
     Array(2, GLfloat)([GLfloat(0.4), GLfloat(-0.4)]),
     Array(2, GLfloat)([GLfloat(0.0), GLfloat(0.4)])]).flatten(0)
 
-indices = Array(3, GLuint)([GLuint(0), GLuint(1), GLuint(2)]).flatten(0)
+indices = Array(3, GLubyte)([GLubyte(0), GLubyte(1), GLubyte(2)]).flatten(0)
 
 output = Template("""#include "linted/assets.h"
 #include "linted/util.h"
@@ -30,8 +30,8 @@ output = Template("""#include "linted/assets.h"
 static linted_assets_point const raw_data[] = $vertices;
 linted_assets_point const * const linted_assets_triangle_data = raw_data;
 
-static GLuint const indices_data[] = $indices;
+static GLubyte const indices_data[] = $indices;
 
-GLuint const * const linted_assets_triangle_indices = indices_data;
+GLubyte const * const linted_assets_triangle_indices = indices_data;
 size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_data);
 """).substitute(vertices=vertices, indices=indices)

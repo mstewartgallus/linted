@@ -474,7 +474,7 @@ static void render_graphics(struct gui_state const *gui_state)
     glLoadMatrixf(modelview_matrix);
 
     glDrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
-                   GL_UNSIGNED_INT, linted_assets_triangle_indices);
+                   GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
 
     for (;;) {
         GLenum error = glGetError();
