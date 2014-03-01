@@ -89,13 +89,13 @@ src/bin/assets.c:\
 MOSTLYCLEANFILES+=src/bin/gl_core.c src/linted/gl_core.h
 src/bin/gl_core.c:
 	cd $(builddir)/src/bin && \
-	  lua $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 
 src/linted/gl_core.h:
 	$(MKDIR_P) $(builddir)/src/linted
 	cd $(builddir)/src/linted && \
-	  lua $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 
 .PHONY:\
