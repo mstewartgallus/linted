@@ -19,7 +19,6 @@ ACLOCAL_AMFLAGS=-I m4
 bin_PROGRAMS=linted
 
 linted_SOURCES=\
-  src/bin/gl_core.c\
   src/bin/assets.c\
   src/bin/controller.c\
   src/bin/gui.c\
@@ -33,27 +32,19 @@ linted_SOURCES=\
   src/bin/syslog.c\
   src/bin/unimq.c\
   src/bin/updater.c\
-  $(verified_sources)
+  $(linted_SOURCES_verified)
 
-verified_sources=\
+linted_SOURCES_verified=\
   src/bin/mq.c\
   src/bin/simulator.c\
   src/bin/util.c
 
-linted_LDADD=$(SDL_LIBS)
-linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
-
-linted_CPPFLAGS=$(SDL_CFLAGS)
-
-# Cancel out SDL's idiot defining of GNU source
-linted_CPPFLAGS +=-U_GNU_SOURCE
-
-linted_CPPFLAGS +=$(AM_CPPFLAGS)
+nodist_linted_SOURCES=\
+  src/bin/gl_core.c
 
 headers=\
   src/linted/assets.h\
   src/linted/controller.h\
-  src/linted/gl_core.h\
   src/linted/gui.h\
   src/linted/io.h\
   src/linted/main_loop.h\
@@ -68,7 +59,11 @@ headers=\
   src/linted/util.h\
   src/linted/updater.h
 
+BUILT_SOURCES=src/bin/gl_core.c src/linted/gl_core.h
+
 EXTRA_DIST=\
+  libs/glloadgen\
+  \
   $(headers)\
   \
   src/assets/assets.py\
@@ -89,14 +84,19 @@ src/bin/assets.c:\
 MOSTLYCLEANFILES+=src/bin/gl_core.c src/linted/gl_core.h
 src/bin/gl_core.c:
 	cd $(builddir)/src/bin && \
-	  $(LUA) $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
+	rm $(builddir)/src/bin/gl_core.h
 
 src/linted/gl_core.h:
 	$(MKDIR_P) $(builddir)/src/linted
 	cd $(builddir)/src/linted && \
-	  $(LUA) $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
+	rm $(builddir)/src/linted/gl_core.c
+
+dist-hook:
+	rm -rf `find $(distdir)/libs/glloadgen -type d -name .git`
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\
@@ -142,11 +142,25 @@ clean-local:
 	- rm -rf scan-report
 
 
+
+linted_LDADD=$(SDL_LIBS)
+linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
+
+linted_CPPFLAGS=$(SDL_CFLAGS)
+
+# Cancel out SDL's idiot defining of GNU source
+linted_CPPFLAGS+=-U_GNU_SOURCE
+
+linted_CPPFLAGS+=$(AM_CPPFLAGS)
+
+
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_HARDEN)\
   $(linted_CPPFLAGS_LANGUAGE)\
   -I .\
   -I $(srcdir)/src\
+  -I $(builddir)/src\
+  -I $(builddir)/src/linted\
   -I src
 
 AM_CFLAGS=\
