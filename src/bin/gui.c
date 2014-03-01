@@ -104,9 +104,10 @@ static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
                         struct controller_state *controller_state,
                         enum transition *transition);
-static int on_update(linted_updater updater, struct gui_state *gui_state);
-static int on_controller_updateable(linted_controller controller,
-                                    struct controller_state *controller_state);
+static int on_updater_readable(linted_updater updater,
+                               struct gui_state *gui_state);
+static int on_controller_writeable(linted_controller controller,
+                                   struct controller_state *controller_state);
 
 static int init_graphics(struct window_state const *window_state);
 static void render_graphics(struct gui_state const *gui_state);
@@ -263,14 +264,14 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         bool const had_selected_event = select_status > 0;
 
         if (FD_ISSET(updater, &watched_read_fds)) {
-            if (-1 == on_update(updater, &gui_state)) {
+            if (-1 == on_updater_readable(updater, &gui_state)) {
                 goto cleanup_SDL;
             }
         }
 
         if (controller_state.update_pending) {
             if (FD_ISSET(controller, &watched_write_fds)) {
-                if (-1 == on_controller_updateable(controller,
+                if (-1 == on_controller_writeable(controller,
                                                    &controller_state)) {
                     goto cleanup_SDL;
                 }
@@ -394,7 +395,8 @@ static int on_sdl_event(SDL_Event const *sdl_event,
     return 0;
 }
 
-static int on_update(linted_updater updater, struct gui_state *gui_state)
+static int on_updater_readable(linted_updater updater,
+                               struct gui_state *gui_state)
 {
     struct linted_updater_update update;
 
@@ -416,8 +418,8 @@ static int on_update(linted_updater updater, struct gui_state *gui_state)
     return 0;
 }
 
-static int on_controller_updateable(linted_controller controller,
-                                    struct controller_state *controller_state)
+static int on_controller_writeable(linted_controller controller,
+                                   struct controller_state *controller_state)
 {
     int send_status;
     do {
