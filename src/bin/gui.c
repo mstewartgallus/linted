@@ -124,9 +124,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     };
 
     struct controller_state controller_state = {
-        .update = {
-                   .keys = {false, false, false, false}
-                   },
+        .update = {.keys = {false, false, false, false}},
         .update_pending = false
     };
 
@@ -272,7 +270,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         if (controller_state.update_pending) {
             if (FD_ISSET(controller, &watched_write_fds)) {
                 if (-1 == on_controller_writeable(controller,
-                                                   &controller_state)) {
+                                                  &controller_state)) {
                     goto cleanup_SDL;
                 }
             }
