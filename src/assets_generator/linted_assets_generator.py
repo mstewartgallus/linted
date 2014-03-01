@@ -139,7 +139,7 @@ def Array(size, T):
     })
 
 class GLfloat:
-    name = "float"
+    name = "GLfloat"
 
     def __init__(self, contents: float):
         self.contents = contents
@@ -156,7 +156,10 @@ class GLuint:
         self.contents = contents
 
     def flatten(self, indent):
-        return str(self.contents) + "u"
+        constant = str(self.contents) + "u"
+        # This weirdness is to assert at compile time that the value
+        # is small enough to fit into GLuint.
+        return "(0u / (" + constant + " <= ((GLuint) -1)) + " + constant + ")"
 
 
 class U16:
