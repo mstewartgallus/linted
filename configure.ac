@@ -8,7 +8,7 @@ dnl This program is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
-AC_INIT([Linted], [1.0], [sstewartgallus00@mylangara.bc.ca])
+AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])
 AC_CONFIG_HEADER([config.h])
