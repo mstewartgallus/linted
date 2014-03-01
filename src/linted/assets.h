@@ -16,7 +16,7 @@
 #ifndef LINTED_ASSETS_H
 #define LINTED_ASSETS_H
 
-#include "SDL_opengl.h"
+#include "linted/gl_core.h"
 
 typedef GLfloat linted_assets_point[2];
 linted_assets_point const *const linted_assets_triangle_data;

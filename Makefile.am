@@ -19,6 +19,7 @@ ACLOCAL_AMFLAGS=-I m4
 bin_PROGRAMS=linted
 
 linted_SOURCES=\
+  src/bin/gl_core.c\
   src/bin/assets.c\
   src/bin/controller.c\
   src/bin/gui.c\
@@ -52,6 +53,7 @@ linted_CPPFLAGS +=$(AM_CPPFLAGS)
 headers=\
   src/linted/assets.h\
   src/linted/controller.h\
+  src/linted/gl_core.h\
   src/linted/gui.h\
   src/linted/io.h\
   src/linted/main_loop.h\
@@ -83,6 +85,18 @@ src/bin/assets.c:\
 	$(srcdir)/src/assets_generator/linted_assets_generator\
 	  $(srcdir)/src/assets/assets.py\
 	  --output=$@
+
+MOSTLYCLEANFILES+=src/bin/gl_core.c src/linted/gl_core.h
+src/bin/gl_core.c:
+	cd $(builddir)/src/bin && \
+	  lua $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
+
+src/linted/gl_core.h:
+	$(MKDIR_P) $(builddir)/src/linted
+	cd $(builddir)/src/linted && \
+	  lua $(srcdir)/libs/glloadgen/LoadGen.lua\
+	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\

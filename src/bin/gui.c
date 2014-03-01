@@ -16,12 +16,12 @@
 #include "config.h"
 
 #include "linted/assets.h"
+#include "linted/gl_core.h"
 #include "linted/gui.h"
 #include "linted/mq.h"
 #include "linted/util.h"
 
 #include "SDL.h"
-#include "SDL_opengl.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -98,52 +98,13 @@ struct gui_state {
     float y;
 };
 
-struct gl {
-    void (*Clear)(GLbitfield mask);
-    void (*DrawElements)(GLenum mode, GLsizei count, GLenum type,
-                         const GLvoid * indices);
-    void (*LoadMatrixf)(const GLfloat *m);
-    GLenum (*GetError)(void);
-    const GLubyte* (*GetString)(GLenum name);
-
-    void (*Enable)(GLenum cap);
-    void (*Disable)(GLenum cap);
-    void (*ClearColor)(GLclampf red, GLclampf green, GLclampf blue,
-                       GLclampf alpha);
-    void (*Viewport)(GLint x, GLint y, GLsizei width, GLsizei height);
-    void (*VertexPointer)(GLint size, GLenum type, GLsizei stride,
-                          const GLvoid * pointer);
-    void (*MatrixMode)(GLenum mode);
-
-};
-
-static struct {
-    size_t offset;
-    char const * name;
-} const gl_to_load[] = {
-    {offsetof(struct gl, Clear), "glClear"},
-    {offsetof(struct gl, DrawElements), "glDrawElements"},
-    {offsetof(struct gl, LoadMatrixf), "glLoadMatrixf"},
-    {offsetof(struct gl, GetError), "glGetError"},
-    {offsetof(struct gl, GetString), "glGetString"},
-
-    {offsetof(struct gl, Enable), "glEnable"},
-    {offsetof(struct gl, Disable), "glDisable"},
-    {offsetof(struct gl, ClearColor), "glClearColor"},
-    {offsetof(struct gl, Viewport), "glViewport"},
-    {offsetof(struct gl, VertexPointer), "glVertexPointer"},
-    {offsetof(struct gl, MatrixMode), "glMatrixMode"}
-};
-
 static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
                         linted_controller controller,
                         enum transition *transition);
 
-static int init_graphics(struct gl * gl,
-                         struct window_state const *window_state);
-static void render_graphics(struct gl const * gl,
-                            struct gui_state const *gui_state);
+static int init_graphics(struct window_state const *window_state);
+static void render_graphics(struct gui_state const *gui_state);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
@@ -219,9 +180,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         goto cleanup_SDL;
     }
 
-    struct gl gl;
-
-    if (-1 == init_graphics(&gl, &window_state)) {
+    if (-1 == init_graphics(&window_state)) {
         return -1;
     }
 
@@ -300,7 +259,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 goto setup_window;
             }
 
-            render_graphics(&gl, &gui_state);
+            render_graphics(&gui_state);
         }
     }
 
@@ -411,37 +370,30 @@ static int on_sdl_event(SDL_Event const *sdl_event,
     return 0;
 }
 
-static int init_graphics(struct gl * gl,
-                         struct window_state const *window_state)
+static int init_graphics(struct window_state const *window_state)
 {
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(gl_to_load); ++ii) {
-        void * const funcp = SDL_GL_GetProcAddress(gl_to_load[ii].name);
-        if (NULL == funcp) {
-            errno = ENOSYS;
-            return -1;
-        }
-
-        memcpy(((char *) gl) + gl_to_load[ii].offset, &funcp, sizeof funcp);
+    if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
+        errno = ENOSYS;
+        return -1;
     }
 
-    gl->Disable(GL_DITHER);
+    glDisable(GL_DITHER);
 
-    gl->Enable(GL_VERTEX_ARRAY);
+    glEnable(GL_VERTEX_ARRAY);
 
-    gl->ClearColor(1.0f, 0.2f, 0.3f, 0.0f);
-    gl->Viewport(0, 0, window_state->width, window_state->height);
+    glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
+    glViewport(0, 0, window_state->width, window_state->height);
 
-    gl->VertexPointer(2, GL_FLOAT, 0, linted_assets_triangle_data);
+    glVertexPointer(2, GL_FLOAT, 0, linted_assets_triangle_data);
 
-    gl->MatrixMode(GL_MODELVIEW);
+    glMatrixMode(GL_MODELVIEW);
 
     return 0;
 }
 
-static void render_graphics(struct gl const * gl,
-                            struct gui_state const *gui_state)
+static void render_graphics(struct gui_state const *gui_state)
 {
-    gl->Clear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     GLfloat modelview_matrix[] = {
         1, 0, 0, 0,
@@ -452,17 +404,17 @@ static void render_graphics(struct gl const * gl,
     /*  X, Y, Z, W coords of the resultant vector are the
      *  sums of the columns (row major order).
      */
-    gl->LoadMatrixf(modelview_matrix);
+    glLoadMatrixf(modelview_matrix);
 
-    gl->DrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
+    glDrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
                    GL_UNSIGNED_INT, linted_assets_triangle_indices);
 
     for (;;) {
-        GLenum error = gl->GetError();
+        GLenum error = glGetError();
         if (GL_NO_ERROR == error) {
             break;
         }
-        syslog(LOG_ERR, "GL Error: %s", gl->GetString(error));
+        syslog(LOG_ERR, "GL Error: %s", glGetString(error));
     }
 
     SDL_GL_SwapBuffers();
