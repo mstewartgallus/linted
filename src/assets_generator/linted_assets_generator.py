@@ -138,14 +138,14 @@ def Array(T, size):
         "flatten": flatten
     })
 
-class F32:
-    name = "f32"
+class Float:
+    name = "float"
 
     def __init__(self, contents: float):
         self.contents = contents
 
     def flatten(self, indent):
-        return str(self.contents) + "f32"
+        return str(self.contents)
 
 
 class Uint:
@@ -184,16 +184,16 @@ class Shader:
 
 Faces = structure("Faces", [
     ("indices", StaticArray(Array(U16, 3))),
-    ("vertices", StaticArray(Array(F32, 3)))])
+    ("vertices", StaticArray(Array(Float, 3)))])
 
 SimulatorData = structure("SimulatorData", [
-    ("dynamic_objects", StaticArray(Array(F32, 3))),
+    ("dynamic_objects", StaticArray(Array(Float, 3))),
     ("static_objects", Faces)])
 
 
 Vertex = structure("Vertex", [
-    ("position", Array(F32, 3)),
-    ("normal", Array(F32, 3))])
+    ("position", Array(Float, 3)),
+    ("normal", Array(Float, 3))])
 
 MeshCollection = structure("MeshCollection", [
     ("indices", StaticArray(StaticArray(Array(U16, 3)))),
@@ -202,7 +202,7 @@ MeshCollection = structure("MeshCollection", [
 RenderData = structure("RenderData", [
     ("mesh_collection", MeshCollection),
     ("objects_for_mesh", StaticArray(StaticArray(Uint))),
-    ("object_matrices", StaticArray(Array(Array(F32, 4), 4)))])
+    ("object_matrices", StaticArray(Array(Array(Float, 4), 4)))])
 
 BlendFile = structure("BlendFile", [
         ("simulator_data", SimulatorData),
@@ -239,8 +239,8 @@ def load_blend_file(filename):
 
 
 def object_set_locations(objects):
-    return StaticArray(Array(F32, 3))([Array(F32, 3)(
-        [F32(value) for value in objct.location]) for objct in objects])
+    return StaticArray(Array(Float, 3))([Array(Float, 3)(
+        [Float(value) for value in objct.location]) for objct in objects])
 
 def object_set_faces(objects):
     mesh_vertices = []
@@ -254,15 +254,15 @@ def object_set_faces(objects):
                                           for index in polygon.vertices])
                            for polygon in polygons(mesh)]
 
-                vertices = [Array(F32, 3)(
-                    [F32(part) for part in (matrix * vertex.co).to_tuple()])
+                vertices = [Array(Float, 3)(
+                    [Float(part) for part in (matrix * vertex.co).to_tuple()])
                             for vertex in mesh.vertices]
 
                 mesh_vertices += vertices
                 mesh_indices.extend(indices)
     return Faces(
         indices=StaticArray(Array(U16, 3))(mesh_indices),
-        vertices=StaticArray(Array(F32, 3))(mesh_vertices))
+        vertices=StaticArray(Array(Float, 3))(mesh_vertices))
 
 
 def mesh_collection():
@@ -286,12 +286,12 @@ def objects_for_mesh(objects):
 
 
 def object_matrices(objects):
-    matrices = [Array(Array(F32, 4), 4)([Array(F32, 4)([F32(value)
+    matrices = [Array(Array(Float, 4), 4)([Array(Float, 4)([Float(value)
         for value in vertex])
         for vertex in objct.matrix_world])
         for objct in objects]
 
-    return StaticArray(Array(Array(F32, 4), 4))(matrices)
+    return StaticArray(Array(Array(Float, 4), 4))(matrices)
 
 
 def process_mesh(mesh, last_index):
@@ -300,8 +300,8 @@ def process_mesh(mesh, last_index):
                for polygon in polygons(mesh)]
 
     vertices = [Vertex(
-            position=Array(F32, 3)([F32(part) for part in vertex.co.to_tuple()]),
-            normal=Array(F32, 3)([F32(part) for part in vertex.normal.to_tuple()]))
+            position=Array(Float, 3)([Float(part) for part in vertex.co.to_tuple()]),
+            normal=Array(Float, 3)([Float(part) for part in vertex.normal.to_tuple()]))
         for vertex in mesh.vertices]
 
     return vertices, indices
