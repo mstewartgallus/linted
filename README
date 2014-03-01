@@ -15,10 +15,10 @@ methods of guarding against software bugs.
                               **IMPORTANT WARNING**
 ================================================================================
 
-**Because this project is still in early development it is very broken
-and not at all secure. It is inadvisable to directly take code or
-algorithms from it. Nonetheless you may find it has a few interesting
-ideas.**
+**This project is still in early development. It is very broken and
+not at all secure. As well, the developer is not the smartest and
+isn't very well educated in security. For your safety you should not
+derive code or algorithms from it.**
 
 Some of these methods of guarding against software bugs include:
 
