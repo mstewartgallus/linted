@@ -22,6 +22,7 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[dnl
         [-O]dnl
         [-O2]dnl
         [-O3]dnl
+        [-Os]dnl
 ])
 dnl
 dnl Link time optimization needs to be supported by the linker as well.
