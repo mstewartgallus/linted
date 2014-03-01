@@ -53,7 +53,7 @@ static int on_timer_readable(int timer,
                              struct simulator_state *simulator_state);
 
 static int on_updater_writeable(linted_updater updater,
-                                struct simulator_state * simulator_state);
+                                struct simulator_state *simulator_state);
 
 static int on_shutdowner_readable(linted_shutdowner shutdowner,
                                   bool * should_exit);
@@ -164,14 +164,14 @@ int linted_simulator_run(linted_controller const controller,
         }
 
         if (FD_ISSET(timer, &watched_read_fds)) {
-            if (-1 == on_timer_readable(timer, &controller_state, &simulator_state)) {
+            if (-1 ==
+                on_timer_readable(timer, &controller_state, &simulator_state)) {
                 goto close_timer;
             }
         }
 
         if (FD_ISSET(controller, &watched_read_fds)) {
-            if (-1 == on_controller_readable(controller,
-                                                      &controller_state)) {
+            if (-1 == on_controller_readable(controller, &controller_state)) {
                 goto close_timer;
             }
         }
@@ -250,7 +250,7 @@ static int on_timer_readable(int timer,
 }
 
 static int on_updater_writeable(linted_updater updater,
-                                struct simulator_state * simulator_state)
+                                struct simulator_state *simulator_state)
 {
     struct linted_updater_update update = {
         .x_position = simulator_state->x_position,

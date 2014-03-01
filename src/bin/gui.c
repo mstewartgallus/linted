@@ -124,8 +124,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
 
     struct controller_state controller_state = {
         .update = {
-            .keys = { false, false, false, false }
-        },
+                   .keys = {false, false, false, false}
+                   },
         .update_pending = false
     };
 
@@ -252,7 +252,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 }
             }
 
-            struct timeval timeval = {.tv_sec = 0, .tv_usec = 0};
+            struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
             select_status = select(greatest + 1, &watched_read_fds,
                                    &watched_write_fds, NULL, &timeval);
         } while (-1 == select_status && EINTR == errno);
