@@ -77,7 +77,7 @@ src/bin/assets.c:\
   \
   src/assets_generator/linted_assets_generator\
   src/assets_generator/linted_assets_generator.py
-	$(srcdir)/src/assets_generator/linted_assets_generator\
+	BLENDER=$(BLENDER) $(srcdir)/src/assets_generator/linted_assets_generator\
 	  $(srcdir)/src/assets/assets.py\
 	  --output=$@
 
