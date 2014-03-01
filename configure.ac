@@ -33,6 +33,7 @@ dnl
 AC_CHECK_HEADERS([dnl
         limits.h dnl
         fcntl.h dnl
+        stddef.h dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
@@ -69,6 +70,14 @@ AC_TYPE_UINT8_T
 AS_IF([test "x${ac_cv_type_uint8_t}" = "xno"],[
  AC_MSG_ERROR([Unable to find type uint8_t])
 ])
+AC_TYPE_UINT64_T
+AS_IF([test "x${ac_cv_type_uint64_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type uint64_t])
+])
+AC_TYPE_INT32_T
+AS_IF([test "x${ac_cv_type_int32_t}" = "xno"],[
+ AC_MSG_ERROR([Unable to find type int32_t])
+])
 dnl
 AC_FUNC_MALLOC
 AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
@@ -76,13 +85,17 @@ AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
 ])
 AC_FUNC_REALLOC
 AS_IF([test "x${ac_cv_func_realloc}" = "xno"],[
-x AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
+ AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
+])
+AC_FUNC_STRERROR_R
+AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+ AC_MSG_ERROR([Unable to find strerror_r function])
 ])
 AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
  AC_MSG_ERROR([Unable to find good fork function])
 ])
-AC_CHECK_FUNCS([memset], [], [
+AC_CHECK_FUNCS([memset select strchr], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
