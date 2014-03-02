@@ -27,6 +27,43 @@ indices = Array(3, GLubyte)([GLubyte(0), GLubyte(1), GLubyte(2)]).flatten(0)
 output = Template("""#include "linted/assets.h"
 #include "linted/util.h"
 
+#include <limits.h>
+#include <float.h>
+
+
+#define UNSIGNED_CHECK(T, X) (0u / ((X) <= ((T) -1)) + X)
+
+
+#define SIGNED_MAX(T) (\\
+    sizeof(T) == sizeof(signed char) ? SCHAR_MAX :\\
+    sizeof(T) == sizeof(short)       ? SHRT_MAX  :\\
+    sizeof(T) == sizeof(int)         ? INT_MAX   :\\
+    sizeof(T) == sizeof(long)        ? LONG_MAX  :\\
+    0u / 0u)
+
+#define SIGNED_MIN(T) (\\
+    sizeof(T) == sizeof(signed char) ? SCHAR_MIN :\\
+    sizeof(T) == sizeof(short)       ? SHRT_MIN  :\\
+    sizeof(T) == sizeof(int)         ? INT_MIN   :\\
+    sizeof(T) == sizeof(long)        ? LONG_MIN  :\\
+    0u / 0u)
+
+#define SIGNED_CHECK(T, X) (0 / ((X) >= SIGNED_MIN(T)) + 0 / ((X) <= SIGNED_MAX(T)) + X)
+
+
+#define FLOAT_MAX(T) (\\
+    sizeof(T) == sizeof(float) ? FLT_MAX :\\
+    sizeof(T) == sizeof(double) ? DBL_MAX  :\\
+    0u / 0u)
+
+#define FLOAT_MIN(T) (\\
+    sizeof(T) == sizeof(float) ? -FLT_MAX :\\
+    sizeof(T) == sizeof(double) ? -DBL_MAX  :\\
+    0u / 0u)
+
+#define FLOAT_CHECK(T, X) (0 / ((X) >= FLOAT_MIN(T)) + 0 / ((X) <= FLOAT_MAX(T)) + X)
+
+
 static linted_assets_point const raw_data[] = $vertices;
 linted_assets_point const * const linted_assets_triangle_data = raw_data;
 

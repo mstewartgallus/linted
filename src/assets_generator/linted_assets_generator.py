@@ -138,6 +138,9 @@ def Array(size, T):
         "flatten": flatten
     })
 
+def _float_check(t, constant):
+    return "FLOAT_CHECK(" + t.name + ", " + constant + ")"
+
 class GLfloat:
     name = "GLfloat"
 
@@ -145,12 +148,10 @@ class GLfloat:
         self.contents = contents
 
     def flatten(self, indent):
-        return str(self.contents)
+        return _float_check(self, str(self.contents) + "f")
 
-# This weirdness is to assert at compile time that the value is small
-# enough to fit into a type. Only works for unsigned types.
-def _assert_less_than_max(t, constant):
-    return "(0u / (" + constant + " <= ((" + t.name + ") -1)) + " + constant + ")"
+def _unsigned_check(t, constant):
+    return "UNSIGNED_CHECK(" + t.name + ", " + constant + ")"
 
 class GLubyte:
     name = "GLubyte"
@@ -160,7 +161,7 @@ class GLubyte:
         self.contents = contents
 
     def flatten(self, indent):
-        return _assert_less_than_max(self, str(self.contents) + "u")
+        return _unsigned_check(self, str(self.contents) + "u")
 
 class GLushort:
     name = "GLushort"
@@ -170,7 +171,7 @@ class GLushort:
         self.contents = contents
 
     def flatten(self, indent):
-        return _assert_less_than_max(self, str(self.contents) + "u")
+        return _unsigned_check(self, str(self.contents) + "u")
 
 class GLuint:
     name = "GLuint"
@@ -180,7 +181,7 @@ class GLuint:
         self.contents = contents
 
     def flatten(self, indent):
-        return _assert_less_than_max(self, str(self.contents) + "u")
+        return _unsigned_check(self, str(self.contents) + "u")
 
 class U16:
     name = "u16"
