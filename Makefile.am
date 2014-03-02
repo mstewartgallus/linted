@@ -43,6 +43,7 @@ nodist_linted_SOURCES=\
 
 headers=\
   src/linted/assets.h\
+  src/linted/check.h\
   src/linted/controller.h\
   src/linted/gui.h\
   src/linted/io.h\

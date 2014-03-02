@@ -139,7 +139,7 @@ def Array(size, T):
     })
 
 def _float_check(t, constant):
-    return "FLOAT_CHECK(" + t.name + ", " + constant + ")"
+    return "LINTED_CHECK_FLOAT(" + t.name + ", " + constant + ")"
 
 class GLfloat:
     name = "GLfloat"
@@ -151,7 +151,7 @@ class GLfloat:
         return _float_check(self, str(self.contents) + "f")
 
 def _unsigned_check(t, constant):
-    return "UNSIGNED_CHECK(" + t.name + ", " + constant + ")"
+    return "LINTED_CHECK_UNSIGNED(" + t.name + ", " + constant + ")"
 
 class GLubyte:
     name = "GLubyte"
