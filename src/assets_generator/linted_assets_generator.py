@@ -183,17 +183,6 @@ class GLuint:
     def flatten(self, indent):
         return _unsigned_check(self, str(self.contents) + "u")
 
-class U16:
-    name = "u16"
-
-    def __init__(self, contents: int):
-        assert contents >= 0
-        assert contents <= 2**16
-        self.contents = contents
-
-    def flatten(self, indent):
-        return str(self.contents) + "u16"
-
 class Shader:
     @classmethod
     def load(cls, filename):
