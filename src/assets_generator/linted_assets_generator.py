@@ -34,7 +34,6 @@ def _main():
         help="file to output assets")
     arguments = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
-
     input_file = arguments.input_file
 
     sys.path.append(os.path.dirname(__file__))
@@ -49,6 +48,7 @@ def _main():
     else:
         with open(arguments.output, 'w') as output_file:
             output_file.write(assets_file.output)
+
 
 _spacing = "    "
 
@@ -138,8 +138,6 @@ def Array(size, T):
         "flatten": flatten
     })
 
-def _float_check(t, constant):
-    return "LINTED_CHECK_FLOAT(" + t.name + ", " + constant + ")"
 
 class GLfloat:
     name = "GLfloat"
@@ -148,40 +146,26 @@ class GLfloat:
         self.contents = contents
 
     def flatten(self, indent):
-        return _float_check(self, str(self.contents) + "f")
+        return "LINTED_CHECK_FLOAT(" + self.name + ", " + str(self.contents) + "f)"
 
-def _unsigned_check(t, constant):
-    return "LINTED_CHECK_UNSIGNED(" + t.name + ", " + constant + ")"
 
-class GLubyte:
+class Unsigned:
+    def __init__(self, contents: int):
+        assert contents >= 0
+        self.contents = contents
+
+    def flatten(self, indent):
+        return "LINTED_CHECK_UNSIGNED(" + self.name + ", " + str(self.contents) + "u)"
+
+class GLubyte(Unsigned):
     name = "GLubyte"
 
-    def __init__(self, contents: int):
-        assert contents >= 0
-        self.contents = contents
-
-    def flatten(self, indent):
-        return _unsigned_check(self, str(self.contents) + "u")
-
-class GLushort:
+class GLushort(Unsigned):
     name = "GLushort"
 
-    def __init__(self, contents: int):
-        assert contents >= 0
-        self.contents = contents
-
-    def flatten(self, indent):
-        return _unsigned_check(self, str(self.contents) + "u")
-
-class GLuint:
+class GLuint(Unsigned):
     name = "GLuint"
 
-    def __init__(self, contents: int):
-        assert contents >= 0
-        self.contents = contents
-
-    def flatten(self, indent):
-        return _unsigned_check(self, str(self.contents) + "u")
 
 class Shader:
     @classmethod
@@ -195,8 +179,9 @@ class Shader:
         quotation = self.contents.encode("unicode_escape").decode("ascii").replace("\"", "\\\"")
         return "\"" + quotation + "\""
 
+
 Faces = structure("Faces", [
-    ("indices", StaticArray(Array(3, U16))),
+    ("indices", StaticArray(Array(3, GLushort))),
     ("vertices", StaticArray(Array(3, GLfloat)))])
 
 SimulatorData = structure("SimulatorData", [
@@ -209,7 +194,7 @@ Vertex = structure("Vertex", [
     ("normal", Array(3, GLfloat))])
 
 MeshCollection = structure("MeshCollection", [
-    ("indices", StaticArray(StaticArray(Array(3, U16)))),
+    ("indices", StaticArray(StaticArray(Array(3, GLushort)))),
     ("vertices", StaticArray(Vertex))])
 
 RenderData = structure("RenderData", [
@@ -263,7 +248,7 @@ def object_set_faces(objects):
 
         for mesh in bpy.data.meshes:
             if mesh == objct.data:
-                indices = [Array(3, U16)([process_index(index, len(mesh_vertices))
+                indices = [Array(3, GLushort)([process_index(index, len(mesh_vertices))
                                           for index in polygon.vertices])
                            for polygon in polygons(mesh)]
 
@@ -274,7 +259,7 @@ def object_set_faces(objects):
                 mesh_vertices += vertices
                 mesh_indices.extend(indices)
     return Faces(
-        indices=StaticArray(Array(3, U16))(mesh_indices),
+        indices=StaticArray(Array(3, GLushort))(mesh_indices),
         vertices=StaticArray(Array(3, GLfloat))(mesh_vertices))
 
 
@@ -284,10 +269,10 @@ def mesh_collection():
     for mesh in bpy.data.meshes:
         vertices, indices = process_mesh(mesh, len(mesh_vertices))
         mesh_vertices += vertices
-        mesh_indices.append(StaticArray(Array(3, U16))(indices))
+        mesh_indices.append(StaticArray(Array(3, GLushort))(indices))
 
     return MeshCollection(
-        indices=StaticArray(StaticArray(Array(3, U16)))(mesh_indices),
+        indices=StaticArray(StaticArray(Array(3, GLushort)))(mesh_indices),
         vertices=StaticArray(Vertex)(mesh_vertices))
 
 
@@ -308,7 +293,7 @@ def object_matrices(objects):
 
 
 def process_mesh(mesh, last_index):
-    indices = [Array(3, U16)([process_index(index, last_index)
+    indices = [Array(3, GLushort)([process_index(index, last_index)
                        for index in polygon.vertices])
                for polygon in polygons(mesh)]
 
@@ -321,7 +306,7 @@ def process_mesh(mesh, last_index):
 
 def process_index(index, last_index):
     new_index = last_index + index
-    return U16(new_index)
+    return GLushort(new_index)
 
 
 # Compatibility shim for older Blender versions
