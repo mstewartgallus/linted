@@ -58,13 +58,13 @@ def structure(typename: str, fields: list):
     cls = collections.namedtuple(typename, fieldnames)
     cls.name = typename
 
-    members = [_spacing + prop + ": " + tp.name for (prop, tp) in fields]
+    members = [_spacing + tp.name + " " + prop + ";" for (prop, tp) in fields]
     cls.definition = (
-        "pub struct "
+        "struct "
         + typename
         + " {\n"
-        + ",\n".join(members)
-        + "\n}"
+        + "\n".join(members)
+        + "\n};"
     )
 
     def flatten(self, indent: int = 0):
@@ -74,13 +74,13 @@ def structure(typename: str, fields: list):
         if 0 == len(fields):
             return typename
 
-        property_list = [name + ": " + getattr(self, name).flatten(indent + 1)
+        property_list = ["." + name + " = " + getattr(self, name).flatten(indent + 1)
                          for name in fieldnames]
 
         separator = "\n" + _spacing * indent
         property_list_string = separator + ("," + separator).join(property_list)
 
-        return typename + " {" +  property_list_string + "}"
+        return "{" +  property_list_string + "}"
 
     def __str__(self):
         return self.flatten()
@@ -105,11 +105,11 @@ def StaticArray(T: type):
         # out over multiple lines.
         separator = "\n" + _spacing * indent
         return (
-            "&'static {" + separator + ("," + separator).join(member_list)
+            "{" + separator + ("," + separator).join(member_list)
             + "}")
 
     return type("StaticArray(" + str(T) + ")", (object,), {
-        "name": "&'static {" + T.name + "}",
+        "name": T.name + " * const",
         "__init__": __init__,
         "flatten": flatten
     })
@@ -132,7 +132,7 @@ def Array(size, T):
         return "{" + ", ".join(member_list) + "}"
 
     return type("Array(" + str(size) + ", " + str(T) + ")", (object,), {
-        "name": "{" + T.name + ", .." + str(size) + "}",
+        "name": T.name + "[" + str(size) + "]",
         "__init__": __init__,
         "flatten": flatten
     })
