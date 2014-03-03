@@ -56,7 +56,7 @@ def structure(typename: str, fields: list):
     fieldnames = [name for (name, tp) in fields]
 
     cls = collections.namedtuple(typename, fieldnames)
-    cls.name =  typename
+    cls.name = typename
 
     members = [_spacing + prop + ": " + tp.name for (prop, tp) in fields]
     cls.definition = (
@@ -91,7 +91,6 @@ def structure(typename: str, fields: list):
     return cls
 
 
-# Semantics: Every class returned must be the same.
 @functools.lru_cache(maxsize = None)
 def StaticArray(T: type):
     def __init__(self, children: list):
@@ -115,7 +114,7 @@ def StaticArray(T: type):
         "flatten": flatten
     })
 
-# Semantics: Every class returned must be the same.
+
 @functools.lru_cache(maxsize = None)
 def Array(size, T):
     def __init__(self, children: list):
