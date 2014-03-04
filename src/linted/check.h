@@ -26,6 +26,7 @@
         sizeof(T) == sizeof(short)       ? SHRT_MAX  :  \
         sizeof(T) == sizeof(int)         ? INT_MAX   :  \
         sizeof(T) == sizeof(long)        ? LONG_MAX  :  \
+        sizeof(T) == sizeof(long long)   ? LLONG_MAX :  \
         0u / 0u)
 
 #define LINTED_CHECK_SIGNED_MIN_(T) (                   \
@@ -33,6 +34,7 @@
         sizeof(T) == sizeof(short)       ? SHRT_MIN  :  \
         sizeof(T) == sizeof(int)         ? INT_MIN   :  \
         sizeof(T) == sizeof(long)        ? LONG_MIN  :  \
+        sizeof(T) == sizeof(long long)   ? LLONG_MIN :  \
         0u / 0u)
 
 #define LINTED_CHECK_SIGNED(T, X) (                 \
