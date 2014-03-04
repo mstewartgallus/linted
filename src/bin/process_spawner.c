@@ -273,13 +273,11 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
     {
         int errnum = errno;
-        int close_status = close(sfd);
-        if (-1 == exit_status) {
-            errno = errnum;
+        if (-1 == close(sfd)) {
+            LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
+                                    linted_error_string_alloc(errno));
         }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+        errno = errnum;
     }
 
  restore_sigmask:
