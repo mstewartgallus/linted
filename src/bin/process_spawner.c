@@ -124,6 +124,8 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
             for (;;) {
                 siginfo_t child_info;
+
+                /* Set to zero so it can be checked later */
                 child_info.si_pid = 0;
 
                 int wait_status;
@@ -207,15 +209,20 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
                 if (-1 == linted_spawner_deny_request(connection, errno)) {
                     goto close_connection;
                 }
-            }
+                break;
 
-            if (-1 == setpgid(child, process_group) && errno != EACCES) {
-                goto close_connection;
+            default:
+                if (-1 == setpgid(child, process_group) && errno != EACCES) {
+                    LINTED_IMPOSSIBLE_ERROR(
+                        "could not setpgid with a valid pid and pgid: %s",
+                        linted_error_string_alloc(errno));
+                }
+                break;
             }
 
             connection_status = 0;
 
- close_connection:
+         close_connection:
             {
                 int errnum = errno;
 
@@ -242,8 +249,8 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
             int wait_status;
             do {
-                wait_status =
-                    waitid(P_PGID, process_group, &child_info, WEXITED);
+                wait_status = waitid(P_PGID, process_group, &child_info,
+                                     WEXITED);
             } while (-1 == wait_status && EINTR == errno);
             if (-1 == wait_status) {
                 /* POSIX errors are ECHILD, EINTR and EINVAL */
