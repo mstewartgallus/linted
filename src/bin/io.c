@@ -158,8 +158,18 @@ int linted_io_close_fds_except(fd_set const *fds)
 
         for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
             if (-1 == close(fds_to_close[ii])) {
-                LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
-                                        linted_error_string_alloc(errno));
+                int errnum = errno;
+                if (EBADF == errnum) {
+                    LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
+                                            linted_error_string_alloc(errnum));
+                }
+
+                /*
+                 * Otherwise ignore the error. This function is called
+                 * for security reasons and an EIO error only means
+                 * that the spawner of this process leaked an open
+                 * handle to /dev/full.
+                 */
             }
         }
 
