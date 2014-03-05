@@ -32,6 +32,12 @@ Code quality:
   reimplementing POSIX functionality should probable define _t ending
   names to names of replacement types).
 
+- Understand error checking
+
+  POSIX allows a system call to fail for potentially any reason. It is
+  okay to assert that a specific kind of error should never happen
+  (for example EBADF) but always pass up other kinds of errors.
+
 Coding style:
 
 - We have 3 types of errors and one type of failure.
