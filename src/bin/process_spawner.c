@@ -81,7 +81,14 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
     sigaddset(&sigchld_sigset, SIGCHLD);
 
     sigset_t old_sigset;
-    pthread_sigmask(SIG_BLOCK, &sigchld_sigset, &old_sigset);
+    if (-1 == pthread_sigmask(SIG_BLOCK, &sigchld_sigset, &old_sigset)) {
+        if (EINVAL == errno) {
+            LINTED_IMPOSSIBLE_ERROR("could not set the signal mask: %s",
+                                    linted_error_string_alloc(errno));
+        }
+
+        return -1;
+    }
 
     int sfd = signalfd(-1, &sigchld_sigset, SFD_CLOEXEC);
     if (-1 == sfd) {
@@ -109,11 +116,17 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
                                    NULL, NULL, NULL);
         } while (-1 == select_status && EINTR == errno);
         if (-1 == select_status) {
+            if (EINVAL == errno) {
+                LINTED_IMPOSSIBLE_ERROR("could not select over file descriptors: %s",
+                                        linted_error_string_alloc(errno));
+            }
+
             goto kill_processes;
         }
 
         if (FD_ISSET(sfd, &watched_fds)) {
             pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+
             /*
              * Don't directly consume the signals but let them be
              * consumed if they should be. If the current thread was
@@ -134,9 +147,15 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
                                          WEXITED | WNOHANG);
                 } while (-1 == wait_status && EINTR == errno);
                 if (-1 == wait_status) {
-                    /* POSIX errors are ECHILD, EINTR and EINVAL */
+                    /*
+                     * POSIX errors are ECHILD, EINTR and EINVAL but
+                     * more could be defined by the system.
+                     */
                     assert(errno != EINVAL);
-                    assert(ECHILD == errno);
+
+                    if (errno != ECHILD) {
+                        goto kill_processes;
+                    }
                     break;
                 }
 
@@ -175,7 +194,9 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
             switch (child) {
             case 0:
                 {
-                    pthread_sigmask(SIG_SETMASK, &old_sigset, NULL);
+                    if (-1 == pthread_sigmask(SIG_SETMASK, &old_sigset, NULL)) {
+                        exit(errno);
+                    }
 
                     if (-1 == prctl(PR_SET_PDEATHSIG, SIGHUP)) {
                         exit(errno);
@@ -213,9 +234,13 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
             default:
                 if (-1 == setpgid(child, process_group) && errno != EACCES) {
-                    LINTED_IMPOSSIBLE_ERROR(
-                        "could not setpgid with a valid pid and pgid: %s",
-                        linted_error_string_alloc(errno));
+                    if (EINVAL == errno || EPERM == errno || ESRCH == errno) {
+                        LINTED_IMPOSSIBLE_ERROR(
+                            "could not setpgid with a valid pid and pgid: %s",
+                            linted_error_string_alloc(errno));
+                    } else {
+                        goto close_connection;
+                    }
                 }
                 break;
             }
@@ -226,18 +251,20 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
             {
                 int errnum = errno;
 
-                int close_status = close(connection);
-                if (-1 == connection_status) {
-                    errno = errnum;
+                if (-1 == close(connection)) {
+                    if (EBADF == errno) {
+                        LINTED_IMPOSSIBLE_ERROR(
+                            "could not close open connection: %s",
+                            linted_error_string_alloc(errno));
+                    }
+                    /*
+                     * If we get another type of error we were sent a
+                     * bad connection. That's the client's problem and
+                     * not ours.
+                     */
                 }
 
-                if (-1 == close_status) {
-                    connection_status = -1;
-                }
-
-                if (-1 == connection_status) {
-                    goto kill_processes;
-                }
+                errno = errnum;
             }
         }
     }
@@ -255,7 +282,10 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
             if (-1 == wait_status) {
                 /* POSIX errors are ECHILD, EINTR and EINVAL */
                 assert(errno != EINVAL);
-                assert(ECHILD == errno);
+
+                if (errno != ECHILD) {
+                    goto kill_processes;
+                }
                 break;
             }
 
@@ -267,12 +297,19 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
  kill_processes:
     /* Notify all spawned processes on error */
-    if (exit_status != 0 && process_group != -1) {
+    if (-1 == exit_status && process_group != -1) {
         int errnum = errno;
 
         if (-1 == kill(-process_group, SIGHUP)) {
-            assert(errno != EINVAL);
-            assert(ESRCH == errno || EPERM == errno);
+            if (EINVAL == errno || ESRCH == errno || EPERM == errno) {
+                LINTED_IMPOSSIBLE_ERROR(
+                    "could not kill processes with a valid process group: %s",
+                    linted_error_string_alloc(errno));
+            }
+            /*
+             * We can only report one error at a time. Ignore this
+             * other one.
+             */
         }
 
         errno = errnum;
@@ -280,11 +317,19 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
     {
         int errnum = errno;
-        if (-1 == close(sfd)) {
+        int close_status = close(sfd);
+        if (-1 == close_status && EBADF == errno) {
             LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
                                     linted_error_string_alloc(errno));
         }
-        errno = errnum;
+
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
  restore_sigmask:
