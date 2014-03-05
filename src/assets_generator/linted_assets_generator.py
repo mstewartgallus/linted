@@ -22,16 +22,16 @@ import sys
 
 def _main():
     parser = argparse.ArgumentParser(
-        prog="linted_assets_generator",
-        description="Generate Linted assets from their source format")
+        prog = "linted_assets_generator",
+        description = "Generate Linted assets from their source format")
     parser.add_argument(
         "input_file",
-        type=argparse.FileType('r'),
-        help="file to process as input")
+        type = argparse.FileType('r'),
+        help = "file to process as input")
     parser.add_argument(
         "--output",
-        type=str,
-        help="file to output assets")
+        type = str,
+        help = "file to output assets")
     arguments = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
     input_file = arguments.input_file
@@ -208,7 +208,7 @@ BlendFile.load = lambda filename: load_blend_file(filename)
 
 
 def load_blend_file(filename):
-    bpy.ops.wm.open_mainfile(filepath=filename)
+    bpy.ops.wm.open_mainfile(filepath = filename)
     objects = bpy.data.objects
     mesh_objects = [objct for objct in objects if 'MESH' == objct.type]
 
@@ -221,18 +221,19 @@ def load_blend_file(filename):
         }
         try:
             object_sets[objct.game.physics_type].append(objct)
-        except KeyError: pass
+        except KeyError:
+            pass
 
     physics_objects = dynamic_objects + static_objects
 
     return BlendFile(
-        simulator_data=SimulatorData(
-            dynamic_objects=object_set_locations(dynamic_objects),
-            static_objects=object_set_faces(static_objects)),
-        render_data=RenderData(
-            mesh_collection=mesh_collection(),
-            objects_for_mesh=objects_for_mesh(physics_objects),
-            object_matrices=object_matrices(physics_objects)))
+        simulator_data = SimulatorData(
+            dynamic_objects = object_set_locations(dynamic_objects),
+            static_objects = object_set_faces(static_objects)),
+        render_data = RenderData(
+            mesh_collection = mesh_collection(),
+            objects_for_mesh = objects_for_mesh(physics_objects),
+            object_matrices = object_matrices(physics_objects)))
 
 
 def object_set_locations(objects):
@@ -258,8 +259,8 @@ def object_set_faces(objects):
                 mesh_vertices += vertices
                 mesh_indices.extend(indices)
     return Faces(
-        indices=StaticArray(Array(3, GLushort))(mesh_indices),
-        vertices=StaticArray(Array(3, GLfloat))(mesh_vertices))
+        indices = StaticArray(Array(3, GLushort))(mesh_indices),
+        vertices = StaticArray(Array(3, GLfloat))(mesh_vertices))
 
 
 def mesh_collection():
@@ -271,8 +272,8 @@ def mesh_collection():
         mesh_indices.append(StaticArray(Array(3, GLushort))(indices))
 
     return MeshCollection(
-        indices=StaticArray(StaticArray(Array(3, GLushort)))(mesh_indices),
-        vertices=StaticArray(Vertex)(mesh_vertices))
+        indices = StaticArray(StaticArray(Array(3, GLushort)))(mesh_indices),
+        vertices = StaticArray(Vertex)(mesh_vertices))
 
 
 def objects_for_mesh(objects):
@@ -297,8 +298,8 @@ def process_mesh(mesh, last_index):
                for polygon in polygons(mesh)]
 
     vertices = [Vertex(
-            position=Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()]),
-            normal=Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()]))
+            position = Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()]),
+            normal = Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()]))
         for vertex in mesh.vertices]
 
     return vertices, indices
