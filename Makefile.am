@@ -29,7 +29,6 @@ linted_SOURCES=\
   src/bin/sandbox.c\
   src/bin/shutdowner.c\
   src/bin/spawner.c\
-  src/bin/unimq.c\
   src/bin/updater.c\
   $(linted_SOURCES_verified)
 
