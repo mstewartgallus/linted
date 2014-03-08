@@ -24,15 +24,11 @@
  */
 typedef mqd_t linted_controller;
 
-enum linted_controller_key {
-    LINTED_CONTROLLER_UP,
-    LINTED_CONTROLLER_DOWN,
-    LINTED_CONTROLLER_LEFT,
-    LINTED_CONTROLLER_RIGHT
-};
-
 struct linted_controller_message {
-    bool keys[4];
+    unsigned left: 1;
+    unsigned right: 1;
+    unsigned up: 1;
+    unsigned down: 1;
 };
 
 int linted_controller_pair(linted_controller controller[2],

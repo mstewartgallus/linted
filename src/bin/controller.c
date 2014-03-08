@@ -20,10 +20,11 @@
 #include "linted/controller.h"
 #include "linted/util.h"
 
+#include <stdio.h>
 #include <string.h>
 
-#define MESSAGE_SIZE                                            \
-    LINTED_SIZEOF_MEMBER(struct linted_controller_message, keys)
+#define MESSAGE_SIZE 1
+
 
 typedef char message_type[MESSAGE_SIZE];
 
@@ -42,11 +43,13 @@ int linted_controller_pair(linted_controller controller[2],
 int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message)
 {
+    unsigned char bitfield = message->up
+        | message->down << 1
+        | message->right << 2
+        | message->left << 3;
+
     message_type raw_message;
-    char *tip = raw_message;
-
-    memcpy(tip, &message->keys, sizeof message->keys);
-
+    memcpy(raw_message, &bitfield, sizeof bitfield);
     return mq_send(controller, raw_message, sizeof raw_message, 0);
 }
 
@@ -62,9 +65,13 @@ int linted_controller_receive(linted_controller queue,
     int receive_status = mq_receive(queue, raw_message, sizeof raw_message,
                                     NULL);
     if (receive_status != -1) {
-        char *tip = raw_message;
+        unsigned char bitfield;
+        memcpy(&bitfield, raw_message, sizeof bitfield);
 
-        memcpy(&message->keys, tip, sizeof message->keys);
+        message->up = bitfield & 1;
+        message->down = (bitfield & (1 << 1)) != 0;
+        message->right = (bitfield & (1 << 2)) != 0;
+        message->left = (bitfield & (1 << 3)) != 0;
     }
 
     return receive_status;

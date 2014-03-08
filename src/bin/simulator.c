@@ -313,10 +313,10 @@ static int on_controller_readable(linted_controller controller,
         return -1;
     }
 
-    controller_state->x_left = message.keys[LINTED_CONTROLLER_LEFT];
-    controller_state->x_right = message.keys[LINTED_CONTROLLER_RIGHT];
-    controller_state->y_up = message.keys[LINTED_CONTROLLER_UP];
-    controller_state->y_down = message.keys[LINTED_CONTROLLER_DOWN];
+    controller_state->x_left = message.left;
+    controller_state->x_right = message.right;
+    controller_state->y_up = message.up;
+    controller_state->y_down = message.down;
 
     return 0;
 }

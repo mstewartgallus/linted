@@ -124,7 +124,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     };
 
     struct controller_state controller_state = {
-        .update = {.keys = {false, false, false, false}},
+        .update = {.up = false, .down = false, .right = false, .left = false},
         .update_pending = false
     };
 
@@ -367,26 +367,23 @@ static int on_sdl_event(SDL_Event const *sdl_event,
         goto on_key_down;
     }
 
-    enum linted_controller_key key;
-
  on_key_left:
-    key = LINTED_CONTROLLER_LEFT;
+    controller_state->update.left = is_key_down;
     goto update_controller;
 
  on_key_right:
-    key = LINTED_CONTROLLER_RIGHT;
+    controller_state->update.right = is_key_down;
     goto update_controller;
 
  on_key_up:
-    key = LINTED_CONTROLLER_UP;
+    controller_state->update.up = is_key_down;
     goto update_controller;
 
  on_key_down:
-    key = LINTED_CONTROLLER_DOWN;
+    controller_state->update.down = is_key_down;
     goto update_controller;
 
  update_controller:
-    controller_state->update.keys[key] = is_key_down;
     controller_state->update_pending = true;
 
     *transition = DO_NOTHING;
