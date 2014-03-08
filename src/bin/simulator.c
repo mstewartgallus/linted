@@ -30,22 +30,23 @@
 #include <time.h>
 #include <unistd.h>
 
-struct controller_state {
-    int32_t x_left;
-    int32_t x_right;
 
-    int32_t y_up;
-    int32_t y_down;
+struct controller_state {
+    unsigned x_left: 1;
+    unsigned x_right: 1;
+
+    unsigned y_up: 1;
+    unsigned y_down: 1;
 };
 
 struct simulator_state {
     bool update_pending;
 
-    int32_t x_position;
-    int32_t y_position;
+    int_fast32_t x_position;
+    int_fast32_t y_position;
 
-    int32_t x_velocity;
-    int32_t y_velocity;
+    int_fast32_t x_velocity;
+    int_fast32_t y_velocity;
 };
 
 static int on_timer_readable(int timer,
@@ -61,8 +62,9 @@ static int on_shutdowner_readable(linted_shutdowner shutdowner,
 static int on_controller_readable(linted_controller controller,
                                   struct controller_state *controller_state);
 
-static int32_t min(int32_t x, int32_t y);
-static int32_t sign(int32_t x);
+static int_fast32_t saturate(int_fast64_t x);
+static int_fast32_t min(int_fast32_t x, int_fast32_t y);
+static int_fast32_t sign(int_fast32_t x);
 
 int linted_simulator_run(linted_controller const controller,
                          linted_shutdowner const shutdowner,
@@ -211,30 +213,30 @@ static int on_timer_readable(int timer,
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
-        int32_t x_position = simulator_state->x_position;
-        int32_t y_position = simulator_state->y_position;
+        int_fast32_t x_position = simulator_state->x_position;
+        int_fast32_t y_position = simulator_state->y_position;
 
-        int32_t x_velocity = simulator_state->x_velocity;
-        int32_t y_velocity = simulator_state->y_velocity;
+        int_fast32_t x_velocity = simulator_state->x_velocity;
+        int_fast32_t y_velocity = simulator_state->y_velocity;
 
-        int32_t x_thrust =
-            2 * (controller_state->x_right - controller_state->x_left);
-        int32_t y_thrust =
-            2 * (controller_state->y_up - controller_state->y_down);
+        int_fast32_t x_thrust = 2 * ((int_fast32_t) controller_state->x_right
+                                     - (int_fast32_t) controller_state->x_left);
+        int_fast32_t y_thrust = 2 * ((int_fast32_t) controller_state->y_up
+                                     - (int_fast32_t) controller_state->y_down);
 
-        int32_t guess_x_velocity = x_thrust + x_velocity;
-        int32_t guess_y_velocity = y_thrust + y_velocity;
+        int_fast32_t guess_x_velocity = saturate((int_fast64_t) x_thrust + x_velocity);
+        int_fast32_t guess_y_velocity = saturate((int_fast64_t) y_thrust + y_velocity);
 
-        int32_t x_friction = min(imaxabs(guess_x_velocity), 1)
+        int_fast32_t x_friction = min(imaxabs(guess_x_velocity), 1)
             * sign(guess_x_velocity);
-        int32_t y_friction = min(imaxabs(guess_y_velocity), 1)
+        int_fast32_t y_friction = min(imaxabs(guess_y_velocity), 1)
             * sign(guess_y_velocity);
 
-        int32_t new_x_velocity = x_velocity + x_thrust + x_friction;
-        int32_t new_y_velocity = y_velocity + y_thrust + y_friction;
+        int_fast32_t new_x_velocity = saturate((int_fast64_t) guess_x_velocity + x_friction);
+        int_fast32_t new_y_velocity = saturate((int_fast64_t) guess_y_velocity + y_friction);
 
-        int32_t new_x_position = x_position + new_x_velocity;
-        int32_t new_y_position = y_position + new_y_velocity;
+        int_fast32_t new_x_position = saturate((int_fast64_t) x_position + new_x_velocity);
+        int_fast32_t new_y_position = saturate((int_fast64_t) y_position + new_y_velocity);
 
         simulator_state->update_pending |= x_position != new_x_position
             || y_position != new_y_position;
@@ -319,12 +321,25 @@ static int on_controller_readable(linted_controller controller,
     return 0;
 }
 
-static int32_t min(int32_t x, int32_t y)
+static int_fast32_t min(int_fast32_t x, int_fast32_t y)
 {
     return x < y ? x : y;
 }
 
-static int32_t sign(int32_t x)
+static int_fast32_t sign(int_fast32_t x)
 {
     return x < 0 ? 1 : 0 == x ? 0 : -1;
+}
+
+static int_fast32_t saturate(int_fast64_t x)
+{
+    if (x > INT32_MAX) {
+        return INT32_MAX;
+    }
+
+    if (x < INT32_MIN) {
+        return INT32_MIN;
+    }
+
+    return x;
 }
