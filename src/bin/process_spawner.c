@@ -266,6 +266,10 @@ int linted_process_spawner_run(linted_spawner inbox, void *context)
 
                 errno = errnum;
             }
+
+            if (-1 == connection_status) {
+                goto kill_processes;
+            }
         }
     }
 
