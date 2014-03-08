@@ -45,34 +45,6 @@ AC_HEADER_STDBOOL
 AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
 ])
-AC_TYPE_SIZE_T
-AS_IF([test "x${ac_cv_type_size_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type size_t])
-])
-AC_TYPE_SSIZE_T
-AS_IF([test "x${ac_cv_type_ssize_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type ssize_t])
-])
-AC_TYPE_PID_T
-AS_IF([test "x${ac_cv_type_pid_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type pid_t])
-])
-AC_TYPE_UID_T
-AS_IF([test "x${ac_cv_type_uid_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type uid_t])
-])
-AC_TYPE_UINT8_T
-AS_IF([test "x${ac_cv_type_uint8_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type uint8_t])
-])
-AC_TYPE_UINT64_T
-AS_IF([test "x${ac_cv_type_uint64_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type uint64_t])
-])
-AC_TYPE_INT32_T
-AS_IF([test "x${ac_cv_type_int32_t}" = "xno"],[
- AC_MSG_ERROR([Unable to find type int32_t])
-])
 dnl
 AC_FUNC_MALLOC
 AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
@@ -94,6 +66,15 @@ AC_CHECK_FUNCS([memset select strchr], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
+AC_TYPE_INT32_T
+dnl
+AC_TYPE_UINT8_T
+AC_TYPE_UINT64_T
+dnl
+AC_TYPE_SSIZE_T
+AC_TYPE_SIZE_T
+AC_TYPE_PID_T
+AC_TYPE_UID_T
 dnl
 LINTED_PROG_BLENDER
 LINTED_PROG_CBMC

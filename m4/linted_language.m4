@@ -10,9 +10,6 @@ dnl
 dnl Autodetects and sets language settings
 AC_DEFUN([LINTED_LANGUAGE],[
 dnl
-dnl No way to test so always add. It should do no harm if it doesn't
-dnl work.
-dnl
 dnl Use POSIX library functions
 [linted_CPPFLAGS_LANGUAGE=-D_POSIX_C_SOURCE=200809L]
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
