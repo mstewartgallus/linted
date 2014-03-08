@@ -28,6 +28,7 @@ dnl
 AC_CHECK_HEADERS([dnl
         limits.h dnl
         fcntl.h dnl
+        float.h dnl
         stddef.h dnl
         stdint.h dnl
         stdlib.h dnl
