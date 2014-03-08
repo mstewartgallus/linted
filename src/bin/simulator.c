@@ -40,13 +40,13 @@ struct controller_state {
 };
 
 struct simulator_state {
-    bool update_pending;
-
     int_fast32_t x_position;
     int_fast32_t y_position;
 
     int_fast32_t x_velocity;
     int_fast32_t y_velocity;
+
+    bool update_pending;
 };
 
 static int on_timer_readable(int timer,
