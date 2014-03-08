@@ -61,7 +61,6 @@ static int run_game(void);
 int main(int argc, char **argv)
 {
     /* First we check if we are run with proper security */
-#ifdef HAVE_UID_T
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
@@ -69,7 +68,6 @@ int main(int argc, char **argv)
               stderr);
         return EXIT_FAILURE;
     }
-#endif                          /* HAVE_UID_T */
 
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS          /* So we know there is an error */
