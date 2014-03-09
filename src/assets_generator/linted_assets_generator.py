@@ -93,49 +93,52 @@ def structure(typename: str, fields: list):
 
 @functools.lru_cache(maxsize = None)
 def StaticArray(T: type):
-    def __init__(self, children: list):
-        for child in children:
-            assert type(child) == T
-        self.children = children
+    class StaticArrayType:
+        __name__ = "StaticArray(" + str(T) + ")"
 
-    def flatten(self, indent):
-        member_list = [value.flatten(indent + 1) for value in self.children]
+        name = T.name + " * const"
 
-        # Heuristic: Static arrays are big, and so should be spread
-        # out over multiple lines.
-        separator = "\n" + _spacing * indent
-        return (
-            "{" + separator + ("," + separator).join(member_list)
-            + "}")
+        def __init__(self, children: list):
+            for child in children:
+                assert type(child) == T
+            self.children = children
 
-    return type("StaticArray(" + str(T) + ")", (object,), {
-        "name": T.name + " * const",
-        "__init__": __init__,
-        "flatten": flatten
-    })
+        def flatten(self, indent):
+            member_list = [value.flatten(indent + 1) for value in self.children]
 
+            # Heuristic: Static arrays are big, and so should be
+            # spread out over multiple lines.
+            separator = "\n" + _spacing * indent
+            return (
+                "{" + separator + ("," + separator).join(member_list)
+                + "}")
+
+    return StaticArrayType
 
 @functools.lru_cache(maxsize = None)
-def Array(size, T):
-    def __init__(self, children: list):
-        assert len(children) == size
-        for child in children:
-            assert type(child) == T
+def Array(size: int, T: type):
+    assert size >= 0
 
-        self.children = children
+    class ArrayType:
+        __name__ = "Array(" + str(size) + ", " + str(T) + ")"
 
-    def flatten(self, indent: int):
-        member_list = [value.flatten(indent + 1) for value in self.children]
+        name =  T.name + "[" + str(size) + "]"
 
-        # Heuristic: Fixed sized arrays are small, and so should not
-        # be spread out over multiple lines.
-        return "{" + ", ".join(member_list) + "}"
+        def __init__(self, children: list):
+            assert len(children) == size
+            for child in children:
+                assert type(child) == T
 
-    return type("Array(" + str(size) + ", " + str(T) + ")", (object,), {
-        "name": T.name + "[" + str(size) + "]",
-        "__init__": __init__,
-        "flatten": flatten
-    })
+            self.children = children
+
+        def flatten(self, indent: int):
+            member_list = [value.flatten(indent + 1) for value in self.children]
+
+            # Heuristic: Fixed sized arrays are small, and so should
+            # not be spread out over multiple lines.
+            return "{" + ", ".join(member_list) + "}"
+
+    return ArrayType
 
 
 class GLfloat:
