@@ -132,25 +132,19 @@ int main(int argc, char **argv)
         break;
     }
 
-    /* TODO: freopen to /dev/null */
-    /* TODO: errno is not guaranteed to be set after fclose, use lower
-     *       level functions.
-     */
-    if (EOF == fclose(stdin)) {
+    if (-1 == close(STDIN_FILENO)) {
         char const *error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard input: %s", error_string);
         linted_error_string_free(error_string);
         command_status = -1;
     }
-    stdin = NULL;
 
-    if (EOF == fclose(stdout)) {
+    if (-1 == close(STDOUT_FILENO)) {
         char const *error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard output: %s", error_string);
         linted_error_string_free(error_string);
         command_status = -1;
     }
-    stdout = NULL;
 
     if (should_run_game && command_status != -1) {
         if (-1 == run_game()) {
@@ -161,10 +155,10 @@ int main(int argc, char **argv)
         }
     }
 
-    if (EOF == fclose(stderr)) {
+    if (-1 == close(STDERR_FILENO)) {
         command_status = -1;
         char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "Could not close standard error: %s", error_string);
+        syslog(LOG_ERR, "could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
         command_status = -1;
     }
