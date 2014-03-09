@@ -30,11 +30,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#if defined(__linux__)
 extern char **environ;
-#else
-#error There is no portable method for environment variable sanitization
-#endif
 
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
