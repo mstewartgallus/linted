@@ -20,7 +20,6 @@
 #include "linted/util.h"
 
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
 
 #define INT_MIN (-(intmax_t) (UINTMAX_C(1) << 31u))
@@ -34,7 +33,7 @@ struct int32 { char bytes[4]; };
 typedef char message_type[MESSAGE_SIZE];
 
 static struct int32 pack(int_fast32_t fast) {
-    uint_fast32_t positive = ((int_fast64_t) fast) + INT_MIN;
+    uint_fast32_t positive = ((int_fast64_t) fast) - INT_MIN;
 
     unsigned char bytes[LINTED_SIZEOF_MEMBER(struct int32, bytes)] = {
         ((uintmax_t) positive) & 0xFFu,
@@ -57,7 +56,7 @@ static int_fast32_t unpack(struct int32 raw) {
         | (((uintmax_t) pos_bytes[2]) << 16u)
         | (((uintmax_t) pos_bytes[3]) << 24u);
 
-    return ((int_fast64_t) positive) - INT_MIN;
+    return ((int_fast64_t) positive) + INT_MIN;
 }
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
