@@ -53,42 +53,42 @@ def _main():
 _spacing = "    "
 
 def structure(typename: str, fields: list):
+
     fieldnames = [name for (name, tp) in fields]
-
-    cls = collections.namedtuple(typename, fieldnames)
-    cls.name = typename
-
     members = [_spacing + tp.name + " " + prop + ";" for (prop, tp) in fields]
-    cls.definition = (
-        "struct "
-        + typename
-        + " {\n"
-        + "\n".join(members)
-        + "\n};"
-    )
 
-    def flatten(self, indent: int = 0):
-        cls = type(self)
-        typename = cls.name
+    class Structure(collections.namedtuple(typename, fieldnames)):
+        __name__ = typename
 
-        if 0 == len(fields):
-            return typename
+        name = typename
 
-        property_list = ["." + name + " = " + getattr(self, name).flatten(indent + 1)
-                         for name in fieldnames]
+        definition = (
+            "struct "
+            + typename
+            + " {\n"
+            + "\n".join(members)
+            + "\n};"
+        )
 
-        separator = "\n" + _spacing * indent
-        property_list_string = separator + ("," + separator).join(property_list)
+        def flatten(self, indent: int = 0):
+            cls = type(self)
+            typename = cls.name
 
-        return "{" +  property_list_string + "}"
+            if 0 == len(fields):
+                return typename
 
-    def __str__(self):
-        return self.flatten()
+            property_list = ["." + name + " = " + getattr(self, name).flatten(indent + 1)
+                             for name in fieldnames]
 
-    cls.flatten = flatten
-    cls.__str__ = __str__
+            separator = "\n" + _spacing * indent
+            property_list_string = separator + ("," + separator).join(property_list)
 
-    return cls
+            return "{" +  property_list_string + "}"
+
+        def __str__(self):
+            return self.flatten()
+
+    return Structure
 
 
 @functools.lru_cache(maxsize = None)
