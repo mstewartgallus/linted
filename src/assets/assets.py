@@ -45,8 +45,13 @@ class _Shader:
             return result
 
     def __str__(self):
-        quotation = self.contents.encode("unicode_escape").decode("ascii").replace("\"", "\\\"")
-        return "\"" + quotation + "\""
+        return  (
+            "\""
+            + self.contents
+            .encode("unicode_escape")
+            .decode("ascii")
+            .replace("\"", "\\\"")
+            + "\"")
 
 _Faces = structure("_Faces", [
     ("indices", StaticArray(Array(3, GLushort))),
