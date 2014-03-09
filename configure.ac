@@ -66,9 +66,6 @@ AC_CHECK_FUNCS([memset select strchr], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
-AC_TYPE_INT32_T
-dnl
-AC_TYPE_UINT8_T
 AC_TYPE_UINT64_T
 dnl
 AC_TYPE_SSIZE_T

@@ -20,13 +20,45 @@
 #include "linted/util.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
-#define MESSAGE_SIZE                                            \
-    (LINTED_SIZEOF_MEMBER(struct linted_updater_update, x_position) \
-     + LINTED_SIZEOF_MEMBER(struct linted_updater_update, y_position))
+#define INT_MIN (-(intmax_t) (UINTMAX_C(1) << 31u))
+
+struct int32 { char bytes[4]; };
+
+#define MESSAGE_SIZE (                              \
+    LINTED_SIZEOF_MEMBER(struct int32, bytes)       \
+    + LINTED_SIZEOF_MEMBER(struct int32, bytes))
 
 typedef char message_type[MESSAGE_SIZE];
+
+static struct int32 pack(int_fast32_t fast) {
+    uint_fast32_t positive = ((int_fast64_t) fast) + INT_MIN;
+
+    unsigned char bytes[LINTED_SIZEOF_MEMBER(struct int32, bytes)] = {
+        ((uintmax_t) positive) & 0xFFu,
+        (((uintmax_t) positive) >> 8u) & 0xFFu,
+        (((uintmax_t) positive) >> 16u) & 0xFFu,
+        (((uintmax_t) positive) >> 24u) & 0xFFu
+    };
+
+    struct int32 raw;
+    memcpy(raw.bytes, &bytes, sizeof raw.bytes);
+    return raw;
+}
+
+static int_fast32_t unpack(struct int32 raw) {
+    unsigned char pos_bytes[sizeof raw.bytes];
+    memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
+
+    uint_fast32_t positive = ((uintmax_t) pos_bytes[0])
+        | (((uintmax_t) pos_bytes[1]) << 8u)
+        | (((uintmax_t) pos_bytes[2]) << 16u)
+        | (((uintmax_t) pos_bytes[3]) << 24u);
+
+    return ((int_fast64_t) positive) - INT_MIN;
+}
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
@@ -45,10 +77,12 @@ int linted_updater_send_update(linted_updater updater,
     message_type message;
     char *tip = message;
 
-    memcpy(tip, &update->x_position, sizeof update->x_position);
-    tip += sizeof update->x_position;
+    struct int32 x_position = pack(update->x_position);
+    memcpy(tip, x_position.bytes, sizeof x_position.bytes);
+    tip += sizeof x_position.bytes;
 
-    memcpy(tip, &update->y_position, sizeof update->y_position);
+    struct int32 y_position = pack(update->y_position);
+    memcpy(tip, y_position.bytes, sizeof y_position.bytes);
 
     return mq_send(updater, message, sizeof message, 0);
 }
@@ -61,10 +95,14 @@ int linted_updater_receive_update(linted_updater updater,
     if (receive_status != -1) {
         char *tip = message;
 
-        memcpy(&update->x_position, tip, sizeof update->x_position);
-        tip += sizeof update->x_position;
+        struct int32 x_position;
+        memcpy(x_position.bytes, tip, sizeof x_position.bytes);
+        update->x_position = unpack(x_position);
+        tip += sizeof x_position.bytes;
 
-        memcpy(&update->y_position, tip, sizeof update->y_position);
+        struct int32 y_position;
+        memcpy(y_position.bytes, tip, sizeof y_position.bytes);
+        update->y_position = unpack(y_position);
     }
     return receive_status;
 }

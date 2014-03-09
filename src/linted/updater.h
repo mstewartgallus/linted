@@ -24,10 +24,9 @@
  */
 typedef mqd_t linted_updater;
 
-/* TODO: Use compiler independent protocol */
 struct linted_updater_update {
-    int32_t x_position;
-    int32_t y_position;
+    int_least32_t x_position;
+    int_least32_t y_position;
 };
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
