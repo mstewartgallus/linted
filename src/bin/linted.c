@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +31,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-extern char **environ;
 
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
@@ -50,7 +50,7 @@ extern char **environ;
     "under the terms of the Apache License.\n"\
     "For more information about these matters, see the file named COPYING.\n"
 
-static void close_in_out(void);
+extern char **environ;
 
 static int run_game(void);
 
@@ -105,46 +105,60 @@ int main(int argc, char **argv)
         memset(sensitive_data, '\0', env_length - (sensitive_data - *env));
     }
 
-    int command_status = -1;
+    bool should_run_game = false;
+    int command_status = 0;
     switch (argc) {
-    case 1:{
-            close_in_out();
-
-            int game_status = run_game();
-            int errnum = errno;
-
-            if (-1 == game_status) {
-                char const *error_string = linted_error_string_alloc(errnum);
-                syslog(LOG_ERR, "could not run the game: %s", error_string);
-                linted_error_string_free(error_string);
-                break;
-            }
-
-            command_status = 0;
-            break;
-        }
+    case 1:
+        /* No arguments */
+        should_run_game = true;
+        break;
 
     case 2:
         if (0 == strcmp(argv[1], "--help")) {
             fputs(USAGE_TEXT, stdout);
-            command_status = 0;
         } else if (0 == strcmp(argv[1], "--version")) {
             fputs(VERSION_TEXT, stdout);
-            command_status = 0;
         } else {
             fprintf(stderr,
                     PACKAGE_TARNAME
                     " did not understand the command line input\n" USAGE_TEXT);
         }
-        close_in_out();
         break;
 
     default:
         fprintf(stderr,
                 PACKAGE_TARNAME " did not understand the command line input\n"
                 USAGE_TEXT);
-        close_in_out();
         break;
+    }
+
+    /* TODO: freopen to /dev/null */
+    /* TODO: errno is not guaranteed to be set after fclose, use lower
+     *       level functions.
+     */
+    if (EOF == fclose(stdin)) {
+        char const *error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "could not close standard input: %s", error_string);
+        linted_error_string_free(error_string);
+        command_status = -1;
+    }
+    stdin = NULL;
+
+    if (EOF == fclose(stdout)) {
+        char const *error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "could not close standard output: %s", error_string);
+        linted_error_string_free(error_string);
+        command_status = -1;
+    }
+    stdout = NULL;
+
+    if (should_run_game && command_status != -1) {
+        if (-1 == run_game()) {
+            char const *error_string = linted_error_string_alloc(errno);
+            syslog(LOG_ERR, "could not run the game: %s", error_string);
+            linted_error_string_free(error_string);
+            command_status = -1;
+        }
     }
 
     if (EOF == fclose(stderr)) {
@@ -152,6 +166,7 @@ int main(int argc, char **argv)
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "Could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
+        command_status = -1;
     }
 
     closelog();
@@ -219,19 +234,4 @@ static int run_game(void)
     }
 
     return exit_status;
-}
-
-static void close_in_out(void)
-{
-    if (EOF == fclose(stdin)) {
-        LINTED_LAZY_DEV_ERROR("could not close standard input: %s",
-                              linted_error_string_alloc(errno));
-    }
-    stdin = NULL;
-
-    if (EOF == fclose(stdout)) {
-        LINTED_LAZY_DEV_ERROR("could not close standard output: %s",
-                              linted_error_string_alloc(errno));
-    }
-    stdout = NULL;
 }
