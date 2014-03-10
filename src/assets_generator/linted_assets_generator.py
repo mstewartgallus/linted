@@ -148,7 +148,7 @@ class GLfloat:
         self.contents = contents
 
     def flatten(self, indent):
-        return "LINTED_CHECK_FLOAT(" + self.name + ", " + str(self.contents) + "f)"
+        return str(self.contents) + "f"
 
 
 class Unsigned:
@@ -157,7 +157,7 @@ class Unsigned:
         self.contents = contents
 
     def flatten(self, indent):
-        return "LINTED_CHECK_UNSIGNED(" + self.name + ", " + str(self.contents) + "u)"
+        return str(self.contents) + "u"
 
 class GLubyte(Unsigned):
     name = "GLubyte"

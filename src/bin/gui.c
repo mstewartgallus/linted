@@ -448,7 +448,8 @@ static int init_graphics(struct window_state const *window_state)
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, window_state->width, window_state->height);
 
-    glVertexPointer(2, GL_FLOAT, 0, linted_assets_triangle_data);
+    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_data[0]),
+                    GL_FLOAT, 0, linted_assets_triangle_data);
 
     glMatrixMode(GL_MODELVIEW);
 
@@ -460,9 +461,9 @@ static void render_graphics(struct gui_state const *gui_state)
     glClear(GL_COLOR_BUFFER_BIT);
 
     GLfloat modelview_matrix[] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
+        0.5, 0, 0, 0,
+        0, 0.5, 0, 0,
+        0, 0, 0.5, 0,
         gui_state->x, gui_state->y, 0, 1
     };
     /*  X, Y, Z, W coords of the resultant vector are the
@@ -470,7 +471,7 @@ static void render_graphics(struct gui_state const *gui_state)
      */
     glLoadMatrixf(modelview_matrix);
 
-    glDrawElements(GL_TRIANGLES, linted_assets_triangle_indices_size,
+    glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
 
     for (;;) {
