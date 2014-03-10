@@ -358,32 +358,22 @@ static int on_sdl_event(SDL_Event const *sdl_event,
         return 0;
 
     case SDLK_LEFT:
-        goto on_key_left;
+        controller_state->update.left = is_key_down;
+        break;
+
     case SDLK_RIGHT:
-        goto on_key_right;
+        controller_state->update.right = is_key_down;
+        break;
+
     case SDLK_UP:
-        goto on_key_up;
+        controller_state->update.up = is_key_down;
+        break;
+
     case SDLK_DOWN:
-        goto on_key_down;
+        controller_state->update.down = is_key_down;
+        break;
     }
 
- on_key_left:
-    controller_state->update.left = is_key_down;
-    goto update_controller;
-
- on_key_right:
-    controller_state->update.right = is_key_down;
-    goto update_controller;
-
- on_key_up:
-    controller_state->update.up = is_key_down;
-    goto update_controller;
-
- on_key_down:
-    controller_state->update.down = is_key_down;
-    goto update_controller;
-
- update_controller:
     controller_state->update_pending = true;
 
     *transition = DO_NOTHING;
