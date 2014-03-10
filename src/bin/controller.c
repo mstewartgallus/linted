@@ -44,9 +44,9 @@ int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message)
 {
     unsigned char bitfield = message->up
-        | message->down << 1
-        | message->right << 2
-        | message->left << 3;
+        | message->down << 1u
+        | message->right << 2u
+        | message->left << 3u;
 
     message_type raw_message;
     memcpy(raw_message, &bitfield, sizeof bitfield);
@@ -68,10 +68,10 @@ int linted_controller_receive(linted_controller queue,
         unsigned char bitfield;
         memcpy(&bitfield, raw_message, sizeof bitfield);
 
-        message->up = bitfield & 1;
-        message->down = (bitfield & (1 << 1)) != 0;
-        message->right = (bitfield & (1 << 2)) != 0;
-        message->left = (bitfield & (1 << 3)) != 0;
+        message->up = bitfield & 1u;
+        message->down = (bitfield & (1u << 1u)) != 0u;
+        message->right = (bitfield & (1u << 2u)) != 0u;
+        message->left = (bitfield & (1u << 3u)) != 0u;
     }
 
     return receive_status;
