@@ -24,4 +24,7 @@ linted_assets_point const *const linted_assets_triangle_data;
 GLubyte const *const linted_assets_triangle_indices;
 size_t const linted_assets_triangle_indices_size;
 
+GLchar const * const linted_assets_fragment_shader;
+GLchar const * const linted_assets_vertex_shader;
+
 #endif                          /* LINTED_ASSETS_H */

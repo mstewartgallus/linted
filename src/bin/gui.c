@@ -100,6 +100,10 @@ struct gui_state {
     float y;
 };
 
+struct gl_state {
+    GLuint program;
+};
+
 static int on_sdl_event(SDL_Event const *sdl_event,
                         struct window_state *window_state,
                         struct controller_state *controller_state,
@@ -109,8 +113,11 @@ static int on_updater_readable(linted_updater updater,
 static int on_controller_writeable(linted_controller controller,
                                    struct controller_state *controller_state);
 
-static int init_graphics(struct window_state const *window_state);
-static void render_graphics(struct gui_state const *gui_state);
+static int init_graphics(struct gl_state *gl_state,
+                         struct window_state const *window_state);
+static void render_graphics(struct gl_state const *gl_state,
+                            struct gui_state const *gui_state);
+static void destroy_gl(struct gl_state *gl_state);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                    linted_controller controller)
@@ -177,7 +184,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
     };
 
  setup_window:;
-    SDL_Surface *const video_surface = SDL_SetVideoMode(window_state.width,
+     SDL_Surface *const video_surface = SDL_SetVideoMode(window_state.width,
                                                         window_state.height,
                                                         0, sdl_flags);
     if (NULL == video_surface) {
@@ -187,8 +194,10 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         goto cleanup_SDL;
     }
 
-    if (-1 == init_graphics(&window_state)) {
-        return -1;
+    struct gl_state gl_state;
+
+   if (-1 == init_graphics(&gl_state, &window_state)) {
+       goto cleanup_SDL;
     }
 
     bool should_resize = false;
@@ -200,7 +209,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             enum transition transition;
             if (-1 == on_sdl_event(&sdl_event, &window_state, &controller_state,
                                    &transition)) {
-                goto cleanup_SDL;
+                goto cleanup_gl;
             }
 
             switch (transition) {
@@ -256,14 +265,14 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                                    &watched_write_fds, NULL, &timeval);
         } while (-1 == select_status && EINTR == errno);
         if (-1 == select_status) {
-            goto cleanup_SDL;
+            goto cleanup_gl;
         }
 
         bool const had_selected_event = select_status > 0;
 
         if (FD_ISSET(updater, &watched_read_fds)) {
             if (-1 == on_updater_readable(updater, &gui_state)) {
-                goto cleanup_SDL;
+                goto cleanup_gl;
             }
         }
 
@@ -271,7 +280,8 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
             if (FD_ISSET(controller, &watched_write_fds)) {
                 if (-1 == on_controller_writeable(controller,
                                                   &controller_state)) {
-                    goto cleanup_SDL;
+                    destroy_gl(&gl_state);
+                    goto cleanup_gl;
                 }
             }
         }
@@ -282,12 +292,19 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 goto setup_window;
             }
 
-            render_graphics(&gui_state);
+            render_graphics(&gl_state, &gui_state);
         }
     }
 
  exit_main_loop:
     exit_status = 0;
+
+ cleanup_gl:
+    {
+        int errnum = errno;
+        destroy_gl(&gl_state);
+        errno = errnum;
+    }
 
  cleanup_SDL:
     {
@@ -424,7 +441,8 @@ static int on_controller_writeable(linted_controller controller,
     return 0;
 }
 
-static int init_graphics(struct window_state const *window_state)
+static int init_graphics(struct gl_state *gl_state,
+                         struct window_state const *window_state)
 {
     if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
         errno = ENOSYS;
@@ -443,10 +461,87 @@ static int init_graphics(struct window_state const *window_state)
 
     glMatrixMode(GL_MODELVIEW);
 
+    GLuint program = glCreateProgram();
+    if (0 == program) {
+        return -1;
+    }
+
+    {
+        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        if (0 == fragment_shader) {
+            goto cleanup_program;
+        }
+        glAttachShader(program, fragment_shader);
+        glDeleteShader(fragment_shader);
+
+        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader, NULL);
+        glCompileShader(fragment_shader);
+
+        GLint is_valid;
+        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
+        if (!is_valid) {
+            GLchar info_log[400];
+            glGetShaderInfoLog(fragment_shader, sizeof info_log, NULL, info_log);
+            syslog(LOG_ERR, "Invalid shader: %s", info_log);
+            goto cleanup_program;
+        }
+    }
+
+
+    {
+        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        if (0 == vertex_shader) {
+            goto cleanup_program;
+        }
+        glAttachShader(program, vertex_shader);
+        glDeleteShader(vertex_shader);
+
+        glShaderSource(vertex_shader, 1, &linted_assets_vertex_shader, NULL);
+        glCompileShader(vertex_shader);
+
+        GLint is_valid;
+        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
+        if (!is_valid) {
+            GLchar info_log[400];
+            glGetShaderInfoLog(vertex_shader, sizeof info_log, NULL, info_log);
+            syslog(LOG_ERR, "Invalid shader: %s", info_log);
+            goto cleanup_program;
+        }
+    }
+
+    glLinkProgram(program);
+
+    glValidateProgram(program);
+
+    GLint is_valid;
+    glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
+    if (!is_valid) {
+        GLchar info_log[400];
+        glGetProgramInfoLog(program, sizeof info_log, NULL, info_log);
+        syslog(LOG_ERR, "Invalid program: %s", info_log);
+        goto cleanup_program;
+    }
+    glUseProgram(program);
+
+    gl_state->program = program;
+
     return 0;
+
+cleanup_program:
+    glDeleteProgram(program);
+
+    return -1;
 }
 
-static void render_graphics(struct gui_state const *gui_state)
+static void destroy_gl(struct gl_state *gl_state)
+{
+    glUseProgram(0);
+    glDeleteProgram(gl_state->program);
+    memset(gl_state, 0, sizeof *gl_state);
+}
+
+static void render_graphics(struct gl_state const *gl_state,
+                            struct gui_state const *gui_state)
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
