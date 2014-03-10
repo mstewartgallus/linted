@@ -133,25 +133,25 @@ int main(int argc, char **argv)
     }
 
     if (-1 == close(STDIN_FILENO)) {
+        command_status = -1;
         char const *error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard input: %s", error_string);
         linted_error_string_free(error_string);
-        command_status = -1;
     }
 
     if (-1 == close(STDOUT_FILENO)) {
+        command_status = -1;
         char const *error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard output: %s", error_string);
         linted_error_string_free(error_string);
-        command_status = -1;
     }
 
     if (should_run_game && command_status != -1) {
         if (-1 == run_game()) {
+            command_status = -1;
             char const *error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "could not run the game: %s", error_string);
             linted_error_string_free(error_string);
-            command_status = -1;
         }
     }
 
@@ -160,7 +160,6 @@ int main(int argc, char **argv)
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
-        command_status = -1;
     }
 
     closelog();
