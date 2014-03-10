@@ -52,13 +52,6 @@ mesh_vertices, mesh_indices = _process_mesh(cube, 0)
 _indices = StaticArray(Array(3, GLubyte))(mesh_indices).flatten(0)
 _vertices = StaticArray(Array(3, GLfloat))(mesh_vertices).flatten(0)
 
-# _vertices = Array(3, Array(2, GLfloat))([
-#     Array(2, GLfloat)([GLfloat(-0.4), GLfloat(-0.4)]),
-#     Array(2, GLfloat)([GLfloat(0.4), GLfloat(-0.4)]),
-#     Array(2, GLfloat)([GLfloat(0.0), GLfloat(0.4)])]).flatten(0)
-
-# _indices = Array(3, GLubyte)([GLubyte(0), GLubyte(1), GLubyte(2)]).flatten(0)
-
 output = Template("""#include "linted/assets.h"
 #include "linted/check.h"
 #include "linted/util.h"
