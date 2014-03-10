@@ -44,10 +44,10 @@ def _main():
         input_file)
 
     if None == arguments.output:
-        print(assets_file.output)
+        print(assets_file.output())
     else:
         with open(arguments.output, 'w') as output_file:
-            output_file.write(assets_file.output)
+            output_file.write(assets_file.output())
 
 
 _spacing = "    "

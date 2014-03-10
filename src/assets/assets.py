@@ -16,43 +16,43 @@ import os
 from string import Template
 from linted_assets_generator import *
 
-def cd(local_file):
-    return os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        local_file)
+def output():
+    def cd(local_file):
+        return os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            local_file)
 
-def _process_mesh(mesh, last_index):
-    indices = [Array(3, GLubyte)([_process_index(index, last_index)
-                       for index in polygon.vertices])
-               for polygon in _polygons(mesh)]
+    def process_mesh(mesh, last_index):
+        indices = [Array(3, GLubyte)([_process_index(index, last_index)
+                                      for index in polygon.vertices])
+                   for polygon in polygons(mesh)]
 
-    vertices = [Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()])
-                for vertex in mesh.vertices]
+        vertices = [Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()])
+                    for vertex in mesh.vertices]
 
-    return vertices, indices
+        return vertices, indices
 
-def _process_index(index, last_index):
-    new_index = last_index + index
-    return GLubyte(new_index)
+    def _process_index(index, last_index):
+        new_index = last_index + index
+        return GLubyte(new_index)
 
+    # Compatibility shim for older Blender versions
+    def polygons(mesh):
+        if hasattr(mesh, "polygons"):
+            return mesh.polygons
+        else:
+            return mesh.faces
 
-# Compatibility shim for older Blender versions
-def _polygons(mesh):
-    if hasattr(mesh, "polygons"):
-        return mesh.polygons
-    else:
-        return mesh.faces
+    bpy.ops.wm.open_mainfile(filepath = cd("scene.blend"))
 
-bpy.ops.wm.open_mainfile(filepath = cd("scene.blend"))
+    cube = bpy.data.meshes[0]
 
-cube = bpy.data.meshes[0]
+    mesh_vertices, mesh_indices = process_mesh(cube, 0)
 
-mesh_vertices, mesh_indices = _process_mesh(cube, 0)
+    indices = StaticArray(Array(3, GLubyte))(mesh_indices).flatten(0)
+    vertices = StaticArray(Array(3, GLfloat))(mesh_vertices).flatten(0)
 
-_indices = StaticArray(Array(3, GLubyte))(mesh_indices).flatten(0)
-_vertices = StaticArray(Array(3, GLfloat))(mesh_vertices).flatten(0)
-
-output = Template("""#include "linted/assets.h"
+    return Template("""#include "linted/assets.h"
 #include "linted/check.h"
 #include "linted/util.h"
 
@@ -63,4 +63,4 @@ static GLubyte const indices_data[][3] = $indices;
 
 GLubyte const * const linted_assets_triangle_indices = &indices_data[0][0];
 size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_data);
-""").substitute(vertices=_vertices, indices=_indices)
+""").substitute(vertices=vertices, indices=indices)
