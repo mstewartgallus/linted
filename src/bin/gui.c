@@ -487,11 +487,11 @@ static int init_graphics(struct gl_state *gl_state,
             GLchar * info_log = malloc(info_log_length);
             if (NULL == info_log) {
                 syslog(LOG_ERR, "Invalid shader: no memory to log info log");
-                goto cleanup_program;
+            } else {
+                glGetShaderInfoLog(fragment_shader, info_log_length, NULL, info_log);
+                syslog(LOG_ERR, "Invalid shader: %s", info_log);
+                free(info_log);
             }
-            glGetShaderInfoLog(fragment_shader, info_log_length, NULL, info_log);
-            syslog(LOG_ERR, "Invalid shader: %s", info_log);
-            free(info_log);
             goto cleanup_program;
         }
     }
@@ -517,11 +517,11 @@ static int init_graphics(struct gl_state *gl_state,
             GLchar * info_log = malloc(info_log_length);
             if (NULL == info_log) {
                 syslog(LOG_ERR, "Invalid shader: no memory to log info log");
-                goto cleanup_program;
+            } else {
+                glGetShaderInfoLog(vertex_shader, info_log_length, NULL, info_log);
+                syslog(LOG_ERR, "Invalid shader: %s", info_log);
+                free(info_log);
             }
-            glGetShaderInfoLog(vertex_shader, info_log_length, NULL, info_log);
-            syslog(LOG_ERR, "Invalid shader: %s", info_log);
-            free(info_log);
             goto cleanup_program;
         }
     }
@@ -540,11 +540,10 @@ static int init_graphics(struct gl_state *gl_state,
         GLchar * info_log = malloc(info_log_length);
         if (NULL == info_log) {
             syslog(LOG_ERR, "Invalid program: no memory to log info log");
-            goto cleanup_program;
+        } else {
+            glGetProgramInfoLog(program, sizeof info_log, NULL, info_log);
+            syslog(LOG_ERR, "Invalid program: %s", info_log);
         }
-
-        glGetProgramInfoLog(program, sizeof info_log, NULL, info_log);
-        syslog(LOG_ERR, "Invalid program: %s", info_log);
         goto cleanup_program;
     }
     glUseProgram(program);
