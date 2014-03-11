@@ -6,6 +6,7 @@ notice and this notice are preserved.
 
 Linted -- TODO
 
+* Integrate this documentation with Doxygen
 * Port to --host=i686-w64-mingw32
 * Ban assert in favour of LINTED_IMPOSSIBLE_ERROR
 assert has problems with not evaluating arguments.

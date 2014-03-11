@@ -62,17 +62,17 @@ Coding style:
     fail for legitimate reasons. Functions that fail usually return -1
     and set a reason in errno.
 
-  - We have LINTED_FATAL_ERROR for errors that must terminate the
+  - We have `LINTED_FATAL_ERROR` for errors that must terminate the
     process. They exit and return an error code to the controller of
     the process.
 
-  - We have LINTED_IMPOSSIBLE_ERROR for fundamental errors such as
+  - We have `LINTED_IMPOSSIBLE_ERROR` for fundamental errors such as
     programmer logic errors and memory corruption. These are
     assertions that abort the process. This is preferred over assert
     because it gives more information (it also doesn't have the side
     effect problems of it).
 
-  - We have LINTED_LAZY_DEV_ERROR for error cases that the developer
+  - We have `LINTED_LAZY_DEV_ERROR` for error cases that the developer
     is too lazy to properly handle at the moment. These should never
     appear in release builds.
 
