@@ -571,7 +571,7 @@ static void destroy_gl(struct gl_state *gl_state)
 static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state)
 {
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     GLfloat modelview_matrix[] = {
         0.5, 0, 0, 0,
