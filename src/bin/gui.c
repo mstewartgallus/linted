@@ -525,7 +525,6 @@ static int init_graphics(struct gl_state *gl_state,
             goto cleanup_program;
         }
     }
-
     glLinkProgram(program);
 
     glValidateProgram(program);
@@ -541,7 +540,7 @@ static int init_graphics(struct gl_state *gl_state,
         if (NULL == info_log) {
             syslog(LOG_ERR, "Invalid program: no memory to log info log");
         } else {
-            glGetProgramInfoLog(program, sizeof info_log, NULL, info_log);
+            glGetProgramInfoLog(program, info_log_length, NULL, info_log);
             syslog(LOG_ERR, "Invalid program: %s", info_log);
         }
         goto cleanup_program;
