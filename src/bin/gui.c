@@ -480,13 +480,21 @@ static int init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            GLchar info_log[400];
-            glGetShaderInfoLog(fragment_shader, sizeof info_log, NULL, info_log);
+            GLint info_log_length;
+            glGetShaderiv(fragment_shader,
+                          GL_INFO_LOG_LENGTH, &info_log_length);
+
+            GLchar * info_log = malloc(info_log_length);
+            if (NULL == info_log) {
+                syslog(LOG_ERR, "Invalid shader: no memory to log info log");
+                goto cleanup_program;
+            }
+            glGetShaderInfoLog(fragment_shader, info_log_length, NULL, info_log);
             syslog(LOG_ERR, "Invalid shader: %s", info_log);
+            free(info_log);
             goto cleanup_program;
         }
     }
-
 
     {
         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -502,9 +510,18 @@ static int init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            GLchar info_log[400];
-            glGetShaderInfoLog(vertex_shader, sizeof info_log, NULL, info_log);
+            GLint info_log_length;
+            glGetShaderiv(vertex_shader,
+                          GL_INFO_LOG_LENGTH, &info_log_length);
+
+            GLchar * info_log = malloc(info_log_length);
+            if (NULL == info_log) {
+                syslog(LOG_ERR, "Invalid shader: no memory to log info log");
+                goto cleanup_program;
+            }
+            glGetShaderInfoLog(vertex_shader, info_log_length, NULL, info_log);
             syslog(LOG_ERR, "Invalid shader: %s", info_log);
+            free(info_log);
             goto cleanup_program;
         }
     }
@@ -516,7 +533,16 @@ static int init_graphics(struct gl_state *gl_state,
     GLint is_valid;
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
-        GLchar info_log[400];
+        GLint info_log_length;
+        glGetProgramiv(program,
+                       GL_INFO_LOG_LENGTH, &info_log_length);
+
+        GLchar * info_log = malloc(info_log_length);
+        if (NULL == info_log) {
+            syslog(LOG_ERR, "Invalid program: no memory to log info log");
+            goto cleanup_program;
+        }
+
         glGetProgramInfoLog(program, sizeof info_log, NULL, info_log);
         syslog(LOG_ERR, "Invalid program: %s", info_log);
         goto cleanup_program;
@@ -527,8 +553,10 @@ static int init_graphics(struct gl_state *gl_state,
 
     return 0;
 
-cleanup_program:
+cleanup_program:;
+    int errnum = errno;
     glDeleteProgram(program);
+    errno = errnum;
 
     return -1;
 }
