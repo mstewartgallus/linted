@@ -13,11 +13,9 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 120
+#ifndef LINTED_VARYING_H
+#define LINTED_VARYING_H
 
-varying vec3 vertex;
+varying vec3 linted_varying_vertex;
 
-void main() {
-    vertex = gl_Vertex.xyz;
-    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-}
+#endif /* LINTED_VARYING_H */

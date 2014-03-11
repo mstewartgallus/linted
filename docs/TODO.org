@@ -16,9 +16,7 @@ This timer will periodically make sure tasks are reaching their
 deadlines by sending a message to every message queue and seeing if
 the owner of the queue responds within appropriate deadlines. It will
 then kill and restart the process if it is not responding.
-* Make unimq respect EINTR
-Currently it uses condition variables which don't work well with
-it. POSIX semaphores do however respect EINTR.
+* Monitor vulnerabilities in dependencies and supported platforms
 * Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
 I think I read somewhere that these force a nonexecutable stack but
 that if things are done correctly that the shouldn't be happening

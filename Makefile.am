@@ -65,8 +65,9 @@ EXTRA_DIST=\
   $(headers)\
   \
   src/assets/assets.py\
-  src/assets/fragment.glsl\
-  src/assets/vertex.glsl\
+  src/assets/shaders/fragment.glsl\
+  src/assets/shaders/varying.glsl\
+  src/assets/shaders/vertex.glsl\
   \
   src/assets_generator/linted_assets_generator\
   src/assets_generator/linted_assets_generator.py
@@ -74,8 +75,9 @@ EXTRA_DIST=\
 MOSTLYCLEANFILES=src/bin/assets.c
 src/bin/assets.c:\
   src/assets/assets.py\
-  src/assets/fragment.glsl\
-  src/assets/vertex.glsl\
+  src/assets/shaders/fragment.glsl\
+  src/assets/shaders/varying.glsl\
+  src/assets/shaders/vertex.glsl\
   \
   src/assets_generator/linted_assets_generator\
   src/assets_generator/linted_assets_generator.py

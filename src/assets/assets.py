@@ -42,13 +42,14 @@ def output():
 
     def load_shader(shadername):
         with open(shadername, 'r') as shaderfile:
-            return ( "\""
-                   + shaderfile
-                   .read()
-                   .encode("unicode_escape")
-                   .decode("ascii")
-                   .replace("\"", "\\\"")
-                   + "\"")
+            return shaderfile.read()
+
+    def encode_shader(shader):
+        return ("\""
+                + shader.encode("unicode_escape")
+                .decode("ascii")
+                .replace("\"", "\\\"")
+                + "\"")
 
     bpy.ops.wm.open_mainfile(filepath = "scene.blend")
 
@@ -59,8 +60,15 @@ def output():
     indices = StaticArray(Array(3, GLubyte))(mesh_indices).flatten(0)
     vertices = StaticArray(Array(3, GLfloat))(mesh_vertices).flatten(0)
 
-    fragment_shader = load_shader("fragment.glsl")
-    vertex_shader = load_shader("vertex.glsl")
+    varying_shader = load_shader("shaders/varying.glsl")
+
+    fragment_shader = encode_shader(load_shader("shaders/fragment.glsl")
+                                    .replace("#pragma linted include(\"varying.glsl\")",
+                                             varying_shader))
+
+    vertex_shader = encode_shader(load_shader("shaders/vertex.glsl")
+                                  .replace("#pragma linted include(\"varying.glsl\")",
+                                           varying_shader))
 
     return Template("""#include "linted/assets.h"
 #include "linted/check.h"

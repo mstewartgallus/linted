@@ -14,13 +14,12 @@
  * permissions and limitations under the License.
  */
 #version 120
-
-varying vec3 vertex;
+#pragma linted include("varying.glsl")
 
 void main() {
     vec3 light_location = vec3(-0.25, 1.25, 0.0);
 
-    float delta = distance(light_location, vertex);
+    float delta = distance(light_location, linted_varying_vertex);
     float decay = 1.0 / (1.0 + delta + delta * delta);
     gl_FragColor = vec4(decay * vec3(1.0, 0.9, 1.0), 1.0);
 }
