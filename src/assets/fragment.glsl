@@ -15,6 +15,12 @@
  */
 #version 120
 
+varying vec3 vertex;
+
 void main() {
-    gl_FragColor = vec4(0.4, 0.6, 0.3, 1.0);
+    vec3 light_location = vec3(-0.25, 1.25, 0.0);
+
+    float delta = distance(light_location, vertex);
+    float decay = 1.0 / (1.0 + delta + delta * delta);
+    gl_FragColor = vec4(decay * vec3(1.0, 0.9, 1.0), 1.0);
 }
