@@ -16,7 +16,7 @@ Potentially Vulnerable Runtime Dependencies
 
 *   The GNU C Library - https://www.gnu.org/software/libc/
 
-    There are a few race conditions and bugs in gLibc so we need to be
+    There are a few race conditions and bugs in glibc so we need to be
     careful.
 
 *   The GNU Compiler Collection - https://www.gnu.org/software/gcc/
