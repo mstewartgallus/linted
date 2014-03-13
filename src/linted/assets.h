@@ -19,12 +19,13 @@
 #include "linted/gl_core.h"
 
 typedef GLfloat linted_assets_point[3];
-linted_assets_point const *const linted_assets_triangle_data;
 
-GLubyte const *const linted_assets_triangle_indices;
-size_t const linted_assets_triangle_indices_size;
+extern linted_assets_point const *const linted_assets_triangle_data;
 
-GLchar const * const linted_assets_fragment_shader;
-GLchar const * const linted_assets_vertex_shader;
+extern GLubyte const *const linted_assets_triangle_indices;
+extern size_t const linted_assets_triangle_indices_size;
+
+extern GLchar const * const linted_assets_fragment_shader;
+extern GLchar const * const linted_assets_vertex_shader;
 
 #endif                          /* LINTED_ASSETS_H */
