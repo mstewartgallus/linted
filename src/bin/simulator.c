@@ -32,11 +32,11 @@
 
 
 struct controller_state {
-    unsigned x_left: 1;
-    unsigned x_right: 1;
+    unsigned char x_left: 1;
+    unsigned char x_right: 1;
 
-    unsigned y_up: 1;
-    unsigned y_down: 1;
+    unsigned char y_up: 1;
+    unsigned char y_down: 1;
 };
 
 struct simulator_state {

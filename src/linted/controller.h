@@ -25,10 +25,10 @@
 typedef mqd_t linted_controller;
 
 struct linted_controller_message {
-    unsigned left: 1;
-    unsigned right: 1;
-    unsigned up: 1;
-    unsigned down: 1;
+    unsigned char left: 1;
+    unsigned char right: 1;
+    unsigned char up: 1;
+    unsigned char down: 1;
 };
 
 int linted_controller_pair(linted_controller controller[2],
