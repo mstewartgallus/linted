@@ -46,7 +46,7 @@ struct simulator_state {
     int_fast32_t x_velocity;
     int_fast32_t y_velocity;
 
-    bool update_pending;
+    unsigned char update_pending : 1;
 };
 
 static int on_timer_readable(int timer,
