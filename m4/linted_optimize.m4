@@ -19,7 +19,6 @@ dnl
 AS_IF([test "x${enable_optimize}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[dnl
-        [-fvisibility=hidden]dnl This gets around a few redirections
         [-O]dnl
         [-O2]dnl
         [-O3]dnl

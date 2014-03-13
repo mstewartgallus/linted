@@ -43,10 +43,10 @@ int linted_controller_pair(linted_controller controller[2],
 int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message)
 {
-    unsigned char bitfield = message->up
-        | message->down << 1u
-        | message->right << 2u
-        | message->left << 3u;
+    unsigned char bitfield = ((uintmax_t) message->up)
+        | ((uintmax_t) message->down) << 1u
+        | ((uintmax_t) message->right) << 2u
+        | ((uintmax_t) message->left) << 3u;
 
     message_type raw_message;
     memcpy(raw_message, &bitfield, sizeof bitfield);

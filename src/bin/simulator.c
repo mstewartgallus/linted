@@ -32,11 +32,11 @@
 
 
 struct controller_state {
-    unsigned char x_left: 1;
-    unsigned char x_right: 1;
+    bool x_left: 1;
+    bool x_right: 1;
 
-    unsigned char y_up: 1;
-    unsigned char y_down: 1;
+    bool y_up: 1;
+    bool y_down: 1;
 };
 
 struct simulator_state {
@@ -46,7 +46,7 @@ struct simulator_state {
     int_fast32_t x_velocity;
     int_fast32_t y_velocity;
 
-    unsigned char update_pending : 1;
+    bool update_pending : 1;
 };
 
 static int on_timer_readable(int timer,
