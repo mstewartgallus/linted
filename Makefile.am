@@ -146,9 +146,12 @@ clean-local:
 	- rm -rf scan-report
 
 
-
 linted_LDADD=$(SDL_LIBS)
-linted_LDFLAGS=$(linted_LDFLAGS_OPTIMIZE) $(linted_LDFLAGS_HARDEN) $(AM_LDFLAGS)
+linted_LDFLAGS=\
+  -no-undefined\
+  $(linted_LDFLAGS_OPTIMIZE)\
+  $(linted_LDFLAGS_HARDEN)\
+  $(AM_LDFLAGS)
 
 linted_CPPFLAGS=$(SDL_CFLAGS)
 
