@@ -25,6 +25,7 @@ linted_SOURCES=\
   src/bin/io.c\
   src/bin/linted.c\
   src/bin/main_loop.c\
+  src/bin/mq.c\
   src/bin/process_spawner.c\
   src/bin/sandbox.c\
   src/bin/shutdowner.c\
@@ -33,7 +34,6 @@ linted_SOURCES=\
   $(linted_SOURCES_verified)
 
 linted_SOURCES_verified=\
-  src/bin/mq.c\
   src/bin/simulator.c\
   src/bin/util.c
 
@@ -188,7 +188,7 @@ linted_FRAMAFLAGS=\
   -warn-unsigned-downcast\
   -warn-unsigned-overflow\
   -warn-decimal-float all\
-  -cpp-extra-args="-I`$(FRAMA_C_GUI) -print-path`/libc"\
+  -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
   -cpp-extra-args='-C'\
   -cpp-extra-args='$(linted_CPPFLAGS)'\
   -cpp-extra-args='$(CPPFLAGS)'\

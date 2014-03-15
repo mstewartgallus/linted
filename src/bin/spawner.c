@@ -42,7 +42,26 @@ static ssize_t recv_fildes(int *fildes, int socket);
 
 int linted_spawner_pair(linted_spawner spawners[2])
 {
-    return socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, spawners);
+    int sockets[2];
+    if (-1 == socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) {
+        return -1;
+    }
+
+    if (-1 == shutdown(sockets[0], SHUT_WR)) {
+        LINTED_IMPOSSIBLE_ERROR("could not shutdown write end of socket: %s",
+                                linted_error_string_alloc(errno));
+    }
+
+    if (-1 == shutdown(sockets[1], SHUT_RD)) {
+        LINTED_IMPOSSIBLE_ERROR("could not shutdown read end of socket: %s",
+                                linted_error_string_alloc(errno));
+    }
+
+
+    spawners[0] = sockets[0];
+    spawners[1] = sockets[1];
+
+    return 0;
 }
 
 int linted_spawner_close(linted_spawner spawner)

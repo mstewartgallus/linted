@@ -16,7 +16,6 @@
 #include "config.h"
 
 #include "linted/io.h"
-#include "linted/mq.h"
 #include "linted/simulator.h"
 #include "linted/util.h"
 
