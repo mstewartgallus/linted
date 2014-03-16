@@ -33,7 +33,11 @@ struct int32 { char bytes[4]; };
 typedef char message_type[MESSAGE_SIZE];
 
 static struct int32 pack(int_fast32_t fast) {
-    uint_fast32_t positive = ((int_fast64_t) fast) - INT_MIN;
+    /*
+     * Unlike with the code in unpack converting from a signed to an
+     * unsigned value is not implementation defined.
+     */
+    uint_fast32_t positive = fast;
 
     unsigned char bytes[LINTED_SIZEOF_MEMBER(struct int32, bytes)] = {
         ((uintmax_t) positive) & 0xFFu,
@@ -56,7 +60,17 @@ static int_fast32_t unpack(struct int32 raw) {
         | (((uintmax_t) pos_bytes[2]) << 16u)
         | (((uintmax_t) pos_bytes[3]) << 24u);
 
-    return ((int_fast64_t) positive) + INT_MIN;
+    /*
+     * Section 6.3.1.2 "Signed and unsigned integers" of the C99
+     * standard specifies that the behaviour is implementation-defined
+     * (or that a signal could be raised) if the new type is signed
+     * and the value can't be represented in it so we do this.
+     */
+    if (positive > (int_fast64_t) INT32_MAX) {
+        return -(uint_fast32_t) ((UINT32_MAX - (int_fast64_t) positive) + 1u);
+    }
+
+    return positive;
 }
 
 int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
