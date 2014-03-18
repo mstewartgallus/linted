@@ -17,8 +17,6 @@ from string import Template
 from linted_assets_generator import *
 
 def output():
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
     def process_mesh(mesh, last_index):
         indices = [Array(3, GLubyte)([process_index(index, last_index)
                                       for index in polygon.vertices])
@@ -51,24 +49,29 @@ def output():
                 .replace("\"", "\\\"")
                 + "\"")
 
-    bpy.ops.wm.open_mainfile(filepath = "scene.blend")
+    old_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    try:
+        bpy.ops.wm.open_mainfile(filepath = "scene.blend")
 
-    cube = bpy.data.meshes[0]
+        cube = bpy.data.meshes[0]
 
-    mesh_vertices, mesh_indices = process_mesh(cube, 0)
+        mesh_vertices, mesh_indices = process_mesh(cube, 0)
 
-    indices = StaticArray(Array(3, GLubyte))(mesh_indices)
-    vertices = StaticArray(Array(3, GLfloat))(mesh_vertices)
+        indices = StaticArray(Array(3, GLubyte))(mesh_indices)
+        vertices = StaticArray(Array(3, GLfloat))(mesh_vertices)
 
-    varying_shader = load_shader("shaders/varying.glsl")
+        varying_shader = load_shader("shaders/varying.glsl")
 
-    fragment_shader = encode_shader(load_shader("shaders/fragment.glsl")
-                                    .replace("#pragma linted include(\"varying.glsl\")",
-                                             varying_shader))
+        fragment_shader = encode_shader(load_shader("shaders/fragment.glsl")
+                                        .replace("#pragma linted include(\"varying.glsl\")",
+                                                 varying_shader))
 
-    vertex_shader = encode_shader(load_shader("shaders/vertex.glsl")
-                                  .replace("#pragma linted include(\"varying.glsl\")",
-                                           varying_shader))
+        vertex_shader = encode_shader(load_shader("shaders/vertex.glsl")
+                                      .replace("#pragma linted include(\"varying.glsl\")",
+                                               varying_shader))
+    finally:
+        os.chdir(old_directory)
 
     return Template("""#include "linted/assets.h"
 #include "linted/check.h"

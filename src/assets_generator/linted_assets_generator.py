@@ -43,12 +43,13 @@ def _main():
         input_file.name,
         input_file)
 
+    output = assets_file.output()
+
     if None == arguments.output:
-        print(assets_file.output())
+        print(output)
     else:
         with open(arguments.output, 'w') as output_file:
-            output_file.write(assets_file.output())
-
+            output_file.write(output)
 
 _spacing = "    "
 
