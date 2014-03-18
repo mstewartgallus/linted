@@ -20,7 +20,7 @@ def output():
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
     def process_mesh(mesh, last_index):
-        indices = [Array(3, GLubyte)([_process_index(index, last_index)
+        indices = [Array(3, GLubyte)([process_index(index, last_index)
                                       for index in polygon.vertices])
                    for polygon in polygons(mesh)]
 
@@ -29,7 +29,7 @@ def output():
 
         return vertices, indices
 
-    def _process_index(index, last_index):
+    def process_index(index, last_index):
         new_index = last_index + index
         return GLubyte(new_index)
 
@@ -57,8 +57,8 @@ def output():
 
     mesh_vertices, mesh_indices = process_mesh(cube, 0)
 
-    indices = StaticArray(Array(3, GLubyte))(mesh_indices).flatten(0)
-    vertices = StaticArray(Array(3, GLfloat))(mesh_vertices).flatten(0)
+    indices = StaticArray(Array(3, GLubyte))(mesh_indices)
+    vertices = StaticArray(Array(3, GLfloat))(mesh_vertices)
 
     varying_shader = load_shader("shaders/varying.glsl")
 

@@ -52,12 +52,16 @@ def _main():
 
 _spacing = "    "
 
+class C:
+    def __str__(self):
+        return self.flatten()
+
 def structure(typename: str, fields: list):
 
     fieldnames = [name for (name, tp) in fields]
     members = [_spacing + tp.name + " " + prop + ";" for (prop, tp) in fields]
 
-    class Structure(collections.namedtuple(typename, fieldnames)):
+    class Structure(collections.namedtuple(typename, fieldnames), C):
         __name__ = typename
 
         name = typename
@@ -85,15 +89,12 @@ def structure(typename: str, fields: list):
 
             return "{" +  property_list_string + "}"
 
-        def __str__(self):
-            return self.flatten()
-
     return Structure
 
 
 @functools.lru_cache(maxsize = None)
 def StaticArray(T: type):
-    class StaticArrayType:
+    class StaticArrayType(C):
         __name__ = "StaticArray(" + str(T) + ")"
 
         name = T.name + " * const"
@@ -103,7 +104,7 @@ def StaticArray(T: type):
                 assert type(child) == T
             self.children = children
 
-        def flatten(self, indent):
+        def flatten(self, indent: int = 0):
             member_list = [value.flatten(indent + 1) for value in self.children]
 
             # Heuristic: Static arrays are big, and so should be
@@ -119,7 +120,7 @@ def StaticArray(T: type):
 def Array(size: int, T: type):
     assert size >= 0
 
-    class ArrayType:
+    class ArrayType(C):
         __name__ = "Array(" + str(size) + ", " + str(T) + ")"
 
         name =  T.name + "[" + str(size) + "]"
@@ -131,7 +132,7 @@ def Array(size: int, T: type):
 
             self.children = children
 
-        def flatten(self, indent: int):
+        def flatten(self, indent: int = 0):
             member_list = [value.flatten(indent + 1) for value in self.children]
 
             # Heuristic: Fixed sized arrays are small, and so should
@@ -141,22 +142,22 @@ def Array(size: int, T: type):
     return ArrayType
 
 
-class GLfloat:
+class GLfloat(C):
     name = "GLfloat"
 
     def __init__(self, contents: float):
         self.contents = contents
 
-    def flatten(self, indent):
+    def flatten(self, indent: int = 0):
         return str(self.contents) + "f"
 
 
-class Unsigned:
+class Unsigned(C):
     def __init__(self, contents: int):
         assert contents >= 0
         self.contents = contents
 
-    def flatten(self, indent):
+    def flatten(self, indent: int = 0):
         return str(self.contents) + "u"
 
 class GLubyte(Unsigned):
