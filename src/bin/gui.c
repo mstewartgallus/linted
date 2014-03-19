@@ -453,12 +453,22 @@ static int init_graphics(struct gl_state *gl_state,
     glDisable(GL_DITHER);
 
     glEnable(GL_VERTEX_ARRAY);
+    glEnable(GL_DEPTH_TEST);
 
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, window_state->width, window_state->height);
 
     glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_data[0]),
                     GL_FLOAT, 0, linted_assets_triangle_data);
+
+    glMatrixMode(GL_PROJECTION);
+
+    glLoadMatrixf((GLfloat[]) {
+        1, 0,      0, 0,
+        0, 1, 0, 0,
+        0, 0,      1, 1,
+        0, 0,      0, 1
+    });
 
     glMatrixMode(GL_MODELVIEW);
 
@@ -600,7 +610,7 @@ static void render_graphics(struct gl_state const *gl_state,
         1,            0,            0, 0,
         0,            1,            0, 0,
         0,            0,            1, 0,
-        gui_state->x, gui_state->y, 0, 1
+        gui_state->x, gui_state->y, 2, 1
     });
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
