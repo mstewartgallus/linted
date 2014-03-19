@@ -578,9 +578,8 @@ static void render_graphics(struct gl_state const *gl_state,
      */
     glLoadIdentity();
 
-    GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
-
     /* Correct the aspect ratio */
+    GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
     glMultMatrixf((GLfloat[]) {
         1, 0,      0, 0,
         0, aspect, 0, 0,
