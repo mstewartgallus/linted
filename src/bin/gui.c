@@ -116,7 +116,8 @@ static int on_controller_writeable(linted_controller controller,
 static int init_graphics(struct gl_state *gl_state,
                          struct window_state const *window_state);
 static void render_graphics(struct gl_state const *gl_state,
-                            struct gui_state const *gui_state);
+                            struct gui_state const *gui_state,
+                            struct window_state const *window_state);
 static void destroy_gl(struct gl_state *gl_state);
 
 int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
@@ -292,7 +293,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
                 goto setup_window;
             }
 
-            render_graphics(&gl_state, &gui_state);
+            render_graphics(&gl_state, &gui_state, &window_state);
         }
     }
 
@@ -567,13 +568,16 @@ static void destroy_gl(struct gl_state *gl_state)
 }
 
 static void render_graphics(struct gl_state const *gl_state,
-                            struct gui_state const *gui_state)
+                            struct gui_state const *gui_state,
+                            struct window_state const *window_state)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    GLfloat aspect_ratio = ((GLfloat) window_state->width) / window_state->height;
+
     GLfloat modelview_matrix[] = {
         0.5, 0, 0, 0,
-        0, 0.5, 0, 0,
+        0, 0.5 * aspect_ratio, 0, 0,
         0, 0, 0.5, 0,
         gui_state->x, gui_state->y, 0, 1
     };
