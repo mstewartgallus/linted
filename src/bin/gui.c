@@ -573,18 +573,36 @@ static void render_graphics(struct gl_state const *gl_state,
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    GLfloat aspect_ratio = ((GLfloat) window_state->width) / window_state->height;
-
-    GLfloat modelview_matrix[] = {
-        0.5, 0, 0, 0,
-        0, 0.5 * aspect_ratio, 0, 0,
-        0, 0, 0.5, 0,
-        gui_state->x, gui_state->y, 0, 1
-    };
     /*  X, Y, Z, W coords of the resultant vector are the
      *  sums of the columns (row major order).
      */
-    glLoadMatrixf(modelview_matrix);
+    glLoadIdentity();
+
+    GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
+
+    /* Correct the aspect ratio */
+    glMultMatrixf((GLfloat[]) {
+        1, 0,      0, 0,
+        0, aspect, 0, 0,
+        0, 0,      1, 0,
+        0, 0,      0, 1
+    });
+
+    /* Scale down */
+    glMultMatrixf((GLfloat[]) {
+        0.5, 0,   0,   0,
+        0,   0.5, 0,   0,
+        0,   0,   0.5, 0,
+        0,   0,   0,   1
+    });
+
+    /* Move the camera */
+    glMultMatrixf((GLfloat[]) {
+        1,            0,            0, 0,
+        0,            1,            0, 0,
+        0,            0,            1, 0,
+        gui_state->x, gui_state->y, 0, 1
+    });
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
