@@ -17,5 +17,6 @@
 #define LINTED_VARYING_H
 
 varying vec3 linted_varying_vertex;
+varying vec3 linted_varying_normal;
 
 #endif /* LINTED_VARYING_H */

@@ -22,10 +22,12 @@ def output():
                                       for index in polygon.vertices])
                    for polygon in polygons(mesh)]
 
+        normals = [Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()])
+                   for vertex in mesh.vertices]
         vertices = [Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()])
                     for vertex in mesh.vertices]
 
-        return vertices, indices
+        return normals, vertices, indices
 
     def process_index(index, last_index):
         new_index = last_index + index
@@ -56,9 +58,10 @@ def output():
 
         cube = bpy.data.meshes[0]
 
-        mesh_vertices, mesh_indices = process_mesh(cube, 0)
+        mesh_normals, mesh_vertices, mesh_indices = process_mesh(cube, 0)
 
         indices = StaticArray(Array(3, GLubyte))(mesh_indices)
+        normals = StaticArray(Array(3, GLfloat))(mesh_normals)
         vertices = StaticArray(Array(3, GLfloat))(mesh_vertices)
 
         varying_shader = load_shader("shaders/varying.glsl")
@@ -77,8 +80,11 @@ def output():
 #include "linted/check.h"
 #include "linted/util.h"
 
-static linted_assets_point const raw_data[] = $vertices;
-linted_assets_point const * const linted_assets_triangle_data = raw_data;
+static linted_assets_point const vertices[] = $vertices;
+linted_assets_point const * const linted_assets_triangle_vertices = vertices;
+
+static linted_assets_point const normals[] = $normals;
+linted_assets_point const * const linted_assets_triangle_normals = normals;
 
 static GLubyte const indices_data[][3] = $indices;
 
@@ -88,5 +94,5 @@ size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_dat
 GLchar const * const linted_assets_fragment_shader = $fragment_shader;
 GLchar const * const linted_assets_vertex_shader = $vertex_shader;
 """).substitute(
-    vertices=vertices, indices=indices,
+    normals=normals, vertices=vertices, indices=indices,
     fragment_shader=fragment_shader, vertex_shader=vertex_shader)

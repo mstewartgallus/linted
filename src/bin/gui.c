@@ -458,8 +458,10 @@ static int init_graphics(struct gl_state *gl_state,
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, window_state->width, window_state->height);
 
-    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_data[0]),
-                    GL_FLOAT, 0, linted_assets_triangle_data);
+    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0]),
+                    GL_FLOAT, 0, linted_assets_triangle_vertices);
+
+    glNormalPointer(GL_FLOAT, 0, linted_assets_triangle_normals);
 
     glMatrixMode(GL_PROJECTION);
 

@@ -16,10 +16,19 @@
 #version 120
 #pragma linted include("varying.glsl")
 
-void main() {
-    vec3 light_location = vec3(-0.25, 1.25, 0.0);
+vec3 direction(vec3 vector);
+
+const vec3 light_location = vec3(-0.25, 1.0, 0.0);
+const vec3 colour = vec3(1.0, 0.9, 1.0);
+
+void main()
+{
+    float impact = max(0.0, dot(normalize(linted_varying_normal),
+                                normalize(light_location - linted_varying_vertex)));
+    float intensity = 1.0 + impact + impact * impact;
 
     float delta = distance(light_location, linted_varying_vertex);
-    float decay = 1.0 / (1.0 + delta + delta * delta);
-    gl_FragColor = vec4(decay * vec3(1.0, 0.9, 1.0), 1.0);
+    float decay = 1.0 + delta + delta * delta;
+
+    gl_FragColor = vec4((intensity / decay) * colour, 1.0);
 }

@@ -16,7 +16,9 @@
 #version 120
 #pragma linted include("varying.glsl")
 
-void main() {
+void main()
+{
     linted_varying_vertex = gl_Vertex.xyz;
+    linted_varying_normal = gl_Normal.xyz;
     gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 }
