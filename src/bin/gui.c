@@ -599,20 +599,12 @@ static void render_graphics(struct gl_state const *gl_state,
         0, 0,      0, 1
     });
 
-    /* Scale down */
-    glMultMatrixf((GLfloat[]) {
-        0.5, 0,   0,   0,
-        0,   0.5, 0,   0,
-        0,   0,   0.5, 0,
-        0,   0,   0,   1
-    });
-
     /* Move the camera */
     glMultMatrixf((GLfloat[]) {
         1,            0,            0, 0,
         0,            1,            0, 0,
         0,            0,            1, 0,
-        gui_state->x, gui_state->y, 2, 1
+        gui_state->x, gui_state->y, 3, 1
     });
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
