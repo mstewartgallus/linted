@@ -466,10 +466,10 @@ static int init_graphics(struct gl_state *gl_state,
     glMatrixMode(GL_PROJECTION);
 
     glLoadMatrixf((GLfloat[]) {
-        1, 0,      0, 0,
+        1, 0, 0, 0,
         0, 1, 0, 0,
-        0, 0,      1, 1,
-        0, 0,      0, 1
+        0, 0, 1, 1,
+        0, 0, 0, 1
     });
 
     glMatrixMode(GL_MODELVIEW);
