@@ -13,18 +13,42 @@ Runtime Dependencies
 * SDL 1.2
   - Main Site - https://www.libsdl.org/
   - Bug Database - https://bugzilla.libsdl.org/
-* X11 Server
-  - Main Site - http://www.x.org/wiki/
-  - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
-* Xlib
-  - Main Site - http://www.x.org/wiki/
-  - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
-* Mesa
-  - Main Site - http://www.mesa3d.org/
-  - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=Mesa
-* DRI
-  - Main Site - http://dri.freedesktop.org/wiki/
-  - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=DRI
+  - Dependencies
+  <!-- TODO: List out more of SDL's dependencies -->
+    * ALSA
+      - Main Site - http://www.alsa-project.org/main/index.php/Main_Page
+    * Pulse Audio
+      - Main Site - http://www.freedesktop.org/wiki/Software/PulseAudio/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=PulseAudio
+    * libcaca
+      - Main Site - http://caca.zoy.org/wiki/libcaca
+      - Bug Database - http://caca.zoy.org/report/1
+    * libjson
+      - Main Site - http://sourceforge.net/projects/libjson/
+      - Bug Database - http://sourceforge.net/p/libjson/bugs/
+    * libdbus
+      - Main Site - http://www.freedesktop.org/wiki/Software/dbus/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=dbus
+    * ncurses, terminfo
+      - Main Site - http://invisible-island.net/ncurses/
+    * zlib
+      - Main Site - http://www.zlib.net/
+    * Xlib
+      - Main Site - http://www.x.org/wiki/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
+    * XCB
+      - Main Site - http://www.x.org/wiki/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
+    * Mesa
+      - Main Site - http://www.mesa3d.org/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=Mesa
+      - Dependencies
+        * DRI
+          - Main Site - http://dri.freedesktop.org/wiki/
+          - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=DRI
+    * X11 Server
+      - Main Site - http://www.x.org/wiki/
+      - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
 * The GNU Compiler Collection
   - Main Site - https://www.gnu.org/software/gcc/
   - Bug Mailing List - http://gcc.gnu.org/ml/gcc-bugs/
