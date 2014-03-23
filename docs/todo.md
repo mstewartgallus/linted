@@ -8,7 +8,13 @@ Linted -- TODO
 
 * Integrate this documentation with Doxygen
 * Port to --host=i686-w64-mingw32
-* Ban assert in favour of LINTED_IMPOSSIBLE_ERROR
+
+    * As part of this process environment sanitization code will need
+      to be reworked. Windows maintains two copies of environment
+      variables: one copy in process space and the other copy in
+      kernel space.
+
+* Ban assert in favour of `LINTED_IMPOSSIBLE_ERROR`
 
     assert has problems with not evaluating arguments.
 
