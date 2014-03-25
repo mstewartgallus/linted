@@ -33,7 +33,7 @@
 
 
 #define USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " [OPTIONS] [SUBCOMMAND]\n"\
+    "Usage: " PACKAGE_TARNAME " [OPTIONS]\n"\
     "Play the " PACKAGE_NAME " game\n"\
     "\n"\
     "The following OPTIONS are accepted:\n"\
@@ -60,10 +60,29 @@ int main(int argc, char **argv)
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
-        fputs("Bad administrator!\n" "It is insecure to run a game as root!\n",
-              stderr);
+        fputs("Bad administrator!\n", stderr);
+        fputs("It is insecure to run a game as root!\n", stderr);
         return EXIT_FAILURE;
     }
+
+    bool show_help = false;
+    bool show_version = false;
+    for (int ii = 1; ii < argc; ++ii) {
+        if (0 == strcmp(argv[ii], "--help")) {
+            show_help = true;
+        } else if (0 == strcmp(argv[ii], "--version")) {
+            show_version = true;
+        } else {
+            fprintf(stderr,
+                    PACKAGE_TARNAME
+                    " did not understand the command line input: %s\n",
+                    argv[ii]);
+            fputs(USAGE_TEXT, stderr);
+            return EXIT_FAILURE;
+        }
+    }
+
+    int succesfully_executing = 0;
 
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS          /* So we know there is an error */
@@ -72,19 +91,25 @@ int main(int argc, char **argv)
         );
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        LINTED_LAZY_DEV_ERROR("could not drop ability to raise privileges: %s",
-                              linted_error_string_alloc(errno));
+        succesfully_executing = -1;
+
+        char const *const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "could not drop ability to raise privileges: %s",
+               error_string);
+        linted_error_string_free(error_string);
     }
 
     /* Sanitize open files */
     fd_set essential_fds;
     FD_ZERO(&essential_fds);
     FD_SET(STDERR_FILENO, &essential_fds);
-    FD_SET(STDIN_FILENO, &essential_fds);
     FD_SET(STDOUT_FILENO, &essential_fds);
     if (-1 == linted_io_close_fds_except(&essential_fds)) {
-        LINTED_LAZY_DEV_ERROR("could not close unneeded files: %s",
-                              linted_error_string_alloc(errno));
+        succesfully_executing = -1;
+
+        char const *const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "could not close unneeded files: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     /* Sanitize the environment */
@@ -105,58 +130,43 @@ int main(int argc, char **argv)
         memset(sensitive_data, '\0', env_length - (sensitive_data - *env));
     }
 
-    bool should_run_game = false;
-    int command_status = 0;
-    switch (argc) {
-    case 1:
-        /* No arguments */
-        should_run_game = true;
-        break;
+    if (0 == succesfully_executing) {
+        if (show_help || show_version) {
+            if (show_help) {
+                fputs(USAGE_TEXT, stdout);
+            } else if (show_version) {
+                fputs(VERSION_TEXT, stdout);
+            }
 
-    case 2:
-        if (0 == strcmp(argv[1], "--help")) {
-            fputs(USAGE_TEXT, stdout);
-        } else if (0 == strcmp(argv[1], "--version")) {
-            fputs(VERSION_TEXT, stdout);
-        } else {
-            fprintf(stderr,
-                    PACKAGE_TARNAME
-                    " did not understand the command line input\n" USAGE_TEXT);
-        }
-        break;
+            fflush(stdout);
 
-    default:
-        fprintf(stderr,
-                PACKAGE_TARNAME " did not understand the command line input\n"
-                USAGE_TEXT);
-        break;
-    }
+            if (-1 == close(STDOUT_FILENO)) {
+                succesfully_executing = -1;
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close standard output: %s",
+                       error_string);
+                linted_error_string_free(error_string);
+            }
+        }  else {
+            if (-1 == close(STDOUT_FILENO)) {
+                succesfully_executing = -1;
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not close standard output: %s",
+                       error_string);
+                linted_error_string_free(error_string);
+            }
 
-    if (-1 == close(STDIN_FILENO)) {
-        command_status = -1;
-        char const *error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not close standard input: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if (-1 == close(STDOUT_FILENO)) {
-        command_status = -1;
-        char const *error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not close standard output: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if (should_run_game && command_status != -1) {
-        if (-1 == run_game()) {
-            command_status = -1;
-            char const *error_string = linted_error_string_alloc(errno);
-            syslog(LOG_ERR, "could not run the game: %s", error_string);
-            linted_error_string_free(error_string);
+            if (-1 == run_game()) {
+                succesfully_executing = -1;
+                char const * error_string = linted_error_string_alloc(errno);
+                syslog(LOG_ERR, "could not run the game: %s", error_string);
+                linted_error_string_free(error_string);
+            }
         }
     }
 
     if (-1 == close(STDERR_FILENO)) {
-        command_status = -1;
+        succesfully_executing = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard error: %s", error_string);
         linted_error_string_free(error_string);
@@ -164,7 +174,7 @@ int main(int argc, char **argv)
 
     closelog();
 
-    return (-1 == command_status) ? EXIT_FAILURE : EXIT_SUCCESS;
+    return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 static int run_game(void)
