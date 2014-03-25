@@ -21,9 +21,10 @@
 
 #include <dirent.h>
 #include <errno.h>
-#include <string.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 int linted_io_read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
@@ -86,6 +87,59 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     if (bytes_wrote_out != NULL) {
         *bytes_wrote_out = total_bytes_wrote;
     }
+    return exit_status;
+}
+
+int linted_io_write_string(int fd, size_t * bytes_wrote_out,
+                           char const *s)
+{
+    return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
+}
+
+int linted_io_write_format_string(int fd, size_t * bytes_wrote_out,
+                                  char const *format_str, ...)
+{
+    int exit_status = -1;
+
+    va_list ap;
+    va_start(ap, format_str);
+
+    va_list ap_copy;
+    va_copy(ap_copy, ap);
+
+    int bytes_should_write = vsnprintf(NULL, 0, format_str, ap);
+    if (bytes_should_write < 0) {
+        goto free_va_lists;
+    }
+
+    size_t string_size = bytes_should_write + 1;
+
+    char * string = malloc(string_size);
+    if (NULL == string) {
+        goto free_va_lists;
+    }
+
+    if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
+        goto free_string;
+    }
+
+    if (-1 == linted_io_write_string(fd, bytes_wrote_out, string)) {
+        goto free_string;
+    }
+
+    exit_status = 0;
+
+ free_string:
+    {
+        int errnum = errno;
+        free(string);
+        errno = errnum;
+    }
+
+ free_va_lists:
+    va_end(ap);
+    va_end(ap_copy);
+
     return exit_status;
 }
 

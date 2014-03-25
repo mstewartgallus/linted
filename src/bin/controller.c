@@ -20,7 +20,6 @@
 #include "linted/controller.h"
 #include "linted/util.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #define MESSAGE_SIZE 1

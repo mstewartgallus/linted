@@ -26,7 +26,6 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <sys/prctl.h>
 #include <sys/signalfd.h>
 #include <sys/select.h>
@@ -355,12 +354,14 @@ static void handle_child_info(siginfo_t * child_info)
     case CLD_EXITED:{
             int return_value = child_info->si_status;
             if (0 == return_value) {
-                fprintf(stderr, "child %ju executed normally\n",
-                        (uintmax_t) child);
+                linted_io_write_format_string(STDERR_FILENO, NULL,
+                                              "child %ju executed normally\n",
+                                              (uintmax_t) child);
             } else {
                 char const *error = linted_error_string_alloc(return_value);
-                fprintf(stderr, "child %ju executed with error: %s\n",
-                        (uintmax_t) child, error);
+                linted_io_write_format_string(STDERR_FILENO, NULL,
+                                              "child %ju executed with error: %s\n",
+                                              (uintmax_t) child, error);
                 linted_error_string_free(error);
             }
             break;
@@ -368,13 +369,16 @@ static void handle_child_info(siginfo_t * child_info)
 
     case CLD_DUMPED:
     case CLD_KILLED:
-        fprintf(stderr, "child %ju was terminated with signal number %i\n",
-                (uintmax_t) child, child_info->si_status);
+        linted_io_write_format_string(STDERR_FILENO, NULL,
+                                      "child %ju was terminated with signal number %i\n",
+                                      (uintmax_t) child, child_info->si_status);
         break;
 
     default:
         /* TODO: Possibly assert that this shouldn't happen */
-        fprintf(stderr, "child %ju executed abnormally\n", (uintmax_t) child);
+        linted_io_write_format_string(STDERR_FILENO, NULL,
+                                      "child %ju executed abnormally\n",
+                                      (uintmax_t) child);
         break;
     }
 }

@@ -56,12 +56,17 @@ static int run_game(void);
 
 int main(int argc, char **argv)
 {
+    stdin = NULL;
+    stdout = NULL;
+    stderr = NULL;
+
     /* First we check if we are run with proper security */
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
-        fputs("Bad administrator!\n", stderr);
-        fputs("It is insecure to run a game as root!\n", stderr);
+        linted_io_write_string(STDERR_FILENO, NULL, "\
+Bad administrator!\n\
+It is insecure to run a game as root!\n");
         return EXIT_FAILURE;
     }
 
@@ -73,23 +78,22 @@ int main(int argc, char **argv)
         } else if (0 == strcmp(argv[ii], "--version")) {
             show_version = true;
         } else {
-            fprintf(stderr,
-                    PACKAGE_TARNAME
-                    " did not understand the command line input: %s\n",
-                    argv[ii]);
-            fputs(USAGE_TEXT, stderr);
+            linted_io_write_format_string(STDERR_FILENO, NULL,
+                                          PACKAGE_TARNAME
+                                          " did not understand the command line input: %s\n",
+                                          argv[ii]);
+            linted_io_write_string(STDERR_FILENO, NULL, USAGE_TEXT);
             return EXIT_FAILURE;
         }
     }
 
-    int succesfully_executing = 0;
-
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
-            | LOG_CONS          /* So we know there is an error */
-            | LOG_PID           /* Because we fork several times */
-            , LOG_USER          /* This is a game and is a user program */
+            | LOG_CONS /* So we know there is an error */
+            | LOG_PID /* Because we fork several times */
+            , LOG_USER /* This is a game and is a user program */
         );
 
+    int succesfully_executing = 0;
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         succesfully_executing = -1;
 
@@ -133,12 +137,10 @@ int main(int argc, char **argv)
     if (0 == succesfully_executing) {
         if (show_help || show_version) {
             if (show_help) {
-                fputs(USAGE_TEXT, stdout);
+                linted_io_write_string(STDOUT_FILENO, NULL, USAGE_TEXT);
             } else if (show_version) {
-                fputs(VERSION_TEXT, stdout);
+                linted_io_write_string(STDOUT_FILENO, NULL, VERSION_TEXT);
             }
-
-            fflush(stdout);
 
             if (-1 == close(STDOUT_FILENO)) {
                 succesfully_executing = -1;
