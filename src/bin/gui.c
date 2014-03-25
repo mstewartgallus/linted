@@ -453,6 +453,7 @@ static int init_graphics(struct gl_state *gl_state,
     glDisable(GL_DITHER);
 
     glEnable(GL_VERTEX_ARRAY);
+    glEnable(GL_NORMAL_ARRAY);
     glEnable(GL_DEPTH_TEST);
 
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
