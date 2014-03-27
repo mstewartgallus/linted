@@ -20,7 +20,6 @@ Linted -- TODO
 
 * Use fexecve to check for binary existence before forking
 * Check for forks exiting badly
-* Make installs work
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
 * Make a hang check timer
