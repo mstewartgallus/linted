@@ -158,26 +158,11 @@ int main(int argc, char * argv[])
         return EXIT_FAILURE;
     }
 
-    linted_controller const controller = open(controller_name, O_CLOEXEC);
-    if (-1 == controller) {
-        fprintf(stderr, "Could not open file: %s: %s\n", controller_name,
-                linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
+    /* TODO: Set O_CLOEXEC */
+    linted_controller const controller = atoi(controller_name);
+    linted_shutdowner const shutdowner = atoi(shutdowner_name);
+    linted_updater const updater = atoi(updater_name);
 
-    linted_shutdowner const shutdowner = open(shutdowner_name, O_CLOEXEC);
-    if (-1 == shutdowner) {
-        fprintf(stderr, "Could not open file: %s: %s\n", shutdowner_name,
-                linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    linted_updater const updater = open(updater_name, O_CLOEXEC);
-    if (-1 == updater) {
-        fprintf(stderr, "Could not open file: %s: %s\n", updater_name,
-                linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
     int exit_status = -1;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {

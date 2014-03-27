@@ -224,17 +224,17 @@ static int run_game(void)
     }
 
     if (0 == gui) {
-        char updater_string[] = "--updater=/proc/self/fd/XXXXXX";
+        char updater_string[] = "--updater=XXXXXX";
         snprintf(updater_string, sizeof updater_string,
-                 "--updater=/proc/self/fd/%i", dup(updater_read));
+                 "--updater=%i", dup(updater_read));
 
-        char shutdowner_string[] = "--shutdowner=/proc/self/fd/XXXXXX";
+        char shutdowner_string[] = "--shutdowner=XXXXXX";
         snprintf(shutdowner_string, sizeof shutdowner_string,
-                 "--shutdowner=/proc/self/fd/%i", dup(simulator_shutdowner_write));
+                 "--shutdowner=%i", dup(simulator_shutdowner_write));
 
-        char controller_string[] = "--controller=/proc/self/fd/XXXXXX";
+        char controller_string[] = "--controller=XXXXXX";
         snprintf(controller_string, sizeof controller_string,
-                 "--controller=/proc/self/fd/%i", dup(controller_write));
+                 "--controller=%i", dup(controller_write));
 
         char * args[] = {
             "gui",
@@ -253,17 +253,17 @@ static int run_game(void)
     }
 
     if (0 == simulator) {
-        char updater_string[] = "--updater=/proc/self/fd/XXXXXX";
+        char updater_string[] = "--updater=XXXXXX";
         snprintf(updater_string, sizeof updater_string,
-                 "--updater=/proc/self/fd/%i", dup(updater_write));
+                 "--updater=%i", dup(updater_write));
 
-        char shutdowner_string[] = "--shutdowner=/proc/self/fd/XXXXXX";
+        char shutdowner_string[] = "--shutdowner=XXXXXX";
         snprintf(shutdowner_string, sizeof shutdowner_string,
-                 "--shutdowner=/proc/self/fd/%i", dup(simulator_shutdowner_read));
+                 "--shutdowner=%i", dup(simulator_shutdowner_read));
 
-        char controller_string[] = "--controller=/proc/self/fd/XXXXXX";
+        char controller_string[] = "--controller=XXXXXX";
         snprintf(controller_string, sizeof controller_string,
-                 "--controller=/proc/self/fd/%i", dup(controller_read));
+                 "--controller=%i", dup(controller_read));
 
         char * args[] = {
             "simulator",
