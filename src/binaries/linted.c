@@ -79,22 +79,24 @@ It is insecure to run a game as root!\n");
     bool show_version = false;
     char const * simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const * gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-    for (int ii = 1; ii < argc; ++ii) {
-        if (0 == strcmp(argv[ii], "--help")) {
+
+    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
+        char const * argument = argv[ii];
+        if (0 == strcmp(argument, "--help")) {
             show_help = true;
-        } else if (0 == strcmp(argv[ii], "--version")) {
+        } else if (0 == strcmp(argument, "--version")) {
             show_version = true;
-        } else if (0 == strncmp(argv[ii], "--simulator=",
+        } else if (0 == strncmp(argument, "--simulator=",
                                 sizeof "--simulator=" -1)) {
-            simulator_path = argv[ii] + sizeof "--simulator=" -1;
-        } else if (0 == strncmp(argv[ii], "--gui=",
+            simulator_path = argument + sizeof "--simulator=" -1;
+        } else if (0 == strncmp(argument, "--gui=",
                                 sizeof "--gui=" -1)) {
-            gui_path = argv[ii] + sizeof "--gui=" -1;
+            gui_path = argument + sizeof "--gui=" -1;
         } else {
             linted_io_write_format_string(STDERR_FILENO, NULL,
                                           PACKAGE_TARNAME
                                           " did not understand the command line input: %s\n",
-                                          argv[ii]);
+                                         argument);
             linted_io_write_string(STDERR_FILENO, NULL, USAGE_TEXT);
             return EXIT_FAILURE;
         }
