@@ -137,6 +137,8 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
+# TODO: Iterate over the targest and check for each of them
+
 check-frama-c-pdg: $(linted_SOURCES_verified)
 	$(MKDIR_P) pdg
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -pdg -pdg-dot pdg/main $(FRAMAFLAGS) $^
@@ -148,13 +150,13 @@ check-frama-c: $(linted_SOURCES_verified)
 	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
 
 check-cbmc: $(linted_SOURCES)
-	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
+	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
 
 check-cppcheck:
-	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
+	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(AM_CPPFLAGS) $(srcdir)/src
 
 check-clang-analyzer: $(linted_SOURCES)
-	$(CLANG) --analyze $(linted_CPPFLAGS) $(linted_CFLAGS) $(CFLAGS) $^
+	$(CLANG) --analyze $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
 	- rm *.plist
 
 check: $(linted_CHECK_PHASES)
@@ -197,7 +199,7 @@ linted_FRAMAFLAGS=\
   -warn-decimal-float all\
   -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
   -cpp-extra-args='-C'\
-  -cpp-extra-args='$(linted_CPPFLAGS)'\
+  -cpp-extra-args='$(AM_CPPFLAGS)'\
   -cpp-extra-args='$(CPPFLAGS)'\
   -main linted_simulator_run
 
