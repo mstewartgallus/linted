@@ -22,6 +22,7 @@
 #include "linted/updater.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -33,6 +34,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
 #define USAGE_TEXT \
     "Usage: " PACKAGE_TARNAME " [OPTIONS]\n"\
@@ -229,24 +231,37 @@ static int run_game(char const * simulator_path, char const * gui_path)
 
     pid_t gui = fork();
     if (-1 == gui) {
-        return -1;
+        goto cleanup_shutdowner_pair;
     }
 
     if (0 == gui) {
-        char updater_string[] = "--updater=XXXXXX";
-        snprintf(updater_string, sizeof updater_string,
-                 "--updater=%i", dup(updater_read));
+        int new_updater_read = dup(updater_read);
+        if (-1 == new_updater_read) {
+            _Exit(errno);
+        }
 
-        char shutdowner_string[] = "--shutdowner=XXXXXX";
-        snprintf(shutdowner_string, sizeof shutdowner_string,
-                 "--shutdowner=%i", dup(simulator_shutdowner_write));
+        int new_simulator_shutdowner_write = dup(simulator_shutdowner_write);
+        if (-1 == new_simulator_shutdowner_write) {
+            _Exit(errno);
+        }
 
-        char controller_string[] = "--controller=XXXXXX";
-        snprintf(controller_string, sizeof controller_string,
-                 "--controller=%i", dup(controller_write));
+        int new_controller_write = dup(controller_write);
+        if (-1 == new_controller_write) {
+            _Exit(errno);
+        }
+
+        char updater_string[] = "--updater=" INT_STRING_PADDING;
+        sprintf(updater_string, "--updater=%i", new_updater_read);
+
+        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+        sprintf(shutdowner_string, "--shutdowner=%i",
+                new_simulator_shutdowner_write);
+
+        char controller_string[] = "--controller=" INT_STRING_PADDING;
+        sprintf(controller_string, "--controller=%i", new_controller_write);
 
         char * args[] = {
-            gui_path,
+            (char *) gui_path,
             updater_string,
             shutdowner_string,
             controller_string,
@@ -258,24 +273,37 @@ static int run_game(char const * simulator_path, char const * gui_path)
 
     pid_t simulator = fork();
     if (-1 == simulator) {
-        return -1;
+        goto cleanup_gui;
     }
 
     if (0 == simulator) {
-        char updater_string[] = "--updater=XXXXXX";
-        snprintf(updater_string, sizeof updater_string,
-                 "--updater=%i", dup(updater_write));
+        int new_updater_write = dup(updater_write);
+        if (-1 == new_updater_write) {
+            _Exit(errno);
+        }
 
-        char shutdowner_string[] = "--shutdowner=XXXXXX";
-        snprintf(shutdowner_string, sizeof shutdowner_string,
-                 "--shutdowner=%i", dup(simulator_shutdowner_read));
+        int new_simulator_shutdowner_read = dup(simulator_shutdowner_read);
+        if (-1 == new_simulator_shutdowner_read) {
+            _Exit(errno);
+        }
 
-        char controller_string[] = "--controller=XXXXXX";
-        snprintf(controller_string, sizeof controller_string,
-                 "--controller=%i", dup(controller_read));
+        int new_controller_read = dup(controller_read);
+        if (-1 == new_controller_read) {
+            _Exit(errno);
+        }
+
+        char updater_string[] = "--updater=" INT_STRING_PADDING;
+        sprintf(updater_string, "--updater=%i", new_updater_write);
+
+        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+        sprintf(shutdowner_string, "--shutdowner=%i",
+                new_simulator_shutdowner_read);
+
+        char controller_string[] = "--controller=" INT_STRING_PADDING;
+        sprintf(controller_string, "--controller=%i", new_controller_read);
 
         char * args[] = {
-            simulator_path,
+            (char *) simulator_path,
             updater_string,
             shutdowner_string,
             controller_string,
@@ -285,12 +313,95 @@ static int run_game(char const * simulator_path, char const * gui_path)
         _Exit(errno);
     }
 
-    wait(NULL);
-    wait(NULL);
+    /*
+     * TODO: Put processes in a process group to wait on or use
+     * SIGCHLD and WNOHANG to wait for only my processes.
+     */
+    {
+        siginfo_t exit_info;
+        int wait_status;
+        do {
+            wait_status = waitid(P_ALL, 0, &exit_info, WEXITED);
+        } while (-1 == wait_status && EINTR == wait_status);
+        if (-1 == wait_status) {
+            assert(errno != ECHILD);
+            assert(errno != EINTR);
+            assert(errno != EINVAL);
+            goto cleanup_gui;
+        }
+
+        switch (exit_info.si_code) {
+        case CLD_DUMPED:
+        case CLD_KILLED:
+            raise(exit_info.si_status);
+            goto cleanup_simulator;
+
+        case CLD_EXITED:
+            if (exit_info.si_status != 0) {
+                errno = exit_info.si_status;
+                goto cleanup_simulator;
+            }
+            break;
+        }
+    }
+
+    {
+        siginfo_t exit_info;
+        int wait_status;
+        do {
+            wait_status = waitid(P_ALL, 0, &exit_info, WEXITED);
+        } while (-1 == wait_status && EINTR == wait_status);
+        if (-1 == wait_status) {
+            assert(errno != ECHILD);
+            assert(errno != EINTR);
+            assert(errno != EINVAL);
+            goto cleanup_shutdowner_pair;
+        }
+
+        switch (exit_info.si_code) {
+        case CLD_DUMPED:
+        case CLD_KILLED:
+            raise(exit_info.si_status);
+            goto cleanup_shutdowner_pair;
+
+        case CLD_EXITED:
+            if (exit_info.si_status != 0) {
+                errno = exit_info.si_status;
+                goto cleanup_shutdowner_pair;
+            }
+            break;
+        }
+    }
 
     exit_status = 0;
 
- cleanup:
+ cleanup_simulator:
+    if (-1 == exit_status) {
+        int errnum = errno;
+        int kill_status = kill(simulator, SIGQUIT);
+        if (-1 == kill_status) {
+            /* errno == ESRCH is fine */
+            assert(errno != EINVAL);
+            assert(errno != EPERM);
+        }
+
+        errno = errnum;
+    }
+
+ cleanup_gui:
+    if (-1 == exit_status) {
+        int errnum = errno;
+        int kill_status = kill(gui, SIGQUIT);
+        if (-1 == kill_status) {
+            /* errno == ESRCH is fine */
+            assert(errno != EINVAL);
+            assert(errno != EPERM);
+        }
+
+        errno = errnum;
+    }
+
+ cleanup_shutdowner_pair:
     {
         int errnum = errno;
         int close_status = linted_shutdowner_close(simulator_shutdowner_read);
