@@ -56,7 +56,8 @@
 
 extern char **environ;
 
-static int run_game(char const * simulator_path, char const * gui_path);
+static int run_game(char const * simulator_path, int simulator_binary,
+                    char const * gui_path, int gui_binary);
 
 int main(int argc, char **argv)
 {
@@ -99,6 +100,24 @@ It is insecure to run a game as root!\n");
         }
     }
 
+    int const simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
+    if (-1 == simulator_binary) {
+        linted_io_write_format_string(STDERR_FILENO, NULL,
+                                      PACKAGE_TARNAME
+                                      " could not open: %s\n",
+                                      simulator_path);
+        return EXIT_FAILURE;
+    }
+
+    int const gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
+    if (-1 == gui_binary) {
+        linted_io_write_format_string(STDERR_FILENO, NULL,
+                                      PACKAGE_TARNAME
+                                      " could not open: %s\n",
+                                      gui_path);
+        return EXIT_FAILURE;
+    }
+
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS /* So we know there is an error */
             | LOG_PID /* Because we fork several times */
@@ -120,6 +139,8 @@ It is insecure to run a game as root!\n");
     FD_ZERO(&essential_fds);
     FD_SET(STDERR_FILENO, &essential_fds);
     FD_SET(STDOUT_FILENO, &essential_fds);
+    FD_SET(simulator_binary, &essential_fds);
+    FD_SET(gui_binary, &essential_fds);
     if (-1 == linted_io_close_fds_except(&essential_fds)) {
         succesfully_executing = -1;
 
@@ -170,7 +191,8 @@ It is insecure to run a game as root!\n");
                 linted_error_string_free(error_string);
             }
 
-            if (-1 == run_game(simulator_path, gui_path)) {
+            if (-1 == run_game(simulator_path, simulator_binary,
+                               gui_path, gui_binary)) {
                 succesfully_executing = -1;
                 char const * error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not run the game: %s", error_string);
@@ -191,7 +213,8 @@ It is insecure to run a game as root!\n");
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(char const * simulator_path, char const * gui_path)
+static int run_game(char const * simulator_path, int simulator_binary,
+                    char const * gui_path, int gui_binary)
 {
     int exit_status = -1;
 
@@ -267,7 +290,7 @@ static int run_game(char const * simulator_path, char const * gui_path)
             controller_string,
             NULL
         };
-        execv(gui_path, args);
+        fexecve(gui_binary, args, environ);
         _Exit(errno);
     }
 
@@ -309,7 +332,7 @@ static int run_game(char const * simulator_path, char const * gui_path)
             controller_string,
             NULL
         };
-        execv(simulator_path, args);
+        fexecve(simulator_binary, args, environ);
         _Exit(errno);
     }
 

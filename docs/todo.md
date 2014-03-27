@@ -18,8 +18,6 @@ Linted -- TODO
 
     assert has problems with not evaluating arguments.
 
-* Use fexecve to check for binary existence before forking
-* Check for forks exiting badly
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
 * Make a hang check timer
