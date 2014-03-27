@@ -34,7 +34,7 @@ linted_SOURCES=src/binaries/linted.c
 linted_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
 
 gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
-gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS)
+gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)
 
 gui_CPPFLAGS=$(SDL_CFLAGS)
 # Cancel out SDL's idiot defining of GNU source

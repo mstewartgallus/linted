@@ -93,7 +93,10 @@ LINTED_HARDEN
 LINTED_DEBUG
 LINTED_WARNINGS
 dnl
-AC_SEARCH_LIBS([glClear], [GL], [], [
+AC_CHECK_LIB([GL], [glClear], [
+  [GL_LIBS="-lGL"]
+  AC_SUBST([GL_LIBS])
+], [
   AC_MSG_ERROR([Unable to find an OpenGL library])
 ])
 dnl
