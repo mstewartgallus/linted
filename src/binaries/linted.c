@@ -252,10 +252,13 @@ static int run_game(char const * simulator_path, int simulator_binary,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
+    pid_t live_processes[] = { -1, -1 };
+
     pid_t gui = fork();
     if (-1 == gui) {
         goto cleanup_shutdowner_pair;
     }
+    live_processes[0] = gui;
 
     if (0 == gui) {
         int new_updater_read = dup(updater_read);
@@ -296,8 +299,9 @@ static int run_game(char const * simulator_path, int simulator_binary,
 
     pid_t simulator = fork();
     if (-1 == simulator) {
-        goto cleanup_gui;
+        goto cleanup_processes;
     }
+    live_processes[1] = simulator;
 
     if (0 == simulator) {
         int new_updater_write = dup(updater_write);
@@ -336,92 +340,82 @@ static int run_game(char const * simulator_path, int simulator_binary,
         _Exit(errno);
     }
 
-    /*
-     * TODO: Put processes in a process group to wait on or use
-     * SIGCHLD and WNOHANG to wait for only my processes.
-     */
-    {
-        siginfo_t exit_info;
-        int wait_status;
-        do {
-            wait_status = waitid(P_ALL, 0, &exit_info, WEXITED);
-        } while (-1 == wait_status && EINTR == wait_status);
-        if (-1 == wait_status) {
-            assert(errno != ECHILD);
-            assert(errno != EINTR);
-            assert(errno != EINVAL);
-            goto cleanup_gui;
-        }
+    sigset_t sigchld_set;
+    sigemptyset(&sigchld_set);
+    sigaddset(&sigchld_set, SIGCHLD);
 
-        switch (exit_info.si_code) {
-        case CLD_DUMPED:
-        case CLD_KILLED:
-            raise(exit_info.si_status);
-            goto cleanup_simulator;
+    sigset_t sigold_set;
+    pthread_sigmask(SIG_BLOCK, &sigchld_set, &sigold_set);
 
-        case CLD_EXITED:
-            if (exit_info.si_status != 0) {
-                errno = exit_info.si_status;
-                goto cleanup_simulator;
+    for (;;) {
+        int info;
+        sigwait(&sigchld_set, &info);
+
+        pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
+        /* Let the signal be handled like normal */
+        pthread_sigmask(SIG_BLOCK, &sigchld_set, NULL);
+
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
+            /* Poll for our processes */
+            if (-1 == live_processes[ii]) {
+                continue;
             }
-            break;
-        }
-    }
 
-    {
-        siginfo_t exit_info;
-        int wait_status;
-        do {
-            wait_status = waitid(P_ALL, 0, &exit_info, WEXITED);
-        } while (-1 == wait_status && EINTR == wait_status);
-        if (-1 == wait_status) {
-            assert(errno != ECHILD);
-            assert(errno != EINTR);
-            assert(errno != EINVAL);
-            goto cleanup_shutdowner_pair;
-        }
+            siginfo_t exit_info;
+            exit_info.si_pid = 0;
+            waitid(P_PID, live_processes[ii],
+                   &exit_info, WEXITED | WNOHANG);
 
-        switch (exit_info.si_code) {
-        case CLD_DUMPED:
-        case CLD_KILLED:
-            raise(exit_info.si_status);
-            goto cleanup_shutdowner_pair;
-
-        case CLD_EXITED:
-            if (exit_info.si_status != 0) {
-                errno = exit_info.si_status;
-                goto cleanup_shutdowner_pair;
+            if (0 == exit_info.si_pid) {
+                continue;
             }
-            break;
+
+            live_processes[ii] = -1;
+
+            switch (exit_info.si_code) {
+            case CLD_DUMPED:
+            case CLD_KILLED:
+                raise(exit_info.si_status);
+                goto restore_sigmask;
+
+            case CLD_EXITED:
+                if (exit_info.si_status != 0) {
+                    errno = exit_info.si_status;
+                    goto restore_sigmask;
+                }
+                break;
+            }
         }
+
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
+            if (live_processes[ii] != -1) {
+                goto got_live;
+            }
+        }
+
+        break;
+
+    got_live:;
     }
 
     exit_status = 0;
 
- cleanup_simulator:
-    if (-1 == exit_status) {
-        int errnum = errno;
-        int kill_status = kill(simulator, SIGQUIT);
-        if (-1 == kill_status) {
-            /* errno == ESRCH is fine */
-            assert(errno != EINVAL);
-            assert(errno != EPERM);
+ restore_sigmask:
+    pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
+
+ cleanup_processes:
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
+        if (live_processes[ii] != -1) {
+            int errnum = errno;
+            int kill_status = kill(live_processes[ii], SIGQUIT);
+            if (-1 == kill_status) {
+                /* errno == ESRCH is fine */
+                assert(errno != EINVAL);
+                assert(errno != EPERM);
+            }
+
+            errno = errnum;
         }
-
-        errno = errnum;
-    }
-
- cleanup_gui:
-    if (-1 == exit_status) {
-        int errnum = errno;
-        int kill_status = kill(gui, SIGQUIT);
-        if (-1 == kill_status) {
-            /* errno == ESRCH is fine */
-            assert(errno != EINVAL);
-            assert(errno != EPERM);
-        }
-
-        errno = errnum;
     }
 
  cleanup_shutdowner_pair:
