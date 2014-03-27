@@ -120,9 +120,64 @@ static void render_graphics(struct gl_state const *gl_state,
                             struct window_state const *window_state);
 static void destroy_gl(struct gl_state *gl_state);
 
-int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
-                   linted_controller controller)
+int main(int argc, char * argv[])
 {
+    char const * controller_name = NULL;
+    char const * shutdowner_name = NULL;
+    char const * updater_name = NULL;
+    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
+        char * argument = argv[ii];
+
+        char const controller_prefix[] = "--controller=";
+        char const shutdowner_prefix[] = "--shutdowner=";
+        char const updater_prefix[] = "--updater=";
+        if (0 == strncmp(argument,
+                         controller_prefix, sizeof controller_prefix - 1)) {
+            controller_name = argument + sizeof controller_prefix - 1;
+        } else if (0 == strncmp(argument,
+                                shutdowner_prefix, sizeof shutdowner_prefix - 1)) {
+            shutdowner_name = argument + sizeof shutdowner_prefix - 1;
+        } else if (0 == strncmp(argument,
+                                updater_prefix, sizeof updater_prefix - 1)) {
+            updater_name = argument + sizeof updater_prefix - 1;
+        }
+    }
+
+    if (NULL == controller_name) {
+        fputs("No --controller argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == shutdowner_name) {
+        fputs("No --shutdowner argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == updater_name) {
+        fputs("No --updater argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    linted_controller const controller = open(controller_name, O_CLOEXEC);
+    if (-1 == controller) {
+        fprintf(stderr, "Could not open file: %s: %s\n", controller_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_shutdowner const shutdowner = open(shutdowner_name, O_CLOEXEC);
+    if (-1 == shutdowner) {
+        fprintf(stderr, "Could not open file: %s: %s\n", shutdowner_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_updater const updater = open(updater_name, O_CLOEXEC);
+    if (-1 == updater) {
+        fprintf(stderr, "Could not open file: %s: %s\n", updater_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
     int exit_status = -1;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {
@@ -329,7 +384,7 @@ int linted_gui_run(linted_updater updater, linted_shutdowner shutdowner,
         }
     }
 
-    return exit_status;
+    return -1 == exit_status ? errno : 0;
 }
 
 static int on_sdl_event(SDL_Event const *sdl_event,

@@ -18,27 +18,48 @@ ACLOCAL_AMFLAGS=-I m4
 
 bin_PROGRAMS=linted
 
-linted_SOURCES=\
-  src/bin/assets.c\
-  src/bin/controller.c\
-  src/bin/gui.c\
-  src/bin/io.c\
-  src/bin/linted.c\
-  src/bin/main_loop.c\
-  src/bin/mq.c\
-  src/bin/process_spawner.c\
-  src/bin/sandbox.c\
-  src/bin/shutdowner.c\
-  src/bin/spawner.c\
-  src/bin/updater.c\
-  $(linted_SOURCES_verified)
+pkglibexec_PROGRAMS=\
+  gui\
+  simulator
 
-linted_SOURCES_verified=\
-  src/bin/simulator.c\
-  src/bin/util.c
+noinst_LTLIBRARIES=\
+  libcommon.la\
+  libcontroller.la\
+  libupdater.la\
+  libshutdowner.la
+
+linted_SOURCES=src/binaries/linted.c
+linted_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+
+gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
+gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS)
+
+gui_CPPFLAGS=$(SDL_CFLAGS)
+# Cancel out SDL's idiot defining of GNU source
+gui_CPPFLAGS+=-U_GNU_SOURCE
+gui_CPPFLAGS+=$(AM_CPPFLAGS)
+
+simulator_SOURCES=src/binaries/simulator.c
+simulator_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+
+libcommon_la_SOURCES=\
+  src/common/io.c\
+  src/common/mq.c\
+  src/common/sandbox.c\
+  src/common/util.c
+libcommon_la_LIBADD=-lrt
+
+libcontroller_la_SOURCES=src/protocols/controller.c
+libcontroller_la_LIBADD=libcommon.la -lrt
+
+libshutdowner_la_SOURCES=src/protocols/shutdowner.c
+libshutdowner_la_LIBADD=libcommon.la -lrt
+
+libupdater_la_SOURCES=src/protocols/updater.c
+libupdater_la_LIBADD=libcommon.la -lrt
 
 nodist_linted_SOURCES=\
-  src/bin/gl_core.c
+  src/binaries/gui/gl_core.c
 
 headers=\
   src/linted/assets.h\
@@ -46,51 +67,47 @@ headers=\
   src/linted/controller.h\
   src/linted/gui.h\
   src/linted/io.h\
-  src/linted/main_loop.h\
   src/linted/mq.h\
-  src/linted/process_spawner.h\
   src/linted/sandbox.h\
   src/linted/shutdowner.h\
   src/linted/simulator.h\
-  src/linted/spawner.h\
-  src/linted/unimq.h\
   src/linted/util.h\
   src/linted/updater.h
 
-BUILT_SOURCES=src/bin/gl_core.c src/linted/gl_core.h
+BUILT_SOURCES=src/binaries/gui/gl_core.c src/linted/gl_core.h
 
 EXTRA_DIST=\
   libs/glloadgen\
   \
   $(headers)\
   \
-  src/assets/assets.py\
-  src/assets/shaders/fragment.glsl\
-  src/assets/shaders/varying.glsl\
-  src/assets/shaders/vertex.glsl\
+  src/binaries/gui/assets/assets.py\
+  src/binaries/gui/assets/shaders/fragment.glsl\
+  src/binaries/gui/assets/shaders/varying.glsl\
+  src/binaries/gui/assets/shaders/vertex.glsl\
   \
-  src/assets_generator/linted_assets_generator\
-  src/assets_generator/linted_assets_generator.py
+  src/binaries/gui/assets_generator/linted_assets_generator\
+  src/binaries/gui/assets_generator/linted_assets_generator.py
 
-MOSTLYCLEANFILES=src/bin/assets.c
-src/bin/assets.c:\
-  src/assets/assets.py\
-  src/assets/shaders/fragment.glsl\
-  src/assets/shaders/varying.glsl\
-  src/assets/shaders/vertex.glsl\
+MOSTLYCLEANFILES=src/binaries/gui/assets.c
+src/binaries/gui/assets.c:\
+  src/binaries/gui/assets/assets.py\
+  src/binaries/gui/assets/shaders/fragment.glsl\
+  src/binaries/gui/assets/shaders/varying.glsl\
+  src/binaries/gui/assets/shaders/vertex.glsl\
   \
-  src/assets_generator/linted_assets_generator\
-  src/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/src/assets_generator/linted_assets_generator\
-	  $(srcdir)/src/assets/assets.py\
+  src/binaries/gui/assets_generator/linted_assets_generator\
+  src/binaries/gui/assets_generator/linted_assets_generator.py
+	BLENDER=$(BLENDER) $(srcdir)/src/binaries/gui/assets_generator/linted_assets_generator\
+	  $(srcdir)/src/binaries/gui/assets/assets.py\
 	  --output=$@
 
-MOSTLYCLEANFILES+=src/bin/gl_core.c src/linted/gl_core.h
-src/bin/gl_core.c:
-	cd $(builddir)/src/bin && \
+MOSTLYCLEANFILES+=src/binaries/gui/gl_core.c src/linted/gl_core.h
+src/binaries/gui/gl_core.c:
+	cd $(builddir)/src/binaries/gui/ && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-	rm $(builddir)/src/bin/gl_core.h
+	rm $(builddir)/src/binaries/gui/gl_core.h
 
 src/linted/gl_core.h:
 	$(MKDIR_P) $(builddir)/src/linted
@@ -146,19 +163,9 @@ clean-local:
 	- rm -rf scan-report
 
 
-linted_LDADD=$(SDL_LIBS)
-linted_LDFLAGS=\
+AM_LDFLAGS=\
   $(linted_LDFLAGS_OPTIMIZE)\
-  $(linted_LDFLAGS_HARDEN)\
-  $(AM_LDFLAGS)
-
-linted_CPPFLAGS=$(SDL_CFLAGS)
-
-# Cancel out SDL's idiot defining of GNU source
-linted_CPPFLAGS+=-U_GNU_SOURCE
-
-linted_CPPFLAGS+=$(AM_CPPFLAGS)
-
+  $(linted_LDFLAGS_HARDEN)
 
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_HARDEN)\

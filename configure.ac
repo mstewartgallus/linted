@@ -14,13 +14,14 @@ AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])
 AC_CONFIG_HEADER([config.h])
 dnl
 AC_PREREQ([2.62])
-AC_CONFIG_SRCDIR([src/bin/linted.c])
+AC_CONFIG_SRCDIR([src/binaries/linted.c])
 dnl
 AC_ARG_VAR([CLANG], [The clang compiler used for static analysis])
 dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
 ])
+LT_INIT
 AC_PROG_CC
 AC_PROG_CC_C99
 AM_PROG_CC_C_O

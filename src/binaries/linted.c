@@ -15,9 +15,10 @@
  */
 #include "config.h"
 
+#include "linted/controller.h"
 #include "linted/io.h"
-#include "linted/main_loop.h"
-#include "linted/process_spawner.h"
+#include "linted/shutdowner.h"
+#include "linted/updater.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -183,38 +184,107 @@ static int run_game(void)
 {
     int exit_status = -1;
 
-    linted_spawner spawners[2];
-    if (-1 == linted_spawner_pair(spawners)) {
+    linted_updater updater_mqs[2];
+    linted_controller controller_mqs[2];
+    linted_shutdowner simulator_shutdowner_mqs[2];
+
+    linted_updater updater_read;
+    linted_updater updater_write;
+
+    linted_controller controller_read;
+    linted_controller controller_write;
+
+    linted_shutdowner simulator_shutdowner_read;
+    linted_shutdowner simulator_shutdowner_write;
+
+    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, O_NONBLOCK)) {
         return -1;
     }
 
-    pid_t spawner = fork();
-    if (-1 == spawner) {
-        goto close_spawner_handles;
+    updater_read = updater_mqs[0];
+    updater_write = updater_mqs[1];
+
+    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, O_NONBLOCK)) {
+        goto cleanup_updater_pair;
     }
 
-    if (0 == spawner) {
-        close(spawners[1]);
+    controller_read = controller_mqs[0];
+    controller_write = controller_mqs[1];
 
-        /* Fork off tasks from a known good state */
-        int spawner_status = linted_process_spawner_run(spawners[0], NULL);
-
-        if (-1 == spawner_status) {
-            exit(errno);
-        }
-        exit(0);
+    if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
+        goto cleanup_controller_pair;
     }
 
-    if (-1 == linted_main_loop_run(spawners[1])) {
-        goto close_spawner_handles;
+    simulator_shutdowner_read = simulator_shutdowner_mqs[0];
+    simulator_shutdowner_write = simulator_shutdowner_mqs[1];
+
+    pid_t gui = fork();
+    if (-1 == gui) {
+        return -1;
     }
+
+    if (0 == gui) {
+        char updater_string[] = "--updater=/proc/self/fd/XXXXXX";
+        snprintf(updater_string, sizeof updater_string,
+                 "--updater=/proc/self/fd/%i", dup(updater_read));
+
+        char shutdowner_string[] = "--shutdowner=/proc/self/fd/XXXXXX";
+        snprintf(shutdowner_string, sizeof shutdowner_string,
+                 "--shutdowner=/proc/self/fd/%i", dup(simulator_shutdowner_write));
+
+        char controller_string[] = "--controller=/proc/self/fd/XXXXXX";
+        snprintf(controller_string, sizeof controller_string,
+                 "--controller=/proc/self/fd/%i", dup(controller_write));
+
+        char * args[] = {
+            "gui",
+            updater_string,
+            shutdowner_string,
+            controller_string,
+            NULL
+        };
+        execv("gui", args);
+        _Exit(errno);
+    }
+
+    pid_t simulator = fork();
+    if (-1 == simulator) {
+        return -1;
+    }
+
+    if (0 == simulator) {
+        char updater_string[] = "--updater=/proc/self/fd/XXXXXX";
+        snprintf(updater_string, sizeof updater_string,
+                 "--updater=/proc/self/fd/%i", dup(updater_write));
+
+        char shutdowner_string[] = "--shutdowner=/proc/self/fd/XXXXXX";
+        snprintf(shutdowner_string, sizeof shutdowner_string,
+                 "--shutdowner=/proc/self/fd/%i", dup(simulator_shutdowner_read));
+
+        char controller_string[] = "--controller=/proc/self/fd/XXXXXX";
+        snprintf(controller_string, sizeof controller_string,
+                 "--controller=/proc/self/fd/%i", dup(controller_read));
+
+        char * args[] = {
+            "simulator",
+            updater_string,
+            shutdowner_string,
+            controller_string,
+            NULL
+        };
+        execv("simulator", args);
+        _Exit(errno);
+    }
+
+    wait(NULL);
+    wait(NULL);
 
     exit_status = 0;
 
- close_spawner_handles:
+ cleanup:
     {
         int errnum = errno;
-        int close_status = close(spawners[0]);
+        int close_status = linted_shutdowner_close(simulator_shutdowner_read);
         if (-1 == exit_status) {
             errno = errnum;
         }
@@ -225,7 +295,7 @@ static int run_game(void)
 
     {
         int errnum = errno;
-        int close_status = close(spawners[1]);
+        int close_status = linted_shutdowner_close(simulator_shutdowner_write);
         if (-1 == exit_status) {
             errno = errnum;
         }
@@ -234,8 +304,50 @@ static int run_game(void)
         }
     }
 
-    if (exit_status != -1) {
-        waitpid(spawner, NULL, 0);
+ cleanup_controller_pair:
+    {
+        int errnum = errno;
+        int close_status = linted_controller_close(controller_read);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    {
+        int errnum = errno;
+        int close_status = linted_controller_close(controller_write);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+ cleanup_updater_pair:
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater_read);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+
+    {
+        int errnum = errno;
+        int close_status = linted_updater_close(updater_write);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
     return exit_status;

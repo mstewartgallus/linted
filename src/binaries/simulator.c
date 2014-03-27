@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
@@ -65,10 +66,65 @@ static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
-int linted_simulator_run(linted_controller const controller,
-                         linted_shutdowner const shutdowner,
-                         linted_updater const updater)
+int main(int argc, char *argv[])
 {
+    char const * controller_name = NULL;
+    char const * shutdowner_name = NULL;
+    char const * updater_name = NULL;
+    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
+        char * argument = argv[ii];
+
+        char const controller_prefix[] = "--controller=";
+        char const shutdowner_prefix[] = "--shutdowner=";
+        char const updater_prefix[] = "--updater=";
+        if (0 == strncmp(argument,
+                         controller_prefix, sizeof controller_prefix - 1)) {
+            controller_name = argument + sizeof controller_prefix - 1;
+        } else if (0 == strncmp(argument,
+                                shutdowner_prefix, sizeof shutdowner_prefix - 1)) {
+            shutdowner_name = argument + sizeof shutdowner_prefix - 1;
+        } else if (0 == strncmp(argument,
+                                updater_prefix, sizeof updater_prefix - 1)) {
+            updater_name = argument + sizeof updater_prefix - 1;
+        }
+    }
+
+    if (NULL == controller_name) {
+        fputs("No --controller argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == shutdowner_name) {
+        fputs("No --shutdowner argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == updater_name) {
+        fputs("No --updater argument was supplied\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    linted_controller const controller = open(controller_name, O_CLOEXEC);
+    if (-1 == controller) {
+        fprintf(stderr, "Could not open file: %s: %s\n", controller_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_shutdowner const shutdowner = open(shutdowner_name, O_CLOEXEC);
+    if (-1 == shutdowner) {
+        fprintf(stderr, "Could not open file: %s: %s\n", shutdowner_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_updater const updater = open(updater_name, O_CLOEXEC);
+    if (-1 == updater) {
+        fprintf(stderr, "Could not open file: %s: %s\n", updater_name,
+                linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
     int exit_status = -1;
 
     struct controller_state controller_state = {
@@ -199,7 +255,7 @@ int linted_simulator_run(linted_controller const controller,
         errno = errnum;
     }
 
-    return exit_status;
+    return -1 == exit_status ? errno : EXIT_SUCCESS;
 }
 
 static int on_timer_readable(int timer,
