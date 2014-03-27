@@ -16,6 +16,8 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
+bin_SCRIPTS = test
+
 bin_PROGRAMS=linted
 
 pkglibexec_PROGRAMS=\
@@ -74,9 +76,15 @@ headers=\
   src/linted/util.h\
   src/linted/updater.h
 
-BUILT_SOURCES=src/binaries/gui/gl_core.c src/linted/gl_core.h
+BUILT_SOURCES=\
+  src/binaries/gui/gl_core.c src/linted/gl_core.h\
+  src/linted/binaries.h
 
 EXTRA_DIST=\
+  test.in\
+  \
+  src/linted/binaries.h.in\
+  \
   libs/glloadgen\
   \
   $(headers)\
@@ -102,7 +110,10 @@ src/binaries/gui/assets.c:\
 	  $(srcdir)/src/binaries/gui/assets/assets.py\
 	  --output=$@
 
-MOSTLYCLEANFILES+=src/binaries/gui/gl_core.c src/linted/gl_core.h
+MOSTLYCLEANFILES+=\
+  src/binaries/gui/gl_core.c src/linted/gl_core.h\
+  src/linted/binaries.h
+
 src/binaries/gui/gl_core.c:
 	cd $(builddir)/src/binaries/gui/ && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
@@ -115,6 +126,17 @@ src/linted/gl_core.h:
 	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 	rm $(builddir)/src/linted/gl_core.c
+
+src/linted/binaries.h: $(MAKEFILE) src/linted/binaries.h.in
+	sed \
+	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
+	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
+	  $(srcdir)/src/linted/binaries.h.in > $@
+
+test: $(MAKEFILE) test.in
+	cat $(srcdir)/test.in > $@
+	chmod u+x $@
+
 
 dist-hook:
 	rm -rf `find $(distdir)/libs/glloadgen -type d -name .git`

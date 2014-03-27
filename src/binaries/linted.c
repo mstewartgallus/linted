@@ -15,6 +15,7 @@
  */
 #include "config.h"
 
+#include "linted/binaries.h"
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/shutdowner.h"
@@ -53,7 +54,7 @@
 
 extern char **environ;
 
-static int run_game(void);
+static int run_game(char const * simulator_path, char const * gui_path);
 
 int main(int argc, char **argv)
 {
@@ -73,11 +74,19 @@ It is insecure to run a game as root!\n");
 
     bool show_help = false;
     bool show_version = false;
+    char const * simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
+    char const * gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
     for (int ii = 1; ii < argc; ++ii) {
         if (0 == strcmp(argv[ii], "--help")) {
             show_help = true;
         } else if (0 == strcmp(argv[ii], "--version")) {
             show_version = true;
+        } else if (0 == strncmp(argv[ii], "--simulator=",
+                                sizeof "--simulator=" -1)) {
+            simulator_path = argv[ii] + sizeof "--simulator=" -1;
+        } else if (0 == strncmp(argv[ii], "--gui=",
+                                sizeof "--gui=" -1)) {
+            gui_path = argv[ii] + sizeof "--gui=" -1;
         } else {
             linted_io_write_format_string(STDERR_FILENO, NULL,
                                           PACKAGE_TARNAME
@@ -159,7 +168,7 @@ It is insecure to run a game as root!\n");
                 linted_error_string_free(error_string);
             }
 
-            if (-1 == run_game()) {
+            if (-1 == run_game(simulator_path, gui_path)) {
                 succesfully_executing = -1;
                 char const * error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not run the game: %s", error_string);
@@ -180,7 +189,7 @@ It is insecure to run a game as root!\n");
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(void)
+static int run_game(char const * simulator_path, char const * gui_path)
 {
     int exit_status = -1;
 
@@ -237,13 +246,13 @@ static int run_game(void)
                  "--controller=%i", dup(controller_write));
 
         char * args[] = {
-            "gui",
+            gui_path,
             updater_string,
             shutdowner_string,
             controller_string,
             NULL
         };
-        execv("gui", args);
+        execv(gui_path, args);
         _Exit(errno);
     }
 
@@ -266,13 +275,13 @@ static int run_game(void)
                  "--controller=%i", dup(controller_read));
 
         char * args[] = {
-            "simulator",
+            simulator_path,
             updater_string,
             shutdowner_string,
             controller_string,
             NULL
         };
-        execv("simulator", args);
+        execv(simulator_path, args);
         _Exit(errno);
     }
 
