@@ -16,7 +16,7 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
-bin_SCRIPTS = test
+bin_SCRIPTS=test
 
 bin_PROGRAMS=linted
 
@@ -24,17 +24,17 @@ pkglibexec_PROGRAMS=\
   gui\
   simulator
 
-noinst_LTLIBRARIES=\
-  libcommon.la\
-  libcontroller.la\
-  libupdater.la\
-  libshutdowner.la
+noinst_LIBRARIES=\
+  libcommon.a\
+  libcontroller.a\
+  libupdater.a\
+  libshutdowner.a
 
 linted_SOURCES=src/binaries/linted.c
-linted_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+linted_LDADD=libcommon.a libcontroller.a libshutdowner.a libupdater.a -lrt
 
 gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
-gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)
+gui_LDADD=libcommon.a libcontroller.a libshutdowner.a libupdater.a -lrt $(SDL_LIBS) $(GL_LIBS)
 
 gui_CPPFLAGS=$(SDL_CFLAGS)
 # Cancel out SDL's idiot defining of GNU source
@@ -42,23 +42,22 @@ gui_CPPFLAGS+=-U_GNU_SOURCE
 gui_CPPFLAGS+=$(AM_CPPFLAGS)
 
 simulator_SOURCES=src/binaries/simulator.c
-simulator_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+simulator_LDADD=libcommon.a libcontroller.a libshutdowner.a libupdater.a -lrt
 
-libcommon_la_SOURCES=\
+libcommon_a_SOURCES=\
   src/common/io.c\
   src/common/mq.c\
   src/common/sandbox.c\
   src/common/util.c
-libcommon_la_LIBADD=-lrt
 
-libcontroller_la_SOURCES=src/protocols/controller.c
-libcontroller_la_LIBADD=libcommon.la -lrt
+libcontroller_a_SOURCES=src/protocols/controller.c
+libcontroller_a_LIBADD=libcommon.a
 
-libshutdowner_la_SOURCES=src/protocols/shutdowner.c
-libshutdowner_la_LIBADD=libcommon.la -lrt
+libshutdowner_a_SOURCES=src/protocols/shutdowner.c
+libshutdowner_a_LIBADD=libcommon.a
 
-libupdater_la_SOURCES=src/protocols/updater.c
-libupdater_la_LIBADD=libcommon.la -lrt
+libupdater_a_SOURCES=src/protocols/updater.c
+libupdater_a_LIBADD=libcommon.a
 
 nodist_linted_SOURCES=\
   src/binaries/gui/gl_core.c
