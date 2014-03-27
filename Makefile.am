@@ -16,7 +16,7 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
-bin_SCRIPTS = test
+bin_SCRIPTS=test
 
 bin_PROGRAMS=linted
 
@@ -188,8 +188,8 @@ clean-local:
 
 
 AM_LDFLAGS=\
-  $(linted_LDFLAGS_OPTIMIZE)\
-  $(linted_LDFLAGS_HARDEN)
+  -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
+  $(linted_LDFLAGS_HARDEN)'
 
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_HARDEN)\
