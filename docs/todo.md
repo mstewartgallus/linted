@@ -18,27 +18,9 @@ Linted -- TODO
 
     assert has problems with not evaluating arguments.
 
-* Strengthen weakened ASLR due to shared forking
+* Separate out into many different executables
 
-    Due to the fact that all the proceses fork from the same child and
-    never exec a bunch of memory stuff is shared. This is good for
-    memory use and performance but bad for security because it weakens
-    ASLR.
-
-    The paper "From Zygote to Morula: Fortifying Weakened ASLR
-    on Android" at http://wenke.gtisc.gatech.edu/papers/morula.pdf
-    addresses one possible way of mitigating this problem.
-
-    The authors of the paper:
-
-    Byoungyoung Lee, Long Lu, Tielei Wang, Taesoo Kim and Wenke Lee
-
-    at:
-
-    School of Computer Science, Georgia Institute of Technology
-
-    Department of Computer Science, Stony Brook University
-    MIT CSAIL
+    Our solution is far too painful already and breaks ASLR.
 
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
