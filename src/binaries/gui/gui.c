@@ -17,6 +17,7 @@
 
 #include "linted/assets.h"
 #include "linted/controller.h"
+#include "linted/io.h"
 #include "linted/gl_core.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
@@ -31,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <unistd.h>
 
 struct attribute_value_pair {
     SDL_GLattr attribute;
@@ -124,6 +126,15 @@ static void destroy_gl(struct gl_state *gl_state);
 
 int main(int argc, char *argv[])
 {
+    if (argc < 1) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing process name\n",
+                               PACKAGE_TARNAME "-gui");
+        return EXIT_FAILURE;
+    }
+
+    char const * const program_name = argv[0];
+
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
@@ -147,17 +158,23 @@ int main(int argc, char *argv[])
     }
 
     if (NULL == controller_name) {
-        fputs("No --controller argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --controller option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        fputs("No --shutdowner argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --shutdowner option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
-        fputs("No --updater argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --updater option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 

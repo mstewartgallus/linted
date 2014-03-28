@@ -76,10 +76,8 @@ It is insecure to run a game as root!\n");
     }
 
     if (argc < 1) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                                      "\
-%s was not executed with a process name\n",
-                                      PACKAGE_TARNAME);
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing process name\n",
+                               PACKAGE_TARNAME);
         return EXIT_FAILURE;
     }
 

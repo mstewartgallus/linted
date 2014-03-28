@@ -69,6 +69,15 @@ static int_fast32_t sign(int_fast32_t x);
 
 int main(int argc, char *argv[])
 {
+    if (argc < 1) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing process name\n",
+                               PACKAGE_TARNAME "-simulator");
+        return EXIT_FAILURE;
+    }
+
+    char const * const program_name = argv[0];
+
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
@@ -92,17 +101,23 @@ int main(int argc, char *argv[])
     }
 
     if (NULL == controller_name) {
-        fputs("No --controller argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --controller option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        fputs("No --shutdowner argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --shutdowner option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
-        fputs("No --updater argument was supplied\n", stderr);
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: missing --updater option\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
@@ -133,7 +148,7 @@ int main(int argc, char *argv[])
 
     int timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
     if (-1 == timer) {
-        return -1;
+        goto exit;
     }
 
     {
@@ -241,6 +256,7 @@ int main(int argc, char *argv[])
         errno = errnum;
     }
 
+ exit:
     return -1 == exit_status ? errno : EXIT_SUCCESS;
 }
 
