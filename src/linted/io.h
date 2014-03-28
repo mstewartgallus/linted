@@ -26,8 +26,8 @@
  */
 
 /**
- * The read_all function repeatedly reads from fd until buf is full or
- * an error occurs (except for EINTR).
+ * The linted_io_read_all function repeatedly reads from fd until buf
+ * is full or an error occurs (except for EINTR).
  *
  * The read may be successful and read less than count if the end of
  * file is reached.
@@ -72,8 +72,8 @@
 int linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
 
 /**
- * The write_all function repeatedly writes to fd until of buf is
- * written or an error occurs (except for EINTR).
+ * The linted_io_write_all function repeatedly writes to fd until of
+ * buf is written or an error occurs (except for EINTR).
  *
  * For example, a bit could be written and then fd could be closed and
  * an error would be returned but some bytes would still have been
@@ -122,8 +122,8 @@ int linted_io_write_all(int fd, size_t * bytes_wrote,
 
 int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 
-int linted_io_write_format_string(int fd, size_t * bytes_wrote_out,
-                                  char const *s, ...);
+int linted_io_write_format(int fd, size_t * bytes_wrote_out,
+                           char const *s, ...);
 
 /**
  *

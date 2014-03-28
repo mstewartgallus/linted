@@ -95,8 +95,8 @@ int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
-int linted_io_write_format_string(int fd, size_t * bytes_wrote_out,
-                                  char const *format_str, ...)
+int linted_io_write_format(int fd, size_t * bytes_wrote_out,
+                           char const *format_str, ...)
 {
     int exit_status = -1;
 

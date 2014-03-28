@@ -76,7 +76,7 @@ It is insecure to run a game as root!\n");
     }
 
     if (argc < 1) {
-        linted_io_write_format_string(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                       "\
 %s was not executed with a process name\n",
                                       PACKAGE_TARNAME);
@@ -102,10 +102,10 @@ It is insecure to run a game as root!\n");
         } else if (0 == strncmp(argument, "--gui=", sizeof "--gui=" - 1)) {
             gui_path = argument + sizeof "--gui=" - 1;
         } else {
-            linted_io_write_format_string(STDERR_FILENO, NULL,
-                                          "%s: urecognized option '%s'\n",
-                                          program_name, argument);
-            linted_io_write_format_string(STDERR_FILENO, NULL, "\
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: urecognized option '%s'\n",
+                                   program_name, argument);
+            linted_io_write_format(STDERR_FILENO, NULL, "\
 Try `%s --help' for more information.\n",
                                           program_name);
             return EXIT_FAILURE;
@@ -114,19 +114,19 @@ Try `%s --help' for more information.\n",
 
     int const simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
     if (-1 == simulator_binary) {
-        linted_io_write_format_string(STDERR_FILENO, NULL,
-                                      "%s: %s: %s\n", program_name,
-                                      simulator_path,
-                                      linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: %s: %s\n", program_name,
+                               simulator_path,
+                               linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
     int const gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
     if (-1 == gui_binary) {
-        linted_io_write_format_string(STDERR_FILENO, NULL,
-                                      "%s: %s: %s\n", program_name,
-                                      gui_path,
-                                      linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: %s: %s\n", program_name,
+                               gui_path,
+                               linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
