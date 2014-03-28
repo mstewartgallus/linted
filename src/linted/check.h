@@ -42,7 +42,6 @@
         + 0 / ((X) <= LINTED_CHECK_SIGNED_MAX_(T))  \
         + X)
 
-
 #define LINTED_CHECK_FLOAT_MAX_(T) (                \
         sizeof(T) == sizeof(float) ? FLT_MAX :      \
         sizeof(T) == sizeof(double) ? DBL_MAX  :    \

@@ -20,13 +20,13 @@
 
 typedef GLfloat linted_assets_point[3];
 
-extern linted_assets_point const * const linted_assets_triangle_vertices;
-extern linted_assets_point const * const linted_assets_triangle_normals;
+extern linted_assets_point const *const linted_assets_triangle_vertices;
+extern linted_assets_point const *const linted_assets_triangle_normals;
 
 extern GLubyte const *const linted_assets_triangle_indices;
 extern size_t const linted_assets_triangle_indices_size;
 
-extern GLchar const * const linted_assets_fragment_shader;
-extern GLchar const * const linted_assets_vertex_shader;
+extern GLchar const *const linted_assets_fragment_shader;
+extern GLchar const *const linted_assets_vertex_shader;
 
 #endif                          /* LINTED_ASSETS_H */

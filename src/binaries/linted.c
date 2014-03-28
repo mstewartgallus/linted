@@ -56,8 +56,8 @@
 
 extern char **environ;
 
-static int run_game(char const * simulator_path, int simulator_binary,
-                    char const * gui_path, int gui_binary);
+static int run_game(char const *simulator_path, int simulator_binary,
+                    char const *gui_path, int gui_binary);
 
 int main(int argc, char **argv)
 {
@@ -77,26 +77,25 @@ It is insecure to run a game as root!\n");
 
     bool show_help = false;
     bool show_version = false;
-    char const * simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
-    char const * gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
+    char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
+    char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
 
-    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
-        char const * argument = argv[ii];
+    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
+        char const *argument = argv[ii];
         if (0 == strcmp(argument, "--help")) {
             show_help = true;
         } else if (0 == strcmp(argument, "--version")) {
             show_version = true;
         } else if (0 == strncmp(argument, "--simulator=",
-                                sizeof "--simulator=" -1)) {
-            simulator_path = argument + sizeof "--simulator=" -1;
-        } else if (0 == strncmp(argument, "--gui=",
-                                sizeof "--gui=" -1)) {
-            gui_path = argument + sizeof "--gui=" -1;
+                                sizeof "--simulator=" - 1)) {
+            simulator_path = argument + sizeof "--simulator=" - 1;
+        } else if (0 == strncmp(argument, "--gui=", sizeof "--gui=" - 1)) {
+            gui_path = argument + sizeof "--gui=" - 1;
         } else {
             linted_io_write_format_string(STDERR_FILENO, NULL,
                                           PACKAGE_TARNAME
                                           " did not understand the command line input: %s\n",
-                                         argument);
+                                          argument);
             linted_io_write_string(STDERR_FILENO, NULL, USAGE_TEXT);
             return EXIT_FAILURE;
         }
@@ -106,8 +105,7 @@ It is insecure to run a game as root!\n");
     if (-1 == simulator_binary) {
         linted_io_write_format_string(STDERR_FILENO, NULL,
                                       PACKAGE_TARNAME
-                                      " could not open: %s\n",
-                                      simulator_path);
+                                      " could not open: %s\n", simulator_path);
         return EXIT_FAILURE;
     }
 
@@ -115,15 +113,14 @@ It is insecure to run a game as root!\n");
     if (-1 == gui_binary) {
         linted_io_write_format_string(STDERR_FILENO, NULL,
                                       PACKAGE_TARNAME
-                                      " could not open: %s\n",
-                                      gui_path);
+                                      " could not open: %s\n", gui_path);
         return EXIT_FAILURE;
     }
 
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
-            | LOG_CONS /* So we know there is an error */
-            | LOG_PID /* Because we fork several times */
-            , LOG_USER /* This is a game and is a user program */
+            | LOG_CONS          /* So we know there is an error */
+            | LOG_PID           /* Because we fork several times */
+            , LOG_USER          /* This is a game and is a user program */
         );
 
     int succesfully_executing = 0;
@@ -179,15 +176,15 @@ It is insecure to run a game as root!\n");
 
             if (-1 == close(STDOUT_FILENO)) {
                 succesfully_executing = -1;
-                char const * error_string = linted_error_string_alloc(errno);
+                char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not close standard output: %s",
                        error_string);
                 linted_error_string_free(error_string);
             }
-        }  else {
+        } else {
             if (-1 == close(STDOUT_FILENO)) {
                 succesfully_executing = -1;
-                char const * error_string = linted_error_string_alloc(errno);
+                char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not close standard output: %s",
                        error_string);
                 linted_error_string_free(error_string);
@@ -196,7 +193,7 @@ It is insecure to run a game as root!\n");
             if (-1 == run_game(simulator_path, simulator_binary,
                                gui_path, gui_binary)) {
                 succesfully_executing = -1;
-                char const * error_string = linted_error_string_alloc(errno);
+                char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not run the game: %s", error_string);
                 linted_error_string_free(error_string);
             }
@@ -215,8 +212,8 @@ It is insecure to run a game as root!\n");
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(char const * simulator_path, int simulator_binary,
-                    char const * gui_path, int gui_binary)
+static int run_game(char const *simulator_path, int simulator_binary,
+                    char const *gui_path, int gui_binary)
 {
     int exit_status = -1;
 
@@ -288,8 +285,8 @@ static int run_game(char const * simulator_path, int simulator_binary,
         char controller_string[] = "--controller=" INT_STRING_PADDING;
         sprintf(controller_string, "--controller=%i", new_controller_write);
 
-        char * args[] = {
-            (char *) gui_path,
+        char *args[] = {
+            (char *)gui_path,
             updater_string,
             shutdowner_string,
             controller_string,
@@ -331,8 +328,8 @@ static int run_game(char const * simulator_path, int simulator_binary,
         char controller_string[] = "--controller=" INT_STRING_PADDING;
         sprintf(controller_string, "--controller=%i", new_controller_read);
 
-        char * args[] = {
-            (char *) simulator_path,
+        char *args[] = {
+            (char *)simulator_path,
             updater_string,
             shutdowner_string,
             controller_string,
@@ -365,8 +362,7 @@ static int run_game(char const * simulator_path, int simulator_binary,
 
             siginfo_t exit_info;
             exit_info.si_pid = 0;
-            waitid(P_PID, live_processes[ii],
-                   &exit_info, WEXITED | WNOHANG);
+            waitid(P_PID, live_processes[ii], &exit_info, WEXITED | WNOHANG);
 
             if (0 == exit_info.si_pid) {
                 continue;
@@ -397,7 +393,7 @@ static int run_game(char const * simulator_path, int simulator_binary,
 
         break;
 
-    got_live:;
+ got_live:;
     }
 
     exit_status = 0;

@@ -90,8 +90,7 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
-int linted_io_write_string(int fd, size_t * bytes_wrote_out,
-                           char const *s)
+int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
 {
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
@@ -114,7 +113,7 @@ int linted_io_write_format_string(int fd, size_t * bytes_wrote_out,
 
     size_t string_size = bytes_should_write + 1;
 
-    char * string = malloc(string_size);
+    char *string = malloc(string_size);
     if (NULL == string) {
         goto free_va_lists;
     }

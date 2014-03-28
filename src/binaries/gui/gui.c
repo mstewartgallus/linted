@@ -120,13 +120,13 @@ static void render_graphics(struct gl_state const *gl_state,
                             struct window_state const *window_state);
 static void destroy_gl(struct gl_state *gl_state);
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
-    char const * controller_name = NULL;
-    char const * shutdowner_name = NULL;
-    char const * updater_name = NULL;
-    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
-        char * argument = argv[ii];
+    char const *controller_name = NULL;
+    char const *shutdowner_name = NULL;
+    char const *updater_name = NULL;
+    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
+        char *argument = argv[ii];
 
         char const controller_prefix[] = "--controller=";
         char const shutdowner_prefix[] = "--shutdowner=";
@@ -135,7 +135,8 @@ int main(int argc, char * argv[])
                          controller_prefix, sizeof controller_prefix - 1)) {
             controller_name = argument + sizeof controller_prefix - 1;
         } else if (0 == strncmp(argument,
-                                shutdowner_prefix, sizeof shutdowner_prefix - 1)) {
+                                shutdowner_prefix,
+                                sizeof shutdowner_prefix - 1)) {
             shutdowner_name = argument + sizeof shutdowner_prefix - 1;
         } else if (0 == strncmp(argument,
                                 updater_prefix, sizeof updater_prefix - 1)) {
@@ -172,7 +173,7 @@ int main(int argc, char * argv[])
     };
 
     struct controller_state controller_state = {
-        .update = {.up = false, .down = false, .right = false, .left = false},
+        .update = {.up = false,.down = false,.right = false,.left = false},
         .update_pending = false
     };
 
@@ -225,7 +226,7 @@ int main(int argc, char * argv[])
     };
 
  setup_window:;
-     SDL_Surface *const video_surface = SDL_SetVideoMode(window_state.width,
+    SDL_Surface *const video_surface = SDL_SetVideoMode(window_state.width,
                                                         window_state.height,
                                                         0, sdl_flags);
     if (NULL == video_surface) {
@@ -237,8 +238,8 @@ int main(int argc, char * argv[])
 
     struct gl_state gl_state;
 
-   if (-1 == init_graphics(&gl_state, &window_state)) {
-       goto cleanup_SDL;
+    if (-1 == init_graphics(&gl_state, &window_state)) {
+        goto cleanup_SDL;
     }
 
     bool should_resize = false;
@@ -507,11 +508,8 @@ static int init_graphics(struct gl_state *gl_state,
     glMatrixMode(GL_PROJECTION);
 
     glLoadMatrixf((GLfloat[]) {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 1,
-        0, 0, 0, 1
-    });
+                  1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1}
+    );
 
     glMatrixMode(GL_MODELVIEW);
 
@@ -528,7 +526,8 @@ static int init_graphics(struct gl_state *gl_state,
         glAttachShader(program, fragment_shader);
         glDeleteShader(fragment_shader);
 
-        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader, NULL);
+        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader,
+                       NULL);
         glCompileShader(fragment_shader);
 
         GLint is_valid;
@@ -538,11 +537,12 @@ static int init_graphics(struct gl_state *gl_state,
             glGetShaderiv(fragment_shader,
                           GL_INFO_LOG_LENGTH, &info_log_length);
 
-            GLchar * info_log = malloc(info_log_length);
+            GLchar *info_log = malloc(info_log_length);
             if (NULL == info_log) {
                 syslog(LOG_ERR, "Invalid shader: no memory to log info log");
             } else {
-                glGetShaderInfoLog(fragment_shader, info_log_length, NULL, info_log);
+                glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
+                                   info_log);
                 syslog(LOG_ERR, "Invalid shader: %s", info_log);
                 free(info_log);
             }
@@ -565,14 +565,14 @@ static int init_graphics(struct gl_state *gl_state,
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
             GLint info_log_length;
-            glGetShaderiv(vertex_shader,
-                          GL_INFO_LOG_LENGTH, &info_log_length);
+            glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
-            GLchar * info_log = malloc(info_log_length);
+            GLchar *info_log = malloc(info_log_length);
             if (NULL == info_log) {
                 syslog(LOG_ERR, "Invalid shader: no memory to log info log");
             } else {
-                glGetShaderInfoLog(vertex_shader, info_log_length, NULL, info_log);
+                glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
+                                   info_log);
                 syslog(LOG_ERR, "Invalid shader: %s", info_log);
                 free(info_log);
             }
@@ -587,10 +587,9 @@ static int init_graphics(struct gl_state *gl_state,
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
         GLint info_log_length;
-        glGetProgramiv(program,
-                       GL_INFO_LOG_LENGTH, &info_log_length);
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
-        GLchar * info_log = malloc(info_log_length);
+        GLchar *info_log = malloc(info_log_length);
         if (NULL == info_log) {
             syslog(LOG_ERR, "Invalid program: no memory to log info log");
         } else {
@@ -605,7 +604,7 @@ static int init_graphics(struct gl_state *gl_state,
 
     return 0;
 
-cleanup_program:;
+ cleanup_program:;
     int errnum = errno;
     glDeleteProgram(program);
     errno = errnum;
@@ -634,19 +633,12 @@ static void render_graphics(struct gl_state const *gl_state,
     /* Correct the aspect ratio */
     GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
     glMultMatrixf((GLfloat[]) {
-        1, 0,      0, 0,
-        0, aspect, 0, 0,
-        0, 0,      1, 0,
-        0, 0,      0, 1
-    });
+                  1, 0, 0, 0, 0, aspect, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
 
     /* Move the camera */
     glMultMatrixf((GLfloat[]) {
-        1,            0,            0, 0,
-        0,            1,            0, 0,
-        0,            0,            1, 0,
-        gui_state->x, gui_state->y, 3, 1
-    });
+                  1, 0, 0, 0,
+                  0, 1, 0, 0, 0, 0, 1, 0, gui_state->x, gui_state->y, 3, 1});
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);

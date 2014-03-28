@@ -24,7 +24,9 @@
 
 #define INT_MIN (-(intmax_t) (UINTMAX_C(1) << 31u))
 
-struct int32 { char bytes[4]; };
+struct int32 {
+    char bytes[4];
+};
 
 #define MESSAGE_SIZE (                              \
     LINTED_SIZEOF_MEMBER(struct int32, bytes)       \
@@ -32,7 +34,8 @@ struct int32 { char bytes[4]; };
 
 typedef char message_type[MESSAGE_SIZE];
 
-static struct int32 pack(int_fast32_t fast) {
+static struct int32 pack(int_fast32_t fast)
+{
     /*
      * Unlike with the code in unpack converting from a signed to an
      * unsigned value is not implementation defined.
@@ -51,7 +54,8 @@ static struct int32 pack(int_fast32_t fast) {
     return raw;
 }
 
-static int_fast32_t unpack(struct int32 raw) {
+static int_fast32_t unpack(struct int32 raw)
+{
     unsigned char pos_bytes[sizeof raw.bytes];
     memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
 

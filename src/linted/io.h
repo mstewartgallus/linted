@@ -120,8 +120,7 @@ int linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
 int linted_io_write_all(int fd, size_t * bytes_wrote,
                         void const *buf, size_t count);
 
-int linted_io_write_string(int fd, size_t * bytes_wrote_out,
-                           char const *s);
+int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 
 int linted_io_write_format_string(int fd, size_t * bytes_wrote_out,
                                   char const *s, ...);

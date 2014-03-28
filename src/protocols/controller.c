@@ -24,7 +24,6 @@
 
 #define MESSAGE_SIZE 1
 
-
 typedef char message_type[MESSAGE_SIZE];
 
 int linted_controller_pair(linted_controller controller[2],

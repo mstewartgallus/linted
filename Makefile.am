@@ -149,7 +149,7 @@ dist-hook:
   indent\
   doxygen
 
-indent: $(linted_SOURCES) $(headers)
+indent: $(SOURCES) $(headers)
 	$(INDENT) $(linted_INDENTFLAGS) $^
 
 doxygen:

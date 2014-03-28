@@ -30,13 +30,12 @@
 #include <time.h>
 #include <unistd.h>
 
-
 struct controller_state {
-    bool x_left: 1;
-    bool x_right: 1;
+    bool x_left:1;
+    bool x_right:1;
 
-    bool y_up: 1;
-    bool y_down: 1;
+    bool y_up:1;
+    bool y_down:1;
 };
 
 struct simulator_state {
@@ -46,7 +45,7 @@ struct simulator_state {
     int_fast32_t x_velocity;
     int_fast32_t y_velocity;
 
-    bool update_pending : 1;
+    bool update_pending:1;
 };
 
 static int on_timer_readable(int timer,
@@ -68,11 +67,11 @@ static int_fast32_t sign(int_fast32_t x);
 
 int main(int argc, char *argv[])
 {
-    char const * controller_name = NULL;
-    char const * shutdowner_name = NULL;
-    char const * updater_name = NULL;
-    for (unsigned ii = 1; ii < (unsigned) argc; ++ii) {
-        char * argument = argv[ii];
+    char const *controller_name = NULL;
+    char const *shutdowner_name = NULL;
+    char const *updater_name = NULL;
+    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
+        char *argument = argv[ii];
 
         char const controller_prefix[] = "--controller=";
         char const shutdowner_prefix[] = "--shutdowner=";
@@ -81,7 +80,8 @@ int main(int argc, char *argv[])
                          controller_prefix, sizeof controller_prefix - 1)) {
             controller_name = argument + sizeof controller_prefix - 1;
         } else if (0 == strncmp(argument,
-                                shutdowner_prefix, sizeof shutdowner_prefix - 1)) {
+                                shutdowner_prefix,
+                                sizeof shutdowner_prefix - 1)) {
             shutdowner_name = argument + sizeof shutdowner_prefix - 1;
         } else if (0 == strncmp(argument,
                                 updater_prefix, sizeof updater_prefix - 1)) {
@@ -263,19 +263,25 @@ static int on_timer_readable(int timer,
         int_fast32_t y_thrust = 2 * ((int_fast32_t) controller_state->y_up
                                      - (int_fast32_t) controller_state->y_down);
 
-        int_fast32_t guess_x_velocity = saturate((int_fast64_t) x_thrust + x_velocity);
-        int_fast32_t guess_y_velocity = saturate((int_fast64_t) y_thrust + y_velocity);
+        int_fast32_t guess_x_velocity =
+            saturate((int_fast64_t) x_thrust + x_velocity);
+        int_fast32_t guess_y_velocity =
+            saturate((int_fast64_t) y_thrust + y_velocity);
 
         int_fast32_t x_friction = min(imaxabs(guess_x_velocity), 1)
             * sign(guess_x_velocity);
         int_fast32_t y_friction = min(imaxabs(guess_y_velocity), 1)
             * sign(guess_y_velocity);
 
-        int_fast32_t new_x_velocity = saturate((int_fast64_t) guess_x_velocity + x_friction);
-        int_fast32_t new_y_velocity = saturate((int_fast64_t) guess_y_velocity + y_friction);
+        int_fast32_t new_x_velocity =
+            saturate((int_fast64_t) guess_x_velocity + x_friction);
+        int_fast32_t new_y_velocity =
+            saturate((int_fast64_t) guess_y_velocity + y_friction);
 
-        int_fast32_t new_x_position = saturate((int_fast64_t) x_position + new_x_velocity);
-        int_fast32_t new_y_position = saturate((int_fast64_t) y_position + new_y_velocity);
+        int_fast32_t new_x_position =
+            saturate((int_fast64_t) x_position + new_x_velocity);
+        int_fast32_t new_y_position =
+            saturate((int_fast64_t) y_position + new_y_velocity);
 
         simulator_state->update_pending |= x_position != new_x_position
             || y_position != new_y_position;
