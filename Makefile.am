@@ -67,12 +67,10 @@ headers=\
   src/linted/assets.h\
   src/linted/check.h\
   src/linted/controller.h\
-  src/linted/gui.h\
   src/linted/io.h\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/shutdowner.h\
-  src/linted/simulator.h\
   src/linted/util.h\
   src/linted/updater.h
 

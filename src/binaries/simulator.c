@@ -15,8 +15,10 @@
  */
 #include "config.h"
 
+#include "linted/controller.h"
 #include "linted/io.h"
-#include "linted/simulator.h"
+#include "linted/shutdowner.h"
+#include "linted/updater.h"
 #include "linted/util.h"
 
 #include <errno.h>

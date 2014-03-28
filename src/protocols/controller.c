@@ -15,11 +15,12 @@
  */
 #include "config.h"
 
-#include "linted/gui.h"
-#include "linted/mq.h"
 #include "linted/controller.h"
+
+#include "linted/mq.h"
 #include "linted/util.h"
 
+#include <stdint.h>
 #include <string.h>
 
 #define MESSAGE_SIZE 1

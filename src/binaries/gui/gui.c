@@ -16,9 +16,11 @@
 #include "config.h"
 
 #include "linted/assets.h"
+#include "linted/controller.h"
 #include "linted/gl_core.h"
-#include "linted/gui.h"
 #include "linted/mq.h"
+#include "linted/shutdowner.h"
+#include "linted/updater.h"
 #include "linted/util.h"
 
 #include "SDL.h"
