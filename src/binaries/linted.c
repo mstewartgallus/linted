@@ -90,22 +90,26 @@ It is insecure to run a game as root!\n");
 
     for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
         char const *argument = argv[ii];
+
+        char const simulator_prefix[] = "--simulator=";
+        char const gui_prefix[] = "--gui=";
+
         if (0 == strcmp(argument, "--help")) {
             show_help = true;
         } else if (0 == strcmp(argument, "--version")) {
             show_version = true;
-        } else if (0 == strncmp(argument, "--simulator=",
-                                sizeof "--simulator=" - 1)) {
-            simulator_path = argument + sizeof "--simulator=" - 1;
-        } else if (0 == strncmp(argument, "--gui=", sizeof "--gui=" - 1)) {
-            gui_path = argument + sizeof "--gui=" - 1;
+        } else if (0 == strncmp(argument, simulator_prefix,
+                                sizeof simulator_prefix - 1)) {
+            simulator_path = argument + sizeof simulator_prefix - 1;
+        } else if (0 == strncmp(argument, gui_prefix, sizeof gui_prefix - 1)) {
+            gui_path = argument + sizeof gui_prefix - 1;
         } else {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: urecognized option '%s'\n",
                                    program_name, argument);
             linted_io_write_format(STDERR_FILENO, NULL, "\
 Try `%s --help' for more information.\n",
-                                          program_name);
+                                   program_name);
             return EXIT_FAILURE;
         }
     }

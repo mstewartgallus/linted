@@ -97,6 +97,14 @@ int main(int argc, char *argv[])
         } else if (0 == strncmp(argument,
                                 updater_prefix, sizeof updater_prefix - 1)) {
             updater_name = argument + sizeof updater_prefix - 1;
+        } else {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: urecognized option '%s'\n",
+                                   program_name, argument);
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+Try `%s --help' for more information.\n",
+                                   program_name);
+            return EXIT_FAILURE;
         }
     }
 
