@@ -75,6 +75,16 @@ It is insecure to run a game as root!\n");
         return EXIT_FAILURE;
     }
 
+    if (argc < 1) {
+        linted_io_write_format_string(STDERR_FILENO, NULL,
+                                      "\
+%s was not executed with a process name\n",
+                                      PACKAGE_TARNAME);
+        return EXIT_FAILURE;
+    }
+
+    char const * const program_name = argv[0];
+
     bool show_help = false;
     bool show_version = false;
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
@@ -93,10 +103,11 @@ It is insecure to run a game as root!\n");
             gui_path = argument + sizeof "--gui=" - 1;
         } else {
             linted_io_write_format_string(STDERR_FILENO, NULL,
-                                          PACKAGE_TARNAME
-                                          " did not understand the command line input: %s\n",
-                                          argument);
-            linted_io_write_string(STDERR_FILENO, NULL, USAGE_TEXT);
+                                          "%s: urecognized option '%s'\n",
+                                          program_name, argument);
+            linted_io_write_format_string(STDERR_FILENO, NULL, "\
+Try `%s --help' for more information.\n",
+                                          program_name);
             return EXIT_FAILURE;
         }
     }
@@ -104,16 +115,18 @@ It is insecure to run a game as root!\n");
     int const simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
     if (-1 == simulator_binary) {
         linted_io_write_format_string(STDERR_FILENO, NULL,
-                                      PACKAGE_TARNAME
-                                      " could not open: %s\n", simulator_path);
+                                      "%s: %s: %s\n", program_name,
+                                      simulator_path,
+                                      linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
     int const gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
     if (-1 == gui_binary) {
         linted_io_write_format_string(STDERR_FILENO, NULL,
-                                      PACKAGE_TARNAME
-                                      " could not open: %s\n", gui_path);
+                                      "%s: %s: %s\n", program_name,
+                                      gui_path,
+                                      linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
