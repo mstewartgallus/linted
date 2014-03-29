@@ -275,30 +275,24 @@ static int run_game(char const *simulator_path, int simulator_binary,
     live_processes[0] = gui;
 
     if (0 == gui) {
-        int new_updater_read = dup(updater_read);
-        if (-1 == new_updater_read) {
-            _Exit(errno);
-        }
+        fcntl(updater_read, F_SETFD,
+              fcntl(updater_read, F_GETFD) & ~FD_CLOEXEC);
 
-        int new_simulator_shutdowner_write = dup(simulator_shutdowner_write);
-        if (-1 == new_simulator_shutdowner_write) {
-            _Exit(errno);
-        }
+        fcntl(simulator_shutdowner_write, F_SETFD,
+              fcntl(simulator_shutdowner_write, F_GETFD) & ~FD_CLOEXEC);
 
-        int new_controller_write = dup(controller_write);
-        if (-1 == new_controller_write) {
-            _Exit(errno);
-        }
+        fcntl(controller_write, F_SETFD,
+              fcntl(controller_write, F_GETFD) & ~FD_CLOEXEC);
 
         char updater_string[] = "--updater=" INT_STRING_PADDING;
-        sprintf(updater_string, "--updater=%i", new_updater_read);
+        sprintf(updater_string, "--updater=%i", updater_read);
 
         char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
         sprintf(shutdowner_string, "--shutdowner=%i",
-                new_simulator_shutdowner_write);
+                simulator_shutdowner_write);
 
         char controller_string[] = "--controller=" INT_STRING_PADDING;
-        sprintf(controller_string, "--controller=%i", new_controller_write);
+        sprintf(controller_string, "--controller=%i", controller_write);
 
         char *args[] = {
             (char *)gui_path,
@@ -318,30 +312,24 @@ static int run_game(char const *simulator_path, int simulator_binary,
     live_processes[1] = simulator;
 
     if (0 == simulator) {
-        int new_updater_write = dup(updater_write);
-        if (-1 == new_updater_write) {
-            _Exit(errno);
-        }
+        fcntl(updater_write, F_SETFD,
+              fcntl(updater_write, F_GETFD) & ~FD_CLOEXEC);
 
-        int new_simulator_shutdowner_read = dup(simulator_shutdowner_read);
-        if (-1 == new_simulator_shutdowner_read) {
-            _Exit(errno);
-        }
+        fcntl(simulator_shutdowner_read, F_SETFD,
+              fcntl(simulator_shutdowner_read, F_GETFD) & ~FD_CLOEXEC);
 
-        int new_controller_read = dup(controller_read);
-        if (-1 == new_controller_read) {
-            _Exit(errno);
-        }
+        fcntl(controller_read, F_SETFD,
+              fcntl(controller_read, F_GETFD) & ~FD_CLOEXEC);
 
         char updater_string[] = "--updater=" INT_STRING_PADDING;
-        sprintf(updater_string, "--updater=%i", new_updater_write);
+        sprintf(updater_string, "--updater=%i", updater_write);
 
         char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
         sprintf(shutdowner_string, "--shutdowner=%i",
-                new_simulator_shutdowner_read);
+                simulator_shutdowner_read);
 
         char controller_string[] = "--controller=" INT_STRING_PADDING;
-        sprintf(controller_string, "--controller=%i", new_controller_read);
+        sprintf(controller_string, "--controller=%i", controller_read);
 
         char *args[] = {
             (char *)simulator_path,
