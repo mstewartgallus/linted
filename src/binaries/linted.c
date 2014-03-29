@@ -189,7 +189,7 @@ Try `%s --help' for more information.\n",
                 linted_io_write_string(STDOUT_FILENO, NULL, VERSION_TEXT);
             }
 
-            if (-1 == close(STDOUT_FILENO)) {
+            if (-1 == linted_io_close(STDOUT_FILENO)) {
                 succesfully_executing = -1;
                 char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not close standard output: %s",
@@ -197,7 +197,7 @@ Try `%s --help' for more information.\n",
                 linted_error_string_free(error_string);
             }
         } else {
-            if (-1 == close(STDOUT_FILENO)) {
+            if (-1 == linted_io_close(STDOUT_FILENO)) {
                 succesfully_executing = -1;
                 char const *error_string = linted_error_string_alloc(errno);
                 syslog(LOG_ERR, "could not close standard output: %s",
@@ -215,7 +215,7 @@ Try `%s --help' for more information.\n",
         }
     }
 
-    if (-1 == close(STDERR_FILENO)) {
+    if (-1 == linted_io_close(STDERR_FILENO)) {
         succesfully_executing = -1;
         char const *const error_string = linted_error_string_alloc(errno);
         syslog(LOG_ERR, "could not close standard error: %s", error_string);

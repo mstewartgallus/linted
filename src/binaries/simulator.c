@@ -284,18 +284,9 @@ Try `%s --help' for more information.\n",
  close_timer:
     {
         int errnum = errno;
-        int close_status = close(timer);
+        int close_status = linted_io_close(timer);
         if (-1 == close_status) {
-            int close_errnum = errno;
-
-            assert(close_errnum != EBADF);
-
-            if (EINTR == close_errnum) {
-                /* We were interrupted by a signal, on Linux it's no
-                 * big deal.
-                 */
-                close_status = 0;
-            }
+            assert(errno != EBADF);
         }
 
         if (-1 == exit_status) {

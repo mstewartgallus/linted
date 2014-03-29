@@ -23,6 +23,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -249,11 +250,10 @@ int linted_io_close_fds_except(fd_set const *fds)
         }
 
         for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
-            if (-1 == close(fds_to_close[ii])) {
-                int errnum = errno;
-                if (EBADF == errnum) {
+            if (-1 == linted_io_close(fds_to_close[ii])) {
+                if (EBADF == errno) {
                     LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
-                                            linted_error_string_alloc(errnum));
+                                            linted_error_string_alloc(errno));
                 }
 
                 /*
@@ -275,9 +275,28 @@ int linted_io_close_fds_except(fd_set const *fds)
 
  close_fds_dir:
     if (-1 == closedir(fds_dir)) {
-        LINTED_IMPOSSIBLE_ERROR("could not close opened directory: %s",
-                                linted_error_string_alloc(errno));
+        if (EBADF == errno) {
+            LINTED_IMPOSSIBLE_ERROR("could not close opened directory: %s",
+                                    linted_error_string_alloc(errno));
+        }
+
+        exit_status = -1;
     }
 
     return exit_status;
+}
+
+int linted_io_close(int fd)
+{
+    sigset_t full_set;
+    sigfillset(&full_set);
+
+    sigset_t old_set;
+    pthread_sigmask(SIG_BLOCK, &full_set, &old_set);
+
+    int close_status = close(fd);
+
+    pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+
+    return close_status;
 }

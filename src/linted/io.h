@@ -148,7 +148,26 @@ int linted_io_strtofd(char const * ptr);
  * @error ENFILE Too many system file descriptors in use.
  *
  * @error ENOMEM Insufficient memory.
-*/
+ */
 int linted_io_close_fds_except(fd_set const *fds);
+
+/**
+ * The linted_io_close function closes a file descriptor. The state of
+ * a file descriptor after close gives an EINTR error is unspecified
+ * by POSIX so this function avoids the problem by simply blocking all
+ * signals.
+ *
+ * @warning This function blocks on close.
+ *
+ * @param fd The file to close.
+ *
+ * @returns Zero on success. -1 on error, and errno is set
+ *          appropriately.
+ *
+ * @error EIO I/O error.
+ *
+ * @error EBADF Not a valid file descriptor.
+ */
+int linted_io_close(int fd);
 
 #endif                          /* LINTED_IO_H */
