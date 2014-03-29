@@ -146,33 +146,39 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
 
 int linted_io_strtofd(char const * str)
 {
-    char const start = str[0];
-    if ('+' == start || '-' == start || isspace(start)) {
-        errno = EINVAL;
-        return -1;
-    }
-
     size_t length = strlen(str);
+    unsigned position = 1u;
 
-    errno = 0;
-    char * end_pointer;
-    unsigned long maybe_fd = strtoul(str, &end_pointer, 10);
-    int errnum = errno;
-    if (errnum != 0) {
-        return -1;
-    }
-
-    if (INT_MAX < maybe_fd) {
-        errno = ERANGE;
-        return -1;
-    }
-
-    if (str + length != end_pointer) {
+    if ('0' == str[0u] && length != 1u) {
         errno = EINVAL;
         return -1;
     }
 
-    return maybe_fd;
+    unsigned total = 0u;
+    for (size_t ii = length; ii > 0u; --ii) {
+        char const digit = str[ii - 1u];
+
+        if ('0' <= digit && digit <= '9') {
+            unsigned long sum = total + ((unsigned) (digit - '0')) * position;
+            if (sum > INT_MAX) {
+                errno = ERANGE;
+                return -1;
+            }
+
+            total = sum;
+        } else {
+            errno = EINVAL;
+            return -1;
+        }
+
+        unsigned long next_position = 10u * position;
+        if (next_position > INT_MAX) {
+            errno = ERANGE;
+            return -1;
+        }
+    }
+
+    return total;
 }
 
 int linted_io_close_fds_except(fd_set const *fds)
