@@ -155,8 +155,8 @@ int linted_io_strtofd(char const * str)
     }
 
     unsigned total = 0u;
-    for (size_t ii = length; ii > 0u; --ii) {
-        char const digit = str[ii - 1u];
+    for (; length > 0u; --length) {
+        char const digit = str[length - 1u];
 
         if ('0' <= digit && digit <= '9') {
             unsigned long sum = total + ((unsigned) (digit - '0')) * position;
