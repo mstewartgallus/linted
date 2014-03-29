@@ -191,6 +191,10 @@ int linted_io_close_fds_except(fd_set const *fds)
         return -1;
     }
 
+    /*
+     * This is Linux specific code so we can rely on dirfd to not
+     * return ENOTSUP here and in the following code.
+     */
     long const name_max = fpathconf(dirfd(fds_dir), _PC_NAME_MAX);
     if (-1 == name_max) {
         LINTED_IMPOSSIBLE_ERROR
