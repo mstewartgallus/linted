@@ -137,7 +137,7 @@ test: $(MAKEFILE) test.in
 
 
 dist-hook:
-	rm -rf `find $(distdir)/libs/glloadgen -type d -name .git`
+	rm -rf $$(find $(distdir)/libs/glloadgen -type d -name .git)
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\
