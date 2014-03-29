@@ -186,9 +186,32 @@ Try `%s --help' for more information.\n",
         return EXIT_FAILURE;
     }
 
-    linted_controller const controller = atoi(controller_name);
-    linted_shutdowner const shutdowner = atoi(shutdowner_name);
-    linted_updater const updater = atoi(updater_name);
+    linted_controller const controller = linted_io_strtofd(controller_name);
+    if (-1 == controller) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: --controller argument: %s\n",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_shutdowner const shutdowner = linted_io_strtofd(shutdowner_name);
+    if (-1 == shutdowner) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: --shutdowner argument: %s\n",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    linted_updater const updater = linted_io_strtofd(updater_name);
+    if (-1 == updater) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: --updater argument: %s\n",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
 
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);

@@ -19,8 +19,10 @@
 
 #include "linted/util.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -140,6 +142,37 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
     va_end(ap_copy);
 
     return exit_status;
+}
+
+int linted_io_strtofd(char const * str)
+{
+    char const start = str[0];
+    if ('+' == start || '-' == start || isspace(start)) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    size_t length = strlen(str);
+
+    errno = 0;
+    char * end_pointer;
+    unsigned long maybe_fd = strtoul(str, &end_pointer, 10);
+    int errnum = errno;
+    if (errnum != 0) {
+        return -1;
+    }
+
+    if (INT_MAX < maybe_fd) {
+        errno = ERANGE;
+        return -1;
+    }
+
+    if (str + length != end_pointer) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    return maybe_fd;
 }
 
 int linted_io_close_fds_except(fd_set const *fds)
