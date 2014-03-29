@@ -129,10 +129,13 @@ Try `%s --help' for more information.\n",
         return EXIT_FAILURE;
     }
 
-    /* TODO: Set O_CLOEXEC */
     linted_controller const controller = atoi(controller_name);
     linted_shutdowner const shutdowner = atoi(shutdowner_name);
     linted_updater const updater = atoi(updater_name);
+
+    fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
+    fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
+    fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
     int exit_status = -1;
 
