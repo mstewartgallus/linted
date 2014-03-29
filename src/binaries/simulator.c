@@ -21,6 +21,7 @@
 #include "linted/updater.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -283,11 +284,27 @@ Try `%s --help' for more information.\n",
  close_timer:
     {
         int errnum = errno;
-        if (-1 == close(timer)) {
-            LINTED_IMPOSSIBLE_ERROR("could not close created timer: %s",
-                                    linted_error_string_alloc(errno));
+        int close_status = close(timer);
+        if (-1 == close_status) {
+            int close_errnum = errno;
+
+            assert(close_errnum != EBADF);
+
+            if (EINTR == close_errnum) {
+                /* We were interrupted by a signal, on Linux it's no
+                 * big deal.
+                 */
+                close_status = 0;
+            }
         }
-        errno = errnum;
+
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
     }
 
  exit:
