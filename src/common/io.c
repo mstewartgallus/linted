@@ -19,6 +19,7 @@
 
 #include "linted/util.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -251,10 +252,7 @@ int linted_io_close_fds_except(fd_set const *fds)
 
         for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
             if (-1 == linted_io_close(fds_to_close[ii])) {
-                if (EBADF == errno) {
-                    LINTED_IMPOSSIBLE_ERROR("could not close open file: %s",
-                                            linted_error_string_alloc(errno));
-                }
+                assert(errno != EBADF);
 
                 /*
                  * Otherwise ignore the error. This function is called
@@ -275,10 +273,7 @@ int linted_io_close_fds_except(fd_set const *fds)
 
  close_fds_dir:
     if (-1 == closedir(fds_dir)) {
-        if (EBADF == errno) {
-            LINTED_IMPOSSIBLE_ERROR("could not close opened directory: %s",
-                                    linted_error_string_alloc(errno));
-        }
+        assert(errno != EBADF);
 
         exit_status = -1;
     }
