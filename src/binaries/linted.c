@@ -181,6 +181,16 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         );
 
     int succesfully_executing = 0;
+
+    if (-1 == chdir("/")) {
+        succesfully_executing = -1;
+
+        char const *const error_string = linted_error_string_alloc(errno);
+        syslog(LOG_ERR, "could not set current working directory to root: %s",
+               error_string);
+        linted_error_string_free(error_string);
+    }
+
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         succesfully_executing = -1;
 
