@@ -43,14 +43,6 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-#define VERSION_TEXT \
-    PACKAGE_STRING "\n"\
-    "Copyright (C) 2013 Steven Stewart-Gallus\n"\
-    PACKAGE_NAME " comes with ABSOLUTELY NO WARRANTY.\n"\
-    "You may redistribute copies of Linted\n"\
-    "under the terms of the Apache License.\n"\
-    "For more information about these matters, see the file named COPYING.\n"
-
 extern char **environ;
 
 static int run_game(char const *simulator_path, int simulator_binary,
