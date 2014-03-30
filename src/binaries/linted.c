@@ -49,10 +49,6 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
 int main(int argc, char **argv)
 {
-    stdin = NULL;
-    stdout = NULL;
-    stderr = NULL;
-
     /* First we check if we are run with proper security */
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
