@@ -178,6 +178,7 @@ int linted_io_strtofd(char const *str)
             errno = ERANGE;
             return -1;
         }
+        position = next_position;
     }
 
     return total;
