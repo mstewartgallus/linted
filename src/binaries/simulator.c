@@ -33,6 +33,13 @@
 #include <time.h>
 #include <unistd.h>
 
+#define HELP_OPTION "--help"
+#define VERSION_OPTION "--version"
+
+#define CONTROLLER_OPTION "--controller"
+#define SHUTDOWNER_OPTION "--shutdowner"
+#define UPDATER_OPTION "--updater"
+
 struct controller_state {
     bool x_left:1;
     bool x_right:1;
@@ -79,81 +86,155 @@ int main(int argc, char *argv[])
 
     char const * const program_name = argv[0];
 
+    bool need_help = false;
+    bool need_version = false;
+    char const *bad_option = NULL;
+
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
     for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
         char *argument = argv[ii];
 
-        char const controller_prefix[] = "--controller=";
-        char const shutdowner_prefix[] = "--shutdowner=";
-        char const updater_prefix[] = "--updater=";
-        if (0 == strncmp(argument,
-                         controller_prefix, sizeof controller_prefix - 1)) {
-            controller_name = argument + sizeof controller_prefix - 1;
-        } else if (0 == strncmp(argument,
-                                shutdowner_prefix,
-                                sizeof shutdowner_prefix - 1)) {
-            shutdowner_name = argument + sizeof shutdowner_prefix - 1;
-        } else if (0 == strncmp(argument,
-                                updater_prefix, sizeof updater_prefix - 1)) {
-            updater_name = argument + sizeof updater_prefix - 1;
+        if (0 == strcmp(HELP_OPTION, argument)) {
+            need_help = true;
+        } else if (0 == strcmp(VERSION_OPTION, argument)) {
+            need_version = true;
+        } else if (0 == strncmp(argument, CONTROLLER_OPTION "=",
+                                strlen(CONTROLLER_OPTION "="))) {
+
+            controller_name = argument + strlen(CONTROLLER_OPTION "=");
+
+        } else if (0 == strncmp(argument, SHUTDOWNER_OPTION "=",
+                                strlen(SHUTDOWNER_OPTION "="))) {
+
+            shutdowner_name = argument + strlen(SHUTDOWNER_OPTION "=");
+
+        } else if (0 == strncmp(argument, UPDATER_OPTION "=",
+                                strlen(UPDATER_OPTION "="))) {
+
+            updater_name = argument + strlen(UPDATER_OPTION "=");
+
         } else {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: urecognized option '%s'\n",
-                                   program_name, argument);
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-Try `%s --help' for more information.\n",
-                                   program_name);
-            return EXIT_FAILURE;
+            bad_option = argument;
         }
     }
 
-    if (NULL == controller_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: missing --controller option\n",
+    if (need_help) {
+        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
                                program_name);
+
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "Run the %s program simulator.\n",
+                               PACKAGE_NAME);
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  --controller        the controller message queue file descriptor\n\
+  --updater           the updater message queue file descriptor\n\
+  --shutdowner        the shutdowner message queue file descriptor\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
+                               PACKAGE_BUGREPORT);
+        linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
+                               PACKAGE_NAME, PACKAGE_URL);
+
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: urecognized option '%s'\n",
+                               program_name, bad_option);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        linted_io_write_string(STDERR_FILENO, NULL, PACKAGE_STRING);
+
+        linted_io_write_string(STDERR_FILENO, NULL, "\n\n");
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+Copyright (C) %d Steven Stewart-Gallus\n\
+License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
+This is free software, and you are welcome to redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
+
+        return EXIT_SUCCESS;
+    }
+
+    if (NULL == controller_name) {
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
+                               program_name, CONTROLLER_OPTION);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: missing --shutdowner option\n",
-                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
+                               program_name, SHUTDOWNER_OPTION);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: missing --updater option\n",
-                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
+                               program_name, UPDATER_OPTION);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
     linted_controller const controller = linted_io_strtofd(controller_name);
     if (-1 == controller) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: --controller argument: %s\n",
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                program_name,
+                               CONTROLLER_OPTION,
                                linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
     linted_shutdowner const shutdowner = linted_io_strtofd(shutdowner_name);
     if (-1 == shutdowner) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: --shutdowner argument: %s\n",
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                program_name,
+                               SHUTDOWNER_OPTION,
                                linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
     linted_updater const updater = linted_io_strtofd(updater_name);
     if (-1 == updater) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: --updater argument: %s\n",
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                program_name,
+                               UPDATER_OPTION,
                                linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 

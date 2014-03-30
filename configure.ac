@@ -8,7 +8,8 @@ dnl This program is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
-AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca])
+AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca],,
+                  [https://www.gitorious.org/linted])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])
 AC_CONFIG_HEADER([config.h])
@@ -77,6 +78,8 @@ AC_TYPE_SSIZE_T
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
+dnl
+AC_DEFINE([COPYRIGHT_YEAR], [m4_esyscmd([date +%Y])], [year in copyright message])
 dnl
 LINTED_PROG_BLENDER
 LINTED_PROG_CBMC

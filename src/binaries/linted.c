@@ -34,17 +34,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-#define USAGE_TEXT \
-    "Usage: " PACKAGE_TARNAME " [OPTIONS]\n"\
-    "Play the " PACKAGE_NAME " game\n"\
-    "\n"\
-    "The following OPTIONS are accepted:\n"\
-    "--version\t\tJust print version info and return\n"\
-    "--help\t\tPrint this usage information\n"\
-    "\n"\
-    "Report bugs to " PACKAGE_BUGREPORT "\n"
+#define HELP_OPTION "--help"
+#define VERSION_OPTION "--version"
+
+#define SIMULATOR_OPTION "--simulator"
+#define GUI_OPTION "--gui"
+
+#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
 #define VERSION_TEXT \
     PACKAGE_STRING "\n"\
@@ -83,35 +80,89 @@ It is insecure to run a game as root!\n");
 
     char const * const program_name = argv[0];
 
-    bool show_help = false;
-    bool show_version = false;
+    bool need_help = false;
+    bool need_version = false;
+
+    char const * bad_option = NULL;
+
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
 
     for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
         char const *argument = argv[ii];
 
-        char const simulator_prefix[] = "--simulator=";
-        char const gui_prefix[] = "--gui=";
+        if (0 == strcmp(argument, HELP_OPTION)) {
+            need_help = true;
+        } else if (0 == strcmp(argument, VERSION_OPTION)) {
+            need_version = true;
 
-        if (0 == strcmp(argument, "--help")) {
-            show_help = true;
-        } else if (0 == strcmp(argument, "--version")) {
-            show_version = true;
-        } else if (0 == strncmp(argument, simulator_prefix,
-                                sizeof simulator_prefix - 1)) {
-            simulator_path = argument + sizeof simulator_prefix - 1;
-        } else if (0 == strncmp(argument, gui_prefix, sizeof gui_prefix - 1)) {
-            gui_path = argument + sizeof gui_prefix - 1;
+        } else if (0 == strncmp(argument, SIMULATOR_OPTION "=",
+                                strlen(SIMULATOR_OPTION "="))) {
+
+            simulator_path = argument + strlen(SIMULATOR_OPTION "=");
+
+        } else if (0 == strncmp(argument, GUI_OPTION "=",
+                                strlen(GUI_OPTION "="))) {
+
+            gui_path = argument + strlen(GUI_OPTION "=");
+
         } else {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: urecognized option '%s'\n",
-                                   program_name, argument);
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-Try `%s --help' for more information.\n",
-                                   program_name);
-            return EXIT_FAILURE;
+            bad_option = argument;
         }
+    }
+
+
+    if (need_help) {
+        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
+                               program_name);
+
+        linted_io_write_format(STDOUT_FILENO, NULL, "Play the %s game.\n",
+                               PACKAGE_NAME);
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  --simulator         the location of the simulator executable\n\
+  --gui               the location of the gui executable\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
+                               PACKAGE_BUGREPORT);
+        linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
+                               PACKAGE_NAME, PACKAGE_URL);
+
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: urecognized option '%s'\n",
+                               program_name, bad_option);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        linted_io_write_string(STDERR_FILENO, NULL, PACKAGE_STRING);
+
+        linted_io_write_string(STDERR_FILENO, NULL, "\n\n");
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+Copyright (C) %d Steven Stewart-Gallus\n\
+License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
+This is free software, and you are welcome to redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
+
+        return EXIT_SUCCESS;
     }
 
     int const simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
@@ -120,6 +171,9 @@ Try `%s --help' for more information.\n",
                                "%s: %s: %s\n", program_name,
                                simulator_path,
                                linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
@@ -129,6 +183,9 @@ Try `%s --help' for more information.\n",
                                "%s: %s: %s\n", program_name,
                                gui_path,
                                linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
         return EXIT_FAILURE;
     }
 
@@ -152,7 +209,6 @@ Try `%s --help' for more information.\n",
     fd_set essential_fds;
     FD_ZERO(&essential_fds);
     FD_SET(STDERR_FILENO, &essential_fds);
-    FD_SET(STDOUT_FILENO, &essential_fds);
     FD_SET(simulator_binary, &essential_fds);
     FD_SET(gui_binary, &essential_fds);
     if (-1 == linted_io_close_fds_except(&essential_fds)) {
@@ -182,36 +238,12 @@ Try `%s --help' for more information.\n",
     }
 
     if (0 == succesfully_executing) {
-        if (show_help || show_version) {
-            if (show_help) {
-                linted_io_write_string(STDOUT_FILENO, NULL, USAGE_TEXT);
-            } else if (show_version) {
-                linted_io_write_string(STDOUT_FILENO, NULL, VERSION_TEXT);
-            }
-
-            if (-1 == linted_io_close(STDOUT_FILENO)) {
-                succesfully_executing = -1;
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close standard output: %s",
-                       error_string);
-                linted_error_string_free(error_string);
-            }
-        } else {
-            if (-1 == linted_io_close(STDOUT_FILENO)) {
-                succesfully_executing = -1;
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not close standard output: %s",
-                       error_string);
-                linted_error_string_free(error_string);
-            }
-
-            if (-1 == run_game(simulator_path, simulator_binary,
-                               gui_path, gui_binary)) {
-                succesfully_executing = -1;
-                char const *error_string = linted_error_string_alloc(errno);
-                syslog(LOG_ERR, "could not run the game: %s", error_string);
-                linted_error_string_free(error_string);
-            }
+        if (-1 == run_game(simulator_path, simulator_binary,
+                           gui_path, gui_binary)) {
+            succesfully_executing = -1;
+            char const *error_string = linted_error_string_alloc(errno);
+            syslog(LOG_ERR, "could not run the game: %s", error_string);
+            linted_error_string_free(error_string);
         }
     }
 
