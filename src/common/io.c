@@ -146,7 +146,7 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
-int linted_io_strtofd(char const * str)
+int linted_io_strtofd(char const *str)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
@@ -161,7 +161,7 @@ int linted_io_strtofd(char const * str)
         char const digit = str[length - 1u];
 
         if ('0' <= digit && digit <= '9') {
-            unsigned long sum = total + ((unsigned) (digit - '0')) * position;
+            unsigned long sum = total + ((unsigned)(digit - '0')) * position;
             if (sum > INT_MAX) {
                 errno = ERANGE;
                 return -1;
@@ -201,7 +201,7 @@ int linted_io_close_fds_except(fd_set const *fds)
              * anyways and readdir_r has a very broken interface.
              */
             errno = 0;
-            struct dirent * const result = readdir(fds_dir);
+            struct dirent *const result = readdir(fds_dir);
             if (errno != 0) {
                 goto free_fds_to_close;
             }

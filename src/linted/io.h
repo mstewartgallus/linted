@@ -125,7 +125,7 @@ int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 int linted_io_write_format(int fd, size_t * bytes_wrote_out,
                            char const *s, ...);
 
-int linted_io_strtofd(char const * ptr);
+int linted_io_strtofd(char const *ptr);
 
 /**
  *

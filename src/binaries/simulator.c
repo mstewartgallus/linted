@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    char const * const program_name = argv[0];
+    char const *const program_name = argv[0];
 
     bool need_help = false;
     bool need_version = false;
@@ -125,8 +125,7 @@ int main(int argc, char *argv[])
                                program_name);
 
         linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Run the %s program simulator.\n",
-                               PACKAGE_NAME);
+                               "Run the %s program simulator.\n", PACKAGE_NAME);
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 

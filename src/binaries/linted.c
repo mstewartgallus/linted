@@ -34,7 +34,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
@@ -65,17 +64,17 @@ It is insecure to run a game as root!\n");
     }
 
     if (argc < 1) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing process name\n",
-                               PACKAGE_TARNAME);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing process name\n", PACKAGE_TARNAME);
         return EXIT_FAILURE;
     }
 
-    char const * const program_name = argv[0];
+    char const *const program_name = argv[0];
 
     bool need_help = false;
     bool need_version = false;
 
-    char const * bad_option = NULL;
+    char const *bad_option = NULL;
 
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
@@ -102,7 +101,6 @@ It is insecure to run a game as root!\n");
             bad_option = argument;
         }
     }
-
 
     if (need_help) {
         linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
@@ -173,8 +171,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     if (-1 == gui_binary) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: %s: %s\n", program_name,
-                               gui_path,
-                               linted_error_string_alloc(errno));
+                               gui_path, linted_error_string_alloc(errno));
         linted_io_write_format(STDERR_FILENO, NULL,
                                "Try `%s %s' for more information.\n",
                                program_name, HELP_OPTION);
