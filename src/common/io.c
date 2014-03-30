@@ -191,32 +191,18 @@ int linted_io_close_fds_except(fd_set const *fds)
         return -1;
     }
 
-    /*
-     * This is Linux specific code so we can rely on dirfd to not
-     * return ENOTSUP here and in the following code.
-     */
-    long const name_max = fpathconf(dirfd(fds_dir), _PC_NAME_MAX);
-    if (-1 == name_max) {
-        LINTED_IMPOSSIBLE_ERROR
-            ("could not find the maximum name length of a subdirectory: %s",
-             linted_error_string_alloc(errno));
-    }
-
-    struct dirent *const entry =
-        malloc(offsetof(struct dirent, d_name) + name_max + 1);
-    if (NULL == entry) {
-        goto close_fds_dir;
-    }
-
     {
         size_t fds_to_close_count = 0;
         int *fds_to_close = NULL;
 
         for (;;) {
-            struct dirent *result;
-            int const errnum = readdir_r(fds_dir, entry, &result);
-            if (errnum != 0) {
-                errno = errnum;
+            /*
+             * Use readdir because this function isn't thread safe
+             * anyways and readdir_r has a very broken interface.
+             */
+            errno = 0;
+            struct dirent * const result = readdir(fds_dir);
+            if (errno != 0) {
                 goto free_fds_to_close;
             }
 
@@ -234,6 +220,11 @@ int linted_io_close_fds_except(fd_set const *fds)
             }
 
             int const fd = atoi(d_name);
+
+            /*
+             * This is Linux specific code so we can rely on dirfd to
+             * not return ENOTSUP here.
+             */
 
             if (fd == dirfd(fds_dir)) {
                 continue;
@@ -271,8 +262,6 @@ int linted_io_close_fds_except(fd_set const *fds)
 
  free_fds_to_close:
         free(fds_to_close);
-
-        free(entry);
     }
 
  close_fds_dir:

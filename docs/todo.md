@@ -14,11 +14,6 @@ Linted -- TODO
       variables: one copy in process space and the other copy in
       kernel space.
 
-* Find a replacement for `readdir_r`, `readdir_r` is fundamentally broken
-
-    - See: http://austingroupbugs.net/view.php?id=831
-    - See: http://austingroupbugs.net/view.php?id=696
-
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
 * Make a hang check timer
