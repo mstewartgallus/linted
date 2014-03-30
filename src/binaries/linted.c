@@ -199,6 +199,68 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display, display_value_length);
 
+    if (-1 == chdir("/")) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: can not change working directory to /: %s",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == freopen("/dev/null", "r", stdin)) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not reopen standard input to /dev/null: %s",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (NULL == freopen("/dev/null", "w", stdout)) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not reopen standard output to /dev/null: %s",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /* Sanitize open files */
+    {
+        fd_set essential_fds;
+        FD_ZERO(&essential_fds);
+
+        FD_SET(STDERR_FILENO, &essential_fds);
+        FD_SET(fileno(stdin), &essential_fds);
+        FD_SET(fileno(stdout), &essential_fds);
+
+        FD_SET(simulator_binary, &essential_fds);
+        FD_SET(gui_binary, &essential_fds);
+
+        if (-1 == linted_io_close_fds_except(&essential_fds)) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not close unneeded files: %s",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* Sandbox */
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+        assert(errno != EINVAL);
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not drop ability to raise privileges: %s",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /* Sanitize the environment */
+    for (char **env = environ; *env != NULL; ++env) {
+        memset(*env, '\0', strlen(*env));
+    }
+    environ = NULL;
+
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS          /* So we know there is an error */
             | LOG_PID           /* Because we fork several times */
@@ -206,43 +268,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         );
 
     int succesfully_executing = 0;
-
-    if (-1 == chdir("/")) {
-        succesfully_executing = -1;
-
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not set current working directory to root: %s",
-               error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        succesfully_executing = -1;
-
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not drop ability to raise privileges: %s",
-               error_string);
-        linted_error_string_free(error_string);
-    }
-
-    /* Sanitize open files */
-    fd_set essential_fds;
-    FD_ZERO(&essential_fds);
-    FD_SET(STDERR_FILENO, &essential_fds);
-    FD_SET(simulator_binary, &essential_fds);
-    FD_SET(gui_binary, &essential_fds);
-    if (-1 == linted_io_close_fds_except(&essential_fds)) {
-        succesfully_executing = -1;
-
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not close unneeded files: %s", error_string);
-        linted_error_string_free(error_string);
-    }
-
-    /* Sanitize the environment */
-    for (char **env = environ; *env != NULL; ++env) {
-        memset(*env, '\0', strlen(*env));
-    }
 
     if (0 == succesfully_executing) {
         if (-1 == run_game(simulator_path, simulator_binary,
