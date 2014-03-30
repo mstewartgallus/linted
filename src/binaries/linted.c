@@ -42,10 +42,11 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-extern char **environ;
+extern char ** environ;
 
 static int run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary);
+                    char const *gui_path, int gui_binary,
+                    char const * display);
 
 int main(int argc, char **argv)
 {
@@ -174,6 +175,30 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
 
+
+    char const * original_display = getenv("DISPLAY");
+    if (NULL == original_display) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: no DISPLAY environment variable\n",
+                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
+        return EXIT_FAILURE;
+    }
+
+    size_t display_value_length = strlen(original_display);
+    size_t display_string_length = strlen("DISPLAY=") + display_value_length + 1;
+    char * display = malloc(display_string_length);
+    if (NULL == display) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: can't allocate DISPLAY string\n",
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+    memcpy(display, "DISPLAY=", strlen("DISPLAY="));
+    memcpy(display + strlen("DISPLAY="), original_display, display_value_length);
+
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS          /* So we know there is an error */
             | LOG_PID           /* Because we fork several times */
@@ -215,26 +240,14 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     /* Sanitize the environment */
-    char **env = environ;
-    for (; *env != NULL; ++env) {
-        /* TODO: Only pass the display variable in for the gui task */
-        size_t const env_length = strlen(*env);
-        char const needle[] = "DISPLAY=";
-        size_t const needle_length = sizeof needle - 1;
-        if (env_length >= needle_length) {
-            if (0 == memcmp(needle, *env, needle_length)) {
-                continue;
-            }
-        }
-
-        char *sensitive_data = strchr(*env, '=') + 1;
-
-        memset(sensitive_data, '\0', env_length - (sensitive_data - *env));
+    for (char **env = environ; *env != NULL; ++env) {
+        memset(*env, '\0', strlen(*env));
     }
 
     if (0 == succesfully_executing) {
         if (-1 == run_game(simulator_path, simulator_binary,
-                           gui_path, gui_binary)) {
+                           gui_path, gui_binary,
+                           display)) {
             succesfully_executing = -1;
             char const *error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "could not run the game: %s", error_string);
@@ -255,7 +268,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 }
 
 static int run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary)
+                    char const *gui_path, int gui_binary,
+                    char const * display)
 {
     int exit_status = -1;
 
@@ -328,7 +342,8 @@ static int run_game(char const *simulator_path, int simulator_binary,
             controller_string,
             NULL
         };
-        fexecve(gui_binary, args, environ);
+        char *envp[] = { (char *) display, NULL };
+        fexecve(gui_binary, args, envp);
         _Exit(errno);
     }
 
@@ -365,7 +380,8 @@ static int run_game(char const *simulator_path, int simulator_binary,
             controller_string,
             NULL
         };
-        fexecve(simulator_binary, args, environ);
+        char *envp[] = { NULL };
+        fexecve(simulator_binary, args, envp);
         _Exit(errno);
     }
 
