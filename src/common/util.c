@@ -15,14 +15,19 @@
  */
 #include "config.h"
 
+#include "linted/io.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+extern char ** environ;
 
 static char const no_memory_string[] =
     "could not allocate memory for error string";
@@ -68,4 +73,29 @@ void linted_error_string_free(char const *error_string)
     if (error_string != no_memory_string) {
         free((void *)error_string);
     }
+}
+
+int linted_util_sanitize_environment(fd_set const * essential_fds)
+{
+    if (-1 == linted_io_close_fds_except(essential_fds)) {
+        return -1;
+    }
+
+    if (-1 == chdir("/")) {
+        return -1;
+    }
+
+    if (NULL == freopen("/dev/null", "r", stdin)) {
+        return -1;
+    }
+
+    if (NULL == freopen("/dev/null", "w", stdout)) {
+        return -1;
+    }
+
+    /* Sanitize the environment */
+    for (char **env = environ; *env != NULL; ++env) {
+        memset(*env, '\0', strlen(*env));
+    }
+    environ = NULL;
 }

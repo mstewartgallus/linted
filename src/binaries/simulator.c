@@ -241,6 +241,27 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
+    {
+        fd_set essential_fds;
+        FD_ZERO(&essential_fds);
+
+        FD_SET(STDERR_FILENO, &essential_fds);
+        FD_SET(fileno(stdin), &essential_fds);
+        FD_SET(fileno(stdout), &essential_fds);
+
+        FD_SET(controller, &essential_fds);
+        FD_SET(updater, &essential_fds);
+        FD_SET(shutdowner, &essential_fds);
+
+        if (-1 == linted_util_sanitize_environment(&essential_fds)) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not sanitize the environment: %s",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+    }
+
     int exit_status = -1;
 
     struct controller_state controller_state = {

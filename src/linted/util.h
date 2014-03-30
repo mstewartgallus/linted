@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <syslog.h>
+#include <sys/select.h>
 
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
 
@@ -83,5 +84,7 @@
 char const *linted_error_string_alloc(int errnum);
 
 void linted_error_string_free(char const *error_string);
+
+int linted_util_sanitize_environment(fd_set const * essential_fds);
 
 #endif                          /* LINTED_UTIL_H */

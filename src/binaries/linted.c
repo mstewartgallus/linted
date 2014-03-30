@@ -42,8 +42,6 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-extern char ** environ;
-
 static int run_game(char const *simulator_path, int simulator_binary,
                     char const *gui_path, int gui_binary,
                     char const * display);
@@ -199,31 +197,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display, display_value_length);
 
-    if (-1 == chdir("/")) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: can not change working directory to /: %s",
-                               program_name,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    if (NULL == freopen("/dev/null", "r", stdin)) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not reopen standard input to /dev/null: %s",
-                               program_name,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    if (NULL == freopen("/dev/null", "w", stdout)) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not reopen standard output to /dev/null: %s",
-                               program_name,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    /* Sanitize open files */
     {
         fd_set essential_fds;
         FD_ZERO(&essential_fds);
@@ -235,9 +208,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_SET(simulator_binary, &essential_fds);
         FD_SET(gui_binary, &essential_fds);
 
-        if (-1 == linted_io_close_fds_except(&essential_fds)) {
+        if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not close unneeded files: %s",
+%s: can not sanitize the environment: %s",
                                    program_name,
                                    linted_error_string_alloc(errno));
             return EXIT_FAILURE;
@@ -254,12 +227,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
-
-    /* Sanitize the environment */
-    for (char **env = environ; *env != NULL; ++env) {
-        memset(*env, '\0', strlen(*env));
-    }
-    environ = NULL;
 
     openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
             | LOG_CONS          /* So we know there is an error */

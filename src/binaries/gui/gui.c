@@ -298,6 +298,48 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
+    char const * original_display = getenv("DISPLAY");
+    size_t display_string_length = strlen(original_display) + 1;
+    char * display = malloc(display_string_length);
+    if (NULL == display) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: can't allocate DISPLAY string\n",
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+    memcpy(display, original_display, display_string_length);
+
+    {
+        fd_set essential_fds;
+        FD_ZERO(&essential_fds);
+
+        FD_SET(STDERR_FILENO, &essential_fds);
+        FD_SET(fileno(stdin), &essential_fds);
+        FD_SET(fileno(stdout), &essential_fds);
+
+        FD_SET(controller, &essential_fds);
+        FD_SET(updater, &essential_fds);
+        FD_SET(shutdowner, &essential_fds);
+
+        if (-1 == linted_util_sanitize_environment(&essential_fds)) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not sanitize the environment: %s",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == setenv("DISPLAY", display, true)) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not set the environment: %s",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    free(display);
+
     int exit_status = -1;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {
