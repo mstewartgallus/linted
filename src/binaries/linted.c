@@ -301,22 +301,7 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
     pid_t live_processes[] = { -1, -1 };
 
-    pid_t gui = fork();
-    if (-1 == gui) {
-        goto cleanup_shutdowner_pair;
-    }
-    live_processes[0] = gui;
-
-    if (0 == gui) {
-        fcntl(updater_read, F_SETFD,
-              fcntl(updater_read, F_GETFD) & ~FD_CLOEXEC);
-
-        fcntl(simulator_shutdowner_write, F_SETFD,
-              fcntl(simulator_shutdowner_write, F_GETFD) & ~FD_CLOEXEC);
-
-        fcntl(controller_write, F_SETFD,
-              fcntl(controller_write, F_GETFD) & ~FD_CLOEXEC);
-
+    {
         char updater_string[] = "--updater=" INT_STRING_PADDING;
         sprintf(updater_string, "--updater=%i", updater_read);
 
@@ -335,26 +320,30 @@ static int run_game(char const *simulator_path, int simulator_binary,
             NULL
         };
         char *envp[] = { (char *) display, NULL };
-        fexecve(gui_binary, args, envp);
-        _Exit(errno);
+
+        pid_t gui = fork();
+        if (-1 == gui) {
+            goto cleanup_shutdowner_pair;
+        }
+
+        if (0 == gui) {
+            fcntl(updater_read, F_SETFD,
+                  fcntl(updater_read, F_GETFD) & ~FD_CLOEXEC);
+
+            fcntl(simulator_shutdowner_write, F_SETFD,
+                  fcntl(simulator_shutdowner_write, F_GETFD) & ~FD_CLOEXEC);
+
+            fcntl(controller_write, F_SETFD,
+                  fcntl(controller_write, F_GETFD) & ~FD_CLOEXEC);
+
+            fexecve(gui_binary, args, envp);
+            _Exit(errno);
+        }
+
+        live_processes[0] = gui;
     }
 
-    pid_t simulator = fork();
-    if (-1 == simulator) {
-        goto cleanup_processes;
-    }
-    live_processes[1] = simulator;
-
-    if (0 == simulator) {
-        fcntl(updater_write, F_SETFD,
-              fcntl(updater_write, F_GETFD) & ~FD_CLOEXEC);
-
-        fcntl(simulator_shutdowner_read, F_SETFD,
-              fcntl(simulator_shutdowner_read, F_GETFD) & ~FD_CLOEXEC);
-
-        fcntl(controller_read, F_SETFD,
-              fcntl(controller_read, F_GETFD) & ~FD_CLOEXEC);
-
+    {
         char updater_string[] = "--updater=" INT_STRING_PADDING;
         sprintf(updater_string, "--updater=%i", updater_write);
 
@@ -373,8 +362,27 @@ static int run_game(char const *simulator_path, int simulator_binary,
             NULL
         };
         char *envp[] = { NULL };
-        fexecve(simulator_binary, args, envp);
-        _Exit(errno);
+
+        pid_t simulator = fork();
+        if (-1 == simulator) {
+            goto cleanup_processes;
+        }
+
+        if (0 == simulator) {
+            fcntl(updater_write, F_SETFD,
+                  fcntl(updater_write, F_GETFD) & ~FD_CLOEXEC);
+
+            fcntl(simulator_shutdowner_read, F_SETFD,
+                  fcntl(simulator_shutdowner_read, F_GETFD) & ~FD_CLOEXEC);
+
+            fcntl(controller_read, F_SETFD,
+                  fcntl(controller_read, F_GETFD) & ~FD_CLOEXEC);
+
+            fexecve(simulator_binary, args, envp);
+            _Exit(errno);
+        }
+
+        live_processes[1] = simulator;
     }
 
     sigset_t sigchld_set;
