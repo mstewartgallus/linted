@@ -299,6 +299,16 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
     char const * original_display = getenv("DISPLAY");
+    if (NULL == original_display) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: no DISPLAY environment variable\n",
+                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s %s' for more information.\n",
+                               program_name, HELP_OPTION);
+        return EXIT_FAILURE;
+    }
+
     size_t display_string_length = strlen(original_display) + 1;
     char * display = malloc(display_string_length);
     if (NULL == display) {
