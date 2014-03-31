@@ -85,14 +85,6 @@ int linted_util_sanitize_environment(fd_set const *essential_fds)
         return -1;
     }
 
-    if (NULL == freopen("/dev/null", "r", stdin)) {
-        return -1;
-    }
-
-    if (NULL == freopen("/dev/null", "w", stdout)) {
-        return -1;
-    }
-
     /* Sanitize the environment */
     for (char **env = environ; *env != NULL; ++env) {
         memset(*env, '\0', strlen(*env));

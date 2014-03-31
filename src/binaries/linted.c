@@ -32,6 +32,8 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/prctl.h>
+#include <sys/select.h>
+#include <sys/signalfd.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -181,8 +183,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_ZERO(&essential_fds);
 
         FD_SET(STDERR_FILENO, &essential_fds);
-        FD_SET(fileno(stdin), &essential_fds);
-        FD_SET(fileno(stdout), &essential_fds);
+        FD_SET(STDIN_FILENO, &essential_fds);
+        FD_SET(STDOUT_FILENO, &essential_fds);
 
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
@@ -268,12 +270,19 @@ static int run_game(char const *simulator_path, char const *gui_path,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
+    sigset_t sigchld_set;
+    sigemptyset(&sigchld_set);
+    sigaddset(&sigchld_set, SIGCHLD);
+
+    sigset_t sigold_set;
+    pthread_sigmask(SIG_BLOCK, &sigchld_set, &sigold_set);
+
     pid_t live_processes[] = { -1, -1 };
 
     /* Create placeholder file descriptors to be overwritten later on */
     int updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == updater_placeholder) {
-        goto cleanup_shutdowner_pair;
+        goto restore_sigmask;
     }
 
     int shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
@@ -395,68 +404,119 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
     }
 
-    sigset_t sigchld_set;
-    sigemptyset(&sigchld_set);
-    sigaddset(&sigchld_set, SIGCHLD);
+    int sfd = signalfd(-1, &sigchld_set, SFD_CLOEXEC);
+    if (-1 == sfd) {
+        goto cleanup_processes;
+    }
 
-    sigset_t sigold_set;
-    pthread_sigmask(SIG_BLOCK, &sigchld_set, &sigold_set);
+    if (-1 == linted_io_write_format(STDOUT_FILENO, NULL, "%s> ",
+                                     PACKAGE_NAME)) {
+        goto close_sfd;
+    }
 
     for (;;) {
-        int info;
-        sigwait(&sigchld_set, &info);
+        int read_fds[] = { sfd, STDIN_FILENO };
+        int greatest = -1;
 
-        pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
-        /* Let the signal be handled like normal */
-        pthread_sigmask(SIG_BLOCK, &sigchld_set, NULL);
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+            if (greatest < read_fds[ii]) {
+                greatest = read_fds[ii];
+            }
+        }
 
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
-            /* Poll for our processes */
-            if (-1 == live_processes[ii]) {
-                continue;
+        fd_set watched_read_fds;
+        int select_status;
+
+        do {
+            FD_ZERO(&watched_read_fds);
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+                FD_SET(read_fds[ii], &watched_read_fds);
             }
 
-            siginfo_t exit_info;
-            exit_info.si_pid = 0;
-            waitid(P_PID, live_processes[ii], &exit_info, WEXITED | WNOHANG);
+            select_status = select(greatest + 1, &watched_read_fds,
+                                   NULL, NULL, NULL);
+        } while (-1 == select_status && EINTR == errno);
+        if (-1 == select_status) {
+            goto close_sfd;
+        }
 
-            if (0 == exit_info.si_pid) {
-                continue;
+        if (FD_ISSET(STDIN_FILENO, &watched_read_fds)) {
+            char byte;
+            if (-1 == linted_io_read_all(STDIN_FILENO, NULL, &byte, 1)) {
+                goto close_sfd;
             }
 
-            live_processes[ii] = -1;
-
-            switch (exit_info.si_code) {
-            case CLD_DUMPED:
-            case CLD_KILLED:
-                raise(exit_info.si_status);
-                goto restore_sigmask;
-
-            case CLD_EXITED:
-                if (exit_info.si_status != 0) {
-                    errno = exit_info.si_status;
-                    goto restore_sigmask;
+            if ('\n' == byte) {
+                if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
+                                                 "You wrote a commmand!\n%s> ",
+                                                 PACKAGE_NAME)) {
+                    goto close_sfd;
                 }
-                break;
             }
         }
 
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
-            if (live_processes[ii] != -1) {
-                goto got_live;
+        if (FD_ISSET(sfd, &watched_read_fds)) {
+
+            pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
+            /* Let the signal be handled like normal */
+            pthread_sigmask(SIG_BLOCK, &sigchld_set, NULL);
+
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
+                /* Poll for our processes */
+                if (-1 == live_processes[ii]) {
+                    continue;
+                }
+
+                siginfo_t exit_info;
+                exit_info.si_pid = 0;
+                waitid(P_PID, live_processes[ii], &exit_info, WEXITED | WNOHANG);
+
+                if (0 == exit_info.si_pid) {
+                    continue;
+                }
+
+                live_processes[ii] = -1;
+
+                switch (exit_info.si_code) {
+                case CLD_DUMPED:
+                case CLD_KILLED:
+                    raise(exit_info.si_status);
+                    goto restore_sigmask;
+
+                case CLD_EXITED:
+                    if (exit_info.si_status != 0) {
+                        errno = exit_info.si_status;
+                        goto restore_sigmask;
+                    }
+                    break;
+                }
             }
+
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
+                if (live_processes[ii] != -1) {
+                    goto got_live;
+                }
+            }
+
+            break;
+
+        got_live:;
         }
-
-        break;
-
- got_live:;
     }
 
     exit_status = 0;
 
- restore_sigmask:
-    pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
-
+ close_sfd:
+    {
+        int errnum = errno;
+        int close_status = linted_io_close(sfd);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
  close_controller_placeholder:
     {
         int errnum = errno;
@@ -506,7 +566,9 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
     }
 
- cleanup_shutdowner_pair:
+ restore_sigmask:
+    pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
+
     {
         int errnum = errno;
         int close_status = linted_shutdowner_close(simulator_shutdowner_read);
