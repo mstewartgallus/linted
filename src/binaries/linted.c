@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <spawn.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,9 +43,8 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-static int run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary,
-                    char const * display);
+static int run_game(char const *simulator_path, char const *gui_path,
+                    char const *display);
 
 int main(int argc, char **argv)
 {
@@ -150,30 +150,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_SUCCESS;
     }
 
-    int const simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
-    if (-1 == simulator_binary) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: %s: %s\n", program_name,
-                               simulator_path,
-                               linted_error_string_alloc(errno));
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
-        return EXIT_FAILURE;
-    }
-
-    int const gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
-    if (-1 == gui_binary) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: %s: %s\n", program_name,
-                               gui_path, linted_error_string_alloc(errno));
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
-        return EXIT_FAILURE;
-    }
-
-
     char const * original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_format(STDERR_FILENO, NULL,
@@ -205,9 +181,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_SET(fileno(stdin), &essential_fds);
         FD_SET(fileno(stdout), &essential_fds);
 
-        FD_SET(simulator_binary, &essential_fds);
-        FD_SET(gui_binary, &essential_fds);
-
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
@@ -237,9 +210,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     int succesfully_executing = 0;
 
     if (0 == succesfully_executing) {
-        if (-1 == run_game(simulator_path, simulator_binary,
-                           gui_path, gui_binary,
-                           display)) {
+        if (-1 == run_game(simulator_path, gui_path, display)) {
             succesfully_executing = -1;
             char const *error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "could not run the game: %s", error_string);
@@ -259,8 +230,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary,
+static int run_game(char const *simulator_path, char const *gui_path,
                     char const * display)
 {
     int exit_status = -1;
@@ -301,17 +271,33 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
     pid_t live_processes[] = { -1, -1 };
 
+    /* Create placeholder file descriptors to be overwritten later on */
+    int updater_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    if (-1 == updater_placeholder) {
+        goto cleanup_shutdowner_pair;
+    }
+
+    int shutdowner_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    if (-1 == shutdowner_placeholder) {
+        goto close_updater_placeholder;
+    }
+
+    int controller_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    if (-1 == controller_placeholder) {
+        goto close_shutdowner_placeholder;
+    }
+
+    char updater_string[] = "--updater=" INT_STRING_PADDING;
+    sprintf(updater_string, "--updater=%i", updater_placeholder);
+
+    char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+    sprintf(shutdowner_string, "--shutdowner=%i",
+            shutdowner_placeholder);
+
+    char controller_string[] = "--controller=" INT_STRING_PADDING;
+    sprintf(controller_string, "--controller=%i", controller_placeholder);
+
     {
-        char updater_string[] = "--updater=" INT_STRING_PADDING;
-        sprintf(updater_string, "--updater=%i", updater_read);
-
-        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-        sprintf(shutdowner_string, "--shutdowner=%i",
-                simulator_shutdowner_write);
-
-        char controller_string[] = "--controller=" INT_STRING_PADDING;
-        sprintf(controller_string, "--controller=%i", controller_write);
-
         char *args[] = {
             (char *)gui_path,
             updater_string,
@@ -321,39 +307,48 @@ static int run_game(char const *simulator_path, int simulator_binary,
         };
         char *envp[] = { (char *) display, NULL };
 
-        pid_t gui = fork();
-        if (-1 == gui) {
-            goto cleanup_shutdowner_pair;
+        posix_spawn_file_actions_t file_actions;
+        if (-1 == posix_spawn_file_actions_init(&file_actions)) {
+            goto cleanup_processes;
         }
 
-        if (0 == gui) {
-            fcntl(updater_read, F_SETFD,
-                  fcntl(updater_read, F_GETFD) & ~FD_CLOEXEC);
-
-            fcntl(simulator_shutdowner_write, F_SETFD,
-                  fcntl(simulator_shutdowner_write, F_GETFD) & ~FD_CLOEXEC);
-
-            fcntl(controller_write, F_SETFD,
-                  fcntl(controller_write, F_GETFD) & ~FD_CLOEXEC);
-
-            fexecve(gui_binary, args, envp);
-            _Exit(EXIT_FAILURE);
+        int spawned_okay = -1;
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   updater_read,
+                                                   updater_placeholder)) {
+            goto destroy_gui_file_actions;
         }
 
-        live_processes[0] = gui;
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   simulator_shutdowner_write,
+                                                   shutdowner_placeholder)) {
+            goto destroy_gui_file_actions;
+        }
+
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   controller_write,
+                                                   controller_placeholder)) {
+            goto destroy_gui_file_actions;
+        }
+
+        if (-1 == posix_spawn(&live_processes[0], gui_path,
+                              &file_actions,
+                              NULL, args, envp)) {
+            goto destroy_gui_file_actions;
+        }
+
+        spawned_okay = 0;
+
+    destroy_gui_file_actions:
+        if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
+            goto close_controller_placeholder;
+        }
+        if (-1 == spawned_okay) {
+            goto close_controller_placeholder;
+        }
     }
 
     {
-        char updater_string[] = "--updater=" INT_STRING_PADDING;
-        sprintf(updater_string, "--updater=%i", updater_write);
-
-        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-        sprintf(shutdowner_string, "--shutdowner=%i",
-                simulator_shutdowner_read);
-
-        char controller_string[] = "--controller=" INT_STRING_PADDING;
-        sprintf(controller_string, "--controller=%i", controller_read);
-
         char *args[] = {
             (char *)simulator_path,
             updater_string,
@@ -363,26 +358,45 @@ static int run_game(char const *simulator_path, int simulator_binary,
         };
         char *envp[] = { NULL };
 
-        pid_t simulator = fork();
-        if (-1 == simulator) {
+        posix_spawn_file_actions_t file_actions;
+        if (-1 == posix_spawn_file_actions_init(&file_actions)) {
             goto cleanup_processes;
         }
 
-        if (0 == simulator) {
-            fcntl(updater_write, F_SETFD,
-                  fcntl(updater_write, F_GETFD) & ~FD_CLOEXEC);
-
-            fcntl(simulator_shutdowner_read, F_SETFD,
-                  fcntl(simulator_shutdowner_read, F_GETFD) & ~FD_CLOEXEC);
-
-            fcntl(controller_read, F_SETFD,
-                  fcntl(controller_read, F_GETFD) & ~FD_CLOEXEC);
-
-            fexecve(simulator_binary, args, envp);
-            _Exit(EXIT_FAILURE);
+        int spawned_okay = -1;
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   updater_write,
+                                                   updater_placeholder)) {
+            goto destroy_sim_file_actions;
         }
 
-        live_processes[1] = simulator;
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   simulator_shutdowner_read,
+                                                   shutdowner_placeholder)) {
+            goto destroy_sim_file_actions;
+        }
+
+        if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                   controller_read,
+                                                   controller_placeholder)) {
+            goto destroy_sim_file_actions;
+        }
+
+        if (-1 == posix_spawn(&live_processes[1], simulator_path,
+                               &file_actions,
+                              NULL, args, envp)) {
+            goto destroy_sim_file_actions;
+        }
+
+        spawned_okay = 0;
+
+    destroy_sim_file_actions:
+        if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
+            goto cleanup_processes;
+        }
+        if (-1 == spawned_okay) {
+            goto cleanup_processes;
+        }
     }
 
     sigset_t sigchld_set;
@@ -446,6 +460,40 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
  restore_sigmask:
     pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
+
+ close_controller_placeholder:
+    {
+        int errnum = errno;
+        int close_status = linted_io_close(controller_placeholder);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+ close_shutdowner_placeholder:
+    {
+        int errnum = errno;
+        int close_status = linted_io_close(shutdowner_placeholder);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
+ close_updater_placeholder:
+    {
+        int errnum = errno;
+        int close_status = linted_io_close(updater_placeholder);
+        if (-1 == exit_status) {
+            errno = errnum;
+        }
+        if (-1 == close_status) {
+            exit_status = -1;
+        }
+    }
 
  cleanup_processes:
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
