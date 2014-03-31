@@ -18,7 +18,7 @@ ACLOCAL_AMFLAGS=-I m4
 
 bin_SCRIPTS=test
 
-bin_PROGRAMS=linted
+bin_PROGRAMS=linted lintedctl
 
 pkglibexec_PROGRAMS=\
   gui\
@@ -32,6 +32,9 @@ noinst_LTLIBRARIES=\
 
 linted_SOURCES=src/binaries/linted.c
 linted_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+
+lintedctl_SOURCES=src/binaries/lintedctl.c
+lintedctl_LDADD=libcommon.la
 
 gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
 gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)

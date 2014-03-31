@@ -32,8 +32,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/prctl.h>
-#include <sys/select.h>
-#include <sys/signalfd.h>
+#include <sys/uio.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -169,7 +168,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     char *display = malloc(display_string_length);
     if (NULL == display) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: can't allocate DISPLAY string\n",
+                               "%s: can't allocate DISPLAY string: %s\n",
+                               program_name,
                                linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
@@ -270,12 +270,14 @@ static int run_game(char const *simulator_path, char const *gui_path,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    sigset_t sigchld_set;
-    sigemptyset(&sigchld_set);
-    sigaddset(&sigchld_set, SIGCHLD);
+    sigset_t sig_set;
+    sigemptyset(&sig_set);
+
+    sigaddset(&sig_set, SIGCHLD);
+    sigaddset(&sig_set, SIGRTMIN);
 
     sigset_t sigold_set;
-    pthread_sigmask(SIG_BLOCK, &sigchld_set, &sigold_set);
+    pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
 
     pid_t live_processes[] = { -1, -1 };
 
@@ -448,94 +450,56 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
     }
 
-    int sfd = signalfd(-1, &sigchld_set, SFD_CLOEXEC);
-    if (-1 == sfd) {
-        goto cleanup_processes;
-    }
-
-    size_t command_size = 0;
-    char command_buffer[80];
-
-    if (-1 == linted_io_write_format(STDOUT_FILENO, NULL, "%s> ",
-                                     PACKAGE_NAME)) {
-        goto close_sfd;
-    }
-
     for (;;) {
-        int read_fds[] = { sfd, STDIN_FILENO };
-        int greatest = -1;
-
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-            if (greatest < read_fds[ii]) {
-                greatest = read_fds[ii];
-            }
-        }
-
-        fd_set watched_read_fds;
-        int select_status;
-
+        siginfo_t info;
+        int signal_number;
         do {
-            FD_ZERO(&watched_read_fds);
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-                FD_SET(read_fds[ii], &watched_read_fds);
-            }
-
-            select_status = select(greatest + 1, &watched_read_fds,
-                                   NULL, NULL, NULL);
-        } while (-1 == select_status && EINTR == errno);
-        if (-1 == select_status) {
-            goto close_sfd;
+            signal_number = sigtimedwait(&sig_set, &info, NULL);
+        } while (-1 == signal_number && EINTR == errno);
+        if (-1 == signal_number) {
+            goto cleanup_processes;
         }
 
-        if (FD_ISSET(STDIN_FILENO, &watched_read_fds)) {
-            char byte;
-            if (-1 == linted_io_read_all(STDIN_FILENO, NULL, &byte, 1)) {
-                goto close_sfd;
+        if (SIGRTMIN == signal_number) {
+            char buffer[30];
+
+            struct iovec local_iov[] = {
+                { .iov_base = buffer, .iov_len = LINTED_ARRAY_SIZE(buffer) }
+            };
+            struct iovec remote_iov[] = {
+                {
+                    .iov_base = info.si_ptr,
+                    .iov_len = LINTED_ARRAY_SIZE(buffer)
+                }
+            };
+            pid_t pid = info.si_pid;
+
+            switch (process_vm_readv(pid,
+                                     local_iov,
+                                     LINTED_ARRAY_SIZE(local_iov),
+                                     remote_iov,
+                                     LINTED_ARRAY_SIZE(remote_iov),
+                                     0)) {
+            case -1:
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "can't read process memory: %s\n",
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+
+            case 0:
+                linted_io_write_string(STDERR_FILENO, NULL, "no bytes\n");
+                break;
+
+            default:
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "got message!\n");
+                break;
             }
 
-            if ('\n' == byte) {
-                if (command_size >= sizeof command_buffer) {
-                    if (-1 == linted_io_write_string(STDOUT_FILENO, NULL, "\
-You wrote too big a commmand!\n")) {
-                        goto close_sfd;
-                    }
-                } else {
-                    command_buffer[command_size] = '\0';
-
-                    if (0 == strcmp(command_buffer, "start gui")) {
-                        if (-1 == linted_io_write_string(STDOUT_FILENO, NULL,
-                                                         "\
-The gui service is (probably) up\n")) {
-                            goto close_sfd;
-                        }
-                    } else {
-                        if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
-                                                         "You wrote: %s\n",
-                                                         command_buffer)) {
-                            goto close_sfd;
-                        }
-                    }
-                }
-
-                command_size = 0;
-                if (-1 == linted_io_write_format(STDOUT_FILENO, NULL, "%s> ",
-                                                 PACKAGE_NAME)) {
-                    goto close_sfd;
-                }
-            } else {
-                if (command_size < sizeof command_buffer) {
-                    command_buffer[command_size] = byte;
-                    ++command_size;
-                }
+            if (-1 == kill(pid, SIGCONT)) {
+                goto cleanup_processes;
             }
-        }
-
-        if (FD_ISSET(sfd, &watched_read_fds)) {
-
-            pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
-            /* Let the signal be handled like normal */
-            pthread_sigmask(SIG_BLOCK, &sigchld_set, NULL);
-
+        } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
                 /* Poll for our processes */
                 if (-1 == live_processes[ii]) {
@@ -556,12 +520,12 @@ The gui service is (probably) up\n")) {
                 case CLD_DUMPED:
                 case CLD_KILLED:
                     raise(exit_info.si_status);
-                    goto restore_sigmask;
+                    goto cleanup_processes;
 
                 case CLD_EXITED:
                     if (exit_info.si_status != 0) {
                         errno = exit_info.si_status;
-                        goto restore_sigmask;
+                        goto cleanup_processes;
                     }
                     break;
                 }
@@ -576,22 +540,12 @@ The gui service is (probably) up\n")) {
             break;
 
         got_live:;
+        } else {
+            assert(false);
         }
     }
 
     exit_status = 0;
-
- close_sfd:
-    {
-        int errnum = errno;
-        int close_status = linted_io_close(sfd);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
-    }
 
  cleanup_processes:
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
