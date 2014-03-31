@@ -98,4 +98,6 @@ int linted_util_sanitize_environment(fd_set const * essential_fds)
         memset(*env, '\0', strlen(*env));
     }
     environ = NULL;
+
+    return 0;
 }
