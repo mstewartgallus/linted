@@ -16,6 +16,8 @@ Linted -- TODO
 
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
+* Move from command console to generic listening socket or message
+  queue that uses a command line utility to pass messages to.
 * Make a hang check timer
 
     This timer will periodically make sure tasks are reaching their
