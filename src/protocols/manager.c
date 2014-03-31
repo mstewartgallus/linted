@@ -91,6 +91,7 @@ int linted_manager_send_message(pid_t pid,
 
     int errnum = info.si_value.sival_int;
     if (errnum != 0) {
+        errno = errnum;
         goto restore_sigmask;
     }
 
