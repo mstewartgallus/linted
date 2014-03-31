@@ -337,7 +337,7 @@ static int run_game(char const *simulator_path, int simulator_binary,
                   fcntl(controller_write, F_GETFD) & ~FD_CLOEXEC);
 
             fexecve(gui_binary, args, envp);
-            _Exit(errno);
+            _Exit(EXIT_FAILURE);
         }
 
         live_processes[0] = gui;
@@ -379,7 +379,7 @@ static int run_game(char const *simulator_path, int simulator_binary,
                   fcntl(controller_read, F_GETFD) & ~FD_CLOEXEC);
 
             fexecve(simulator_binary, args, envp);
-            _Exit(errno);
+            _Exit(EXIT_FAILURE);
         }
 
         live_processes[1] = simulator;
