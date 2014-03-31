@@ -57,7 +57,16 @@ int linted_manager_receive_message(siginfo_t * info,
         .sival_int = -1 == read_status ? errno : 0
     };
 
-    return sigqueue(pid, linted_manager_wait_signal(), value);
+    int sig_status = sigqueue(pid, linted_manager_wait_signal(), value);
+    if (-1 == sig_status) {
+        return -1;
+    }
+
+    if (-1 == read_status) {
+        return -1;
+    }
+
+    return 0;
 }
 
 int linted_manager_send_message(pid_t pid,

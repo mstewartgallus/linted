@@ -466,12 +466,16 @@ static int run_game(char const *simulator_path, char const *gui_path,
             memset(&message, 0, sizeof message);
 
             if (-1 == linted_manager_receive_message(&info, &message)) {
-                goto cleanup_processes;
+                char const * err = linted_error_string_alloc(errno);
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "got bad message: %s!\n",
+                                       err);
+                linted_error_string_free(err);
+            } else {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "got message: %i!\n",
+                                       message.dummy);
             }
-
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "got message: %i!\n",
-                                   message.dummy);
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
                 /* Poll for our processes */
