@@ -255,9 +255,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
     }

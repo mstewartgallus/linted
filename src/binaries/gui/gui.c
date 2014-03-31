@@ -298,7 +298,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
-    char const * original_display = getenv("DISPLAY");
+    char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: no DISPLAY environment variable\n",
@@ -310,7 +310,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     size_t display_string_length = strlen(original_display) + 1;
-    char * display = malloc(display_string_length);
+    char *display = malloc(display_string_length);
     if (NULL == display) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string\n",
@@ -333,18 +333,14 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
     }
 
     if (-1 == setenv("DISPLAY", display, true)) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not set the environment: %s",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not set the environment: %s", program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 

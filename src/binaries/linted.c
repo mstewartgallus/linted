@@ -150,7 +150,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_SUCCESS;
     }
 
-    char const * original_display = getenv("DISPLAY");
+    char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: no DISPLAY environment variable\n",
@@ -162,8 +162,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     size_t display_value_length = strlen(original_display);
-    size_t display_string_length = strlen("DISPLAY=") + display_value_length + 1;
-    char * display = malloc(display_string_length);
+    size_t display_string_length =
+        strlen("DISPLAY=") + display_value_length + 1;
+    char *display = malloc(display_string_length);
     if (NULL == display) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string\n",
@@ -171,7 +172,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
-    memcpy(display + strlen("DISPLAY="), original_display, display_value_length);
+    memcpy(display + strlen("DISPLAY="), original_display,
+           display_value_length);
     display[display_string_length - 1] = 0;
 
     {
@@ -184,9 +186,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
     }
@@ -196,9 +196,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         assert(errno != EINVAL);
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not drop ability to raise privileges: %s",
-                               program_name,
-                               linted_error_string_alloc(errno));
+%s: can not drop ability to raise privileges: %s", program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
@@ -232,7 +230,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 }
 
 static int run_game(char const *simulator_path, char const *gui_path,
-                    char const * display)
+                    char const *display)
 {
     int exit_status = -1;
 
@@ -273,17 +271,17 @@ static int run_game(char const *simulator_path, char const *gui_path,
     pid_t live_processes[] = { -1, -1 };
 
     /* Create placeholder file descriptors to be overwritten later on */
-    int updater_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    int updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == updater_placeholder) {
         goto cleanup_shutdowner_pair;
     }
 
-    int shutdowner_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    int shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == shutdowner_placeholder) {
         goto close_updater_placeholder;
     }
 
-    int controller_placeholder = open("/dev/null", O_RDONLY |O_CLOEXEC);
+    int controller_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == controller_placeholder) {
         goto close_shutdowner_placeholder;
     }
@@ -292,8 +290,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
     sprintf(updater_string, "--updater=%i", updater_placeholder);
 
     char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-    sprintf(shutdowner_string, "--shutdowner=%i",
-            shutdowner_placeholder);
+    sprintf(shutdowner_string, "--shutdowner=%i", shutdowner_placeholder);
 
     char controller_string[] = "--controller=" INT_STRING_PADDING;
     sprintf(controller_string, "--controller=%i", controller_placeholder);
@@ -306,7 +303,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
             controller_string,
             NULL
         };
-        char *envp[] = { (char *) display, NULL };
+        char *envp[] = { (char *)display, NULL };
 
         posix_spawn_file_actions_t file_actions;
         if (-1 == posix_spawn_file_actions_init(&file_actions)) {
@@ -333,14 +330,13 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
 
         if (-1 == posix_spawn(&live_processes[0], gui_path,
-                              &file_actions,
-                              NULL, args, envp)) {
+                              &file_actions, NULL, args, envp)) {
             goto destroy_gui_file_actions;
         }
 
         spawned_okay = 0;
 
-    destroy_gui_file_actions:
+ destroy_gui_file_actions:
         if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
             goto close_controller_placeholder;
         }
@@ -384,14 +380,13 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
 
         if (-1 == posix_spawn(&live_processes[1], simulator_path,
-                               &file_actions,
-                              NULL, args, envp)) {
+                              &file_actions, NULL, args, envp)) {
             goto destroy_sim_file_actions;
         }
 
         spawned_okay = 0;
 
-    destroy_sim_file_actions:
+ destroy_sim_file_actions:
         if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
             goto cleanup_processes;
         }

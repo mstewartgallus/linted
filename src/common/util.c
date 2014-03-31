@@ -27,7 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 
-extern char ** environ;
+extern char **environ;
 
 static char const no_memory_string[] =
     "could not allocate memory for error string";
@@ -75,7 +75,7 @@ void linted_error_string_free(char const *error_string)
     }
 }
 
-int linted_util_sanitize_environment(fd_set const * essential_fds)
+int linted_util_sanitize_environment(fd_set const *essential_fds)
 {
     if (-1 == linted_io_close_fds_except(essential_fds)) {
         return -1;

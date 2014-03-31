@@ -85,6 +85,6 @@ char const *linted_error_string_alloc(int errnum);
 
 void linted_error_string_free(char const *error_string);
 
-int linted_util_sanitize_environment(fd_set const * essential_fds);
+int linted_util_sanitize_environment(fd_set const *essential_fds);
 
 #endif                          /* LINTED_UTIL_H */
