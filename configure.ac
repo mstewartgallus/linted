@@ -35,7 +35,6 @@ AC_CHECK_HEADERS([dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
-        sys/socket.h dnl
         syslog.h dnl
         unistd.h], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
@@ -64,7 +63,7 @@ AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
  AC_MSG_ERROR([Unable to find good fork function])
 ])
-AC_CHECK_FUNCS([memset select strchr], [], [
+AC_CHECK_FUNCS([memset select setenv strchr], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
