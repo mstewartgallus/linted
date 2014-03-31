@@ -409,6 +409,9 @@ static int run_game(char const *simulator_path, char const *gui_path,
         goto cleanup_processes;
     }
 
+    size_t command_size = 0;
+    char command_buffer[80];
+
     if (-1 == linted_io_write_format(STDOUT_FILENO, NULL, "%s> ",
                                      PACKAGE_NAME)) {
         goto close_sfd;
@@ -447,10 +450,30 @@ static int run_game(char const *simulator_path, char const *gui_path,
             }
 
             if ('\n' == byte) {
-                if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
-                                                 "You wrote a commmand!\n%s> ",
+                if (command_size >= sizeof command_buffer) {
+                    if (-1 == linted_io_write_string(STDOUT_FILENO, NULL, "\
+You wrote too big a commmand!\n")) {
+                        goto close_sfd;
+                    }
+                } else {
+                    command_buffer[command_size] = '\0';
+
+                    if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
+                                                     "You wrote: %s\n",
+                                                     command_buffer)) {
+                        goto close_sfd;
+                    }
+                }
+
+                command_size = 0;
+                if (-1 == linted_io_write_format(STDOUT_FILENO, NULL, "%s> ",
                                                  PACKAGE_NAME)) {
                     goto close_sfd;
+                }
+            } else {
+                if (command_size < sizeof command_buffer) {
+                    command_buffer[command_size] = byte;
+                    ++command_size;
                 }
             }
         }
