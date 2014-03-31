@@ -172,6 +172,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display, display_value_length);
+    display[display_string_length - 1] = 0;
 
     {
         fd_set essential_fds;
