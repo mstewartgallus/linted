@@ -265,7 +265,6 @@ int linted_io_close_fds_except(fd_set const *fds)
         free(fds_to_close);
     }
 
- close_fds_dir:
     if (-1 == closedir(fds_dir)) {
         assert(errno != EBADF);
 
