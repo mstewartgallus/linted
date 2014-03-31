@@ -18,6 +18,7 @@
 #include "linted/binaries.h"
 #include "linted/controller.h"
 #include "linted/io.h"
+#include "linted/manager.h"
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -274,7 +275,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
     sigemptyset(&sig_set);
 
     sigaddset(&sig_set, SIGCHLD);
-    sigaddset(&sig_set, SIGRTMIN);
+    sigaddset(&sig_set, linted_manager_send_signal());
 
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
@@ -460,45 +461,17 @@ static int run_game(char const *simulator_path, char const *gui_path,
             goto cleanup_processes;
         }
 
-        if (SIGRTMIN == signal_number) {
-            char buffer[30];
+        if (linted_manager_send_signal() == signal_number) {
+            struct linted_manager_message message;
+            memset(&message, 0, sizeof message);
 
-            struct iovec local_iov[] = {
-                { .iov_base = buffer, .iov_len = LINTED_ARRAY_SIZE(buffer) }
-            };
-            struct iovec remote_iov[] = {
-                {
-                    .iov_base = info.si_ptr,
-                    .iov_len = LINTED_ARRAY_SIZE(buffer)
-                }
-            };
-            pid_t pid = info.si_pid;
-
-            switch (process_vm_readv(pid,
-                                     local_iov,
-                                     LINTED_ARRAY_SIZE(local_iov),
-                                     remote_iov,
-                                     LINTED_ARRAY_SIZE(remote_iov),
-                                     0)) {
-            case -1:
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "can't read process memory: %s\n",
-                                       linted_error_string_alloc(errno));
-                return EXIT_FAILURE;
-
-            case 0:
-                linted_io_write_string(STDERR_FILENO, NULL, "no bytes\n");
-                break;
-
-            default:
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got message!\n");
-                break;
-            }
-
-            if (-1 == kill(pid, SIGCONT)) {
+            if (-1 == linted_manager_receive_message(&info, &message)) {
                 goto cleanup_processes;
             }
+
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "got message: %i!\n",
+                                   message.dummy);
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
                 /* Poll for our processes */

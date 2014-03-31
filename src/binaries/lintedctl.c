@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/io.h"
+#include "linted/manager.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -104,20 +105,18 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     pid_t pid = atoi(pid_string);
 
-    char message[30];
+    struct linted_manager_message message;
     memset(&message, 0, sizeof message);
-    union sigval value = {
-        .sival_ptr = message
-    };
-    if (-1 == sigqueue(pid, SIGRTMIN, value)) {
+
+    message.dummy = 5;
+
+    if (-1 == linted_manager_send_message(pid, &message)) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: could not write to pid: %s\n",
+                               "%s: could not send message: %s\n",
                                program_name,
                                linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
-
-    raise(SIGSTOP);
 
     return EXIT_SUCCESS;
 }

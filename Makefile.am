@@ -27,14 +27,20 @@ pkglibexec_PROGRAMS=\
 noinst_LTLIBRARIES=\
   libcommon.la\
   libcontroller.la\
+  libmanager.la\
   libupdater.la\
   libshutdowner.la
 
 linted_SOURCES=src/binaries/linted.c
-linted_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+linted_LDADD=\
+  libcommon.la\
+  libcontroller.la\
+  libmanager.la\
+  libshutdowner.la\
+  libupdater.la
 
 lintedctl_SOURCES=src/binaries/lintedctl.c
-lintedctl_LDADD=libcommon.la
+lintedctl_LDADD=libcommon.la libmanager.la
 
 gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
 gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)
@@ -57,6 +63,9 @@ libcommon_la_LIBADD=-lrt
 libcontroller_la_SOURCES=src/protocols/controller.c
 libcontroller_la_LIBADD=libcommon.la -lrt
 
+libmanager_la_SOURCES=src/protocols/manager.c
+libmanager_la_LIBADD=libcommon.la -lrt
+
 libshutdowner_la_SOURCES=src/protocols/shutdowner.c
 libshutdowner_la_LIBADD=libcommon.la -lrt
 
@@ -71,6 +80,7 @@ headers=\
   src/linted/check.h\
   src/linted/controller.h\
   src/linted/io.h\
+  src/linted/manager.h\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/shutdowner.h\
