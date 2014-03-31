@@ -458,10 +458,18 @@ You wrote too big a commmand!\n")) {
                 } else {
                     command_buffer[command_size] = '\0';
 
-                    if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
-                                                     "You wrote: %s\n",
-                                                     command_buffer)) {
-                        goto close_sfd;
+                    if (0 == strcmp(command_buffer, "start gui")) {
+                        if (-1 == linted_io_write_string(STDOUT_FILENO, NULL,
+                                                         "\
+The gui service is (probably) up\n")) {
+                            goto close_sfd;
+                        }
+                    } else {
+                        if (-1 == linted_io_write_format(STDOUT_FILENO, NULL,
+                                                         "You wrote: %s\n",
+                                                         command_buffer)) {
+                            goto close_sfd;
+                        }
                     }
                 }
 
