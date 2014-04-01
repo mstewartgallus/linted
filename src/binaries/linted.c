@@ -155,7 +155,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: no DISPLAY environment variable\n",
+                               "%s: missing DISPLAY environment variable\n",
                                program_name);
         linted_io_write_format(STDERR_FILENO, NULL,
                                "Try `%s %s' for more information.\n",

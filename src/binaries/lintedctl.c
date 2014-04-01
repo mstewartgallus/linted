@@ -29,9 +29,6 @@
 #include <signal.h>
 #include <unistd.h>
 
-#define HELP_OPTION "--help"
-#define VERSION_OPTION "--version"
-
 int main(int argc, char **argv)
 {
     if (argc < 1) {
@@ -46,25 +43,33 @@ int main(int argc, char **argv)
     bool need_help = false;
     bool need_version = false;
 
-    char const *pid_string = NULL;
+    char const * bad_option = NULL;
+    char const * command = NULL;
+    unsigned last_index = 1;
+    for (; last_index < (unsigned) argc; ++last_index) {
+        char const *argument = argv[last_index];
 
-    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
-        char const *argument = argv[ii];
-
-        if (0 == strcmp(argument, HELP_OPTION)) {
-            need_help = true;
-        } else if (0 == strcmp(argument, VERSION_OPTION)) {
-            need_version = true;
+        if (0 == strncmp(argument, "--", strlen("--"))) {
+            if (0 == strcmp(argument, "--help")) {
+                need_help = true;
+            } else if (0 == strcmp(argument, "--version")) {
+                need_version = true;
+            } else {
+                bad_option = argument;
+            }
         } else {
-            pid_string = argument;
+            command = argument;
+            break;
         }
     }
 
     if (need_help) {
-        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS] PID\n",
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "Usage: %s [OPTIONS] COMMAND\n",
                                program_name);
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "Request the game.\n",
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "Send commands to the game.\n",
                                PACKAGE_NAME);
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
@@ -75,12 +80,33 @@ int main(int argc, char **argv)
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  LINTED_PID          the process id of the linted game\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\
+  add                 give a command to the server to perform addition\n");
+
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
         linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
                                PACKAGE_BUGREPORT);
         linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
                                PACKAGE_NAME, PACKAGE_URL);
 
         return EXIT_SUCCESS;
+    }
+
+
+    if (bad_option != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: unrecognized option '%s'\n",
+                               program_name, bad_option);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s --help' for more information.\n",
+                               program_name);
+        return EXIT_FAILURE;
     }
 
     if (need_version) {
@@ -97,28 +123,58 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_SUCCESS;
     }
 
-    pid_t pid = atoi(pid_string);
-
-    struct linted_manager_reply reply;
-    struct linted_manager_request request;
-
-    request.reply = &reply;
-    request.number = 5;
-
-    linted_io_write_format(STDOUT_FILENO, NULL, "%s: sending %i\n",
-                           program_name,
-                           request.number);
-
-    if (-1 == linted_manager_send_request(pid, &request)) {
+    if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: could not send request: %s\n",
-                               program_name, linted_error_string_alloc(errno));
+                               "%s: missing COMMAND\n",
+                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s --help' for more information.\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
-    linted_io_write_format(STDOUT_FILENO, NULL, "%s: received %i\n",
-                           program_name,
-                           reply.number);
+    if (0 == strcmp("add", command)) {
+        if (last_index + 1 != (unsigned) argc) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: too many arguments\n",
+                                   program_name);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s --help' for more information.\n",
+                                   program_name);
+            return EXIT_FAILURE;
+        }
 
-    return EXIT_SUCCESS;
+        pid_t pid = atoi(getenv("LINTED_PID"));
+
+        struct linted_manager_reply reply;
+        struct linted_manager_request request;
+
+        request.reply = &reply;
+        request.number = 5;
+
+        linted_io_write_format(STDOUT_FILENO, NULL, "%s: sending %i\n",
+                               program_name,
+                               request.number);
+
+        if (-1 == linted_manager_send_request(pid, &request)) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: could not send request: %s\n",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+
+        linted_io_write_format(STDOUT_FILENO, NULL, "%s: received %i\n",
+                               program_name, reply.number);
+
+        return EXIT_SUCCESS;
+    } else {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: unrecognized command '%s'\n",
+                               program_name, command);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "Try `%s --help' for more information.\n",
+                               program_name);
+        return EXIT_FAILURE;
+    }
 }
