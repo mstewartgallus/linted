@@ -200,7 +200,8 @@ clean-local:
 
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
-  $(linted_LDFLAGS_HARDEN)'
+  $(linted_LDFLAGS_HARDEN)\
+  $(linted_LDFLAGS_LANGUAGE)'
 
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_OPTIMIZE)\
