@@ -176,3 +176,4 @@ if __name__ == "__main__":
     except SystemExit as e:
         # Prevent Blender spewing junk about unfreed memory on exit
         os._exit(e.code)
+    os._exit(0)
