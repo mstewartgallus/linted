@@ -465,16 +465,31 @@ static int run_game(char const *simulator_path, char const *gui_path,
         }
 
         if (linted_manager_send_signal() == signal_number) {
-            struct linted_manager_message message;
+            pid_t pid = info.si_pid;
+            struct linted_manager_request * remote_request = info.si_ptr;
 
-            if (-1 == linted_manager_receive_message(&info, &message)) {
-                char const *err = linted_error_string_alloc(errno);
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got bad message: %s!\n", err);
-                linted_error_string_free(err);
-            } else {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got message: %i!\n", message.number);
+            int reply_status = -1;
+            struct linted_manager_request request;
+            if (-1 == linted_manager_receive_request(pid,
+                                                     remote_request,
+                                                     &request)) {
+                goto finish_reply;
+            }
+
+            struct linted_manager_reply reply = {
+                .number = request.number + 1
+            };
+            if (-1 == linted_manager_send_reply(pid,
+                                                &reply, request.reply)) {
+                goto finish_reply;
+            }
+
+            reply_status = 0;
+
+        finish_reply:
+            if (-1 == linted_manager_finish_reply(pid,
+                                                  -1 == reply_status ? errno : 0)) {
+                goto cleanup_processes;
             }
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {

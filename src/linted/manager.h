@@ -18,22 +18,30 @@
 
 #include <signal.h>
 
-enum {
-    LINTED_MANAGER_NUMBER
+struct linted_manager_reply;
+
+struct linted_manager_request {
+    struct linted_manager_reply * reply;
+    int number;
 };
 
-struct linted_manager_message {
-    int type;
+struct linted_manager_reply {
     int number;
 };
 
 int linted_manager_send_signal(void);
 int linted_manager_wait_signal(void);
 
-int linted_manager_receive_message(siginfo_t * info,
-                                   struct linted_manager_message *message);
+int linted_manager_receive_request(pid_t pid,
+                                   struct linted_manager_request const * remote_request,
+                                   struct linted_manager_request *request);
 
-int linted_manager_send_message(pid_t pid,
-                                struct linted_manager_message const *message);
+int linted_manager_send_reply(pid_t pid,
+                              struct linted_manager_reply const * reply,
+                              struct linted_manager_reply * remote_reply);
+int linted_manager_finish_reply(pid_t pid, int errnum);
+
+int linted_manager_send_request(pid_t pid,
+                                struct linted_manager_request const *request);
 
 #endif                          /* LINTED_MANAGER_H */

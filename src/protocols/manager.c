@@ -34,28 +34,31 @@ int linted_manager_wait_signal(void)
     return SIGRTMIN + 1;
 }
 
-int linted_manager_receive_message(siginfo_t * info,
-                                   struct linted_manager_message *message)
+int linted_manager_receive_request(pid_t pid,
+                                   struct linted_manager_request const * remote_request,
+                                   struct linted_manager_request *request)
 {
     struct iovec local_iov[] = {
-        {.iov_base = &message->type,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, type)},
-        {.iov_base = &message->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, number)}
+        {.iov_base = &request->reply,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, reply)},
+         {.iov_base = &request->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, number)}
     };
 
-    struct linted_manager_message * const remote_message = info->si_ptr;
     struct iovec remote_iov[] = {
-        {.iov_base = &remote_message->type,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, type)},
-        {.iov_base = &remote_message->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, number)}
+        {.iov_base = (void *)&remote_request->reply,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, reply)},
+         {.iov_base = (void *)&remote_request->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, number)}
     };
-
-    pid_t pid = info->si_pid;
 
     size_t ii = 0;
-    size_t bytes_not_read = local_iov[0].iov_len + local_iov[1].iov_len;
+
+    size_t bytes_not_read = 0;
+    for (size_t jj = 0; jj < LINTED_ARRAY_SIZE(local_iov); ++jj) {
+        bytes_not_read += local_iov[jj].iov_len;
+    }
+
     ssize_t bytes;
     do {
         bytes = process_vm_readv(pid,
@@ -65,31 +68,68 @@ int linted_manager_receive_message(siginfo_t * info,
                                  LINTED_ARRAY_SIZE(remote_iov) - ii,
                                  0);
         if (-1 == bytes) {
-            break;
+            return -1;
         }
 
         bytes_not_read -= bytes;
         ++ii;
     } while (bytes_not_read != 0);
 
-    union sigval value = {
-        .sival_int = -1 == bytes ? errno : 0
+    return 0;
+}
+
+int linted_manager_send_reply(pid_t pid,
+                              struct linted_manager_reply const * reply,
+                              struct linted_manager_reply * remote_reply)
+{
+    struct iovec local_iov[] = {
+        {.iov_base = (void *)&reply->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_reply, number)}
+    };
+    struct iovec remote_iov[] = {
+        {.iov_base = &remote_reply->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_reply, number)}
     };
 
-    int sig_status = sigqueue(pid, linted_manager_wait_signal(), value);
-    if (-1 == sig_status) {
-        return -1;
+    size_t ii = 0;
+
+    size_t bytes_not_written = 0;
+    for (size_t jj = 0; jj < LINTED_ARRAY_SIZE(local_iov); ++jj) {
+        bytes_not_written += local_iov[jj].iov_len;
     }
 
-    if (-1 == bytes) {
-        return -1;
-    }
+    ssize_t bytes;
+    do {
+        bytes = process_vm_writev(pid,
+                                  local_iov + ii,
+                                  LINTED_ARRAY_SIZE(local_iov) - ii,
+                                  remote_iov + ii,
+                                  LINTED_ARRAY_SIZE(remote_iov) - ii,
+                                  0);
+        if (-1 == bytes) {
+            return -1;
+        }
+
+        bytes_not_written -= bytes;
+        ++ii;
+    } while (bytes_not_written != 0);
 
     return 0;
 }
 
-int linted_manager_send_message(pid_t pid,
-                                struct linted_manager_message const *message)
+int linted_manager_finish_reply(pid_t pid, int errnum)
+{
+    union sigval value = {.sival_int = errnum};
+
+    int queue_status;
+    do {
+        queue_status = sigqueue(pid, linted_manager_wait_signal(), value);
+    } while (-1 == queue_status && EAGAIN == errno);
+    return queue_status;
+}
+
+int linted_manager_send_request(pid_t pid,
+                                struct linted_manager_request const *request)
 {
     int exit_status = -1;
 
@@ -100,8 +140,12 @@ int linted_manager_send_message(pid_t pid,
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sigwait_set, &sigold_set);
 
-    union sigval value = {.sival_ptr = (void *)message };
-    if (-1 == sigqueue(pid, linted_manager_send_signal(), value)) {
+    union sigval value = {.sival_ptr = (void *)request };
+    int queue_status;
+    do {
+        queue_status = sigqueue(pid, linted_manager_send_signal(), value);
+    } while (-1 == queue_status && EAGAIN == errno);
+    if (-1 == queue_status) {
         goto restore_sigmask;
     }
 

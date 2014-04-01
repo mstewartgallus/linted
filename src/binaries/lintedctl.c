@@ -64,7 +64,7 @@ int main(int argc, char **argv)
         linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS] PID\n",
                                program_name);
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "Message the game.\n",
+        linted_io_write_format(STDOUT_FILENO, NULL, "Request the game.\n",
                                PACKAGE_NAME);
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
@@ -99,17 +99,26 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     pid_t pid = atoi(pid_string);
 
-    struct linted_manager_message message;
+    struct linted_manager_reply reply;
+    struct linted_manager_request request;
 
-    message.type = LINTED_MANAGER_NUMBER;
-    message.number = 5;
+    request.reply = &reply;
+    request.number = 5;
 
-    if (-1 == linted_manager_send_message(pid, &message)) {
+    linted_io_write_format(STDOUT_FILENO, NULL, "%s: sending %i\n",
+                           program_name,
+                           request.number);
+
+    if (-1 == linted_manager_send_request(pid, &request)) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: could not send message: %s\n",
+                               "%s: could not send request: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
+
+    linted_io_write_format(STDOUT_FILENO, NULL, "%s: received %i\n",
+                           program_name,
+                           reply.number);
 
     return EXIT_SUCCESS;
 }
