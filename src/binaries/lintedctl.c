@@ -100,9 +100,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     pid_t pid = atoi(pid_string);
 
     struct linted_manager_message message;
-    memset(&message, 0, sizeof message);
 
-    message.dummy = 5;
+    message.type = LINTED_MANAGER_NUMBER;
+    message.number = 5;
 
     if (-1 == linted_manager_send_message(pid, &message)) {
         linted_io_write_format(STDERR_FILENO, NULL,

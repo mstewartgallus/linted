@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdio.h>
 #include <signal.h>
 #include <sys/uio.h>
 
@@ -37,24 +38,42 @@ int linted_manager_receive_message(siginfo_t * info,
                                    struct linted_manager_message *message)
 {
     struct iovec local_iov[] = {
-        {.iov_base = message,.iov_len = sizeof *message}
+        {.iov_base = &message->type,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, type)},
+        {.iov_base = &message->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, number)}
     };
+
+    struct linted_manager_message * const remote_message = info->si_ptr;
     struct iovec remote_iov[] = {
-        {
-         .iov_base = info->si_ptr,
-         .iov_len = sizeof *message}
+        {.iov_base = &remote_message->type,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, type)},
+        {.iov_base = &remote_message->number,
+         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_message, number)}
     };
 
     pid_t pid = info->si_pid;
 
-    int read_status = process_vm_readv(pid,
-                                       local_iov, LINTED_ARRAY_SIZE(local_iov),
-                                       remote_iov,
-                                       LINTED_ARRAY_SIZE(remote_iov),
-                                       0);
+    size_t ii = 0;
+    size_t bytes_not_read = local_iov[0].iov_len + local_iov[1].iov_len;
+    ssize_t bytes;
+    do {
+        bytes = process_vm_readv(pid,
+                                 local_iov + ii,
+                                 LINTED_ARRAY_SIZE(local_iov) - ii,
+                                 remote_iov + ii,
+                                 LINTED_ARRAY_SIZE(remote_iov) - ii,
+                                 0);
+        if (-1 == bytes) {
+            break;
+        }
+
+        bytes_not_read -= bytes;
+        ++ii;
+    } while (bytes_not_read != 0);
 
     union sigval value = {
-        .sival_int = -1 == read_status ? errno : 0
+        .sival_int = -1 == bytes ? errno : 0
     };
 
     int sig_status = sigqueue(pid, linted_manager_wait_signal(), value);
@@ -62,7 +81,7 @@ int linted_manager_receive_message(siginfo_t * info,
         return -1;
     }
 
-    if (-1 == read_status) {
+    if (-1 == bytes) {
         return -1;
     }
 

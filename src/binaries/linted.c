@@ -466,7 +466,6 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
         if (linted_manager_send_signal() == signal_number) {
             struct linted_manager_message message;
-            memset(&message, 0, sizeof message);
 
             if (-1 == linted_manager_receive_message(&info, &message)) {
                 char const *err = linted_error_string_alloc(errno);
@@ -475,7 +474,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
                 linted_error_string_free(err);
             } else {
                 linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got message: %i!\n", message.dummy);
+                                       "got message: %i!\n", message.number);
             }
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {

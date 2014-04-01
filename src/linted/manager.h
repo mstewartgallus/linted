@@ -18,8 +18,13 @@
 
 #include <signal.h>
 
+enum {
+    LINTED_MANAGER_NUMBER
+};
+
 struct linted_manager_message {
-    int dummy;
+    int type;
+    int number;
 };
 
 int linted_manager_send_signal(void);
