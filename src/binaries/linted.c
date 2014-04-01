@@ -498,20 +498,48 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
         if (linted_manager_send_signal() == signal_number) {
             pid_t pid = info.si_pid;
-            struct linted_manager_request * request = info.si_ptr;
+            struct linted_manager_req * request = info.si_ptr;
 
             int reply_status = -1;
-            struct linted_manager_arguments arguments;
-            if (-1 == linted_manager_receive_request(pid,
-                                                     request, &arguments)) {
+
+            int type = linted_manager_req_type(pid, request);
+            if (-1 == type) {
                 goto finish_reply;
             }
 
-            struct linted_manager_reply reply = {
-                .number = arguments.number + 1
-            };
-            if (-1 == linted_manager_send_reply(pid,
-                                                request, &reply)) {
+            switch (type) {
+            case LINTED_MANAGER_START:{
+                    struct linted_manager_start_args arguments;
+                    if (-1 == linted_manager_start_req_args(pid,
+                                                            request,
+                                                            &arguments)) {
+                        goto finish_reply;
+                    }
+
+                    switch (arguments.service) {
+                    case LINTED_MANAGER_SERVICE_GUI:
+                    case LINTED_MANAGER_SERVICE_SIMULATOR:{
+                            /* Lie for now */
+                            struct linted_manager_start_reply reply = {
+                                .is_up = true
+                            };
+                            if (-1 == linted_manager_start_req_reply(pid,
+                                                                     request,
+                                                                     &reply)) {
+                                goto finish_reply;
+                            }
+                            break;
+                        }
+
+                    default:
+                        errno = EINVAL;
+                        goto finish_reply;
+                    }
+                    break;
+                }
+
+            default:
+                errno = EINVAL;
                 goto finish_reply;
             }
 

@@ -16,33 +16,53 @@
 #ifndef LINTED_MANAGER_H
 #define LINTED_MANAGER_H
 
+#include <stdbool.h>
 #include <signal.h>
 
-struct linted_manager_arguments {
-    int number;
+enum {
+    LINTED_MANAGER_START
+#define LINTED_MANAGER_START LINTED_MANAGER_START
 };
 
-struct linted_manager_reply {
-    int number;
+enum {
+    LINTED_MANAGER_SERVICE_GUI,
+    LINTED_MANAGER_SERVICE_SIMULATOR
 };
 
-struct linted_manager_request {
-    struct linted_manager_arguments arguments;
-    struct linted_manager_reply reply;
+struct linted_manager_req;
+
+struct linted_manager_start_args {
+    unsigned service;
+};
+
+struct linted_manager_start_reply {
+    bool is_up;
+};
+
+
+struct linted_manager_start_req {
+    unsigned type;
+    struct linted_manager_start_args args;
+    struct linted_manager_start_reply reply;
 };
 
 int linted_manager_send_signal(void);
 int linted_manager_wait_signal(void);
 
-int linted_manager_receive_request(pid_t pid,
-                                   struct linted_manager_request const *request,
-                                   struct linted_manager_arguments *arguments);
-int linted_manager_send_reply(pid_t pid,
-                              struct linted_manager_request *request,
-                              struct linted_manager_reply const * reply);
+int linted_manager_req_type(pid_t pid,
+                            struct linted_manager_req const *request);
+
+int linted_manager_start_req_args(pid_t pid,
+                                  struct linted_manager_req const *request,
+                                  struct linted_manager_start_args *args);
+
+int linted_manager_start_req_reply(pid_t pid,
+                                   struct linted_manager_req *request,
+                                   struct linted_manager_start_reply const *reply);
+
 int linted_manager_finish_reply(pid_t pid, int errnum);
 
 int linted_manager_send_request(pid_t pid,
-                                struct linted_manager_request *request);
+                                struct linted_manager_req *request);
 
 #endif                          /* LINTED_MANAGER_H */

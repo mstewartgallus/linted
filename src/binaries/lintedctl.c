@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\
-  add                 give a command to the server to perform addition\n");
+  start               start the gui service\n");
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (0 == strcmp("add", command)) {
+    if (0 == strcmp("start", command)) {
         bool need_add_help = false;
         char const * bad_argument = NULL;
         for (; last_index < (unsigned) argc; ++last_index) {
@@ -149,11 +149,11 @@ int main(int argc, char **argv)
 
         if (need_add_help) {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Usage: %s add [OPTIONS]\n",
+                                   "Usage: %s start [OPTIONS]\n",
                                    program_name);
 
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Send an add command to the game.\n",
+                                   "Start the gui service.\n",
                                    PACKAGE_NAME);
 
             linted_io_write_string(STDOUT_FILENO, NULL, "\n");
@@ -204,15 +204,16 @@ int main(int argc, char **argv)
 
         pid_t pid = atoi(getenv("LINTED_PID"));
 
-        struct linted_manager_request request;
+        struct linted_manager_start_req request;
 
-        request.arguments.number = 5;
+        request.type = LINTED_MANAGER_START;
+        request.args.service = LINTED_MANAGER_SERVICE_GUI;
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "%s: sending %i\n",
-                               program_name,
-                               request.arguments.number);
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "%s: sending start request for the gui\n",
+                               program_name);
 
-        if (-1 == linted_manager_send_request(pid, &request)) {
+        if (-1 == linted_manager_send_request(pid, (void *)&request)) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: could not send request: %s\n",
                                    program_name,
@@ -220,8 +221,15 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "%s: received %i\n",
-                               program_name, request.reply.number);
+        if (request.reply.is_up) {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: gui is (probably) up\n",
+                                   program_name);
+        } else {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: the gui is down\n",
+                                   program_name);
+        }
 
         return EXIT_SUCCESS;
     } else {
