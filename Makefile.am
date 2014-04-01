@@ -186,7 +186,7 @@ check-cbmc: $(linted_SOURCES)
 	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
 
 check-cppcheck:
-	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(AM_CPPFLAGS) $(srcdir)/src
+	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
 
 check-clang-analyzer: $(linted_SOURCES)
 	$(CLANG) --analyze $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^

@@ -10,8 +10,14 @@ dnl
 dnl Autodetects and sets language settings
 AC_DEFUN([LINTED_LANGUAGE],[
 dnl
-dnl Use POSIX library functions
-[linted_CPPFLAGS_LANGUAGE=-D_POSIX_C_SOURCE=200809L]
+dnl -pthread appears twice because it sets preprocessor options and
+dnl linker options
+dnl
+LINTED_CHECK_CFLAGS([linted_CPPFLAGS_LANGUAGE],[
+        [-pthread]dnl
+        [-D_POSIX_C_SOURCE=200809L]dnl Will always succeed but won't
+                                   dnl be harmful.
+])
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
