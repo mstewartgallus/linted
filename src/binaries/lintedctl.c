@@ -29,6 +29,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+static void write_version(void);
+
 int main(int argc, char **argv)
 {
     if (argc < 1) {
@@ -62,6 +64,7 @@ int main(int argc, char **argv)
             break;
         }
     }
+    ++last_index;
 
     if (need_help) {
         linted_io_write_format(STDOUT_FILENO, NULL,
@@ -110,16 +113,7 @@ int main(int argc, char **argv)
     }
 
     if (need_version) {
-        linted_io_write_string(STDERR_FILENO, NULL, PACKAGE_STRING);
-
-        linted_io_write_string(STDERR_FILENO, NULL, "\n\n");
-
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-Copyright (C) %d Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
-
+        write_version();
         return EXIT_SUCCESS;
     }
 
@@ -134,14 +128,78 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     if (0 == strcmp("add", command)) {
-        if (last_index + 1 != (unsigned) argc) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: too many arguments\n",
+        bool need_add_help = false;
+        char const * bad_argument = NULL;
+        for (; last_index < (unsigned) argc; ++last_index) {
+            char const *argument = argv[last_index];
+
+            if (0 == strncmp(argument, "--", strlen("--"))) {
+                if (0 == strcmp(argument, "--help")) {
+                    need_add_help = true;
+                } else if (0 == strcmp(argument, "--version")) {
+                    need_version = true;
+                } else {
+                    bad_option = argument;
+                }
+            } else {
+                bad_argument = argument;
+                break;
+            }
+        }
+
+        if (need_add_help) {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "Usage: %s add [OPTIONS]\n",
                                    program_name);
+
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "Send an add command to the game.\n",
+                                   PACKAGE_NAME);
+
+            linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+            linted_io_write_string(STDOUT_FILENO, NULL, "\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n");
+
+            linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+            linted_io_write_string(STDOUT_FILENO, NULL, "\
+  LINTED_PID          the process id of the linted game\n");
+
+            linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+
+            linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
+                                   PACKAGE_BUGREPORT);
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
+                                   PACKAGE_NAME, PACKAGE_URL);
+
+            return EXIT_SUCCESS;
+        }
+
+        if (bad_option != NULL) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: unrecognized option '%s'\n",
+                                   program_name, bad_option);
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "Try `%s --help' for more information.\n",
                                    program_name);
             return EXIT_FAILURE;
+        }
+
+        if (bad_argument != NULL) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: too many arguments: '%s'\n",
+                                   program_name, bad_argument);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s --help' for more information.\n",
+                                   program_name);
+            return EXIT_FAILURE;
+        }
+
+        if (need_version) {
+            write_version();
+            return EXIT_SUCCESS;
         }
 
         pid_t pid = atoi(getenv("LINTED_PID"));
@@ -177,4 +235,18 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                program_name);
         return EXIT_FAILURE;
     }
+}
+
+static void write_version(void)
+{
+    linted_io_write_string(STDOUT_FILENO, NULL, PACKAGE_STRING);
+
+    linted_io_write_string(STDOUT_FILENO, NULL, "\n\n");
+
+    linted_io_write_format(STDOUT_FILENO, NULL, "\
+Copyright (C) %d Steven Stewart-Gallus\n\
+License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
+This is free software, and you are welcome to redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
+
 }

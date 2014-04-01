@@ -139,11 +139,11 @@ It is insecure to run a game as root!\n");
     }
 
     if (need_version) {
-        linted_io_write_string(STDERR_FILENO, NULL, PACKAGE_STRING);
+        linted_io_write_string(STDOUT_FILENO, NULL, PACKAGE_STRING);
 
-        linted_io_write_string(STDERR_FILENO, NULL, "\n\n");
+        linted_io_write_string(STDOUT_FILENO, NULL, "\n\n");
 
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDOUT_FILENO, NULL, "\
 Copyright (C) %d Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
