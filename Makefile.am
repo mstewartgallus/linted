@@ -203,6 +203,7 @@ AM_LDFLAGS=\
   $(linted_LDFLAGS_HARDEN)'
 
 AM_CPPFLAGS=\
+  $(linted_CPPFLAGS_OPTIMIZE)\
   $(linted_CPPFLAGS_HARDEN)\
   $(linted_CPPFLAGS_LANGUAGE)\
   -I .\

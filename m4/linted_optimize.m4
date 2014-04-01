@@ -18,17 +18,23 @@ AC_ARG_ENABLE(
 dnl
 AS_IF([test "x${enable_optimize}" != "xno"], [
 dnl
+dnl These flags also effect preprocessor defines
+LINTED_CHECK_CFLAGS([linted_CPPFLAGS_OPTIMIZE],[
+        [-O]dnl
+        [-O2]dnl
+        [-O3]dnl
+])
+AC_SUBST([linted_CPPFLAGS_OPTIMIZE])
+dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[dnl
         [-fno-common]dnl This gives better performance and stops
                      dnl sloppy code
 dnl
         [-fvisibility=hidden]dnl This gets around a few redirections
                              dnl and prevents symbol conflicts
-        [-O]dnl
-        [-O2]dnl
-        [-O3]dnl
-        [-Os]dnl
 ])
+dnl
+[linted_CFLAGS_OPTIMIZE="${linted_CFLAGS_OPTIMIZE} ${linted_CPPFLAGS_OPTIMIZE}"]
 dnl
 dnl Link time optimization needs to be supported by the linker as well.
 LINTED_CHECK_LDFLAGS([linted_CFLAGS_OPTIMIZE_LTO],[[-flto]])
