@@ -45,7 +45,8 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-static int run_game(char const *simulator_path, char const *gui_path,
+static int run_game(char const *simulator_path, int simulator_binary,
+                    char const *gui_path, int gui_binary,
                     char const *display);
 
 int main(int argc, char **argv)
@@ -188,7 +189,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         if (-1 == linted_util_sanitize_environment(&essential_fds)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errno));
+%s: can not sanitize the environment: %s\n", program_name,
+                                   linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
     }
@@ -198,7 +200,30 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         assert(errno != EINVAL);
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not drop ability to raise privileges: %s", program_name, linted_error_string_alloc(errno));
+%s: can not drop ability to raise privileges: %s\n", program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /*
+     * Don't bother closing these file handles. We are not writing and
+     * do not have to confirm that writes have finished.
+     */
+    int simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
+    if (-1 == simulator_binary) {
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
+                               program_name,
+                               simulator_path,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    int gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
+    if (-1 == gui_binary) {
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
+                               program_name,
+                               gui_path,
+                               linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
@@ -211,7 +236,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     int succesfully_executing = 0;
 
     if (0 == succesfully_executing) {
-        if (-1 == run_game(simulator_path, gui_path, display)) {
+        if (-1 == run_game(simulator_path, simulator_binary,
+                           gui_path, gui_binary,
+                           display)) {
             succesfully_executing = -1;
             char const *error_string = linted_error_string_alloc(errno);
             syslog(LOG_ERR, "could not run the game: %s", error_string);
@@ -231,7 +258,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(char const *simulator_path, char const *gui_path,
+static int run_game(char const *simulator_path, int simulator_binary,
+                    char const *gui_path, int gui_binary,
                     char const *display)
 {
     int exit_status = -1;
@@ -345,7 +373,9 @@ static int run_game(char const *simulator_path, char const *gui_path,
                 goto destroy_gui_file_actions;
             }
 
-            if (-1 == posix_spawn(&live_processes[0], gui_path,
+            char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+            sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
+            if (-1 == posix_spawn(&live_processes[0], fd_path,
                                   &file_actions, NULL, args, envp)) {
                 goto destroy_gui_file_actions;
             }
@@ -397,7 +427,9 @@ static int run_game(char const *simulator_path, char const *gui_path,
                 goto destroy_sim_file_actions;
             }
 
-            if (-1 == posix_spawn(&live_processes[1], simulator_path,
+            char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+            sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
+            if (-1 == posix_spawn(&live_processes[1], fd_path,
                                   &file_actions, NULL, args, envp)) {
                 goto destroy_sim_file_actions;
             }
