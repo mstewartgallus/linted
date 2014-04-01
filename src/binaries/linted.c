@@ -498,21 +498,20 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
         if (linted_manager_send_signal() == signal_number) {
             pid_t pid = info.si_pid;
-            struct linted_manager_request * remote_request = info.si_ptr;
+            struct linted_manager_request * request = info.si_ptr;
 
             int reply_status = -1;
-            struct linted_manager_request request;
+            struct linted_manager_arguments arguments;
             if (-1 == linted_manager_receive_request(pid,
-                                                     remote_request,
-                                                     &request)) {
+                                                     request, &arguments)) {
                 goto finish_reply;
             }
 
             struct linted_manager_reply reply = {
-                .number = request.number + 1
+                .number = arguments.number + 1
             };
             if (-1 == linted_manager_send_reply(pid,
-                                                &reply, request.reply)) {
+                                                request, &reply)) {
                 goto finish_reply;
             }
 

@@ -35,21 +35,17 @@ int linted_manager_wait_signal(void)
 }
 
 int linted_manager_receive_request(pid_t pid,
-                                   struct linted_manager_request const * remote_request,
-                                   struct linted_manager_request *request)
+                                   struct linted_manager_request const *request,
+                                   struct linted_manager_arguments *arguments)
 {
     struct iovec local_iov[] = {
-        {.iov_base = &request->reply,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, reply)},
-         {.iov_base = &request->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, number)}
+        {.iov_base = &arguments->number,
+         .iov_len = sizeof arguments->number}
     };
 
     struct iovec remote_iov[] = {
-        {.iov_base = (void *)&remote_request->reply,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, reply)},
-         {.iov_base = (void *)&remote_request->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_request, number)}
+        {.iov_base = (void *)&request->arguments.number,
+         .iov_len = sizeof request->arguments.number}
     };
 
     size_t ii = 0;
@@ -79,16 +75,16 @@ int linted_manager_receive_request(pid_t pid,
 }
 
 int linted_manager_send_reply(pid_t pid,
-                              struct linted_manager_reply const * reply,
-                              struct linted_manager_reply * remote_reply)
+                              struct linted_manager_request *request,
+                              struct linted_manager_reply const * reply)
 {
     struct iovec local_iov[] = {
         {.iov_base = (void *)&reply->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_reply, number)}
+         .iov_len = sizeof reply->number}
     };
     struct iovec remote_iov[] = {
-        {.iov_base = &remote_reply->number,
-         .iov_len = LINTED_SIZEOF_MEMBER(struct linted_manager_reply, number)}
+        {.iov_base = &request->reply.number,
+         .iov_len = sizeof request->reply.number}
     };
 
     size_t ii = 0;
@@ -129,7 +125,7 @@ int linted_manager_finish_reply(pid_t pid, int errnum)
 }
 
 int linted_manager_send_request(pid_t pid,
-                                struct linted_manager_request const *request)
+                                struct linted_manager_request *request)
 {
     int exit_status = -1;
 
@@ -140,7 +136,7 @@ int linted_manager_send_request(pid_t pid,
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sigwait_set, &sigold_set);
 
-    union sigval value = {.sival_ptr = (void *)request };
+    union sigval value = {.sival_ptr = request};
     int queue_status;
     do {
         queue_status = sigqueue(pid, linted_manager_send_signal(), value);

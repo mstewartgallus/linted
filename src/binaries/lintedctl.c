@@ -204,15 +204,13 @@ int main(int argc, char **argv)
 
         pid_t pid = atoi(getenv("LINTED_PID"));
 
-        struct linted_manager_reply reply;
         struct linted_manager_request request;
 
-        request.reply = &reply;
-        request.number = 5;
+        request.arguments.number = 5;
 
         linted_io_write_format(STDOUT_FILENO, NULL, "%s: sending %i\n",
                                program_name,
-                               request.number);
+                               request.arguments.number);
 
         if (-1 == linted_manager_send_request(pid, &request)) {
             linted_io_write_format(STDERR_FILENO, NULL,
@@ -223,7 +221,7 @@ int main(int argc, char **argv)
         }
 
         linted_io_write_format(STDOUT_FILENO, NULL, "%s: received %i\n",
-                               program_name, reply.number);
+                               program_name, request.reply.number);
 
         return EXIT_SUCCESS;
     } else {
