@@ -16,8 +16,14 @@ Linted -- TODO
 
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
-* Move from command console to generic listening socket or message
-  queue that uses a command line utility to pass messages to.
+* Use more secure method for communicating with the init
+
+    The current method is insecure because the init requires PTRACE
+    capabilities. As well, the sigqueue system call is wrapped by
+    GLibc with the rt_sigqueue system call that uses a user provided
+    pid. An attacker could write to another process by sending a
+    command to init with a fake pid.
+
 * Make a hang check timer
 
     This timer will periodically make sure tasks are reaching their
@@ -33,11 +39,6 @@ Linted -- TODO
     but that if things are done correctly that the shouldn't be
     happening anyways. I believe what I really want is a
     -Wl,--warn-execstack option.
-
-* Make spawner forks check passed in sockets
-
-    Because the spawner forks off processes the current protocol isn't
-    so bad but there should be a little error checking.
 
 * Don't do cargo cult security
 
