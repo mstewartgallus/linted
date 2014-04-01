@@ -96,7 +96,7 @@ EXTRA_DIST=\
   \
   src/linted/binaries.h.in\
   \
-  libs/glloadgen\
+  libs/glloadgen-reloaded\
   \
   $(headers)\
   \
@@ -127,14 +127,14 @@ MOSTLYCLEANFILES+=\
 
 src/binaries/gui/gl_core.c:
 	cd $(builddir)/src/binaries/gui/ && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 	rm $(builddir)/src/binaries/gui/gl_core.h
 
 src/linted/gl_core.h:
 	$(MKDIR_P) $(builddir)/src/linted
 	cd $(builddir)/src/linted && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen/LoadGen.lua\
+	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 	rm $(builddir)/src/linted/gl_core.c
 
@@ -150,7 +150,7 @@ test: $(MAKEFILE) test.in
 
 
 dist-hook:
-	rm -rf $$(find $(distdir)/libs/glloadgen -type d -name .git)
+	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
 
 .PHONY:\
   check-frama-c-pdg check-frama-c-gui check-frama-c\
