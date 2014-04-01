@@ -202,7 +202,28 @@ int main(int argc, char **argv)
             return EXIT_SUCCESS;
         }
 
-        pid_t pid = atoi(getenv("LINTED_PID"));
+        char const * pid_string = getenv("LINTED_PID");
+        if (NULL == pid_string) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: missing LINTED_PID\n",
+                                   program_name);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s --help' for more information.\n",
+                                   program_name);
+            return EXIT_FAILURE;
+        }
+
+        pid_t pid = linted_io_strtofd(pid_string);
+        if (-1 == pid) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: LINTED_PID='%s': %s\n",
+                                   program_name, pid_string,
+                                   linted_error_string_alloc(errno));
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s --help' for more information.\n",
+                                   program_name);
+            return EXIT_FAILURE;
+        }
 
         struct linted_manager_start_req request;
 
