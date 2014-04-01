@@ -170,8 +170,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     if (NULL == display) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
-                               program_name,
-                               linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
@@ -334,13 +333,15 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        simulator_shutdowner_write,
-                                                       shutdowner_placeholder)) {
+                                                       shutdowner_placeholder))
+            {
                 goto destroy_gui_file_actions;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        controller_write,
-                                                       controller_placeholder)) {
+                                                       controller_placeholder))
+            {
                 goto destroy_gui_file_actions;
             }
 
@@ -351,7 +352,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
             spawned_okay = 0;
 
-        destroy_gui_file_actions:
+ destroy_gui_file_actions:
             if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
                 goto close_controller_placeholder;
             }
@@ -384,13 +385,15 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        simulator_shutdowner_read,
-                                                       shutdowner_placeholder)) {
+                                                       shutdowner_placeholder))
+            {
                 goto destroy_sim_file_actions;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        controller_read,
-                                                       controller_placeholder)) {
+                                                       controller_placeholder))
+            {
                 goto destroy_sim_file_actions;
             }
 
@@ -401,7 +404,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
             spawned_okay = 0;
 
-        destroy_sim_file_actions:
+ destroy_sim_file_actions:
             if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
                 goto close_controller_placeholder;
             }
@@ -412,7 +415,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
         create_processes_succesfully = 0;
 
-    close_controller_placeholder:
+ close_controller_placeholder:
         {
             int errnum = errno;
             int close_status = linted_io_close(controller_placeholder);
@@ -423,7 +426,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
                 create_processes_succesfully = -1;
             }
         }
-    close_shutdowner_placeholder:
+ close_shutdowner_placeholder:
         {
             int errnum = errno;
             int close_status = linted_io_close(shutdowner_placeholder);
@@ -434,7 +437,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
                 create_processes_succesfully = -1;
             }
         }
-    close_updater_placeholder:
+ close_updater_placeholder:
         {
             int errnum = errno;
             int close_status = linted_io_close(updater_placeholder);
@@ -466,15 +469,13 @@ static int run_game(char const *simulator_path, char const *gui_path,
             memset(&message, 0, sizeof message);
 
             if (-1 == linted_manager_receive_message(&info, &message)) {
-                char const * err = linted_error_string_alloc(errno);
+                char const *err = linted_error_string_alloc(errno);
                 linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got bad message: %s!\n",
-                                       err);
+                                       "got bad message: %s!\n", err);
                 linted_error_string_free(err);
             } else {
                 linted_io_write_format(STDERR_FILENO, NULL,
-                                       "got message: %i!\n",
-                                       message.dummy);
+                                       "got message: %i!\n", message.dummy);
             }
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
@@ -485,7 +486,8 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
                 siginfo_t exit_info;
                 exit_info.si_pid = 0;
-                waitid(P_PID, live_processes[ii], &exit_info, WEXITED | WNOHANG);
+                waitid(P_PID, live_processes[ii], &exit_info,
+                       WEXITED | WNOHANG);
 
                 if (0 == exit_info.si_pid) {
                     continue;
@@ -516,7 +518,7 @@ static int run_game(char const *simulator_path, char const *gui_path,
 
             break;
 
-        got_live:;
+ got_live: ;
         } else {
             assert(false);
         }

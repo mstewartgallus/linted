@@ -113,8 +113,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     if (-1 == linted_manager_send_message(pid, &message)) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: could not send message: %s\n",
-                               program_name,
-                               linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 

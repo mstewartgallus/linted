@@ -34,23 +34,23 @@ int linted_manager_wait_signal(void)
 }
 
 int linted_manager_receive_message(siginfo_t * info,
-                                   struct linted_manager_message * message)
+                                   struct linted_manager_message *message)
 {
     struct iovec local_iov[] = {
-        { .iov_base = message, .iov_len = sizeof *message }
+        {.iov_base = message,.iov_len = sizeof *message}
     };
     struct iovec remote_iov[] = {
         {
-            .iov_base = info->si_ptr,
-            .iov_len = sizeof *message
-        }
+         .iov_base = info->si_ptr,
+         .iov_len = sizeof *message}
     };
 
     pid_t pid = info->si_pid;
 
     int read_status = process_vm_readv(pid,
                                        local_iov, LINTED_ARRAY_SIZE(local_iov),
-                                       remote_iov, LINTED_ARRAY_SIZE(remote_iov),
+                                       remote_iov,
+                                       LINTED_ARRAY_SIZE(remote_iov),
                                        0);
 
     union sigval value = {
@@ -70,7 +70,7 @@ int linted_manager_receive_message(siginfo_t * info,
 }
 
 int linted_manager_send_message(pid_t pid,
-                                struct linted_manager_message const * message)
+                                struct linted_manager_message const *message)
 {
     int exit_status = -1;
 
@@ -81,7 +81,7 @@ int linted_manager_send_message(pid_t pid,
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sigwait_set, &sigold_set);
 
-    union sigval value = {.sival_ptr = (void *)message};
+    union sigval value = {.sival_ptr = (void *)message };
     if (-1 == sigqueue(pid, linted_manager_send_signal(), value)) {
         goto restore_sigmask;
     }

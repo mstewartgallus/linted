@@ -26,9 +26,9 @@ int linted_manager_send_signal(void);
 int linted_manager_wait_signal(void);
 
 int linted_manager_receive_message(siginfo_t * info,
-                                   struct linted_manager_message * message);
+                                   struct linted_manager_message *message);
 
 int linted_manager_send_message(pid_t pid,
-                                struct linted_manager_message const * message);
+                                struct linted_manager_message const *message);
 
 #endif                          /* LINTED_MANAGER_H */
