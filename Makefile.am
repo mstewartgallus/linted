@@ -199,7 +199,7 @@ clean-local:
 
 
 AM_LDFLAGS=\
-  -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
+  -Xlinker '$(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)'
 
 AM_CPPFLAGS=\
