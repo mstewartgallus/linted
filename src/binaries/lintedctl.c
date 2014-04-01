@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     }
 
     if (need_help) {
-        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
+        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS] PID\n",
                                program_name);
 
         linted_io_write_format(STDOUT_FILENO, NULL, "Message the game.\n",
@@ -72,12 +72,6 @@ int main(int argc, char **argv)
         linted_io_write_string(STDOUT_FILENO, NULL, "\
   --help              display this help and exit\n\
   --version           display version information and exit\n");
-
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
-
-        linted_io_write_string(STDOUT_FILENO, NULL, "\
-  --simulator         the location of the simulator executable\n\
-  --gui               the location of the gui executable\n");
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
