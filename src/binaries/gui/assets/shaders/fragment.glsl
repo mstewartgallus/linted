@@ -14,7 +14,7 @@
  * permissions and limitations under the License.
  */
 #version 120
-#pragma linted include("varying.glsl")
+#pragma linted include("shaders/varying.glsl")
 
 vec3 direction(vec3 vector);
 

@@ -16,6 +16,7 @@ import collections
 import os
 from string import Template
 from linted_assets_generator import *
+from io import StringIO
 
 def output():
     Mesh = collections.namedtuple('Mesh', ('indices', 'normals', 'vertices'))
@@ -44,8 +45,14 @@ def output():
             return mesh.faces
 
     def load_shader(shadername):
-        with open(shadername, 'r') as shaderfile:
-            return shaderfile.read()
+        with StringIO() as lines:
+            with open(shadername, 'r') as shaderfile:
+                for line in shaderfile:
+                    if line.startswith("#pragma linted include(\"") and line.endswith("\")\n"):
+                        lines.write(load_shader(line[len("#pragma linted include(\""):-len("\")\n")]))
+                    else:
+                        lines.write(line)
+                return lines.getvalue()
 
     def encode_shader(shader):
         return ("\""
@@ -63,15 +70,8 @@ def output():
 
         cube_mesh = process_mesh(cube)
 
-        varying_shader = load_shader("shaders/varying.glsl")
-
-        fragment_shader = encode_shader(load_shader("shaders/fragment.glsl")
-                                        .replace("#pragma linted include(\"varying.glsl\")",
-                                                 varying_shader))
-
-        vertex_shader = encode_shader(load_shader("shaders/vertex.glsl")
-                                      .replace("#pragma linted include(\"varying.glsl\")",
-                                               varying_shader))
+        fragment_shader = encode_shader(load_shader("shaders/fragment.glsl"))
+        vertex_shader = encode_shader(load_shader("shaders/vertex.glsl"))
     finally:
         os.chdir(old_directory)
 
