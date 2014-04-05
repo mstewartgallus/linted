@@ -814,7 +814,6 @@ static void render_graphics(struct gl_state const *gl_state,
      *  sums of the columns (row major order).
      */
     glLoadIdentity();
-    /* glLoadMatrixf(linted_assets_matrix[0]); */
 
     /* Correct the aspect ratio */
     GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
