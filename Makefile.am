@@ -101,6 +101,7 @@ EXTRA_DIST=\
   $(headers)\
   \
   src/binaries/gui/assets/assets.py\
+  src/binaries/gui/assets/scene.blend\
   src/binaries/gui/assets/shaders/fragment.glsl\
   src/binaries/gui/assets/shaders/varying.glsl\
   src/binaries/gui/assets/shaders/vertex.glsl\
@@ -111,6 +112,7 @@ EXTRA_DIST=\
 MOSTLYCLEANFILES=src/binaries/gui/assets.c
 src/binaries/gui/assets.c:\
   src/binaries/gui/assets/assets.py\
+  src/binaries/gui/assets/scene.blend\
   src/binaries/gui/assets/shaders/fragment.glsl\
   src/binaries/gui/assets/shaders/varying.glsl\
   src/binaries/gui/assets/shaders/vertex.glsl\

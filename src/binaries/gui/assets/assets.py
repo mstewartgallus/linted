@@ -19,23 +19,19 @@ from linted_assets_generator import *
 from io import StringIO
 
 def output():
-    Mesh = collections.namedtuple('Mesh', ('indices', 'normals', 'vertices'))
+    def process_mesh(objct, indices, normals, vertices):
+        mesh = objct.data
+        matrix = objct.matrix_world
 
-    def process_mesh(mesh):
-        indices = [Array(3, GLubyte)([GLubyte(index)
-                                      for index in polygon.vertices])
-                   for polygon in polygons(mesh)]
+        old_vertices_length = len(vertices)
 
-        normals = []
-        vertices = []
+        for polygon in polygons(mesh):
+            indices.append(Array(3, GLubyte)([GLubyte(index + old_vertices_length)
+                                              for index in polygon.vertices]))
 
         for vertex in mesh.vertices:
             normals.append(Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()]))
-            vertices.append(Array(3, GLfloat)([GLfloat(part) for part in vertex.co.to_tuple()]))
-
-        return Mesh(indices = StaticArray(Array(3, GLubyte))(indices),
-                    normals = StaticArray(Array(3, GLfloat))(normals),
-                    vertices = StaticArray(Array(3, GLfloat))(vertices))
+            vertices.append(Array(3, GLfloat)([GLfloat(part) for part in (matrix * vertex.co).to_tuple()]))
 
     # Compatibility shim for older Blender versions
     def polygons(mesh):
@@ -66,9 +62,12 @@ def output():
     try:
         bpy.ops.wm.open_mainfile(filepath = "scene.blend")
 
-        cube = bpy.data.meshes["Cube"]
-
-        cube_mesh = process_mesh(cube)
+        mesh_objects = [objct for objct in bpy.data.objects if 'MESH' == objct.type]
+        indices = []
+        normals = []
+        vertices = []
+        for objct in mesh_objects:
+            process_mesh(objct, indices, normals, vertices)
 
         fragment_shader = encode_shader(load_shader("shaders/fragment.glsl"))
         vertex_shader = encode_shader(load_shader("shaders/vertex.glsl"))
@@ -93,5 +92,7 @@ size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_dat
 GLchar const * const linted_assets_fragment_shader = $fragment_shader;
 GLchar const * const linted_assets_vertex_shader = $vertex_shader;
 """).substitute(
-    normals=cube_mesh.normals, vertices=cube_mesh.vertices, indices=cube_mesh.indices,
+    normals=StaticArray(Array(3, GLfloat))(normals),
+    vertices=StaticArray(Array(3, GLfloat))(vertices),
+    indices=StaticArray(Array(3, GLubyte))(indices),
     fragment_shader=fragment_shader, vertex_shader=vertex_shader)
