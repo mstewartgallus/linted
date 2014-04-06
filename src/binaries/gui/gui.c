@@ -689,12 +689,15 @@ static int init_graphics(struct gl_state *gl_state,
 
     glMatrixMode(GL_PROJECTION);
 
-    glLoadMatrixf((GLfloat[][4]) {
+    {
+        GLfloat projection[][4] = {
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 1},
-            {0, 0, 0, 1}}[0]
-    );
+            {0, 0, 0, 1}
+        };
+        glLoadMatrixf(projection[0]);
+    }
 
     glMatrixMode(GL_MODELVIEW);
 
@@ -817,18 +820,26 @@ static void render_graphics(struct gl_state const *gl_state,
 
     /* Correct the aspect ratio */
     GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
-    glMultMatrixf((GLfloat[][4]) {
+    {
+        GLfloat const matrix[][4] = {
             {1, 0, 0, 0},
             {0, aspect, 0, 0},
             {0, 0, 1, 0},
-            {0, 0, 0, 1}}[0]);
+            {0, 0, 0, 1}
+        };
+        glMultMatrixf(matrix[0]);
+    }
 
     /* Move the camera */
-    glMultMatrixf((GLfloat[][4]) {
+    {
+        GLfloat const camera[][4] = {
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 0},
-            {gui_state->x, gui_state->y, 3, 1}}[0]);
+            {gui_state->x, gui_state->y, 3, 1}
+        };
+        glMultMatrixf(camera[0]);
+    }
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);

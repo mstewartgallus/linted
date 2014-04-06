@@ -39,8 +39,7 @@ int linted_manager_wait_signal(void)
     return SIGRTMIN + 1;
 }
 
-int linted_manager_req_type(pid_t pid,
-                            struct linted_manager_req const *request)
+int linted_manager_req_type(pid_t pid, struct linted_manager_req const *request)
 {
     unsigned type;
     struct iovec local_iov[] = {
@@ -66,8 +65,7 @@ int linted_manager_req_type(pid_t pid,
                                  local_iov + ii,
                                  LINTED_ARRAY_SIZE(local_iov) - ii,
                                  remote_iov + ii,
-                                 LINTED_ARRAY_SIZE(remote_iov) - ii,
-                                 0);
+                                 LINTED_ARRAY_SIZE(remote_iov) - ii, 0);
         if (-1 == bytes) {
             return -1;
         }
@@ -78,11 +76,12 @@ int linted_manager_req_type(pid_t pid,
 
     return 0;
 }
+
 int linted_manager_start_req_args(pid_t pid,
                                   struct linted_manager_req const *request,
                                   struct linted_manager_start_args *args)
 {
-    struct linted_manager_start_req * start_request = (void *)request;
+    struct linted_manager_start_req *start_request = (void *)request;
     struct iovec local_iov[] = {
         {.iov_base = &args->service,
          .iov_len = sizeof args->service}
@@ -106,8 +105,7 @@ int linted_manager_start_req_args(pid_t pid,
                                  local_iov + ii,
                                  LINTED_ARRAY_SIZE(local_iov) - ii,
                                  remote_iov + ii,
-                                 LINTED_ARRAY_SIZE(remote_iov) - ii,
-                                 0);
+                                 LINTED_ARRAY_SIZE(remote_iov) - ii, 0);
         if (-1 == bytes) {
             return -1;
         }
@@ -121,9 +119,10 @@ int linted_manager_start_req_args(pid_t pid,
 
 int linted_manager_start_req_reply(pid_t pid,
                                    struct linted_manager_req *request,
-                                   struct linted_manager_start_reply const * reply)
+                                   struct linted_manager_start_reply const
+                                   *reply)
 {
-    struct linted_manager_start_req * start_request = (void *)request;
+    struct linted_manager_start_req *start_request = (void *)request;
     struct iovec local_iov[] = {
         {.iov_base = (void *)&reply->is_up,
          .iov_len = sizeof reply->is_up}
@@ -146,8 +145,7 @@ int linted_manager_start_req_reply(pid_t pid,
                                   local_iov + ii,
                                   LINTED_ARRAY_SIZE(local_iov) - ii,
                                   remote_iov + ii,
-                                  LINTED_ARRAY_SIZE(remote_iov) - ii,
-                                  0);
+                                  LINTED_ARRAY_SIZE(remote_iov) - ii, 0);
         if (-1 == bytes) {
             return -1;
         }
@@ -161,7 +159,7 @@ int linted_manager_start_req_reply(pid_t pid,
 
 int linted_manager_finish_reply(pid_t pid, int errnum)
 {
-    union sigval value = {.sival_int = errnum};
+    union sigval value = {.sival_int = errnum };
 
     int queue_status;
     do {
@@ -170,8 +168,7 @@ int linted_manager_finish_reply(pid_t pid, int errnum)
     return queue_status;
 }
 
-int linted_manager_send_request(pid_t pid,
-                                struct linted_manager_req *request)
+int linted_manager_send_request(pid_t pid, struct linted_manager_req *request)
 {
     int exit_status = -1;
 
@@ -182,7 +179,7 @@ int linted_manager_send_request(pid_t pid,
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sigwait_set, &sigold_set);
 
-    union sigval value = {.sival_ptr = request};
+    union sigval value = {.sival_ptr = request };
     int queue_status;
     do {
         queue_status = sigqueue(pid, linted_manager_send_signal(), value);

@@ -45,10 +45,10 @@ int main(int argc, char **argv)
     bool need_help = false;
     bool need_version = false;
 
-    char const * bad_option = NULL;
-    char const * command = NULL;
+    char const *bad_option = NULL;
+    char const *command = NULL;
     unsigned last_index = 1;
-    for (; last_index < (unsigned) argc; ++last_index) {
+    for (; last_index < (unsigned)argc; ++last_index) {
         char const *argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
@@ -68,12 +68,10 @@ int main(int argc, char **argv)
 
     if (need_help) {
         linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Usage: %s [OPTIONS] COMMAND\n",
-                               program_name);
+                               "Usage: %s [OPTIONS] COMMAND\n", program_name);
 
         linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Send commands to the game.\n",
-                               PACKAGE_NAME);
+                               "Send commands to the game.\n", PACKAGE_NAME);
 
         linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
@@ -101,7 +99,6 @@ int main(int argc, char **argv)
         return EXIT_SUCCESS;
     }
 
-
     if (bad_option != NULL) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized option '%s'\n",
@@ -119,8 +116,7 @@ int main(int argc, char **argv)
 
     if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing COMMAND\n",
-                               program_name);
+                               "%s: missing COMMAND\n", program_name);
         linted_io_write_format(STDERR_FILENO, NULL,
                                "Try `%s --help' for more information.\n",
                                program_name);
@@ -129,8 +125,8 @@ int main(int argc, char **argv)
 
     if (0 == strcmp("start", command)) {
         bool need_add_help = false;
-        char const * bad_argument = NULL;
-        for (; last_index < (unsigned) argc; ++last_index) {
+        char const *bad_argument = NULL;
+        for (; last_index < (unsigned)argc; ++last_index) {
             char const *argument = argv[last_index];
 
             if (0 == strncmp(argument, "--", strlen("--"))) {
@@ -149,12 +145,10 @@ int main(int argc, char **argv)
 
         if (need_add_help) {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Usage: %s start [OPTIONS]\n",
-                                   program_name);
+                                   "Usage: %s start [OPTIONS]\n", program_name);
 
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Start the gui service.\n",
-                                   PACKAGE_NAME);
+                                   "Start the gui service.\n", PACKAGE_NAME);
 
             linted_io_write_string(STDOUT_FILENO, NULL, "\n");
 
@@ -202,11 +196,10 @@ int main(int argc, char **argv)
             return EXIT_SUCCESS;
         }
 
-        char const * pid_string = getenv("LINTED_PID");
+        char const *pid_string = getenv("LINTED_PID");
         if (NULL == pid_string) {
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: missing LINTED_PID\n",
-                                   program_name);
+                                   "%s: missing LINTED_PID\n", program_name);
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "Try `%s --help' for more information.\n",
                                    program_name);
@@ -244,12 +237,10 @@ int main(int argc, char **argv)
 
         if (request.reply.is_up) {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: gui is (probably) up\n",
-                                   program_name);
+                                   "%s: gui is (probably) up\n", program_name);
         } else {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: the gui is down\n",
-                                   program_name);
+                                   "%s: the gui is down\n", program_name);
         }
 
         return EXIT_SUCCESS;

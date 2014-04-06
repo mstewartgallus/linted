@@ -39,7 +39,6 @@ struct linted_manager_start_reply {
     bool is_up;
 };
 
-
 struct linted_manager_start_req {
     unsigned type;
     struct linted_manager_start_args args;
@@ -58,11 +57,11 @@ int linted_manager_start_req_args(pid_t pid,
 
 int linted_manager_start_req_reply(pid_t pid,
                                    struct linted_manager_req *request,
-                                   struct linted_manager_start_reply const *reply);
+                                   struct linted_manager_start_reply const
+                                   *reply);
 
 int linted_manager_finish_reply(pid_t pid, int errnum);
 
-int linted_manager_send_request(pid_t pid,
-                                struct linted_manager_req *request);
+int linted_manager_send_request(pid_t pid, struct linted_manager_req *request);
 
 #endif                          /* LINTED_MANAGER_H */
