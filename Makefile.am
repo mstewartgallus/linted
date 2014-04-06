@@ -16,6 +16,28 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
+AM_LDFLAGS=\
+  -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
+  $(linted_LDFLAGS_HARDEN)\
+  $(linted_LDFLAGS_LANGUAGE)'
+
+AM_CPPFLAGS=\
+  $(linted_CPPFLAGS_OPTIMIZE)\
+  $(linted_CPPFLAGS_HARDEN)\
+  $(linted_CPPFLAGS_LANGUAGE)\
+  -I .\
+  -I $(srcdir)/src\
+  -I $(builddir)/src\
+  -I $(builddir)/src/linted\
+  -I src
+
+AM_CFLAGS=\
+  $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_WARNINGS)
+
 bin_SCRIPTS=test
 
 bin_PROGRAMS=linted lintedctl
@@ -92,6 +114,7 @@ BUILT_SOURCES=\
   src/linted/binaries.h
 
 EXTRA_DIST=\
+  scripts/ccwrapper\
   test.in\
   \
   src/linted/binaries.h.in\
@@ -154,17 +177,11 @@ test: $(MAKEFILE) test.in
 dist-hook:
 	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
 
-.PHONY:\
-  check-frama-c-pdg check-frama-c-gui check-frama-c\
-  check-cppcheck\
-  check-clang-analyzer\
-  check-cbmc\
-  indent\
-  doxygen
-
+.PHONY: indent
 indent: $(SOURCES) $(headers)
 	$(INDENT) $(linted_INDENTFLAGS) $^
 
+.PHONY: doxygen
 doxygen:
 	sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
@@ -172,87 +189,7 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
-# TODO: Iterate over the targest and check for each of them
-
-check-frama-c-pdg: $(linted_SOURCES_verified)
-	$(MKDIR_P) pdg
-	$(FRAMA_C) $(linted_FRAMAFLAGS) -pdg -pdg-dot pdg/main $(FRAMAFLAGS) $^
-
-check-frama-c-gui: $(linted_SOURCES_verified)
-	$(FRAMA_C_GUI) $(linted_FRAMAFLAGS) $(FRAMAFLAGS) $^
-
-check-frama-c: $(linted_SOURCES_verified)
-	$(FRAMA_C) $(linted_FRAMAFLAGS) -val $(FRAMAFLAGS) $^
-
-check-cbmc: $(linted_SOURCES)
-	$(CBMC) $(linted_CBMCFLAGS) $(CBMCFLAGS) $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
-
-check-cppcheck:
-	$(CPPCHECK) $(linted_CPPCHECKFLAGS) $(CPPCHECKFLAGS) $(srcdir)/src
-
-check-clang-analyzer: $(linted_SOURCES)
-	$(CLANG) --analyze $(AM_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $^
-	- rm *.plist
-
-check: $(linted_CHECK_PHASES)
-
-clean-local:
-	- rm -rf scan-report
-
-
-AM_LDFLAGS=\
-  -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
-  $(linted_LDFLAGS_HARDEN)\
-  $(linted_LDFLAGS_LANGUAGE)'
-
-AM_CPPFLAGS=\
-  $(linted_CPPFLAGS_OPTIMIZE)\
-  $(linted_CPPFLAGS_HARDEN)\
-  $(linted_CPPFLAGS_LANGUAGE)\
-  -I .\
-  -I $(srcdir)/src\
-  -I $(builddir)/src\
-  -I $(builddir)/src/linted\
-  -I src
-
-AM_CFLAGS=\
-  $(linted_CFLAGS_LANGUAGE)\
-  $(linted_CFLAGS_OPTIMIZE)\
-  $(linted_CFLAGS_HARDEN)\
-  $(linted_CFLAGS_DEBUG)\
-  $(linted_CFLAGS_WARNINGS)
-
 linted_INDENTFLAGS=\
   --linux-style\
   --no-tabs\
   --indent-level4
-
-linted_FRAMAFLAGS=\
-  -quiet\
-  -journal-disable\
-  -warn-signed-downcast\
-  -warn-unsigned-downcast\
-  -warn-unsigned-overflow\
-  -warn-decimal-float all\
-  -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
-  -cpp-extra-args='-C'\
-  -cpp-extra-args='$(AM_CPPFLAGS)'\
-  -cpp-extra-args='$(CPPFLAGS)'\
-  -main linted_simulator_run
-
-linted_CBMCFLAGS=\
-  --no-unwinding-assertions\
-  --unwind 6\
-  --bounds-check\
-  --div-by-zero-check\
-  --nan-check\
-  --pointer-check\
-  --overflow-check
-
-linted_CHECK_PHASES=
-if HAS_CPPCHECK
-linted_CHECK_PHASES +=check-cppcheck
-endif
-if HAS_CLANG
-linted_CHECK_PHASES +=check-clang-analyzer
-endif

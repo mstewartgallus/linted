@@ -1,0 +1,44 @@
+#! /bin/sh
+
+CLANG="$1"
+shift
+
+CC="$1"
+shift
+
+# Check if linking
+if test -z "${CLANG}" &&\
+   echo -E $@ | grep -E -- '([[:blank:]]|^)-c([[:blank:]]|$)' > /dev/null; then
+    "${CLANG}" -Qunused-arguments -Wno-unknown-warning-option --analyze $@
+fi
+
+${CC} $@
+
+exit "$?"
+
+# TODO: Add the following checkers
+
+# cppcheck
+
+# frama-c\
+#   -quiet\
+#   -journal-disable\
+#   -warn-signed-downcast\
+#   -warn-unsigned-downcast\
+#   -warn-unsigned-overflow\
+#   -warn-decimal-float all\
+#   -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
+#   -cpp-extra-args='-C'\
+#   -cpp-extra-args='$@'\
+#   -main linted_simulator_run\
+#   $@
+
+# goto-cc could be useful
+# cbmc\
+#   --no-unwinding-assertions\
+#   --unwind 6\
+#   --bounds-check\
+#   --div-by-zero-check\
+#   --nan-check\
+#   --pointer-check\
+#   --overflow-check\
