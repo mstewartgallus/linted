@@ -45,7 +45,7 @@ AM_CPPFLAGS=\
   $(linted_CPPFLAGS_HARDEN)\
   $(linted_CPPFLAGS_LANGUAGE)\
   -I .\
-  -I $(srcdir)/src\
+  -I $(srcdir)/include\
   -I $(builddir)/src\
   -I $(builddir)/src/linted\
   -I src
@@ -83,14 +83,14 @@ linted_INDENTFLAGS=\
   --no-tabs\
   --indent-level4
 
-include src/binaries/linted/Makefile.am
-include src/binaries/gui/Makefile.am
-include src/binaries/simulator/Makefile.am
-include src/binaries/lintedctl/Makefile.am
+include src/linted/Makefile.am
+include src/gui/Makefile.am
+include src/simulator/Makefile.am
+include src/lintedctl/Makefile.am
 
 include src/common/Makefile.am
 
-include src/protocols/controller/Makefile.am
-include src/protocols/manager/Makefile.am
-include src/protocols/shutdowner/Makefile.am
-include src/protocols/updater/Makefile.am
+include src/controller/Makefile.am
+include src/manager/Makefile.am
+include src/shutdowner/Makefile.am
+include src/updater/Makefile.am

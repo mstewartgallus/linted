@@ -14,7 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=lintedctl
+noinst_LTLIBRARIES+=libmanager.la
 
-lintedctl_SOURCES=src/binaries/lintedctl/lintedctl.c
-lintedctl_LDADD=libcommon.la libmanager.la
+libmanager_la_SOURCES=\
+  src/manager/manager.c\
+  include/linted/manager.h
+libmanager_la_LIBADD=libcommon.la -lrt

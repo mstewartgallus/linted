@@ -14,9 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libupdater.la
+bin_PROGRAMS+=lintedctl
 
-libupdater_la_SOURCES=\
-  src/protocols/updater/updater.c\
-  src/linted/updater.h
-libupdater_la_LIBADD=libcommon.la -lrt
+lintedctl_SOURCES=src/lintedctl/lintedctl.c
+lintedctl_LDADD=libcommon.la libmanager.la

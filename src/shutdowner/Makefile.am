@@ -17,6 +17,6 @@
 noinst_LTLIBRARIES+=libshutdowner.la
 
 libshutdowner_la_SOURCES=\
-  src/protocols/shutdowner/shutdowner.c\
-  src/linted/shutdowner.h
+  src/shutdowner/shutdowner.c\
+  include/linted/shutdowner.h
 libshutdowner_la_LIBADD=libcommon.la -lrt

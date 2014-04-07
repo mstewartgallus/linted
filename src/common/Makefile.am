@@ -25,16 +25,16 @@ libcommon_la_SOURCES=\
   src/common/sandbox.c\
   src/common/util.c\
   \
-  src/linted/check.h\
-  src/linted/io.h\
-  src/linted/mq.h\
-  src/linted/sandbox.h\
-  src/linted/str.h\
-  src/linted/util.h
+  include/linted/check.h\
+  include/linted/io.h\
+  include/linted/mq.h\
+  include/linted/sandbox.h\
+  include/linted/str.h\
+  include/linted/util.h
 libcommon_la_LIBADD=-lrt
 
-src/linted/binaries.h: $(MAKEFILE) src/linted/binaries.h.in
+include/linted/binaries.h: $(MAKEFILE) include/linted/binaries.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/src/linted/binaries.h.in > $@
+	  $(srcdir)/include/linted/binaries.h.in > $@

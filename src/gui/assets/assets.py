@@ -75,6 +75,7 @@ def output():
         os.chdir(old_directory)
 
     return Template("""#include "linted/assets.h"
+
 #include "linted/check.h"
 #include "linted/util.h"
 

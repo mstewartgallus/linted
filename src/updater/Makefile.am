@@ -14,9 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libmanager.la
+noinst_LTLIBRARIES+=libupdater.la
 
-libmanager_la_SOURCES=\
-  src/protocols/manager/manager.c\
-  src/linted/manager.h
-libmanager_la_LIBADD=libcommon.la -lrt
+libupdater_la_SOURCES=\
+  src/updater/updater.c\
+  include/linted/updater.h
+libupdater_la_LIBADD=libcommon.la -lrt

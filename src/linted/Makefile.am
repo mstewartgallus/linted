@@ -14,9 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libcontroller.la
+bin_PROGRAMS+=linted
 
-libcontroller_la_SOURCES=\
-  src/protocols/controller/controller.c\
-  src/linted/controller.h
-libcontroller_la_LIBADD=libcommon.la -lrt
+linted_SOURCES=src/linted/linted.c
+linted_LDADD=\
+  libcommon.la\
+  libcontroller.la\
+  libmanager.la\
+  libshutdowner.la\
+  libupdater.la
