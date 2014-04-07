@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_BINARIES_H
-#define LINTED_BINARIES_H
+#ifndef LINTED_LINTED_ASSETS_H
+#define LINTED_LINTED_ASSETS_H
 
-#define PKGLIBEXECDIR "@pkglibexecdir@"
-#define EXEEXT "@EXEEXT@"
+#include "gl_core.h"
 
-#endif /* LINTED_BINARIES_H */
+typedef GLfloat linted_assets_point[3];
+
+extern linted_assets_point const *const linted_assets_triangle_vertices;
+extern linted_assets_point const *const linted_assets_triangle_normals;
+
+extern GLubyte const *const linted_assets_triangle_indices;
+extern size_t const linted_assets_triangle_indices_size;
+
+extern GLchar const *const linted_assets_fragment_shader;
+extern GLchar const *const linted_assets_vertex_shader;
+
+#endif                          /* LINTED_ASSETS_H */

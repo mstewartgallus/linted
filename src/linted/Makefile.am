@@ -17,9 +17,18 @@
 bin_PROGRAMS+=linted
 
 linted_SOURCES=src/linted/linted.c
+linted_CPPFLAGS=-I $(builddir)/src/linted/ $(AM_CPPFLAGS)
 linted_LDADD=\
   libcommon.la\
   libcontroller.la\
   libmanager.la\
   libshutdowner.la\
   libupdater.la
+
+BUILT_SOURCES+=src/linted/binaries.h
+
+src/linted/binaries.h: $(MAKEFILE) src/linted/binaries.h.in
+	sed \
+	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
+	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
+	  $(srcdir)/src/linted/binaries.h.in > $@

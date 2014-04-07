@@ -24,6 +24,8 @@ gui_CPPFLAGS=$(SDL_CFLAGS)
 gui_CPPFLAGS+=-U_GNU_SOURCE
 gui_CPPFLAGS+=$(AM_CPPFLAGS)
 
+gui_CPPFLAGS+=-I $(builddir)/src/gui/ -I $(srcdir)/src/gui/
+
 nodist_linted_SOURCES+=src/gui/gl_core.c
 
 BUILT_SOURCES+=\
@@ -60,12 +62,10 @@ src/gui/gl_core.c:
 	cd $(builddir)/src/gui/ && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-	rm $(builddir)/include/gui/gl_core.h
 
 MOSTLYCLEANFILES+=include/gui/gl_core.h
-include/gui/gl_core.h:
-	$(MKDIR_P) $(builddir)/include/gui/
-	cd $(builddir)/include/gui && \
+src/gui/gl_core.h:
+	$(MKDIR_P) $(builddir)/src/gui/
+	cd $(builddir)/src/gui && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-	rm $(builddir)/src/gui/gl_core.c

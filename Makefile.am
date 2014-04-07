@@ -24,16 +24,7 @@ nodist_linted_SOURCES=
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 
-EXTRA_DIST+=scripts/ccwrapper
-
-EXTRA_DIST+=\
-  scripts/ccwrapper\
-  \
-  src/linted/binaries.h.in\
-  \
-  libs/glloadgen-reloaded\
-  \
-  $(headers)
+EXTRA_DIST+=scripts/ccwrapper libs/glloadgen-reloaded
 
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
@@ -44,11 +35,7 @@ AM_CPPFLAGS=\
   $(linted_CPPFLAGS_OPTIMIZE)\
   $(linted_CPPFLAGS_HARDEN)\
   $(linted_CPPFLAGS_LANGUAGE)\
-  -I .\
-  -I $(srcdir)/include\
-  -I $(builddir)/src\
-  -I $(builddir)/src/linted\
-  -I src
+  -I $(srcdir)/include
 
 AM_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
@@ -67,7 +54,7 @@ dist-hook:
 	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
 
 .PHONY: indent
-indent: $(SOURCES) $(headers)
+indent: $(SOURCES)
 	$(INDENT) $(linted_INDENTFLAGS) $^
 
 .PHONY: doxygen

@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "linted/assets.h"
-#include "linted/gl_core.h"
+#include "assets.h"
+#include "gl_core.h"
 
 #include "linted/controller.h"
 #include "linted/io.h"

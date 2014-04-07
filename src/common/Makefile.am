@@ -17,8 +17,6 @@
 
 noinst_LTLIBRARIES+=libcommon.la
 
-BUILT_SOURCES+=src/linted/binaries.h
-
 libcommon_la_SOURCES=\
   src/common/io.c\
   src/common/mq.c\
@@ -32,9 +30,3 @@ libcommon_la_SOURCES=\
   include/linted/str.h\
   include/linted/util.h
 libcommon_la_LIBADD=-lrt
-
-include/linted/binaries.h: $(MAKEFILE) include/linted/binaries.h.in
-	sed \
-	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
-	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/include/linted/binaries.h.in > $@

@@ -15,7 +15,8 @@
  */
 #include "config.h"
 
-#include "linted/binaries.h"
+#include "binaries.h"
+
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/manager.h"
