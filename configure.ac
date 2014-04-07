@@ -22,6 +22,7 @@ dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
 ])
+AM_PROG_AR
 LT_INIT
 AC_PROG_CC
 AC_PROG_CC_C99

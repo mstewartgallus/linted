@@ -16,6 +16,25 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
+bin_PROGRAMS=
+pkglibexec_PROGRAMS=
+noinst_LTLIBRARIES=
+BUILT_SOURCES=
+nodist_linted_SOURCES=
+EXTRA_DIST=
+MOSTLYCLEANFILES=
+
+EXTRA_DIST+=scripts/ccwrapper
+
+EXTRA_DIST+=\
+  scripts/ccwrapper\
+  \
+  src/linted/binaries.h.in\
+  \
+  libs/glloadgen-reloaded\
+  \
+  $(headers)
+
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
@@ -39,141 +58,10 @@ AM_CFLAGS=\
   $(linted_CFLAGS_WARNINGS)
 
 bin_SCRIPTS=test
-
-bin_PROGRAMS=linted lintedctl
-
-pkglibexec_PROGRAMS=\
-  gui\
-  simulator
-
-noinst_LTLIBRARIES=\
-  libcommon.la\
-  libcontroller.la\
-  libmanager.la\
-  libupdater.la\
-  libshutdowner.la
-
-linted_SOURCES=src/binaries/linted.c
-linted_LDADD=\
-  libcommon.la\
-  libcontroller.la\
-  libmanager.la\
-  libshutdowner.la\
-  libupdater.la
-
-lintedctl_SOURCES=src/binaries/lintedctl.c
-lintedctl_LDADD=libcommon.la libmanager.la
-
-gui_SOURCES=src/binaries/gui/gui.c src/binaries/gui/assets.c src/binaries/gui/gl_core.c
-gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)
-
-gui_CPPFLAGS=$(SDL_CFLAGS)
-# Cancel out SDL's idiot defining of GNU source
-gui_CPPFLAGS+=-U_GNU_SOURCE
-gui_CPPFLAGS+=$(AM_CPPFLAGS)
-
-simulator_SOURCES=src/binaries/simulator.c
-simulator_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
-
-libcommon_la_SOURCES=\
-  src/common/io.c\
-  src/common/mq.c\
-  src/common/sandbox.c\
-  src/common/util.c
-libcommon_la_LIBADD=-lrt
-
-libcontroller_la_SOURCES=src/protocols/controller.c
-libcontroller_la_LIBADD=libcommon.la -lrt
-
-libmanager_la_SOURCES=src/protocols/manager.c
-libmanager_la_LIBADD=libcommon.la -lrt
-
-libshutdowner_la_SOURCES=src/protocols/shutdowner.c
-libshutdowner_la_LIBADD=libcommon.la -lrt
-
-libupdater_la_SOURCES=src/protocols/updater.c
-libupdater_la_LIBADD=libcommon.la -lrt
-
-nodist_linted_SOURCES=\
-  src/binaries/gui/gl_core.c
-
-headers=\
-  src/linted/assets.h\
-  src/linted/check.h\
-  src/linted/controller.h\
-  src/linted/io.h\
-  src/linted/manager.h\
-  src/linted/mq.h\
-  src/linted/sandbox.h\
-  src/linted/shutdowner.h\
-  src/linted/str.h\
-  src/linted/util.h\
-  src/linted/updater.h
-
-BUILT_SOURCES=\
-  src/binaries/gui/gl_core.c src/linted/gl_core.h\
-  src/linted/binaries.h
-
-EXTRA_DIST=\
-  scripts/ccwrapper\
-  test.in\
-  \
-  src/linted/binaries.h.in\
-  \
-  libs/glloadgen-reloaded\
-  \
-  $(headers)\
-  \
-  src/binaries/gui/assets/assets.py\
-  src/binaries/gui/assets/scene.blend\
-  src/binaries/gui/assets/shaders/fragment.glsl\
-  src/binaries/gui/assets/shaders/varying.glsl\
-  src/binaries/gui/assets/shaders/vertex.glsl\
-  \
-  src/binaries/gui/assets_generator/linted_assets_generator\
-  src/binaries/gui/assets_generator/linted_assets_generator.py
-
-MOSTLYCLEANFILES=src/binaries/gui/assets.c
-src/binaries/gui/assets.c:\
-  src/binaries/gui/assets/assets.py\
-  src/binaries/gui/assets/scene.blend\
-  src/binaries/gui/assets/shaders/fragment.glsl\
-  src/binaries/gui/assets/shaders/varying.glsl\
-  src/binaries/gui/assets/shaders/vertex.glsl\
-  \
-  src/binaries/gui/assets_generator/linted_assets_generator\
-  src/binaries/gui/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/src/binaries/gui/assets_generator/linted_assets_generator\
-	  $(srcdir)/src/binaries/gui/assets/assets.py\
-	  --output=$@
-
-MOSTLYCLEANFILES+=\
-  src/binaries/gui/gl_core.c src/linted/gl_core.h\
-  src/linted/binaries.h
-
-src/binaries/gui/gl_core.c:
-	cd $(builddir)/src/binaries/gui/ && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
-	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-	rm $(builddir)/src/binaries/gui/gl_core.h
-
-src/linted/gl_core.h:
-	$(MKDIR_P) $(builddir)/src/linted
-	cd $(builddir)/src/linted && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
-	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-	rm $(builddir)/src/linted/gl_core.c
-
-src/linted/binaries.h: $(MAKEFILE) src/linted/binaries.h.in
-	sed \
-	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
-	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/src/linted/binaries.h.in > $@
-
+EXTRA_DIST+=test.in
 test: $(MAKEFILE) test.in
 	cat $(srcdir)/test.in > $@
 	chmod u+x $@
-
 
 dist-hook:
 	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
@@ -194,3 +82,15 @@ linted_INDENTFLAGS=\
   --linux-style\
   --no-tabs\
   --indent-level4
+
+include src/binaries/linted/Makefile.am
+include src/binaries/gui/Makefile.am
+include src/binaries/simulator/Makefile.am
+include src/binaries/lintedctl/Makefile.am
+
+include src/common/Makefile.am
+
+include src/protocols/controller/Makefile.am
+include src/protocols/manager/Makefile.am
+include src/protocols/shutdowner/Makefile.am
+include src/protocols/updater/Makefile.am
