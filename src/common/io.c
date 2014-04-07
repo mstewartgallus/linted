@@ -94,6 +94,11 @@ int linted_io_write_all(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
+int linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str)
+{
+    return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
+}
+
 int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
 {
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));

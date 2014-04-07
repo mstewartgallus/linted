@@ -54,9 +54,9 @@ int main(int argc, char **argv)
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
-        linted_io_write_string(STDERR_FILENO, NULL, "\
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
 Bad administrator!\n\
-It is insecure to run a game as root!\n");
+It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 

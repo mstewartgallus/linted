@@ -16,6 +16,8 @@
 #ifndef LINTED_IO_H
 #define LINTED_IO_H
 
+#include "linted/str.h"
+
 #include <sys/select.h>
 #include <sys/types.h>
 
@@ -119,6 +121,8 @@ int linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
  */
 int linted_io_write_all(int fd, size_t * bytes_wrote,
                         void const *buf, size_t count);
+
+int linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str);
 
 int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 

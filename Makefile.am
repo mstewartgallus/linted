@@ -106,6 +106,7 @@ headers=\
   src/linted/mq.h\
   src/linted/sandbox.h\
   src/linted/shutdowner.h\
+  src/linted/str.h\
   src/linted/util.h\
   src/linted/updater.h
 

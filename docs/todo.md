@@ -14,6 +14,8 @@ Linted -- TODO
       variables: one copy in process space and the other copy in
       kernel space.
 
+* Move over to nonnull terminated strings which are better
+
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
 * Use more secure method for communicating with the init
