@@ -70,12 +70,17 @@ linted_INDENTFLAGS=\
   --no-tabs\
   --indent-level4
 
-include src/linted/Makefile.am
-include src/gui/Makefile.am
-include src/simulator/Makefile.am
-include src/lintedctl/Makefile.am
+EXTRA_DIST+=include/linted/check.h include/linted/str.h
 
-include src/common/Makefile.am
+include src/gui/Makefile.am
+include src/linted/Makefile.am
+include src/lintedctl/Makefile.am
+include src/simulator/Makefile.am
+
+include src/io/Makefile.am
+include src/mq/Makefile.am
+include src/sandbox/Makefile.am
+include src/util/Makefile.am
 
 include src/controller/Makefile.am
 include src/manager/Makefile.am

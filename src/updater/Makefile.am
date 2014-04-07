@@ -19,4 +19,4 @@ noinst_LTLIBRARIES+=libupdater.la
 libupdater_la_SOURCES=\
   src/updater/updater.c\
   include/linted/updater.h
-libupdater_la_LIBADD=libcommon.la -lrt
+libupdater_la_LIBADD=libmq.la -lrt

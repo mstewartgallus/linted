@@ -17,4 +17,8 @@
 bin_PROGRAMS+=lintedctl
 
 lintedctl_SOURCES=src/lintedctl/lintedctl.c
-lintedctl_LDADD=libcommon.la libmanager.la
+lintedctl_LDADD=\
+  libio.la\
+  libutil.la\
+  \
+  libmanager.la

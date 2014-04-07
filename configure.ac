@@ -15,7 +15,7 @@ AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])
 AC_CONFIG_HEADER([config.h])
 dnl
 AC_PREREQ([2.62])
-AC_CONFIG_SRCDIR([src/binaries/linted.c])
+AC_CONFIG_SRCDIR([src/linted/linted.c])
 dnl
 AC_ARG_VAR([CLANG], [The clang compiler used for static analysis])
 dnl

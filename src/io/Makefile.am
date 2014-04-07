@@ -15,18 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=libcommon.la
-
-libcommon_la_SOURCES=\
-  src/common/io.c\
-  src/common/mq.c\
-  src/common/sandbox.c\
-  src/common/util.c\
-  \
-  include/linted/check.h\
-  include/linted/io.h\
-  include/linted/mq.h\
-  include/linted/sandbox.h\
-  include/linted/str.h\
-  include/linted/util.h
-libcommon_la_LIBADD=-lrt
+noinst_LTLIBRARIES+=libio.la
+libio_la_SOURCES=src/io/io.c include/linted/io.h

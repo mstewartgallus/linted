@@ -17,7 +17,10 @@
 pkglibexec_PROGRAMS+=gui
 
 gui_SOURCES=src/gui/gui.c src/gui/assets.c src/gui/gl_core.c
-gui_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la $(SDL_LIBS) $(GL_LIBS)
+gui_LDADD=\
+  libio.la libutil.la\
+  libcontroller.la libshutdowner.la libupdater.la\
+  $(SDL_LIBS) $(GL_LIBS)
 
 gui_CPPFLAGS=$(SDL_CFLAGS)
 # Cancel out SDL's idiot defining of GNU source

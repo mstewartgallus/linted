@@ -17,4 +17,6 @@
 pkglibexec_PROGRAMS+=simulator
 
 simulator_SOURCES=src/simulator/simulator.c
-simulator_LDADD=libcommon.la libcontroller.la libshutdowner.la libupdater.la
+simulator_LDADD=\
+  libio.la libutil.la\
+  libcontroller.la libshutdowner.la libupdater.la
