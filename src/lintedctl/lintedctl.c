@@ -206,16 +206,21 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
-        pid_t pid = linted_io_strtofd(pid_string);
-        if (-1 == pid) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: LINTED_PID='%s': %s\n",
-                                   program_name, pid_string,
-                                   linted_error_string_alloc(errno));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
-            return EXIT_FAILURE;
+        pid_t pid;
+        {
+            int pid_out;
+            errno_t errnum = linted_io_strtofd(pid_string, &pid_out);
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: LINTED_PID='%s': %s\n",
+                                       program_name, pid_string,
+                                       linted_error_string_alloc(errnum));
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "Try `%s --help' for more information.\n",
+                                       program_name);
+                return EXIT_FAILURE;
+            }
+            pid = pid_out;
         }
 
         struct linted_manager_start_req request;

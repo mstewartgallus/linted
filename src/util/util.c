@@ -77,8 +77,9 @@ void linted_error_string_free(char const *error_string)
 
 errno_t linted_util_sanitize_environment(fd_set const *essential_fds)
 {
-    if (-1 == linted_io_close_fds_except(essential_fds)) {
-        return errno;
+    errno_t errnum = linted_io_close_fds_except(essential_fds);
+    if (errnum != 0) {
+        return errnum;
     }
 
     if (-1 == chdir("/")) {

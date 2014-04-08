@@ -201,40 +201,55 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
 
-    linted_controller const controller = linted_io_strtofd(controller_name);
-    if (-1 == controller) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                               program_name,
-                               CONTROLLER_OPTION,
-                               linted_error_string_alloc(errno));
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
-        return EXIT_FAILURE;
+    linted_controller controller;
+    {
+        int fd;
+        int errnum = linted_io_strtofd(controller_name, &fd);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+                                   program_name,
+                                   CONTROLLER_OPTION,
+                                   linted_error_string_alloc(errnum));
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s %s' for more information.\n",
+                                   program_name, HELP_OPTION);
+            return EXIT_FAILURE;
+        }
+        controller = fd;
     }
 
-    linted_shutdowner const shutdowner = linted_io_strtofd(shutdowner_name);
-    if (-1 == shutdowner) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                               program_name,
-                               SHUTDOWNER_OPTION,
-                               linted_error_string_alloc(errno));
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
-        return EXIT_FAILURE;
+    linted_shutdowner shutdowner;
+    {
+        int fd;
+        errno_t errnum = linted_io_strtofd(shutdowner_name, &fd);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+                                   program_name,
+                                   SHUTDOWNER_OPTION,
+                                   linted_error_string_alloc(errnum));
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s %s' for more information.\n",
+                                   program_name, HELP_OPTION);
+            return EXIT_FAILURE;
+        }
+        shutdowner = fd;
     }
 
-    linted_updater const updater = linted_io_strtofd(updater_name);
-    if (-1 == updater) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                               program_name,
-                               UPDATER_OPTION,
-                               linted_error_string_alloc(errno));
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
-        return EXIT_FAILURE;
+    linted_updater updater;
+    {
+        int fd;
+        errno_t errnum = linted_io_strtofd(updater_name, &fd);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+                                   program_name,
+                                   UPDATER_OPTION,
+                                   linted_error_string_alloc(errnum));
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s %s' for more information.\n",
+                                   program_name, HELP_OPTION);
+            return EXIT_FAILURE;
+        }
+        updater = fd;
     }
 
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);

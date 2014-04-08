@@ -117,14 +117,13 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
     return exit_status;
 }
 
-int linted_io_strtofd(char const *str)
+errno_t linted_io_strtofd(char const *str, int * fd)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
 
     if ('0' == str[0u] && length != 1u) {
-        errno = EINVAL;
-        return -1;
+        return EINVAL;
     }
 
     unsigned total = 0u;
@@ -134,33 +133,31 @@ int linted_io_strtofd(char const *str)
         if ('0' <= digit && digit <= '9') {
             unsigned long sum = total + ((unsigned)(digit - '0')) * position;
             if (sum > INT_MAX) {
-                errno = ERANGE;
-                return -1;
+                return ERANGE;
             }
 
             total = sum;
         } else {
-            errno = EINVAL;
-            return -1;
+            return EINVAL;
         }
 
         unsigned long next_position = 10u * position;
         if (next_position > INT_MAX) {
-            errno = ERANGE;
-            return -1;
+            return ERANGE;
         }
         position = next_position;
     }
 
-    return total;
+    *fd = total;
+    return 0;
 }
 
-int linted_io_close_fds_except(fd_set const *fds)
+errno_t linted_io_close_fds_except(fd_set const *fds)
 {
-    int exit_status = -1;
+    errno_t error_status = 0;
     DIR *const fds_dir = opendir("/proc/self/fd");
     if (NULL == fds_dir) {
-        return -1;
+        return errno;
     }
 
     {
@@ -174,8 +171,12 @@ int linted_io_close_fds_except(fd_set const *fds)
              */
             errno = 0;
             struct dirent *const result = readdir(fds_dir);
-            if (errno != 0) {
-                goto free_fds_to_close;
+            {
+                int errnum = errno;
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto free_fds_to_close;
+                }
             }
 
             if (NULL == result) {
@@ -210,6 +211,7 @@ int linted_io_close_fds_except(fd_set const *fds)
             int *new_fds = realloc(fds_to_close,
                                    fds_to_close_count * sizeof fds_to_close[0]);
             if (NULL == new_fds) {
+                error_status = errno;
                 goto free_fds_to_close;
             }
             fds_to_close = new_fds;
@@ -229,19 +231,21 @@ int linted_io_close_fds_except(fd_set const *fds)
              */
         }
 
-        exit_status = 0;
-
  free_fds_to_close:
         free(fds_to_close);
     }
 
     if (-1 == closedir(fds_dir)) {
-        assert(errno != EBADF);
+        int errnum = errno;
 
-        exit_status = -1;
+        assert(errnum != EBADF);
+
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
-    return exit_status;
+    return error_status;
 }
 
 errno_t linted_io_close(int fd)
