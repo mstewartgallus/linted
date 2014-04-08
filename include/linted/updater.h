@@ -16,6 +16,7 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
+#include <errno.h>
 #include <mqueue.h>
 #include <stdint.h>
 
@@ -37,6 +38,6 @@ int linted_updater_send_update(linted_updater updater,
 int linted_updater_receive_update(linted_updater updater,
                                   struct linted_updater_update *update);
 
-int linted_updater_close(linted_updater updater);
+errno_t linted_updater_close(linted_updater updater);
 
 #endif                          /* LINTED_UPDATER_H */

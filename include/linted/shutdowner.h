@@ -16,6 +16,7 @@
 #ifndef LINTED_SHUTDOWNER_H
 #define LINTED_SHUTDOWNER_H
 
+#include <errno.h>
 #include <mqueue.h>
 
 typedef mqd_t linted_shutdowner;
@@ -23,13 +24,13 @@ typedef mqd_t linted_shutdowner;
 errno_t linted_shutdowner_pair(linted_shutdowner queues[2],
                                int rflags, int wflags);
 
-int linted_shutdowner_send_shutdown(linted_shutdowner queue);
+errno_t linted_shutdowner_close(linted_shutdowner move);
+
+errno_t linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
 int linted_shutdowner_notify(linted_shutdowner queue,
                              struct sigevent const *sevp);
 
 int linted_shutdowner_receive(linted_shutdowner queue);
-
-int linted_shutdowner_close(linted_shutdowner move);
 
 #endif                          /* LINTED_SHUTDOWNER_H */

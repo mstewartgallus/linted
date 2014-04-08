@@ -18,6 +18,7 @@
 
 #include "linted/str.h"
 
+#include <errno.h>
 #include <sys/select.h>
 #include <sys/types.h>
 
@@ -49,8 +50,7 @@
  * @param count The amount to read. No more than these many bytes is
  *              read.
  *
- * @returns Zero on success. -1 on error, and errno is set
- *          appropriately.
+ * @returns Zero on success or an error code on error.
  *
  * @error EAGAIN The file descriptor has been marked nonblocking and
  *               one of the reads would block.
@@ -71,7 +71,7 @@
  *
  * @error EISDIR fd is a directory.
  */
-int linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
+errno_t linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
 
 /**
  * The linted_io_write_all function repeatedly writes to fd until of

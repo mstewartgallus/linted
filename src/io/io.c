@@ -31,38 +31,38 @@
 #include <string.h>
 #include <unistd.h>
 
-int linted_io_read_all(int fd, size_t * bytes_read_out, void *buf, size_t count)
+errno_t linted_io_read_all(int fd, size_t * bytes_read_out, void *buf,
+                           size_t count)
 {
-    int exit_status = -1;
+    int error_status = 0;
     size_t total_bytes_read = 0;
 
     do {
         ssize_t bytes_read = read(fd, (char *)buf + total_bytes_read,
                                   count - total_bytes_read);
         if (-1 == bytes_read) {
-            if (EINTR == errno) {
+            int read_error = errno;
+            if (EINTR == read_error) {
                 continue;
             }
 
+            error_status = read_error;
             goto output_bytes_read;
         }
 
         if (0 == bytes_read) {
-            /* File empty or pipe hangup */
-            exit_status = 0;
+            /* File empty or pipe hungup */
             goto output_bytes_read;
         }
 
         total_bytes_read += bytes_read;
     } while (total_bytes_read != count);
 
-    exit_status = 0;
-
  output_bytes_read:
     if (bytes_read_out != NULL) {
         *bytes_read_out = total_bytes_read;
     }
-    return exit_status;
+    return error_status;
 }
 
 int linted_io_write_all(int fd, size_t * bytes_wrote_out,

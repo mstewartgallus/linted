@@ -52,9 +52,9 @@ int linted_controller_send(linted_controller controller,
     return mq_send(controller, raw_message, sizeof raw_message, 0);
 }
 
-int linted_controller_close(linted_controller const controller)
+errno_t linted_controller_close(linted_controller controller)
 {
-    return mq_close(controller);
+    return -1 == mq_close(controller) ? errno : 0;
 }
 
 int linted_controller_receive(linted_controller queue,

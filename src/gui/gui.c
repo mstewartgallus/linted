@@ -541,14 +541,15 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
  shutdown:
     {
         int errnum = errno;
-        int shutdown_status;
+        errno_t shutdown_status;
         do {
             shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
-        } while (-1 == shutdown_status && EINTR == errno);
+        } while (EINTR == shutdown_status);
         if (-1 == exit_status) {
             errno = errnum;
         }
-        if (-1 == shutdown_status) {
+        if (shutdown_status != 0) {
+            errno = shutdown_status;
             exit_status = -1;
         }
     }

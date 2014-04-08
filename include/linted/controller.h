@@ -16,6 +16,7 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
+#include <errno.h>
 #include <mqueue.h>
 #include <stdbool.h>
 
@@ -33,7 +34,7 @@ struct linted_controller_message {
 
 errno_t linted_controller_pair(linted_controller controller[2],
                                int readflags, int writeflags);
-int linted_controller_close(linted_controller controller);
+errno_t linted_controller_close(linted_controller controller);
 
 int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message);

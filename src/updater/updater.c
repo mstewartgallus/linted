@@ -124,7 +124,7 @@ int linted_updater_receive_update(linted_updater updater,
     return receive_status;
 }
 
-int linted_updater_close(linted_updater const updater)
+errno_t linted_updater_close(linted_updater const updater)
 {
-    return mq_close(updater);
+    return -1 == mq_close(updater) ? errno : 0;
 }

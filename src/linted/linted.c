@@ -606,32 +606,48 @@ static int run_game(char const *simulator_path, int simulator_binary,
  restore_sigmask:
     pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
 
-    if (-1 == linted_shutdowner_close(simulator_shutdowner_read)
-        && 0 == error_status) {
-        error_status = errno;
+    {
+        int errnum = linted_shutdowner_close(simulator_shutdowner_read);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
-    if (-1 == linted_shutdowner_close(simulator_shutdowner_write)
-        && 0 == error_status) {
-        error_status = errno;
+    {
+        int errnum = linted_shutdowner_close(simulator_shutdowner_write);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
- cleanup_controller_pair:
-    if (-1 == linted_controller_close(controller_read) && 0 == error_status) {
-        error_status = errno;
+cleanup_controller_pair:
+    {
+        int errnum = linted_controller_close(controller_read);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
-    if (-1 == linted_controller_close(controller_write) && 0 == error_status) {
-        error_status = errno;
+    {
+        int errnum = linted_controller_close(controller_write);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
  cleanup_updater_pair:
-    if (-1 == linted_updater_close(updater_read) && 0 == error_status) {
-        error_status = errno;
+    {
+        int errnum = linted_updater_close(updater_read);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
-    if (-1 == linted_updater_close(updater_write) && 0 == error_status) {
-        error_status = errno;
+    {
+        int errnum = linted_updater_close(updater_write);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
     }
 
     errno = error_status;
