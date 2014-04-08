@@ -116,17 +116,17 @@ struct gl_state {
     GLuint program;
 };
 
-static int on_sdl_event(SDL_Event const *sdl_event,
-                        struct window_state *window_state,
-                        struct controller_state *controller_state,
-                        enum transition *transition);
-static int on_updater_readable(linted_updater updater,
+static errno_t on_sdl_event(SDL_Event const *sdl_event,
+                            struct window_state *window_state,
+                            struct controller_state *controller_state,
+                            enum transition *transition);
+static errno_t on_updater_readable(linted_updater updater,
                                struct gui_state *gui_state);
-static int on_controller_writeable(linted_controller controller,
-                                   struct controller_state *controller_state);
+static errno_t on_controller_writeable(linted_controller controller,
+                                      struct controller_state *controller_state);
 
-static int init_graphics(struct gl_state *gl_state,
-                         struct window_state const *window_state);
+static errno_t init_graphics(struct gl_state *gl_state,
+                             struct window_state const *window_state);
 static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state,
                             struct window_state const *window_state);
@@ -347,7 +347,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     free(display);
 
-    int exit_status = -1;
+    errno_t error_status = 0;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {
         .width = 640,
@@ -362,9 +362,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
                        | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
-        int errnum = errno;
+        error_status = errno;
         syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
-        errno = errnum;
         goto shutdown;
     }
 
@@ -381,10 +380,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            int errnum = errno;
+            error_status = errno;
             syslog(LOG_ERR, "could not set a double buffer attribute: %s",
                    SDL_GetError());
-            errno = errnum;
             goto cleanup_SDL;
         }
     }
@@ -392,9 +390,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     /* Initialize SDL */
     if (NULL == SDL_SetVideoMode(window_state.width, window_state.height,
                                  0, sdl_flags)) {
-        int errnum = errno;
+        error_status = errno;
         syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
-        errno = errnum;
         goto cleanup_SDL;
     }
 
@@ -413,16 +410,19 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                                         window_state.height,
                                                         0, sdl_flags);
     if (NULL == video_surface) {
-        int errnum = errno;
+        error_status = errno;
         syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
-        errno = errnum;
         goto cleanup_SDL;
     }
 
     struct gl_state gl_state;
 
-    if (-1 == init_graphics(&gl_state, &window_state)) {
-        goto cleanup_SDL;
+    {
+        errno_t errnum = init_graphics(&gl_state, &window_state);
+        if (errnum != 0) {
+            error_status = errnum;
+            goto cleanup_SDL;
+        }
     }
 
     bool should_resize = false;
@@ -432,8 +432,10 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         bool const had_sdl_event = SDL_PollEvent(&sdl_event);
         if (had_sdl_event) {
             enum transition transition;
-            if (-1 == on_sdl_event(&sdl_event, &window_state, &controller_state,
-                                   &transition)) {
+            errno_t errnum = on_sdl_event(&sdl_event, &window_state,
+                                          &controller_state, &transition);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto cleanup_gl;
             }
 
@@ -470,7 +472,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         fd_set watched_read_fds;
         fd_set watched_write_fds;
-        int select_status;
+        errno_t select_status;
 
         do {
             FD_ZERO(&watched_read_fds);
@@ -486,25 +488,35 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
 
             struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-            select_status = select(greatest + 1, &watched_read_fds,
-                                   &watched_write_fds, NULL, &timeval);
-        } while (-1 == select_status && EINTR == errno);
-        if (-1 == select_status) {
+            if (-1 == select(greatest + 1, &watched_read_fds,
+                             &watched_write_fds, NULL, &timeval)) {
+                select_status = errno;
+            } else {
+                select_status = 0;
+            }
+        } while (EINTR == select_status);
+        if (select_status != 0) {
+            error_status = select_status;
             goto cleanup_gl;
         }
 
         bool const had_selected_event = select_status > 0;
 
         if (FD_ISSET(updater, &watched_read_fds)) {
-            if (-1 == on_updater_readable(updater, &gui_state)) {
+            errno_t errnum = on_updater_readable(updater, &gui_state);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto cleanup_gl;
             }
         }
 
         if (controller_state.update_pending) {
             if (FD_ISSET(controller, &watched_write_fds)) {
-                if (-1 == on_controller_writeable(controller,
-                                                  &controller_state)) {
+                errno_t errnum = on_controller_writeable(controller,
+                                                         &controller_state);
+                if (errnum != 0) {
+                    error_status = errnum;
+
                     destroy_gl(&gl_state);
                     goto cleanup_gl;
                 }
@@ -522,45 +534,31 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
  exit_main_loop:
-    exit_status = 0;
 
  cleanup_gl:
-    {
-        int errnum = errno;
-        destroy_gl(&gl_state);
-        errno = errnum;
-    }
+    destroy_gl(&gl_state);
 
  cleanup_SDL:
-    {
-        int errnum = errno;
-        SDL_Quit();
-        errno = errnum;
-    }
+    SDL_Quit();
 
  shutdown:
     {
-        int errnum = errno;
         errno_t shutdown_status;
         do {
             shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
         } while (EINTR == shutdown_status);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (shutdown_status != 0) {
-            errno = shutdown_status;
-            exit_status = -1;
+        if (0 == error_status) {
+            error_status = shutdown_status;
         }
     }
 
-    return -1 == exit_status ? errno : 0;
+    return error_status;
 }
 
-static int on_sdl_event(SDL_Event const *sdl_event,
-                        struct window_state *window_state,
-                        struct controller_state *controller_state,
-                        enum transition *transition)
+static errno_t on_sdl_event(SDL_Event const *sdl_event,
+                            struct window_state *window_state,
+                            struct controller_state *controller_state,
+                            enum transition *transition)
 {
     switch (sdl_event->type) {
     default:
@@ -623,8 +621,8 @@ static int on_sdl_event(SDL_Event const *sdl_event,
     return 0;
 }
 
-static int on_updater_readable(linted_updater updater,
-                               struct gui_state *gui_state)
+static errno_t on_updater_readable(linted_updater updater,
+                                   struct gui_state *gui_state)
 {
     struct linted_updater_update update;
 
@@ -638,8 +636,7 @@ static int on_updater_readable(linted_updater updater,
     }
 
     if (read_status != 0) {
-        errno = read_status;
-        return -1;
+        return read_status;
     }
 
     gui_state->x = ((float)update.x_position) / 255;
@@ -662,8 +659,7 @@ static int on_controller_writeable(linted_controller controller,
     }
 
     if (send_status != 0) {
-        errno = send_status;
-        return -1;
+        return send_status;
     }
 
     controller_state->update_pending = false;
@@ -671,12 +667,13 @@ static int on_controller_writeable(linted_controller controller,
     return 0;
 }
 
-static int init_graphics(struct gl_state *gl_state,
-                         struct window_state const *window_state)
+static errno_t init_graphics(struct gl_state *gl_state,
+                             struct window_state const *window_state)
 {
+    errno_t error_status = 0;
+
     if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
-        errno = ENOSYS;
-        return -1;
+        return ENOSYS;
     }
 
     glDisable(GL_DITHER);
@@ -711,12 +708,13 @@ static int init_graphics(struct gl_state *gl_state,
 
     GLuint program = glCreateProgram();
     if (0 == program) {
-        return -1;
+        return errno;
     }
 
     {
         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         if (0 == fragment_shader) {
+            error_status = errno;
             goto cleanup_program;
         }
         glAttachShader(program, fragment_shader);
@@ -729,6 +727,8 @@ static int init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
+            error_status = errno;
+
             GLint info_log_length;
             glGetShaderiv(fragment_shader,
                           GL_INFO_LOG_LENGTH, &info_log_length);
@@ -749,6 +749,7 @@ static int init_graphics(struct gl_state *gl_state,
     {
         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         if (0 == vertex_shader) {
+            error_status = errno;
             goto cleanup_program;
         }
         glAttachShader(program, vertex_shader);
@@ -760,6 +761,8 @@ static int init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
+            error_status = errno;
+
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
@@ -782,6 +785,8 @@ static int init_graphics(struct gl_state *gl_state,
     GLint is_valid;
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
+        error_status = errno;
+
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
@@ -801,11 +806,9 @@ static int init_graphics(struct gl_state *gl_state,
     return 0;
 
  cleanup_program:;
-    int errnum = errno;
     glDeleteProgram(program);
-    errno = errnum;
 
-    return -1;
+    return error_status;
 }
 
 static void destroy_gl(struct gl_state *gl_state)
