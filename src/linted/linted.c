@@ -555,8 +555,11 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
                 siginfo_t exit_info;
                 exit_info.si_pid = 0;
-                waitid(P_PID, live_processes[ii], &exit_info,
-                       WEXITED | WNOHANG);
+                if (-1 == waitid(P_PID, live_processes[ii], &exit_info,
+                                 WEXITED | WNOHANG)) {
+                    assert(errno != EINVAL);
+                    goto cleanup_processes;
+                }
 
                 if (0 == exit_info.si_pid) {
                     continue;
