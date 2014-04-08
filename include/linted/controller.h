@@ -39,9 +39,6 @@ errno_t linted_controller_close(linted_controller controller);
 int linted_controller_send(linted_controller controller,
                            struct linted_controller_message const *message);
 
-int linted_controller_notify(linted_controller controller,
-                             struct sigevent const *sevp);
-
 int linted_controller_receive(linted_controller controller,
                               struct linted_controller_message *message);
 

@@ -46,12 +46,6 @@ errno_t linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
     return -1 == mq_send(shutdowner, &dummy, 0, 0) ? errno : 0;
 }
 
-int linted_shutdowner_notify(linted_shutdowner shutdowner,
-                             struct sigevent const *sevp)
-{
-    return mq_notify(shutdowner, sevp);
-}
-
 int linted_shutdowner_receive(linted_shutdowner shutdowner)
 {
     char dummy;

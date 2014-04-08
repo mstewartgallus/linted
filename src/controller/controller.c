@@ -75,9 +75,3 @@ int linted_controller_receive(linted_controller queue,
 
     return receive_status;
 }
-
-int linted_controller_notify(linted_controller controller,
-                             struct sigevent const *sevp)
-{
-    return mq_notify(controller, sevp);
-}

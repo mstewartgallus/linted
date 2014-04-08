@@ -28,50 +28,6 @@
  * Utility functions for working with file descriptors.
  */
 
-/**
- * The linted_io_read_all function repeatedly reads from fd until buf
- * is full or an error occurs (except for EINTR).
- *
- * The read may be successful and read less than count if the end of
- * file is reached.
- *
- * For example, a bit could be read and then fd could be closed and an
- * error would be returned but some bytes would still have been read.
- *
- * @param fd The file to be read from.
- *
- * @param bytes_read The amount read. Is set to no larger than count
- *                   bytes and at least zero bytes. If NULL then is
- *                   not set.
- *
- * @param buf The buffer to be read into. Must be at least count bytes
- *            long.
- *
- * @param count The amount to read. No more than these many bytes is
- *              read.
- *
- * @returns Zero on success or an error code on error.
- *
- * @error EAGAIN The file descriptor has been marked nonblocking and
- *               one of the reads would block.
- *
- * @error EWOULDBLOCK Means the same as EAGAIN but may be a different
- *                    value.
- *
- * @error EBADF fd is not a valid file descriptor or is not open for
- *              reading.
- *
- * @error EFAULT buf is not accessible.
- *
- * @error EINVAL fd is not readable or the file was opened with
- *               O_DIRECT and alignment restrictions weren't
- *               satisfied.
- *
- * @error EIO I/O error.
- *
- * @error EISDIR fd is a directory.
- */
-errno_t linted_io_read_all(int fd, size_t * bytes_read, void *buf, size_t count);
 
 /**
  * The linted_io_write_all function repeatedly writes to fd until of
