@@ -58,18 +58,18 @@ struct simulator_state {
     bool update_pending:1;
 };
 
-static int on_timer_readable(int timer,
-                             struct controller_state const *controller_state,
-                             struct simulator_state *simulator_state);
+static errno_t on_timer_readable(int timer,
+                                 struct controller_state const *controller_state,
+                                 struct simulator_state *simulator_state);
 
-static int on_updater_writeable(linted_updater updater,
-                                struct simulator_state *simulator_state);
+static errno_t on_updater_writeable(linted_updater updater,
+                                    struct simulator_state *simulator_state);
 
-static int on_shutdowner_readable(linted_shutdowner shutdowner,
-                                  bool * should_exit);
+static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
+                                      bool * should_exit);
 
-static int on_controller_readable(linted_controller controller,
-                                  struct controller_state *controller_state);
+static errno_t on_controller_readable(linted_controller controller,
+                                      struct controller_state *controller_state);
 
 static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
@@ -260,7 +260,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         }
     }
 
-    int exit_status = -1;
+    errno_t error_status = 0;
 
     struct controller_state controller_state = {
         .x_left = 0,
@@ -282,6 +282,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     int timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
     if (-1 == timer) {
+        error_status = errno;
         goto exit;
     }
 
@@ -298,6 +299,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         itimer_spec.it_interval.tv_nsec = second / 60;
 
         if (-1 == timerfd_settime(timer, 0, &itimer_spec, NULL)) {
+            error_status = errno;
             goto close_timer;
         }
     }
@@ -338,16 +340,23 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                 }
             }
 
-            select_status = select(greatest + 1, &watched_read_fds,
-                                   &watched_write_fds, NULL, NULL);
-        } while (-1 == select_status && EINTR == errno);
-        if (-1 == select_status) {
+            if (-1 == select(greatest + 1, &watched_read_fds,
+                             &watched_write_fds, NULL, NULL)) {
+                select_status = errno;
+            } else {
+                select_status = 0;
+            }
+        } while (EINTR == select_status);
+        if (select_status != 0) {
+            error_status = select_status;
             goto close_timer;
         }
 
         if (FD_ISSET(shutdowner, &watched_read_fds)) {
             bool should_exit;
-            if (-1 == on_shutdowner_readable(shutdowner, &should_exit)) {
+            errno_t errnum = on_shutdowner_readable(shutdowner, &should_exit);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto close_timer;
             }
             if (should_exit) {
@@ -356,21 +365,28 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         }
 
         if (FD_ISSET(timer, &watched_read_fds)) {
-            if (-1 == on_timer_readable(timer, &controller_state,
-                                        &simulator_state)) {
+            errno_t errnum = on_timer_readable(timer, &controller_state,
+                                               &simulator_state);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto close_timer;
             }
         }
 
         if (FD_ISSET(controller, &watched_read_fds)) {
-            if (-1 == on_controller_readable(controller, &controller_state)) {
+            errno_t errnum = on_controller_readable(controller,
+                                                    &controller_state);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto close_timer;
             }
         }
 
         if (simulator_state.update_pending) {
             if (FD_ISSET(updater, &watched_write_fds)) {
-                if (-1 == on_updater_writeable(updater, &simulator_state)) {
+                errno_t errnum = on_updater_writeable(updater, &simulator_state);
+                if (errnum != 0) {
+                    error_status = errnum;
                     goto close_timer;
                 }
             }
@@ -378,30 +394,28 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
  exit_main_loop:
-    exit_status = 0;
 
  close_timer:
     {
         errno_t errnum = linted_io_close(timer);
-        if (exit_status != -1) {
+        if (0 == error_status) {
             assert(errnum != EBADF);
 
-            errno = errnum;
-            exit_status = -1;
+            error_status = errnum;
         }
     }
 
  exit:
-    return -1 == exit_status ? errno : EXIT_SUCCESS;
+    return error_status;
 }
 
-static int on_timer_readable(int timer,
-                             struct controller_state const *controller_state,
+static errno_t on_timer_readable(int timer,
+                                 struct controller_state const *controller_state,
                              struct simulator_state *simulator_state)
 {
     uint64_t ticks;
     if (-1 == read(timer, &ticks, sizeof ticks)) {
-        return -1;
+        return errno;
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
@@ -449,8 +463,8 @@ static int on_timer_readable(int timer,
     return 0;
 }
 
-static int on_updater_writeable(linted_updater updater,
-                                struct simulator_state *simulator_state)
+static errno_t on_updater_writeable(linted_updater updater,
+                                    struct simulator_state *simulator_state)
 {
     struct linted_updater_update update = {
         .x_position = simulator_state->x_position,
@@ -467,8 +481,7 @@ static int on_updater_writeable(linted_updater updater,
     }
 
     if (update_status != 0) {
-        errno = update_status;
-        return -1;
+        return update_status;
     }
 
     simulator_state->update_pending = false;
@@ -476,8 +489,8 @@ static int on_updater_writeable(linted_updater updater,
     return 0;
 }
 
-static int on_shutdowner_readable(linted_shutdowner shutdowner,
-                                  bool * should_exit)
+static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
+                                      bool * should_exit)
 {
     errno_t read_status;
     do {
@@ -490,16 +503,15 @@ static int on_shutdowner_readable(linted_shutdowner shutdowner,
     }
 
     if (read_status != 0) {
-        errno = read_status;
-        return -1;
+        return read_status;
     }
 
     *should_exit = true;
     return 0;
 }
 
-static int on_controller_readable(linted_controller controller,
-                                  struct controller_state *controller_state)
+static errno_t on_controller_readable(linted_controller controller,
+                                      struct controller_state *controller_state)
 {
     struct linted_controller_message message;
 
@@ -513,8 +525,7 @@ static int on_controller_readable(linted_controller controller,
     }
 
     if (read_status != 0) {
-        errno = read_status;
-        return -1;
+        return read_status;
     }
 
     controller_state->x_left = message.left;
