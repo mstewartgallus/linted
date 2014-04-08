@@ -252,16 +252,15 @@ int linted_io_close_fds_except(fd_set const *fds)
         }
 
         for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
-            if (-1 == linted_io_close(fds_to_close[ii])) {
-                assert(errno != EBADF);
+            errno_t errnum = linted_io_close(fds_to_close[ii]);
+            assert(errnum != EBADF);
 
-                /*
-                 * Otherwise ignore the error. This function is called
-                 * for security reasons and an EIO error only means
-                 * that the spawner of this process leaked an open
-                 * handle to /dev/full.
-                 */
-            }
+            /*
+             * Otherwise ignore the error. This function is called
+             * for security reasons and an EIO error only means
+             * that the spawner of this process leaked an open
+             * handle to /dev/full.
+             */
         }
 
         exit_status = 0;
@@ -279,7 +278,7 @@ int linted_io_close_fds_except(fd_set const *fds)
     return exit_status;
 }
 
-int linted_io_close(int fd)
+errno_t linted_io_close(int fd)
 {
     sigset_t full_set;
     sigfillset(&full_set);
@@ -291,5 +290,5 @@ int linted_io_close(int fd)
 
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);
 
-    return close_status;
+    return -1 == close_status ? errno : 0;
 }

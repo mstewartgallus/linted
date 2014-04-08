@@ -242,11 +242,14 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         linted_error_string_free(error_string);
     }
 
-    if (-1 == linted_io_close(STDERR_FILENO)) {
-        succesfully_executing = -1;
-        char const *const error_string = linted_error_string_alloc(errno);
-        syslog(LOG_ERR, "could not close standard error: %s", error_string);
-        linted_error_string_free(error_string);
+    {
+        errno_t errnum = linted_io_close(STDERR_FILENO);
+        if (errnum != 0) {
+            succesfully_executing = -1;
+            char const *const error_string = linted_error_string_alloc(errnum);
+            syslog(LOG_ERR, "could not close standard error: %s", error_string);
+            linted_error_string_free(error_string);
+        }
     }
 
     closelog();
@@ -437,28 +440,35 @@ static int run_game(char const *simulator_path, int simulator_binary,
                 error_status = errno;
             }
 
- destroy_sim_file_actions:
+        destroy_sim_file_actions:
             if (-1 == posix_spawn_file_actions_destroy(&file_actions)
                 && 0 == error_status) {
                 error_status = errno;
             }
         }
 
- close_controller_placeholder:
-        if (-1 == linted_io_close(controller_placeholder)
-            && 0 == error_status) {
-            error_status = errno;
+    close_controller_placeholder:
+        {
+            errno_t errnum = linted_io_close(controller_placeholder);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
         }
 
- close_shutdowner_placeholder:
-        if (-1 == linted_io_close(shutdowner_placeholder)
-            && 0 == error_status) {
-            error_status = errno;
+    close_shutdowner_placeholder:
+        {
+            errno_t errnum = linted_io_close(shutdowner_placeholder);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
         }
 
- close_updater_placeholder:
-        if (-1 == linted_io_close(updater_placeholder) && 0 == error_status) {
-            error_status = errno;
+    close_updater_placeholder:
+        {
+            errno_t errnum = linted_io_close(updater_placeholder);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
         }
 
         if (error_status != 0) {

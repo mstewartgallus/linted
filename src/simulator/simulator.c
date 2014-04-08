@@ -382,17 +382,11 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
  close_timer:
     {
-        int errnum = errno;
-        int close_status = linted_io_close(timer);
-        if (-1 == close_status) {
-            assert(errno != EBADF);
-        }
+        errno_t errnum = linted_io_close(timer);
+        if (exit_status != -1) {
+            assert(errnum != EBADF);
 
-        if (-1 == exit_status) {
             errno = errnum;
-        }
-
-        if (-1 == close_status) {
             exit_status = -1;
         }
     }

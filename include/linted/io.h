@@ -144,8 +144,7 @@ int linted_io_strtofd(char const *ptr);
  *
  * @param fds The files not to close.
  *
- * @returns Zero on success. -1 on error, and errno is set
- *          appropriately.
+ * @returns Zero on success or an error code on error.
  *
  * @error EMFILE Too many process file descriptors in use.
  *
@@ -153,7 +152,7 @@ int linted_io_strtofd(char const *ptr);
  *
  * @error ENOMEM Insufficient memory.
  */
-int linted_io_close_fds_except(fd_set const *fds);
+errno_t linted_io_close_fds_except(fd_set const *fds);
 
 /**
  * The linted_io_close function closes a file descriptor. The state of
