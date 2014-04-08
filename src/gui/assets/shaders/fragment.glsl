@@ -16,8 +16,6 @@
 #version 120
 #pragma linted include("shaders/varying.glsl")
 
-vec3 direction(vec3 vector);
-
 const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);
 
