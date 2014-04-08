@@ -31,8 +31,8 @@ struct linted_controller_message {
     bool down:1;
 };
 
-int linted_controller_pair(linted_controller controller[2],
-                           int readflags, int writeflags);
+errno_t linted_controller_pair(linted_controller controller[2],
+                               int readflags, int writeflags);
 int linted_controller_close(linted_controller controller);
 
 int linted_controller_send(linted_controller controller,

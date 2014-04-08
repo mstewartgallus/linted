@@ -46,8 +46,9 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-static int run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary, char const *display);
+static errno_t run_game(char const *simulator_path, int simulator_binary,
+                        char const *gui_path, int gui_binary,
+                        char const *display);
 
 int main(int argc, char **argv)
 {
@@ -232,14 +233,13 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     int succesfully_executing = 0;
 
-    if (0 == succesfully_executing) {
-        if (-1 == run_game(simulator_path, simulator_binary,
-                           gui_path, gui_binary, display)) {
-            succesfully_executing = -1;
-            char const *error_string = linted_error_string_alloc(errno);
-            syslog(LOG_ERR, "could not run the game: %s", error_string);
-            linted_error_string_free(error_string);
-        }
+    errno_t game_status = run_game(simulator_path, simulator_binary,
+                                   gui_path, gui_binary, display);
+    if (game_status != 0) {
+        succesfully_executing = -1;
+        char const *error_string = linted_error_string_alloc(game_status);
+        syslog(LOG_ERR, "could not run the game: %s", error_string);
+        linted_error_string_free(error_string);
     }
 
     if (-1 == linted_io_close(STDERR_FILENO)) {
@@ -257,7 +257,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 static int run_game(char const *simulator_path, int simulator_binary,
                     char const *gui_path, int gui_binary, char const *display)
 {
-    int exit_status = -1;
+    errno_t error_status = 0;
 
     linted_updater updater_mqs[2];
     linted_controller controller_mqs[2];
@@ -272,21 +272,24 @@ static int run_game(char const *simulator_path, int simulator_binary,
     linted_shutdowner simulator_shutdowner_read;
     linted_shutdowner simulator_shutdowner_write;
 
-    if (-1 == linted_updater_pair(updater_mqs, O_NONBLOCK, O_NONBLOCK)) {
-        return -1;
+    if ((error_status = linted_updater_pair(updater_mqs,
+                                            O_NONBLOCK, O_NONBLOCK)) != 0) {
+        return error_status;
     }
 
     updater_read = updater_mqs[0];
     updater_write = updater_mqs[1];
 
-    if (-1 == linted_controller_pair(controller_mqs, O_NONBLOCK, O_NONBLOCK)) {
+    if ((error_status = linted_controller_pair(controller_mqs,
+                                               O_NONBLOCK, O_NONBLOCK)) != 0) {
         goto cleanup_updater_pair;
     }
 
     controller_read = controller_mqs[0];
     controller_write = controller_mqs[1];
 
-    if (-1 == linted_shutdowner_pair(simulator_shutdowner_mqs, O_NONBLOCK, 0)) {
+    if ((error_status = linted_shutdowner_pair(simulator_shutdowner_mqs,
+                                               O_NONBLOCK, 0)) != 0) {
         goto cleanup_controller_pair;
     }
 
@@ -306,20 +309,21 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
     /* Create placeholder file descriptors to be overwritten later on */
     {
-        int create_processes_succesfully = -1;
-
         int updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == updater_placeholder) {
+            error_status = errno;
             goto restore_sigmask;
         }
 
         int shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == shutdowner_placeholder) {
+            error_status = errno;
             goto close_updater_placeholder;
         }
 
         int controller_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == controller_placeholder) {
+            error_status = errno;
             goto close_shutdowner_placeholder;
         }
 
@@ -344,13 +348,14 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
             posix_spawn_file_actions_t file_actions;
             if (-1 == posix_spawn_file_actions_init(&file_actions)) {
+                error_status = errno;
                 goto cleanup_processes;
             }
 
-            int spawned_okay = -1;
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        updater_read,
                                                        updater_placeholder)) {
+                error_status = errno;
                 goto destroy_gui_file_actions;
             }
 
@@ -358,6 +363,7 @@ static int run_game(char const *simulator_path, int simulator_binary,
                                                        simulator_shutdowner_write,
                                                        shutdowner_placeholder))
             {
+                error_status = errno;
                 goto destroy_gui_file_actions;
             }
 
@@ -365,6 +371,7 @@ static int run_game(char const *simulator_path, int simulator_binary,
                                                        controller_write,
                                                        controller_placeholder))
             {
+                error_status = errno;
                 goto destroy_gui_file_actions;
             }
 
@@ -372,16 +379,16 @@ static int run_game(char const *simulator_path, int simulator_binary,
             sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
             if (-1 == posix_spawn(&live_processes[0], fd_path,
                                   &file_actions, NULL, args, envp)) {
-                goto destroy_gui_file_actions;
+                error_status = errno;
             }
-
-            spawned_okay = 0;
 
  destroy_gui_file_actions:
-            if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
-                goto close_controller_placeholder;
+            if (-1 == posix_spawn_file_actions_destroy(&file_actions)
+                && 0 == error_status) {
+                error_status = errno;
             }
-            if (-1 == spawned_okay) {
+
+            if (error_status != 0) {
                 goto close_controller_placeholder;
             }
         }
@@ -398,27 +405,28 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
             posix_spawn_file_actions_t file_actions;
             if (-1 == posix_spawn_file_actions_init(&file_actions)) {
+                error_status = errno;
                 goto cleanup_processes;
             }
 
-            int spawned_okay = -1;
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        updater_write,
                                                        updater_placeholder)) {
+                error_status = errno;
                 goto destroy_sim_file_actions;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        simulator_shutdowner_read,
-                                                       shutdowner_placeholder))
-            {
+                                                       shutdowner_placeholder)) {
+                error_status = errno;
                 goto destroy_sim_file_actions;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        controller_read,
-                                                       controller_placeholder))
-            {
+                                                       controller_placeholder)) {
+                error_status = errno;
                 goto destroy_sim_file_actions;
             }
 
@@ -426,57 +434,34 @@ static int run_game(char const *simulator_path, int simulator_binary,
             sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
             if (-1 == posix_spawn(&live_processes[1], fd_path,
                                   &file_actions, NULL, args, envp)) {
-                goto destroy_sim_file_actions;
+                error_status = errno;
             }
-
-            spawned_okay = 0;
 
  destroy_sim_file_actions:
-            if (-1 == posix_spawn_file_actions_destroy(&file_actions)) {
-                goto close_controller_placeholder;
-            }
-            if (-1 == spawned_okay) {
-                goto close_controller_placeholder;
+            if (-1 == posix_spawn_file_actions_destroy(&file_actions)
+                && 0 == error_status) {
+                error_status = errno;
             }
         }
-
-        create_processes_succesfully = 0;
 
  close_controller_placeholder:
-        {
-            int errnum = errno;
-            int close_status = linted_io_close(controller_placeholder);
-            if (-1 == create_processes_succesfully) {
-                errno = errnum;
-            }
-            if (-1 == close_status) {
-                create_processes_succesfully = -1;
-            }
-        }
- close_shutdowner_placeholder:
-        {
-            int errnum = errno;
-            int close_status = linted_io_close(shutdowner_placeholder);
-            if (-1 == create_processes_succesfully) {
-                errno = errnum;
-            }
-            if (-1 == close_status) {
-                create_processes_succesfully = -1;
-            }
-        }
- close_updater_placeholder:
-        {
-            int errnum = errno;
-            int close_status = linted_io_close(updater_placeholder);
-            if (-1 == create_processes_succesfully) {
-                errno = errnum;
-            }
-            if (-1 == close_status) {
-                create_processes_succesfully = -1;
-            }
+        if (-1 == linted_io_close(controller_placeholder)
+            && 0 == error_status) {
+            error_status = errno;
         }
 
-        if (-1 == create_processes_succesfully) {
+ close_shutdowner_placeholder:
+        if (-1 == linted_io_close(shutdowner_placeholder)
+            && 0 == error_status) {
+            error_status = errno;
+        }
+
+ close_updater_placeholder:
+        if (-1 == linted_io_close(updater_placeholder) && 0 == error_status) {
+            error_status = errno;
+        }
+
+        if (error_status != 0) {
             goto cleanup_processes;
         }
     }
@@ -596,93 +581,52 @@ static int run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
-    exit_status = 0;
-
  cleanup_processes:
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
         if (live_processes[ii] != -1) {
-            int errnum = errno;
             int kill_status = kill(live_processes[ii], SIGQUIT);
             if (-1 == kill_status) {
                 /* errno == ESRCH is fine */
                 assert(errno != EINVAL);
                 assert(errno != EPERM);
             }
-
-            errno = errnum;
         }
     }
 
  restore_sigmask:
     pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
 
-    {
-        int errnum = errno;
-        int close_status = linted_shutdowner_close(simulator_shutdowner_read);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_shutdowner_close(simulator_shutdowner_read)
+        && 0 == error_status) {
+        error_status = errno;
     }
 
-    {
-        int errnum = errno;
-        int close_status = linted_shutdowner_close(simulator_shutdowner_write);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_shutdowner_close(simulator_shutdowner_write)
+        && 0 == error_status) {
+        error_status = errno;
     }
 
  cleanup_controller_pair:
-    {
-        int errnum = errno;
-        int close_status = linted_controller_close(controller_read);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_controller_close(controller_read) && 0 == error_status) {
+        error_status = errno;
     }
 
-    {
-        int errnum = errno;
-        int close_status = linted_controller_close(controller_write);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_controller_close(controller_write) && 0 == error_status) {
+        error_status = errno;
     }
 
  cleanup_updater_pair:
-    {
-        int errnum = errno;
-        int close_status = linted_updater_close(updater_read);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_updater_close(updater_read) && 0 == error_status) {
+        error_status = errno;
     }
 
-    {
-        int errnum = errno;
-        int close_status = linted_updater_close(updater_write);
-        if (-1 == exit_status) {
-            errno = errnum;
-        }
-        if (-1 == close_status) {
-            exit_status = -1;
-        }
+    if (-1 == linted_updater_close(updater_write) && 0 == error_status) {
+        error_status = errno;
     }
 
-    return exit_status;
+    errno = error_status;
+    if (error_status != 0) {
+        return -1;
+    }
+    return 0;
 }

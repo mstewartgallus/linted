@@ -29,7 +29,7 @@ struct linted_updater_update {
     int_fast32_t y_position;
 };
 
-int linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
+errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
 
 int linted_updater_send_update(linted_updater updater,
                                struct linted_updater_update const *update);

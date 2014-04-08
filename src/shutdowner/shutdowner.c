@@ -28,8 +28,8 @@ struct message {
     char dummy;
 };
 
-int linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
-                           int wflags)
+errno_t linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
+                               int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);

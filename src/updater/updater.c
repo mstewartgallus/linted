@@ -77,7 +77,7 @@ static int_fast32_t unpack(struct int32 raw)
     return positive;
 }
 
-int linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
+errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);

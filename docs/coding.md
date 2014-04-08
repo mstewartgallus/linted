@@ -54,6 +54,12 @@ Code quality:
   condition happens. This project accepts the small loss of
   portability that occurs by checking for errors.
 
+- Do not use null terminated strings unless interfacing with system
+  functionality. They are error prone and dangerous.
+
+- Do not use errno unless interfacing with system
+  functionality. Return an error value directly.
+
 Coding style:
 
 - We have 3 types of errors and one type of failure.

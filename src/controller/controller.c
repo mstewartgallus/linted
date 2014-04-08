@@ -27,8 +27,8 @@
 
 typedef char message_type[MESSAGE_SIZE];
 
-int linted_controller_pair(linted_controller controller[2],
-                           int readflags, int writeflags)
+errno_t linted_controller_pair(linted_controller controller[2],
+                               int readflags, int writeflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);

@@ -38,8 +38,7 @@
  * @param wflags Can be O_NONBLOCK to open the write end in
  *               nonblocking mode.
  *
- * @returns Zero on success. -1 on error, and errno is set
- *          appropriately.
+ * @returns Zero on success or an error code on error.
  *
  * @error EMFILE The process already has the maximum number of message
  *               queues open.
@@ -51,7 +50,7 @@
  *
  * @error ENOSPC Insufficient space.
  */
-int linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags,
-                   int wflags);
+errno_t linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags,
+                       int wflags);
 
 #endif                          /* LINTED_MQ_H */

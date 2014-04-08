@@ -13,8 +13,9 @@ Linted -- TODO
       to be reworked. Windows maintains two copies of environment
       variables: one copy in process space and the other copy in
       kernel space.
-
-* Move over to nonnull terminated strings which are better
+* Move away from C legacy practises
+  - move away from errno
+  - move away from null terminated strings
 
 * Port to SDL 2.0
 * Manage child process error streams and syslog logs
