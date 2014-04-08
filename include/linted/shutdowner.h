@@ -28,6 +28,6 @@ errno_t linted_shutdowner_close(linted_shutdowner move);
 
 errno_t linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-int linted_shutdowner_receive(linted_shutdowner queue);
+errno_t linted_shutdowner_receive(linted_shutdowner queue);
 
 #endif                          /* LINTED_SHUTDOWNER_H */

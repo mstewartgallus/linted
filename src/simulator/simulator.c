@@ -457,15 +457,17 @@ static int on_updater_writeable(linted_updater updater,
         .y_position = simulator_state->y_position
     };
 
-    int update_status;
+    errno_t update_status;
     do {
         update_status = linted_updater_send_update(updater, &update);
-    } while (-1 == update_status && EINTR == errno);
-    if (-1 == update_status) {
-        if (EAGAIN == errno) {
-            return 0;
-        }
+    } while (EINTR == update_status);
 
+    if (EAGAIN == update_status) {
+        return 0;
+    }
+
+    if (update_status != 0) {
+        errno = update_status;
         return -1;
     }
 
@@ -477,16 +479,18 @@ static int on_updater_writeable(linted_updater updater,
 static int on_shutdowner_readable(linted_shutdowner shutdowner,
                                   bool * should_exit)
 {
-    int read_status;
+    errno_t read_status;
     do {
         read_status = linted_shutdowner_receive(shutdowner);
-    } while (-1 == read_status && EINTR == errno);
-    if (-1 == read_status) {
-        if (EAGAIN == errno) {
-            *should_exit = false;
-            return 0;
-        }
+    } while (EINTR == read_status);
 
+    if (EAGAIN == read_status) {
+        *should_exit = false;
+        return 0;
+    }
+
+    if (read_status != 0) {
+        errno = read_status;
         return -1;
     }
 

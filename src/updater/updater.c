@@ -88,8 +88,8 @@ errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-int linted_updater_send_update(linted_updater updater,
-                               struct linted_updater_update const *update)
+errno_t linted_updater_send_update(linted_updater updater,
+                                   struct linted_updater_update const *update)
 {
     message_type message;
     char *tip = message;
@@ -101,27 +101,29 @@ int linted_updater_send_update(linted_updater updater,
     struct int32 y_position = pack(update->y_position);
     memcpy(tip, y_position.bytes, sizeof y_position.bytes);
 
-    return mq_send(updater, message, sizeof message, 0);
+    return -1 == mq_send(updater, message, sizeof message, 0)? errno : 0;
 }
 
-int linted_updater_receive_update(linted_updater updater,
+errno_t linted_updater_receive_update(linted_updater updater,
                                   struct linted_updater_update *update)
 {
     message_type message;
-    int receive_status = mq_receive(updater, message, sizeof message, NULL);
-    if (receive_status != -1) {
-        char *tip = message;
-
-        struct int32 x_position;
-        memcpy(x_position.bytes, tip, sizeof x_position.bytes);
-        update->x_position = unpack(x_position);
-        tip += sizeof x_position.bytes;
-
-        struct int32 y_position;
-        memcpy(y_position.bytes, tip, sizeof y_position.bytes);
-        update->y_position = unpack(y_position);
+    if (-1 == mq_receive(updater, message, sizeof message, NULL)) {
+        return errno;
     }
-    return receive_status;
+
+    char *tip = message;
+
+    struct int32 x_position;
+    memcpy(x_position.bytes, tip, sizeof x_position.bytes);
+    update->x_position = unpack(x_position);
+    tip += sizeof x_position.bytes;
+
+    struct int32 y_position;
+    memcpy(y_position.bytes, tip, sizeof y_position.bytes);
+    update->y_position = unpack(y_position);
+
+    return 0;
 }
 
 errno_t linted_updater_close(linted_updater const updater)

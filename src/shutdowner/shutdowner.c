@@ -46,10 +46,10 @@ errno_t linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
     return -1 == mq_send(shutdowner, &dummy, 0, 0) ? errno : 0;
 }
 
-int linted_shutdowner_receive(linted_shutdowner shutdowner)
+errno_t linted_shutdowner_receive(linted_shutdowner shutdowner)
 {
     char dummy;
-    return mq_receive(shutdowner, &dummy, 1, NULL);
+    return -1 == mq_receive(shutdowner, &dummy, 1, NULL) ? errno : 0;
 }
 
 errno_t linted_shutdowner_close(linted_shutdowner shutdowner)

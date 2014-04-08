@@ -628,15 +628,17 @@ static int on_updater_readable(linted_updater updater,
 {
     struct linted_updater_update update;
 
-    int read_status;
+    errno_t read_status;
     do {
         read_status = linted_updater_receive_update(updater, &update);
-    } while (-1 == read_status && EINTR == errno);
-    if (-1 == read_status) {
-        if (EAGAIN == errno) {
-            return 0;
-        }
+    } while (EINTR == read_status);
 
+    if (EAGAIN == read_status) {
+        return 0;
+    }
+
+    if (read_status != 0) {
+        errno = read_status;
         return -1;
     }
 
