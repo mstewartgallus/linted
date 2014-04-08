@@ -36,10 +36,10 @@ errno_t linted_controller_pair(linted_controller controller[2],
                                int readflags, int writeflags);
 errno_t linted_controller_close(linted_controller controller);
 
-int linted_controller_send(linted_controller controller,
-                           struct linted_controller_message const *message);
+errno_t linted_controller_send(linted_controller controller,
+                               struct linted_controller_message const *message);
 
-int linted_controller_receive(linted_controller controller,
-                              struct linted_controller_message *message);
+errno_t linted_controller_receive(linted_controller controller,
+                                  struct linted_controller_message *message);
 
 #endif                          /* LINTED_CONTROLLER_H */

@@ -649,16 +649,18 @@ static int on_updater_readable(linted_updater updater,
 static int on_controller_writeable(linted_controller controller,
                                    struct controller_state *controller_state)
 {
-    int send_status;
+    errno_t send_status;
     do {
         send_status = linted_controller_send(controller,
                                              &controller_state->update);
-    } while (-1 == send_status && EINTR == errno);
-    if (-1 == send_status) {
-        if (EAGAIN == errno) {
-            return 0;
-        }
+    } while (EINTR == send_status);
 
+    if (EAGAIN == send_status) {
+        return 0;
+    }
+
+    if (send_status != 0) {
+        errno = send_status;
         return -1;
     }
 

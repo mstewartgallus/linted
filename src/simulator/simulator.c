@@ -356,8 +356,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         }
 
         if (FD_ISSET(timer, &watched_read_fds)) {
-            if (-1 ==
-                on_timer_readable(timer, &controller_state, &simulator_state)) {
+            if (-1 == on_timer_readable(timer, &controller_state,
+                                        &simulator_state)) {
                 goto close_timer;
             }
         }
@@ -499,15 +499,17 @@ static int on_controller_readable(linted_controller controller,
 {
     struct linted_controller_message message;
 
-    int read_status;
+    errno_t read_status;
     do {
         read_status = linted_controller_receive(controller, &message);
-    } while (-1 == read_status && EINTR == errno);
-    if (-1 == read_status) {
-        if (EAGAIN == errno) {
-            return 0;
-        }
+    } while (EINTR == read_status);
 
+    if (EAGAIN == read_status) {
+        return 0;
+    }
+
+    if (read_status != 0) {
+        errno = read_status;
         return -1;
     }
 

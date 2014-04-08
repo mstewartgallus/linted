@@ -39,8 +39,8 @@ errno_t linted_controller_pair(linted_controller controller[2],
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-int linted_controller_send(linted_controller controller,
-                           struct linted_controller_message const *message)
+errno_t linted_controller_send(linted_controller controller,
+                               struct linted_controller_message const *message)
 {
     unsigned char bitfield = ((uintmax_t) message->up)
         | ((uintmax_t) message->down) << 1u
@@ -49,7 +49,9 @@ int linted_controller_send(linted_controller controller,
 
     message_type raw_message;
     memcpy(raw_message, &bitfield, sizeof bitfield);
-    return mq_send(controller, raw_message, sizeof raw_message, 0);
+    return -1 == mq_send(controller, raw_message, sizeof raw_message, 0)
+        ? errno
+        : 0;
 }
 
 errno_t linted_controller_close(linted_controller controller)
@@ -57,21 +59,21 @@ errno_t linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-int linted_controller_receive(linted_controller queue,
-                              struct linted_controller_message *message)
+errno_t linted_controller_receive(linted_controller queue,
+                                  struct linted_controller_message *message)
 {
     message_type raw_message;
-    int receive_status = mq_receive(queue, raw_message, sizeof raw_message,
-                                    NULL);
-    if (receive_status != -1) {
-        unsigned char bitfield;
-        memcpy(&bitfield, raw_message, sizeof bitfield);
-
-        message->up = bitfield & 1u;
-        message->down = (bitfield & (1u << 1u)) != 0u;
-        message->right = (bitfield & (1u << 2u)) != 0u;
-        message->left = (bitfield & (1u << 3u)) != 0u;
+    if (-1 == mq_receive(queue, raw_message, sizeof raw_message, NULL)) {
+        return errno;
     }
 
-    return receive_status;
+    unsigned char bitfield;
+    memcpy(&bitfield, raw_message, sizeof bitfield);
+
+    message->up = bitfield & 1u;
+    message->down = (bitfield & (1u << 1u)) != 0u;
+    message->right = (bitfield & (1u << 2u)) != 0u;
+    message->left = (bitfield & (1u << 3u)) != 0u;
+
+    return 0;
 }
