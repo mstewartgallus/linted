@@ -16,6 +16,7 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
+#include <errno.h>
 #include <stdlib.h>
 #include <syslog.h>
 #include <sys/select.h>
@@ -85,6 +86,6 @@ char const *linted_error_string_alloc(int errnum);
 
 void linted_error_string_free(char const *error_string);
 
-int linted_util_sanitize_environment(fd_set const *essential_fds);
+errno_t linted_util_sanitize_environment(fd_set const *essential_fds);
 
 #endif                          /* LINTED_UTIL_H */

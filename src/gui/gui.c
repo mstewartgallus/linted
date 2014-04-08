@@ -332,9 +332,11 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_SET(updater, &essential_fds);
         FD_SET(shutdowner, &essential_fds);
 
-        if (-1 == linted_util_sanitize_environment(&essential_fds)) {
+        int errnum = linted_util_sanitize_environment(&essential_fds);
+        if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errno));
+%s: can not sanitize the environment: %s", program_name,
+                                   linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
     }
