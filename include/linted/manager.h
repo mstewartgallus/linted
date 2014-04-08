@@ -16,6 +16,7 @@
 #ifndef LINTED_MANAGER_H
 #define LINTED_MANAGER_H
 
+#include <errno.h>
 #include <stdbool.h>
 #include <signal.h>
 
@@ -48,20 +49,22 @@ struct linted_manager_start_req {
 int linted_manager_send_signal(void);
 int linted_manager_wait_signal(void);
 
-int linted_manager_req_type(pid_t pid,
-                            struct linted_manager_req const *request);
+errno_t linted_manager_req_type(pid_t pid,
+                                struct linted_manager_req const *request,
+                                unsigned * type);
 
-int linted_manager_start_req_args(pid_t pid,
-                                  struct linted_manager_req const *request,
-                                  struct linted_manager_start_args *args);
+errno_t linted_manager_start_req_args(pid_t pid,
+                                      struct linted_manager_req const *request,
+                                      struct linted_manager_start_args *args);
 
-int linted_manager_start_req_reply(pid_t pid,
-                                   struct linted_manager_req *request,
-                                   struct linted_manager_start_reply const
-                                   *reply);
+errno_t linted_manager_start_req_reply(pid_t pid,
+                                       struct linted_manager_req *request,
+                                       struct linted_manager_start_reply const
+                                       *reply);
 
-int linted_manager_finish_reply(pid_t pid, int errnum);
+errno_t linted_manager_finish_reply(pid_t pid, int errnum);
 
-int linted_manager_send_request(pid_t pid, struct linted_manager_req *request);
+errno_t linted_manager_send_request(pid_t pid,
+                                    struct linted_manager_req *request);
 
 #endif                          /* LINTED_MANAGER_H */

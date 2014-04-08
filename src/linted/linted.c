@@ -492,17 +492,21 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
             int reply_status = -1;
 
-            int type = linted_manager_req_type(pid, request);
-            if (-1 == type) {
+            unsigned type;
+            errno_t errnum = linted_manager_req_type(pid, request, &type);
+            if (errnum != 0) {
+                errno = errnum;
                 goto finish_reply;
             }
 
             switch (type) {
             case LINTED_MANAGER_START:{
                     struct linted_manager_start_args arguments;
-                    if (-1 == linted_manager_start_req_args(pid,
-                                                            request,
-                                                            &arguments)) {
+                    errno_t errnum = linted_manager_start_req_args(pid,
+                                                                   request,
+                                                                   &arguments);
+                    if (errnum != 0) {
+                        errno = errnum;
                         goto finish_reply;
                     }
 
@@ -513,9 +517,11 @@ static int run_game(char const *simulator_path, int simulator_binary,
                             struct linted_manager_start_reply reply = {
                                 .is_up = true
                             };
-                            if (-1 == linted_manager_start_req_reply(pid,
-                                                                     request,
-                                                                     &reply)) {
+                            errno_t errnum = linted_manager_start_req_reply(pid,
+                                                                            request,
+                                                                            &reply);
+                            if (errnum != 0) {
+                                errno = errnum;
                                 goto finish_reply;
                             }
                             break;
@@ -535,11 +541,14 @@ static int run_game(char const *simulator_path, int simulator_binary,
 
             reply_status = 0;
 
- finish_reply:
-            if (-1 == linted_manager_finish_reply(pid,
-                                                  -1 ==
-                                                  reply_status ? errno : 0)) {
-                goto cleanup_processes;
+        finish_reply:
+            {
+                errno_t errnum = linted_manager_finish_reply(pid,
+                                                             -1 == reply_status ? errno : 0);
+                if (errnum != 0) {
+                    errno = errnum;
+                    goto cleanup_processes;
+                }
             }
         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {

@@ -227,11 +227,12 @@ int main(int argc, char **argv)
                                "%s: sending start request for the gui\n",
                                program_name);
 
-        if (-1 == linted_manager_send_request(pid, (void *)&request)) {
+        errno_t errnum = linted_manager_send_request(pid, (void *)&request);
+        if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: could not send request: %s\n",
                                    program_name,
-                                   linted_error_string_alloc(errno));
+                                   linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
 
