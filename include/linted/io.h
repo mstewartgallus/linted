@@ -49,8 +49,7 @@
  * @param count The amount to write. No more than these many bytes is
  *              written.
  *
- * @returns Zero on success. -1 on error, and errno is set
- *          appropriately.
+ * @returns Zero on success or an error code.
  *
  * @error EAGAIN The file descriptor has been marked nonblocking and
  *               one of the writes would block.
@@ -75,15 +74,16 @@
  *
  * @error EISDIR fd is a directory.
  */
-int linted_io_write_all(int fd, size_t * bytes_wrote,
+errno_t linted_io_write_all(int fd, size_t * bytes_wrote,
                         void const *buf, size_t count);
 
-int linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str);
+errno_t linted_io_write_str(int fd, size_t * bytes_wrote,
+                            struct linted_str str);
 
-int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
+errno_t linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 
-int linted_io_write_format(int fd, size_t * bytes_wrote_out,
-                           char const *s, ...);
+errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
+                               char const *s, ...);
 
 errno_t linted_io_strtofd(char const *ptr, int * fd);
 

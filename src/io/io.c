@@ -31,49 +31,49 @@
 #include <string.h>
 #include <unistd.h>
 
-int linted_io_write_all(int fd, size_t * bytes_wrote_out,
+errno_t linted_io_write_all(int fd, size_t * bytes_wrote_out,
                         void const *buf, size_t count)
 {
-    int exit_status = -1;
+    errno_t error_status = 0;
     size_t total_bytes_wrote = 0;
 
     do {
         ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
                                     count - total_bytes_wrote);
-        if (-1 == bytes_wrote) {
-            if (EINTR == errno) {
-                continue;
-            }
+        errno_t write_status = -1 == bytes_wrote ? errno : 0;
+        if (EINTR == write_status) {
+            continue;
+        }
 
+        if (write_status != 0) {
+            error_status = write_status;
             goto output_bytes_wrote;
         }
 
         total_bytes_wrote += bytes_wrote;
     } while (total_bytes_wrote != count);
 
-    exit_status = 0;
-
  output_bytes_wrote:
     if (bytes_wrote_out != NULL) {
         *bytes_wrote_out = total_bytes_wrote;
     }
-    return exit_status;
+    return error_status;
 }
 
-int linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str)
+errno_t linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str)
 {
     return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
 
-int linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
+errno_t linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
 {
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
-int linted_io_write_format(int fd, size_t * bytes_wrote_out,
+errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
                            char const *format_str, ...)
 {
-    int exit_status = -1;
+    errno_t error_status = 0;
 
     va_list ap;
     va_start(ap, format_str);
@@ -83,6 +83,7 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
 
     int bytes_should_write = vsnprintf(NULL, 0, format_str, ap);
     if (bytes_should_write < 0) {
+        error_status = errno;
         goto free_va_lists;
     }
 
@@ -90,31 +91,31 @@ int linted_io_write_format(int fd, size_t * bytes_wrote_out,
 
     char *string = malloc(string_size);
     if (NULL == string) {
+        error_status = errno;
         goto free_va_lists;
     }
 
     if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
+        error_status = errno;
         goto free_string;
     }
 
-    if (-1 == linted_io_write_string(fd, bytes_wrote_out, string)) {
-        goto free_string;
+    {
+        errno_t errnum = linted_io_write_string(fd, bytes_wrote_out, string);
+        if (errnum != 0) {
+            error_status = errnum;
+            goto free_string;
+        }
     }
-
-    exit_status = 0;
 
  free_string:
-    {
-        int errnum = errno;
-        free(string);
-        errno = errnum;
-    }
+    free(string);
 
  free_va_lists:
     va_end(ap);
     va_end(ap_copy);
 
-    return exit_status;
+    return error_status;
 }
 
 errno_t linted_io_strtofd(char const *str, int * fd)
