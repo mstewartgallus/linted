@@ -479,10 +479,13 @@ static int run_game(char const *simulator_path, int simulator_binary,
     for (;;) {
         siginfo_t info;
         int signal_number;
+        errno_t signal_status;
         do {
             signal_number = sigtimedwait(&sig_set, &info, NULL);
-        } while (-1 == signal_number && EINTR == errno);
-        if (-1 == signal_number) {
+            signal_status = -1 == signal_number ? errno : 0;
+        } while (EINTR == signal_status);
+        if (signal_status != 0) {
+            error_status = signal_status;
             goto cleanup_processes;
         }
 
@@ -490,24 +493,28 @@ static int run_game(char const *simulator_path, int simulator_binary,
             pid_t pid = info.si_pid;
             struct linted_manager_req *request = info.si_ptr;
 
-            int reply_status = -1;
+            errno_t reply_status = 0;
 
             unsigned type;
-            errno_t errnum = linted_manager_req_type(pid, request, &type);
-            if (errnum != 0) {
-                errno = errnum;
-                goto finish_reply;
+            {
+                errno_t errnum = linted_manager_req_type(pid, request, &type);
+                if (errnum != 0) {
+                    reply_status = errnum;
+                    goto finish_reply;
+                }
             }
 
             switch (type) {
             case LINTED_MANAGER_START:{
                     struct linted_manager_start_args arguments;
-                    errno_t errnum = linted_manager_start_req_args(pid,
-                                                                   request,
-                                                                   &arguments);
-                    if (errnum != 0) {
-                        errno = errnum;
-                        goto finish_reply;
+                    {
+                        errno_t errnum = linted_manager_start_req_args(pid,
+                                                                       request,
+                                                                       &arguments);
+                        if (errnum != 0) {
+                            reply_status = errnum;
+                            goto finish_reply;
+                        }
                     }
 
                     switch (arguments.service) {
@@ -521,32 +528,29 @@ static int run_game(char const *simulator_path, int simulator_binary,
                                                                             request,
                                                                             &reply);
                             if (errnum != 0) {
-                                errno = errnum;
+                                reply_status = errnum;
                                 goto finish_reply;
                             }
                             break;
                         }
 
                     default:
-                        errno = EINVAL;
+                        reply_status = EINVAL;
                         goto finish_reply;
                     }
                     break;
                 }
 
             default:
-                errno = EINVAL;
+                reply_status = EINVAL;
                 goto finish_reply;
             }
 
-            reply_status = 0;
-
         finish_reply:
             {
-                errno_t errnum = linted_manager_finish_reply(pid,
-                                                             -1 == reply_status ? errno : 0);
+                errno_t errnum = linted_manager_finish_reply(pid, reply_status);
                 if (errnum != 0) {
-                    errno = errnum;
+                    error_status = errnum;
                     goto cleanup_processes;
                 }
             }
@@ -562,6 +566,8 @@ static int run_game(char const *simulator_path, int simulator_binary,
                 if (-1 == waitid(P_PID, live_processes[ii], &exit_info,
                                  WEXITED | WNOHANG)) {
                     assert(errno != EINVAL);
+
+                    error_status = errno;
                     goto cleanup_processes;
                 }
 
@@ -575,11 +581,12 @@ static int run_game(char const *simulator_path, int simulator_binary,
                 case CLD_DUMPED:
                 case CLD_KILLED:
                     raise(exit_info.si_status);
+                    error_status = errno;
                     goto cleanup_processes;
 
                 case CLD_EXITED:
                     if (exit_info.si_status != 0) {
-                        errno = exit_info.si_status;
+                        error_status = exit_info.si_status;
                         goto cleanup_processes;
                     }
                     break;
