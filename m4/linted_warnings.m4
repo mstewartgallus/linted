@@ -21,6 +21,11 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
         [-Wredundant-decls]dnl
         [-Wnested-externs]
         [-Wlogical-op]dnl
+        [-Wstrict-aliasing=1]dnl
+        [-Wstrict-overflow=5]dnl
+        [-Wtrampolines]dnl We force a nonexecutable stack so for most
+                       dnl targets would generate broken code if we
+                       dnl used trampolines.
 ])
 AC_SUBST([linted_CFLAGS_WARNINGS])
 ])
