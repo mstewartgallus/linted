@@ -16,7 +16,8 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=gui
 
-gui_SOURCES=src/gui/gui.c src/gui/assets.c src/gui/gl_core.c
+gui_SOURCES=src/gui/gui.c src/gui/assets.c
+nodist_gui_SOURCES=src/gui/gl_core.c
 gui_LDADD=\
   libio.la libutil.la\
   libcontroller.la libshutdowner.la libupdater.la\
@@ -28,8 +29,6 @@ gui_CPPFLAGS+=-U_GNU_SOURCE
 gui_CPPFLAGS+=$(AM_CPPFLAGS)
 
 gui_CPPFLAGS+=-I $(builddir)/src/gui/ -I $(srcdir)/src/gui/
-
-nodist_linted_SOURCES+=src/gui/gl_core.c
 
 BUILT_SOURCES+=\
   src/gui/gl_core.c src/gui/gl_core.h

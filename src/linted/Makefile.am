@@ -20,12 +20,12 @@ linted_SOURCES=src/linted/linted.c
 linted_CPPFLAGS=-I $(builddir)/src/linted/ $(AM_CPPFLAGS)
 linted_LDADD=\
   libio.la\
-  libutil.la\
-  \
-  libcontroller.la\
-  libmanager.la\
-  libshutdowner.la\
-  libupdater.la
+   libutil.la\
+   \
+   libcontroller.la\
+   libmanager.la\
+   libshutdowner.la\
+   libupdater.la
 
 BUILT_SOURCES+=src/linted/binaries.h
 

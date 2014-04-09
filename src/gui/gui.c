@@ -13,6 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "SDL.h"
+#undef HAVE_MALLOC
+#undef HAVE_REALLOC
+
 #include "config.h"
 
 #include "assets.h"
@@ -24,8 +28,6 @@
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 #include "linted/util.h"
-
-#include "SDL.h"
 
 #include <errno.h>
 #include <stdbool.h>
