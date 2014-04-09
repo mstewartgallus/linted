@@ -342,7 +342,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         fd_set watched_read_fds;
         fd_set watched_write_fds;
-        int select_status;
+        errno_t select_status;
 
         do {
             FD_ZERO(&watched_read_fds);
@@ -357,12 +357,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                 }
             }
 
-            if (-1 == select(greatest + 1, &watched_read_fds,
-                             &watched_write_fds, NULL, NULL)) {
-                select_status = errno;
-            } else {
-                select_status = 0;
-            }
+            int fds_active = select(greatest + 1, &watched_read_fds,
+                                    &watched_write_fds, NULL, NULL);
+            select_status = -1 == fds_active ? errno : 0;
         } while (EINTR == select_status);
         if (select_status != 0) {
             error_status = select_status;

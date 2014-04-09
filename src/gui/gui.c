@@ -492,6 +492,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         fd_set watched_read_fds;
         fd_set watched_write_fds;
         errno_t select_status;
+        int fds_active;
 
         do {
             FD_ZERO(&watched_read_fds);
@@ -507,19 +508,16 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
 
             struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-            if (-1 == select(greatest + 1, &watched_read_fds,
-                             &watched_write_fds, NULL, &timeval)) {
-                select_status = errno;
-            } else {
-                select_status = 0;
-            }
+            fds_active = select(greatest + 1, &watched_read_fds,
+                                          &watched_write_fds, NULL, &timeval);
+            select_status = -1 == fds_active ? errno : 0;
         } while (EINTR == select_status);
         if (select_status != 0) {
             error_status = select_status;
             goto cleanup_gl;
         }
 
-        bool const had_selected_event = select_status > 0;
+        bool const had_selected_event = fds_active > 0;
 
         if (FD_ISSET(updater, &watched_read_fds)) {
             errno_t errnum = on_updater_readable(updater, &gui_state);
