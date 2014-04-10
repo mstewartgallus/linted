@@ -17,7 +17,7 @@
 bin_PROGRAMS+=linted
 
 linted_SOURCES=src/linted/linted.c
-linted_CPPFLAGS=-I $(builddir)/src/linted/ $(AM_CPPFLAGS)
+linted_CPPFLAGS=-I$(builddir)/src/linted/ $(AM_CPPFLAGS)
 linted_LDADD=\
   libio.la\
    libutil.la\

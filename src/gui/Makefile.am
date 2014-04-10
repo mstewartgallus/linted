@@ -28,7 +28,7 @@ gui_CPPFLAGS=$(SDL_CFLAGS)
 gui_CPPFLAGS+=-U_GNU_SOURCE
 gui_CPPFLAGS+=$(AM_CPPFLAGS)
 
-gui_CPPFLAGS+=-I $(builddir)/src/gui/ -I $(srcdir)/src/gui/
+gui_CPPFLAGS+=-I$(builddir)/src/gui/ -I$(srcdir)/src/gui/
 
 BUILT_SOURCES+=\
   src/gui/gl_core.c src/gui/gl_core.h

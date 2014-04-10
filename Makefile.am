@@ -35,7 +35,7 @@ AM_CPPFLAGS=\
   $(linted_CPPFLAGS_OPTIMIZE)\
   $(linted_CPPFLAGS_HARDEN)\
   $(linted_CPPFLAGS_LANGUAGE)\
-  -I $(srcdir)/include
+  -I$(srcdir)/include
 
 AM_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
