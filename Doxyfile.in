@@ -22,7 +22,8 @@ WARNINGS = YES
 
 WARN_IF_UNDOCUMENTED = NO
 
-INPUT = "@srcdir@/src/linted" "@srcdir@/src/bin"
+RECURSIVE = YES
+INPUT = "@srcdir@/include" "@srcdir@/src"
 STRIP_FROM_PATH = "@srcdir@"
 
 EXCLUDE_SYMBOLS = *_
