@@ -65,6 +65,17 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
+.PHONY: cbmc-models
+cbmc-models:
+	$(MKDIR_P) cbmc-models
+	CONFIG=$$($(builddir)/config.status --config) &&\
+	cd cbmc-models &&\
+	  (echo $${CONFIG} &&\
+	    echo "\"--host=none-none-none\"" &&\
+	    echo CC="\"gcc\"") | xargs\
+	      $(abs_srcdir)/configure &&\
+	  $(MAKE) $(AM_MAKEFLAGS) CC=goto-cc
+
 linted_INDENTFLAGS=\
   --linux-style\
   --no-tabs\
