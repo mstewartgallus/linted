@@ -77,13 +77,19 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
+# We have to undefine certain flags because unfortunately we can't
+# verify these compiler specific changes
 .PHONY: cbmc-models
 cbmc-models:
 	$(MKDIR_P) cbmc-models
 	CONFIG=$$($(builddir)/config.status --config) &&\
 	cd cbmc-models &&\
-	  (echo $${CONFIG} && echo "\"--host=none-none-none\"") | xargs\
-	      $(abs_srcdir)/configure &&\
+	  (\
+	     echo $${CONFIG} &&\
+	     echo "\"--host=none-none-none\"" &&\
+	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
+	  ) | xargs\
+	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
 
 # This is not a real verification because our programs are unbounded
