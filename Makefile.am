@@ -70,9 +70,7 @@ cbmc-models:
 	$(MKDIR_P) cbmc-models
 	CONFIG=$$($(builddir)/config.status --config) &&\
 	cd cbmc-models &&\
-	  (echo $${CONFIG} &&\
-	    echo "\"--host=none-none-none\"" &&\
-	    echo CC="\"gcc\"") | xargs\
+	  (echo $${CONFIG} && echo "\"--host=none-none-none\"") | xargs\
 	      $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=goto-cc
 
