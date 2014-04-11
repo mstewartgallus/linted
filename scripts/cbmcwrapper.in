@@ -1,0 +1,11 @@
+#! /bin/sh
+
+exec "@CBMC@"\
+     --bounds-check\
+     --div-by-zero-check\
+     --nan-check\
+     --pointer-check\
+     --memory-leak-check\
+     --signed-overflow-check\
+     \
+     $@

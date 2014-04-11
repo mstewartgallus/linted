@@ -7,9 +7,9 @@ dnl This program is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
-AC_DEFUN([LINTED_PROG_CBMC],[
+AC_DEFUN([LINTED_PROG_GOTO_CC],[
 dnl
-AC_ARG_VAR([CBMC], [The CMBC bounded model checker])
+AC_ARG_VAR([GOTO_CC], [The CMBC bounded model checker fake compiler])
 dnl
-test -z "${CBMC}" && AC_CHECK_TOOLS([CBMC], [cbmc])
+test -z "${GOTO_CC}" && AC_CHECK_TOOLS([GOTO_CC], [goto-cc])
 ])

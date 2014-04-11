@@ -44,10 +44,22 @@ AM_CFLAGS=\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_WARNINGS)
 
-bin_SCRIPTS=test
-EXTRA_DIST+=test.in
-test: $(MAKEFILE) test.in
-	cat $(srcdir)/test.in > $@
+bin_SCRIPTS=
+
+bin_SCRIPTS+=scripts/test
+EXTRA_DIST+=scripts/test.in
+scripts/test: $(MAKEFILE) scripts/test.in
+	$(MKDIR_P) scripts
+	cat $(srcdir)/scripts/test.in > $@
+	chmod u+x $@
+
+bin_SCRIPTS+=scripts/cbmcwrapper
+EXTRA_DIST+=scripts/cbmcwrapper.in
+scripts/cbmcwrapper: $(MAKEFILE) scripts/cbmcwrapper.in
+	$(MKDIR_P) scripts
+	sed \
+	  -e 's|[@]CBMC[@]|$(CBMC)|g'\
+	   $(srcdir)/scripts/cbmcwrapper.in > $@
 	chmod u+x $@
 
 dist-hook:
@@ -72,7 +84,16 @@ cbmc-models:
 	cd cbmc-models &&\
 	  (echo $${CONFIG} && echo "\"--host=none-none-none\"") | xargs\
 	      $(abs_srcdir)/configure &&\
-	  $(MAKE) $(AM_MAKEFLAGS) CC=goto-cc
+	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
+
+# This is not a real verification because our programs are unbounded
+# and is only a basic double check.
+.PHONY: cbmc-lint
+cbmc-lint: scripts/cbmcwrapper
+	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/gui
+	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/simulator
+	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/linted
+	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/lintedctl
 
 linted_INDENTFLAGS=\
   --linux-style\

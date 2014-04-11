@@ -32,7 +32,7 @@
 #include <unistd.h>
 
 errno_t linted_io_write_all(int fd, size_t * bytes_wrote_out,
-                        void const *buf, size_t count)
+                            void const *buf, size_t count)
 {
     errno_t error_status = 0;
     size_t total_bytes_wrote = 0;
@@ -71,7 +71,7 @@ errno_t linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
 }
 
 errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
-                           char const *format_str, ...)
+                               char const *format_str, ...)
 {
     errno_t error_status = 0;
 

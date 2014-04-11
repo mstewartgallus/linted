@@ -45,13 +45,3 @@ exit "$?"
 #   -cpp-extra-args='$@'\
 #   -main linted_simulator_run\
 #   $@
-
-# goto-cc could be useful
-# cbmc\
-#   --no-unwinding-assertions\
-#   --unwind 6\
-#   --bounds-check\
-#   --div-by-zero-check\
-#   --nan-check\
-#   --pointer-check\
-#   --overflow-check\
