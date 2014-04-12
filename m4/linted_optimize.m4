@@ -23,6 +23,7 @@ LINTED_CHECK_CFLAGS([linted_CPPFLAGS_OPTIMIZE],[
         [-O]dnl
         [-O2]dnl
         [-O3]dnl
+        [-Os]dnl
 ])
 AC_SUBST([linted_CPPFLAGS_OPTIMIZE])
 dnl
