@@ -79,6 +79,35 @@ doxygen:
 
 # We have to undefine certain flags because unfortunately we can't
 # verify these compiler specific changes
+
+.PHONY: frama-c-models
+frama-c-models:
+	$(MKDIR_P) frama-c-models
+	CONFIG=$$($(builddir)/config.status --config) &&\
+	cd frama-c-models &&\
+	  (\
+	     echo $${CONFIG} &&\
+	     echo "\"--host=none-none-none\"" &&\
+	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
+	  ) | xargs\
+	     $(abs_srcdir)/configure &&\
+	  $(MAKE) $(AM_MAKEFLAGS) CC=$(abs_srcdir)/scripts/json-cc
+
+.PHONY: frama-c-lint
+frama-c-lint:
+	(for II in $$($(srcdir)/scripts/flags frama-c-models/lintedctl); do\
+	  echo -cpp-extra-args="$${II}";\
+	done && $(srcdir)/scripts/files frama-c-models/lintedctl) | xargs\
+	  $(FRAMA_C)\
+	   -quiet\
+	   -journal-disable\
+	   -warn-signed-downcast\
+	   -warn-unsigned-downcast\
+	   -warn-unsigned-overflow\
+	   -warn-decimal-float all\
+	   -cpp-extra-args="-isystem $$($(FRAMA_C) -print-path)/libc"\
+	   -cpp-extra-args='-C'
+
 .PHONY: cbmc-models
 cbmc-models:
 	$(MKDIR_P) cbmc-models

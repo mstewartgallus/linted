@@ -1,0 +1,97 @@
+#! /usr/bin/env python3.2
+# Copyright 2014 Steven Stewart-Gallus
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
+import subprocess
+import sys
+import json
+
+if __name__ == '__main__':
+    arguments = sys.argv[1:]
+    ii = 0
+
+    files = []
+    output = None
+    linking = True
+    flags = []
+    while True:
+        if ii == len(arguments):
+            break
+
+        argument = arguments[ii]
+
+        if argument == '-c':
+            linking = False
+        elif argument == '-o':
+            ii += 1
+
+            if ii == len(arguments):
+                raise Exception('No argument for o given')
+
+            output = arguments[ii]
+        elif argument.startswith('-'):
+            flags.append(argument)
+
+        else:
+            files.append(argument)
+
+        ii += 1
+
+    if 0 == len(files):
+        raise Exception('Some files are needed!')
+
+    if linking:
+        if output == None:
+            output = 'a.out'
+
+        files_json = []
+        for afile in files:
+            if afile.endswith('.c'):
+                files_json.append(afile)
+            elif afile.endswith('.a'):
+                members = subprocess.check_output(['ar', 't', afile]).decode('utf-8').split()
+                for member in members:
+                    member_contents = subprocess.check_output(['ar', 'p', afile, member])
+                    files_json.append(json.loads(member_contents.decode('utf-8')))
+            else:
+                files_json.append(json.loads(open(afile, 'r').read()))
+
+        with open(output, 'w') as outputfile:
+            outputfile.write(json.JSONEncoder().encode({
+                'flags': flags,
+                'files': files_json
+            }))
+
+    else:
+        if 1 == len(files):
+            input_file = files[0]
+
+            if output == None:
+                output = input_file.replace('.c', '.o')
+
+            with open(output, 'w') as outputfile:
+                outputfile.write(json.JSONEncoder().encode({
+                    'flags': flags,
+                    'files': [input_file]
+                }))
+        else:
+            if output == None:
+                raise Exception('cannot specify -o with -c with multiple files')
+
+            for input_file in files:
+                with open(input_file.replace('.c', '.o'), 'w') as outputfile:
+                    outputfile.write(json.JSONEncoder().encode({
+                        'flags': flags,
+                        'files': [input_file]
+                    }))

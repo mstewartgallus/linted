@@ -1,0 +1,67 @@
+#! /usr/bin/env python3.2
+# Copyright 2014 Steven Stewart-Gallus
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import argparse
+import json
+import sys
+
+def go():
+    parser = argparse.ArgumentParser(
+        description = 'Unpack file contents and give them to the command')
+    parser.add_argument(
+        'input_file',
+        type = str,
+        help = 'The recursive file of sources')
+
+    arguments = parser.parse_args()
+
+    flags = []
+
+    inputdata = None
+    with open(arguments.input_file, 'r') as the_file:
+        inputdata = the_file.read()
+
+    def recurse(jsondata):
+        for afile in jsondata['files']:
+            if isinstance(afile, str):
+                # We care about C preprocessor flags only
+                fileflags = jsondata['flags']
+                for flag in fileflags:
+                    if (
+                        flag == '-E'
+                        or flag == '-C'
+                        or flag.startswith('-I')
+                        or flag.startswith('-i')
+                        or flag.startswith('-D')
+                        or flag.startswith('-U')
+                    ):
+                        flags.append(flag)
+            elif isinstance(afile, dict):
+                recurse(afile)
+            else:
+                raise Exception('type error')
+
+    recurse(json.loads(inputdata))
+
+    print(' '.join(['\'' + ii + '\'' for ii in unique(flags)]))
+
+def unique(l):
+    newl = []
+    for x in l:
+        if x not in newl:
+            newl.append(x)
+    return newl
+
+if __name__ == '__main__':
+    go()
