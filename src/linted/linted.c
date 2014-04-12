@@ -259,7 +259,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static int run_game(char const *simulator_path, int simulator_binary,
+static errno_t run_game(char const *simulator_path, int simulator_binary,
                     char const *gui_path, int gui_binary, char const *display)
 {
     errno_t error_status = 0;
@@ -668,9 +668,5 @@ cleanup_controller_pair:
         }
     }
 
-    errno = error_status;
-    if (error_status != 0) {
-        return -1;
-    }
-    return 0;
+    return error_status;
 }
