@@ -698,8 +698,9 @@ static errno_t init_graphics(struct gl_state *gl_state,
     glEnable(GL_VERTEX_ARRAY);
     glEnable(GL_NORMAL_ARRAY);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
-    glCullFace(GL_BACK);
+    glCullFace(GL_FRONT);
 
     glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
     glViewport(0, 0, window_state->width, window_state->height);
