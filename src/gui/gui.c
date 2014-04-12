@@ -30,6 +30,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -702,7 +703,44 @@ static errno_t init_graphics(struct gl_state *gl_state,
 
     glCullFace(GL_FRONT);
 
-    glClearColor(1.0f, 0.2f, 0.3f, 0.0f);
+    /* The brightest colour is (1, 1, 1) */
+    /* The darkest colour is (0, 0, 0) */
+    /* We want a neutral, middle brightness */
+
+    /* It might be possible to use a physically based model based off
+     * the energy contained in a ray of light of a certain hue but we
+     * have chosen to model brightnes as:
+     */
+    /* brightness = 0.2126 red + 0.7152 green + 0.0722 blue */
+
+    /* Note that this is a crappy approximation that only works for
+     * some monitors and eyes
+     */
+
+    /* brightest = 0.2126 + 0.7152 + 0.0722 */
+    /* darkest = 0 */
+
+    /* We calculate a middling brightness taking into account gamma
+     * and nonlinearity
+     */
+    double middle = (0.2126 + 0.7152 + 0.0722) * 0.25;
+
+    /* We can then carve off some red and green to make room for more
+     * blue but still keep the same amount of brightness.
+     */
+    /* middle = 0.2126 red + 0.7152 green + 0.0722 blue */
+    /* red = green = x */
+    /* middle = (0.2126 + 0.7152) x + 0.0722 blue */
+    /* middle - 0.0722 blue = (0.2126 + 0.7152) x */
+    /* (middle - 0.0722 blue) / (0.2126 + 0.7152) = x */
+
+    /* adjust blue to taste */
+    double blue = 0.45;
+    double x = (middle - 0.0722 * blue) / (0.2126 + 0.7152);
+    double red = x;
+    double green = x;
+
+    glClearColor(red, green, blue, 1);
     glViewport(0, 0, window_state->width, window_state->height);
 
     glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0]),
