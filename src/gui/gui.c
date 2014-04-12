@@ -30,7 +30,6 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -134,6 +133,8 @@ static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state,
                             struct window_state const *window_state);
 static void destroy_gl(struct gl_state *gl_state);
+
+static double square(double x);
 
 int main(int argc, char *argv[])
 {
@@ -723,20 +724,25 @@ static errno_t init_graphics(struct gl_state *gl_state,
     /* We calculate a middling brightness taking into account gamma
      * and nonlinearity
      */
-    double middle = (0.2126 + 0.7152 + 0.0722) * 0.25;
+
+    /* Note that how bright we want our background colour to be is
+     * really a matter of taste and not math. The halfway point is
+     * simply a good starting point.
+     */
+    double brightness = (0.2126 + 0.7152 + 0.0722) * square(0.5);
 
     /* We can then carve off some red and green to make room for more
      * blue but still keep the same amount of brightness.
      */
-    /* middle = 0.2126 red + 0.7152 green + 0.0722 blue */
+    /* brightness = 0.2126 red + 0.7152 green + 0.0722 blue */
     /* red = green = x */
-    /* middle = (0.2126 + 0.7152) x + 0.0722 blue */
-    /* middle - 0.0722 blue = (0.2126 + 0.7152) x */
-    /* (middle - 0.0722 blue) / (0.2126 + 0.7152) = x */
+    /* brightness = (0.2126 + 0.7152) x + 0.0722 blue */
+    /* brightness - 0.0722 blue = (0.2126 + 0.7152) x */
+    /* (brightness - 0.0722 blue) / (0.2126 + 0.7152) = x */
 
     /* adjust blue to taste */
-    double blue = 0.45;
-    double x = (middle - 0.0722 * blue) / (0.2126 + 0.7152);
+    double blue = square(0.75);
+    double x = (brightness - 0.0722 * blue) / (0.2126 + 0.7152);
     double red = x;
     double green = x;
 
@@ -920,4 +926,9 @@ static void render_graphics(struct gl_state const *gl_state,
     }
 
     SDL_GL_SwapBuffers();
+}
+
+static double square(double x)
+{
+    return x * x;
 }
