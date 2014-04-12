@@ -370,16 +370,14 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     errno_t error_status = 0;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
-    struct window_state window_state = {
-        .width = 640,
-        .height = 800,
-
-    };
+    struct window_state window_state = {.width = 640,.height = 800};
 
     struct controller_state controller_state = {
         .update = {.up = false,.down = false,.right = false,.left = false},
         .update_pending = false
     };
+
+    struct gui_state gui_state = {.x = 0,.y = 0};
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
                        | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
@@ -409,153 +407,156 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     /* Initialize SDL */
-    if (NULL == SDL_SetVideoMode(window_state.width, window_state.height,
-                                 0, sdl_flags)) {
+    if (NULL == SDL_SetVideoMode(window_state.width, window_state.height, 0,
+                                 sdl_flags)) {
         error_status = errno;
         syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
         goto cleanup_SDL;
     }
 
     /* Get actual window size, and not requested window size */
-    SDL_VideoInfo const *video_info = SDL_GetVideoInfo();
-    window_state.width = video_info->current_w;
-    window_state.height = video_info->current_h;
-
-    struct gui_state gui_state = {
-        .x = 0,
-        .y = 0
-    };
-
- setup_window:;
-    SDL_Surface *const video_surface = SDL_SetVideoMode(window_state.width,
-                                                        window_state.height,
-                                                        0, sdl_flags);
-    if (NULL == video_surface) {
-        error_status = errno;
-        syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
-        goto cleanup_SDL;
+    {
+        SDL_VideoInfo const *video_info = SDL_GetVideoInfo();
+        window_state.width = video_info->current_w;
+        window_state.height = video_info->current_h;
     }
 
-    struct gl_state gl_state;
+    for (;;) {
+        struct gl_state gl_state;
 
-    {
-        errno_t errnum = init_graphics(&gl_state, &window_state);
-        if (errnum != 0) {
-            error_status = errnum;
+        bool time_to_quit = false;
+        bool should_resize = false;
+
+        bool had_sdl_event;
+        bool had_selected_event;
+
+        if (NULL == SDL_SetVideoMode(window_state.width, window_state.height,
+                                     0, sdl_flags)) {
+            error_status = errno;
+            syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
             goto cleanup_SDL;
         }
-    }
 
-    bool should_resize = false;
-    for (;;) {
-        /* Handle SDL events first before rendering */
-        SDL_Event sdl_event;
-        bool const had_sdl_event = SDL_PollEvent(&sdl_event);
-        if (had_sdl_event) {
-            enum transition transition;
-            errno_t errnum = on_sdl_event(&sdl_event, &window_state,
-                                          &controller_state, &transition);
+        {
+            errno_t errnum = init_graphics(&gl_state, &window_state);
             if (errnum != 0) {
                 error_status = errnum;
-                goto cleanup_gl;
-            }
-
-            switch (transition) {
-            case DO_NOTHING:
-                break;
-
-            case SHOULD_EXIT:
-                goto exit_main_loop;
-
-            case SHOULD_RESIZE:
-                should_resize = true;
-                break;
+                goto cleanup_SDL;
             }
         }
-
-        int read_fds[] = { updater };
-        int write_fds[] = { controller };
-        int greatest = -1;
-
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-            if (greatest < read_fds[ii]) {
-                greatest = read_fds[ii];
-            }
-        }
-
-        if (controller_state.update_pending) {
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                if (greatest < write_fds[ii]) {
-                    greatest = write_fds[ii];
-                }
-            }
-        }
-
-        fd_set watched_read_fds;
-        fd_set watched_write_fds;
-        errno_t select_status;
-        int fds_active;
 
         do {
-            FD_ZERO(&watched_read_fds);
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-                FD_SET(read_fds[ii], &watched_read_fds);
-            }
+            /* Handle SDL events first before rendering */
+            {
+                SDL_Event sdl_event;
+                had_sdl_event = SDL_PollEvent(&sdl_event);
+                if (had_sdl_event) {
+                    enum transition transition;
+                    errno_t errnum = on_sdl_event(&sdl_event, &window_state,
+                                                  &controller_state,
+                                                  &transition);
+                    if (errnum != 0) {
+                        error_status = errnum;
+                        goto cleanup_gl;
+                    }
 
-            FD_ZERO(&watched_write_fds);
-            if (controller_state.update_pending) {
-                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                    FD_SET(write_fds[ii], &watched_write_fds);
+                    switch (transition) {
+                    case DO_NOTHING:
+                        break;
+
+                    case SHOULD_EXIT:
+                        time_to_quit = true;
+                        goto cleanup_gl;
+
+                    case SHOULD_RESIZE:
+                        should_resize = true;
+                        break;
+                    }
                 }
             }
 
-            struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-            fds_active = select(greatest + 1, &watched_read_fds,
-                                          &watched_write_fds, NULL, &timeval);
-            select_status = -1 == fds_active ? errno : 0;
-        } while (EINTR == select_status);
-        if (select_status != 0) {
-            error_status = select_status;
-            goto cleanup_gl;
-        }
+            int read_fds[] = { updater };
+            int write_fds[] = { controller };
+            int greatest = -1;
 
-        bool const had_selected_event = fds_active > 0;
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+                if (greatest < read_fds[ii]) {
+                    greatest = read_fds[ii];
+                }
+            }
 
-        if (FD_ISSET(updater, &watched_read_fds)) {
-            errno_t errnum = on_updater_readable(updater, &gui_state);
-            if (errnum != 0) {
-                error_status = errnum;
+            if (controller_state.update_pending) {
+                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                    if (greatest < write_fds[ii]) {
+                        greatest = write_fds[ii];
+                    }
+                }
+            }
+
+            fd_set watched_read_fds;
+            fd_set watched_write_fds;
+            errno_t select_status;
+            int fds_active;
+
+            do {
+                FD_ZERO(&watched_read_fds);
+                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+                    FD_SET(read_fds[ii], &watched_read_fds);
+                }
+
+                FD_ZERO(&watched_write_fds);
+                if (controller_state.update_pending) {
+                    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
+                        FD_SET(write_fds[ii], &watched_write_fds);
+                    }
+                }
+
+                struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
+                fds_active = select(greatest + 1, &watched_read_fds,
+                                    &watched_write_fds, NULL, &timeval);
+                select_status = -1 == fds_active ? errno : 0;
+            } while (EINTR == select_status);
+            if (select_status != 0) {
+                error_status = select_status;
                 goto cleanup_gl;
             }
-        }
 
-        if (controller_state.update_pending) {
-            if (FD_ISSET(controller, &watched_write_fds)) {
-                errno_t errnum = on_controller_writeable(controller,
-                                                         &controller_state);
+            had_selected_event = fds_active > 0;
+
+            if (FD_ISSET(updater, &watched_read_fds)) {
+                errno_t errnum = on_updater_readable(updater, &gui_state);
                 if (errnum != 0) {
                     error_status = errnum;
-
-                    destroy_gl(&gl_state);
                     goto cleanup_gl;
                 }
             }
-        }
 
-        /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_selected_event) {
-            if (should_resize) {
-                goto setup_window;
+            if (controller_state.update_pending) {
+                if (FD_ISSET(controller, &watched_write_fds)) {
+                    errno_t errnum = on_controller_writeable(controller,
+                                                             &controller_state);
+                    if (errnum != 0) {
+                        error_status = errnum;
+                        goto cleanup_gl;
+                    }
+                }
             }
 
-            render_graphics(&gl_state, &gui_state, &window_state);
+            /* Only render if we have time to waste */
+            if (!had_sdl_event && !had_selected_event) {
+                render_graphics(&gl_state, &gui_state, &window_state);
+            }
+
+            /* Only resize if we have time to waste */
+        } while (!should_resize || had_sdl_event || had_selected_event);
+
+     cleanup_gl:
+        destroy_gl(&gl_state);
+
+        if (error_status != 0 || time_to_quit) {
+            break;
         }
     }
-
- exit_main_loop:
-
- cleanup_gl:
-    destroy_gl(&gl_state);
 
  cleanup_SDL:
     SDL_Quit();

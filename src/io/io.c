@@ -87,29 +87,32 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
         goto free_va_lists;
     }
 
-    size_t string_size = bytes_should_write + 1;
-
-    char *string = malloc(string_size);
-    if (NULL == string) {
-        error_status = errno;
-        goto free_va_lists;
-    }
-
-    if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
-        error_status = errno;
-        goto free_string;
-    }
-
     {
-        errno_t errnum = linted_io_write_string(fd, bytes_wrote_out, string);
-        if (errnum != 0) {
-            error_status = errnum;
+        size_t string_size = bytes_should_write + 1;
+
+        char *string = malloc(string_size);
+        if (NULL == string) {
+            error_status = errno;
+            goto free_va_lists;
+        }
+
+        if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
+            error_status = errno;
             goto free_string;
         }
-    }
 
- free_string:
-    free(string);
+        {
+            errno_t errnum = linted_io_write_string(fd, bytes_wrote_out,
+                                                    string);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto free_string;
+            }
+        }
+
+    free_string:
+        free(string);
+    }
 
  free_va_lists:
     va_end(ap);

@@ -192,23 +192,20 @@ errno_t linted_manager_send_request(pid_t pid,
     }
 
     siginfo_t info;
-    int signal_number;
+    errno_t errnum;
     do {
-        signal_number = sigtimedwait(&sigwait_set, &info, NULL);
-    } while (-1 == signal_number && EINTR == errno);
-    if (-1 == signal_number) {
-        assert(errno != EAGAIN);
-        assert(errno != EINVAL);
-
-        error_status = errno;
-        goto restore_sigmask;
-    }
-
-    int errnum = info.si_value.sival_int;
+        int signal_number = sigtimedwait(&sigwait_set, &info, NULL);
+        errnum = -1 == signal_number ? errno : 0;
+    } while (EINTR == errnum);
     if (errnum != 0) {
+        assert(errnum != EAGAIN);
+        assert(errnum != EINVAL);
+
         error_status = errnum;
         goto restore_sigmask;
     }
+
+    error_status = info.si_value.sival_int;
 
  restore_sigmask:
     pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);

@@ -314,43 +314,29 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
     /* Create placeholder file descriptors to be overwritten later on */
     {
-        int updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
+        int updater_placeholder;
+        int shutdowner_placeholder;
+        int controller_placeholder;
+
+        updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == updater_placeholder) {
             error_status = errno;
             goto restore_sigmask;
         }
 
-        int shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
+        shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == shutdowner_placeholder) {
             error_status = errno;
             goto close_updater_placeholder;
         }
 
-        int controller_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
+        controller_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == controller_placeholder) {
             error_status = errno;
             goto close_shutdowner_placeholder;
         }
 
-        char updater_string[] = "--updater=" INT_STRING_PADDING;
-        sprintf(updater_string, "--updater=%i", updater_placeholder);
-
-        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-        sprintf(shutdowner_string, "--shutdowner=%i", shutdowner_placeholder);
-
-        char controller_string[] = "--controller=" INT_STRING_PADDING;
-        sprintf(controller_string, "--controller=%i", controller_placeholder);
-
         {
-            char *args[] = {
-                (char *)gui_path,
-                updater_string,
-                shutdowner_string,
-                controller_string,
-                NULL
-            };
-            char *envp[] = { (char *)display, NULL };
-
             posix_spawn_file_actions_t file_actions;
             if (-1 == posix_spawn_file_actions_init(&file_actions)) {
                 error_status = errno;
@@ -380,11 +366,33 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 goto destroy_gui_file_actions;
             }
 
-            char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-            sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
-            if (-1 == posix_spawn(&live_processes[0], fd_path,
-                                  &file_actions, NULL, args, envp)) {
-                error_status = errno;
+            {
+                char updater_string[] = "--updater=" INT_STRING_PADDING;
+                sprintf(updater_string, "--updater=%i", updater_placeholder);
+
+                char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+                sprintf(shutdowner_string,
+                        "--shutdowner=%i", shutdowner_placeholder);
+
+                char controller_string[] = "--controller=" INT_STRING_PADDING;
+                sprintf(controller_string,
+                        "--controller=%i", controller_placeholder);
+
+                char *args[] = {
+                    (char *)gui_path,
+                    updater_string,
+                    shutdowner_string,
+                    controller_string,
+                    NULL
+                };
+                char *envp[] = { (char *)display, NULL };
+
+                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+                sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
+                if (-1 == posix_spawn(&live_processes[0], fd_path,
+                                      &file_actions, NULL, args, envp)) {
+                    error_status = errno;
+                }
             }
 
  destroy_gui_file_actions:
@@ -399,15 +407,6 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
 
         {
-            char *args[] = {
-                (char *)simulator_path,
-                updater_string,
-                shutdowner_string,
-                controller_string,
-                NULL
-            };
-            char *envp[] = { NULL };
-
             posix_spawn_file_actions_t file_actions;
             if (-1 == posix_spawn_file_actions_init(&file_actions)) {
                 error_status = errno;
@@ -435,11 +434,33 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 goto destroy_sim_file_actions;
             }
 
-            char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-            sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
-            if (-1 == posix_spawn(&live_processes[1], fd_path,
-                                  &file_actions, NULL, args, envp)) {
-                error_status = errno;
+            {
+                char updater_string[] = "--updater=" INT_STRING_PADDING;
+                sprintf(updater_string, "--updater=%i", updater_placeholder);
+
+                char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+                sprintf(shutdowner_string,
+                        "--shutdowner=%i", shutdowner_placeholder);
+
+                char controller_string[] = "--controller=" INT_STRING_PADDING;
+                sprintf(controller_string,
+                        "--controller=%i", controller_placeholder);
+
+                char *args[] = {
+                    (char *)simulator_path,
+                    updater_string,
+                    shutdowner_string,
+                    controller_string,
+                    NULL
+                };
+                char *envp[] = { NULL };
+
+                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+                sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
+                if (-1 == posix_spawn(&live_processes[1], fd_path,
+                                      &file_actions, NULL, args, envp)) {
+                    error_status = errno;
+                }
             }
 
         destroy_sim_file_actions:
@@ -638,7 +659,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
-cleanup_controller_pair:
+ cleanup_controller_pair:
     {
         int errnum = linted_controller_close(controller_read);
         if (0 == error_status) {
