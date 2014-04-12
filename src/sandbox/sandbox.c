@@ -37,8 +37,8 @@ void linted_sandbox(void)
     if (-1 == setrlimit(RLIMIT_NPROC, &(struct rlimit) {
                         .rlim_cur = 0,.rlim_max = 0})
         && errno != EPERM) {
-        LINTED_FATAL_ERROR(errno, "could not sandbox process: %s",
-                           linted_error_string_alloc(errno));
+        LINTED_FATAL_FAILURE(errno, "could not sandbox process: %s",
+                             linted_error_string_alloc(errno));
     }
 #endif                          /* HAVE_SYS_RESOURCE_H */
 }
