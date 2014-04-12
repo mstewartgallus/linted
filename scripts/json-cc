@@ -16,9 +16,66 @@ import os
 import subprocess
 import sys
 import json
+from collections import namedtuple
 
 def go():
-    arguments = sys.argv[1:]
+    files, flags, makeflags, linking, output = parse(sys.argv[1:])
+
+    if len(makeflags) > 0:
+        subprocess.check_call(['gcc', '-E', '-o', output] + makeflags + flags + files)
+        # Fall through
+
+    if 0 == len(files):
+        raise Exception('Some files are needed!')
+    elif linking:
+        if output == None:
+            output = 'a.out'
+
+        files_json = []
+        for filename in files:
+            if filename.endswith('.c'):
+                files_json.append(filename)
+            elif filename.endswith('.a'):
+                members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
+                for member in members:
+                    member_contents = subprocess.check_output(['ar', 'p', filename, member])
+                    files_json.append(json.loads(member_contents.decode('utf-8')))
+            else:
+                with open(filename, 'r') as afile:
+                    files_json.append(json.loads(afile.read()))
+
+        with open(output, 'w') as outputfile:
+            outputfile.write(json.JSONEncoder().encode({
+                'flags': flags,
+                'files': files_json
+            }))
+
+    else:
+        if 1 == len(files):
+            input_file = files[0]
+
+            if output == None:
+                output = input_file.replace('.c', '.o')
+
+            with open(output, 'w') as outputfile:
+                outputfile.write(json.dumps({
+                    'flags': flags,
+                    'files': [input_file]
+                }))
+        else:
+            if output == None:
+                raise Exception('cannot specify -o with -c with multiple files')
+
+            for input_file in files:
+                with open(input_file.replace('.c', '.o'), 'w') as outputfile:
+                    outputfile.write(json.dumps({
+                        'flags': flags,
+                        'files': [input_file]
+                    }))
+
+Arguments = namedtuple('Arguments',
+                       ('files', 'flags', 'makeflags', 'linking', 'output'))
+def parse(arguments: list):
     ii = 0
 
     files = []
@@ -58,58 +115,11 @@ def go():
             files.append(argument)
 
         ii += 1
-
-    if len(makeflags) > 0:
-        subprocess.check_call(['gcc', '-E'] + makeflags + flags + arguments)
-        # Fall through
-
-    if 0 == len(files):
-        raise Exception('Some files are needed!')
-    elif linking:
-        if output == None:
-            output = 'a.out'
-
-        files_json = []
-        for afile in files:
-            if afile.endswith('.c'):
-                files_json.append(afile)
-            elif afile.endswith('.a'):
-                members = subprocess.check_output(['ar', 't', afile]).decode('utf-8').split()
-                for member in members:
-                    member_contents = subprocess.check_output(['ar', 'p', afile, member])
-                    files_json.append(json.loads(member_contents.decode('utf-8')))
-            else:
-                print(afile)
-                files_json.append(json.loads(open(afile, 'r').read()))
-
-        with open(output, 'w') as outputfile:
-            outputfile.write(json.JSONEncoder().encode({
-                'flags': flags,
-                'files': files_json
-            }))
-
-    else:
-        if 1 == len(files):
-            input_file = files[0]
-
-            if output == None:
-                output = input_file.replace('.c', '.o')
-
-            with open(output, 'w') as outputfile:
-                outputfile.write(json.JSONEncoder().encode({
-                    'flags': flags,
-                    'files': [input_file]
-                }))
-        else:
-            if output == None:
-                raise Exception('cannot specify -o with -c with multiple files')
-
-            for input_file in files:
-                with open(input_file.replace('.c', '.o'), 'w') as outputfile:
-                    outputfile.write(json.JSONEncoder().encode({
-                        'flags': flags,
-                        'files': [input_file]
-                    }))
+    return Arguments(files=files,
+                     flags=flags,
+                     makeflags=makeflags,
+                     linking=linking,
+                     output=output)
 
 if __name__ == '__main__':
     go()
