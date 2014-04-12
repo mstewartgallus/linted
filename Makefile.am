@@ -95,9 +95,10 @@ frama-c-models:
 
 .PHONY: frama-c-lint
 frama-c-lint:
-	(for II in $$($(srcdir)/scripts/flags frama-c-models/lintedctl); do\
+	BINARY=simulator &&\
+	(for II in $$($(srcdir)/scripts/flags frama-c-models/$${BINARY}); do\
 	  echo -cpp-extra-args="$${II}";\
-	done && $(srcdir)/scripts/files frama-c-models/lintedctl) | xargs\
+	done && $(srcdir)/scripts/files frama-c-models/$${BINARY}) | xargs\
 	  $(FRAMA_C)\
 	   -quiet\
 	   -journal-disable\
@@ -105,7 +106,7 @@ frama-c-lint:
 	   -warn-unsigned-downcast\
 	   -warn-unsigned-overflow\
 	   -warn-decimal-float all\
-	   -cpp-extra-args="-isystem $$($(FRAMA_C) -print-path)/libc"\
+	   -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
 	   -cpp-extra-args='-C'
 
 .PHONY: cbmc-models

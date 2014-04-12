@@ -17,7 +17,7 @@ import subprocess
 import sys
 import json
 
-if __name__ == '__main__':
+def go():
     arguments = sys.argv[1:]
     ii = 0
 
@@ -25,6 +25,7 @@ if __name__ == '__main__':
     output = None
     linking = True
     flags = []
+    makeflags = []
     while True:
         if ii == len(arguments):
             break
@@ -40,18 +41,31 @@ if __name__ == '__main__':
                 raise Exception('No argument for o given')
 
             output = arguments[ii]
+        elif argument == '-MF' or argument == '-MT':
+            makeflags.append(argument)
+
+            ii += 1
+
+            if ii == len(arguments):
+                raise Exception('No argument for -MF or -MT given')
+
+            makeflags.append(arguments[ii])
+        elif argument.startswith('-M') or argument == '-E' or argument == '-C':
+            makeflags.append(argument)
         elif argument.startswith('-'):
             flags.append(argument)
-
         else:
             files.append(argument)
 
         ii += 1
 
+    if len(makeflags) > 0:
+        subprocess.check_call(['gcc', '-E'] + makeflags + flags + arguments)
+        # Fall through
+
     if 0 == len(files):
         raise Exception('Some files are needed!')
-
-    if linking:
+    elif linking:
         if output == None:
             output = 'a.out'
 
@@ -65,6 +79,7 @@ if __name__ == '__main__':
                     member_contents = subprocess.check_output(['ar', 'p', afile, member])
                     files_json.append(json.loads(member_contents.decode('utf-8')))
             else:
+                print(afile)
                 files_json.append(json.loads(open(afile, 'r').read()))
 
         with open(output, 'w') as outputfile:
@@ -95,3 +110,6 @@ if __name__ == '__main__':
                         'flags': flags,
                         'files': [input_file]
                     }))
+
+if __name__ == '__main__':
+    go()
