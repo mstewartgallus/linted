@@ -136,6 +136,8 @@ static void destroy_gl(struct gl_state *gl_state);
 
 static double square(double x);
 
+static int max_fd(int x, int y);
+
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
@@ -427,9 +429,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         bool time_to_quit = false;
         bool should_resize = false;
 
-        bool had_sdl_event;
-        bool had_selected_event;
-
         if (NULL == SDL_SetVideoMode(window_state.width, window_state.height,
                                      0, sdl_flags)) {
             error_status = errno;
@@ -445,7 +444,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
         }
 
-        do {
+        for (;;) {
+            bool had_sdl_event;
+
             /* Handle SDL events first before rendering */
             {
                 SDL_Event sdl_event;
@@ -475,45 +476,34 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                 }
             }
 
-            int read_fds[] = { updater };
-            int write_fds[] = { controller };
-            int greatest = -1;
-
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-                if (greatest < read_fds[ii]) {
-                    greatest = read_fds[ii];
-                }
-            }
-
-            if (controller_state.update_pending) {
-                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                    if (greatest < write_fds[ii]) {
-                        greatest = write_fds[ii];
-                    }
-                }
-            }
-
             fd_set watched_read_fds;
             fd_set watched_write_fds;
+            int greatest = -1;
+
+            FD_ZERO(&watched_read_fds);
+            FD_SET(updater, &watched_read_fds);
+
+            greatest = max_fd(greatest, updater);
+
+            FD_ZERO(&watched_write_fds);
+
+            if (controller_state.update_pending) {
+                FD_SET(controller, &watched_write_fds);
+                greatest = max_fd(greatest, controller);
+            }
+
+            fd_set active_read_fds;
+            fd_set active_write_fds;
             errno_t select_status;
             int fds_active;
 
             do {
-                FD_ZERO(&watched_read_fds);
-                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-                    FD_SET(read_fds[ii], &watched_read_fds);
-                }
-
-                FD_ZERO(&watched_write_fds);
-                if (controller_state.update_pending) {
-                    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                        FD_SET(write_fds[ii], &watched_write_fds);
-                    }
-                }
+                active_read_fds = watched_read_fds;
+                active_write_fds = watched_write_fds;
 
                 struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-                fds_active = select(greatest + 1, &watched_read_fds,
-                                    &watched_write_fds, NULL, &timeval);
+                fds_active = select(greatest + 1, &active_read_fds,
+                                    &active_write_fds, NULL, &timeval);
                 select_status = -1 == fds_active ? errno : 0;
             } while (EINTR == select_status);
             if (select_status != 0) {
@@ -521,9 +511,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                 goto cleanup_gl;
             }
 
-            had_selected_event = fds_active > 0;
+            bool had_selected_event = fds_active > 0;
 
-            if (FD_ISSET(updater, &watched_read_fds)) {
+            if (FD_ISSET(updater, &active_read_fds)) {
                 errno_t errnum = on_updater_readable(updater, &gui_state);
                 if (errnum != 0) {
                     error_status = errnum;
@@ -531,24 +521,27 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                 }
             }
 
-            if (controller_state.update_pending) {
-                if (FD_ISSET(controller, &watched_write_fds)) {
-                    errno_t errnum = on_controller_writeable(controller,
-                                                             &controller_state);
-                    if (errnum != 0) {
-                        error_status = errnum;
-                        goto cleanup_gl;
-                    }
+            if (controller_state.update_pending
+                && FD_ISSET(controller, &active_write_fds)) {
+
+                errno_t errnum = on_controller_writeable(controller,
+                                                         &controller_state);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto cleanup_gl;
                 }
             }
 
             /* Only render if we have time to waste */
             if (!had_sdl_event && !had_selected_event) {
+                /* Only resize if we have time to waste */
+                if (should_resize) {
+                    break;
+                }
+
                 render_graphics(&gl_state, &gui_state, &window_state);
             }
-
-            /* Only resize if we have time to waste */
-        } while (!should_resize || had_sdl_event || had_selected_event);
+        }
 
      cleanup_gl:
         destroy_gl(&gl_state);
@@ -932,4 +925,9 @@ static void render_graphics(struct gl_state const *gl_state,
 static double square(double x)
 {
     return x * x;
+}
+
+static int max_fd(int x, int y)
+{
+    return x > y ? x : y;
 }

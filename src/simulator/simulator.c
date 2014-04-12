@@ -75,6 +75,8 @@ static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
+static int max_fd(int x, int y);
+
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
@@ -322,43 +324,32 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     for (;;) {
-        int read_fds[] = { controller, shutdowner, timer };
-        int write_fds[] = { updater };
-        int greatest = -1;
-
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-            if (greatest < read_fds[ii]) {
-                greatest = read_fds[ii];
-            }
-        }
-
-        if (simulator_state.update_pending) {
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                if (greatest < write_fds[ii]) {
-                    greatest = write_fds[ii];
-                }
-            }
-        }
-
         fd_set watched_read_fds;
         fd_set watched_write_fds;
+        int greatest = -1;
+
+        int const read_fds[] = { controller, shutdowner, timer };
+
+        FD_ZERO(&watched_read_fds);
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
+            greatest = max_fd(greatest, read_fds[ii]);
+            FD_SET(read_fds[ii], &watched_read_fds);
+        }
+
+        FD_ZERO(&watched_write_fds);
+        if (simulator_state.update_pending) {
+            greatest = max_fd(greatest, updater);
+            FD_SET(updater, &watched_write_fds);
+        }
+
+        fd_set active_read_fds;
+        fd_set active_write_fds;
         errno_t select_status;
-
         do {
-            FD_ZERO(&watched_read_fds);
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(read_fds); ++ii) {
-                FD_SET(read_fds[ii], &watched_read_fds);
-            }
-
-            FD_ZERO(&watched_write_fds);
-            if (simulator_state.update_pending) {
-                for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(write_fds); ++ii) {
-                    FD_SET(write_fds[ii], &watched_write_fds);
-                }
-            }
-
-            int fds_active = select(greatest + 1, &watched_read_fds,
-                                    &watched_write_fds, NULL, NULL);
+            active_read_fds = watched_read_fds;
+            active_write_fds = watched_write_fds;
+            int fds_active = select(greatest + 1, &active_read_fds,
+                                    &active_write_fds, NULL, NULL);
             select_status = -1 == fds_active ? errno : 0;
         } while (EINTR == select_status);
         if (select_status != 0) {
@@ -366,7 +357,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             goto close_timer;
         }
 
-        if (FD_ISSET(shutdowner, &watched_read_fds)) {
+        if (FD_ISSET(shutdowner, &active_read_fds)) {
             bool should_exit;
             errno_t errnum = on_shutdowner_readable(shutdowner, &should_exit);
             if (errnum != 0) {
@@ -378,7 +369,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
         }
 
-        if (FD_ISSET(timer, &watched_read_fds)) {
+        if (FD_ISSET(timer, &active_read_fds)) {
             errno_t errnum = on_timer_readable(timer, &controller_state,
                                                &simulator_state);
             if (errnum != 0) {
@@ -387,7 +378,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
         }
 
-        if (FD_ISSET(controller, &watched_read_fds)) {
+        if (FD_ISSET(controller, &active_read_fds)) {
             errno_t errnum = on_controller_readable(controller,
                                                     &controller_state);
             if (errnum != 0) {
@@ -396,13 +387,12 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             }
         }
 
-        if (simulator_state.update_pending) {
-            if (FD_ISSET(updater, &watched_write_fds)) {
-                errno_t errnum = on_updater_writeable(updater, &simulator_state);
-                if (errnum != 0) {
-                    error_status = errnum;
-                    goto close_timer;
-                }
+        if (simulator_state.update_pending
+            && FD_ISSET(updater, &watched_write_fds)) {
+            errno_t errnum = on_updater_writeable(updater, &simulator_state);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto close_timer;
             }
         }
     }
@@ -571,4 +561,9 @@ static int_fast32_t saturate(int_fast64_t x)
     }
 
     return x;
+}
+
+static int max_fd(int x, int y)
+{
+    return x > y ? x : y;
 }
