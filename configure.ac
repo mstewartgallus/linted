@@ -13,7 +13,7 @@ AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca],,
 dnl
 dnl Other software uses a shell command to get the date but that
 dnl prevents deterministic builds.
-AC_DEFINE([COPYRIGHT_YEAR], [2014], [year in copyright message])
+AC_DEFINE([COPYRIGHT_YEAR], ["2014"], [year in copyright message])
 dnl
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])

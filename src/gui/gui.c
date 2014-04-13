@@ -143,6 +143,9 @@ static errno_t try_for_more_help(int fildes, char const * program_name,
                                  struct linted_str help_option);
 static errno_t invalid_fildes(int fildes, char const * program_name,
                               struct linted_str option, errno_t errnum);
+static errno_t failure(int fildes, char const * program_name,
+                       struct linted_str message,
+                       errno_t errnum);
 
 int main(int argc, char *argv[])
 {
@@ -244,11 +247,14 @@ Report bugs to <"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "\
-Copyright (C) %d Steven Stewart-Gallus\n\
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
+Copyright (C) "));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(COPYRIGHT_YEAR));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
+ Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
+There is NO WARRANTY, to the extent permitted by law.\n"));
 
         return EXIT_SUCCESS;
     }
@@ -320,9 +326,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: no DISPLAY environment variable\n",
-                               program_name);
+        linted_io_write_string(STDERR_FILENO, NULL, program_name);
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(
+                                ": no DISPLAY environment variable\n"));
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -330,9 +336,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     size_t display_string_length = strlen(original_display) + 1;
     char *display = malloc(display_string_length);
     if (NULL == display) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: can't allocate DISPLAY string\n",
-                               linted_error_string_alloc(errno));
+        failure(STDERR_FILENO,
+                program_name, LINTED_STR("no DISPLAY environment variable"),
+                errno);
         return EXIT_FAILURE;
     }
     memcpy(display, original_display, display_string_length);
@@ -351,16 +357,20 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         int errnum = linted_util_sanitize_environment(&essential_fds);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s", program_name,
-                                   linted_error_string_alloc(errnum));
+            failure(STDERR_FILENO,
+                    program_name,
+                    LINTED_STR("cannot sanitize the program environment"),
+                    errnum);
             return EXIT_FAILURE;
         }
     }
 
     if (-1 == setenv("DISPLAY", display, true)) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not set the environment: %s", program_name, linted_error_string_alloc(errno));
+        failure(STDERR_FILENO,
+                program_name,
+                LINTED_STR("cannot set the environment variable `DISPLAY'"),
+                errno);
+
         return EXIT_FAILURE;
     }
 
@@ -998,19 +1008,55 @@ static errno_t missing_option(int fildes, char const * program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_string(STDERR_FILENO, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": missing "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, option)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(" option\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t failure(int fildes, char const * program_name,
+                       struct linted_str message, errno_t error)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, message)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+        return errnum;
+    }
+
+    char const * error_string = linted_error_string_alloc(error);
+    errnum = linted_io_write_string(fildes, NULL, error_string);
+    linted_error_string_free(error_string);
+
+    if (errnum != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 

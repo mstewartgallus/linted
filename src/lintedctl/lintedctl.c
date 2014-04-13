@@ -268,7 +268,7 @@ static void write_version(void)
     linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
 
     linted_io_write_format(STDOUT_FILENO, NULL, "\
-Copyright (C) %d Steven Stewart-Gallus\n\
+Copyright (C) %s Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
