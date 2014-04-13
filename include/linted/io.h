@@ -28,7 +28,6 @@
  * Utility functions for working with file descriptors.
  */
 
-
 /**
  * The linted_io_write_all function repeatedly writes to fd until of
  * buf is written or an error occurs (except for EINTR).
@@ -75,7 +74,7 @@
  * @error EISDIR fd is a directory.
  */
 errno_t linted_io_write_all(int fd, size_t * bytes_wrote,
-                        void const *buf, size_t count);
+                            void const *buf, size_t count);
 
 errno_t linted_io_write_str(int fd, size_t * bytes_wrote,
                             struct linted_str str);
@@ -85,7 +84,7 @@ errno_t linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s);
 errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
                                char const *s, ...);
 
-errno_t linted_io_strtofd(char const *ptr, int * fd);
+errno_t linted_io_strtofd(char const *ptr, int *fd);
 
 /**
  *

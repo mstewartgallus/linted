@@ -110,7 +110,7 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
             }
         }
 
-    free_string:
+ free_string:
         free(string);
     }
 
@@ -121,7 +121,7 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
     return error_status;
 }
 
-errno_t linted_io_strtofd(char const *str, int * fd)
+errno_t linted_io_strtofd(char const *str, int *fd)
 {
     size_t length = strlen(str);
     unsigned position = 1u;

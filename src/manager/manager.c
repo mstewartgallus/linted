@@ -41,7 +41,7 @@ int linted_manager_wait_signal(void)
 
 errno_t linted_manager_req_type(pid_t pid,
                                 struct linted_manager_req const *request,
-                                unsigned * type)
+                                unsigned *type)
 {
     struct iovec local_iov[] = {
         {.iov_base = type,
@@ -80,7 +80,7 @@ errno_t linted_manager_req_type(pid_t pid,
 
 errno_t linted_manager_start_req_args(pid_t pid,
                                       struct linted_manager_req const *request,
-                                      struct linted_manager_start_args *args)
+                                      struct linted_manager_start_args * args)
 {
     struct linted_manager_start_req *start_request = (void *)request;
     struct iovec local_iov[] = {
@@ -119,7 +119,7 @@ errno_t linted_manager_start_req_args(pid_t pid,
 }
 
 errno_t linted_manager_start_req_reply(pid_t pid,
-                                       struct linted_manager_req *request,
+                                       struct linted_manager_req * request,
                                        struct linted_manager_start_reply const
                                        *reply)
 {
@@ -170,7 +170,7 @@ errno_t linted_manager_finish_reply(pid_t pid, int errnum)
 }
 
 errno_t linted_manager_send_request(pid_t pid,
-                                    struct linted_manager_req *request)
+                                    struct linted_manager_req * request)
 {
     int error_status = 0;
 

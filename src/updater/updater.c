@@ -101,11 +101,11 @@ errno_t linted_updater_send_update(linted_updater updater,
     struct int32 y_position = pack(update->y_position);
     memcpy(tip, y_position.bytes, sizeof y_position.bytes);
 
-    return -1 == mq_send(updater, message, sizeof message, 0)? errno : 0;
+    return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
 }
 
 errno_t linted_updater_receive_update(linted_updater updater,
-                                  struct linted_updater_update *update)
+                                      struct linted_updater_update *update)
 {
     message_type message;
     if (-1 == mq_receive(updater, message, sizeof message, NULL)) {

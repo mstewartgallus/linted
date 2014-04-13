@@ -51,7 +51,7 @@ int linted_manager_wait_signal(void);
 
 errno_t linted_manager_req_type(pid_t pid,
                                 struct linted_manager_req const *request,
-                                unsigned * type);
+                                unsigned *type);
 
 errno_t linted_manager_start_req_args(pid_t pid,
                                       struct linted_manager_req const *request,

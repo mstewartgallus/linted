@@ -34,7 +34,7 @@ void linted_sandbox(void)
     /* If the error is that we don't have the permissions to sandbox
        then we're already sandboxed enough. */
 
-    struct rlimit nproc = {.rlim_cur = 0,.rlim_max = 0};
+    struct rlimit nproc = {.rlim_cur = 0,.rlim_max = 0 };
     int errnum = -1 == setrlimit(RLIMIT_NPROC, &nproc) ? errno : 0;
     if (errnum != 0 && errnum != EPERM) {
         LINTED_FATAL_FAILURE(errnum, "could not sandbox process: %s",

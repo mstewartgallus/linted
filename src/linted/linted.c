@@ -191,8 +191,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         errno_t errnum = linted_util_sanitize_environment(&essential_fds);
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s\n", program_name,
-                                   linted_error_string_alloc(errnum));
+%s: can not sanitize the environment: %s\n", program_name, linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
     }
@@ -260,7 +259,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 }
 
 static errno_t run_game(char const *simulator_path, int simulator_binary,
-                    char const *gui_path, int gui_binary, char const *display)
+                        char const *gui_path, int gui_binary,
+                        char const *display)
 {
     errno_t error_status = 0;
 
@@ -422,14 +422,16 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        simulator_shutdowner_read,
-                                                       shutdowner_placeholder)) {
+                                                       shutdowner_placeholder))
+            {
                 error_status = errno;
                 goto destroy_sim_file_actions;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        controller_read,
-                                                       controller_placeholder)) {
+                                                       controller_placeholder))
+            {
                 error_status = errno;
                 goto destroy_sim_file_actions;
             }
@@ -463,14 +465,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
             }
 
-        destroy_sim_file_actions:
+ destroy_sim_file_actions:
             if (-1 == posix_spawn_file_actions_destroy(&file_actions)
                 && 0 == error_status) {
                 error_status = errno;
             }
         }
 
-    close_controller_placeholder:
+ close_controller_placeholder:
         {
             errno_t errnum = linted_io_close(controller_placeholder);
             if (0 == error_status) {
@@ -478,7 +480,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
         }
 
-    close_shutdowner_placeholder:
+ close_shutdowner_placeholder:
         {
             errno_t errnum = linted_io_close(shutdowner_placeholder);
             if (0 == error_status) {
@@ -486,7 +488,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
         }
 
-    close_updater_placeholder:
+ close_updater_placeholder:
         {
             errno_t errnum = linted_io_close(updater_placeholder);
             if (0 == error_status) {
@@ -569,7 +571,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 goto finish_reply;
             }
 
-        finish_reply:
+ finish_reply:
             {
                 errno_t errnum = linted_manager_finish_reply(pid, reply_status);
                 if (errnum != 0) {

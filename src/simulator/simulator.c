@@ -59,7 +59,8 @@ struct simulator_state {
 };
 
 static errno_t on_timer_readable(int timer,
-                                 struct controller_state const *controller_state,
+                                 struct controller_state const
+                                 *controller_state,
                                  struct simulator_state *simulator_state);
 
 static errno_t on_updater_writeable(linted_updater updater,
@@ -69,7 +70,8 @@ static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
                                       bool * should_exit);
 
 static errno_t on_controller_readable(linted_controller controller,
-                                      struct controller_state *controller_state);
+                                      struct controller_state
+                                      *controller_state);
 
 static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
@@ -273,8 +275,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         errno_t errnum = linted_util_sanitize_environment(&essential_fds);
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s", program_name,
-                                   linted_error_string_alloc(errnum));
+%s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
     }
@@ -414,8 +415,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 }
 
 static errno_t on_timer_readable(int timer,
-                                 struct controller_state const *controller_state,
-                             struct simulator_state *simulator_state)
+                                 struct controller_state const
+                                 *controller_state,
+                                 struct simulator_state *simulator_state)
 {
     uint64_t ticks;
     if (-1 == read(timer, &ticks, sizeof ticks)) {

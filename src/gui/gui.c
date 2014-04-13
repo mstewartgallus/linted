@@ -123,9 +123,10 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             struct controller_state *controller_state,
                             enum transition *transition);
 static errno_t on_updater_readable(linted_updater updater,
-                               struct gui_state *gui_state);
+                                   struct gui_state *gui_state);
 static errno_t on_controller_writeable(linted_controller controller,
-                                      struct controller_state *controller_state);
+                                       struct controller_state
+                                       *controller_state);
 
 static errno_t init_graphics(struct gl_state *gl_state,
                              struct window_state const *window_state);
@@ -138,23 +139,22 @@ static double square(double x);
 static int max_fd(int x, int y);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
-static errno_t gui_help(int fildes, char const * program_name,
+static errno_t gui_help(int fildes, char const *program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
                         struct linted_str package_bugreport);
-static errno_t on_bad_option(int fildes, char const * program_name,
-                             char const * bad_option);
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option);
 static errno_t version_text(int fildes, struct linted_str package_string,
                             struct linted_str copyright_year);
-static errno_t missing_option(int fildes, char const * program_name,
+static errno_t missing_option(int fildes, char const *program_name,
                               struct linted_str help_option);
-static errno_t try_for_more_help(int fildes, char const * program_name,
+static errno_t try_for_more_help(int fildes, char const *program_name,
                                  struct linted_str help_option);
-static errno_t invalid_fildes(int fildes, char const * program_name,
+static errno_t invalid_fildes(int fildes, char const *program_name,
                               struct linted_str option, errno_t errnum);
-static errno_t failure(int fildes, char const * program_name,
-                       struct linted_str message,
-                       errno_t errnum);
+static errno_t failure(int fildes, char const *program_name,
+                       struct linted_str message, errno_t errnum);
 
 int main(int argc, char *argv[])
 {
@@ -204,8 +204,7 @@ int main(int argc, char *argv[])
         gui_help(STDOUT_FILENO,
                  program_name,
                  LINTED_STR(PACKAGE_NAME),
-                 LINTED_STR(PACKAGE_URL),
-                 LINTED_STR(PACKAGE_BUGREPORT));
+                 LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
@@ -262,7 +261,8 @@ int main(int argc, char *argv[])
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(SHUTDOWNER_OPTION), errnum);
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -275,7 +275,8 @@ int main(int argc, char *argv[])
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(UPDATER_OPTION), errnum);
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -288,8 +289,8 @@ int main(int argc, char *argv[])
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_string(STDERR_FILENO, NULL, program_name);
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(
-                                ": no DISPLAY environment variable\n"));
+        linted_io_write_str(STDERR_FILENO, NULL,
+                            LINTED_STR(": no DISPLAY environment variable\n"));
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -338,14 +339,14 @@ int main(int argc, char *argv[])
 
     errno_t error_status = 0;
     Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
-    struct window_state window_state = {.width = 640,.height = 800};
+    struct window_state window_state = {.width = 640,.height = 800 };
 
     struct controller_state controller_state = {
         .update = {.up = false,.down = false,.right = false,.left = false},
         .update_pending = false
     };
 
-    struct gui_state gui_state = {.x = 0,.y = 0};
+    struct gui_state gui_state = {.x = 0,.y = 0 };
 
     if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
                        | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
@@ -509,7 +510,7 @@ int main(int argc, char *argv[])
             }
         }
 
-     cleanup_gl:
+ cleanup_gl:
         destroy_gl(&gl_state);
 
         if (error_status != 0 || time_to_quit) {
@@ -914,14 +915,15 @@ static errno_t missing_process_name(int fildes, struct linted_str package_name)
     return 0;
 }
 
-static errno_t gui_help(int fildes, char const * program_name,
+static errno_t gui_help(int fildes, char const *program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
                         struct linted_str package_bugreport)
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
         return errnum;
     }
 
@@ -929,7 +931,8 @@ static errno_t gui_help(int fildes, char const * program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
@@ -991,7 +994,7 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static errno_t try_for_more_help(int fildes, char const * program_name,
+static errno_t try_for_more_help(int fildes, char const *program_name,
                                  struct linted_str help_option)
 {
     errno_t errnum;
@@ -1020,7 +1023,7 @@ static errno_t try_for_more_help(int fildes, char const * program_name,
     return 0;
 }
 
-static errno_t invalid_fildes(int fildes, char const * program_name,
+static errno_t invalid_fildes(int fildes, char const *program_name,
                               struct linted_str option, errno_t error_display)
 {
     errno_t errnum;
@@ -1037,11 +1040,12 @@ static errno_t invalid_fildes(int fildes, char const * program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: "))) != 0) {
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" argument: "))) != 0) {
         return errnum;
     }
 
-    char const * error_string = linted_error_string_alloc(error_display);
+    char const *error_string = linted_error_string_alloc(error_display);
     errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
@@ -1056,7 +1060,7 @@ static errno_t invalid_fildes(int fildes, char const * program_name,
     return 0;
 }
 
-static errno_t missing_option(int fildes, char const * program_name,
+static errno_t missing_option(int fildes, char const *program_name,
                               struct linted_str option)
 {
     errno_t errnum;
@@ -1065,7 +1069,8 @@ static errno_t missing_option(int fildes, char const * program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
         return errnum;
     }
 
@@ -1073,14 +1078,15 @@ static errno_t missing_option(int fildes, char const * program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static errno_t failure(int fildes, char const * program_name,
+static errno_t failure(int fildes, char const *program_name,
                        struct linted_str message, errno_t error)
 {
     errno_t errnum;
@@ -1101,7 +1107,7 @@ static errno_t failure(int fildes, char const * program_name,
         return errnum;
     }
 
-    char const * error_string = linted_error_string_alloc(error);
+    char const *error_string = linted_error_string_alloc(error);
     errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
@@ -1116,8 +1122,8 @@ static errno_t failure(int fildes, char const * program_name,
     return 0;
 }
 
-static errno_t on_bad_option(int fildes, char const * program_name,
-                             char const * bad_option)
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option)
 {
     errno_t errnum;
 

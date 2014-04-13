@@ -50,8 +50,7 @@ errno_t linted_controller_send(linted_controller controller,
     message_type raw_message;
     memcpy(raw_message, &bitfield, sizeof bitfield);
     return -1 == mq_send(controller, raw_message, sizeof raw_message, 0)
-        ? errno
-        : 0;
+        ? errno : 0;
 }
 
 errno_t linted_controller_close(linted_controller controller)
@@ -60,7 +59,7 @@ errno_t linted_controller_close(linted_controller controller)
 }
 
 errno_t linted_controller_receive(linted_controller queue,
-                                  struct linted_controller_message *message)
+                                  struct linted_controller_message * message)
 {
     message_type raw_message;
     if (-1 == mq_receive(queue, raw_message, sizeof raw_message, NULL)) {
