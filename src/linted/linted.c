@@ -108,19 +108,19 @@ It is insecure to run a game as root!\n"));
         linted_io_write_format(STDOUT_FILENO, NULL, "Play the %s game.\n",
                                PACKAGE_NAME);
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
   --help              display this help and exit\n\
-  --version           display version information and exit\n");
+  --version           display version information and exit\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
   --simulator         the location of the simulator executable\n\
-  --gui               the location of the gui executable\n");
+  --gui               the location of the gui executable\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
         linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
                                PACKAGE_BUGREPORT);
@@ -141,9 +141,9 @@ It is insecure to run a game as root!\n"));
     }
 
     if (need_version) {
-        linted_io_write_string(STDOUT_FILENO, NULL, PACKAGE_STRING);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_STRING));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
 
         linted_io_write_format(STDOUT_FILENO, NULL, "\
 Copyright (C) %d Steven Stewart-Gallus\n\

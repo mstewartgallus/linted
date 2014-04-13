@@ -129,20 +129,20 @@ int main(int argc, char *argv[])
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "Run the %s program simulator.\n", PACKAGE_NAME);
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
   --help              display this help and exit\n\
-  --version           display version information and exit\n");
+  --version           display version information and exit\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
   --controller        the controller message queue file descriptor\n\
   --updater           the updater message queue file descriptor\n\
-  --shutdowner        the shutdowner message queue file descriptor\n");
+  --shutdowner        the shutdowner message queue file descriptor\n"));
 
-        linted_io_write_string(STDOUT_FILENO, NULL, "\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
         linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
                                PACKAGE_BUGREPORT);
@@ -163,11 +163,11 @@ int main(int argc, char *argv[])
     }
 
     if (need_version) {
-        linted_io_write_string(STDERR_FILENO, NULL, PACKAGE_STRING);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_STRING));
 
-        linted_io_write_string(STDERR_FILENO, NULL, "\n\n");
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
 
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDOUT_FILENO, NULL, "\
 Copyright (C) %d Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
