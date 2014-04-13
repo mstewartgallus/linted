@@ -137,6 +137,15 @@ static void destroy_gl(struct gl_state *gl_state);
 static double square(double x);
 static int max_fd(int x, int y);
 
+static errno_t missing_process_name(int fildes, struct linted_str package_name);
+static errno_t gui_help(int fildes, char const * program_name,
+                        struct linted_str package_name,
+                        struct linted_str package_url,
+                        struct linted_str package_bugreport);
+static errno_t on_bad_option(int fildes, char const * program_name,
+                             char const * bad_option);
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year);
 static errno_t missing_option(int fildes, char const * program_name,
                               struct linted_str help_option);
 static errno_t try_for_more_help(int fildes, char const * program_name,
@@ -150,10 +159,7 @@ static errno_t failure(int fildes, char const * program_name,
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
-        linted_io_write_str(STDERR_FILENO, NULL,
-                            LINTED_STR(PACKAGE_TARNAME "-gui"));
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
-: missing process name\n"));
+        missing_process_name(STDERR_FILENO, LINTED_STR(PACKAGE_TARNAME "-gui"));
         return EXIT_FAILURE;
     }
 
@@ -195,67 +201,23 @@ int main(int argc, char *argv[])
     }
 
     if (need_help) {
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("Usage: "));
-        linted_io_write_string(STDOUT_FILENO, NULL, program_name);
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(" [OPTIONS]\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-Run the " PACKAGE_NAME " program gui.\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --controller        the controller message queue file descriptor\n\
-  --updater           the updater message queue file descriptor\n\
-  --shutdowner        the shutdowner message queue file descriptor\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-Report bugs to <"));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_BUGREPORT));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(">\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_NAME));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
- home page: <"));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_URL));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(">\n"));
-
+        gui_help(STDOUT_FILENO,
+                 program_name,
+                 LINTED_STR(PACKAGE_NAME),
+                 LINTED_STR(PACKAGE_URL),
+                 LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_io_write_string(STDERR_FILENO, NULL, program_name);
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
-: unrecognised option '"));
-        linted_io_write_string(STDERR_FILENO, NULL, bad_option);
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("'\n"));
-
+        on_bad_option(STDERR_FILENO, program_name, bad_option);
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_STRING));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-Copyright (C) "));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(COPYRIGHT_YEAR));
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
- Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n"));
-
+        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                     LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
@@ -274,7 +236,6 @@ There is NO WARRANTY, to the extent permitted by law.\n"));
     }
 
     if (NULL == updater_name) {
-
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
@@ -355,7 +316,7 @@ There is NO WARRANTY, to the extent permitted by law.\n"));
         FD_SET(updater, &essential_fds);
         FD_SET(shutdowner, &essential_fds);
 
-        int errnum = linted_util_sanitize_environment(&essential_fds);
+        errno_t errnum = linted_util_sanitize_environment(&essential_fds);
         if (errnum != 0) {
             failure(STDERR_FILENO,
                     program_name,
@@ -370,7 +331,6 @@ There is NO WARRANTY, to the extent permitted by law.\n"));
                 program_name,
                 LINTED_STR("cannot set the environment variable `DISPLAY'"),
                 errno);
-
         return EXIT_FAILURE;
     }
 
@@ -938,6 +898,99 @@ static int max_fd(int x, int y)
     return x > y ? x : y;
 }
 
+static errno_t missing_process_name(int fildes, struct linted_str package_name)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: missing process name\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t gui_help(int fildes, char const * program_name,
+                        struct linted_str package_name,
+                        struct linted_str package_url,
+                        struct linted_str package_bugreport)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Run the " PACKAGE_NAME " program gui.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --controller        the controller message queue file descriptor\n\
+  --updater           the updater message queue file descriptor\n\
+  --shutdowner        the shutdowner message queue file descriptor\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
 static errno_t try_for_more_help(int fildes, char const * program_name,
                                  struct linted_str help_option)
 {
@@ -1057,6 +1110,59 @@ static errno_t failure(int fildes, char const * program_name,
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t on_bad_option(int fildes, char const * program_name,
+                             char const * bad_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: unrecognised option '"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Copyright (C) "))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ Steven Stewart-Gallus\n\
+License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
+This is free software, and you are welcome to redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
         return errnum;
     }
 
