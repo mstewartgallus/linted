@@ -135,15 +135,22 @@ static void render_graphics(struct gl_state const *gl_state,
 static void destroy_gl(struct gl_state *gl_state);
 
 static double square(double x);
-
 static int max_fd(int x, int y);
+
+static errno_t missing_option(int fildes, char const * program_name,
+                              struct linted_str help_option);
+static errno_t try_for_more_help(int fildes, char const * program_name,
+                                 struct linted_str help_option);
+static errno_t invalid_fildes(int fildes, char const * program_name,
+                              struct linted_str option, errno_t errnum);
 
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing process name\n",
-                               PACKAGE_TARNAME "-gui");
+        linted_io_write_str(STDERR_FILENO, NULL,
+                            LINTED_STR(PACKAGE_TARNAME "-gui"));
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+: missing process name\n"));
         return EXIT_FAILURE;
     }
 
@@ -185,11 +192,12 @@ int main(int argc, char *argv[])
     }
 
     if (need_help) {
-        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
-                               program_name);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("Usage: "));
+        linted_io_write_string(STDOUT_FILENO, NULL, program_name);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(" [OPTIONS]\n"));
 
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Run the %s program gui.\n", PACKAGE_NAME);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
+Run the " PACKAGE_NAME " program gui.\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -206,21 +214,28 @@ int main(int argc, char *argv[])
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
-        linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
-                               PACKAGE_BUGREPORT);
-        linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
-                               PACKAGE_NAME, PACKAGE_URL);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
+Report bugs to <"));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_BUGREPORT));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(">\n"));
+
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_NAME));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
+ home page: <"));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_URL));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(">\n"));
 
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: urecognized option '%s'\n",
-                               program_name, bad_option);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        linted_io_write_string(STDERR_FILENO, NULL, program_name);
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+: unrecognised option '"));
+        linted_io_write_string(STDERR_FILENO, NULL, bad_option);
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("'\n"));
+
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -239,29 +254,23 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     }
 
     if (NULL == controller_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, CONTROLLER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        missing_option(STDERR_FILENO,
+                       program_name, LINTED_STR(CONTROLLER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, SHUTDOWNER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        missing_option(STDERR_FILENO,
+                       program_name, LINTED_STR(SHUTDOWNER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, UPDATER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+
+        missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -270,13 +279,10 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         int fd;
         errno_t errnum = linted_io_strtofd(controller_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name,
-                                   CONTROLLER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            invalid_fildes(STDERR_FILENO,
+                           program_name, LINTED_STR(CONTROLLER_OPTION), errnum);
+            try_for_more_help(STDERR_FILENO,
+                              program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         controller = fd;
@@ -287,13 +293,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         int fd;
         errno_t errnum = linted_io_strtofd(shutdowner_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name,
-                                   SHUTDOWNER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            invalid_fildes(STDERR_FILENO,
+                           program_name, LINTED_STR(SHUTDOWNER_OPTION), errnum);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -304,13 +306,9 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         int fd;
         errno_t errnum = linted_io_strtofd(updater_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name,
-                                   UPDATER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            invalid_fildes(STDERR_FILENO,
+                           program_name, LINTED_STR(UPDATER_OPTION), errnum);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -325,9 +323,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: no DISPLAY environment variable\n",
                                program_name);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -930,4 +926,93 @@ static double square(double x)
 static int max_fd(int x, int y)
 {
     return x > y ? x : y;
+}
+
+static errno_t try_for_more_help(int fildes, char const * program_name,
+                                 struct linted_str help_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+' for more information.\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t invalid_fildes(int fildes, char const * program_name,
+                              struct linted_str option, errno_t error_display)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: "))) != 0) {
+        return errnum;
+    }
+
+    char const * error_string = linted_error_string_alloc(error_display);
+    errnum = linted_io_write_string(fildes, NULL, error_string);
+    linted_error_string_free(error_string);
+
+    if (errnum != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t missing_option(int fildes, char const * program_name,
+                              struct linted_str option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(STDERR_FILENO, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": missing "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(" option\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
 }
