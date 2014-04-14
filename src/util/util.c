@@ -78,11 +78,6 @@ void linted_error_string_free(char const *error_string)
 
 errno_t linted_util_sanitize_environment(fd_set const *essential_fds)
 {
-    /* Sanitize signal handling */
-    sigset_t empty_set;
-    sigemptyset(&empty_set);
-    sigprocmask(SIG_SETMASK, &empty_set, NULL);
-
     errno_t errnum = linted_io_close_fds_except(essential_fds);
     if (errnum != 0) {
         return errnum;
