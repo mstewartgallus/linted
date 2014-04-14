@@ -62,8 +62,8 @@ static pid_t gettid(void)
 }
 
 static errno_t on_connection_read(int new_socket,
-                                  union linted_manager_reply * reply);
-static errno_t on_connection_write(int fd, union linted_manager_reply * reply);
+                                  union linted_manager_reply *reply);
+static errno_t on_connection_write(int fd, union linted_manager_reply *reply);
 
 static errno_t run_game(char const *simulator_path, int simulator_binary,
                         char const *gui_path, int gui_binary,
@@ -558,7 +558,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
     {
         sa_family_t address = AF_UNIX;
-        if (-1 == bind(new_connections, (void *) &address, sizeof address)) {
+        if (-1 == bind(new_connections, (void *)&address, sizeof address)) {
             error_status = errno;
             goto close_socket;
         }
@@ -569,8 +569,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         memset(&address, 0, sizeof address);
 
         socklen_t addr_len = sizeof address;
-        if (-1 == getsockname(new_connections,
-                              (void *) &address, &addr_len)) {
+        if (-1 == getsockname(new_connections, (void *)&address, &addr_len)) {
             error_status = errno;
             goto close_socket;
         }
@@ -594,7 +593,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     }
 
     {
-        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
+        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid() };
         if (-1 == fcntl(new_connections, F_SETOWN_EX, &owner)) {
             error_status = errno;
             goto close_connections;
@@ -641,7 +640,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             {
-                struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
+                struct f_owner_ex owner = {.type = F_OWNER_TID,.pid =
+                        gettid() };
                 if (-1 == fcntl(new_socket, F_SETOWN_EX, &owner)) {
                     error_status = errno;
                     goto close_connections;
@@ -690,8 +690,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             /* Connection completed, no need to do anything more */
             continue;
 
-        queue_socket:
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+ queue_socket:
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections);
+                 ++ii) {
                 if (-1 == management_connections[ii]) {
                     management_connections[ii] = new_socket;
                     connection_read[ii] = false;
@@ -700,7 +701,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
             /* Impossible, listen has limited this */
             assert(false);
-        got_space:;
+ got_space:;
             continue;
 
         } else if (LINTED_SIGRTCONNIO == signal_number) {
@@ -714,7 +715,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
             /* We got a stale queued signal, ignore */
             continue;
-        got_connection:;
+ got_connection:;
             if (!connection_read[ii]) {
                 union linted_manager_reply reply;
                 errno_t errnum = on_connection_read(fd, &reply);
@@ -726,7 +727,6 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     /* Maybe the socket was only available for
                      * writing but not reading */
                     continue;
-
 
                 case EPIPE:
                     /* Ignore the misbehaving other end */
@@ -764,7 +764,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
             }
 
-        remove_connection:
+ remove_connection:
             management_connections[ii] = -1;
 
             {
@@ -774,7 +774,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     goto close_connections;
                 }
             }
-         } else if (SIGCHLD == signal_number) {
+        } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
                 /* Poll for our processes */
                 if (-1 == live_processes[ii]) {
@@ -821,7 +821,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             /* Else exit */
             goto close_connections;
 
-        got_live: ;
+ got_live: ;
         } else {
             assert(false);
         }
@@ -836,7 +836,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
-close_socket:
+ close_socket:
     {
         errno_t errnum = linted_io_close(new_connections);
         if (0 == error_status) {
@@ -906,7 +906,7 @@ close_socket:
     return error_status;
 }
 
-static errno_t on_connection_read(int fd, union linted_manager_reply * reply)
+static errno_t on_connection_read(int fd, union linted_manager_reply *reply)
 {
     union linted_manager_request request;
 
@@ -940,7 +940,7 @@ static errno_t on_connection_read(int fd, union linted_manager_reply * reply)
     return 0;
 }
 
-static errno_t on_connection_write(int fd, union linted_manager_reply * reply)
+static errno_t on_connection_write(int fd, union linted_manager_reply *reply)
 {
     return linted_manager_send_reply(fd, reply);
 }

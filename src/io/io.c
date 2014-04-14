@@ -39,7 +39,7 @@ errno_t linted_io_read_all(int fd, size_t * bytes_read_out,
 
     do {
         ssize_t bytes_read = read(fd, (char *)buf + total_bytes_read,
-                                    count - total_bytes_read);
+                                  count - total_bytes_read);
 
         if (0 == bytes_read) {
             /* Hang up */

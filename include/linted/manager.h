@@ -60,7 +60,8 @@ errno_t linted_manager_send_reply(int manager,
                                   union linted_manager_reply const *reply);
 
 errno_t linted_manager_send_request(int manager,
-                                    union linted_manager_request const *request);
+                                    union linted_manager_request const
+                                    *request);
 
 errno_t linted_manager_recv_reply(int manager,
                                   union linted_manager_reply *reply);

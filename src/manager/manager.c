@@ -41,7 +41,6 @@ errno_t linted_manager_send_request(int manager,
     return linted_io_write_all(manager, NULL, request, sizeof *request);
 }
 
-
 errno_t linted_manager_recv_reply(int manager,
                                   union linted_manager_reply *reply)
 {

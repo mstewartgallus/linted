@@ -210,7 +210,8 @@ int main(int argc, char **argv)
         }
 
         size_t socket_string_len = strlen(socket_string);
-        if (socket_string_len > sizeof (struct sockaddr_un) - sizeof(sa_family_t) - 2) {
+        if (socket_string_len >
+            sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: LINTED_SOCKET is too long\n",
                                    program_name);
@@ -235,7 +236,7 @@ int main(int argc, char **argv)
 
             memcpy(address.sun_path + 1, socket_string, socket_string_len);
 
-            if (-1 == connect(linted, (void *) &address,
+            if (-1 == connect(linted, (void *)&address,
                               sizeof(sa_family_t) + 1 + socket_string_len)) {
                 linted_io_write_format(STDERR_FILENO, NULL,
                                        "%s: could not connect to socket: %s\n",
@@ -281,8 +282,7 @@ int main(int argc, char **argv)
 
             if (0 == bytes_read) {
                 linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: socket hung up\n",
-                                       program_name);
+                                       "%s: socket hung up\n", program_name);
                 return EXIT_FAILURE;
             }
 
@@ -290,8 +290,7 @@ int main(int argc, char **argv)
             if (bytes_read != sizeof reply) {
                 linted_io_write_format(STDERR_FILENO, NULL,
                                        "%s: reply was too small: %i\n",
-                                       program_name,
-                                       bytes_read);
+                                       program_name, bytes_read);
                 return EXIT_FAILURE;
             }
 

@@ -30,7 +30,6 @@
 errno_t linted_io_read_all(int fd, size_t * bytes_wrote,
                            void *buf, size_t count);
 
-
 /**
  * The linted_io_write_all function repeatedly writes to fd until of
  * buf is written or an error occurs (except for EINTR).

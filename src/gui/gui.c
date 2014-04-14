@@ -125,8 +125,7 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             enum transition *transition);
 static errno_t on_updater_readable(linted_updater updater,
                                    struct gui_state *gui_state);
-static errno_t on_controller_writeable(linted_controller controller,
-                                       struct controller_state
+static errno_t on_controller_writeable(linted_controller controller, struct controller_state
                                        *controller_state);
 
 static errno_t init_graphics(struct gl_state *gl_state,
@@ -347,12 +346,11 @@ int main(int argc, char *argv[])
     };
 
     struct gui_state gui_state = {.x = 0,.y = 0 };
-    SDL_Window * window;
+    SDL_Window *window;
     SDL_GLContext gl_context;
     struct gl_state gl_state;
 
-    if (-1 == SDL_Init(SDL_INIT_EVENTS
-                       | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
+    if (-1 == SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         error_status = ENOSYS;
         syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
         goto shutdown;
@@ -389,7 +387,8 @@ int main(int argc, char *argv[])
     gl_context = SDL_GL_CreateContext(window);
     if (NULL == gl_context) {
         error_status = ENOSYS;
-        syslog(LOG_ERR, "could not create an OpenGL context: %s", SDL_GetError());
+        syslog(LOG_ERR, "could not create an OpenGL context: %s",
+               SDL_GetError());
         goto destroy_window;
     }
 
@@ -448,7 +447,7 @@ int main(int argc, char *argv[])
         };
 
         size_t fds_size;
-        struct pollfd * fds;
+        struct pollfd *fds;
 
         struct pollfd fds_with_controller[] = {
             [UPDATER] = {.fd = updater,.events = POLLIN},
@@ -548,7 +547,7 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         return 0;
 
     case SDL_WINDOWEVENT:{
-            SDL_WindowEvent const * const window_event = &sdl_event->window;
+            SDL_WindowEvent const *const window_event = &sdl_event->window;
             if (window_event->event != SDL_WINDOWEVENT_RESIZED) {
                 break;
             }

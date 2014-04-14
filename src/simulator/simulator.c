@@ -58,8 +58,7 @@ struct simulator_state {
     bool update_pending:1;
 };
 
-static errno_t on_timer_readable(int timer,
-                                 struct controller_state const
+static errno_t on_timer_readable(int timer, struct controller_state const
                                  *controller_state,
                                  struct simulator_state *simulator_state);
 
@@ -69,8 +68,7 @@ static errno_t on_updater_writeable(linted_updater updater,
 static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
                                       bool * should_exit);
 
-static errno_t on_controller_readable(linted_controller controller,
-                                      struct controller_state
+static errno_t on_controller_readable(linted_controller controller, struct controller_state
                                       *controller_state);
 
 static int_fast32_t saturate(int_fast64_t x);
@@ -331,7 +329,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             UPDATER
         };
         size_t fds_size;
-        struct pollfd * fds;
+        struct pollfd *fds;
 
         struct pollfd fds_with_updater[] = {
             [SHUTDOWNER] = {.fd = shutdowner,.events = POLLIN},
@@ -421,8 +419,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return error_status;
 }
 
-static errno_t on_timer_readable(int timer,
-                                 struct controller_state const
+static errno_t on_timer_readable(int timer, struct controller_state const
                                  *controller_state,
                                  struct simulator_state *simulator_state)
 {
