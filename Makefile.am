@@ -88,7 +88,6 @@ frama-c-models:
 	cd frama-c-models &&\
 	  (\
 	     echo $${CONFIG} &&\
-	     echo "\"--host=none-none-none\"" &&\
 	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
 	  ) | xargs\
 	     $(abs_srcdir)/configure &&\
@@ -117,7 +116,6 @@ cbmc-models:
 	cd cbmc-models &&\
 	  (\
 	     echo $${CONFIG} &&\
-	     echo "\"--host=none-none-none\"" &&\
 	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
 	  ) | xargs\
 	     $(abs_srcdir)/configure &&\

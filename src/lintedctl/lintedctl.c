@@ -26,6 +26,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -82,7 +85,7 @@ int main(int argc, char **argv)
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  LINTED_PID          the process id of the linted game\n"));
+  LINTED_SOCKET          the socket of the linted game\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -159,7 +162,7 @@ int main(int argc, char **argv)
             linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
             linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  LINTED_PID          the process id of the linted game\n"));
+  LINTED_SOCKET          the socket of the linted game\n"));
 
             linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -196,57 +199,92 @@ int main(int argc, char **argv)
             return EXIT_SUCCESS;
         }
 
-        char const *pid_string = getenv("LINTED_PID");
-        if (NULL == pid_string) {
+        char const *socket_string = getenv("LINTED_SOCKET");
+        if (NULL == socket_string) {
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: missing LINTED_PID\n", program_name);
+                                   "%s: missing LINTED_SOCKET\n", program_name);
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "Try `%s --help' for more information.\n",
                                    program_name);
             return EXIT_FAILURE;
         }
 
-        pid_t pid;
-        {
-            int pid_out;
-            errno_t errnum = linted_io_strtofd(pid_string, &pid_out);
-            if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: LINTED_PID='%s': %s\n",
-                                       program_name, pid_string,
-                                       linted_error_string_alloc(errnum));
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "Try `%s --help' for more information.\n",
-                                       program_name);
-                return EXIT_FAILURE;
-            }
-            pid = pid_out;
-        }
-
-        struct linted_manager_start_req request;
-
-        request.type = LINTED_MANAGER_START;
-        request.args.service = LINTED_MANAGER_SERVICE_GUI;
-
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "%s: sending start request for the gui\n",
-                               program_name);
-
-        errno_t errnum = linted_manager_send_request(pid, (void *)&request);
-        if (errnum != 0) {
+        size_t socket_string_len = strlen(socket_string);
+        if (socket_string_len > sizeof (struct sockaddr_un) - sizeof(sa_family_t) - 2) {
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: could not send request: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
+                                   "%s: LINTED_SOCKET is too long\n",
+                                   program_name);
             return EXIT_FAILURE;
         }
 
-        if (request.reply.is_up) {
+        int linted = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        if (-1 == linted) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: could not create socket: %s\n",
+                                   program_name,
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+
+        {
+            struct sockaddr_un address;
+            memset(&address, 0, sizeof address);
+
+            address.sun_family = AF_UNIX;
+            address.sun_path[0] = 0;
+
+            memcpy(address.sun_path + 1, socket_string, socket_string_len);
+
+            if (-1 == connect(linted, (void *) &address,
+                              sizeof(sa_family_t) + 1 + socket_string_len)) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: could not connect to socket: %s\n",
+                                       program_name,
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+            }
+        }
+
+        {
+            union linted_manager_request request;
+            memset(&request, 0, sizeof request);
+
+            request.start.type = LINTED_MANAGER_START;
+            request.start.service = LINTED_MANAGER_SERVICE_GUI;
+
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: gui is (probably) up\n", program_name);
-        } else {
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: the gui is down\n", program_name);
+                                   "%s: sending start request for the gui\n",
+                                   program_name);
+
+            errno_t errnum = linted_manager_send_request(linted, &request);
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: could not send request: %s\n",
+                                       program_name,
+                                       linted_error_string_alloc(errnum));
+                return EXIT_FAILURE;
+            }
+        }
+
+        {
+            union linted_manager_reply reply;
+            errno_t errnum = linted_manager_recv_reply(linted, &reply);
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: could not read reply: %s\n",
+                                       program_name,
+                                       linted_error_string_alloc(errnum));
+                return EXIT_FAILURE;
+            }
+
+            if (reply.start.is_up) {
+                linted_io_write_format(STDOUT_FILENO, NULL,
+                                       "%s: gui is (probably) up\n",
+                                       program_name);
+            } else {
+                linted_io_write_format(STDOUT_FILENO, NULL,
+                                       "%s: the gui is down\n", program_name);
+            }
         }
 
         return EXIT_SUCCESS;

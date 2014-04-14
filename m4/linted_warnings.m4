@@ -26,9 +26,6 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
         [-Wtrampolines]dnl We force a nonexecutable stack so for most
                        dnl targets would generate broken code if we
                        dnl used trampolines.
-dnl
-        [-Wjump-misses-init]dnl This is often a symptom of variables
-                            dnl that live far too long.
 ])
 AC_SUBST([linted_CFLAGS_WARNINGS])
 ])

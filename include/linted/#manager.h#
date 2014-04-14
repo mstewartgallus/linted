@@ -43,7 +43,7 @@ struct linted_manager_start_request {
 };
 
 union linted_manager_request {
-    unsigned type;
+    unsigned0 type;
     struct linted_manager_start_request start;
     char padding[120];
 };

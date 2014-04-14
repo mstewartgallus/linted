@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
 #include "config.h"
 
 #include "binaries.h"
@@ -27,6 +28,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
+#include <pthread.h>
 #include <spawn.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -34,9 +37,17 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/prctl.h>
-#include <sys/uio.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/syscall.h>
 #include <unistd.h>
+
+#define ACTIVE_MANAGEMENT_CONNECTIONS 10
+
+#define SIGRTNEWCONNIO SIGRTMIN
+#define SIGRTCONNIO (SIGRTMIN + 1)
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -45,6 +56,11 @@
 #define GUI_OPTION "--gui"
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
+
+static pid_t gettid(void)
+{
+    return syscall(SYS_gettid);
+}
 
 static errno_t run_game(char const *simulator_path, int simulator_binary,
                         char const *gui_path, int gui_binary,
@@ -305,7 +321,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     sigemptyset(&sig_set);
 
     sigaddset(&sig_set, SIGCHLD);
-    sigaddset(&sig_set, linted_manager_send_signal());
+    sigaddset(&sig_set, SIGRTNEWCONNIO);
+    sigaddset(&sig_set, SIGRTCONNIO);
 
     sigset_t sigold_set;
     pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
@@ -501,82 +518,147 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
+    int new_connections = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (-1 == new_connections) {
+        error_status = errno;
+        goto cleanup_processes;
+    }
+
+    {
+        sa_family_t address = AF_UNIX;
+        if (-1 == bind(new_connections, (void *) &address, sizeof address)) {
+            error_status = errno;
+            goto close_socket;
+        }
+    }
+
+    {
+        struct sockaddr_un address;
+        memset(&address, 0, sizeof address);
+
+        socklen_t addr_len = sizeof address;
+        if (-1 == getsockname(new_connections,
+                              (void *) &address, &addr_len)) {
+            error_status = errno;
+            goto close_socket;
+        }
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "management socket: %s\n", address.sun_path + 1);
+    }
+
+    if (-1 == listen(new_connections, ACTIVE_MANAGEMENT_CONNECTIONS)) {
+        error_status = errno;
+        goto close_socket;
+    }
+
+    if (-1 == fcntl(new_connections, F_SETSIG, SIGRTNEWCONNIO)) {
+        error_status = errno;
+        goto close_socket;
+    }
+
+    if (-1 == fcntl(new_connections, F_SETFL, O_ASYNC)) {
+        error_status = errno;
+        goto close_connections;
+    }
+
+    {
+        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
+        if (-1 == fcntl(new_connections, F_SETOWN_EX, &owner)) {
+            error_status = errno;
+            goto close_connections;
+        }
+    }
+
+    int management_connections[ACTIVE_MANAGEMENT_CONNECTIONS];
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+        management_connections[ii] = -1;
+    }
+
     for (;;) {
         siginfo_t info;
         int signal_number;
         errno_t signal_status;
+        memset(&info, 0, sizeof info);
         do {
             signal_number = sigtimedwait(&sig_set, &info, NULL);
             signal_status = -1 == signal_number ? errno : 0;
         } while (EINTR == signal_status);
         if (signal_status != 0) {
             error_status = signal_status;
-            goto cleanup_processes;
+            goto close_connections;
         }
 
-        if (linted_manager_send_signal() == signal_number) {
-            pid_t pid = info.si_pid;
-            struct linted_manager_req *request = info.si_ptr;
+        if (SIGRTNEWCONNIO == signal_number) {
+            int new_socket = accept4(new_connections, NULL, NULL, SOCK_CLOEXEC);
+            if (-1 == new_socket) {
+                error_status = errno;
+                goto close_connections;
+            }
 
-            errno_t reply_status = 0;
+            if (-1 == fcntl(new_socket, F_SETSIG, SIGRTCONNIO)) {
+                error_status = errno;
+                goto close_connections;
+            }
 
-            unsigned type;
+            if (-1 == fcntl(new_socket, F_SETFL, O_ASYNC)) {
+                error_status = errno;
+                goto close_connections;
+            }
+
             {
-                errno_t errnum = linted_manager_req_type(pid, request, &type);
-                if (errnum != 0) {
-                    reply_status = errnum;
-                    goto finish_reply;
+                struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
+                if (-1 == fcntl(new_socket, F_SETOWN_EX, &owner)) {
+                    error_status = errno;
+                    goto close_connections;
                 }
             }
 
-            switch (type) {
-            case LINTED_MANAGER_START:{
-                    struct linted_manager_start_args arguments;
-                    {
-                        errno_t errnum = linted_manager_start_req_args(pid,
-                                                                       request,
-                                                                       &arguments);
-                        if (errnum != 0) {
-                            reply_status = errnum;
-                            goto finish_reply;
-                        }
-                    }
-
-                    switch (arguments.service) {
-                    case LINTED_MANAGER_SERVICE_GUI:
-                    case LINTED_MANAGER_SERVICE_SIMULATOR:{
-                            /* Lie for now */
-                            struct linted_manager_start_reply reply = {
-                                .is_up = true
-                            };
-                            errno_t errnum = linted_manager_start_req_reply(pid,
-                                                                            request,
-                                                                            &reply);
-                            if (errnum != 0) {
-                                reply_status = errnum;
-                                goto finish_reply;
-                            }
-                            break;
-                        }
-
-                    default:
-                        reply_status = EINVAL;
-                        goto finish_reply;
-                    }
-                    break;
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+                if (-1 == management_connections[ii]) {
+                    management_connections[ii] = new_socket;
+                    goto got_space;
                 }
-
-            default:
-                reply_status = EINVAL;
-                goto finish_reply;
             }
+            assert(false);
+        got_space:;
+        } else if (SIGRTCONNIO == signal_number) {
+            int fd = info.si_fd;
+            union linted_manager_request request;
 
- finish_reply:
             {
-                errno_t errnum = linted_manager_finish_reply(pid, reply_status);
+                errno_t errnum = linted_manager_recv_request(fd, &request);
                 if (errnum != 0) {
                     error_status = errnum;
-                    goto cleanup_processes;
+                    goto close_connections;
+                }
+            }
+
+            if (LINTED_MANAGER_START == request.type) {
+                union linted_manager_reply reply;
+                memset(&reply, 0, sizeof reply);
+
+                reply.start.is_up = true;
+
+                errno_t errnum = linted_manager_send_reply(fd, &reply);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto close_connections;
+                }
+            }
+
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+                if (fd == management_connections[ii]) {
+                    management_connections[ii] = -1;
+                    goto removed_connection;
+                }
+            }
+            assert(false);
+        removed_connection:
+            {
+                errno_t errnum = linted_io_close(fd);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto close_connections;
                 }
             }
         } else if (SIGCHLD == signal_number) {
@@ -593,7 +675,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     assert(errno != EINVAL);
 
                     error_status = errno;
-                    goto cleanup_processes;
+                    goto close_connections;
                 }
 
                 if (0 == exit_info.si_pid) {
@@ -607,12 +689,12 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 case CLD_KILLED:
                     raise(exit_info.si_status);
                     error_status = errno;
-                    goto cleanup_processes;
+                    goto close_connections;
 
                 case CLD_EXITED:
                     if (exit_info.si_status != 0) {
                         error_status = exit_info.si_status;
-                        goto cleanup_processes;
+                        goto close_connections;
                     }
                     break;
                 }
@@ -623,12 +705,30 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     goto got_live;
                 }
             }
+            /* Else exit */
+            goto close_connections;
 
+        got_live: ;
             break;
-
- got_live: ;
         } else {
             assert(false);
+        }
+    }
+ close_connections:
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+        if (management_connections[ii] != -1) {
+            errno_t errnum = linted_io_close(management_connections[ii]);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
+        }
+    }
+
+close_socket:
+    {
+        errno_t errnum = linted_io_close(new_connections);
+        if (0 == error_status) {
+            error_status = errnum;
         }
     }
 
