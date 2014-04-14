@@ -217,7 +217,7 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
-        int linted = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
         if (-1 == linted) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: could not create socket: %s\n",
@@ -268,12 +268,30 @@ int main(int argc, char **argv)
 
         {
             union linted_manager_reply reply;
-            errno_t errnum = linted_manager_recv_reply(linted, &reply);
+            size_t bytes_read;
+            errno_t errnum = linted_io_read_all(linted, &bytes_read,
+                                                &reply, sizeof reply);
             if (errnum != 0) {
                 linted_io_write_format(STDERR_FILENO, NULL,
                                        "%s: could not read reply: %s\n",
                                        program_name,
                                        linted_error_string_alloc(errnum));
+                return EXIT_FAILURE;
+            }
+
+            if (0 == bytes_read) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: socket hung up\n",
+                                       program_name);
+                return EXIT_FAILURE;
+            }
+
+            /* Sent malformed input */
+            if (bytes_read != sizeof reply) {
+                linted_io_write_format(STDERR_FILENO, NULL,
+                                       "%s: reply was too small: %i\n",
+                                       program_name,
+                                       bytes_read);
                 return EXIT_FAILURE;
             }
 

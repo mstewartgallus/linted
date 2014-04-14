@@ -28,8 +28,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
-#include <pthread.h>
 #include <spawn.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -317,6 +315,15 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
+    sigset_t sigold_set;
+    {
+        sigset_t sigpipe_set;
+        sigemptyset(&sigpipe_set);
+        sigaddset(&sigpipe_set, SIGPIPE);
+
+        pthread_sigmask(SIG_BLOCK, &sigpipe_set, &sigold_set);
+    }
+
     sigset_t sig_set;
     sigemptyset(&sig_set);
 
@@ -324,8 +331,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     sigaddset(&sig_set, SIGRTNEWCONNIO);
     sigaddset(&sig_set, SIGRTCONNIO);
 
-    sigset_t sigold_set;
-    pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
+    pthread_sigmask(SIG_BLOCK, &sig_set, NULL);
 
     pid_t live_processes[] = { -1, -1 };
 
@@ -518,7 +524,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
-    int new_connections = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    int new_connections = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
     if (-1 == new_connections) {
         error_status = errno;
         goto cleanup_processes;
@@ -589,7 +595,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
 
         if (SIGRTNEWCONNIO == signal_number) {
-            int new_socket = accept4(new_connections, NULL, NULL, SOCK_CLOEXEC);
+            int new_socket = accept4(new_connections, NULL, NULL,
+                                     SOCK_CLOEXEC);
             if (-1 == new_socket) {
                 error_status = errno;
                 goto close_connections;
@@ -626,10 +633,22 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             union linted_manager_request request;
 
             {
-                errno_t errnum = linted_manager_recv_request(fd, &request);
+                size_t bytes_read;
+                errno_t errnum = linted_io_read_all(fd, &bytes_read,
+                                                    &request, sizeof request);
                 if (errnum != 0) {
                     error_status = errnum;
                     goto close_connections;
+                }
+
+                if (0 == bytes_read) {
+                    /* Hangup */
+                    goto remove_connection;
+                }
+
+                /* Sent malformed input */
+                if (bytes_read != sizeof request) {
+                    goto remove_connection;
                 }
             }
 
@@ -640,12 +659,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 reply.start.is_up = true;
 
                 errno_t errnum = linted_manager_send_reply(fd, &reply);
-                if (errnum != 0) {
+                if (errnum != 0 && errnum != EPIPE) {
                     error_status = errnum;
                     goto close_connections;
                 }
             }
 
+        remove_connection:
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
                 if (fd == management_connections[ii]) {
                     management_connections[ii] = -1;
@@ -709,7 +729,6 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             goto close_connections;
 
         got_live: ;
-            break;
         } else {
             assert(false);
         }

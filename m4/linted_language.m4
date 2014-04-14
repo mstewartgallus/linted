@@ -22,7 +22,7 @@ AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
         [-std=c99]dnl
-dnl        [-pedantic-errors]dnl
+        [-pedantic-errors]dnl
         [-pthread]dnl
 ])
 AC_SUBST([linted_CFLAGS_LANGUAGE])
