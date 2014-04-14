@@ -14,9 +14,12 @@ dnl -pthread appears twice because it sets preprocessor options and
 dnl linker options
 dnl
 LINTED_CHECK_CFLAGS([linted_CPPFLAGS_LANGUAGE],[
+        [-std=c99]dnl
         [-pthread]dnl
-        [-D_POSIX_C_SOURCE=200809L]dnl Will always succeed but won't
-                                   dnl be harmful.
+        dnl
+        dnl The defines will always succeed but won't be harmful.
+        [-D_POSIX_C_SOURCE=200809L]dnl
+        [-D_FILE_OFFSET_BITS=64]dnl
 ])
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl

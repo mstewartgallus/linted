@@ -199,6 +199,14 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
            display_value_length);
     display[display_string_length - 1] = 0;
 
+    int cwd = open("./", O_CLOEXEC | O_DIRECTORY);
+    if (-1 == cwd) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: can't open the current working directory: %s\n",
+                               program_name, linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
     {
         fd_set essential_fds;
         FD_ZERO(&essential_fds);
@@ -206,6 +214,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_SET(STDERR_FILENO, &essential_fds);
         FD_SET(STDIN_FILENO, &essential_fds);
         FD_SET(STDOUT_FILENO, &essential_fds);
+
+        FD_SET(cwd, &essential_fds);
 
         errno_t errnum = linted_util_sanitize_environment(&essential_fds);
         if (errnum != 0) {
@@ -247,7 +257,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
      * Don't bother closing these file handles. We are not writing and
      * do not have to confirm that writes have finished.
      */
-    int simulator_binary = open(simulator_path, O_RDONLY | O_CLOEXEC);
+    int simulator_binary = openat(cwd, simulator_path, O_RDONLY | O_CLOEXEC);
     if (-1 == simulator_binary) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
                                program_name,
@@ -256,7 +266,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
 
-    int gui_binary = open(gui_path, O_RDONLY | O_CLOEXEC);
+    int gui_binary = openat(cwd, gui_path, O_RDONLY | O_CLOEXEC);
     if (-1 == gui_binary) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
                                program_name,
