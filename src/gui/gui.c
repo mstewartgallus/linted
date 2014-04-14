@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "SDL.h"
-#undef HAVE_MALLOC
-#undef HAVE_REALLOC
-
 #include "config.h"
 
 #include "assets.h"
@@ -28,6 +24,8 @@
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 #include "linted/util.h"
+
+#include "SDL.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -66,11 +64,15 @@ static struct attribute_value_pair const attribute_values[] = {
     {SDL_GL_ACCUM_RED_SIZE, 0},
     {SDL_GL_ACCUM_GREEN_SIZE, 0},
     {SDL_GL_ACCUM_BLUE_SIZE, 0},
-    {SDL_GL_ACCUM_ALPHA_SIZE, 0}
+    {SDL_GL_ACCUM_ALPHA_SIZE, 0},
+
+    {SDL_GL_STEREO, 0},
+
+    {SDL_GL_MULTISAMPLEBUFFERS, 0},
+    {SDL_GL_MULTISAMPLESAMPLES, 0}
 };
 
-static Uint8 const default_events[] = {
-    SDL_ACTIVEEVENT,
+static SDL_EventType const default_events[] = {
     SDL_KEYDOWN, SDL_KEYUP,
     SDL_MOUSEMOTION,
     SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
@@ -79,13 +81,12 @@ static Uint8 const default_events[] = {
     SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP,
     SDL_QUIT,
     SDL_SYSWMEVENT,
-    SDL_VIDEORESIZE,
-    SDL_VIDEOEXPOSE,
+    SDL_WINDOWEVENT,
     SDL_USEREVENT
 };
 
-static Uint8 const enabled_events[] = {
-    SDL_VIDEORESIZE,
+static SDL_EventType const enabled_events[] = {
+    SDL_WINDOWEVENT,
 
     SDL_KEYDOWN,
     SDL_KEYUP,
@@ -338,7 +339,6 @@ int main(int argc, char *argv[])
     free(display);
 
     errno_t error_status = 0;
-    Uint32 const sdl_flags = SDL_OPENGL | SDL_RESIZABLE;
     struct window_state window_state = {.width = 640,.height = 800 };
 
     struct controller_state controller_state = {
@@ -347,10 +347,13 @@ int main(int argc, char *argv[])
     };
 
     struct gui_state gui_state = {.x = 0,.y = 0 };
+    SDL_Window * window;
+    SDL_GLContext gl_context;
+    struct gl_state gl_state;
 
-    if (-1 == SDL_Init(SDL_INIT_EVENTTHREAD
+    if (-1 == SDL_Init(SDL_INIT_EVENTS
                        | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
-        error_status = errno;
+        error_status = ENOSYS;
         syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
         goto shutdown;
     }
@@ -363,160 +366,152 @@ int main(int argc, char *argv[])
         SDL_EventState(enabled_events[ii], SDL_ENABLE);
     }
 
-    SDL_WM_SetCaption(PACKAGE_NAME, NULL);
-
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            error_status = errno;
+            error_status = ENOSYS;
             syslog(LOG_ERR, "could not set a double buffer attribute: %s",
                    SDL_GetError());
             goto cleanup_SDL;
         }
     }
 
-    /* Initialize SDL */
-    if (NULL == SDL_SetVideoMode(window_state.width, window_state.height, 0,
-                                 sdl_flags)) {
-        error_status = errno;
-        syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
+    window = SDL_CreateWindow(PACKAGE_NAME,
+                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                              window_state.width, window_state.height,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    if (NULL == window) {
+        error_status = ENOSYS;
+        syslog(LOG_ERR, "could not create a window: %s", SDL_GetError());
         goto cleanup_SDL;
     }
 
-    /* Get actual window size, and not requested window size */
+    gl_context = SDL_GL_CreateContext(window);
+    if (NULL == gl_context) {
+        error_status = ENOSYS;
+        syslog(LOG_ERR, "could not create an OpenGL context: %s", SDL_GetError());
+        goto destroy_window;
+    }
+
+    /* Get actual window size, and not the requested window size */
     {
-        SDL_VideoInfo const *video_info = SDL_GetVideoInfo();
-        window_state.width = video_info->current_w;
-        window_state.height = video_info->current_h;
+        int width;
+        int height;
+        SDL_GetWindowSize(window, &width, &height);
+        window_state.width = width;
+        window_state.height = height;
+    }
+
+    {
+        errno_t errnum = init_graphics(&gl_state, &window_state);
+        if (errnum != 0) {
+            error_status = errnum;
+            goto delete_context;
+        }
     }
 
     for (;;) {
-        struct gl_state gl_state;
+        bool had_sdl_event;
 
-        bool time_to_quit = false;
-        bool should_resize = false;
-
-        if (NULL == SDL_SetVideoMode(window_state.width, window_state.height,
-                                     0, sdl_flags)) {
-            error_status = errno;
-            syslog(LOG_ERR, "could not set the video mode: %s", SDL_GetError());
-            goto cleanup_SDL;
-        }
-
+        /* Handle SDL events first before rendering */
         {
-            errno_t errnum = init_graphics(&gl_state, &window_state);
-            if (errnum != 0) {
-                error_status = errnum;
-                goto cleanup_SDL;
-            }
-        }
-
-        for (;;) {
-            bool had_sdl_event;
-
-            /* Handle SDL events first before rendering */
-            {
-                SDL_Event sdl_event;
-                had_sdl_event = SDL_PollEvent(&sdl_event);
-                if (had_sdl_event) {
-                    enum transition transition;
-                    errno_t errnum = on_sdl_event(&sdl_event, &window_state,
-                                                  &controller_state,
-                                                  &transition);
-                    if (errnum != 0) {
-                        error_status = errnum;
-                        goto cleanup_gl;
-                    }
-
-                    switch (transition) {
-                    case DO_NOTHING:
-                        break;
-
-                    case SHOULD_EXIT:
-                        time_to_quit = true;
-                        goto cleanup_gl;
-
-                    case SHOULD_RESIZE:
-                        should_resize = true;
-                        break;
-                    }
-                }
-            }
-
-            fd_set watched_read_fds;
-            fd_set watched_write_fds;
-            int greatest = -1;
-
-            FD_ZERO(&watched_read_fds);
-            FD_SET(updater, &watched_read_fds);
-
-            greatest = max_fd(greatest, updater);
-
-            FD_ZERO(&watched_write_fds);
-
-            if (controller_state.update_pending) {
-                FD_SET(controller, &watched_write_fds);
-                greatest = max_fd(greatest, controller);
-            }
-
-            fd_set active_read_fds;
-            fd_set active_write_fds;
-            errno_t select_status;
-            int fds_active;
-
-            do {
-                active_read_fds = watched_read_fds;
-                active_write_fds = watched_write_fds;
-
-                struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-                fds_active = select(greatest + 1, &active_read_fds,
-                                    &active_write_fds, NULL, &timeval);
-                select_status = -1 == fds_active ? errno : 0;
-            } while (EINTR == select_status);
-            if (select_status != 0) {
-                error_status = select_status;
-                goto cleanup_gl;
-            }
-
-            bool had_selected_event = fds_active > 0;
-
-            if (FD_ISSET(updater, &active_read_fds)) {
-                errno_t errnum = on_updater_readable(updater, &gui_state);
+            SDL_Event sdl_event;
+            had_sdl_event = SDL_PollEvent(&sdl_event);
+            if (had_sdl_event) {
+                enum transition transition;
+                errno_t errnum = on_sdl_event(&sdl_event, &window_state,
+                                              &controller_state,
+                                              &transition);
                 if (errnum != 0) {
                     error_status = errnum;
                     goto cleanup_gl;
                 }
-            }
 
-            if (controller_state.update_pending
-                && FD_ISSET(controller, &active_write_fds)) {
+                switch (transition) {
+                case DO_NOTHING:
+                    break;
 
-                errno_t errnum = on_controller_writeable(controller,
-                                                         &controller_state);
-                if (errnum != 0) {
-                    error_status = errnum;
+                case SHOULD_EXIT:
                     goto cleanup_gl;
-                }
-            }
 
-            /* Only render if we have time to waste */
-            if (!had_sdl_event && !had_selected_event) {
-                /* Only resize if we have time to waste */
-                if (should_resize) {
+                case SHOULD_RESIZE:
+                    glViewport(0, 0, window_state.width, window_state.height);
                     break;
                 }
-
-                render_graphics(&gl_state, &gui_state, &window_state);
             }
         }
 
- cleanup_gl:
-        destroy_gl(&gl_state);
+        fd_set watched_read_fds;
+        fd_set watched_write_fds;
+        int greatest = -1;
 
-        if (error_status != 0 || time_to_quit) {
-            break;
+        FD_ZERO(&watched_read_fds);
+        FD_SET(updater, &watched_read_fds);
+
+        greatest = max_fd(greatest, updater);
+
+        FD_ZERO(&watched_write_fds);
+
+        if (controller_state.update_pending) {
+            FD_SET(controller, &watched_write_fds);
+            greatest = max_fd(greatest, controller);
+        }
+
+        fd_set active_read_fds;
+        fd_set active_write_fds;
+        errno_t select_status;
+        int fds_active;
+
+        do {
+            active_read_fds = watched_read_fds;
+            active_write_fds = watched_write_fds;
+
+            struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
+            fds_active = select(greatest + 1, &active_read_fds,
+                                &active_write_fds, NULL, &timeval);
+            select_status = -1 == fds_active ? errno : 0;
+        } while (EINTR == select_status);
+        if (select_status != 0) {
+            error_status = select_status;
+            goto cleanup_gl;
+        }
+
+        bool had_selected_event = fds_active > 0;
+
+        if (FD_ISSET(updater, &active_read_fds)) {
+            errno_t errnum = on_updater_readable(updater, &gui_state);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto cleanup_gl;
+            }
+        }
+
+        if (controller_state.update_pending
+            && FD_ISSET(controller, &active_write_fds)) {
+
+            errno_t errnum = on_controller_writeable(controller,
+                                                     &controller_state);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto cleanup_gl;
+            }
+        }
+
+        /* Only render if we have time to waste */
+        if (!had_sdl_event && !had_selected_event) {
+            render_graphics(&gl_state, &gui_state, &window_state);
+            SDL_GL_SwapWindow(window);
         }
     }
+
+ cleanup_gl:
+    destroy_gl(&gl_state);
+
+ delete_context:
+    SDL_GL_DeleteContext(gl_context);
+
+ destroy_window:
+    SDL_DestroyWindow(window);
 
  cleanup_SDL:
     SDL_Quit();
@@ -549,16 +544,21 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         *transition = SHOULD_EXIT;
         return 0;
 
-    case SDL_VIDEORESIZE:
-        /*
-         * Fuse multiple resize attempts into just one to prevent the
-         * worse case scenario of a whole bunch of resize events from
-         * killing the application's speed.
-         */
-        window_state->width = sdl_event->resize.w;
-        window_state->height = sdl_event->resize.h;
-        *transition = SHOULD_RESIZE;
-        return 0;
+    case SDL_WINDOWEVENT:{
+            SDL_WindowEvent const * const window_event = &sdl_event->window;
+            if (window_event->event != SDL_WINDOWEVENT_RESIZED) {
+                break;
+            }
+            /*
+             * Fuse multiple resize attempts into just one to prevent the
+             * worse case scenario of a whole bunch of resize events from
+             * killing the application's speed.
+             */
+            window_state->width = window_event->data1;
+            window_state->height = window_event->data2;
+            *transition = SHOULD_RESIZE;
+            return 0;
+        }
 
     case SDL_KEYDOWN:
     case SDL_KEYUP:
@@ -885,8 +885,6 @@ static void render_graphics(struct gl_state const *gl_state,
         }
         syslog(LOG_ERR, "GL Error: %s", glGetString(error));
     }
-
-    SDL_GL_SwapBuffers();
 }
 
 static double square(double x)

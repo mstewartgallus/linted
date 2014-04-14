@@ -21,14 +21,10 @@ nodist_gui_SOURCES=src/gui/gl_core.c
 gui_LDADD=\
   libio.la libutil.la\
   libcontroller.la libshutdowner.la libupdater.la\
-  $(SDL_LIBS) $(GL_LIBS)
+  $(GL_LIBS)
+gui_LDFLAGS=$$($(builddir)/libs/SDL/sdl2-config --libs)
 
-gui_CPPFLAGS=$(SDL_CFLAGS)
-# Cancel out SDL's idiot defining of GNU source
-gui_CPPFLAGS+=-U_GNU_SOURCE
-gui_CPPFLAGS+=$(AM_CPPFLAGS)
-
-gui_CPPFLAGS+=-I$(builddir)/src/gui/ -I$(srcdir)/src/gui/
+gui_CPPFLAGS=$$($(builddir)/libs/SDL/sdl2-config --cflags) -I$(builddir)/src/gui/ -I$(srcdir)/src/gui/ $(AM_CPPFLAGS)
 
 BUILT_SOURCES+=\
   src/gui/gl_core.c src/gui/gl_core.h

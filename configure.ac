@@ -111,8 +111,6 @@ AC_CHECK_LIB([GL], [glClear], [
   AC_MSG_ERROR([Unable to find an OpenGL library])
 ])
 dnl
-PKG_CHECK_MODULES([SDL], [sdl >= 1.2.14])
-dnl
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
 AM_CONDITIONAL([HAS_CBMC], [test "x${CBMC}" != "x"])
 AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])
@@ -122,4 +120,5 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 dnl
 [CC="${srcdir}/scripts/ccwrapper '${CLANG}' '${CC}'"]
+AC_CONFIG_SUBDIRS([libs/SDL])
 AC_OUTPUT
