@@ -615,7 +615,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         errno_t signal_status;
         memset(&info, 0, sizeof info);
         do {
-            signal_number = sigtimedwait(&sig_set, &info, NULL);
+            signal_number = sigwaitinfo(&sig_set, &info);
             signal_status = -1 == signal_number ? errno : 0;
         } while (EINTR == signal_status);
         if (signal_status != 0) {
