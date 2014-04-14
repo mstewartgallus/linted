@@ -28,11 +28,11 @@
 #include "SDL.h"
 
 #include <errno.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 #include <unistd.h>
 
 #define HELP_OPTION "--help"
@@ -441,44 +441,48 @@ int main(int argc, char *argv[])
             }
         }
 
-        fd_set watched_read_fds;
-        fd_set watched_write_fds;
-        int greatest = -1;
+        enum {
+            UPDATER,
 
-        FD_ZERO(&watched_read_fds);
-        FD_SET(updater, &watched_read_fds);
+            CONTROLLER
+        };
 
-        greatest = max_fd(greatest, updater);
+        size_t fds_size;
+        struct pollfd * fds;
 
-        FD_ZERO(&watched_write_fds);
+        struct pollfd fds_with_controller[] = {
+            [UPDATER] = {.fd = updater,.events = POLLIN},
+
+            [CONTROLLER] = {.fd = controller,.events = POLLOUT},
+        };
+
+        struct pollfd fds_without_controller[] = {
+            [UPDATER] = {.fd = updater,.events = POLLIN},
+        };
 
         if (controller_state.update_pending) {
-            FD_SET(controller, &watched_write_fds);
-            greatest = max_fd(greatest, controller);
+            fds = fds_with_controller;
+            fds_size = LINTED_ARRAY_SIZE(fds_with_controller);
+        } else {
+            fds = fds_without_controller;
+            fds_size = LINTED_ARRAY_SIZE(fds_without_controller);
         }
 
-        fd_set active_read_fds;
-        fd_set active_write_fds;
-        errno_t select_status;
+        errno_t poll_status;
         int fds_active;
 
         do {
-            active_read_fds = watched_read_fds;
-            active_write_fds = watched_write_fds;
-
-            struct timeval timeval = {.tv_sec = 0,.tv_usec = 0 };
-            fds_active = select(greatest + 1, &active_read_fds,
-                                &active_write_fds, NULL, &timeval);
-            select_status = -1 == fds_active ? errno : 0;
-        } while (EINTR == select_status);
-        if (select_status != 0) {
-            error_status = select_status;
+            fds_active = poll(fds, fds_size, 0);
+            poll_status = -1 == fds_active ? errno : 0;
+        } while (EINTR == poll_status);
+        if (poll_status != 0) {
+            error_status = poll_status;
             goto cleanup_gl;
         }
 
         bool had_selected_event = fds_active > 0;
 
-        if (FD_ISSET(updater, &active_read_fds)) {
+        if ((fds[UPDATER].revents & POLLIN) != 0) {
             errno_t errnum = on_updater_readable(updater, &gui_state);
             if (errnum != 0) {
                 error_status = errnum;
@@ -487,8 +491,7 @@ int main(int argc, char *argv[])
         }
 
         if (controller_state.update_pending
-            && FD_ISSET(controller, &active_write_fds)) {
-
+            && (fds[CONTROLLER].revents & POLLOUT) != 0) {
             errno_t errnum = on_controller_writeable(controller,
                                                      &controller_state);
             if (errnum != 0) {
