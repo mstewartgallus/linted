@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <spawn.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -44,8 +45,8 @@
 
 #define ACTIVE_MANAGEMENT_CONNECTIONS 10
 
-#define SIGRTNEWCONNIO SIGRTMIN
-#define SIGRTCONNIO (SIGRTMIN + 1)
+#define LINTED_SIGRTNEWCONNIO SIGRTMIN
+#define LINTED_SIGRTCONNIO (SIGRTMIN + 1)
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -59,6 +60,10 @@ static pid_t gettid(void)
 {
     return syscall(SYS_gettid);
 }
+
+static errno_t on_connection_read(int new_socket,
+                                  union linted_manager_reply * reply);
+static errno_t on_connection_write(int fd, union linted_manager_reply * reply);
 
 static errno_t run_game(char const *simulator_path, int simulator_binary,
                         char const *gui_path, int gui_binary,
@@ -219,6 +224,25 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
 
+    {
+        /* Set signals to a safe default */
+        sigset_t sigblocked_set;
+        sigemptyset(&sigblocked_set);
+
+        /* Get EPIPEs */
+        sigaddset(&sigblocked_set, SIGPIPE);
+
+        /*
+         * After running out of space to queue realtime signals for
+         * O_ASYNC files the kernel reverts to SIGIO. Block this as it
+         * is pointless, files already repeatedly queue signals when
+         * they are available.
+         */
+        sigaddset(&sigblocked_set, SIGIO);
+
+        pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
+    }
+
     /*
      * Don't bother closing these file handles. We are not writing and
      * do not have to confirm that writes have finished.
@@ -315,23 +339,15 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    sigset_t sigold_set;
-    {
-        sigset_t sigpipe_set;
-        sigemptyset(&sigpipe_set);
-        sigaddset(&sigpipe_set, SIGPIPE);
-
-        pthread_sigmask(SIG_BLOCK, &sigpipe_set, &sigold_set);
-    }
-
     sigset_t sig_set;
     sigemptyset(&sig_set);
 
     sigaddset(&sig_set, SIGCHLD);
-    sigaddset(&sig_set, SIGRTNEWCONNIO);
-    sigaddset(&sig_set, SIGRTCONNIO);
+    sigaddset(&sig_set, LINTED_SIGRTNEWCONNIO);
+    sigaddset(&sig_set, LINTED_SIGRTCONNIO);
 
-    pthread_sigmask(SIG_BLOCK, &sig_set, NULL);
+    sigset_t sigold_set;
+    pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
 
     pid_t live_processes[] = { -1, -1 };
 
@@ -557,7 +573,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         goto close_socket;
     }
 
-    if (-1 == fcntl(new_connections, F_SETSIG, SIGRTNEWCONNIO)) {
+    if (-1 == fcntl(new_connections, F_SETSIG, LINTED_SIGRTNEWCONNIO)) {
         error_status = errno;
         goto close_socket;
     }
@@ -576,6 +592,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     }
 
     int management_connections[ACTIVE_MANAGEMENT_CONNECTIONS];
+    bool connection_read[ACTIVE_MANAGEMENT_CONNECTIONS];
+    union linted_manager_reply connection_reply[ACTIVE_MANAGEMENT_CONNECTIONS];
+
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
         management_connections[ii] = -1;
     }
@@ -594,20 +613,19 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             goto close_connections;
         }
 
-        if (SIGRTNEWCONNIO == signal_number) {
-            int new_socket = accept4(new_connections, NULL, NULL,
-                                     SOCK_CLOEXEC);
+        if (LINTED_SIGRTNEWCONNIO == signal_number) {
+            int new_socket = accept4(new_connections, NULL, NULL, SOCK_CLOEXEC);
             if (-1 == new_socket) {
                 error_status = errno;
                 goto close_connections;
             }
 
-            if (-1 == fcntl(new_socket, F_SETSIG, SIGRTCONNIO)) {
+            if (-1 == fcntl(new_socket, F_SETSIG, LINTED_SIGRTCONNIO)) {
                 error_status = errno;
                 goto close_connections;
             }
 
-            if (-1 == fcntl(new_socket, F_SETFL, O_ASYNC)) {
+            if (-1 == fcntl(new_socket, F_SETFL, O_NONBLOCK | O_ASYNC)) {
                 error_status = errno;
                 goto close_connections;
             }
@@ -620,60 +638,125 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
             }
 
+            union linted_manager_reply reply;
+            {
+                errno_t errnum = on_connection_read(new_socket, &reply);
+                switch (errnum) {
+                case 0:
+                    break;
+
+                case EAGAIN:
+                    goto queue_socket;
+
+                case EPIPE:
+                    /* Ignore the misbehaving other end */
+                    continue;
+
+                default:
+                    error_status = errnum;
+                    goto close_connections;
+                }
+            }
+
+            {
+                errno_t errnum = on_connection_write(new_socket, &reply);
+                switch (errnum) {
+                case 0:
+                    break;
+
+                case EAGAIN:
+                    goto queue_socket;
+
+                case EPIPE:
+                    /* Ignore the misbehaving other end */
+                    continue;
+
+                default:
+                    error_status = errnum;
+                    goto close_connections;
+                }
+            }
+
+            /* Connection completed, no need to do anything more */
+            continue;
+
+        queue_socket:
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
                 if (-1 == management_connections[ii]) {
                     management_connections[ii] = new_socket;
+                    connection_read[ii] = false;
                     goto got_space;
                 }
             }
+            /* Impossible, listen has limited this */
             assert(false);
         got_space:;
-        } else if (SIGRTCONNIO == signal_number) {
-            int fd = info.si_fd;
-            union linted_manager_request request;
+            continue;
 
-            {
-                size_t bytes_read;
-                errno_t errnum = linted_io_read_all(fd, &bytes_read,
-                                                    &request, sizeof request);
-                if (errnum != 0) {
+        } else if (LINTED_SIGRTCONNIO == signal_number) {
+            int fd = info.si_fd;
+
+            size_t ii = 0;
+            for (; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
+                if (fd == management_connections[ii]) {
+                    goto got_connection;
+                }
+            }
+            /* We got a stale queued signal, ignore */
+            continue;
+        got_connection:;
+            if (!connection_read[ii]) {
+                union linted_manager_reply reply;
+                errno_t errnum = on_connection_read(fd, &reply);
+                switch (errnum) {
+                case 0:
+                    break;
+
+                case EAGAIN:
+                    /* Maybe the socket was only available for
+                     * writing but not reading */
+                    continue;
+
+
+                case EPIPE:
+                    /* Ignore the misbehaving other end */
+                    goto remove_connection;
+
+                default:
                     error_status = errnum;
                     goto close_connections;
                 }
 
-                if (0 == bytes_read) {
-                    /* Hangup */
-                    goto remove_connection;
-                }
+                connection_reply[ii] = reply;
+                connection_read[ii] = true;
 
-                /* Sent malformed input */
-                if (bytes_read != sizeof request) {
-                    goto remove_connection;
-                }
+                /* fall through and try to write */
             }
 
-            if (LINTED_MANAGER_START == request.type) {
-                union linted_manager_reply reply;
-                memset(&reply, 0, sizeof reply);
+            {
+                errno_t errnum = on_connection_write(fd, &connection_reply[ii]);
+                switch (errnum) {
+                case 0:
+                    break;
 
-                reply.start.is_up = true;
+                case EAGAIN:
+                    /* Maybe the socket was only available for
+                     * reading but not writing */
+                    continue;
 
-                errno_t errnum = linted_manager_send_reply(fd, &reply);
-                if (errnum != 0 && errnum != EPIPE) {
+                case EPIPE:
+                    /* Ignore the misbehaving other end */
+                    goto remove_connection;
+
+                default:
                     error_status = errnum;
                     goto close_connections;
                 }
             }
 
         remove_connection:
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
-                if (fd == management_connections[ii]) {
-                    management_connections[ii] = -1;
-                    goto removed_connection;
-                }
-            }
-            assert(false);
-        removed_connection:
+            management_connections[ii] = -1;
+
             {
                 errno_t errnum = linted_io_close(fd);
                 if (errnum != 0) {
@@ -681,7 +764,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     goto close_connections;
                 }
             }
-        } else if (SIGCHLD == signal_number) {
+         } else if (SIGCHLD == signal_number) {
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
                 /* Poll for our processes */
                 if (-1 == live_processes[ii]) {
@@ -811,4 +894,43 @@ close_socket:
     }
 
     return error_status;
+}
+
+static errno_t on_connection_read(int fd, union linted_manager_reply * reply)
+{
+    union linted_manager_request request;
+
+    {
+        size_t bytes_read;
+        errno_t errnum = linted_io_read_all(fd, &bytes_read,
+                                            &request, sizeof request);
+        if (errnum != 0) {
+            return errnum;
+        }
+
+        if (0 == bytes_read) {
+            /* Hangup */
+            return EPIPE;
+        }
+
+        /* Sent malformed input */
+        if (bytes_read != sizeof request) {
+            return EPIPE;
+        }
+    }
+
+    /* Sent malformed input */
+    if (request.type != LINTED_MANAGER_START) {
+        return EPIPE;
+    }
+
+    memset(reply, 0, sizeof *reply);
+    reply->start.is_up = true;
+
+    return 0;
+}
+
+static errno_t on_connection_write(int fd, union linted_manager_reply * reply)
+{
+    return linted_manager_send_reply(fd, reply);
 }

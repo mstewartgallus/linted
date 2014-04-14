@@ -52,7 +52,7 @@ errno_t linted_io_read_all(int fd, size_t * bytes_read_out,
         }
 
         if (read_status != 0) {
-            error_status = read_status;
+            error_status = EWOULDBLOCK == read_status ? EAGAIN : read_status;
             goto output_bytes_read;
         }
 
@@ -81,7 +81,7 @@ errno_t linted_io_write_all(int fd, size_t * bytes_wrote_out,
         }
 
         if (write_status != 0) {
-            error_status = write_status;
+            error_status = EWOULDBLOCK == write_status ? EAGAIN : write_status;
             goto output_bytes_wrote;
         }
 
