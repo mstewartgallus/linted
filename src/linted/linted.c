@@ -878,21 +878,6 @@ static errno_t on_new_connections_readable(int new_connections,
                                            struct connection * connections)
 {
     for (;;) {
-        if (*connection_count >= ACTIVE_MANAGEMENT_CONNECTIONS) {
-            /* Clearing the backlog is needed to get new signals sent
-             * again.
-             */
-            if (-1 == listen(new_connections, 0)) {
-                return errno;
-            }
-
-            if (-1 == listen(new_connections, BACKLOG)) {
-                return errno;
-            }
-
-            return 0;
-        }
-
         int new_socket = accept4(new_connections, NULL, NULL,
                                  SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (-1 == new_socket) {
@@ -956,6 +941,11 @@ static errno_t on_new_connections_readable(int new_connections,
         continue;
 
     queue_socket:
+        if (*connection_count >= ACTIVE_MANAGEMENT_CONNECTIONS) {
+            /* I'm sorry sir but we are full today. */
+            goto close_new_socket;
+        }
+
         {
             errno_t errnum = notify(new_socket, LINTED_SIGRTCONNIO);
             if (errnum != 0) {
@@ -982,8 +972,13 @@ static errno_t on_new_connections_readable(int new_connections,
         continue;
 
     close_new_socket:;
-        linted_io_close(new_socket);
-        return error_status;
+        {
+            errno_t errnum = linted_io_close(new_socket);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
+            return error_status;
+        }
     }
 
     return 0;
