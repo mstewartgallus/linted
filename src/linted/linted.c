@@ -43,6 +43,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#define BACKLOG 20
+
 #define ACTIVE_MANAGEMENT_CONNECTIONS 10
 
 #define LINTED_SIGRTNEWCONNIO SIGRTMIN
@@ -56,14 +58,23 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-static pid_t gettid(void)
-{
-    return syscall(SYS_gettid);
-}
+struct connection {
+    union linted_manager_reply reply;
+    int fd;
+    bool has_reply_ready;
+};
 
-static errno_t on_connection_read(int new_socket,
-                                  union linted_manager_reply *reply);
-static errno_t on_connection_write(int fd, union linted_manager_reply *reply);
+static id_t gettid(void);
+
+static errno_t notify(int fd, int signum);
+
+static errno_t on_new_connections_readable(int new_connections,
+                                           size_t * connection_count,
+                                           struct connection * connections);
+static errno_t on_connection_readable(int new_socket,
+                                      union linted_manager_reply *reply);
+static errno_t on_connection_writeable(int fd,
+                                       union linted_manager_reply *reply);
 
 static errno_t run_game(char const *simulator_path, int simulator_binary,
                         char const *gui_path, int gui_binary,
@@ -550,7 +561,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
-    int new_connections = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    int new_connections = socket(AF_UNIX,
+                                 SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
+                                 0);
     if (-1 == new_connections) {
         error_status = errno;
         goto cleanup_processes;
@@ -577,35 +590,24 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                                "management socket: %s\n", address.sun_path + 1);
     }
 
-    if (-1 == listen(new_connections, ACTIVE_MANAGEMENT_CONNECTIONS)) {
+    if (-1 == listen(new_connections, BACKLOG)) {
         error_status = errno;
         goto close_socket;
-    }
-
-    if (-1 == fcntl(new_connections, F_SETSIG, LINTED_SIGRTNEWCONNIO)) {
-        error_status = errno;
-        goto close_socket;
-    }
-
-    if (-1 == fcntl(new_connections, F_SETFL, O_ASYNC)) {
-        error_status = errno;
-        goto close_connections;
     }
 
     {
-        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid() };
-        if (-1 == fcntl(new_connections, F_SETOWN_EX, &owner)) {
+        errno_t errnum = notify(new_connections, LINTED_SIGRTNEWCONNIO);
+        if (errnum != 0) {
             error_status = errno;
-            goto close_connections;
+            goto close_socket;
         }
     }
 
-    int management_connections[ACTIVE_MANAGEMENT_CONNECTIONS];
-    bool connection_read[ACTIVE_MANAGEMENT_CONNECTIONS];
-    union linted_manager_reply connection_reply[ACTIVE_MANAGEMENT_CONNECTIONS];
+    size_t connection_count = 0;
+    struct connection connections[ACTIVE_MANAGEMENT_CONNECTIONS];
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
-        management_connections[ii] = -1;
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+        connections[ii].fd = -1;
     }
 
     for (;;) {
@@ -623,102 +625,33 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
 
         if (LINTED_SIGRTNEWCONNIO == signal_number) {
-            int new_socket = accept4(new_connections, NULL, NULL, SOCK_CLOEXEC);
-            if (-1 == new_socket) {
-                error_status = errno;
+            errno_t errnum = on_new_connections_readable(new_connections,
+                                                         &connection_count,
+                                                         connections);
+            if (errnum != 0) {
+                error_status = errnum;
                 goto close_connections;
             }
 
-            if (-1 == fcntl(new_socket, F_SETSIG, LINTED_SIGRTCONNIO)) {
-                error_status = errno;
-                goto close_connections;
-            }
-
-            if (-1 == fcntl(new_socket, F_SETFL, O_NONBLOCK | O_ASYNC)) {
-                error_status = errno;
-                goto close_connections;
-            }
-
-            {
-                struct f_owner_ex owner = {.type = F_OWNER_TID,.pid =
-                        gettid() };
-                if (-1 == fcntl(new_socket, F_SETOWN_EX, &owner)) {
-                    error_status = errno;
-                    goto close_connections;
-                }
-            }
-
-            union linted_manager_reply reply;
-            {
-                errno_t errnum = on_connection_read(new_socket, &reply);
-                switch (errnum) {
-                case 0:
-                    break;
-
-                case EAGAIN:
-                    goto queue_socket;
-
-                case EPIPE:
-                    /* Ignore the misbehaving other end */
-                    continue;
-
-                default:
-                    error_status = errnum;
-                    goto close_connections;
-                }
-            }
-
-            {
-                errno_t errnum = on_connection_write(new_socket, &reply);
-                switch (errnum) {
-                case 0:
-                    break;
-
-                case EAGAIN:
-                    goto queue_socket;
-
-                case EPIPE:
-                    /* Ignore the misbehaving other end */
-                    continue;
-
-                default:
-                    error_status = errnum;
-                    goto close_connections;
-                }
-            }
-
-            /* Connection completed, no need to do anything more */
-            continue;
-
- queue_socket:
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections);
-                 ++ii) {
-                if (-1 == management_connections[ii]) {
-                    management_connections[ii] = new_socket;
-                    connection_read[ii] = false;
-                    goto got_space;
-                }
-            }
-            /* Impossible, listen has limited this */
-            assert(false);
- got_space:;
             continue;
 
         } else if (LINTED_SIGRTCONNIO == signal_number) {
             int fd = info.si_fd;
 
-            size_t ii = 0;
-            for (; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
-                if (fd == management_connections[ii]) {
+            struct connection * connection;
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+                connection = &connections[ii];
+                if (fd == connection->fd) {
                     goto got_connection;
                 }
             }
             /* We got a stale queued signal, ignore */
             continue;
+
  got_connection:;
-            if (!connection_read[ii]) {
+            if (!connection->has_reply_ready) {
                 union linted_manager_reply reply;
-                errno_t errnum = on_connection_read(fd, &reply);
+                errno_t errnum = on_connection_readable(fd, &reply);
                 switch (errnum) {
                 case 0:
                     break;
@@ -737,14 +670,15 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     goto close_connections;
                 }
 
-                connection_reply[ii] = reply;
-                connection_read[ii] = true;
+                connection->has_reply_ready = true;
+                connection->reply = reply;
 
                 /* fall through and try to write */
             }
 
             {
-                errno_t errnum = on_connection_write(fd, &connection_reply[ii]);
+                errno_t errnum = on_connection_writeable(fd,
+                                                         &connection->reply);
                 switch (errnum) {
                 case 0:
                     break;
@@ -765,7 +699,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
  remove_connection:
-            management_connections[ii] = -1;
+            connection->fd = -1;
+            --connection_count;
 
             {
                 errno_t errnum = linted_io_close(fd);
@@ -827,9 +762,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
  close_connections:
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(management_connections); ++ii) {
-        if (management_connections[ii] != -1) {
-            errno_t errnum = linted_io_close(management_connections[ii]);
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+        struct connection * const connection = &connections[ii];
+        int const fd = connection->fd;
+        if (fd != -1) {
+            errno_t errnum = linted_io_close(fd);
             if (0 == error_status) {
                 error_status = errnum;
             }
@@ -906,7 +843,154 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     return error_status;
 }
 
-static errno_t on_connection_read(int fd, union linted_manager_reply *reply)
+static id_t gettid(void)
+{
+    return syscall(SYS_gettid);
+}
+
+static errno_t notify(int fd, int signum)
+{
+    int flags = fcntl(fd, F_GETFL);
+    if (-1 == flags) {
+        return errno;
+    }
+
+    if (-1 == fcntl(fd, F_SETSIG, signum)) {
+        return errno;
+    }
+
+    {
+        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
+        if (-1 == fcntl(fd, F_SETOWN_EX, &owner)) {
+            return errno;
+        }
+    }
+
+    if (-1 == fcntl(fd, F_SETFL, flags | O_ASYNC)) {
+        return errno;
+    }
+
+    return 0;
+}
+
+static errno_t on_new_connections_readable(int new_connections,
+                                           size_t * connection_count,
+                                           struct connection * connections)
+{
+    for (;;) {
+        if (*connection_count >= ACTIVE_MANAGEMENT_CONNECTIONS) {
+            /* Clearing the backlog is needed to get new signals sent
+             * again.
+             */
+            if (-1 == listen(new_connections, 0)) {
+                return errno;
+            }
+
+            if (-1 == listen(new_connections, BACKLOG)) {
+                return errno;
+            }
+
+            return 0;
+        }
+
+        int new_socket = accept4(new_connections, NULL, NULL,
+                                 SOCK_NONBLOCK | SOCK_CLOEXEC);
+        if (-1 == new_socket) {
+            errno_t errnum = errno;
+
+            if (EAGAIN == errnum || EWOULDBLOCK == errnum){
+                break;
+            }
+
+            return errnum;
+        }
+
+        errno_t error_status = 0;
+
+        union linted_manager_reply reply;
+        {
+            errno_t errnum = on_connection_readable(new_socket, &reply);
+            switch (errnum) {
+            case 0:
+                break;
+
+            case EAGAIN:
+                goto queue_socket;
+
+            case EPIPE:
+                /* Ignore the misbehaving other end */
+                continue;
+
+            default:
+                error_status = errnum;
+                goto close_new_socket;
+            }
+        }
+
+        {
+            errno_t errnum = on_connection_writeable(new_socket, &reply);
+            switch (errnum) {
+            case 0:
+                break;
+
+            case EAGAIN:
+                goto queue_socket;
+
+            case EPIPE:
+                /* Ignore the misbehaving other end */
+                continue;
+
+            default:
+                error_status = errnum;
+                goto close_new_socket;
+            }
+        }
+
+        /* Connection completed, do the next connection */
+        {
+            errno_t errnum = linted_io_close(new_socket);
+            if (errnum != 0) {
+                return errnum;
+            }
+        }
+        continue;
+
+    queue_socket:
+        {
+            errno_t errnum = notify(new_socket, LINTED_SIGRTCONNIO);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto close_new_socket;
+            }
+        }
+
+        struct connection * connection;
+
+        for (size_t ii = 0; ii < ACTIVE_MANAGEMENT_CONNECTIONS; ++ii) {
+            connection = &connections[ii];
+            if (-1 == connection->fd) {
+                goto got_space;
+            }
+        }
+        /* Impossible, listen has limited this */
+        assert(false);
+    got_space:;
+        connection->fd = new_socket;
+        connection->has_reply_ready = false;
+
+        ++*connection_count;
+        continue;
+
+    close_new_socket:;
+        linted_io_close(new_socket);
+        return error_status;
+    }
+
+    return 0;
+}
+
+static errno_t on_connection_readable(int fd,
+                                      union linted_manager_reply *reply)
 {
     union linted_manager_request request;
 
@@ -940,7 +1024,8 @@ static errno_t on_connection_read(int fd, union linted_manager_reply *reply)
     return 0;
 }
 
-static errno_t on_connection_write(int fd, union linted_manager_reply *reply)
+static errno_t on_connection_writeable(int fd,
+                                       union linted_manager_reply *reply)
 {
     return linted_manager_send_reply(fd, reply);
 }
