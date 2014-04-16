@@ -119,14 +119,16 @@ struct gl_state {
     GLuint program;
 };
 
+static errno_t get_last_gl_error(void);
+
 static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             struct window_state *window_state,
                             struct controller_state *controller_state,
                             enum transition *transition);
 static errno_t on_updater_readable(linted_updater updater,
                                    struct gui_state *gui_state);
-static errno_t on_controller_writeable(linted_controller controller, struct controller_state
-                                       *controller_state);
+static errno_t on_controller_writeable(linted_controller controller,
+                                       struct controller_state *controller_state);
 
 static errno_t init_graphics(struct gl_state *gl_state,
                              struct window_state const *window_state);
@@ -733,13 +735,13 @@ static errno_t init_graphics(struct gl_state *gl_state,
 
     GLuint program = glCreateProgram();
     if (0 == program) {
-        return errno;
+        return get_last_gl_error();
     }
 
     {
         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         if (0 == fragment_shader) {
-            error_status = errno;
+            error_status = get_last_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, fragment_shader);
@@ -752,7 +754,7 @@ static errno_t init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = errno;
+            error_status = ENOSYS;
 
             GLint info_log_length;
             glGetShaderiv(fragment_shader,
@@ -774,7 +776,7 @@ static errno_t init_graphics(struct gl_state *gl_state,
     {
         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         if (0 == vertex_shader) {
-            error_status = errno;
+            error_status = get_last_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, vertex_shader);
@@ -786,7 +788,7 @@ static errno_t init_graphics(struct gl_state *gl_state,
         GLint is_valid;
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = errno;
+            error_status = ENOSYS;
 
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -810,7 +812,7 @@ static errno_t init_graphics(struct gl_state *gl_state,
     GLint is_valid;
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
-        error_status = errno;
+        error_status = ENOSYS;
 
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -1173,4 +1175,36 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
     }
 
     return 0;
+}
+
+static errno_t get_last_gl_error(void)
+{
+    GLenum last_error = GL_NO_ERROR;
+    GLenum current_error = GL_NO_ERROR;
+
+    /* First flush out old errors */
+    do {
+        last_error = current_error;
+        current_error = glGetError();
+    } while (current_error != GL_NO_ERROR);
+
+    /* The get the last error */
+    switch (last_error) {
+    case GL_NO_ERROR:
+        return 0;
+
+    case GL_INVALID_ENUM:
+    case GL_INVALID_VALUE:
+    case GL_INVALID_OPERATION:
+        return EINVAL;
+
+    case GL_STACK_OVERFLOW:
+    case GL_STACK_UNDERFLOW:
+
+    case GL_OUT_OF_MEMORY:
+        return ENOMEM;
+
+    default:
+        return ENOSYS;
+    }
 }
