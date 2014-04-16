@@ -13,8 +13,10 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 120
+#version 130
 #pragma linted include("shaders/varying.glsl")
+
+precision highp float;
 
 const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);

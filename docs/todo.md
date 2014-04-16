@@ -6,6 +6,22 @@ notice and this notice are preserved.
 
 Linted -- TODO
 
+* Don't do cargo cult security
+
+  This is pretty much impossible.
+
+  I'm just a young hacker playing around with technologies like
+  sandboxing. I have no real knowledge of security. I hope this
+  project is useful as a personal learning experience though.
+
+* Don't do security theater
+
+  Security theater is when people do big and impressive things with
+  sandboxing but then conveniently forget a back door that lets
+  attackers in.
+
+  See "Don't do cargo cult security" for why this is impossible.
+
 * Integrate this documentation with Doxygen
 * Port to --host=i686-w64-mingw32
 
@@ -15,17 +31,7 @@ Linted -- TODO
     space.
 * Move away from C legacy practises
   - move away from null terminated strings
-
-* Port to SDL 2.0
-* Manage child process error streams and syslog logs
-* Use more secure method for communicating with the init
-
-  The current method is insecure because the init requires PTRACE
-  capabilities. As well, the sigqueue system call is wrapped by GLibc
-  with the rt_sigqueue system call that uses a user provided pid. An
-  attacker could write to another process by sending a command to init
-  with a fake pid.
-
+* Solve banding problems that are occuring in the shader
 * Use a better logging system
 
   I need to be able aggregate the logs all into one stream unlike with
@@ -45,19 +51,3 @@ Linted -- TODO
   that if things are done correctly that the shouldn't be happening
   anyways. I believe what I really want is a -Wl,--warn-execstack
   option.
-
-* Don't do cargo cult security
-
-  This is pretty much impossible.
-
-  I'm just a young hacker playing around with technologies like
-  sandboxing. I have no real knowledge of security. I hope this
-  project is useful as a personal learning experience though.
-
-* Don't do security theater
-
-  Security theater is when people do big and impressive things with
-  sandboxing but then conveniently forget a back door that lets
-  attackers in.
-
-  See "Don't do cargo cult security" for why this is impossible.
