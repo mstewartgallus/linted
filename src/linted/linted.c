@@ -856,13 +856,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     }
 
  cleanup_processes:
-    {
-        errno_t errnum = -1 == kill(process_group, SIGQUIT)? errno : 0;
-        if (errnum != 0) {
-            /* errnum == ESRCH is fine */
-            assert(errnum != EINVAL);
-            assert(errnum != EPERM);
-        }
+    if (error_status != 0) {
+        errno_t errnum = -1 == kill(-process_group, SIGQUIT) ? errno : 0;
+        /* errnum == ESRCH is fine */
+        assert(errnum != EINVAL);
+        assert(errnum != EPERM);
     }
 
  close_shutdowner:
