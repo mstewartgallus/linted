@@ -90,7 +90,7 @@ int main(int argc, char **argv)
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  start               start the gui service\n"));
+  status               request the status of the gui service\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (0 == strcmp("start", command)) {
+    if (0 == strcmp("status", command)) {
         bool need_add_help = false;
         char const *bad_argument = NULL;
         for (; last_index < (unsigned)argc; ++last_index) {
@@ -148,10 +148,11 @@ int main(int argc, char **argv)
 
         if (need_add_help) {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Usage: %s start [OPTIONS]\n", program_name);
+                                   "Usage: %s status [OPTIONS]\n", program_name);
 
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Start the gui service.\n", PACKAGE_NAME);
+                                   "Get the status ofthe gui service.\n",
+                                   PACKAGE_NAME);
 
             linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -250,11 +251,11 @@ int main(int argc, char **argv)
             union linted_manager_request request;
             memset(&request, 0, sizeof request);
 
-            request.start.type = LINTED_MANAGER_START;
-            request.start.service = LINTED_MANAGER_SERVICE_GUI;
+            request.status.type = LINTED_MANAGER_STATUS;
+            request.status.service = LINTED_MANAGER_SERVICE_GUI;
 
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: sending start request for the gui\n",
+                                   "%s: sending the status request for the gui\n",
                                    program_name);
 
             errno_t errnum = linted_manager_send_request(linted, &request);
@@ -294,9 +295,9 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
             }
 
-            if (reply.start.is_up) {
+            if (reply.status.is_up) {
                 linted_io_write_format(STDOUT_FILENO, NULL,
-                                       "%s: gui is (probably) up\n",
+                                       "%s: gui is up\n",
                                        program_name);
             } else {
                 linted_io_write_format(STDOUT_FILENO, NULL,

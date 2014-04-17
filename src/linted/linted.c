@@ -21,6 +21,7 @@
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/manager.h"
+#include "linted/mq.h"
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -75,12 +76,18 @@ struct waiter_message {
     errno_t errnum;
 };
 
+struct service {
+    pid_t pid;
+};
+
 static void * waiter_routine(void * data);
 
 static errno_t on_new_connections_readable(int new_connections,
+                                           struct service const * services,
                                            size_t * connection_count,
                                            struct connection * connections);
-static errno_t on_connection_readable(int new_socket,
+static errno_t on_connection_readable(int fd,
+                                      struct service const * services,
                                       union linted_manager_reply *reply);
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
@@ -363,6 +370,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
     int process_group;
 
+    struct service services[] = {
+        [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
+        [LINTED_MANAGER_SERVICE_SIMULATOR] = {.pid = -1}
+    };
+
     /* Create placeholder file descriptors to be overwritten later on */
     {
         int updater_placeholder;
@@ -458,6 +470,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
 
                 if (0 == error_status) {
+                    services[LINTED_MANAGER_SERVICE_GUI].pid = process_group;
+
                     errno_t errnum = -1 == setpgid(process_group, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
@@ -555,6 +569,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
 
                 if (0 == error_status) {
+                    services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
+
                     errno_t errnum = -1 == setpgid(process, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
@@ -704,6 +720,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
             if ((pollfds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
                 errno_t errnum = on_new_connections_readable(new_connections,
+                                                             services,
                                                              &connection_count,
                                                              connections);
                 if (errnum != 0) {
@@ -747,7 +764,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             try_reading:
                 {
                     union linted_manager_reply reply;
-                    errno_t errnum = on_connection_readable(fd, &reply);
+                    errno_t errnum = on_connection_readable(fd, services,
+                                                            &reply);
                     switch (errnum) {
                     case 0:
                         break;
@@ -951,6 +969,7 @@ static void * waiter_routine(void * data)
 }
 
 static errno_t on_new_connections_readable(int new_connections,
+                                           struct service const * services,
                                            size_t * connection_count,
                                            struct connection * connections)
 {
@@ -971,7 +990,8 @@ static errno_t on_new_connections_readable(int new_connections,
 
         union linted_manager_reply reply;
         {
-            errno_t errnum = on_connection_readable(new_socket, &reply);
+            errno_t errnum = on_connection_readable(new_socket, services,
+                                                    &reply);
             switch (errnum) {
             case 0:
                 break;
@@ -1054,6 +1074,7 @@ static errno_t on_new_connections_readable(int new_connections,
 }
 
 static errno_t on_connection_readable(int fd,
+                                      struct service const * services,
                                       union linted_manager_reply *reply)
 {
     union linted_manager_request request;
@@ -1077,13 +1098,31 @@ static errno_t on_connection_readable(int fd,
         }
     }
 
-    /* Sent malformed input */
-    if (request.type != LINTED_MANAGER_START) {
+    memset(reply, 0, sizeof *reply);
+
+    switch (request.type) {
+    case LINTED_MANAGER_STATUS: {
+            struct service const * service = &services[request.status.service];
+            errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
+            switch (errnum) {
+            case 0:
+                reply->status.is_up = true;
+                break;
+
+            case ESRCH:
+                reply->status.is_up = false;
+                break;
+
+            default:
+                return errnum;
+            }
+            break;
+        }
+
+    default:
+        /* Sent malformed input */
         return EPIPE;
     }
-
-    memset(reply, 0, sizeof *reply);
-    reply->start.is_up = true;
 
     return 0;
 }

@@ -20,37 +20,31 @@
 #include <stdbool.h>
 #include <signal.h>
 
-enum {
-    LINTED_MANAGER_START
-#define LINTED_MANAGER_START LINTED_MANAGER_START
+enum linted_manager_type {
+    LINTED_MANAGER_STATUS
 };
 
-enum {
+enum linted_manager_service {
     LINTED_MANAGER_SERVICE_GUI,
-#define LINTED_MANAGER_SERVICE_GUI LINTED_MANAGER_SERVICE_GUI
-
     LINTED_MANAGER_SERVICE_SIMULATOR
-#define LINTED_MANAGER_SERVICE_SIMULATOR LINTED_MANAGER_SERVICE_SIMULATOR
 };
 
-struct linted_manager_start_reply {
+struct linted_manager_status_request {
+    enum linted_manager_type type;
+    enum linted_manager_service service;
+};
+
+struct linted_manager_status_reply {
     bool is_up;
 };
 
-struct linted_manager_start_request {
-    unsigned type;
-    unsigned service;
-};
-
 union linted_manager_request {
-    unsigned type;
-    struct linted_manager_start_request start;
-    char padding[120];
+    enum linted_manager_type type;
+    struct linted_manager_status_request status;
 };
 
 union linted_manager_reply {
-    struct linted_manager_start_reply start;
-    char padding[120];
+    struct linted_manager_status_reply status;
 };
 
 errno_t linted_manager_recv_request(int manager,
