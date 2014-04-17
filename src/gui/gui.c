@@ -121,6 +121,9 @@ struct gl_state {
     GLuint program;
 };
 
+/* TODO: This usage of glGetError is incorrect. Multiple error flags
+ * be set and returned by a single function.
+ */
 static errno_t get_last_gl_error(void);
 
 static errno_t on_sdl_event(SDL_Event const *sdl_event,
@@ -140,7 +143,6 @@ static void render_graphics(struct gl_state const *gl_state,
 static void destroy_gl(struct gl_state *gl_state);
 
 static double square(double x);
-static int max_fd(int x, int y);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t gui_help(int fildes, char const *program_name,
@@ -915,14 +917,41 @@ static void render_graphics(struct gl_state const *gl_state,
     }
 }
 
+static errno_t get_last_gl_error(void)
+{
+    GLenum last_error = GL_NO_ERROR;
+    GLenum current_error = GL_NO_ERROR;
+
+    /* First flush out old errors */
+    do {
+        last_error = current_error;
+        current_error = glGetError();
+    } while (current_error != GL_NO_ERROR);
+
+    /* The get the last error */
+    switch (last_error) {
+    case GL_NO_ERROR:
+        return 0;
+
+    case GL_INVALID_ENUM:
+    case GL_INVALID_VALUE:
+    case GL_INVALID_OPERATION:
+        return EINVAL;
+
+    case GL_STACK_OVERFLOW:
+    case GL_STACK_UNDERFLOW:
+
+    case GL_OUT_OF_MEMORY:
+        return ENOMEM;
+
+    default:
+        return ENOSYS;
+    }
+}
+
 static double square(double x)
 {
     return x * x;
-}
-
-static int max_fd(int x, int y)
-{
-    return x > y ? x : y;
 }
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name)
@@ -1199,36 +1228,4 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
     }
 
     return 0;
-}
-
-static errno_t get_last_gl_error(void)
-{
-    GLenum last_error = GL_NO_ERROR;
-    GLenum current_error = GL_NO_ERROR;
-
-    /* First flush out old errors */
-    do {
-        last_error = current_error;
-        current_error = glGetError();
-    } while (current_error != GL_NO_ERROR);
-
-    /* The get the last error */
-    switch (last_error) {
-    case GL_NO_ERROR:
-        return 0;
-
-    case GL_INVALID_ENUM:
-    case GL_INVALID_VALUE:
-    case GL_INVALID_OPERATION:
-        return EINVAL;
-
-    case GL_STACK_OVERFLOW:
-    case GL_STACK_UNDERFLOW:
-
-    case GL_OUT_OF_MEMORY:
-        return ENOMEM;
-
-    default:
-        return ENOSYS;
-    }
 }
