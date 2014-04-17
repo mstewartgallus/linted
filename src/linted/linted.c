@@ -45,7 +45,7 @@
 
 #define BACKLOG 20
 
-#define ACTIVE_MANAGEMENT_CONNECTIONS 10
+#define MAX_MANAGEMENT_CONNECTIONS 10
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -613,7 +613,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     }
 
     if (-1 == shutdown(new_connections, SHUT_WR)) {
-        error_status == errno;
+        error_status = errno;
         goto close_new_connections;
     }
 
@@ -662,7 +662,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
 
         size_t connection_count = 0;
-        struct connection connections[ACTIVE_MANAGEMENT_CONNECTIONS];
+        struct connection connections[MAX_MANAGEMENT_CONNECTIONS];
 
         for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
             connections[ii].fd = -1;
@@ -674,37 +674,35 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 NEW_CONNECTIONS,
                 CONNECTION
             };
-            struct pollfd fds[CONNECTION + ACTIVE_MANAGEMENT_CONNECTIONS] = {
+            struct pollfd pollfds[CONNECTION + MAX_MANAGEMENT_CONNECTIONS] = {
                 [WAITER] = {.fd = waiter_fds[0], .events = POLLIN},
                 [NEW_CONNECTIONS] = {.fd = new_connections, .events = POLLIN}
             };
-            size_t connection_ids[ACTIVE_MANAGEMENT_CONNECTIONS];
+            size_t connection_ids[MAX_MANAGEMENT_CONNECTIONS];
 
             size_t active_connections = 0;
-            for (size_t ii = 0; ii < ACTIVE_MANAGEMENT_CONNECTIONS; ++ii) {
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
                 struct connection * connection = &connections[ii];
                 if (connection->fd != -1) {
-                    fds[CONNECTION + active_connections].fd = connection->fd;
-                    fds[CONNECTION + active_connections].events = connection->has_reply_ready ? POLLOUT : POLLIN;
+                    struct pollfd * pollfd = &pollfds[CONNECTION + active_connections];
+                    pollfd->fd = connection->fd;
+                    pollfd->events = connection->has_reply_ready ? POLLOUT : POLLIN;
                     connection_ids[active_connections] = ii;
                     ++active_connections;
                 }
             }
 
             errno_t poll_status;
+            size_t pollfd_count = LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGEMENT_CONNECTIONS + active_connections;
             do {
-                poll_status = -1 == poll(fds,
-                                         LINTED_ARRAY_SIZE(fds) - ACTIVE_MANAGEMENT_CONNECTIONS + active_connections,
-                                         -1)
-                    ? errno
-                    : 0;
+                poll_status = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
             } while (EINTR == poll_status);
             if (poll_status != 0) {
                 error_status = poll_status;
                 goto close_connections;
             }
 
-            if ((fds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
+            if ((pollfds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
                 errno_t errnum = on_new_connections_readable(new_connections,
                                                              &connection_count,
                                                              connections);
@@ -714,7 +712,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 }
             }
 
-            if ((fds[WAITER].revents & POLLIN) != 0) {
+            if ((pollfds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
 
                 errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
@@ -735,11 +733,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 int fd = connection->fd;
 
                 if (connection->has_reply_ready) {
-                    if ((fds[CONNECTION + ii].revents & POLLOUT) != 0) {
+                    if ((pollfds[CONNECTION + ii].revents & POLLOUT) != 0) {
                         goto try_writing;
                     }
                 } else {
-                    if ((fds[CONNECTION + ii].revents & POLLIN) != 0) {
+                    if ((pollfds[CONNECTION + ii].revents & POLLIN) != 0) {
                         goto try_reading;
                     }
                 }
@@ -821,7 +819,6 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
- cancel_waiter_thread:
         pthread_cancel(waiter_thread);
         pthread_join(waiter_thread, NULL);
     }
@@ -1021,14 +1018,14 @@ static errno_t on_new_connections_readable(int new_connections,
         continue;
 
     queue_socket:
-        if (*connection_count >= ACTIVE_MANAGEMENT_CONNECTIONS) {
+        if (*connection_count >= MAX_MANAGEMENT_CONNECTIONS) {
             /* I'm sorry sir but we are full today. */
             goto close_new_socket;
         }
 
         struct connection * connection;
 
-        for (size_t ii = 0; ii < ACTIVE_MANAGEMENT_CONNECTIONS; ++ii) {
+        for (size_t ii = 0; ii < MAX_MANAGEMENT_CONNECTIONS; ++ii) {
             connection = &connections[ii];
             if (-1 == connection->fd) {
                 goto got_space;
