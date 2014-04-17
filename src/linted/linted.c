@@ -368,7 +368,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    int process_group;
+    id_t process_group;
 
     struct service services[] = {
         [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
@@ -463,19 +463,23 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
                 sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
-                if (-1 == posix_spawn(&process_group, fd_path,
+
+                pid_t gui_process;
+                if (-1 == posix_spawn(&gui_process, fd_path,
                                       &file_actions, NULL,
                                       args, envp)) {
                     error_status = errno;
                 }
 
                 if (0 == error_status) {
-                    services[LINTED_MANAGER_SERVICE_GUI].pid = process_group;
+                    services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
 
-                    errno_t errnum = -1 == setpgid(process_group, process_group) ? errno : 0;
+                    errno_t errnum = -1 == setpgid(gui_process, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
                     }
+
+                    process_group = gui_process;
                 }
             }
 
@@ -874,14 +878,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
  close_shutdowner:
     {
-        int errnum = linted_shutdowner_close(simulator_shutdowner_read);
+        errno_t errnum = linted_shutdowner_close(simulator_shutdowner_read);
         if (0 == error_status) {
             error_status = errnum;
         }
     }
 
     {
-        int errnum = linted_shutdowner_close(simulator_shutdowner_write);
+        errno_t errnum = linted_shutdowner_close(simulator_shutdowner_write);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -889,14 +893,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
  cleanup_controller_pair:
     {
-        int errnum = linted_controller_close(controller_read);
+        errno_t errnum = linted_controller_close(controller_read);
         if (0 == error_status) {
             error_status = errnum;
         }
     }
 
     {
-        int errnum = linted_controller_close(controller_write);
+        errno_t errnum = linted_controller_close(controller_write);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -904,14 +908,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
  cleanup_updater_pair:
     {
-        int errnum = linted_updater_close(updater_read);
+        errno_t errnum = linted_updater_close(updater_read);
         if (0 == error_status) {
             error_status = errnum;
         }
     }
 
     {
-        int errnum = linted_updater_close(updater_write);
+        errno_t errnum = linted_updater_close(updater_write);
         if (0 == error_status) {
             error_status = errnum;
         }
