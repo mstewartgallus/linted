@@ -72,7 +72,6 @@ enum waiter_message_type {
 };
 
 struct waiter_message {
-    enum waiter_message_type type;
     errno_t errnum;
 };
 
@@ -670,11 +669,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 NEW_CONNECTIONS,
                 CONNECTION
             };
-            struct pollfd fds[] = {
+            struct pollfd fds[CONNECTION + ACTIVE_MANAGEMENT_CONNECTIONS] = {
                 [WAITER] = {.fd = waiter_fds[0], .events = POLLIN},
-                [NEW_CONNECTIONS] = {.fd = new_connections, .events = POLLIN},
-
-                [CONNECTION + ACTIVE_MANAGEMENT_CONNECTIONS - 1] = {.fd = 0}
+                [NEW_CONNECTIONS] = {.fd = new_connections, .events = POLLIN}
             };
             size_t connection_ids[ACTIVE_MANAGEMENT_CONNECTIONS];
 
@@ -714,24 +711,17 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
             if ((fds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
-                errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
-                                                    &message, sizeof message);
-                if (errnum != 0) {
-                    error_status = errnum;
-                    goto close_connections;
+                {
+                    errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
+                                                        &message, sizeof message);
+                    if (errnum != 0) {
+                        error_status = errnum;
+                        goto close_connections;
+                    }
                 }
 
-                switch (message.type) {
-                case WAITER_FINISHED:
-                    goto close_connections;
-
-                case WAITER_ERROR:
-                    error_status = message.errnum;
-                    goto close_connections;
-
-                default:
-                    assert(false);
-                }
+                error_status = message.errnum;
+                goto close_connections;
             }
 
             for (size_t ii = 0; ii < active_connections; ++ii) {
@@ -915,7 +905,7 @@ static void * waiter_routine(void * data)
 {
     struct waiter_data * waiter_data = data;
 
-    errno_t error_status;
+    errno_t error_status = 0;
     for (;;) {
         siginfo_t exit_info;
         errno_t wait_status;
@@ -926,21 +916,12 @@ static void * waiter_routine(void * data)
         } while (EINTR == wait_status);
 
         if (ECHILD == wait_status) {
-            struct waiter_message message = {
-                .type = WAITER_FINISHED
-            };
-            errno_t errnum = linted_io_write_all(waiter_data->fd, NULL,
-                                                 &message, sizeof message);
-            if (errnum != 0) {
-                error_status = errnum;
-                goto handle_error;
-            }
-            break;
+            goto finish_waiting;
         }
 
         if (wait_status != 0) {
             error_status = wait_status;
-            goto handle_error;
+            goto finish_waiting;
         }
 
         switch (exit_info.si_code) {
@@ -948,27 +929,24 @@ static void * waiter_routine(void * data)
         case CLD_KILLED:
             raise(exit_info.si_status);
             error_status = errno;
-            goto handle_error;
+            goto finish_waiting;
 
         case CLD_EXITED:
             if (exit_info.si_status != 0) {
                 error_status = exit_info.si_status;
-                goto handle_error;
+                goto finish_waiting;
             }
             break;
         }
     }
 
-    return NULL;
-
-handle_error:;
-    struct waiter_message message = {
-        .type = WAITER_ERROR,
-        .errnum = error_status
-    };
-    linted_io_write_all(waiter_data->fd, NULL,
-                        &message, sizeof message);
-    return NULL;
+ finish_waiting:
+    {
+        struct waiter_message message = {.errnum = error_status};
+        linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
+        /* TODO: Handle the error */
+        return NULL;
+    }
 }
 
 static errno_t on_new_connections_readable(int new_connections,
