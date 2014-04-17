@@ -612,6 +612,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         goto cleanup_processes;
     }
 
+    if (-1 == shutdown(new_connections, SHUT_WR)) {
+        error_status == errno;
+        goto close_new_connections;
+    }
+
     {
         sa_family_t address = AF_UNIX;
         if (-1 == bind(new_connections, (void *)&address, sizeof address)) {
