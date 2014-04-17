@@ -73,6 +73,7 @@ enum waiter_message_type {
 };
 
 struct waiter_message {
+    siginfo_t exit_info;
     errno_t errnum;
 };
 
@@ -736,15 +737,45 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             if ((pollfds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
 
-                errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
-                                                    &message, sizeof message);
-                if (errnum != 0) {
-                    error_status = errnum;
-                    goto close_connections;
+                {
+                    errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
+                                                        &message,
+                                                        sizeof message);
+                    if (errnum != 0) {
+                        error_status = errnum;
+                        goto close_connections;
+                    }
                 }
 
-                error_status = message.errnum;
-                goto close_connections;
+                {
+                    errno_t errnum = message.errnum;
+                    if (errnum != 0) {
+                        if (errnum != ECHILD) {
+                            error_status = errnum;
+                        }
+                        goto close_connections;
+                    }
+                }
+
+                siginfo_t * exit_info = &message.exit_info;
+
+                switch (exit_info->si_code) {
+                case CLD_DUMPED:
+                case CLD_KILLED:
+                    raise(exit_info->si_status);
+                    error_status = errno;
+                    goto close_connections;
+
+                case CLD_EXITED:
+                    if (exit_info->si_status != 0) {
+                        error_status = exit_info->si_status;
+                        goto close_connections;
+                    }
+                    break;
+
+                default:
+                    assert(false);
+                }
             }
 
             for (size_t ii = 0; ii < active_connections; ++ii) {
@@ -928,9 +959,10 @@ static void * waiter_routine(void * data)
 {
     struct waiter_data * waiter_data = data;
 
-    errno_t error_status = 0;
     for (;;) {
         siginfo_t exit_info;
+        memset(&exit_info, 0, sizeof exit_info);
+
         errno_t wait_status;
         do {
             wait_status = -1 == waitid(P_PGID, waiter_data->process_group,
@@ -938,37 +970,20 @@ static void * waiter_routine(void * data)
             assert(wait_status != EINVAL);
         } while (EINTR == wait_status);
 
+        {
+            struct waiter_message message = {
+                .exit_info = exit_info,
+                .errnum = wait_status
+            };
+            linted_io_write_all(waiter_data->fd, NULL,
+                                &message, sizeof message);
+            /* TODO: Handle the error */
+        }
+
+        /* This would just loop endlessly if not exited on */
         if (ECHILD == wait_status) {
-            goto finish_waiting;
+            return NULL;
         }
-
-        if (wait_status != 0) {
-            error_status = wait_status;
-            goto finish_waiting;
-        }
-
-        switch (exit_info.si_code) {
-        case CLD_DUMPED:
-        case CLD_KILLED:
-            raise(exit_info.si_status);
-            error_status = errno;
-            goto finish_waiting;
-
-        case CLD_EXITED:
-            if (exit_info.si_status != 0) {
-                error_status = exit_info.si_status;
-                goto finish_waiting;
-            }
-            break;
-        }
-    }
-
- finish_waiting:
-    {
-        struct waiter_message message = {.errnum = error_status};
-        linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
-        /* TODO: Handle the error */
-        return NULL;
     }
 }
 
@@ -1108,6 +1123,7 @@ static errno_t on_connection_readable(int fd,
     case LINTED_MANAGER_STATUS: {
             struct service const * service = &services[request.status.service];
             errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
+            assert(errnum != EINVAL);
             switch (errnum) {
             case 0:
                 reply->status.is_up = true;
@@ -1115,6 +1131,25 @@ static errno_t on_connection_readable(int fd,
 
             case ESRCH:
                 reply->status.is_up = false;
+                break;
+
+            default:
+                return errnum;
+            }
+            break;
+        }
+
+    case LINTED_MANAGER_STOP: {
+            struct service const * service = &services[request.stop.service];
+            errno_t errnum = -1 == kill(service->pid, SIGKILL) ? errno : 0;
+            assert(errnum != EINVAL);
+            switch (errnum) {
+            case 0:
+                reply->stop.was_up = true;
+                break;
+
+            case ESRCH:
+                reply->stop.was_up = false;
                 break;
 
             default:

@@ -21,7 +21,8 @@
 #include <signal.h>
 
 enum linted_manager_type {
-    LINTED_MANAGER_STATUS
+    LINTED_MANAGER_STATUS,
+    LINTED_MANAGER_STOP
 };
 
 enum linted_manager_service {
@@ -38,13 +39,24 @@ struct linted_manager_status_reply {
     bool is_up;
 };
 
+struct linted_manager_stop_request {
+    enum linted_manager_type type;
+    enum linted_manager_service service;
+};
+
+struct linted_manager_stop_reply {
+    bool was_up;
+};
+
 union linted_manager_request {
     enum linted_manager_type type;
     struct linted_manager_status_request status;
+    struct linted_manager_stop_request stop;
 };
 
 union linted_manager_reply {
     struct linted_manager_status_reply status;
+    struct linted_manager_stop_reply stop;
 };
 
 errno_t linted_manager_recv_request(int manager,
