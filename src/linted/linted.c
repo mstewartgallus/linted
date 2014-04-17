@@ -28,7 +28,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
+#include <poll.h>
+#include <pthread.h>
 #include <spawn.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -40,15 +41,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 
 #define BACKLOG 20
 
 #define ACTIVE_MANAGEMENT_CONNECTIONS 10
-
-#define LINTED_SIGRTNEWCONNIO SIGRTMIN
-#define LINTED_SIGRTCONNIO (SIGRTMIN + 1)
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -64,9 +61,22 @@ struct connection {
     bool has_reply_ready;
 };
 
-static id_t gettid(void);
+struct waiter_data {
+    id_t process_group;
+    int fd;
+};
 
-static errno_t notify(int fd, int signum);
+enum waiter_message_type {
+    WAITER_FINISHED,
+    WAITER_ERROR
+};
+
+struct waiter_message {
+    enum waiter_message_type type;
+    errno_t errnum;
+};
+
+static void * waiter_routine(void * data);
 
 static errno_t on_new_connections_readable(int new_connections,
                                            size_t * connection_count,
@@ -253,14 +263,6 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         /* Get EPIPEs */
         sigaddset(&sigblocked_set, SIGPIPE);
 
-        /*
-         * After running out of space to queue realtime signals for
-         * O_ASYNC files the kernel reverts to SIGIO. Block this as it
-         * is pointless, files already repeatedly queue signals when
-         * they are available.
-         */
-        sigaddset(&sigblocked_set, SIGIO);
-
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
@@ -360,17 +362,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    sigset_t sig_set;
-    sigemptyset(&sig_set);
-
-    sigaddset(&sig_set, SIGCHLD);
-    sigaddset(&sig_set, LINTED_SIGRTNEWCONNIO);
-    sigaddset(&sig_set, LINTED_SIGRTCONNIO);
-
-    sigset_t sigold_set;
-    pthread_sigmask(SIG_BLOCK, &sig_set, &sigold_set);
-
-    pid_t live_processes[] = { -1, -1 };
+    int process_group;
 
     /* Create placeholder file descriptors to be overwritten later on */
     {
@@ -381,7 +373,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == updater_placeholder) {
             error_status = errno;
-            goto restore_sigmask;
+            goto close_shutdowner;
         }
 
         shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
@@ -403,11 +395,17 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 goto cleanup_processes;
             }
 
+            posix_spawnattr_t attr;
+            if (-1 == posix_spawnattr_init(&attr)) {
+                error_status = errno;
+                goto destroy_gui_file_actions;
+            }
+
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        updater_read,
                                                        updater_placeholder)) {
                 error_status = errno;
-                goto destroy_gui_file_actions;
+                goto destroy_spawnattr;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
@@ -415,7 +413,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                                                        shutdowner_placeholder))
             {
                 error_status = errno;
-                goto destroy_gui_file_actions;
+                goto destroy_spawnattr;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
@@ -423,7 +421,12 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                                                        controller_placeholder))
             {
                 error_status = errno;
-                goto destroy_gui_file_actions;
+                goto destroy_spawnattr;
+            }
+
+            if (-1 == posix_spawnattr_setpgroup(&attr, 0)) {
+                error_status = errno;
+                goto destroy_spawnattr;
             }
 
             {
@@ -449,10 +452,24 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
                 sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
-                if (-1 == posix_spawn(&live_processes[0], fd_path,
-                                      &file_actions, NULL, args, envp)) {
+                if (-1 == posix_spawn(&process_group, fd_path,
+                                      &file_actions, NULL,
+                                      args, envp)) {
                     error_status = errno;
                 }
+
+                if (0 == error_status) {
+                    errno_t errnum = -1 == setpgid(process_group, process_group) ? errno : 0;
+                    if (errnum != 0 && errnum != EACCES) {
+                        error_status = errnum;
+                    }
+                }
+            }
+
+ destroy_spawnattr:
+            if (-1 == posix_spawnattr_destroy(&attr)
+                && 0 == error_status) {
+                error_status = errno;
             }
 
  destroy_gui_file_actions:
@@ -473,11 +490,17 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 goto cleanup_processes;
             }
 
+            posix_spawnattr_t attr;
+            if (-1 == posix_spawnattr_init(&attr)) {
+                error_status = errno;
+                goto destroy_sim_file_actions;
+            }
+
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        updater_write,
                                                        updater_placeholder)) {
                 error_status = errno;
-                goto destroy_sim_file_actions;
+                goto destroy_sim_spawnattr;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
@@ -485,7 +508,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                                                        shutdowner_placeholder))
             {
                 error_status = errno;
-                goto destroy_sim_file_actions;
+                goto destroy_sim_spawnattr;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
@@ -493,7 +516,12 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                                                        controller_placeholder))
             {
                 error_status = errno;
-                goto destroy_sim_file_actions;
+                goto destroy_sim_spawnattr;
+            }
+
+            if (-1 == posix_spawnattr_setpgroup(&attr, process_group)) {
+                error_status = errno;
+                goto destroy_sim_spawnattr;
             }
 
             {
@@ -519,10 +547,26 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
                 sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
-                if (-1 == posix_spawn(&live_processes[1], fd_path,
+
+
+                pid_t process;
+                if (-1 == posix_spawn(&process, fd_path,
                                       &file_actions, NULL, args, envp)) {
                     error_status = errno;
                 }
+
+                if (0 == error_status) {
+                    errno_t errnum = -1 == setpgid(process, process_group) ? errno : 0;
+                    if (errnum != 0 && errnum != EACCES) {
+                        error_status = errnum;
+                    }
+                }
+            }
+
+ destroy_sim_spawnattr:
+            if (-1 == posix_spawnattr_destroy(&attr)
+                && 0 == error_status) {
+                error_status = errno;
             }
 
  destroy_sim_file_actions:
@@ -573,7 +617,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         sa_family_t address = AF_UNIX;
         if (-1 == bind(new_connections, (void *)&address, sizeof address)) {
             error_status = errno;
-            goto close_socket;
+            goto close_new_connections;
         }
     }
 
@@ -584,7 +628,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         socklen_t addr_len = sizeof address;
         if (-1 == getsockname(new_connections, (void *)&address, &addr_len)) {
             error_status = errno;
-            goto close_socket;
+            goto close_new_connections;
         }
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "management socket: %s\n", address.sun_path + 1);
@@ -592,175 +636,185 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
     if (-1 == listen(new_connections, BACKLOG)) {
         error_status = errno;
-        goto close_socket;
+        goto close_new_connections;
+    }
+
+    int waiter_fds[2];
+    if (-1 == pipe2(waiter_fds, O_CLOEXEC)) {
+        error_status = errno;
+        goto close_new_connections;
     }
 
     {
-        errno_t errnum = notify(new_connections, LINTED_SIGRTNEWCONNIO);
-        if (errnum != 0) {
-            error_status = errno;
-            goto close_socket;
-        }
-    }
+        struct waiter_data waiter_data = {
+            .fd = waiter_fds[1],
+            .process_group = process_group
+        };
 
-    size_t connection_count = 0;
-    struct connection connections[ACTIVE_MANAGEMENT_CONNECTIONS];
-
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-        connections[ii].fd = -1;
-    }
-
-    for (;;) {
-        siginfo_t info;
-        int signal_number;
-        errno_t signal_status;
-        memset(&info, 0, sizeof info);
-        do {
-            signal_number = sigwaitinfo(&sig_set, &info);
-            signal_status = -1 == signal_number ? errno : 0;
-        } while (EINTR == signal_status);
-        if (signal_status != 0) {
-            error_status = signal_status;
-            goto close_connections;
+        pthread_t waiter_thread;
+        if (-1 == pthread_create(&waiter_thread, NULL,
+                                 waiter_routine, &waiter_data)) {
+            goto close_waiter_fds;
         }
 
-        if (LINTED_SIGRTNEWCONNIO == signal_number) {
-            errno_t errnum = on_new_connections_readable(new_connections,
-                                                         &connection_count,
-                                                         connections);
-            if (errnum != 0) {
-                error_status = errnum;
+        size_t connection_count = 0;
+        struct connection connections[ACTIVE_MANAGEMENT_CONNECTIONS];
+
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+            connections[ii].fd = -1;
+        }
+
+        for (;;) {
+            enum {
+                WAITER,
+                NEW_CONNECTIONS,
+                CONNECTION
+            };
+            struct pollfd fds[] = {
+                [WAITER] = {.fd = waiter_fds[0], .events = POLLIN},
+                [NEW_CONNECTIONS] = {.fd = new_connections, .events = POLLIN},
+
+                [CONNECTION + ACTIVE_MANAGEMENT_CONNECTIONS - 1] = {.fd = 0}
+            };
+            size_t connection_ids[ACTIVE_MANAGEMENT_CONNECTIONS];
+
+            size_t active_connections = 0;
+            for (size_t ii = 0; ii < ACTIVE_MANAGEMENT_CONNECTIONS; ++ii) {
+                struct connection * connection = &connections[ii];
+                if (connection->fd != -1) {
+                    fds[CONNECTION + active_connections].fd = connection->fd;
+                    fds[CONNECTION + active_connections].events = connection->has_reply_ready ? POLLOUT : POLLIN;
+                    connection_ids[active_connections] = ii;
+                    ++active_connections;
+                }
+            }
+
+            errno_t poll_status;
+            do {
+                poll_status = -1 == poll(fds,
+                                         LINTED_ARRAY_SIZE(fds) - ACTIVE_MANAGEMENT_CONNECTIONS + active_connections,
+                                         -1)
+                    ? errno
+                    : 0;
+            } while (EINTR == poll_status);
+            if (poll_status != 0) {
+                error_status = poll_status;
                 goto close_connections;
             }
 
-            continue;
-
-        } else if (LINTED_SIGRTCONNIO == signal_number) {
-            int fd = info.si_fd;
-
-            struct connection * connection;
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-                connection = &connections[ii];
-                if (fd == connection->fd) {
-                    goto got_connection;
-                }
-            }
-            /* We got a stale queued signal, ignore */
-            continue;
-
- got_connection:;
-            if (!connection->has_reply_ready) {
-                union linted_manager_reply reply;
-                errno_t errnum = on_connection_readable(fd, &reply);
-                switch (errnum) {
-                case 0:
-                    break;
-
-                case EAGAIN:
-                    /* Maybe the socket was only available for
-                     * writing but not reading */
-                    continue;
-
-                case EPIPE:
-                    /* Ignore the misbehaving other end */
-                    goto remove_connection;
-
-                default:
-                    error_status = errnum;
-                    goto close_connections;
-                }
-
-                connection->has_reply_ready = true;
-                connection->reply = reply;
-
-                /* fall through and try to write */
-            }
-
-            {
-                errno_t errnum = on_connection_writeable(fd,
-                                                         &connection->reply);
-                switch (errnum) {
-                case 0:
-                    break;
-
-                case EAGAIN:
-                    /* Maybe the socket was only available for
-                     * reading but not writing */
-                    continue;
-
-                case EPIPE:
-                    /* Ignore the misbehaving other end */
-                    goto remove_connection;
-
-                default:
-                    error_status = errnum;
-                    goto close_connections;
-                }
-            }
-
- remove_connection:
-            connection->fd = -1;
-            --connection_count;
-
-            {
-                errno_t errnum = linted_io_close(fd);
+            if ((fds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
+                errno_t errnum = on_new_connections_readable(new_connections,
+                                                             &connection_count,
+                                                             connections);
                 if (errnum != 0) {
                     error_status = errnum;
                     goto close_connections;
                 }
             }
-        } else if (SIGCHLD == signal_number) {
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
-                /* Poll for our processes */
-                if (-1 == live_processes[ii]) {
-                    continue;
-                }
 
-                siginfo_t exit_info;
-                exit_info.si_pid = 0;
-                if (-1 == waitid(P_PID, live_processes[ii], &exit_info,
-                                 WEXITED | WNOHANG)) {
-                    assert(errno != EINVAL);
-
-                    error_status = errno;
+            if ((fds[WAITER].revents & POLLIN) != 0) {
+                struct waiter_message message;
+                errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
+                                                    &message, sizeof message);
+                if (errnum != 0) {
+                    error_status = errnum;
                     goto close_connections;
                 }
 
-                if (0 == exit_info.si_pid) {
-                    continue;
-                }
-
-                live_processes[ii] = -1;
-
-                switch (exit_info.si_code) {
-                case CLD_DUMPED:
-                case CLD_KILLED:
-                    raise(exit_info.si_status);
-                    error_status = errno;
+                switch (message.type) {
+                case WAITER_FINISHED:
                     goto close_connections;
 
-                case CLD_EXITED:
-                    if (exit_info.si_status != 0) {
-                        error_status = exit_info.si_status;
+                case WAITER_ERROR:
+                    error_status = message.errnum;
+                    goto close_connections;
+
+                default:
+                    assert(false);
+                }
+            }
+
+            for (size_t ii = 0; ii < active_connections; ++ii) {
+                size_t connection_id = connection_ids[ii];
+                struct connection * connection = &connections[connection_id];
+
+                int fd = connection->fd;
+
+                if (connection->has_reply_ready) {
+                    if ((fds[CONNECTION + ii].revents & POLLOUT) != 0) {
+                        goto try_writing;
+                    }
+                } else {
+                    if ((fds[CONNECTION + ii].revents & POLLIN) != 0) {
+                        goto try_reading;
+                    }
+                }
+
+                continue;
+
+            try_reading:
+                {
+                    union linted_manager_reply reply;
+                    errno_t errnum = on_connection_readable(fd, &reply);
+                    switch (errnum) {
+                    case 0:
+                        break;
+
+                    case EAGAIN:
+                        /* Maybe the socket was only available for
+                         * writing but not reading */
+                        continue;
+
+                    case EPIPE:
+                        /* Ignore the misbehaving other end */
+                        goto remove_connection;
+
+                    default:
+                        error_status = errnum;
                         goto close_connections;
                     }
-                    break;
+
+                    connection->has_reply_ready = true;
+                    connection->reply = reply;
+                }
+
+            try_writing:
+                {
+                    errno_t errnum = on_connection_writeable(fd,
+                                                             &connection->reply);
+                    switch (errnum) {
+                    case 0:
+                        break;
+
+                    case EAGAIN:
+                        /* Maybe the socket was only available for
+                         * reading but not writing */
+                        continue;
+
+                    case EPIPE:
+                        /* Ignore the misbehaving other end */
+                        goto remove_connection;
+
+                    default:
+                        error_status = errnum;
+                        goto close_connections;
+                    }
+                }
+
+            remove_connection:
+                connection->fd = -1;
+                --connection_count;
+
+                {
+                    errno_t errnum = linted_io_close(fd);
+                    if (errnum != 0) {
+                        error_status = errnum;
+                        goto close_connections;
+                    }
                 }
             }
-
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
-                if (live_processes[ii] != -1) {
-                    goto got_live;
-                }
-            }
-            /* Else exit */
-            goto close_connections;
-
- got_live: ;
-        } else {
-            assert(false);
         }
-    }
+
  close_connections:
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
         struct connection * const connection = &connections[ii];
@@ -773,7 +827,27 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
- close_socket:
+ cancel_waiter_thread:
+        pthread_cancel(waiter_thread);
+        pthread_join(waiter_thread, NULL);
+    }
+
+ close_waiter_fds:
+    {
+        errno_t errnum = linted_io_close(waiter_fds[0]);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
+    {
+        errno_t errnum = linted_io_close(waiter_fds[1]);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
+ close_new_connections:
     {
         errno_t errnum = linted_io_close(new_connections);
         if (0 == error_status) {
@@ -782,20 +856,16 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     }
 
  cleanup_processes:
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(live_processes); ++ii) {
-        if (live_processes[ii] != -1) {
-            int kill_status = kill(live_processes[ii], SIGQUIT);
-            if (-1 == kill_status) {
-                /* errno == ESRCH is fine */
-                assert(errno != EINVAL);
-                assert(errno != EPERM);
-            }
+    {
+        errno_t errnum = -1 == kill(process_group, SIGQUIT)? errno : 0;
+        if (errnum != 0) {
+            /* errnum == ESRCH is fine */
+            assert(errnum != EINVAL);
+            assert(errnum != EPERM);
         }
     }
 
- restore_sigmask:
-    pthread_sigmask(SIG_SETMASK, &sigold_set, NULL);
-
+ close_shutdowner:
     {
         int errnum = linted_shutdowner_close(simulator_shutdowner_read);
         if (0 == error_status) {
@@ -843,34 +913,64 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     return error_status;
 }
 
-static id_t gettid(void)
+static void * waiter_routine(void * data)
 {
-    return syscall(SYS_gettid);
-}
+    struct waiter_data * waiter_data = data;
 
-static errno_t notify(int fd, int signum)
-{
-    int flags = fcntl(fd, F_GETFL);
-    if (-1 == flags) {
-        return errno;
-    }
+    errno_t error_status;
+    for (;;) {
+        siginfo_t exit_info;
+        errno_t wait_status;
+        do {
+            wait_status = -1 == waitid(P_PGID, waiter_data->process_group,
+                                       &exit_info, WEXITED) ? errno : 0;
+            assert(wait_status != EINVAL);
+        } while (EINTR == wait_status);
 
-    if (-1 == fcntl(fd, F_SETSIG, signum)) {
-        return errno;
-    }
+        if (ECHILD == wait_status) {
+            struct waiter_message message = {
+                .type = WAITER_FINISHED
+            };
+            errno_t errnum = linted_io_write_all(waiter_data->fd, NULL,
+                                                 &message, sizeof message);
+            if (errnum != 0) {
+                error_status = errnum;
+                goto handle_error;
+            }
+            break;
+        }
 
-    {
-        struct f_owner_ex owner = {.type = F_OWNER_TID,.pid = gettid()};
-        if (-1 == fcntl(fd, F_SETOWN_EX, &owner)) {
-            return errno;
+        if (wait_status != 0) {
+            error_status = wait_status;
+            goto handle_error;
+        }
+
+        switch (exit_info.si_code) {
+        case CLD_DUMPED:
+        case CLD_KILLED:
+            raise(exit_info.si_status);
+            error_status = errno;
+            goto handle_error;
+
+        case CLD_EXITED:
+            if (exit_info.si_status != 0) {
+                error_status = exit_info.si_status;
+                goto handle_error;
+            }
+            break;
         }
     }
 
-    if (-1 == fcntl(fd, F_SETFL, flags | O_ASYNC)) {
-        return errno;
-    }
+    return NULL;
 
-    return 0;
+handle_error:;
+    struct waiter_message message = {
+        .type = WAITER_ERROR,
+        .errnum = error_status
+    };
+    linted_io_write_all(waiter_data->fd, NULL,
+                        &message, sizeof message);
+    return NULL;
 }
 
 static errno_t on_new_connections_readable(int new_connections,
@@ -944,14 +1044,6 @@ static errno_t on_new_connections_readable(int new_connections,
         if (*connection_count >= ACTIVE_MANAGEMENT_CONNECTIONS) {
             /* I'm sorry sir but we are full today. */
             goto close_new_socket;
-        }
-
-        {
-            errno_t errnum = notify(new_socket, LINTED_SIGRTCONNIO);
-            if (errnum != 0) {
-                error_status = errnum;
-                goto close_new_socket;
-            }
         }
 
         struct connection * connection;
