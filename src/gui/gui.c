@@ -103,6 +103,8 @@ enum transition {
 struct window_state {
     unsigned width;
     unsigned height;
+
+    bool viewable;
 };
 
 struct controller_state {
@@ -340,7 +342,8 @@ int main(int argc, char *argv[])
     free(display);
 
     errno_t error_status = 0;
-    struct window_state window_state = {.width = 640,.height = 800 };
+    struct window_state window_state = {.width = 640,.height = 800,
+                                        .viewable=true};
 
     struct controller_state controller_state = {
         .update = {.up = false,.down = false,.right = false,.left = false},
@@ -503,8 +506,18 @@ int main(int argc, char *argv[])
 
         /* Only render if we have time to waste */
         if (!had_sdl_event && !had_selected_event) {
-            render_graphics(&gl_state, &gui_state, &window_state);
-            SDL_GL_SwapWindow(window);
+            if (window_state.viewable) {
+                render_graphics(&gl_state, &gui_state, &window_state);
+                SDL_GL_SwapWindow(window);
+            } else {
+                /*
+                 * This is an ugly hack but SDL cannot give us a
+                 * better solution. Even SDL event filters and a pipe
+                 * still require us to pump events with
+                 * SDL_PumpEvents.
+                 */
+                SDL_Delay(10);
+            }
         }
     }
 
@@ -550,59 +563,70 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
 
     case SDL_WINDOWEVENT:{
             SDL_WindowEvent const *const window_event = &sdl_event->window;
-            if (window_event->event != SDL_WINDOWEVENT_RESIZED) {
+            switch (window_event->event) {
+            case SDL_WINDOWEVENT_RESIZED:
+                /*
+                 * Fuse multiple resize attempts into just one to prevent the
+                 * worse case scenario of a whole bunch of resize events from
+                 * killing the application's speed.
+                 */
+                window_state->width = window_event->data1;
+                window_state->height = window_event->data2;
+                *transition = SHOULD_RESIZE;
+                return 0;
+
+            case SDL_WINDOWEVENT_HIDDEN:
+                window_state->viewable = false;
                 break;
+
+            case SDL_WINDOWEVENT_SHOWN:
+            case SDL_WINDOWEVENT_EXPOSED:
+                window_state->viewable = true;
+                break;
+
+            default:
+                *transition = DO_NOTHING;
+                return 0;
             }
-            /*
-             * Fuse multiple resize attempts into just one to prevent the
-             * worse case scenario of a whole bunch of resize events from
-             * killing the application's speed.
-             */
-            window_state->width = window_event->data1;
-            window_state->height = window_event->data2;
-            *transition = SHOULD_RESIZE;
-            return 0;
         }
 
     case SDL_KEYDOWN:
-    case SDL_KEYUP:
-        goto on_keypress;
+    case SDL_KEYUP: {
+            bool is_key_down = SDL_KEYDOWN == sdl_event->type;
+
+            switch (sdl_event->key.keysym.sym) {
+            default:
+                *transition = DO_NOTHING;
+                return 0;
+
+            case SDLK_q:
+            case SDLK_ESCAPE:
+                *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
+                return 0;
+
+            case SDLK_LEFT:
+                controller_state->update.left = is_key_down;
+                break;
+
+            case SDLK_RIGHT:
+                controller_state->update.right = is_key_down;
+                break;
+
+            case SDLK_UP:
+                controller_state->update.up = is_key_down;
+                break;
+
+            case SDLK_DOWN:
+                controller_state->update.down = is_key_down;
+                break;
+            }
+
+            controller_state->update_pending = true;
+
+            *transition = DO_NOTHING;
+            return 0;
+        }
     }
-
- on_keypress:;
-    bool is_key_down = SDL_KEYDOWN == sdl_event->type;
-
-    switch (sdl_event->key.keysym.sym) {
-    default:
-        *transition = DO_NOTHING;
-        return 0;
-
-    case SDLK_q:
-    case SDLK_ESCAPE:
-        *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
-        return 0;
-
-    case SDLK_LEFT:
-        controller_state->update.left = is_key_down;
-        break;
-
-    case SDLK_RIGHT:
-        controller_state->update.right = is_key_down;
-        break;
-
-    case SDLK_UP:
-        controller_state->update.up = is_key_down;
-        break;
-
-    case SDLK_DOWN:
-        controller_state->update.down = is_key_down;
-        break;
-    }
-
-    controller_state->update_pending = true;
-
-    *transition = DO_NOTHING;
-    return 0;
 }
 
 static errno_t on_updater_readable(linted_updater updater,
