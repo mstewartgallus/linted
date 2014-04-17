@@ -716,13 +716,12 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
             if ((fds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
-                {
-                    errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
-                                                        &message, sizeof message);
-                    if (errnum != 0) {
-                        error_status = errnum;
-                        goto close_connections;
-                    }
+
+                errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
+                                                    &message, sizeof message);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto close_connections;
                 }
 
                 error_status = message.errnum;
