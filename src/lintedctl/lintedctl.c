@@ -41,7 +41,18 @@ static errno_t on_bad_option(int fildes, char const *program_name,
                              char const *bad_option);
 static errno_t try_for_more_help(int fildes, char const *program_name,
                                  struct linted_str help_option);
-static void write_version(void);
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year);
+static errno_t status_help(int fildes, char const *program_name,
+                           struct linted_str package_name,
+                           struct linted_str package_url,
+                           struct linted_str package_bugreport);
+static errno_t stop_help(int fildes, char const *program_name,
+                         struct linted_str package_name,
+                         struct linted_str package_url,
+                         struct linted_str package_bugreport);
+static errno_t failure(int fildes, char const *program_name,
+                       struct linted_str message, errno_t errnum);
 
 int main(int argc, char **argv)
 {
@@ -92,7 +103,8 @@ int main(int argc, char **argv)
     }
 
     if (need_version) {
-        write_version();
+        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                     LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
@@ -124,31 +136,10 @@ int main(int argc, char **argv)
         }
 
         if (need_add_help) {
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Usage: %s status [OPTIONS]\n", program_name);
-
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Get the status of the gui service.\n",
-                                   PACKAGE_NAME);
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  LINTED_SOCKET          the socket of the linted game\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
-                                   PACKAGE_BUGREPORT);
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
-                                   PACKAGE_NAME, PACKAGE_URL);
-
+            status_help(STDOUT_FILENO,
+                        program_name,
+                        LINTED_STR(PACKAGE_NAME),
+                        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
             return EXIT_SUCCESS;
         }
 
@@ -169,7 +160,8 @@ int main(int argc, char **argv)
         }
 
         if (need_version) {
-            write_version();
+            version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                         LINTED_STR(COPYRIGHT_YEAR));
             return EXIT_SUCCESS;
         }
 
@@ -193,10 +185,8 @@ int main(int argc, char **argv)
 
         int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
         if (-1 == linted) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: could not create socket: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not create socket"), errno);
             return EXIT_FAILURE;
         }
 
@@ -211,10 +201,8 @@ int main(int argc, char **argv)
 
             if (-1 == connect(linted, (void *)&address,
                               sizeof(sa_family_t) + 1 + socket_string_len)) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not connect to socket: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errno));
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can not connect to socket"), errno);
                 return EXIT_FAILURE;
             }
         }
@@ -232,11 +220,9 @@ int main(int argc, char **argv)
 
             errno_t errnum = linted_manager_send_request(linted, &request);
             if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not send request: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errnum));
-                return EXIT_FAILURE;
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can not send request"), errno);
+               return EXIT_FAILURE;
             }
         }
 
@@ -246,10 +232,8 @@ int main(int argc, char **argv)
             errno_t errnum = linted_io_read_all(linted, &bytes_read,
                                                 &reply, sizeof reply);
             if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not read reply: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errnum));
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can not read reply"), errno);
                 return EXIT_FAILURE;
             }
 
@@ -299,31 +283,10 @@ int main(int argc, char **argv)
         }
 
         if (need_add_help) {
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Usage: %s stop [OPTIONS]\n", program_name);
-
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "Stop the gui service.\n",
-                                   PACKAGE_NAME);
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  LINTED_SOCKET          the socket of the linted game\n"));
-
-            linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-            linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
-                                   PACKAGE_BUGREPORT);
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
-                                   PACKAGE_NAME, PACKAGE_URL);
-
+            stop_help(STDOUT_FILENO,
+                      program_name,
+                      LINTED_STR(PACKAGE_NAME),
+                      LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
             return EXIT_SUCCESS;
         }
 
@@ -344,7 +307,8 @@ int main(int argc, char **argv)
         }
 
         if (need_version) {
-            write_version();
+            version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                         LINTED_STR(COPYRIGHT_YEAR));
             return EXIT_SUCCESS;
         }
 
@@ -368,10 +332,8 @@ int main(int argc, char **argv)
 
         int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
         if (-1 == linted) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: could not create socket: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errno));
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not create socket"), errno);
             return EXIT_FAILURE;
         }
 
@@ -386,10 +348,8 @@ int main(int argc, char **argv)
 
             if (-1 == connect(linted, (void *)&address,
                               sizeof(sa_family_t) + 1 + socket_string_len)) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not connect to socket: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errno));
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can not connect to socket"), errno);
                 return EXIT_FAILURE;
             }
         }
@@ -407,10 +367,8 @@ int main(int argc, char **argv)
 
             errno_t errnum = linted_manager_send_request(linted, &request);
             if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not send request: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errnum));
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can send request"), errno);
                 return EXIT_FAILURE;
             }
         }
@@ -421,10 +379,8 @@ int main(int argc, char **argv)
             errno_t errnum = linted_io_read_all(linted, &bytes_read,
                                                 &reply, sizeof reply);
             if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: could not read reply: %s\n",
-                                       program_name,
-                                       linted_error_string_alloc(errnum));
+                failure(STDERR_FILENO, program_name,
+                        LINTED_STR("can not read reply"), errno);
                 return EXIT_FAILURE;
             }
 
@@ -458,9 +414,8 @@ int main(int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n",
                                program_name, command);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s --help' for more information.\n",
-                               program_name);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 }
@@ -618,16 +573,225 @@ static errno_t try_for_more_help(int fildes, char const *program_name,
     return 0;
 }
 
-static void write_version(void)
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year)
 {
-    linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_STRING));
+    errno_t errnum;
 
-    linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
+    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
+        return errnum;
+    }
 
-    linted_io_write_format(STDOUT_FILENO, NULL, "\
-Copyright (C) %s Steven Stewart-Gallus\n\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Copyright (C) "))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
+There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
+        return errnum;
+    }
 
+    return 0;
+}
+
+static errno_t status_help(int fildes, char const *program_name,
+                           struct linted_str package_name,
+                           struct linted_str package_url,
+                           struct linted_str package_bugreport)
+{
+        errno_t errnum;
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL,
+                             LINTED_STR(" status [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report the status.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t stop_help(int fildes, char const *program_name,
+                         struct linted_str package_name,
+                         struct linted_str package_url,
+                         struct linted_str package_bugreport)
+{
+        errno_t errnum;
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL,
+                             LINTED_STR(" stop [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Stop a service.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t failure(int fildes, char const *program_name,
+                       struct linted_str message, errno_t error)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, message)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+        return errnum;
+    }
+
+    char const *error_string = linted_error_string_alloc(error);
+    errnum = linted_io_write_string(fildes, NULL, error_string);
+    linted_error_string_free(error_string);
+
+    if (errnum != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
 }
