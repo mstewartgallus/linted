@@ -992,7 +992,7 @@ static errno_t gui_help(int fildes, char const *program_name,
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-Run the " PACKAGE_NAME " program gui.\n"))) != 0) {
+Run the gui program.\n"))) != 0) {
         return errnum;
     }
 

@@ -32,14 +32,22 @@
 #include <signal.h>
 #include <unistd.h>
 
+static errno_t missing_process_name(int fildes, struct linted_str package_name);
+static errno_t ctl_help(int fildes, char const *program_name,
+                        struct linted_str package_name,
+                        struct linted_str package_url,
+                        struct linted_str package_bugreport);
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option);
+static errno_t try_for_more_help(int fildes, char const *program_name,
+                                 struct linted_str help_option);
 static void write_version(void);
 
 int main(int argc, char **argv)
 {
     if (argc < 1) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing process name\n",
-                               PACKAGE_TARNAME "-lintedctl");
+        missing_process_name(STDERR_FILENO,
+                             LINTED_STR(PACKAGE_TARNAME "-lintedctl"));
         return EXIT_FAILURE;
     }
 
@@ -70,45 +78,16 @@ int main(int argc, char **argv)
     ++last_index;
 
     if (need_help) {
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Usage: %s [OPTIONS] COMMAND\n", program_name);
-
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Send commands to the game.\n", PACKAGE_NAME);
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  LINTED_SOCKET          the socket of the linted game\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  status               request the status of the gui service\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
-                               PACKAGE_BUGREPORT);
-        linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
-                               PACKAGE_NAME, PACKAGE_URL);
-
+        ctl_help(STDOUT_FILENO,
+                 program_name,
+                 LINTED_STR(PACKAGE_NAME),
+                 LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: unrecognized option '%s'\n",
-                               program_name, bad_option);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s --help' for more information.\n",
-                               program_name);
+        on_bad_option(STDERR_FILENO, program_name, bad_option);
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -120,9 +99,7 @@ int main(int argc, char **argv)
     if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing COMMAND\n", program_name);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s --help' for more information.\n",
-                               program_name);
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -176,12 +153,9 @@ int main(int argc, char **argv)
         }
 
         if (bad_option != NULL) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: unrecognized option '%s'\n",
-                                   program_name, bad_option);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            on_bad_option(STDERR_FILENO, program_name, bad_option);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -189,9 +163,8 @@ int main(int argc, char **argv)
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: too many arguments: '%s'\n",
                                    program_name, bad_argument);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -204,9 +177,8 @@ int main(int argc, char **argv)
         if (NULL == socket_string) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: missing LINTED_SOCKET\n", program_name);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -356,12 +328,9 @@ int main(int argc, char **argv)
         }
 
         if (bad_option != NULL) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: unrecognized option '%s'\n",
-                                   program_name, bad_option);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            on_bad_option(STDERR_FILENO, program_name, bad_option);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -369,9 +338,8 @@ int main(int argc, char **argv)
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: too many arguments: '%s'\n",
                                    program_name, bad_argument);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -384,9 +352,8 @@ int main(int argc, char **argv)
         if (NULL == socket_string) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: missing LINTED_SOCKET\n", program_name);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s --help' for more information.\n",
-                                   program_name);
+            try_for_more_help(STDERR_FILENO, program_name,
+                              LINTED_STR("--help"));
             return EXIT_FAILURE;
         }
 
@@ -496,6 +463,159 @@ int main(int argc, char **argv)
                                program_name);
         return EXIT_FAILURE;
     }
+}
+
+static errno_t missing_process_name(int fildes, struct linted_str package_name)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: missing process name\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t ctl_help(int fildes, char const *program_name,
+                        struct linted_str package_name,
+                        struct linted_str package_url,
+                        struct linted_str package_bugreport)
+{
+    errno_t errnum;
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Run the manager program.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  status              request the status of the gui service\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: unrecognised option '"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t try_for_more_help(int fildes, char const *program_name,
+                                 struct linted_str help_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+' for more information.\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
 }
 
 static void write_version(void)
