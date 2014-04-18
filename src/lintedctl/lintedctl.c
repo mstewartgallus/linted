@@ -32,6 +32,9 @@
 #include <signal.h>
 #include <unistd.h>
 
+static int run_status(char const * program_name, int argc, char **argv);
+static int run_stop(char const * program_name, int argc, char **argv);
+
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t ctl_help(int fildes, char const *program_name,
                         struct linted_str package_name,
@@ -116,300 +119,11 @@ int main(int argc, char **argv)
     }
 
     if (0 == strcmp("status", command)) {
-        bool need_add_help = false;
-        char const *bad_argument = NULL;
-        for (; last_index < (unsigned)argc; ++last_index) {
-            char const *argument = argv[last_index];
-
-            if (0 == strncmp(argument, "--", strlen("--"))) {
-                if (0 == strcmp(argument, "--help")) {
-                    need_add_help = true;
-                } else if (0 == strcmp(argument, "--version")) {
-                    need_version = true;
-                } else {
-                    bad_option = argument;
-                }
-            } else {
-                bad_argument = argument;
-                break;
-            }
-        }
-
-        if (need_add_help) {
-            status_help(STDOUT_FILENO,
-                        program_name,
-                        LINTED_STR(PACKAGE_NAME),
-                        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-            return EXIT_SUCCESS;
-        }
-
-        if (bad_option != NULL) {
-            on_bad_option(STDERR_FILENO, program_name, bad_option);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        if (bad_argument != NULL) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: too many arguments: '%s'\n",
-                                   program_name, bad_argument);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        if (need_version) {
-            version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                         LINTED_STR(COPYRIGHT_YEAR));
-            return EXIT_SUCCESS;
-        }
-
-        char const *socket_string = getenv("LINTED_SOCKET");
-        if (NULL == socket_string) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: missing LINTED_SOCKET\n", program_name);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        size_t socket_string_len = strlen(socket_string);
-        if (socket_string_len >
-            sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: LINTED_SOCKET is too long\n",
-                                   program_name);
-            return EXIT_FAILURE;
-        }
-
-        int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-        if (-1 == linted) {
-            failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not create socket"), errno);
-            return EXIT_FAILURE;
-        }
-
-        {
-            struct sockaddr_un address;
-            memset(&address, 0, sizeof address);
-
-            address.sun_family = AF_UNIX;
-            address.sun_path[0] = 0;
-
-            memcpy(address.sun_path + 1, socket_string, socket_string_len);
-
-            if (-1 == connect(linted, (void *)&address,
-                              sizeof(sa_family_t) + 1 + socket_string_len)) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can not connect to socket"), errno);
-                return EXIT_FAILURE;
-            }
-        }
-
-        {
-            union linted_manager_request request;
-            memset(&request, 0, sizeof request);
-
-            request.type = LINTED_MANAGER_STATUS;
-            request.status.service = LINTED_MANAGER_SERVICE_GUI;
-
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: sending the status request for the gui\n",
-                                   program_name);
-
-            errno_t errnum = linted_manager_send_request(linted, &request);
-            if (errnum != 0) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can not send request"), errno);
-               return EXIT_FAILURE;
-            }
-        }
-
-        {
-            union linted_manager_reply reply;
-            size_t bytes_read;
-            errno_t errnum = linted_io_read_all(linted, &bytes_read,
-                                                &reply, sizeof reply);
-            if (errnum != 0) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can not read reply"), errno);
-                return EXIT_FAILURE;
-            }
-
-            if (0 == bytes_read) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: socket hung up\n", program_name);
-                return EXIT_FAILURE;
-            }
-
-            /* Sent malformed input */
-            if (bytes_read != sizeof reply) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: reply was too small: %i\n",
-                                       program_name, bytes_read);
-                return EXIT_FAILURE;
-            }
-
-            if (reply.status.is_up) {
-                linted_io_write_format(STDOUT_FILENO, NULL,
-                                       "%s: gui is up\n",
-                                       program_name);
-            } else {
-                linted_io_write_format(STDOUT_FILENO, NULL,
-                                       "%s: the gui is down\n", program_name);
-            }
-        }
-
-        return EXIT_SUCCESS;
+        return run_status(program_name, argc - last_index + 1,
+                          argv + last_index - 1);
     } else if (0 == strcmp("stop", command)) {
-        bool need_add_help = false;
-        char const *bad_argument = NULL;
-        for (; last_index < (unsigned)argc; ++last_index) {
-            char const *argument = argv[last_index];
-
-            if (0 == strncmp(argument, "--", strlen("--"))) {
-                if (0 == strcmp(argument, "--help")) {
-                    need_add_help = true;
-                } else if (0 == strcmp(argument, "--version")) {
-                    need_version = true;
-                } else {
-                    bad_option = argument;
-                }
-            } else {
-                bad_argument = argument;
-                break;
-            }
-        }
-
-        if (need_add_help) {
-            stop_help(STDOUT_FILENO,
-                      program_name,
-                      LINTED_STR(PACKAGE_NAME),
-                      LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-            return EXIT_SUCCESS;
-        }
-
-        if (bad_option != NULL) {
-            on_bad_option(STDERR_FILENO, program_name, bad_option);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        if (bad_argument != NULL) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: too many arguments: '%s'\n",
-                                   program_name, bad_argument);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        if (need_version) {
-            version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                         LINTED_STR(COPYRIGHT_YEAR));
-            return EXIT_SUCCESS;
-        }
-
-        char const *socket_string = getenv("LINTED_SOCKET");
-        if (NULL == socket_string) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: missing LINTED_SOCKET\n", program_name);
-            try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR("--help"));
-            return EXIT_FAILURE;
-        }
-
-        size_t socket_string_len = strlen(socket_string);
-        if (socket_string_len >
-            sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: LINTED_SOCKET is too long\n",
-                                   program_name);
-            return EXIT_FAILURE;
-        }
-
-        int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-        if (-1 == linted) {
-            failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not create socket"), errno);
-            return EXIT_FAILURE;
-        }
-
-        {
-            struct sockaddr_un address;
-            memset(&address, 0, sizeof address);
-
-            address.sun_family = AF_UNIX;
-            address.sun_path[0] = 0;
-
-            memcpy(address.sun_path + 1, socket_string, socket_string_len);
-
-            if (-1 == connect(linted, (void *)&address,
-                              sizeof(sa_family_t) + 1 + socket_string_len)) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can not connect to socket"), errno);
-                return EXIT_FAILURE;
-            }
-        }
-
-        {
-            union linted_manager_request request;
-            memset(&request, 0, sizeof request);
-
-            request.type = LINTED_MANAGER_STOP;
-            request.stop.service = LINTED_MANAGER_SERVICE_GUI;
-
-            linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: sending the stop request for the gui\n",
-                                   program_name);
-
-            errno_t errnum = linted_manager_send_request(linted, &request);
-            if (errnum != 0) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can send request"), errno);
-                return EXIT_FAILURE;
-            }
-        }
-
-        {
-            union linted_manager_reply reply;
-            size_t bytes_read;
-            errno_t errnum = linted_io_read_all(linted, &bytes_read,
-                                                &reply, sizeof reply);
-            if (errnum != 0) {
-                failure(STDERR_FILENO, program_name,
-                        LINTED_STR("can not read reply"), errno);
-                return EXIT_FAILURE;
-            }
-
-            if (0 == bytes_read) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: socket hung up\n", program_name);
-                return EXIT_FAILURE;
-            }
-
-            /* Sent malformed input */
-            if (bytes_read != sizeof reply) {
-                linted_io_write_format(STDERR_FILENO, NULL,
-                                       "%s: reply was too small: %i\n",
-                                       program_name, bytes_read);
-                return EXIT_FAILURE;
-            }
-
-            if (reply.stop.was_up) {
-                linted_io_write_format(STDOUT_FILENO, NULL,
-                                       "%s: gui was killed\n",
-                                       program_name);
-            } else {
-                linted_io_write_format(STDOUT_FILENO, NULL,
-                                       "%s: the gui was not killed\n",
-                                       program_name);
-            }
-        }
-
-        return EXIT_SUCCESS;
+        return run_stop(program_name, argc - last_index + 1,
+                        argv + last_index - 1);
     } else {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n",
@@ -418,6 +132,313 @@ int main(int argc, char **argv)
                           LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
+}
+
+static int run_status(char const * program_name, int argc, char **argv)
+{
+    bool need_version = false;
+    bool need_add_help = false;
+    char const *bad_option = NULL;
+    char const *bad_argument = NULL;
+    unsigned last_index = 1;
+    for (; last_index < (unsigned)argc; ++last_index) {
+        char const *argument = argv[last_index];
+
+        if (0 == strncmp(argument, "--", strlen("--"))) {
+            if (0 == strcmp(argument, "--help")) {
+                need_add_help = true;
+            } else if (0 == strcmp(argument, "--version")) {
+                need_version = true;
+            } else {
+                bad_option = argument;
+            }
+        } else {
+            bad_argument = argument;
+            break;
+        }
+    }
+
+    if (need_add_help) {
+        status_help(STDOUT_FILENO,
+                    program_name,
+                    LINTED_STR(PACKAGE_NAME),
+                    LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        on_bad_option(STDERR_FILENO, program_name, bad_option);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (bad_argument != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: too many arguments: '%s'\n",
+                               program_name, bad_argument);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                     LINTED_STR(COPYRIGHT_YEAR));
+        return EXIT_SUCCESS;
+    }
+
+    char const *socket_string = getenv("LINTED_SOCKET");
+    if (NULL == socket_string) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", program_name);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    size_t socket_string_len = strlen(socket_string);
+    if (socket_string_len >
+        sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: LINTED_SOCKET is too long\n",
+                               program_name);
+        return EXIT_FAILURE;
+    }
+
+    int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    if (-1 == linted) {
+        failure(STDERR_FILENO, program_name,
+                LINTED_STR("can not create socket"), errno);
+        return EXIT_FAILURE;
+    }
+
+    {
+        struct sockaddr_un address;
+        memset(&address, 0, sizeof address);
+
+        address.sun_family = AF_UNIX;
+        address.sun_path[0] = 0;
+
+        memcpy(address.sun_path + 1, socket_string, socket_string_len);
+
+        if (-1 == connect(linted, (void *)&address,
+                          sizeof(sa_family_t) + 1 + socket_string_len)) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not connect to socket"), errno);
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        union linted_manager_request request;
+        memset(&request, 0, sizeof request);
+
+        request.type = LINTED_MANAGER_STATUS;
+        request.status.service = LINTED_MANAGER_SERVICE_GUI;
+
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "%s: sending the status request for the gui\n",
+                               program_name);
+
+        errno_t errnum = linted_manager_send_request(linted, &request);
+        if (errnum != 0) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not send request"), errno);
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        union linted_manager_reply reply;
+        size_t bytes_read;
+        errno_t errnum = linted_io_read_all(linted, &bytes_read,
+                                            &reply, sizeof reply);
+        if (errnum != 0) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not read reply"), errno);
+            return EXIT_FAILURE;
+        }
+
+        if (0 == bytes_read) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: socket hung up\n", program_name);
+            return EXIT_FAILURE;
+        }
+
+        /* Sent malformed input */
+        if (bytes_read != sizeof reply) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: reply was too small: %i\n",
+                                   program_name, bytes_read);
+            return EXIT_FAILURE;
+        }
+
+        if (reply.status.is_up) {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: gui is up\n",
+                                   program_name);
+        } else {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: the gui is down\n", program_name);
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+static int run_stop(char const * program_name, int argc, char **argv)
+{
+    bool need_version = false;
+    bool need_add_help = false;
+    char const *bad_option = NULL;
+    char const *bad_argument = NULL;
+    unsigned last_index = 1;
+    for (; last_index < (unsigned)argc; ++last_index) {
+        char const *argument = argv[last_index];
+
+        if (0 == strncmp(argument, "--", strlen("--"))) {
+            if (0 == strcmp(argument, "--help")) {
+                need_add_help = true;
+            } else if (0 == strcmp(argument, "--version")) {
+                need_version = true;
+            } else {
+                bad_option = argument;
+            }
+        } else {
+            bad_argument = argument;
+            break;
+        }
+    }
+
+    if (need_add_help) {
+        stop_help(STDOUT_FILENO,
+                  program_name,
+                  LINTED_STR(PACKAGE_NAME),
+                  LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        on_bad_option(STDERR_FILENO, program_name, bad_option);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (bad_argument != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: too many arguments: '%s'\n",
+                               program_name, bad_argument);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                     LINTED_STR(COPYRIGHT_YEAR));
+        return EXIT_SUCCESS;
+    }
+
+    char const *socket_string = getenv("LINTED_SOCKET");
+    if (NULL == socket_string) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", program_name);
+        try_for_more_help(STDERR_FILENO, program_name,
+                          LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    size_t socket_string_len = strlen(socket_string);
+    if (socket_string_len >
+        sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: LINTED_SOCKET is too long\n",
+                               program_name);
+        return EXIT_FAILURE;
+    }
+
+    int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    if (-1 == linted) {
+        failure(STDERR_FILENO, program_name,
+                LINTED_STR("can not create socket"), errno);
+        return EXIT_FAILURE;
+    }
+
+    {
+        struct sockaddr_un address;
+        memset(&address, 0, sizeof address);
+
+        address.sun_family = AF_UNIX;
+        address.sun_path[0] = 0;
+
+        memcpy(address.sun_path + 1, socket_string, socket_string_len);
+
+        if (-1 == connect(linted, (void *)&address,
+                          sizeof(sa_family_t) + 1 + socket_string_len)) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not connect to socket"), errno);
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        union linted_manager_request request;
+        memset(&request, 0, sizeof request);
+
+        request.type = LINTED_MANAGER_STOP;
+        request.stop.service = LINTED_MANAGER_SERVICE_GUI;
+
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "%s: sending the stop request for the gui\n",
+                               program_name);
+
+        errno_t errnum = linted_manager_send_request(linted, &request);
+        if (errnum != 0) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can send request"), errno);
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        union linted_manager_reply reply;
+        size_t bytes_read;
+        errno_t errnum = linted_io_read_all(linted, &bytes_read,
+                                            &reply, sizeof reply);
+        if (errnum != 0) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not read reply"), errno);
+            return EXIT_FAILURE;
+        }
+
+        if (0 == bytes_read) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: socket hung up\n", program_name);
+            return EXIT_FAILURE;
+        }
+
+        /* Sent malformed input */
+        if (bytes_read != sizeof reply) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: reply was too small: %i\n",
+                                   program_name, bytes_read);
+            return EXIT_FAILURE;
+        }
+
+        if (reply.stop.was_up) {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: gui was killed\n",
+                                   program_name);
+        } else {
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: the gui was not killed\n",
+                                   program_name);
+        }
+    }
+
+    return EXIT_SUCCESS;
 }
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name)
