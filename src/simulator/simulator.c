@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/controller.h"
+#include "linted/logger.h"
 #include "linted/io.h"
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
@@ -36,6 +37,7 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
+#define LOGGER_OPTION "--logger"
 #define CONTROLLER_OPTION "--controller"
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
@@ -90,6 +92,7 @@ int main(int argc, char *argv[])
     bool need_version = false;
     char const *bad_option = NULL;
 
+    char const *logger_name = NULL;
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
@@ -100,21 +103,18 @@ int main(int argc, char *argv[])
             need_help = true;
         } else if (0 == strcmp(VERSION_OPTION, argument)) {
             need_version = true;
+        } else if (0 == strncmp(argument, LOGGER_OPTION "=",
+                                strlen(LOGGER_OPTION "="))) {
+            logger_name = argument + strlen(LOGGER_OPTION "=");
         } else if (0 == strncmp(argument, CONTROLLER_OPTION "=",
                                 strlen(CONTROLLER_OPTION "="))) {
-
             controller_name = argument + strlen(CONTROLLER_OPTION "=");
-
         } else if (0 == strncmp(argument, SHUTDOWNER_OPTION "=",
                                 strlen(SHUTDOWNER_OPTION "="))) {
-
             shutdowner_name = argument + strlen(SHUTDOWNER_OPTION "=");
-
         } else if (0 == strncmp(argument, UPDATER_OPTION "=",
                                 strlen(UPDATER_OPTION "="))) {
-
             updater_name = argument + strlen(UPDATER_OPTION "=");
-
         } else {
             bad_option = argument;
         }
@@ -136,9 +136,10 @@ int main(int argc, char *argv[])
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --controller        the controller message queue file descriptor\n\
-  --updater           the updater message queue file descriptor\n\
-  --shutdowner        the shutdowner message queue file descriptor\n"));
+  --logger            the logger file descriptor\n\
+  --controller        the controller file descriptor\n\
+  --updater           the updater file descriptor\n\
+  --shutdowner        the shutdowner file descriptor\n"));
 
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 
@@ -201,6 +202,23 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         return EXIT_FAILURE;
     }
 
+    linted_logger logger;
+    {
+        int fd;
+        errno_t errnum = linted_io_strtofd(logger_name, &fd);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+                                   program_name,
+                                   LOGGER_OPTION,
+                                   linted_error_string_alloc(errnum));
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "Try `%s %s' for more information.\n",
+                                   program_name, HELP_OPTION);
+            return EXIT_FAILURE;
+        }
+        logger = fd;
+    }
+
     linted_controller controller;
     {
         int fd;
@@ -252,6 +270,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         updater = fd;
     }
 
+    fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
@@ -264,6 +283,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         FD_SET(fileno(stdin), &essential_fds);
         FD_SET(fileno(stdout), &essential_fds);
 
+        FD_SET(logger, &essential_fds);
         FD_SET(controller, &essential_fds);
         FD_SET(updater, &essential_fds);
         FD_SET(shutdowner, &essential_fds);
@@ -274,6 +294,11 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 %s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
+    }
+
+    {
+        static char const message[] = "starting simulator";
+        linted_logger_log(logger, message, sizeof message -1);
     }
 
     errno_t error_status = 0;

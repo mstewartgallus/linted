@@ -19,6 +19,7 @@
 #include "gl_core.h"
 
 #include "linted/controller.h"
+#include "linted/logger.h"
 #include "linted/io.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
@@ -38,6 +39,7 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
+#define LOGGER_OPTION "--logger"
 #define CONTROLLER_OPTION "--controller"
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
@@ -133,7 +135,8 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
 static errno_t on_updater_readable(linted_updater updater,
                                    struct gui_state *gui_state);
 static errno_t on_controller_writeable(linted_controller controller,
-                                       struct controller_state *controller_state);
+                                       struct controller_state
+                                       *controller_state);
 
 static errno_t init_graphics(struct gl_state *gl_state,
                              struct window_state const *window_state);
@@ -176,6 +179,7 @@ int main(int argc, char *argv[])
 
     char const *bad_option = NULL;
 
+    char const *logger_name = NULL;
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
@@ -186,21 +190,18 @@ int main(int argc, char *argv[])
             need_help = true;
         } else if (0 == strcmp(VERSION_OPTION, argument)) {
             need_version = true;
+        } else if (0 == strncmp(argument, LOGGER_OPTION "=",
+                                strlen(LOGGER_OPTION "="))) {
+            logger_name = argument + strlen(LOGGER_OPTION "=");
         } else if (0 == strncmp(argument, CONTROLLER_OPTION "=",
                                 strlen(CONTROLLER_OPTION "="))) {
-
             controller_name = argument + strlen(CONTROLLER_OPTION "=");
-
         } else if (0 == strncmp(argument, SHUTDOWNER_OPTION "=",
                                 strlen(SHUTDOWNER_OPTION "="))) {
-
             shutdowner_name = argument + strlen(SHUTDOWNER_OPTION "=");
-
         } else if (0 == strncmp(argument, UPDATER_OPTION "=",
                                 strlen(UPDATER_OPTION "="))) {
-
             updater_name = argument + strlen(UPDATER_OPTION "=");
-
         } else {
             bad_option = argument;
         }
@@ -226,6 +227,13 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+    if (NULL == logger_name) {
+        missing_option(STDERR_FILENO,
+                       program_name, LINTED_STR(LOGGER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        return EXIT_FAILURE;
+    }
+
     if (NULL == controller_name) {
         missing_option(STDERR_FILENO,
                        program_name, LINTED_STR(CONTROLLER_OPTION));
@@ -244,6 +252,20 @@ int main(int argc, char *argv[])
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
+    }
+
+    linted_logger logger;
+    {
+        int fd;
+        errno_t errnum = linted_io_strtofd(logger_name, &fd);
+        if (errnum != 0) {
+            invalid_fildes(STDERR_FILENO,
+                           program_name, LINTED_STR(LOGGER_OPTION), errnum);
+            try_for_more_help(STDERR_FILENO,
+                              program_name, LINTED_STR(HELP_OPTION));
+            return EXIT_FAILURE;
+        }
+        logger = fd;
     }
 
     linted_controller controller;
@@ -288,6 +310,7 @@ int main(int argc, char *argv[])
         updater = fd;
     }
 
+    fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
@@ -319,6 +342,7 @@ int main(int argc, char *argv[])
         FD_SET(fileno(stdin), &essential_fds);
         FD_SET(fileno(stdout), &essential_fds);
 
+        FD_SET(logger, &essential_fds);
         FD_SET(controller, &essential_fds);
         FD_SET(updater, &essential_fds);
         FD_SET(shutdowner, &essential_fds);
@@ -345,7 +369,8 @@ int main(int argc, char *argv[])
 
     errno_t error_status = 0;
     struct window_state window_state = {.width = 640,.height = 800,
-                                        .viewable=true};
+        .viewable = true
+    };
 
     struct controller_state controller_state = {
         .update = {.up = false,.down = false,.right = false,.left = false},
@@ -593,7 +618,7 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         }
 
     case SDL_KEYDOWN:
-    case SDL_KEYUP: {
+    case SDL_KEYUP:{
             bool is_key_down = SDL_KEYDOWN == sdl_event->type;
 
             switch (sdl_event->key.keysym.sym) {
@@ -1011,9 +1036,10 @@ Run the gui program.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-  --controller        the controller message queue file descriptor\n\
-  --updater           the updater message queue file descriptor\n\
-  --shutdowner        the shutdowner message queue file descriptor\n"))) != 0) {
+  --logger            the logger file descriptor\n\
+  --controller        the controller file descriptor\n\
+  --updater           the updater file descriptor\n\
+  --shutdowner        the shutdowner file descriptor\n"))) != 0) {
         return errnum;
     }
 

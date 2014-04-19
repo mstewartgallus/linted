@@ -20,6 +20,7 @@
 
 #include "linted/controller.h"
 #include "linted/io.h"
+#include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
@@ -81,14 +82,14 @@ struct service {
     pid_t pid;
 };
 
-static void * waiter_routine(void * data);
+static void *waiter_routine(void *data);
 
 static errno_t on_new_connections_readable(int new_connections,
-                                           struct service const * services,
+                                           struct service const *services,
                                            size_t * connection_count,
-                                           struct connection * connections);
+                                           struct connection *connections);
 static errno_t on_connection_readable(int fd,
-                                      struct service const * services,
+                                      struct service const *services,
                                       union linted_manager_reply *reply);
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
@@ -332,9 +333,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 {
     errno_t error_status = 0;
 
+    linted_logger logger_logds[2];
+
     linted_updater updater_mqs[2];
     linted_controller controller_mqs[2];
     linted_shutdowner simulator_shutdowner_mqs[2];
+
+    linted_logger logger_read;
+    linted_logger logger_write;
 
     linted_updater updater_read;
     linted_updater updater_write;
@@ -345,9 +351,16 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
     linted_shutdowner simulator_shutdowner_read;
     linted_shutdowner simulator_shutdowner_write;
 
+    if ((error_status = linted_logger_pair(logger_logds)) != 0) {
+        return error_status;
+    }
+
+    logger_read = logger_logds[0];
+    logger_write = logger_logds[1];
+
     if ((error_status = linted_updater_pair(updater_mqs,
                                             O_NONBLOCK, O_NONBLOCK)) != 0) {
-        return error_status;
+        goto close_logger_pair;
     }
 
     updater_read = updater_mqs[0];
@@ -378,14 +391,26 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
     /* Create placeholder file descriptors to be overwritten later on */
     {
+        int logger_placeholder;
         int updater_placeholder;
         int shutdowner_placeholder;
         int controller_placeholder;
 
+        char logger_string[] = "--logger=" INT_STRING_PADDING;
+        char updater_string[] = "--updater=" INT_STRING_PADDING;
+        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
+        char controller_string[] = "--controller=" INT_STRING_PADDING;
+
+        logger_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
+        if (-1 == logger_placeholder) {
+            error_status = errno;
+            goto close_shutdowner;
+        }
+
         updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
         if (-1 == updater_placeholder) {
             error_status = errno;
-            goto close_shutdowner;
+            goto close_logger_placeholder;
         }
 
         shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
@@ -400,6 +425,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             goto close_shutdowner_placeholder;
         }
 
+        sprintf(logger_string, "--logger=%i", logger_placeholder);
+        sprintf(updater_string, "--updater=%i", updater_placeholder);
+        sprintf(shutdowner_string,
+                "--shutdowner=%i", shutdowner_placeholder);
+        sprintf(controller_string,
+                "--controller=%i", controller_placeholder);
+
         {
             posix_spawn_file_actions_t file_actions;
             if (-1 == posix_spawn_file_actions_init(&file_actions)) {
@@ -411,6 +443,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             if (-1 == posix_spawnattr_init(&attr)) {
                 error_status = errno;
                 goto destroy_gui_file_actions;
+            }
+
+            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                       logger_write,
+                                                       logger_placeholder)) {
+                error_status = errno;
+                goto destroy_spawnattr;
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
@@ -442,19 +481,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             {
-                char updater_string[] = "--updater=" INT_STRING_PADDING;
-                sprintf(updater_string, "--updater=%i", updater_placeholder);
-
-                char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-                sprintf(shutdowner_string,
-                        "--shutdowner=%i", shutdowner_placeholder);
-
-                char controller_string[] = "--controller=" INT_STRING_PADDING;
-                sprintf(controller_string,
-                        "--controller=%i", controller_placeholder);
-
                 char *args[] = {
                     (char *)gui_path,
+                    logger_string,
                     updater_string,
                     shutdowner_string,
                     controller_string,
@@ -467,15 +496,15 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
                 pid_t gui_process;
                 if (-1 == posix_spawn(&gui_process, fd_path,
-                                      &file_actions, NULL,
-                                      args, envp)) {
+                                      &file_actions, NULL, args, envp)) {
                     error_status = errno;
                 }
 
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
 
-                    errno_t errnum = -1 == setpgid(gui_process, process_group) ? errno : 0;
+                    errno_t errnum =
+                        -1 == setpgid(gui_process, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
                     }
@@ -515,6 +544,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
+                                                       logger_write,
+                                                       logger_placeholder)) {
+                error_status = errno;
+                goto destroy_spawnattr;
+            }
+
+            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
                                                        updater_write,
                                                        updater_placeholder)) {
                 error_status = errno;
@@ -543,19 +579,9 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             {
-                char updater_string[] = "--updater=" INT_STRING_PADDING;
-                sprintf(updater_string, "--updater=%i", updater_placeholder);
-
-                char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-                sprintf(shutdowner_string,
-                        "--shutdowner=%i", shutdowner_placeholder);
-
-                char controller_string[] = "--controller=" INT_STRING_PADDING;
-                sprintf(controller_string,
-                        "--controller=%i", controller_placeholder);
-
                 char *args[] = {
                     (char *)simulator_path,
+                    logger_string,
                     updater_string,
                     shutdowner_string,
                     controller_string,
@@ -566,7 +592,6 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
                 sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
 
-
                 pid_t process;
                 if (-1 == posix_spawn(&process, fd_path,
                                       &file_actions, NULL, args, envp)) {
@@ -576,7 +601,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
 
-                    errno_t errnum = -1 == setpgid(process, process_group) ? errno : 0;
+                    errno_t errnum =
+                        -1 == setpgid(process, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
                     }
@@ -615,6 +641,14 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
  close_updater_placeholder:
         {
             errno_t errnum = linted_io_close(updater_placeholder);
+            if (0 == error_status) {
+                error_status = errnum;
+            }
+        }
+
+ close_logger_placeholder:
+        {
+            errno_t errnum = linted_io_close(logger_placeholder);
             if (0 == error_status) {
                 error_status = errnum;
             }
@@ -692,29 +726,37 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         for (;;) {
             enum {
                 WAITER,
+                LOGGER,
                 NEW_CONNECTIONS,
                 CONNECTION
             };
+            /* TODO: Allocate off the stack */
             struct pollfd pollfds[CONNECTION + MAX_MANAGEMENT_CONNECTIONS] = {
-                [WAITER] = {.fd = waiter_fds[0], .events = POLLIN},
-                [NEW_CONNECTIONS] = {.fd = new_connections, .events = POLLIN}
+                [WAITER] = {.fd = waiter_fds[0],.events = POLLIN},
+                [LOGGER] = {.fd = logger_read,.events = POLLIN},
+                [NEW_CONNECTIONS] = {.fd = new_connections,.events = POLLIN}
             };
+            /* TODO: Allocate off the stack */
             size_t connection_ids[MAX_MANAGEMENT_CONNECTIONS];
 
             size_t active_connections = 0;
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-                struct connection * connection = &connections[ii];
+                struct connection *connection = &connections[ii];
                 if (connection->fd != -1) {
-                    struct pollfd * pollfd = &pollfds[CONNECTION + active_connections];
+                    struct pollfd *pollfd =
+                        &pollfds[CONNECTION + active_connections];
                     pollfd->fd = connection->fd;
-                    pollfd->events = connection->has_reply_ready ? POLLOUT : POLLIN;
+                    pollfd->events =
+                        connection->has_reply_ready ? POLLOUT : POLLIN;
                     connection_ids[active_connections] = ii;
                     ++active_connections;
                 }
             }
 
             errno_t poll_status;
-            size_t pollfd_count = LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGEMENT_CONNECTIONS + active_connections;
+            size_t pollfd_count =
+                LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGEMENT_CONNECTIONS +
+                active_connections;
             do {
                 poll_status = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
             } while (EINTR == poll_status);
@@ -732,6 +774,21 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     error_status = errnum;
                     goto close_connections;
                 }
+            }
+
+            if ((pollfds[LOGGER].revents & POLLIN) != 0) {
+                size_t log_size;
+                /* TODO: Allocate buffer off the stack */
+                char entry[LINTED_LOGGER_LOG_MAX];
+                errno_t errnum = linted_logger_recv_log(logger_read, entry,
+                                                        &log_size);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto close_connections;
+                }
+
+                linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
+                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
             }
 
             if ((pollfds[WAITER].revents & POLLIN) != 0) {
@@ -757,7 +814,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     }
                 }
 
-                siginfo_t * exit_info = &message.exit_info;
+                siginfo_t *exit_info = &message.exit_info;
 
                 switch (exit_info->si_code) {
                 case CLD_DUMPED:
@@ -780,7 +837,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
             for (size_t ii = 0; ii < active_connections; ++ii) {
                 size_t connection_id = connection_ids[ii];
-                struct connection * connection = &connections[connection_id];
+                struct connection *connection = &connections[connection_id];
 
                 int fd = connection->fd;
 
@@ -796,7 +853,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
 
                 continue;
 
-            try_reading:
+ try_reading:
                 {
                     union linted_manager_reply reply;
                     errno_t errnum = on_connection_readable(fd, services,
@@ -823,10 +880,11 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     connection->reply = reply;
                 }
 
-            try_writing:
+ try_writing:
                 {
                     errno_t errnum = on_connection_writeable(fd,
-                                                             &connection->reply);
+                                                             &connection->
+                                                             reply);
                     switch (errnum) {
                     case 0:
                         break;
@@ -846,7 +904,7 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     }
                 }
 
-            remove_connection:
+ remove_connection:
                 connection->fd = -1;
                 --connection_count;
 
@@ -861,16 +919,16 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
 
  close_connections:
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-        struct connection * const connection = &connections[ii];
-        int const fd = connection->fd;
-        if (fd != -1) {
-            errno_t errnum = linted_io_close(fd);
-            if (0 == error_status) {
-                error_status = errnum;
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+            struct connection *const connection = &connections[ii];
+            int const fd = connection->fd;
+            if (fd != -1) {
+                errno_t errnum = linted_io_close(fd);
+                if (0 == error_status) {
+                    error_status = errnum;
+                }
             }
         }
-    }
 
         pthread_cancel(waiter_thread);
         pthread_join(waiter_thread, NULL);
@@ -952,12 +1010,27 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
         }
     }
 
+ close_logger_pair:
+    {
+        errno_t errnum = linted_logger_close(logger_read);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
+    {
+        errno_t errnum = linted_updater_close(logger_write);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
     return error_status;
 }
 
-static void * waiter_routine(void * data)
+static void *waiter_routine(void *data)
 {
-    struct waiter_data * waiter_data = data;
+    struct waiter_data *waiter_data = data;
 
     for (;;) {
         siginfo_t exit_info;
@@ -988,9 +1061,9 @@ static void * waiter_routine(void * data)
 }
 
 static errno_t on_new_connections_readable(int new_connections,
-                                           struct service const * services,
+                                           struct service const *services,
                                            size_t * connection_count,
-                                           struct connection * connections)
+                                           struct connection *connections)
 {
     for (;;) {
         int new_socket = accept4(new_connections, NULL, NULL,
@@ -998,7 +1071,7 @@ static errno_t on_new_connections_readable(int new_connections,
         if (-1 == new_socket) {
             errno_t errnum = errno;
 
-            if (EAGAIN == errnum || EWOULDBLOCK == errnum){
+            if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
                 break;
             }
 
@@ -1056,13 +1129,13 @@ static errno_t on_new_connections_readable(int new_connections,
         }
         continue;
 
-    queue_socket:
+ queue_socket:
         if (*connection_count >= MAX_MANAGEMENT_CONNECTIONS) {
             /* I'm sorry sir but we are full today. */
             goto close_new_socket;
         }
 
-        struct connection * connection;
+        struct connection *connection;
 
         for (size_t ii = 0; ii < MAX_MANAGEMENT_CONNECTIONS; ++ii) {
             connection = &connections[ii];
@@ -1072,14 +1145,14 @@ static errno_t on_new_connections_readable(int new_connections,
         }
         /* Impossible, listen has limited this */
         assert(false);
-    got_space:;
+ got_space:;
         connection->fd = new_socket;
         connection->has_reply_ready = false;
 
         ++*connection_count;
         continue;
 
-    close_new_socket:;
+ close_new_socket:;
         {
             errno_t errnum = linted_io_close(new_socket);
             if (0 == error_status) {
@@ -1093,7 +1166,7 @@ static errno_t on_new_connections_readable(int new_connections,
 }
 
 static errno_t on_connection_readable(int fd,
-                                      struct service const * services,
+                                      struct service const *services,
                                       union linted_manager_reply *reply)
 {
     union linted_manager_request request;
@@ -1120,8 +1193,8 @@ static errno_t on_connection_readable(int fd,
     memset(reply, 0, sizeof *reply);
 
     switch (request.type) {
-    case LINTED_MANAGER_STATUS: {
-            struct service const * service = &services[request.status.service];
+    case LINTED_MANAGER_STATUS:{
+            struct service const *service = &services[request.status.service];
             errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
             assert(errnum != EINVAL);
             switch (errnum) {
@@ -1139,8 +1212,8 @@ static errno_t on_connection_readable(int fd,
             break;
         }
 
-    case LINTED_MANAGER_STOP: {
-            struct service const * service = &services[request.stop.service];
+    case LINTED_MANAGER_STOP:{
+            struct service const *service = &services[request.stop.service];
             errno_t errnum = -1 == kill(service->pid, SIGKILL) ? errno : 0;
             assert(errnum != EINVAL);
             switch (errnum) {

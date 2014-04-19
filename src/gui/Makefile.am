@@ -20,7 +20,7 @@ gui_SOURCES=src/gui/gui.c src/gui/assets.c
 nodist_gui_SOURCES=src/gui/gl_core.c
 gui_LDADD=\
   libio.la libutil.la\
-  libcontroller.la libshutdowner.la libupdater.la\
+  libcontroller.la liblogger.la libshutdowner.la libupdater.la\
   $(GL_LIBS)
 gui_LDFLAGS=$$($(builddir)/libs/SDL/sdl2-config --libs)
 

@@ -148,6 +148,7 @@ include src/sandbox/Makefile.am
 include src/util/Makefile.am
 
 include src/controller/Makefile.am
+include src/logger/Makefile.am
 include src/manager/Makefile.am
 include src/shutdowner/Makefile.am
 include src/updater/Makefile.am
