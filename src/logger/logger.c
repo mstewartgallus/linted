@@ -27,7 +27,7 @@ errno_t linted_logger_pair(linted_logger logger[2])
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = 512;
+    attr.mq_msgsize = LINTED_LOGGER_LOG_MAX;
 
     return linted_mq_pair(logger, &attr, 0, 0);
 }
