@@ -88,7 +88,8 @@ frama-c-models:
 	cd frama-c-models &&\
 	  (\
 	     echo $${CONFIG} &&\
-	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
+	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
+	     echo "--disable-shared"\
 	  ) | xargs\
 	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(abs_srcdir)/scripts/json-cc
@@ -116,7 +117,8 @@ cbmc-models:
 	cd cbmc-models &&\
 	  (\
 	     echo $${CONFIG} &&\
-	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\""\
+	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
+	     echo "--disable-shared"\
 	  ) | xargs\
 	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
