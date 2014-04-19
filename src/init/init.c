@@ -489,13 +489,13 @@ static errno_t run_game(char const * process_name,
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
 
+                    process_group = gui_process;
+
                     errno_t errnum =
                         -1 == setpgid(gui_process, process_group) ? errno : 0;
                     if (errnum != 0 && errnum != EACCES) {
                         error_status = errnum;
                     }
-
-                    process_group = gui_process;
                 }
             }
 
