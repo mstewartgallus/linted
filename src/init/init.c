@@ -83,7 +83,7 @@ struct service {
 
 static void *waiter_routine(void *data);
 
-static errno_t on_new_connections_readable(int new_connections,
+static errno_t on_new_connections_readable(linted_manager new_connections,
                                            struct service const *services,
                                            size_t * connection_count,
                                            struct connection *connections);
@@ -647,43 +647,31 @@ static errno_t run_game(char const * process_name,
         }
     }
 
-    int new_connections = socket(AF_UNIX,
-                                 SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC,
-                                 0);
-    if (-1 == new_connections) {
-        error_status = errno;
-        goto cleanup_processes;
-    }
-
-    if (-1 == shutdown(new_connections, SHUT_WR)) {
-        error_status = errno;
-        goto close_new_connections;
-    }
-
+    linted_manager new_connections;
     {
-        sa_family_t address = AF_UNIX;
-        if (-1 == bind(new_connections, (void *)&address, sizeof address)) {
-            error_status = errno;
+        errno_t errnum = linted_manager_bind(&new_connections, BACKLOG,
+                                             NULL, 0);
+        if (errnum != 0) {
+            error_status = errnum;
             goto close_new_connections;
         }
     }
 
     {
-        struct sockaddr_un address;
-        memset(&address, 0, sizeof address);
+        char buf[LINTED_MANAGER_PATH_MAX];
+        size_t len;
+        errno_t errnum = linted_manager_path(new_connections, buf, &len);
 
-        socklen_t addr_len = sizeof address;
-        if (-1 == getsockname(new_connections, (void *)&address, &addr_len)) {
-            error_status = errno;
+        if (errnum != 0) {
+            error_status = errnum;
             goto close_new_connections;
         }
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "management socket: %s\n", address.sun_path + 1);
-    }
 
-    if (-1 == listen(new_connections, BACKLOG)) {
-        error_status = errno;
-        goto close_new_connections;
+        linted_io_write_str(STDOUT_FILENO, NULL,
+                            LINTED_STR("management socket: "));
+        linted_io_write_all(STDOUT_FILENO, NULL, buf + 1, len - 1);
+        linted_io_write_str(STDOUT_FILENO, NULL,
+                            LINTED_STR("\n"));
     }
 
     int waiter_fds[2];
@@ -950,7 +938,7 @@ static errno_t run_game(char const * process_name,
 
  close_new_connections:
     {
-        errno_t errnum = linted_io_close(new_connections);
+        errno_t errnum = linted_manager_close(new_connections);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -1060,7 +1048,7 @@ static void *waiter_routine(void *data)
     }
 }
 
-static errno_t on_new_connections_readable(int new_connections,
+static errno_t on_new_connections_readable(linted_manager new_connections,
                                            struct service const *services,
                                            size_t * connection_count,
                                            struct connection *connections)

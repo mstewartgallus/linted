@@ -19,6 +19,12 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <sys/un.h>
+
+#define LINTED_MANAGER_PATH_MAX                     \
+    (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
+
+typedef int linted_manager;
 
 enum linted_manager_type {
     LINTED_MANAGER_STATUS,
@@ -59,16 +65,28 @@ union linted_manager_reply {
     struct linted_manager_stop_reply stop;
 };
 
-errno_t linted_manager_recv_request(int manager,
+errno_t linted_manager_bind(linted_manager * manager, int backlog,
+                            char const * path, size_t path_len);
+
+errno_t linted_manager_connect(linted_manager * manager,
+                               char const * path, size_t path_len);
+
+errno_t linted_manager_close(linted_manager manager);
+
+errno_t linted_manager_path(linted_manager manager,
+                            char buf[static LINTED_MANAGER_PATH_MAX],
+                            size_t * len);
+
+errno_t linted_manager_recv_request(linted_manager manager,
                                     union linted_manager_request *request);
 
-errno_t linted_manager_send_reply(int manager,
+errno_t linted_manager_send_reply(linted_manager manager,
                                   union linted_manager_reply const *reply);
 
-errno_t linted_manager_send_request(int manager, union linted_manager_request const
-                                    *request);
+errno_t linted_manager_send_request(linted_manager manager,
+                                    union linted_manager_request const*request);
 
-errno_t linted_manager_recv_reply(int manager,
+errno_t linted_manager_recv_reply(linted_manager manager,
                                   union linted_manager_reply *reply);
 
 #endif                          /* LINTED_MANAGER_H */

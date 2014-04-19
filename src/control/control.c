@@ -185,42 +185,31 @@ static int run_status(char const *program_name, int argc, char **argv)
         return EXIT_SUCCESS;
     }
 
-    char const *socket_string = getenv("LINTED_SOCKET");
-    if (NULL == socket_string) {
+    char const *path = getenv("LINTED_SOCKET");
+    if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
-    size_t socket_string_len = strlen(socket_string);
-    if (socket_string_len >
-        sizeof(struct sockaddr_un) - sizeof(sa_family_t) - 2) {
+    size_t path_len = strlen(path);
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: LINTED_SOCKET is too long\n", program_name);
         return EXIT_FAILURE;
     }
 
-    int linted = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-    if (-1 == linted) {
-        failure(STDERR_FILENO, program_name,
-                LINTED_STR("can not create socket"), errno);
-        return EXIT_FAILURE;
-    }
-
+    linted_manager linted;
     {
-        struct sockaddr_un address;
-        memset(&address, 0, sizeof address);
+        char buf[LINTED_MANAGER_PATH_MAX];
+        buf[0] = '\0';
+        memcpy(buf + 1, path, path_len);
 
-        address.sun_family = AF_UNIX;
-        address.sun_path[0] = 0;
-
-        memcpy(address.sun_path + 1, socket_string, socket_string_len);
-
-        if (-1 == connect(linted, (void *)&address,
-                          sizeof(sa_family_t) + 1 + socket_string_len)) {
+        errno_t errnum = linted_manager_connect(&linted, buf, path_len + 1);
+        if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not connect to socket"), errno);
+                    LINTED_STR("can not connect to Linted"), errnum);
             return EXIT_FAILURE;
         }
     }
