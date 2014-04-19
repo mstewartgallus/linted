@@ -41,7 +41,6 @@ AC_CHECK_HEADERS([dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
-        syslog.h dnl
         unistd.h], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])

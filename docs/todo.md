@@ -32,11 +32,6 @@ Linted -- TODO
 * Move away from C legacy practises
   - move away from null terminated strings
 * Solve banding problems that are occuring in the shader
-* Use a better logging system
-
-  I need to be able aggregate the logs all into one stream unlike with
-  syslog.
-
 * Make a hang check timer
 
   This timer will periodically make sure tasks are reaching their

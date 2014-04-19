@@ -34,7 +34,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #define HELP_OPTION "--help"
@@ -139,7 +138,8 @@ static errno_t on_controller_writeable(linted_controller controller,
                                        struct controller_state
                                        *controller_state);
 
-static errno_t init_graphics(struct gl_state *gl_state,
+static errno_t init_graphics(linted_logger logger,
+                             struct gl_state * gl_state,
                              struct window_state const *window_state);
 static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state,
@@ -165,6 +165,8 @@ static errno_t invalid_fildes(int fildes, char const *program_name,
                               struct linted_str option, errno_t errnum);
 static errno_t failure(int fildes, char const *program_name,
                        struct linted_str message, errno_t errnum);
+static errno_t log_str(linted_logger logger, struct linted_str start,
+                       char const * str);
 
 int main(int argc, char *argv[])
 {
@@ -385,7 +387,8 @@ int main(int argc, char *argv[])
 
     if (-1 == SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
         error_status = ENOSYS;
-        syslog(LOG_ERR, "could not initialize the GUI: %s", SDL_GetError());
+        log_str(logger, LINTED_STR("cannot initialize the GUI: "),
+                SDL_GetError());
         goto shutdown;
     }
 
@@ -401,8 +404,8 @@ int main(int argc, char *argv[])
         struct attribute_value_pair const pair = attribute_values[ii];
         if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
             error_status = ENOSYS;
-            syslog(LOG_ERR, "could not set a double buffer attribute: %s",
-                   SDL_GetError());
+            log_str(logger, LINTED_STR("cannot set an SDL OpenGL attribute: "),
+                    SDL_GetError());
             goto cleanup_SDL;
         }
     }
@@ -413,15 +416,15 @@ int main(int argc, char *argv[])
                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (NULL == window) {
         error_status = ENOSYS;
-        syslog(LOG_ERR, "could not create a window: %s", SDL_GetError());
+        log_str(logger, LINTED_STR("cannot create a window: "), SDL_GetError());
         goto cleanup_SDL;
     }
 
     gl_context = SDL_GL_CreateContext(window);
     if (NULL == gl_context) {
         error_status = ENOSYS;
-        syslog(LOG_ERR, "could not create an OpenGL context: %s",
-               SDL_GetError());
+        log_str(logger, LINTED_STR("cannot create an OpenGL context: "),
+                SDL_GetError());
         goto destroy_window;
     }
 
@@ -435,7 +438,7 @@ int main(int argc, char *argv[])
     }
 
     {
-        errno_t errnum = init_graphics(&gl_state, &window_state);
+        errno_t errnum = init_graphics(logger, &gl_state, &window_state);
         if (errnum != 0) {
             error_status = errnum;
             goto delete_context;
@@ -703,7 +706,8 @@ static int on_controller_writeable(linted_controller controller,
     return 0;
 }
 
-static errno_t init_graphics(struct gl_state *gl_state,
+static errno_t init_graphics(linted_logger logger,
+                             struct gl_state *gl_state,
                              struct window_state const *window_state)
 {
     errno_t error_status = 0;
@@ -813,12 +817,10 @@ static errno_t init_graphics(struct gl_state *gl_state,
                           GL_INFO_LOG_LENGTH, &info_log_length);
 
             GLchar *info_log = malloc(info_log_length);
-            if (NULL == info_log) {
-                syslog(LOG_ERR, "Invalid shader: no memory to log info log");
-            } else {
+            if (info_log != NULL) {
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
-                syslog(LOG_ERR, "Invalid shader: %s", info_log);
+                log_str(logger, LINTED_STR("Invalid shader: "), info_log);
                 free(info_log);
             }
             goto cleanup_program;
@@ -846,12 +848,10 @@ static errno_t init_graphics(struct gl_state *gl_state,
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
             GLchar *info_log = malloc(info_log_length);
-            if (NULL == info_log) {
-                syslog(LOG_ERR, "Invalid shader: no memory to log info log");
-            } else {
+            if (info_log != NULL) {
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
-                syslog(LOG_ERR, "Invalid shader: %s", info_log);
+                log_str(logger, LINTED_STR("Invalid shader: "), info_log);
                 free(info_log);
             }
             goto cleanup_program;
@@ -870,11 +870,10 @@ static errno_t init_graphics(struct gl_state *gl_state,
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
         GLchar *info_log = malloc(info_log_length);
-        if (NULL == info_log) {
-            syslog(LOG_ERR, "Invalid program: no memory to log info log");
-        } else {
+        if (info_log != NULL) {
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
-            syslog(LOG_ERR, "Invalid program: %s", info_log);
+            log_str(logger, LINTED_STR("Invalid program: "), info_log);
+            free(info_log);
         }
         goto cleanup_program;
     }
@@ -933,14 +932,6 @@ static void render_graphics(struct gl_state const *gl_state,
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
-
-    for (;;) {
-        GLenum error = glGetError();
-        if (GL_NO_ERROR == error) {
-            break;
-        }
-        syslog(LOG_ERR, "GL Error: %s", glGetString(error));
-    }
 }
 
 static errno_t get_last_gl_error(void)
@@ -1255,4 +1246,26 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
     }
 
     return 0;
+}
+
+static errno_t log_str(linted_logger logger, struct linted_str start,
+                             char const * error)
+{
+    size_t error_size = strlen(error);
+
+    char * full_string = malloc(error_size + start.size);
+    if (NULL == full_string) {
+        /* Silently drop log */
+        return errno;
+    }
+
+    memcpy(full_string, start.bytes, start.size);
+    memcpy(full_string + start.size, error, error_size);
+
+    errno_t errnum = linted_logger_log(logger,
+                                       full_string, start.size + error_size);
+
+    free(full_string);
+
+    return errnum;
 }
