@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <syslog.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
@@ -273,12 +272,6 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    openlog(PACKAGE_TARNAME, LOG_PERROR /* So the user can see this */
-            | LOG_CONS          /* So we know there is an error */
-            | LOG_PID           /* Because we fork several times */
-            , LOG_USER          /* This is a game and is a user program */
-        );
-
     int succesfully_executing = 0;
 
     errno_t game_status = run_game(program_name, simulator_binary, gui_binary,
@@ -286,7 +279,8 @@ It is insecure to run a game as root!\n"));
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
-        syslog(LOG_ERR, "could not run the game: %s", error_string);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "could not run the game: %s\n", error_string);
         linted_error_string_free(error_string);
     }
 
@@ -295,12 +289,12 @@ It is insecure to run a game as root!\n"));
         if (errnum != 0) {
             succesfully_executing = -1;
             char const *const error_string = linted_error_string_alloc(errnum);
-            syslog(LOG_ERR, "could not close standard error: %s", error_string);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "could not close standard error: %s\n",
+                                   error_string);
             linted_error_string_free(error_string);
         }
     }
-
-    closelog();
 
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }

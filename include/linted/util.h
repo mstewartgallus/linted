@@ -16,10 +16,12 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
+#include "linted/io.h"
+
 #include <errno.h>
 #include <stdlib.h>
-#include <syslog.h>
 #include <sys/select.h>
+#include <unistd.h>
 
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
 
@@ -33,8 +35,9 @@
  */
 #define LINTED_FATAL_FAILURE(errnum, format_string, ...)                \
     do {                                                                \
-        syslog(LOG_ERR, "fatal failure in file %s, function %s, and line %i: " format_string, \
-               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+fatal failure in file %s, function %s, and line %i: " format_string,    \
+                         __FILE__, __func__, __LINE__,  __VA_ARGS__);   \
         exit(errnum);                                                   \
     } while (0)
 
@@ -53,9 +56,10 @@
  * Nonpermissible errors to use this for may include EMFILE, ENFILE
  * and ENOMEM. These cases should be handled properly.
  */
-#define LINTED_IMPOSSIBILITY(format_string, ...)                     \
+#define LINTED_IMPOSSIBILITY(format_string, ...)                        \
     do {                                                                \
-        syslog(LOG_ERR, "impossible error in file %s, function %s, and line %i: " format_string, \
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+impossible error in file %s, function %s, and line %i: " format_string, \
                __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
         abort();                                                        \
     } while (0)
@@ -65,10 +69,11 @@
  * developer is too lazy to handle properly. This macro should only
  * ever be used during development and not during release.
  */
-#define LINTED_LAZY_DEV(format_string, ...)                       \
+#define LINTED_LAZY_DEV(format_string, ...)                             \
     do {                                                                \
-        syslog(LOG_ERR, "lazy developer error in file %s, function %s, and line %i:" format_string, \
-               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+lazy developer error in file %s, function %s, and line %i:" format_string, \
+                         __FILE__, __func__, __LINE__,  __VA_ARGS__);   \
         abort();                                                        \
     } while (0)
 
