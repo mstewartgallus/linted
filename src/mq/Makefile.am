@@ -17,5 +17,5 @@
 
 noinst_LTLIBRARIES+=libmq.la
 
-libmq_la_SOURCES=src/mq/mq.c include/linted/mq.h
+libmq_la_SOURCES=%D%/mq.c include/linted/mq.h
 libmq_la_LIBADD=-lrt

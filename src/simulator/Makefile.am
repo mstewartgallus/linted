@@ -16,7 +16,7 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=simulator
 
-simulator_SOURCES=src/simulator/simulator.c
+simulator_SOURCES=%D%/simulator.c
 simulator_LDADD=\
   libio.la libutil.la\
   libcontroller.la liblogger.la libshutdowner.la libupdater.la

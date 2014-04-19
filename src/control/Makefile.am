@@ -16,7 +16,7 @@
 # limitations under the License.
 bin_PROGRAMS+=linted-control
 
-linted_control_SOURCES=src/control/control.c
+linted_control_SOURCES=%D%/control.c
 linted_control_LDADD=\
   libio.la\
   libutil.la\

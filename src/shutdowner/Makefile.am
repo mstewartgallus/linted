@@ -17,6 +17,6 @@
 noinst_LTLIBRARIES+=libshutdowner.la
 
 libshutdowner_la_SOURCES=\
-  src/shutdowner/shutdowner.c\
+  %D%/shutdowner.c\
   include/linted/shutdowner.h
 libshutdowner_la_LIBADD=libmq.la -lrt

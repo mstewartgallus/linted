@@ -16,8 +16,8 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=gui
 
-gui_SOURCES=src/gui/gui.c src/gui/assets.c
-nodist_gui_SOURCES=src/gui/gl_core.c
+gui_SOURCES=%D%/gui.c %D%/assets.c
+nodist_gui_SOURCES=%D%/gl_core.c
 gui_LDADD=\
   libio.la libutil.la\
   libcontroller.la liblogger.la libshutdowner.la libupdater.la\
@@ -26,44 +26,43 @@ gui_LDFLAGS=$$($(builddir)/libs/SDL/sdl2-config --libs)
 
 gui_CPPFLAGS=$$($(builddir)/libs/SDL/sdl2-config --cflags) -I$(builddir)/src/gui/ -I$(srcdir)/src/gui/ $(AM_CPPFLAGS)
 
-BUILT_SOURCES+=\
-  src/gui/gl_core.c src/gui/gl_core.h
+BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
 
 EXTRA_DIST+=\
-  src/gui/assets.h\
+  %D%/assets.h\
   \
-  src/gui/assets/assets.py\
-  src/gui/assets/scene.blend\
-  src/gui/assets/shaders/fragment.glsl\
-  src/gui/assets/shaders/varying.glsl\
-  src/gui/assets/shaders/vertex.glsl\
+  %D%/assets/assets.py\
+  %D%/assets/scene.blend\
+  %D%/assets/shaders/fragment.glsl\
+  %D%/assets/shaders/varying.glsl\
+  %D%/assets/shaders/vertex.glsl\
   \
-  src/gui/assets_generator/linted_assets_generator\
-  src/gui/assets_generator/linted_assets_generator.py
+  %D%/assets_generator/linted_assets_generator\
+  %D%/assets_generator/linted_assets_generator.py
 
-MOSTLYCLEANFILES+=src/gui/assets.c
-src/gui/assets.c:\
-  src/gui/assets/assets.py\
-  src/gui/assets/scene.blend\
-  src/gui/assets/shaders/fragment.glsl\
-  src/gui/assets/shaders/varying.glsl\
-  src/gui/assets/shaders/vertex.glsl\
+MOSTLYCLEANFILES+=%D%/assets.c
+%D%/assets.c:\
+  %D%/assets/assets.py\
+  %D%/assets/scene.blend\
+  %D%/assets/shaders/fragment.glsl\
+  %D%/assets/shaders/varying.glsl\
+  %D%/assets/shaders/vertex.glsl\
   \
-  src/gui/assets_generator/linted_assets_generator\
-  src/gui/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/src/gui/assets_generator/linted_assets_generator\
-	  $(srcdir)/src/gui/assets/assets.py\
+  %D%/assets_generator/linted_assets_generator\
+  %D%/assets_generator/linted_assets_generator.py
+	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
+	  $(srcdir)/%D%/assets/assets.py\
 	  --output=$@
 
-MOSTLYCLEANFILES+=src/gui/gl_core.c
-src/gui/gl_core.c:
-	cd $(builddir)/src/gui/ && \
+MOSTLYCLEANFILES+=%D%/gl_core.c
+%D%/gl_core.c:
+	cd $(builddir)/%D%/ && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 
 MOSTLYCLEANFILES+=include/gui/gl_core.h
-src/gui/gl_core.h:
-	$(MKDIR_P) $(builddir)/src/gui/
-	cd $(builddir)/src/gui && \
+%D%/gl_core.h:
+	$(MKDIR_P) $(builddir)/%D%/
+	cd $(builddir)/%D% && \
 	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core

@@ -16,4 +16,4 @@
 # limitations under the License.
 noinst_LTLIBRARIES+=libutil.la
 
-libutil_la_SOURCES=src/util/util.c include/linted/util.h
+libutil_la_SOURCES=%D%/util.c include/linted/util.h

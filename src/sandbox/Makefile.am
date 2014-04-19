@@ -16,4 +16,4 @@
 # limitations under the License.
 noinst_LTLIBRARIES+=libsandbox.la
 
-libsandbox_la_SOURCES=src/sandbox/sandbox.c include/linted/sandbox.h
+libsandbox_la_SOURCES=%D%/sandbox.c include/linted/sandbox.h

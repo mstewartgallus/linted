@@ -16,4 +16,4 @@
 # limitations under the License.
 
 noinst_LTLIBRARIES+=libio.la
-libio_la_SOURCES=src/io/io.c include/linted/io.h
+libio_la_SOURCES=%D%/io.c include/linted/io.h
