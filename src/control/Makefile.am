@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=lintedctl
+bin_PROGRAMS+=linted-control
 
-lintedctl_SOURCES=src/lintedctl/lintedctl.c
-lintedctl_LDADD=\
+linted_control_SOURCES=src/control/control.c
+linted_control_LDADD=\
   libio.la\
   libutil.la\
   \

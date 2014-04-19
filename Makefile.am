@@ -138,8 +138,8 @@ linted_INDENTFLAGS=\
 EXTRA_DIST+=include/linted/check.h include/linted/str.h
 
 include src/gui/Makefile.am
-include src/linted/Makefile.am
-include src/lintedctl/Makefile.am
+include src/init/Makefile.am
+include src/control/Makefile.am
 include src/simulator/Makefile.am
 
 include src/io/Makefile.am

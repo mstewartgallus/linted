@@ -16,8 +16,8 @@
 # limitations under the License.
 bin_PROGRAMS+=linted
 
-linted_SOURCES=src/linted/linted.c
-linted_CPPFLAGS=-I$(builddir)/src/linted/ $(AM_CPPFLAGS)
+linted_SOURCES=src/init/init.c
+linted_CPPFLAGS=-I$(builddir)/src/init/ $(AM_CPPFLAGS)
 linted_LDADD=\
   libio.la\
   libutil.la\
@@ -28,11 +28,11 @@ linted_LDADD=\
   libshutdowner.la\
   libupdater.la
 
-BUILT_SOURCES+=src/linted/binaries.h
+BUILT_SOURCES+=src/init/binaries.h
 
-EXTRA_DIST+=src/linted/binaries.h.in
-src/linted/binaries.h: $(MAKEFILE) src/linted/binaries.h.in
+EXTRA_DIST+=src/init/binaries.h.in
+src/init/binaries.h: $(MAKEFILE) src/init/binaries.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/src/linted/binaries.h.in > $@
+	  $(srcdir)/src/init/binaries.h.in > $@
