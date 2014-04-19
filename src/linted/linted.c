@@ -94,9 +94,11 @@ static errno_t on_connection_readable(int fd,
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
-static errno_t run_game(char const *simulator_path, int simulator_binary,
-                        char const *gui_path, int gui_binary,
+static errno_t run_game(char const *process_name,
+                        int simulator_binary, int gui_binary,
                         char const *display);
+
+static char *readlink_alloc(char const *path);
 
 int main(int argc, char **argv)
 {
@@ -303,8 +305,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     int succesfully_executing = 0;
 
-    errno_t game_status = run_game(simulator_path, simulator_binary,
-                                   gui_path, gui_binary, display);
+    errno_t game_status = run_game(program_name, simulator_binary, gui_binary,
+                                   display);
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
@@ -327,8 +329,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static errno_t run_game(char const *simulator_path, int simulator_binary,
-                        char const *gui_path, int gui_binary,
+static errno_t run_game(char const * process_name,
+                        int simulator_binary, int gui_binary,
                         char const *display)
 {
     errno_t error_status = 0;
@@ -481,8 +483,17 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             {
+                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+                sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
+
+                char * path_name = readlink_alloc(fd_path);
+                if (NULL == path_name) {
+                    error_status = errno;
+                    goto destroy_sim_spawnattr;
+                }
+
                 char *args[] = {
-                    (char *)gui_path,
+                    (char *)path_name,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -491,14 +502,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 };
                 char *envp[] = { (char *)display, NULL };
 
-                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-                sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
-
                 pid_t gui_process;
                 if (-1 == posix_spawn(&gui_process, fd_path,
                                       &file_actions, NULL, args, envp)) {
                     error_status = errno;
                 }
+
+                free(path_name);
 
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
@@ -579,8 +589,17 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
             }
 
             {
+                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
+                sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
+
+                char * path_name = readlink_alloc(fd_path);
+                if (NULL == path_name) {
+                    error_status = errno;
+                    goto destroy_sim_spawnattr;
+                }
+
                 char *args[] = {
-                    (char *)simulator_path,
+                    path_name,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -589,14 +608,13 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                 };
                 char *envp[] = { NULL };
 
-                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-                sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
-
                 pid_t process;
                 if (-1 == posix_spawn(&process, fd_path,
                                       &file_actions, NULL, args, envp)) {
                     error_status = errno;
                 }
+
+                free(path_name);
 
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
@@ -787,6 +805,8 @@ static errno_t run_game(char const *simulator_path, int simulator_binary,
                     goto close_connections;
                 }
 
+                linted_io_write_string(STDERR_FILENO, NULL, process_name);
+                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
                 linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
                 linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
             }
@@ -1243,4 +1263,58 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply)
 {
     return linted_manager_send_reply(fd, reply);
+}
+
+static char *readlink_alloc(char const *path)
+{
+    size_t buffer_size = 40;
+    char *string = malloc(buffer_size);
+    if (NULL == string) {
+        goto on_error;
+    }
+
+    size_t bytes_written;
+    for (;;) {
+        ssize_t readlink_status = readlink(path, string, buffer_size);
+        if (-1 == readlink_status) {
+            goto on_error;
+        }
+         bytes_written = readlink_status;
+
+        /* Leave room for the terminator byte */
+        if (bytes_written <= buffer_size - 1) {
+            break;
+        }
+
+        /* If the extra terminator byte was written into resize the
+         * path again.
+         */
+
+        size_t const multiplicand = 3;
+
+        if (buffer_size > SIZE_MAX / multiplicand) {
+            errno = ENOMEM;
+            goto on_error;
+        }
+
+        buffer_size = (multiplicand * buffer_size) / 2;
+
+        char *const new_string = realloc(string, buffer_size);
+        if (NULL == new_string) {
+            goto on_error;
+        }
+        string = new_string;
+    }
+
+    string[bytes_written] = '\0';
+
+    return string;
+
+ on_error:
+    {
+        int new_errnum = errno;
+        free(string);
+        errno = new_errnum;
+    }
+    return NULL;
 }
