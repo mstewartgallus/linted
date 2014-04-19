@@ -46,7 +46,7 @@
 
 #define BACKLOG 20
 
-#define MAX_MANAGEMENT_CONNECTIONS 10
+#define MAX_MANAGE_CONNECTIONS 10
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -687,7 +687,8 @@ static errno_t run_game(char const * process_name,
     }
 
     int waiter_fds[2];
-    if (-1 == pipe2(waiter_fds, O_CLOEXEC)) {
+    if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+                         waiter_fds)) {
         error_status = errno;
         goto close_new_connections;
     }
@@ -705,7 +706,7 @@ static errno_t run_game(char const * process_name,
         }
 
         size_t connection_count = 0;
-        struct connection connections[MAX_MANAGEMENT_CONNECTIONS];
+        struct connection connections[MAX_MANAGE_CONNECTIONS];
 
         for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
             connections[ii].fd = -1;
@@ -719,13 +720,13 @@ static errno_t run_game(char const * process_name,
                 CONNECTION
             };
             /* TODO: Allocate off the stack */
-            struct pollfd pollfds[CONNECTION + MAX_MANAGEMENT_CONNECTIONS] = {
+            struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS] = {
                 [WAITER] = {.fd = waiter_fds[0],.events = POLLIN},
                 [LOGGER] = {.fd = logger_read,.events = POLLIN},
                 [NEW_CONNECTIONS] = {.fd = new_connections,.events = POLLIN}
             };
             /* TODO: Allocate off the stack */
-            size_t connection_ids[MAX_MANAGEMENT_CONNECTIONS];
+            size_t connection_ids[MAX_MANAGE_CONNECTIONS];
 
             size_t active_connections = 0;
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
@@ -742,9 +743,8 @@ static errno_t run_game(char const * process_name,
             }
 
             errno_t poll_status;
-            size_t pollfd_count =
-                LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGEMENT_CONNECTIONS +
-                active_connections;
+            size_t constantfds = LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGE_CONNECTIONS;
+            size_t pollfd_count = constantfds + active_connections;
             do {
                 poll_status = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
             } while (EINTR == poll_status);
@@ -822,6 +822,15 @@ static errno_t run_game(char const * process_name,
 
                 default:
                     assert(false);
+                }
+
+                /* If not exiting, tell the waiter to continue */
+                char dummy = 0;
+                errno_t errnum = linted_io_write_all(waiter_fds[0], NULL,
+                                                     &dummy, sizeof dummy);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto close_connections;
                 }
             }
 
@@ -1043,10 +1052,11 @@ static void *waiter_routine(void *data)
             /* TODO: Handle the error */
         }
 
-        /* This would just loop endlessly if not exited on */
-        if (wait_status != 0) {
-            return NULL;
-        }
+        /* Loop forever until cancelled */
+        char dummy;
+        linted_io_read_all(waiter_data->fd, NULL, &dummy, sizeof dummy);
+
+        /* TODO: Handle the error */
     }
 }
 
@@ -1120,14 +1130,14 @@ static errno_t on_new_connections_readable(int new_connections,
         continue;
 
  queue_socket:
-        if (*connection_count >= MAX_MANAGEMENT_CONNECTIONS) {
+        if (*connection_count >= MAX_MANAGE_CONNECTIONS) {
             /* I'm sorry sir but we are full today. */
             goto close_new_socket;
         }
 
         struct connection *connection;
 
-        for (size_t ii = 0; ii < MAX_MANAGEMENT_CONNECTIONS; ++ii) {
+        for (size_t ii = 0; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
             connection = &connections[ii];
             if (-1 == connection->fd) {
                 goto got_space;
