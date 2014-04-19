@@ -1044,7 +1044,7 @@ static void *waiter_routine(void *data)
         }
 
         /* This would just loop endlessly if not exited on */
-        if (ECHILD == wait_status) {
+        if (wait_status != 0) {
             return NULL;
         }
     }
