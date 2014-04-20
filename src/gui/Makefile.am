@@ -22,9 +22,9 @@ gui_LDADD=\
   libio.la libutil.la\
   libcontroller.la liblogger.la libshutdowner.la libupdater.la\
   $(GL_LIBS)
-gui_LDFLAGS=$$($(builddir)/libs/SDL/sdl2-config --libs)
+gui_LDFLAGS=libs/SDL/build/libSDL2.la $(AM_LDFLAGS)
 
-gui_CPPFLAGS=$$($(builddir)/libs/SDL/sdl2-config --cflags) -I$(builddir)/src/gui/ -I$(srcdir)/src/gui/ $(AM_CPPFLAGS)
+gui_CPPFLAGS=-I$(srcdir)/libs/SDL/include -I$(builddir)/src/gui/ -I$(srcdir)/src/gui/ $(AM_CPPFLAGS)
 
 BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
 
