@@ -24,6 +24,7 @@
 #include "linted/manager.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
+#include "linted/spawn.h"
 #include "linted/updater.h"
 #include "linted/util.h"
 
@@ -405,52 +406,43 @@ static errno_t run_game(char const * process_name,
                 "--controller=%i", controller_placeholder);
 
         {
-            posix_spawn_file_actions_t file_actions;
-            if (-1 == posix_spawn_file_actions_init(&file_actions)) {
-                error_status = errno;
+            struct linted_spawn_file_actions * file_actions;
+            if ((error_status = linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
-            posix_spawnattr_t attr;
-            if (-1 == posix_spawnattr_init(&attr)) {
-                error_status = errno;
+            struct linted_spawn_attr * attr;
+            if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_gui_file_actions;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       logger_write,
-                                                       logger_placeholder)) {
-                error_status = errno;
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  logger_write,
+                                                                  logger_placeholder)) != 0) {
                 goto destroy_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       updater_read,
-                                                       updater_placeholder)) {
-                error_status = errno;
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  updater_read,
+                                                                  updater_placeholder)) != 0) {
                 goto destroy_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       simulator_shutdowner_write,
-                                                       shutdowner_placeholder))
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  simulator_shutdowner_write,
+                                                                  shutdowner_placeholder)) != 0)
             {
-                error_status = errno;
                 goto destroy_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       controller_write,
-                                                       controller_placeholder))
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  controller_write,
+                                                                  controller_placeholder)) != 0)
             {
-                error_status = errno;
                 goto destroy_spawnattr;
             }
 
-            if (-1 == posix_spawnattr_setpgroup(&attr, 0)) {
-                error_status = errno;
-                goto destroy_spawnattr;
-            }
+            linted_spawn_attr_setpgroup(attr, 0);
 
             {
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
@@ -473,10 +465,8 @@ static errno_t run_game(char const * process_name,
                 char *envp[] = { (char *)display, NULL };
 
                 pid_t gui_process;
-                if (-1 == posix_spawn(&gui_process, fd_path,
-                                      &file_actions, &attr, args, envp)) {
-                    error_status = errno;
-                }
+                error_status = linted_spawn(&gui_process, gui_binary,
+                                            file_actions, attr, args, envp);
 
                 free(path_name);
 
@@ -494,16 +484,10 @@ static errno_t run_game(char const * process_name,
             }
 
  destroy_spawnattr:
-            if (-1 == posix_spawnattr_destroy(&attr)
-                && 0 == error_status) {
-                error_status = errno;
-            }
+            linted_spawn_attr_destroy(attr);
 
  destroy_gui_file_actions:
-            if (-1 == posix_spawn_file_actions_destroy(&file_actions)
-                && 0 == error_status) {
-                error_status = errno;
-            }
+            linted_spawn_file_actions_destroy(file_actions);
 
             if (error_status != 0) {
                 goto close_controller_placeholder;
@@ -511,52 +495,43 @@ static errno_t run_game(char const * process_name,
         }
 
         {
-            posix_spawn_file_actions_t file_actions;
-            if (-1 == posix_spawn_file_actions_init(&file_actions)) {
-                error_status = errno;
+            struct linted_spawn_file_actions * file_actions;
+            if ((error_status = linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
-            posix_spawnattr_t attr;
-            if (-1 == posix_spawnattr_init(&attr)) {
-                error_status = errno;
+            struct linted_spawn_attr * attr;
+            if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_sim_file_actions;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       logger_write,
-                                                       logger_placeholder)) {
-                error_status = errno;
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  logger_write,
+                                                                  logger_placeholder)) != 0) {
                 goto destroy_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       updater_write,
-                                                       updater_placeholder)) {
-                error_status = errno;
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  updater_write,
+                                                                  updater_placeholder)) != 0) {
                 goto destroy_sim_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       simulator_shutdowner_read,
-                                                       shutdowner_placeholder))
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  simulator_shutdowner_read,
+                                                                  shutdowner_placeholder)) != 0)
             {
-                error_status = errno;
                 goto destroy_sim_spawnattr;
             }
 
-            if (-1 == posix_spawn_file_actions_adddup2(&file_actions,
-                                                       controller_read,
-                                                       controller_placeholder))
+            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
+                                                                  controller_read,
+                                                                  controller_placeholder)) != 0)
             {
-                error_status = errno;
                 goto destroy_sim_spawnattr;
             }
 
-            if (-1 == posix_spawnattr_setpgroup(&attr, process_group)) {
-                error_status = errno;
-                goto destroy_sim_spawnattr;
-            }
+            linted_spawn_attr_setpgroup(attr, process_group);
 
             {
                 char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
@@ -579,10 +554,8 @@ static errno_t run_game(char const * process_name,
                 char *envp[] = { NULL };
 
                 pid_t process;
-                if (-1 == posix_spawn(&process, fd_path,
-                                      &file_actions, &attr, args, envp)) {
-                    error_status = errno;
-                }
+                error_status = linted_spawn(&process, simulator_binary,
+                                            file_actions, attr, args, envp);
 
                 free(path_name);
 
@@ -598,16 +571,10 @@ static errno_t run_game(char const * process_name,
             }
 
  destroy_sim_spawnattr:
-            if (-1 == posix_spawnattr_destroy(&attr)
-                && 0 == error_status) {
-                error_status = errno;
-            }
+            linted_spawn_attr_destroy(attr);
 
  destroy_sim_file_actions:
-            if (-1 == posix_spawn_file_actions_destroy(&file_actions)
-                && 0 == error_status) {
-                error_status = errno;
-            }
+            linted_spawn_file_actions_destroy(file_actions);
         }
 
  close_controller_placeholder:
