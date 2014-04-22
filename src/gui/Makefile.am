@@ -24,7 +24,7 @@ gui_LDADD=\
   $(GL_LIBS)
 gui_LDFLAGS=libs/SDL/build/libSDL2.la $(AM_LDFLAGS)
 
-gui_CPPFLAGS=-I$(srcdir)/libs/SDL/include -I$(builddir)/src/gui/ -I$(srcdir)/src/gui/ $(AM_CPPFLAGS)
+gui_CPPFLAGS=-I$(srcdir)/libs/SDL/include -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 
 BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
 

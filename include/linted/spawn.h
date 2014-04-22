@@ -16,9 +16,7 @@
 #ifndef LINTED_SPAWN_H
 #define LINTED_SPAWN_H
 
-#include "linted/str.h"
-
-#include <spawn.h>
+#include <sys/types.h>
 
 struct linted_spawn_file_actions;
 struct linted_spawn_attr;
