@@ -300,7 +300,7 @@ errno_t linted_spawn(pid_t * childp, char const *path,
         exit_with_error(error_status_fd_write, errno);
     }
 
-    if (-1 == fcntl(stop_fd_read, F_SETFL, O_ASYNC)) {
+    if (-1 == fcntl(stop_fd_read, F_SETFL, (long)O_ASYNC)) {
         exit_with_error(error_status_fd_write, errno);
     }
 
