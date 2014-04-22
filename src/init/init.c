@@ -474,7 +474,7 @@ static errno_t run_game(char const * process_name,
 
                 pid_t gui_process;
                 if (-1 == posix_spawn(&gui_process, fd_path,
-                                      &file_actions, NULL, args, envp)) {
+                                      &file_actions, &attr, args, envp)) {
                     error_status = errno;
                 }
 
@@ -580,7 +580,7 @@ static errno_t run_game(char const * process_name,
 
                 pid_t process;
                 if (-1 == posix_spawn(&process, fd_path,
-                                      &file_actions, NULL, args, envp)) {
+                                      &file_actions, &attr, args, envp)) {
                     error_status = errno;
                 }
 
