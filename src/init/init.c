@@ -94,7 +94,7 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
 static errno_t run_game(char const *process_name,
-                        char const *simulator_path, char const * gui_path,
+                        char const *simulator_path, char const *gui_path,
                         char const *display);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
@@ -276,8 +276,8 @@ It is insecure to run a game as root!\n"));
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static errno_t run_game(char const * process_name,
-                        char const *simulator_path, char const * gui_path,
+static errno_t run_game(char const *process_name,
+                        char const *simulator_path, char const *gui_path,
                         char const *display)
 {
     errno_t error_status = 0;
@@ -376,45 +376,46 @@ static errno_t run_game(char const * process_name,
 
         sprintf(logger_string, "--logger=%i", logger_placeholder);
         sprintf(updater_string, "--updater=%i", updater_placeholder);
-        sprintf(shutdowner_string,
-                "--shutdowner=%i", shutdowner_placeholder);
-        sprintf(controller_string,
-                "--controller=%i", controller_placeholder);
+        sprintf(shutdowner_string, "--shutdowner=%i", shutdowner_placeholder);
+        sprintf(controller_string, "--controller=%i", controller_placeholder);
 
         {
-            struct linted_spawn_file_actions * file_actions;
-            if ((error_status = linted_spawn_file_actions_init(&file_actions)) != 0) {
+            struct linted_spawn_file_actions *file_actions;
+            if ((error_status =
+                 linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
-            struct linted_spawn_attr * attr;
+            struct linted_spawn_attr *attr;
             if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_gui_file_actions;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   logger_write,
-                                                                  logger_placeholder)) != 0) {
+                                                                  logger_placeholder))
+                != 0) {
                 goto destroy_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   updater_read,
-                                                                  updater_placeholder)) != 0) {
+                                                                  updater_placeholder))
+                != 0) {
                 goto destroy_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   simulator_shutdowner_write,
-                                                                  shutdowner_placeholder)) != 0)
-            {
+                                                                  shutdowner_placeholder))
+                != 0) {
                 goto destroy_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   controller_write,
-                                                                  controller_placeholder)) != 0)
-            {
+                                                                  controller_placeholder))
+                != 0) {
                 goto destroy_spawnattr;
             }
 
@@ -461,39 +462,42 @@ static errno_t run_game(char const * process_name,
         }
 
         {
-            struct linted_spawn_file_actions * file_actions;
-            if ((error_status = linted_spawn_file_actions_init(&file_actions)) != 0) {
+            struct linted_spawn_file_actions *file_actions;
+            if ((error_status =
+                 linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
-            struct linted_spawn_attr * attr;
+            struct linted_spawn_attr *attr;
             if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_sim_file_actions;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   logger_write,
-                                                                  logger_placeholder)) != 0) {
+                                                                  logger_placeholder))
+                != 0) {
                 goto destroy_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   updater_write,
-                                                                  updater_placeholder)) != 0) {
+                                                                  updater_placeholder))
+                != 0) {
                 goto destroy_sim_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   simulator_shutdowner_read,
-                                                                  shutdowner_placeholder)) != 0)
-            {
+                                                                  shutdowner_placeholder))
+                != 0) {
                 goto destroy_sim_spawnattr;
             }
 
             if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
                                                                   controller_read,
-                                                                  controller_placeholder)) != 0)
-            {
+                                                                  controller_placeholder))
+                != 0) {
                 goto destroy_sim_spawnattr;
             }
 
@@ -501,7 +505,7 @@ static errno_t run_game(char const * process_name,
 
             {
                 char *args[] = {
-                    (char *) simulator_path,
+                    (char *)simulator_path,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -591,13 +595,11 @@ static errno_t run_game(char const * process_name,
         linted_io_write_str(STDOUT_FILENO, NULL,
                             LINTED_STR("management socket: "));
         linted_io_write_all(STDOUT_FILENO, NULL, buf + 1, len - 1);
-        linted_io_write_str(STDOUT_FILENO, NULL,
-                            LINTED_STR("\n"));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
     int waiter_fds[2];
-    if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
-                         waiter_fds)) {
+    if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, waiter_fds)) {
         error_status = errno;
         goto close_new_connections;
     }
@@ -652,7 +654,8 @@ static errno_t run_game(char const * process_name,
             }
 
             errno_t poll_status;
-            size_t constantfds = LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGE_CONNECTIONS;
+            size_t constantfds =
+                LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGE_CONNECTIONS;
             size_t pollfd_count = constantfds + active_connections;
             do {
                 poll_status = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
@@ -791,8 +794,7 @@ static errno_t run_game(char const * process_name,
  try_writing:
                 {
                     errno_t errnum = on_connection_writeable(fd,
-                                                             &connection->
-                                                             reply);
+                                                             &connection->reply);
                     switch (errnum) {
                     case 0:
                         break;

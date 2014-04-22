@@ -135,12 +135,11 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             enum transition *transition);
 static errno_t on_updater_readable(linted_updater updater,
                                    struct gui_state *gui_state);
-static errno_t on_controller_writeable(linted_controller controller,
-                                       struct controller_state
+static errno_t on_controller_writeable(linted_controller controller, struct controller_state
                                        *controller_state);
 
 static errno_t init_graphics(linted_logger logger,
-                             struct gl_state * gl_state,
+                             struct gl_state *gl_state,
                              struct window_state const *window_state);
 static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state,
@@ -167,7 +166,7 @@ static errno_t invalid_fildes(int fildes, char const *program_name,
 static errno_t failure(int fildes, char const *program_name,
                        struct linted_str message, errno_t errnum);
 static errno_t log_str(linted_logger logger, struct linted_str start,
-                       char const * str);
+                       char const *str);
 
 int main(int argc, char *argv[])
 {
@@ -232,8 +231,7 @@ int main(int argc, char *argv[])
     }
 
     if (NULL == logger_name) {
-        missing_option(STDERR_FILENO,
-                       program_name, LINTED_STR(LOGGER_OPTION));
+        missing_option(STDERR_FILENO, program_name, LINTED_STR(LOGGER_OPTION));
         try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -1250,11 +1248,11 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
 }
 
 static errno_t log_str(linted_logger logger, struct linted_str start,
-                             char const * error)
+                       char const *error)
 {
     size_t error_size = strlen(error);
 
-    char * full_string = malloc(error_size + start.size);
+    char *full_string = malloc(error_size + start.size);
     if (NULL == full_string) {
         /* Silently drop log */
         return errno;

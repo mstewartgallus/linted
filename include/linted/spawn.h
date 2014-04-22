@@ -21,19 +21,21 @@
 struct linted_spawn_file_actions;
 struct linted_spawn_attr;
 
-errno_t linted_spawn_attr_init(struct linted_spawn_attr ** attrp);
-void linted_spawn_attr_setpgroup(struct linted_spawn_attr * attr, pid_t pgroup);
-void linted_spawn_attr_destroy(struct linted_spawn_attr * attr);
+errno_t linted_spawn_attr_init(struct linted_spawn_attr **attrp);
+void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup);
+void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions ** file_actionsp);
-errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions ** file_actionsp,
-                                          int oldfildes,
+errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions
+                                       **file_actionsp);
+errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
+                                          **file_actionsp, int oldfildes,
                                           int newfildes);
-void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions * file_actions);
+void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
+                                       *file_actions);
 
-errno_t linted_spawn(pid_t * child, char const * path,
-                     struct linted_spawn_file_actions const * file_actions,
-                     struct linted_spawn_attr const * attr,
-                     char * const argv[], char * const envp[]);
+errno_t linted_spawn(pid_t * child, char const *path,
+                     struct linted_spawn_file_actions const *file_actions,
+                     struct linted_spawn_attr const *attr,
+                     char *const argv[], char *const envp[]);
 
 #endif                          /* LINTED_SPAWN_H */

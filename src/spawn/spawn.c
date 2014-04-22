@@ -54,7 +54,7 @@ struct linted_spawn_file_actions {
 };
 
 struct attr_flags {
-    bool setpgroup: 1;
+    bool setpgroup:1;
 };
 
 struct linted_spawn_attr {
@@ -64,8 +64,9 @@ struct linted_spawn_attr {
 
 static void exit_with_error(int error_status_fd_write, errno_t errnum);
 
-errno_t linted_spawn_attr_init(struct linted_spawn_attr ** attrp) {
-    struct linted_spawn_attr * attr = malloc(sizeof *attr);
+errno_t linted_spawn_attr_init(struct linted_spawn_attr **attrp)
+{
+    struct linted_spawn_attr *attr = malloc(sizeof *attr);
     if (NULL == attr) {
         return errno;
     }
@@ -76,18 +77,22 @@ errno_t linted_spawn_attr_init(struct linted_spawn_attr ** attrp) {
     return 0;
 }
 
-void linted_spawn_attr_setpgroup(struct linted_spawn_attr * attr, pid_t pgroup)
+void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
     attr->flags.setpgroup = true;
     attr->pgroup = pgroup;
 }
 
-void linted_spawn_attr_destroy(struct linted_spawn_attr * attr) {
+void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
+{
     free(attr);
 }
 
-errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions ** file_actionsp) {
-    struct linted_spawn_file_actions * file_actions = malloc(sizeof *file_actions);
+errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions
+                                       **file_actionsp)
+{
+    struct linted_spawn_file_actions *file_actions =
+        malloc(sizeof *file_actions);
     if (NULL == file_actions) {
         return errno;
     }
@@ -98,12 +103,13 @@ errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions ** file_
     return 0;
 }
 
-errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions ** file_actionsp,
-                                          int oldfildes,
-                                          int newfildes) {
-    struct linted_spawn_file_actions * file_actions;
-    struct linted_spawn_file_actions * new_file_actions;
-    union file_action * new_action;
+errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions **
+                                          file_actionsp, int oldfildes,
+                                          int newfildes)
+{
+    struct linted_spawn_file_actions *file_actions;
+    struct linted_spawn_file_actions *new_file_actions;
+    union file_action *new_action;
     size_t old_count;
     size_t new_count;
 
@@ -131,14 +137,16 @@ errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions ** fi
     return 0;
 }
 
-void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions * file_actions) {
+void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
+                                       *file_actions)
+{
     free(file_actions);
 }
 
-errno_t linted_spawn(pid_t * childp, char const * path,
-                     struct linted_spawn_file_actions const * file_actions,
-                     struct linted_spawn_attr const * attr,
-                     char * const argv[], char * const envp[])
+errno_t linted_spawn(pid_t * childp, char const *path,
+                     struct linted_spawn_file_actions const *file_actions,
+                     struct linted_spawn_attr const *attr,
+                     char *const argv[], char *const envp[])
 {
     int error_status_fd_read;
     int error_status_fd_write;
@@ -177,7 +185,7 @@ errno_t linted_spawn(pid_t * childp, char const * path,
 
             switch (info.si_code) {
                 {
-                case CLD_EXITED:;
+            case CLD_EXITED:;
                     errno_t exit_status = info.si_status;
                     switch (exit_status) {
                     case 0:
@@ -191,7 +199,7 @@ errno_t linted_spawn(pid_t * childp, char const * path,
                 }
 
                 {
-                case CLD_KILLED:;
+            case CLD_KILLED:;
                     errno_t signo = info.si_status;
                     if (signo != SIGKILL) {
                         error_status = ENOSYS;
@@ -200,8 +208,9 @@ errno_t linted_spawn(pid_t * childp, char const * path,
 
                     errno_t errnum;
 
-                    errno_t read_status = linted_io_read_all(error_status_fd_read, NULL,
-                                                             &errnum, sizeof errnum);
+                    errno_t read_status =
+                        linted_io_read_all(error_status_fd_read, NULL,
+                                           &errnum, sizeof errnum);
                     if (read_status != 0) {
                         error_status = read_status;
                     } else {
@@ -229,7 +238,7 @@ errno_t linted_spawn(pid_t * childp, char const * path,
             }
         }
 
-    close_fds:
+ close_fds:
         {
             errno_t errnum = linted_io_close(error_status_fd_read);
             if (0 == error_status) {
@@ -258,7 +267,7 @@ errno_t linted_spawn(pid_t * childp, char const * path,
     }
 
     for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
-        union file_action const * action = &file_actions->actions[ii];
+        union file_action const *action = &file_actions->actions[ii];
         switch (action->type) {
         case FILE_ACTION_ADDDUP2:
             if (-1 == dup2(action->adddup2.oldfildes,
@@ -283,11 +292,11 @@ errno_t linted_spawn(pid_t * childp, char const * path,
         stop_fd_write = stop_fds[1];
     }
 
-    if (-1 == fcntl(stop_fd_read, F_SETSIG, (long) SIGSTOP)) {
+    if (-1 == fcntl(stop_fd_read, F_SETSIG, (long)SIGSTOP)) {
         exit_with_error(error_status_fd_write, errno);
     }
 
-    if (-1 == fcntl(stop_fd_read, F_SETOWN, (long) getpid())) {
+    if (-1 == fcntl(stop_fd_read, F_SETOWN, (long)getpid())) {
         exit_with_error(error_status_fd_write, errno);
     }
 
@@ -299,7 +308,7 @@ errno_t linted_spawn(pid_t * childp, char const * path,
      * Duplicate the read fd so that it is closed after the write
      * fd.
      */
-    if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long) stop_fd_write)) {
+    if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long)stop_fd_write)) {
         exit_with_error(error_status_fd_write, errno);
     }
 

@@ -31,7 +31,7 @@ errno_t linted_logger_pair(linted_logger logger[2]);
 
 errno_t linted_logger_close(linted_logger logger);
 
-errno_t linted_logger_log(linted_logger logger, char const * msg_ptr,
+errno_t linted_logger_log(linted_logger logger, char const *msg_ptr,
                           size_t msg_len);
 
 errno_t linted_logger_recv_log(linted_logger logger,

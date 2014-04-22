@@ -66,10 +66,10 @@ union linted_manager_reply {
 };
 
 errno_t linted_manager_bind(linted_manager * manager, int backlog,
-                            char const * path, size_t path_len);
+                            char const *path, size_t path_len);
 
 errno_t linted_manager_connect(linted_manager * manager,
-                               char const * path, size_t path_len);
+                               char const *path, size_t path_len);
 
 errno_t linted_manager_close(linted_manager manager);
 
@@ -84,7 +84,8 @@ errno_t linted_manager_send_reply(linted_manager manager,
                                   union linted_manager_reply const *reply);
 
 errno_t linted_manager_send_request(linted_manager manager,
-                                    union linted_manager_request const*request);
+                                    union linted_manager_request const
+                                    *request);
 
 errno_t linted_manager_recv_reply(linted_manager manager,
                                   union linted_manager_reply *reply);

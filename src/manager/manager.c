@@ -25,7 +25,7 @@
 #include <sys/socket.h>
 
 errno_t linted_manager_bind(linted_manager * manager, int backlog,
-                            char const * path, size_t path_len)
+                            char const *path, size_t path_len)
 {
     if (NULL == path && path_len != 0) {
         return EINVAL;
@@ -57,8 +57,7 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
 
-        if (-1 == bind(sock, (void *)&address,
-                       sizeof(sa_family_t) + path_len)) {
+        if (-1 == bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }
@@ -70,7 +69,7 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
     *manager = sock;
     return 0;
 
-close_sock:
+ close_sock:
     {
         errno_t errnum = errno;
         linted_io_close(sock);
@@ -79,7 +78,7 @@ close_sock:
 }
 
 errno_t linted_manager_connect(linted_manager * manager,
-                               char const * path, size_t path_len)
+                               char const *path, size_t path_len)
 {
     if (path_len > LINTED_MANAGER_PATH_MAX) {
         return ENAMETOOLONG;
@@ -133,14 +132,14 @@ errno_t linted_manager_path(linted_manager manager,
         return errno;
     }
 
-    *len = addr_len - sizeof (sa_family_t);
+    *len = addr_len - sizeof(sa_family_t);
     memcpy(buf, address.sun_path, *len);
 
     return 0;
 }
 
 errno_t linted_manager_recv_request(linted_manager manager,
-                                    union linted_manager_request *request)
+                                    union linted_manager_request * request)
 {
     return linted_io_read_all(manager, NULL, request, sizeof *request);
 }

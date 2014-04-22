@@ -60,7 +60,8 @@ struct simulator_state {
     bool update_pending:1;
 };
 
-static errno_t on_timer_readable(int timer, struct controller_state const
+static errno_t on_timer_readable(int timer,
+                                 struct controller_state const
                                  *controller_state,
                                  struct simulator_state *simulator_state);
 
@@ -298,7 +299,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     {
         static char const message[] = "starting simulator";
-        linted_logger_log(logger, message, sizeof message -1);
+        linted_logger_log(logger, message, sizeof message - 1);
     }
 
     errno_t error_status = 0;

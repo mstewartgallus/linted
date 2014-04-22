@@ -37,7 +37,7 @@ errno_t linted_logger_close(linted_logger logger)
     return mq_close(logger);
 }
 
-errno_t linted_logger_log(linted_logger logger, char const * msg_ptr,
+errno_t linted_logger_log(linted_logger logger, char const *msg_ptr,
                           size_t msg_len)
 {
     return -1 == mq_send(logger, msg_ptr, msg_len, 0) ? errno : 0;
