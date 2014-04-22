@@ -62,8 +62,15 @@ errno_t linted_controller_receive(linted_controller queue,
                                   struct linted_controller_message * message)
 {
     message_type raw_message;
-    if (-1 == mq_receive(queue, raw_message, sizeof raw_message, NULL)) {
+    ssize_t recv_status = mq_receive(queue, raw_message, sizeof raw_message,
+                                     NULL);
+    if (-1 == recv_status) {
         return errno;
+    }
+
+    size_t bytes_read = recv_status;
+    if (bytes_read != sizeof raw_message) {
+        return EPROTO;
     }
 
     unsigned char bitfield;

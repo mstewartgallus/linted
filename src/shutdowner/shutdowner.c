@@ -49,7 +49,17 @@ errno_t linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
 errno_t linted_shutdowner_receive(linted_shutdowner shutdowner)
 {
     char dummy;
-    return -1 == mq_receive(shutdowner, &dummy, 1, NULL) ? errno : 0;
+    ssize_t recv_status = mq_receive(shutdowner, &dummy, 1, NULL);
+    if (-1 == recv_status) {
+        return errno;
+    }
+
+    size_t bytes_read = recv_status;
+    if (bytes_read != 0) {
+        return EPROTO;
+    }
+
+    return 0;
 }
 
 errno_t linted_shutdowner_close(linted_shutdowner shutdowner)

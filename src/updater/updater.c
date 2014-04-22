@@ -108,8 +108,13 @@ errno_t linted_updater_receive_update(linted_updater updater,
                                       struct linted_updater_update *update)
 {
     message_type message;
-    if (-1 == mq_receive(updater, message, sizeof message, NULL)) {
+    ssize_t recv_status = mq_receive(updater, message, sizeof message, NULL);
+    if (-1 == recv_status) {
         return errno;
+    }
+
+    if (recv_status != sizeof message) {
+        return EPROTO;
     }
 
     char *tip = message;
