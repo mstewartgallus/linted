@@ -953,10 +953,12 @@ static void *waiter_routine(void *data)
         } while (EINTR == wait_status);
 
         {
-            struct waiter_message message = {
-                .exit_info = exit_info,
-                .errnum = wait_status
-            };
+            struct waiter_message message;
+            memset(&message, 0, sizeof message);
+
+            message.exit_info = exit_info;
+            message.errnum = wait_status;
+
             linted_io_write_all(waiter_data->fd, NULL,
                                 &message, sizeof message);
             /* TODO: Handle the error */

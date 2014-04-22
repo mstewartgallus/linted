@@ -354,28 +354,19 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
             UPDATER
         };
         size_t fds_size;
-        struct pollfd *fds;
 
-        struct pollfd fds_with_updater[] = {
+        struct pollfd fds[] = {
             [SHUTDOWNER] = {.fd = shutdowner,.events = POLLIN},
             [TIMER] = {.fd = timer,.events = POLLIN},
             [CONTROLLER] = {.fd = controller,.events = POLLIN},
 
-            [UPDATER] = {.fd = updater,.events = POLLOUT},
-        };
-
-        struct pollfd fds_without_updater[] = {
-            [SHUTDOWNER] = {.fd = shutdowner,.events = POLLIN},
-            [TIMER] = {.fd = timer,.events = POLLIN},
-            [CONTROLLER] = {.fd = controller,.events = POLLIN}
+            [UPDATER] = {.fd = updater,.events = POLLOUT}
         };
 
         if (simulator_state.update_pending) {
-            fds = fds_with_updater;
-            fds_size = LINTED_ARRAY_SIZE(fds_with_updater);
+            fds_size = LINTED_ARRAY_SIZE(fds);
         } else {
-            fds = fds_without_updater;
-            fds_size = LINTED_ARRAY_SIZE(fds_without_updater);
+            fds_size = LINTED_ARRAY_SIZE(fds) - 1;
         }
 
         errno_t poll_status;
