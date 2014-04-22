@@ -89,6 +89,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
                                            struct connection *connections);
 static errno_t on_connection_readable(int fd,
                                       struct service const *services,
+                                      bool * hungup,
                                       union linted_manager_reply *reply);
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
@@ -767,10 +768,16 @@ static errno_t run_game(char const *process_name,
  try_reading:
                 {
                     union linted_manager_reply reply;
+                    bool hungup;
                     errno_t errnum = on_connection_readable(fd, services,
+                                                            &hungup,
                                                             &reply);
                     switch (errnum) {
                     case 0:
+                        if (hungup) {
+                            /* Ignore the misbehaving other end */
+                            goto remove_connection;
+                        }
                         break;
 
                     case EAGAIN:
@@ -778,7 +785,7 @@ static errno_t run_game(char const *process_name,
                          * writing but not reading */
                         continue;
 
-                    case EPIPE:
+                    case EPROTO:
                         /* Ignore the misbehaving other end */
                         goto remove_connection;
 
@@ -805,6 +812,7 @@ static errno_t run_game(char const *process_name,
                         continue;
 
                     case EPIPE:
+                    case EPROTO:
                         /* Ignore the misbehaving other end */
                         goto remove_connection;
 
@@ -995,16 +1003,23 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
 
         union linted_manager_reply reply;
         {
+            bool hungup;
             errno_t errnum = on_connection_readable(new_socket, services,
+                                                    &hungup,
                                                     &reply);
             switch (errnum) {
             case 0:
+                if (hungup) {
+                    /* Ignore the misbehaving other end */
+                    continue;
+                }
                 break;
 
             case EAGAIN:
                 goto queue_socket;
 
             case EPIPE:
+            case EPROTO:
                 /* Ignore the misbehaving other end */
                 continue;
 
@@ -1023,7 +1038,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
             case EAGAIN:
                 goto queue_socket;
 
-            case EPIPE:
+            case EPROTO:
                 /* Ignore the misbehaving other end */
                 continue;
 
@@ -1080,26 +1095,22 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
 
 static errno_t on_connection_readable(int fd,
                                       struct service const *services,
+                                      bool * hungup,
                                       union linted_manager_reply *reply)
 {
     union linted_manager_request request;
 
     {
         size_t bytes_read;
-        errno_t errnum = linted_io_read_all(fd, &bytes_read,
-                                            &request, sizeof request);
+        errno_t errnum = linted_manager_recv_request(fd, &request, &bytes_read);
         if (errnum != 0) {
             return errnum;
         }
 
         if (0 == bytes_read) {
             /* Hangup */
-            return EPIPE;
-        }
-
-        /* Sent malformed input */
-        if (bytes_read != sizeof request) {
-            return EPIPE;
+            *hungup = true;
+            return 0;
         }
     }
 
@@ -1146,9 +1157,10 @@ static errno_t on_connection_readable(int fd,
 
     default:
         /* Sent malformed input */
-        return EPIPE;
+        return EPROTO;
     }
 
+    *hungup = false;
     return 0;
 }
 

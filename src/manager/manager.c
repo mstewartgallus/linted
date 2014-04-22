@@ -139,9 +139,21 @@ errno_t linted_manager_path(linted_manager manager,
 }
 
 errno_t linted_manager_recv_request(linted_manager manager,
-                                    union linted_manager_request * request)
+                                    union linted_manager_request * request,
+                                    size_t *size)
 {
-    return linted_io_read_all(manager, NULL, request, sizeof *request);
+    errno_t errnum = linted_io_read_all(manager, size,
+                                        request, sizeof *request);
+    if (errnum != 0) {
+        return errnum;
+    }
+
+    /* Sent malformed input */
+    if (*size != sizeof *request) {
+        return EPROTO;
+    }
+
+    return 0;
 }
 
 errno_t linted_manager_send_reply(linted_manager manager,
@@ -157,7 +169,19 @@ errno_t linted_manager_send_request(linted_manager manager,
 }
 
 errno_t linted_manager_recv_reply(linted_manager manager,
-                                  union linted_manager_reply *reply)
+                                  union linted_manager_reply *reply,
+                                  size_t *size)
 {
-    return linted_io_read_all(manager, NULL, reply, sizeof *reply);
+    errno_t errnum = linted_io_read_all(manager, size, reply, sizeof *reply);
+
+    if (errnum != 0) {
+        return errnum;
+    }
+
+    /* Sent malformed input */
+    if (*size != sizeof *reply) {
+        return EPROTO;
+    }
+
+    return 0;
 }

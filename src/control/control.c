@@ -228,7 +228,7 @@ static int run_status(char const *program_name, int argc, char **argv)
         errno_t errnum = linted_manager_send_request(linted, &request);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not send request"), errno);
+                    LINTED_STR("can not send request"), errnum);
             return EXIT_FAILURE;
         }
     }
@@ -236,11 +236,10 @@ static int run_status(char const *program_name, int argc, char **argv)
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        errno_t errnum = linted_io_read_all(linted, &bytes_read,
-                                            &reply, sizeof reply);
+        errno_t errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not read reply"), errno);
+                    LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
         }
 

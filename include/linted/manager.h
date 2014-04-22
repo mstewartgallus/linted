@@ -78,7 +78,8 @@ errno_t linted_manager_path(linted_manager manager,
                             size_t * len);
 
 errno_t linted_manager_recv_request(linted_manager manager,
-                                    union linted_manager_request *request);
+                                    union linted_manager_request *request,
+                                    size_t * size);
 
 errno_t linted_manager_send_reply(linted_manager manager,
                                   union linted_manager_reply const *reply);
@@ -88,6 +89,7 @@ errno_t linted_manager_send_request(linted_manager manager,
                                     *request);
 
 errno_t linted_manager_recv_reply(linted_manager manager,
-                                  union linted_manager_reply *reply);
+                                  union linted_manager_reply *reply,
+                                  size_t * size);
 
 #endif                          /* LINTED_MANAGER_H */
