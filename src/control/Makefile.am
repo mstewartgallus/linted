@@ -18,7 +18,7 @@ bin_PROGRAMS+=linted-control
 
 linted_control_SOURCES=%D%/control.c
 linted_control_LDADD=\
-  libio.la\
-  libutil.la\
+  %D%/../io/libio.la\
+  %D%/../util/libutil.la\
   \
-  libmanager.la
+  %D%/../manager/libmanager.la

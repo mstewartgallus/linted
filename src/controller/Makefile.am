@@ -14,9 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libcontroller.la
+noinst_LTLIBRARIES+=%D%/libcontroller.la
 
-libcontroller_la_SOURCES=\
+%C%_libcontroller_la_SOURCES=\
   %D%/controller.c\
   include/linted/controller.h
-libcontroller_la_LIBADD=libmq.la -lrt
+%C%_libcontroller_la_LIBADD=%D%/../mq/libmq.la -lrt

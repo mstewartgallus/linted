@@ -15,5 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=libio.la
-libio_la_SOURCES=%D%/io.c include/linted/io.h
+noinst_LTLIBRARIES+=%D%/libio.la
+%C%_libio_la_SOURCES=%D%/io.c include/linted/io.h

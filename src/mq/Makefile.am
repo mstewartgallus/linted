@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=libmq.la
+noinst_LTLIBRARIES+=%D%/libmq.la
 
-libmq_la_SOURCES=%D%/mq.c include/linted/mq.h
-libmq_la_LIBADD=-lrt
+%C%_libmq_la_SOURCES=%D%/mq.c include/linted/mq.h
+%C%_libmq_la_LIBADD=-lrt

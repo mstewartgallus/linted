@@ -14,9 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libupdater.la
+noinst_LTLIBRARIES+=%D%/libupdater.la
 
-libupdater_la_SOURCES=\
+%C%_libupdater_la_SOURCES=\
   %D%/updater.c\
   include/linted/updater.h
-libupdater_la_LIBADD=libmq.la -lrt
+%C%_libupdater_la_LIBADD=%D%/../mq/libmq.la -lrt

@@ -14,9 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=liblogger.la
+noinst_LTLIBRARIES+=%D%/liblogger.la
 
-liblogger_la_SOURCES=\
+%C%_liblogger_la_SOURCES=\
   %D%/logger.c\
   include/linted/logger.h
-liblogger_la_LIBADD=libio.la
+%C%_liblogger_la_LIBADD=%D%/../io/libio.la

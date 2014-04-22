@@ -19,15 +19,15 @@ bin_PROGRAMS+=linted
 linted_SOURCES=%D%/init.c
 linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 linted_LDADD=\
-  libio.la\
-  libutil.la\
+  %D%/../io/libio.la\
+  %D%/../util/libutil.la\
   \
-  libcontroller.la\
-  liblogger.la\
-  libmanager.la\
-  libshutdowner.la\
-  libspawn.la\
-  libupdater.la
+  %D%/../controller/libcontroller.la\
+  %D%/../logger/liblogger.la\
+  %D%/../manager/libmanager.la\
+  %D%/../shutdowner/libshutdowner.la\
+  %D%/../spawn/libspawn.la\
+  %D%/../updater/libupdater.la
 
 BUILT_SOURCES+=%D%/binaries.h
 

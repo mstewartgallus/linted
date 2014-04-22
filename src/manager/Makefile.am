@@ -14,9 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libmanager.la
+noinst_LTLIBRARIES+=%D%/libmanager.la
 
-libmanager_la_SOURCES=\
+%C%_libmanager_la_SOURCES=\
   %D%/manager.c\
   include/linted/manager.h
-libmanager_la_LIBADD=libmq.la libio.la -lrt
+%C%_libmanager_la_LIBADD=%D%/../mq/libmq.la %D%/../io/libio.la -lrt

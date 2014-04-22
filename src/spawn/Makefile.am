@@ -15,5 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=libspawn.la
-libspawn_la_SOURCES=%D%/spawn.c include/linted/spawn.h
+noinst_LTLIBRARIES+=%D%/libspawn.la
+%C%_libspawn_la_SOURCES=%D%/spawn.c include/linted/spawn.h

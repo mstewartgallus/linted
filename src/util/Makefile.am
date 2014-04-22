@@ -14,6 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=libutil.la
+noinst_LTLIBRARIES+=%D%/libutil.la
 
-libutil_la_SOURCES=%D%/util.c include/linted/util.h
+%C%_libutil_la_SOURCES=%D%/util.c include/linted/util.h
