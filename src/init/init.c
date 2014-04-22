@@ -95,10 +95,8 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
 static errno_t run_game(char const *process_name,
-                        int simulator_binary, int gui_binary,
+                        char const *simulator_path, char const * gui_path,
                         char const *display);
-
-static char *readlink_alloc(char const *path);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t linted_help(int fildes, char const *program_name,
@@ -252,30 +250,9 @@ It is insecure to run a game as root!\n"));
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    /*
-     * Don't bother closing these file handles. We are not writing and
-     * do not have to confirm that writes have finished.
-     */
-    int simulator_binary = openat(cwd, simulator_path, O_RDONLY | O_CLOEXEC);
-    if (-1 == simulator_binary) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
-                               program_name,
-                               simulator_path,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    int gui_binary = openat(cwd, gui_path, O_RDONLY | O_CLOEXEC);
-    if (-1 == gui_binary) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: %s: %s\n",
-                               program_name,
-                               gui_path, linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
     int succesfully_executing = 0;
 
-    errno_t game_status = run_game(program_name, simulator_binary, gui_binary,
+    errno_t game_status = run_game(program_name, simulator_path, gui_path,
                                    display);
     if (game_status != 0) {
         succesfully_executing = -1;
@@ -301,7 +278,7 @@ It is insecure to run a game as root!\n"));
 }
 
 static errno_t run_game(char const * process_name,
-                        int simulator_binary, int gui_binary,
+                        char const *simulator_path, char const * gui_path,
                         char const *display)
 {
     errno_t error_status = 0;
@@ -355,7 +332,7 @@ static errno_t run_game(char const * process_name,
     simulator_shutdowner_read = simulator_shutdowner_mqs[0];
     simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
-    id_t process_group;
+    pid_t process_group = -1;
 
     struct service services[] = {
         [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
@@ -445,17 +422,9 @@ static errno_t run_game(char const * process_name,
             linted_spawn_attr_setpgroup(attr, 0);
 
             {
-                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-                sprintf(fd_path, "/proc/self/fd/%i", gui_binary);
-
-                char * path_name = readlink_alloc(fd_path);
-                if (NULL == path_name) {
-                    error_status = errno;
-                    goto destroy_sim_spawnattr;
-                }
 
                 char *args[] = {
-                    (char *)path_name,
+                    (char *)gui_path,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -465,10 +434,8 @@ static errno_t run_game(char const * process_name,
                 char *envp[] = { (char *)display, NULL };
 
                 pid_t gui_process;
-                error_status = linted_spawn(&gui_process, gui_binary,
+                error_status = linted_spawn(&gui_process, gui_path,
                                             file_actions, attr, args, envp);
-
-                free(path_name);
 
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
@@ -534,17 +501,8 @@ static errno_t run_game(char const * process_name,
             linted_spawn_attr_setpgroup(attr, process_group);
 
             {
-                char fd_path[] = "/proc/self/fd/" INT_STRING_PADDING;
-                sprintf(fd_path, "/proc/self/fd/%i", simulator_binary);
-
-                char * path_name = readlink_alloc(fd_path);
-                if (NULL == path_name) {
-                    error_status = errno;
-                    goto destroy_sim_spawnattr;
-                }
-
                 char *args[] = {
-                    path_name,
+                    (char *) simulator_path,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -554,11 +512,8 @@ static errno_t run_game(char const * process_name,
                 char *envp[] = { NULL };
 
                 pid_t process;
-                error_status = linted_spawn(&process, simulator_binary,
+                error_status = linted_spawn(&process, simulator_path,
                                             file_actions, attr, args, envp);
-
-                free(path_name);
-
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
 
@@ -912,7 +867,7 @@ static errno_t run_game(char const * process_name,
     }
 
  cleanup_processes:
-    if (error_status != 0) {
+    if (error_status != 0 && process_group != -1) {
         errno_t errnum = -1 == kill(-process_group, SIGQUIT) ? errno : 0;
         /* errnum == ESRCH is fine */
         assert(errnum != EINVAL);
@@ -1198,60 +1153,6 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply)
 {
     return linted_manager_send_reply(fd, reply);
-}
-
-static char *readlink_alloc(char const *path)
-{
-    size_t buffer_size = 40;
-    char *string = malloc(buffer_size);
-    if (NULL == string) {
-        goto on_error;
-    }
-
-    size_t bytes_written;
-    for (;;) {
-        ssize_t readlink_status = readlink(path, string, buffer_size);
-        if (-1 == readlink_status) {
-            goto on_error;
-        }
-         bytes_written = readlink_status;
-
-        /* Leave room for the terminator byte */
-        if (bytes_written <= buffer_size - 1) {
-            break;
-        }
-
-        /* If the extra terminator byte was written into resize the
-         * path again.
-         */
-
-        size_t const multiplicand = 3;
-
-        if (buffer_size > SIZE_MAX / multiplicand) {
-            errno = ENOMEM;
-            goto on_error;
-        }
-
-        buffer_size = (multiplicand * buffer_size) / 2;
-
-        char *const new_string = realloc(string, buffer_size);
-        if (NULL == new_string) {
-            goto on_error;
-        }
-        string = new_string;
-    }
-
-    string[bytes_written] = '\0';
-
-    return string;
-
- on_error:
-    {
-        int new_errnum = errno;
-        free(string);
-        errno = new_errnum;
-    }
-    return NULL;
 }
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name)
