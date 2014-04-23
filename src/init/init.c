@@ -224,16 +224,15 @@ It is insecure to run a game as root!\n"));
     }
 
     {
-        fd_set essential_fds;
-        FD_ZERO(&essential_fds);
+        int kept_fds[] = {
+            STDERR_FILENO,
+            STDIN_FILENO,
+            STDOUT_FILENO,
+            cwd
+        };
 
-        FD_SET(STDERR_FILENO, &essential_fds);
-        FD_SET(STDIN_FILENO, &essential_fds);
-        FD_SET(STDOUT_FILENO, &essential_fds);
-
-        FD_SET(cwd, &essential_fds);
-
-        errno_t errnum = linted_util_sanitize_environment(&essential_fds);
+        errno_t errnum = linted_util_sanitize_environment(kept_fds,
+                                                          LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n", program_name, linted_error_string_alloc(errnum));

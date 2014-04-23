@@ -277,19 +277,19 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
     {
-        fd_set essential_fds;
-        FD_ZERO(&essential_fds);
+        int kept_fds[] = {
+            STDERR_FILENO,
+            STDIN_FILENO,
+            STDOUT_FILENO,
 
-        FD_SET(STDERR_FILENO, &essential_fds);
-        FD_SET(fileno(stdin), &essential_fds);
-        FD_SET(fileno(stdout), &essential_fds);
+            logger,
+            controller,
+            updater,
+            shutdowner
+        };
 
-        FD_SET(logger, &essential_fds);
-        FD_SET(controller, &essential_fds);
-        FD_SET(updater, &essential_fds);
-        FD_SET(shutdowner, &essential_fds);
-
-        errno_t errnum = linted_util_sanitize_environment(&essential_fds);
+        errno_t errnum = linted_util_sanitize_environment(kept_fds,
+                                                          LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errnum));

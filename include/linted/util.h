@@ -20,7 +20,6 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/select.h>
 #include <unistd.h>
 
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
@@ -77,10 +76,11 @@ lazy developer error in file %s, function %s, and line %i:" format_string, \
         abort();                                                        \
     } while (0)
 
-char const *linted_error_string_alloc(int errnum);
+char const *linted_error_string_alloc(errno_t errnum);
 
 void linted_error_string_free(char const *error_string);
 
-errno_t linted_util_sanitize_environment(fd_set const *essential_fds);
+errno_t linted_util_sanitize_environment(int const *kept_fds,
+                                         size_t kept_fds_size);
 
 #endif                          /* LINTED_UTIL_H */
