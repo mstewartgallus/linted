@@ -124,10 +124,12 @@ struct gl_state {
     GLuint program;
 };
 
+static void flush_gl_errors(void);
+
 /* TODO: This usage of glGetError is incorrect. Multiple error flags
  * be set and returned by a single function.
  */
-static errno_t get_last_gl_error(void);
+static errno_t get_gl_error(void);
 
 static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             struct window_state *window_state,
@@ -788,15 +790,17 @@ static errno_t init_graphics(linted_logger logger,
 
     glMatrixMode(GL_MODELVIEW);
 
+    flush_gl_errors();
     GLuint program = glCreateProgram();
     if (0 == program) {
-        return get_last_gl_error();
+        return get_gl_error();
     }
 
     {
+        flush_gl_errors();
         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         if (0 == fragment_shader) {
-            error_status = get_last_gl_error();
+            error_status = get_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, fragment_shader);
@@ -809,7 +813,7 @@ static errno_t init_graphics(linted_logger logger,
         GLint is_valid;
         glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = ENOSYS;
+            error_status = EINVAL;
 
             GLint info_log_length;
             glGetShaderiv(fragment_shader,
@@ -827,9 +831,10 @@ static errno_t init_graphics(linted_logger logger,
     }
 
     {
+        flush_gl_errors();
         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         if (0 == vertex_shader) {
-            error_status = get_last_gl_error();
+            error_status = get_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, vertex_shader);
@@ -841,7 +846,7 @@ static errno_t init_graphics(linted_logger logger,
         GLint is_valid;
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = ENOSYS;
+            error_status = EINVAL;
 
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -863,7 +868,7 @@ static errno_t init_graphics(linted_logger logger,
     GLint is_valid;
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
-        error_status = ENOSYS;
+        error_status = EINVAL;
 
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -933,19 +938,21 @@ static void render_graphics(struct gl_state const *gl_state,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
 }
 
-static errno_t get_last_gl_error(void)
+static void flush_gl_errors(void)
 {
-    GLenum last_error = GL_NO_ERROR;
-    GLenum current_error = GL_NO_ERROR;
-
-    /* First flush out old errors */
+    GLenum error;
     do {
-        last_error = current_error;
-        current_error = glGetError();
-    } while (current_error != GL_NO_ERROR);
+        error = glGetError();
+    } while (error != GL_NO_ERROR);
+}
 
-    /* The get the last error */
-    switch (last_error) {
+static errno_t get_gl_error(void)
+{
+    /* Get the first error. Note that a single OpenGL call may return
+     * multiple errors so this only gives the first of many possible
+     * errors.
+     */
+    switch (glGetError()) {
     case GL_NO_ERROR:
         return 0;
 
