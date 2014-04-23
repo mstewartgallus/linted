@@ -42,12 +42,9 @@
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
 
-struct controller_state {
-    bool x_left:1;
-    bool x_right:1;
-
-    bool y_up:1;
-    bool y_down:1;
+struct action_state {
+    int x:2;
+    int y:2;
 };
 
 struct simulator_state {
@@ -61,8 +58,7 @@ struct simulator_state {
 };
 
 static errno_t on_timer_readable(int timer,
-                                 struct controller_state const
-                                 *controller_state,
+                                 struct action_state const *action_state,
                                  struct simulator_state *simulator_state);
 
 static errno_t on_updater_writeable(linted_updater updater,
@@ -71,8 +67,8 @@ static errno_t on_updater_writeable(linted_updater updater,
 static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
                                       bool * should_exit);
 
-static errno_t on_controller_readable(linted_controller controller, struct controller_state
-                                      *controller_state);
+static errno_t on_controller_readable(linted_controller controller,
+                                      struct action_state *action_state);
 
 static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
@@ -304,13 +300,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     errno_t error_status = 0;
 
-    struct controller_state controller_state = {
-        .x_left = 0,
-        .x_right = 0,
-
-        .y_up = 0,
-        .y_down = 0
-    };
+    struct action_state action_state = {.x = 0,.y = 0};
 
     struct simulator_state simulator_state = {
         .update_pending = false,
@@ -393,7 +383,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
         }
 
         if ((fds[TIMER].revents & POLLIN) != 0) {
-            errno_t errnum = on_timer_readable(timer, &controller_state,
+            errno_t errnum = on_timer_readable(timer, &action_state,
                                                &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
@@ -403,7 +393,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
         if ((fds[CONTROLLER].revents & POLLIN) != 0) {
             errno_t errnum = on_controller_readable(controller,
-                                                    &controller_state);
+                                                    &action_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -436,8 +426,8 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
     return error_status;
 }
 
-static errno_t on_timer_readable(int timer, struct controller_state const
-                                 *controller_state,
+static errno_t on_timer_readable(int timer,
+                                 struct action_state const *action_state,
                                  struct simulator_state *simulator_state)
 {
     uint64_t ticks;
@@ -452,10 +442,8 @@ static errno_t on_timer_readable(int timer, struct controller_state const
         int_fast32_t x_velocity = simulator_state->x_velocity;
         int_fast32_t y_velocity = simulator_state->y_velocity;
 
-        int_fast32_t x_thrust = 2 * ((int_fast32_t) controller_state->x_right
-                                     - (int_fast32_t) controller_state->x_left);
-        int_fast32_t y_thrust = 2 * ((int_fast32_t) controller_state->y_up
-                                     - (int_fast32_t) controller_state->y_down);
+        int_fast32_t x_thrust = 2 * (int_fast32_t) action_state->x;
+        int_fast32_t y_thrust = 2 * (int_fast32_t) action_state->y;
 
         int_fast32_t guess_x_velocity =
             saturate((int_fast64_t) x_thrust + x_velocity);
@@ -538,7 +526,7 @@ static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
 }
 
 static errno_t on_controller_readable(linted_controller controller,
-                                      struct controller_state *controller_state)
+                                      struct action_state *action_state)
 {
     struct linted_controller_message message;
 
@@ -555,10 +543,8 @@ static errno_t on_controller_readable(linted_controller controller,
         return read_status;
     }
 
-    controller_state->x_left = message.left;
-    controller_state->x_right = message.right;
-    controller_state->y_up = message.up;
-    controller_state->y_down = message.down;
+    action_state->x = message.right - message.left;
+    action_state->y = message.up - message.down;
 
     return 0;
 }
