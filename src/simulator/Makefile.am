@@ -18,10 +18,10 @@ pkglibexec_PROGRAMS+=simulator
 
 simulator_SOURCES=%D%/simulator.c
 simulator_LDADD=\
-  %D%/../io/libio.la\
-  %D%/../util/libutil.la\
+  src/io/libio.la\
+  src/util/libutil.la\
   \
-  %D%/../controller/libcontroller.la\
-  %D%/../logger/liblogger.la\
-  %D%/../shutdowner/libshutdowner.la\
-  %D%/../updater/libupdater.la
+  src/controller/libcontroller.la\
+  src/logger/liblogger.la\
+  src/shutdowner/libshutdowner.la\
+  src/updater/libupdater.la

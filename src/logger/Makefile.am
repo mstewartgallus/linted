@@ -19,4 +19,4 @@ noinst_LTLIBRARIES+=%D%/liblogger.la
 %C%_liblogger_la_SOURCES=\
   %D%/logger.c\
   include/linted/logger.h
-%C%_liblogger_la_LIBADD=%D%/../io/libio.la
+%C%_liblogger_la_LIBADD=src/io/libio.la

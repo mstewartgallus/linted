@@ -19,4 +19,4 @@ noinst_LTLIBRARIES+=%D%/libmanager.la
 %C%_libmanager_la_SOURCES=\
   %D%/manager.c\
   include/linted/manager.h
-%C%_libmanager_la_LIBADD=%D%/../mq/libmq.la %D%/../io/libio.la -lrt
+%C%_libmanager_la_LIBADD=src/mq/libmq.la src/io/libio.la -lrt

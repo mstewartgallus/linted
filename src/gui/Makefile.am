@@ -19,13 +19,13 @@ pkglibexec_PROGRAMS+=gui
 gui_SOURCES=%D%/gui.c %D%/assets.c
 nodist_gui_SOURCES=%D%/gl_core.c
 gui_LDADD=\
-  %D%/../io/libio.la\
-  %D%/../util/libutil.la\
+  src/io/libio.la\
+  src/util/libutil.la\
   \
-  %D%/../controller/libcontroller.la\
-  %D%/../logger/liblogger.la\
-  %D%/../shutdowner/libshutdowner.la\
-  %D%/../updater/libupdater.la\
+  src/controller/libcontroller.la\
+  src/logger/liblogger.la\
+  src/shutdowner/libshutdowner.la\
+  src/updater/libupdater.la\
   \
   $(GL_LIBS)
 gui_LDFLAGS=libs/SDL/build/libSDL2.la $(AM_LDFLAGS)
