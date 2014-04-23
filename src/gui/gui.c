@@ -91,6 +91,8 @@ static SDL_EventType const default_events[] = {
 static SDL_EventType const enabled_events[] = {
     SDL_WINDOWEVENT,
 
+    SDL_MOUSEMOTION,
+
     SDL_KEYDOWN,
     SDL_KEYUP,
 
@@ -593,7 +595,8 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         *transition = SHOULD_EXIT;
         return 0;
 
-    case SDL_WINDOWEVENT:{
+        {
+        case SDL_WINDOWEVENT:;
             SDL_WindowEvent const *const window_event = &sdl_event->window;
             switch (window_event->event) {
             case SDL_WINDOWEVENT_RESIZED:
@@ -620,6 +623,25 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 *transition = DO_NOTHING;
                 return 0;
             }
+        }
+
+        {
+        case SDL_MOUSEMOTION:;
+            SDL_MouseMotionEvent const *const motion_event = &sdl_event->motion;
+
+            int32_t x = (2 * motion_event->x - (int)window_state->width)/2;
+            int32_t y = (2 * motion_event->y - (int)window_state->height)/2;
+
+            /* Normalize and scale up to UINT32_MAX sized screen */
+            x *= INT32_MAX / window_state->width;
+            y *= INT32_MAX / window_state->height;
+
+            controller_state->update.x_tilt = x;
+            controller_state->update.y_tilt = y;
+
+            controller_state->update_pending = true;
+            *transition = DO_NOTHING;
+            return 0;
         }
 
     case SDL_KEYDOWN:

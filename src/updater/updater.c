@@ -16,67 +16,20 @@
 #include "config.h"
 
 #include "linted/updater.h"
+
 #include "linted/mq.h"
+#include "linted/rpc.h"
 #include "linted/util.h"
 
 #include <stddef.h>
 #include <string.h>
 
-#define INT_MIN (-(intmax_t) (UINTMAX_C(1) << 31u))
-
-struct int32 {
-    char bytes[4];
-};
-
-#define MESSAGE_SIZE (                              \
-    LINTED_SIZEOF_MEMBER(struct int32, bytes)       \
-    + LINTED_SIZEOF_MEMBER(struct int32, bytes)     \
-    + LINTED_SIZEOF_MEMBER(struct int32, bytes))
+#define MESSAGE_SIZE (                                          \
+        LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)    \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes))
 
 typedef char message_type[MESSAGE_SIZE];
-
-static struct int32 pack(int_fast32_t fast)
-{
-    /*
-     * Unlike with the code in unpack converting from a signed to an
-     * unsigned value is not implementation defined.
-     */
-    uint_fast32_t positive = fast;
-
-    unsigned char bytes[LINTED_SIZEOF_MEMBER(struct int32, bytes)] = {
-        ((uintmax_t) positive) & 0xFFu,
-        (((uintmax_t) positive) >> 8u) & 0xFFu,
-        (((uintmax_t) positive) >> 16u) & 0xFFu,
-        (((uintmax_t) positive) >> 24u) & 0xFFu
-    };
-
-    struct int32 raw;
-    memcpy(raw.bytes, &bytes, sizeof raw.bytes);
-    return raw;
-}
-
-static int_fast32_t unpack(struct int32 raw)
-{
-    unsigned char pos_bytes[sizeof raw.bytes];
-    memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
-
-    uint_fast32_t positive = ((uintmax_t) pos_bytes[0])
-        | (((uintmax_t) pos_bytes[1]) << 8u)
-        | (((uintmax_t) pos_bytes[2]) << 16u)
-        | (((uintmax_t) pos_bytes[3]) << 24u);
-
-    /*
-     * Section 6.3.1.2 "Signed and unsigned integers" of the C99
-     * standard specifies that the behaviour is implementation-defined
-     * (or that a signal could be raised) if the new type is signed
-     * and the value can't be represented in it so we do this.
-     */
-    if (positive > (int_fast64_t) INT32_MAX) {
-        return -(uint_fast32_t) ((UINT32_MAX - (int_fast64_t) positive) + 1u);
-    }
-
-    return positive;
-}
 
 errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
@@ -95,15 +48,15 @@ errno_t linted_updater_send_update(linted_updater updater,
     message_type message;
     char *tip = message;
 
-    struct int32 x_position = pack(update->x_position);
+    struct linted_rpc_int32 x_position = linted_rpc_pack(update->x_position);
     memcpy(tip, x_position.bytes, sizeof x_position.bytes);
     tip += sizeof x_position.bytes;
 
-    struct int32 y_position = pack(update->y_position);
+    struct linted_rpc_int32 y_position = linted_rpc_pack(update->y_position);
     memcpy(tip, y_position.bytes, sizeof y_position.bytes);
     tip += sizeof y_position.bytes;
 
-    struct int32 z_position = pack(update->z_position);
+    struct linted_rpc_int32 z_position = linted_rpc_pack(update->z_position);
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
 
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
@@ -124,19 +77,19 @@ errno_t linted_updater_receive_update(linted_updater updater,
 
     char *tip = message;
 
-    struct int32 x_position;
+    struct linted_rpc_int32 x_position;
     memcpy(x_position.bytes, tip, sizeof x_position.bytes);
-    update->x_position = unpack(x_position);
+    update->x_position = linted_rpc_unpack(x_position);
     tip += sizeof x_position.bytes;
 
-    struct int32 y_position;
+    struct linted_rpc_int32 y_position;
     memcpy(y_position.bytes, tip, sizeof y_position.bytes);
-    update->y_position = unpack(y_position);
+    update->y_position = linted_rpc_unpack(y_position);
     tip += sizeof y_position.bytes;
 
-    struct int32 z_position;
+    struct linted_rpc_int32 z_position;
     memcpy(z_position.bytes, tip, sizeof z_position.bytes);
-    update->z_position = unpack(z_position);
+    update->z_position = linted_rpc_unpack(z_position);
 
     return 0;
 }

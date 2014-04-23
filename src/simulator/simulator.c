@@ -565,6 +565,9 @@ static errno_t on_controller_readable(linted_controller controller,
         return read_status;
     }
 
+    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %i %i\n",
+                           message.x_tilt, message.y_tilt);
+
     action_state->x = message.right - message.left;
     action_state->y = message.up - message.down;
 

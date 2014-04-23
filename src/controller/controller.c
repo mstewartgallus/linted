@@ -18,12 +18,16 @@
 #include "linted/controller.h"
 
 #include "linted/mq.h"
+#include "linted/rpc.h"
 #include "linted/util.h"
 
 #include <stdint.h>
 #include <string.h>
 
-#define MESSAGE_SIZE 1
+#define MESSAGE_SIZE (                                          \
+        LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)    \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+        + 1)
 
 typedef char message_type[MESSAGE_SIZE];
 
@@ -42,15 +46,24 @@ errno_t linted_controller_pair(linted_controller controller[2],
 errno_t linted_controller_send(linted_controller controller,
                                struct linted_controller_message const *message)
 {
+    message_type raw_message;
+    char *tip = raw_message;
+
+    struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
+    memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
+    tip += sizeof x_tilt.bytes;
+
+    struct linted_rpc_int32 y_tilt = linted_rpc_pack(message->y_tilt);
+    memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
+    tip += sizeof y_tilt.bytes;
+
     unsigned char bitfield = ((uintmax_t) message->up)
         | ((uintmax_t) message->down) << 1u
         | ((uintmax_t) message->right) << 2u
         | ((uintmax_t) message->left) << 3u
-
         | ((uintmax_t) message->jumping) << 4u;
+    memcpy(tip, &bitfield, sizeof bitfield);
 
-    message_type raw_message;
-    memcpy(raw_message, &bitfield, sizeof bitfield);
     return -1 == mq_send(controller, raw_message, sizeof raw_message, 0)
         ? errno : 0;
 }
@@ -75,8 +88,20 @@ errno_t linted_controller_receive(linted_controller queue,
         return EPROTO;
     }
 
+    char *tip = raw_message;
+
+    struct linted_rpc_int32 x_tilt;
+    memcpy(x_tilt.bytes, tip, sizeof x_tilt.bytes);
+    message->x_tilt = linted_rpc_unpack(x_tilt);
+    tip += sizeof x_tilt.bytes;
+
+    struct linted_rpc_int32 y_tilt;
+    memcpy(y_tilt.bytes, tip, sizeof y_tilt.bytes);
+    message->y_tilt = linted_rpc_unpack(y_tilt);
+    tip += sizeof y_tilt.bytes;
+
     unsigned char bitfield;
-    memcpy(&bitfield, raw_message, sizeof bitfield);
+    memcpy(&bitfield, tip, sizeof bitfield);
 
     if ((bitfield & ~(1u | 1u << 1u | 1u << 2u | 1u << 3u | 1u << 4u)) != 0u) {
         return EPROTO;
