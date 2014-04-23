@@ -19,8 +19,7 @@
 #include "linted/str.h"
 
 #include <errno.h>
-#include <sys/select.h>
-#include <sys/types.h>
+#include <stddef.h>
 
 /**
  * @file
@@ -87,29 +86,6 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
                                char const *s, ...);
 
 errno_t linted_io_strtofd(char const *ptr, int *fd);
-
-/**
- *
- * The linted_io_close_fds_except function closes all file descriptors
- * in the process except for those listed in fds.
- *
- * @warning This function is not thread safe.
- *
- * @par
- *
- * @warning On error, only some files may be closed.
- *
- * @param fds The files not to close.
- *
- * @returns Zero on success or an error code.
-f *
- * @error EMFILE Too many process file descriptors in use.
- *
- * @error ENFILE Too many system file descriptors in use.
- *
- * @error ENOMEM Insufficient memory.
- */
-errno_t linted_io_close_fds_except(fd_set const *fds);
 
 /**
  * The linted_io_close function closes a file descriptor. The state of
