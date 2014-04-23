@@ -30,6 +30,8 @@ struct linted_controller_message {
     bool right:1;
     bool up:1;
     bool down:1;
+
+    bool jumping:1;
 };
 
 errno_t linted_controller_pair(linted_controller controller[2],

@@ -45,14 +45,18 @@
 struct action_state {
     int x:2;
     int y:2;
+
+    bool jumping:1;
 };
 
 struct simulator_state {
     int_fast32_t x_position;
     int_fast32_t y_position;
+    int_fast32_t z_position;
 
     int_fast32_t x_velocity;
     int_fast32_t y_velocity;
+    int_fast32_t z_velocity;
 
     bool update_pending:1;
 };
@@ -300,16 +304,18 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
 
     errno_t error_status = 0;
 
-    struct action_state action_state = {.x = 0,.y = 0};
+    struct action_state action_state = {.x = 0,.y = 0,.jumping = false};
 
     struct simulator_state simulator_state = {
-        .update_pending = false,
+        .update_pending = true, /* Initialize the gui at start */
 
         .x_position = 0,
         .y_position = 0,
+        .z_position = 3 * 255,
 
         .x_velocity = 0,
-        .y_velocity = 0
+        .y_velocity = 0,
+        .z_velocity = 0
     };
 
     int timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
@@ -438,41 +444,56 @@ static errno_t on_timer_readable(int timer,
     for (size_t ii = 0; ii < ticks; ++ii) {
         int_fast32_t x_position = simulator_state->x_position;
         int_fast32_t y_position = simulator_state->y_position;
+        int_fast32_t z_position = simulator_state->z_position;
 
         int_fast32_t x_velocity = simulator_state->x_velocity;
         int_fast32_t y_velocity = simulator_state->y_velocity;
+        int_fast32_t z_velocity = simulator_state->z_velocity;
 
         int_fast32_t x_thrust = 2 * (int_fast32_t) action_state->x;
         int_fast32_t y_thrust = 2 * (int_fast32_t) action_state->y;
+        int_fast32_t z_thrust = 2 * (int_fast32_t) action_state->jumping;
 
         int_fast32_t guess_x_velocity =
             saturate((int_fast64_t) x_thrust + x_velocity);
         int_fast32_t guess_y_velocity =
             saturate((int_fast64_t) y_thrust + y_velocity);
+        int_fast32_t guess_z_velocity =
+            saturate((int_fast64_t) z_thrust + z_velocity);
 
         int_fast32_t x_friction = min(imaxabs(guess_x_velocity), 1)
             * sign(guess_x_velocity);
         int_fast32_t y_friction = min(imaxabs(guess_y_velocity), 1)
             * sign(guess_y_velocity);
+        int_fast32_t z_friction = min(imaxabs(guess_z_velocity), 1)
+            * sign(guess_z_velocity);
 
         int_fast32_t new_x_velocity =
             saturate((int_fast64_t) guess_x_velocity + x_friction);
         int_fast32_t new_y_velocity =
             saturate((int_fast64_t) guess_y_velocity + y_friction);
+        int_fast32_t new_z_velocity =
+            saturate((int_fast64_t) guess_z_velocity + z_friction);
 
         int_fast32_t new_x_position =
             saturate((int_fast64_t) x_position + new_x_velocity);
         int_fast32_t new_y_position =
             saturate((int_fast64_t) y_position + new_y_velocity);
+        int_fast32_t new_z_position =
+            saturate((int_fast64_t) z_position + new_z_velocity);
 
-        simulator_state->update_pending |= x_position != new_x_position
-            || y_position != new_y_position;
+        simulator_state->update_pending |=
+            x_position != new_x_position
+            || y_position != new_y_position
+            || z_position != new_z_position;
 
         simulator_state->x_position = new_x_position;
         simulator_state->y_position = new_y_position;
+        simulator_state->z_position = new_z_position;
 
         simulator_state->x_velocity = new_x_velocity;
         simulator_state->y_velocity = new_y_velocity;
+        simulator_state->z_velocity = new_z_velocity;
     }
 
     return 0;
@@ -483,7 +504,8 @@ static errno_t on_updater_writeable(linted_updater updater,
 {
     struct linted_updater_update update = {
         .x_position = simulator_state->x_position,
-        .y_position = simulator_state->y_position
+        .y_position = simulator_state->y_position,
+        .z_position = simulator_state->z_position
     };
 
     errno_t update_status;
@@ -545,6 +567,8 @@ static errno_t on_controller_readable(linted_controller controller,
 
     action_state->x = message.right - message.left;
     action_state->y = message.up - message.down;
+
+    action_state->jumping = message.jumping;
 
     return 0;
 }

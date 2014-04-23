@@ -118,6 +118,7 @@ struct controller_state {
 struct gui_state {
     float x;
     float y;
+    float z;
 };
 
 struct gl_state {
@@ -635,6 +636,10 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
                 return 0;
 
+            case SDLK_SPACE:
+                controller_state->update.jumping = is_key_down;
+                break;
+
             case SDLK_LEFT:
                 controller_state->update.left = is_key_down;
                 break;
@@ -680,6 +685,7 @@ static errno_t on_updater_readable(linted_updater updater,
 
     gui_state->x = ((float)update.x_position) / 255;
     gui_state->y = ((float)update.y_position) / 255;
+    gui_state->z = ((float)update.z_position) / 255;
 
     return 0;
 }
@@ -928,7 +934,7 @@ static void render_graphics(struct gl_state const *gl_state,
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 0},
-            {gui_state->x, gui_state->y, 3, 1}
+            {gui_state->x, gui_state->y, gui_state->z, 1}
         };
         glMultMatrixf(camera[0]);
     }

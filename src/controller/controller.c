@@ -45,7 +45,9 @@ errno_t linted_controller_send(linted_controller controller,
     unsigned char bitfield = ((uintmax_t) message->up)
         | ((uintmax_t) message->down) << 1u
         | ((uintmax_t) message->right) << 2u
-        | ((uintmax_t) message->left) << 3u;
+        | ((uintmax_t) message->left) << 3u
+
+        | ((uintmax_t) message->jumping) << 4u;
 
     message_type raw_message;
     memcpy(raw_message, &bitfield, sizeof bitfield);
@@ -76,7 +78,7 @@ errno_t linted_controller_receive(linted_controller queue,
     unsigned char bitfield;
     memcpy(&bitfield, raw_message, sizeof bitfield);
 
-    if ((bitfield & ~(1u | 1u << 1u | 1u << 2u | 1u << 3u)) != 0u) {
+    if ((bitfield & ~(1u | 1u << 1u | 1u << 2u | 1u << 3u | 1u << 4u)) != 0u) {
         return EPROTO;
     }
 
@@ -84,6 +86,8 @@ errno_t linted_controller_receive(linted_controller queue,
     message->down = (bitfield & (1u << 1u)) != 0u;
     message->right = (bitfield & (1u << 2u)) != 0u;
     message->left = (bitfield & (1u << 3u)) != 0u;
+
+    message->jumping = (bitfield & (1u << 4u)) != 0u;
 
     return 0;
 }

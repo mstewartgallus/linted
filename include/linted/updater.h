@@ -28,6 +28,7 @@ typedef mqd_t linted_updater;
 struct linted_updater_update {
     int_fast32_t x_position;
     int_fast32_t y_position;
+    int_fast32_t z_position;
 };
 
 errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags);

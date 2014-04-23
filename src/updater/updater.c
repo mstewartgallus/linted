@@ -30,6 +30,7 @@ struct int32 {
 
 #define MESSAGE_SIZE (                              \
     LINTED_SIZEOF_MEMBER(struct int32, bytes)       \
+    + LINTED_SIZEOF_MEMBER(struct int32, bytes)     \
     + LINTED_SIZEOF_MEMBER(struct int32, bytes))
 
 typedef char message_type[MESSAGE_SIZE];
@@ -100,6 +101,10 @@ errno_t linted_updater_send_update(linted_updater updater,
 
     struct int32 y_position = pack(update->y_position);
     memcpy(tip, y_position.bytes, sizeof y_position.bytes);
+    tip += sizeof y_position.bytes;
+
+    struct int32 z_position = pack(update->z_position);
+    memcpy(tip, z_position.bytes, sizeof z_position.bytes);
 
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
 }
@@ -127,6 +132,11 @@ errno_t linted_updater_receive_update(linted_updater updater,
     struct int32 y_position;
     memcpy(y_position.bytes, tip, sizeof y_position.bytes);
     update->y_position = unpack(y_position);
+    tip += sizeof y_position.bytes;
+
+    struct int32 z_position;
+    memcpy(z_position.bytes, tip, sizeof z_position.bytes);
+    update->z_position = unpack(z_position);
 
     return 0;
 }
