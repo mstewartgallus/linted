@@ -76,6 +76,10 @@ errno_t linted_controller_receive(linted_controller queue,
     unsigned char bitfield;
     memcpy(&bitfield, raw_message, sizeof bitfield);
 
+    if ((bitfield & ~(1u | 1u << 1u | 1u << 2u | 1u << 3u)) != 0u) {
+        return EPROTO;
+    }
+
     message->up = bitfield & 1u;
     message->down = (bitfield & (1u << 1u)) != 0u;
     message->right = (bitfield & (1u << 2u)) != 0u;
