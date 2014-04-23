@@ -81,6 +81,17 @@ struct service {
     pid_t pid;
 };
 
+struct sim_config {
+    char const * path;
+    int working_directory;
+};
+
+struct gui_config {
+    char const * const * environment;
+    char const * path;
+    int working_directory;
+};
+
 static void *waiter_routine(void *data);
 
 static errno_t on_new_connections_readable(linted_manager new_connections,
@@ -94,10 +105,9 @@ static errno_t on_connection_readable(int fd,
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
-static errno_t run_game(int cwd,
-                        char const *process_name,
-                        char const *simulator_path, char const *gui_path,
-                        char const *display);
+static errno_t run_game(char const *process_name,
+                        struct sim_config const* sim_config,
+                        struct gui_config const* gui_config);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t linted_help(int fildes, char const *program_name,
@@ -253,9 +263,19 @@ It is insecure to run a game as root!\n"));
 
     int succesfully_executing = 0;
 
-    errno_t game_status = run_game(cwd,
-                                   program_name, simulator_path, gui_path,
-                                   display);
+    errno_t game_status;
+    {
+        struct sim_config sim_config = {
+            .path = simulator_path,
+            .working_directory = cwd
+        };
+        struct gui_config gui_config = {
+            .environment = (char const * const[]) { display, NULL },
+            .path = gui_path,
+            .working_directory = cwd
+        };
+        game_status = run_game(program_name, &sim_config, &gui_config);
+    }
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
@@ -279,10 +299,9 @@ It is insecure to run a game as root!\n"));
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static errno_t run_game(int cwd,
-                        char const *process_name,
-                        char const *simulator_path, char const *gui_path,
-                        char const *display)
+static errno_t run_game(char const *process_name,
+                        struct sim_config const* sim_config,
+                        struct gui_config const* gui_config)
 {
     errno_t error_status = 0;
 
@@ -428,19 +447,20 @@ static errno_t run_game(int cwd,
             {
 
                 char *args[] = {
-                    (char *)gui_path,
+                    (char *)gui_config->path,
                     logger_string,
                     updater_string,
                     shutdowner_string,
                     controller_string,
                     NULL
                 };
-                char *envp[] = { (char *)display, NULL };
 
                 pid_t gui_process;
                 error_status = linted_spawn(&gui_process,
-                                            cwd, gui_path,
-                                            file_actions, attr, args, envp);
+                                            gui_config->working_directory,
+                                            gui_config->path,
+                                            file_actions, attr, args,
+                                            (char **)gui_config->environment);
 
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
@@ -510,7 +530,7 @@ static errno_t run_game(int cwd,
 
             {
                 char *args[] = {
-                    (char *)simulator_path,
+                    (char *)sim_config->path,
                     logger_string,
                     updater_string,
                     shutdowner_string,
@@ -521,7 +541,8 @@ static errno_t run_game(int cwd,
 
                 pid_t process;
                 error_status = linted_spawn(&process,
-                                            cwd, simulator_path,
+                                            sim_config->working_directory,
+                                            sim_config->path,
                                             file_actions, attr, args, envp);
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
