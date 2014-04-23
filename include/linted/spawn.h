@@ -33,7 +33,7 @@ errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
 void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
                                        *file_actions);
 
-errno_t linted_spawn(pid_t * child, char const *path,
+errno_t linted_spawn(pid_t * child, int dirfd, char const *path,
                      struct linted_spawn_file_actions const *file_actions,
                      struct linted_spawn_attr const *attr,
                      char *const argv[], char *const envp[]);

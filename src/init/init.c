@@ -94,7 +94,8 @@ static errno_t on_connection_readable(int fd,
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
-static errno_t run_game(char const *process_name,
+static errno_t run_game(int cwd,
+                        char const *process_name,
                         char const *simulator_path, char const *gui_path,
                         char const *display);
 
@@ -252,7 +253,8 @@ It is insecure to run a game as root!\n"));
 
     int succesfully_executing = 0;
 
-    errno_t game_status = run_game(program_name, simulator_path, gui_path,
+    errno_t game_status = run_game(cwd,
+                                   program_name, simulator_path, gui_path,
                                    display);
     if (game_status != 0) {
         succesfully_executing = -1;
@@ -277,7 +279,8 @@ It is insecure to run a game as root!\n"));
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static errno_t run_game(char const *process_name,
+static errno_t run_game(int cwd,
+                        char const *process_name,
                         char const *simulator_path, char const *gui_path,
                         char const *display)
 {
@@ -435,7 +438,8 @@ static errno_t run_game(char const *process_name,
                 char *envp[] = { (char *)display, NULL };
 
                 pid_t gui_process;
-                error_status = linted_spawn(&gui_process, gui_path,
+                error_status = linted_spawn(&gui_process,
+                                            cwd, gui_path,
                                             file_actions, attr, args, envp);
 
                 if (0 == error_status) {
@@ -516,7 +520,8 @@ static errno_t run_game(char const *process_name,
                 char *envp[] = { NULL };
 
                 pid_t process;
-                error_status = linted_spawn(&process, simulator_path,
+                error_status = linted_spawn(&process,
+                                            cwd, simulator_path,
                                             file_actions, attr, args, envp);
                 if (0 == error_status) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;

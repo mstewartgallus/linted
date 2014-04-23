@@ -143,7 +143,7 @@ void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
     free(file_actions);
 }
 
-errno_t linted_spawn(pid_t * childp, char const *path,
+errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
                      struct linted_spawn_file_actions const *file_actions,
                      struct linted_spawn_attr const *attr,
                      char *const argv[], char *const envp[])
@@ -279,6 +279,10 @@ errno_t linted_spawn(pid_t * childp, char const *path,
         default:
             exit_with_error(error_status_fd_write, EINVAL);
         }
+    }
+
+    if (-1 == fchdir(dirfd)) {
+        exit_with_error(error_status_fd_write, errno);
     }
 
     int stop_fd_read;
