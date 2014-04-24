@@ -705,9 +705,12 @@ static errno_t on_updater_readable(linted_updater updater,
         return read_status;
     }
 
-    gui_state->x = ((float)update.x_position) / 255;
-    gui_state->y = ((float)update.y_position) / 255;
-    gui_state->z = ((float)update.z_position) / 255;
+    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %u %u\n",
+                           update.x_rotation, update.y_rotation);
+
+    gui_state->x = ((double)update.x_position) / 255;
+    gui_state->y = ((double)update.y_position) / 255;
+    gui_state->z = ((double)update.z_position) / 255;
 
     return 0;
 }

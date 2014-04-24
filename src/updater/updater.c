@@ -27,7 +27,11 @@
 #define MESSAGE_SIZE (                                          \
         LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)    \
         + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
-        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes))
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+                                                                \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+        )
 
 typedef char message_type[MESSAGE_SIZE];
 
@@ -58,6 +62,14 @@ errno_t linted_updater_send_update(linted_updater updater,
 
     struct linted_rpc_int32 z_position = linted_rpc_pack(update->z_position);
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
+    tip += sizeof z_position.bytes;
+
+    struct linted_rpc_int32 x_rotation = linted_rpc_pack(update->x_rotation);
+    memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
+    tip += sizeof x_rotation.bytes;
+
+    struct linted_rpc_int32 y_rotation = linted_rpc_pack(update->y_rotation);
+    memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
 }
@@ -90,6 +102,16 @@ errno_t linted_updater_receive_update(linted_updater updater,
     struct linted_rpc_int32 z_position;
     memcpy(z_position.bytes, tip, sizeof z_position.bytes);
     update->z_position = linted_rpc_unpack(z_position);
+    tip += sizeof z_position.bytes;
+
+    struct linted_rpc_int32 x_rotation;
+    memcpy(x_rotation.bytes, tip, sizeof x_rotation.bytes);
+    update->x_rotation = linted_rpc_unpack(x_rotation);
+    tip += sizeof x_rotation.bytes;
+
+    struct linted_rpc_int32 y_rotation;
+    memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
+    update->y_rotation = linted_rpc_unpack(y_rotation);
 
     return 0;
 }

@@ -29,6 +29,9 @@ struct linted_updater_update {
     int_fast32_t x_position;
     int_fast32_t y_position;
     int_fast32_t z_position;
+
+    uint_fast32_t x_rotation;
+    uint_fast32_t y_rotation;
 };
 
 errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
