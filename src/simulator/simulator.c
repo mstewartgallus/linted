@@ -607,3 +607,8 @@ static int_fast32_t saturate(int_fast64_t x)
 
     return x;
 }
+
+static int_fast32_t negative_absolute(int_fast32_t x)
+{
+    return INT32_MIN == x ? INT32_MIN : -imaxabs(x);
+}

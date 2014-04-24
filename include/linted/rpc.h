@@ -57,17 +57,7 @@ static inline int_fast32_t linted_rpc_unpack(struct linted_rpc_int32 raw)
         | (((uintmax_t) pos_bytes[2]) << 16u)
         | (((uintmax_t) pos_bytes[3]) << 24u);
 
-    /*
-     * Section 6.3.1.2 "Signed and unsigned integers" of the C99
-     * standard specifies that the behaviour is implementation-defined
-     * (or that a signal could be raised) if the new type is signed
-     * and the value can't be represented in it so we do this.
-     */
-    if (positive > (int_fast64_t) INT32_MAX) {
-        return -(uint_fast32_t) ((UINT32_MAX - (int_fast64_t) positive) + 1u);
-    }
-
-    return positive;
+    return linted_uint32_to_int32(positive);
 }
 
 #endif                          /* LINTED_RPC_H */

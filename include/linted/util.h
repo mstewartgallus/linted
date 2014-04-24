@@ -76,6 +76,21 @@ lazy developer error in file %s, function %s, and line %i:" format_string, \
         abort();                                                        \
     } while (0)
 
+static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
+{
+    /*
+     * Section 6.3.1.2 "Signed and unsigned integers" of the C99
+     * standard specifies that the behaviour is implementation-defined
+     * (or that a signal could be raised) if the new type is signed
+     * and the value can't be represented in it so we do this.
+     */
+    if (positive > (int_fast64_t) INT32_MAX) {
+        return -(uint_fast32_t) ((UINT32_MAX - (int_fast64_t) positive) + 1u);
+    }
+
+    return positive;
+}
+
 char const *linted_error_string_alloc(errno_t errnum);
 
 void linted_error_string_free(char const *error_string);
