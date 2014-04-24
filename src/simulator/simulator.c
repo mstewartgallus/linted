@@ -437,8 +437,11 @@ static errno_t on_timer_readable(int timer,
                                  struct simulator_state *simulator_state)
 {
     uint64_t ticks;
-    if (-1 == read(timer, &ticks, sizeof ticks)) {
-        return errno;
+    {
+        errno_t errnum = linted_io_read_all(timer, NULL, &ticks, sizeof ticks);
+        if (errnum != 0) {
+            return errnum;
+        }
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
