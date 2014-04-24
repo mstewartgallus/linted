@@ -110,7 +110,8 @@ struct window_state {
     unsigned width;
     unsigned height;
 
-    bool viewable;
+    bool viewable:1;
+    bool focused:1;
 };
 
 struct controller_state {
@@ -142,6 +143,10 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                             struct window_state *window_state,
                             struct controller_state *controller_state,
                             enum transition *transition);
+static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
+                    struct window_state const *window_state,
+                    struct controller_state *controller_state);
+
 static errno_t on_updater_readable(linted_updater updater,
                                    struct gui_state *gui_state);
 static errno_t on_controller_writeable(linted_controller controller, struct controller_state
@@ -621,14 +626,41 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 *transition = SHOULD_RESIZE;
                 return 0;
 
+                {
+                case SDL_WINDOWEVENT_ENTER:
+                    window_state->focused = true;
+
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    on_tilt(x, y,
+                            window_state, controller_state);
+
+                    *transition = DO_NOTHING;
+                    return 0;
+                }
+
+            case SDL_WINDOWEVENT_LEAVE:
+                window_state->focused = false;
+
+                controller_state->update.x_tilt = 0;
+                controller_state->update.y_tilt = 0;
+
+                controller_state->update_pending = true;
+
+                *transition = DO_NOTHING;
+                return 0;
+
             case SDL_WINDOWEVENT_HIDDEN:
                 window_state->viewable = false;
-                break;
+                *transition = DO_NOTHING;
+                return 0;
 
             case SDL_WINDOWEVENT_SHOWN:
             case SDL_WINDOWEVENT_EXPOSED:
                 window_state->viewable = true;
-                break;
+                *transition = DO_NOTHING;
+                return 0;
 
             default:
                 *transition = DO_NOTHING;
@@ -640,17 +672,9 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         case SDL_MOUSEMOTION:;
             SDL_MouseMotionEvent const *const motion_event = &sdl_event->motion;
 
-            int32_t x = (2 * motion_event->x - (int)window_state->width)/2;
-            int32_t y = (2 * motion_event->y - (int)window_state->height)/2;
+            on_tilt(motion_event->x, motion_event->y,
+                    window_state, controller_state);
 
-            /* Normalize and scale up to UINT32_MAX sized screen */
-            x *= INT32_MAX / window_state->width;
-            y *= INT32_MAX / window_state->height;
-
-            controller_state->update.x_tilt = x;
-            controller_state->update.y_tilt = y;
-
-            controller_state->update_pending = true;
             *transition = DO_NOTHING;
             return 0;
         }
@@ -696,6 +720,23 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
             return 0;
         }
     }
+}
+
+static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
+                    struct window_state const *window_state,
+                    struct controller_state *controller_state)
+{
+    int32_t x = (2 * mouse_x - (int)window_state->width)/2;
+    int32_t y = (2 * mouse_y - (int)window_state->height)/2;
+
+    /* Normalize and scale up to UINT32_MAX sized screen */
+    x *= INT32_MAX / window_state->width;
+    y *= INT32_MAX / window_state->height;
+
+    controller_state->update.x_tilt = x;
+    controller_state->update.y_tilt = y;
+
+    controller_state->update_pending = true;
 }
 
 static errno_t on_updater_readable(linted_updater updater,
