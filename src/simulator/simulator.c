@@ -83,8 +83,9 @@ static errno_t on_controller_readable(linted_controller controller,
 static void simulate_forces(int_fast32_t * position,
                             int_fast32_t * velocity,
                             int_fast32_t thrust);
+static int_fast32_t negative_absolute(int_fast32_t x);
 static int_fast32_t saturate(int_fast64_t x);
-static int_fast32_t min(int_fast32_t x, int_fast32_t y);
+static int_fast32_t max(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
 int main(int argc, char *argv[])
@@ -472,9 +473,9 @@ static errno_t on_timer_readable(int timer,
         int_fast32_t x_tilt = action_state->x_tilt;
         int_fast32_t y_tilt = action_state->y_tilt;
 
-        simulator_state->x_rotation += (imaxabs(x_tilt) > INT32_MAX / 8)
+        simulator_state->x_rotation += (negative_absolute(x_tilt) < INT32_MIN / 8)
             * (x_tilt / ((int_fast64_t)UINT32_MAX / 512));
-        simulator_state->y_rotation += (imaxabs(y_tilt) > INT32_MAX / 8)
+        simulator_state->y_rotation += (negative_absolute(y_tilt) < INT32_MIN / 8)
             * (y_tilt / ((int_fast64_t)UINT32_MAX / 512));
 
         simulator_state->update_pending = true;
@@ -573,8 +574,8 @@ static void simulate_forces(int_fast32_t * position,
     int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust)
                                            + old_velocity);
 
-    int_fast32_t friction = min(imaxabs(guess_velocity), 1)
-            * sign(guess_velocity);
+    int_fast32_t friction = max(negative_absolute(guess_velocity), -1)
+            * -sign(guess_velocity);
 
     int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity)
                                          + friction);
@@ -585,9 +586,9 @@ static void simulate_forces(int_fast32_t * position,
     *velocity = new_velocity;
 }
 
-static int_fast32_t min(int_fast32_t x, int_fast32_t y)
+static int_fast32_t max(int_fast32_t x, int_fast32_t y)
 {
-    return x < y ? x : y;
+    return x > y ? x : y;
 }
 
 static int_fast32_t sign(int_fast32_t x)
@@ -608,6 +609,8 @@ static int_fast32_t saturate(int_fast64_t x)
     return x;
 }
 
+/* This is a workaround for the fact that imaxabs(INT32_MIN) is
+ * undefined */
 static int_fast32_t negative_absolute(int_fast32_t x)
 {
     return INT32_MIN == x ? INT32_MIN : -imaxabs(x);
