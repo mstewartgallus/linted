@@ -473,10 +473,11 @@ static errno_t on_timer_readable(int timer,
         int_fast32_t x_tilt = action_state->x_tilt;
         int_fast32_t y_tilt = action_state->y_tilt;
 
+        int_fast32_t rotation_speed = UINT32_MAX / 512;
         simulator_state->x_rotation = (simulator_state->x_rotation + (negative_absolute(x_tilt) < INT32_MIN / 8)
-                                       * (x_tilt / ((int_fast64_t)UINT32_MAX / 512))) % UINT32_MAX;
+                                       * sign(x_tilt) *(int_fast64_t)rotation_speed) % UINT32_MAX;
         simulator_state->y_rotation = (simulator_state->y_rotation + (negative_absolute(y_tilt) < INT32_MIN / 8)
-                                        * (y_tilt / ((int_fast64_t)UINT32_MAX / 512))) % UINT32_MAX;
+                                       * sign(y_tilt) * (int_fast64_t)rotation_speed) % UINT32_MAX;
 
         simulator_state->update_pending = true;
     }

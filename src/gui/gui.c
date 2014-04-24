@@ -30,6 +30,7 @@
 
 #include <errno.h>
 #include <poll.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -118,9 +119,12 @@ struct controller_state {
 };
 
 struct gui_state {
-    float x;
-    float y;
-    float z;
+    float x_rotation;
+    float y_rotation;
+
+    float x_position;
+    float y_position;
+    float z_position;
 };
 
 struct gl_state {
@@ -383,7 +387,14 @@ int main(int argc, char *argv[])
         .update_pending = false
     };
 
-    struct gui_state gui_state = {.x = 0,.y = 0 };
+    struct gui_state gui_state = {
+        .x_rotation = 0,
+        .y_rotation = 0,
+
+        .x_position = 0,
+        .y_position = 0,
+        .z_position = 0
+    };
     SDL_Window *window;
     SDL_GLContext gl_context;
     struct gl_state gl_state;
@@ -705,13 +716,12 @@ static errno_t on_updater_readable(linted_updater updater,
         return read_status;
     }
 
-    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %f %f\n",
-                           update.x_rotation / (double)UINT32_MAX,
-                           update.y_rotation / (double)UINT32_MAX);
+    gui_state->x_rotation = update.x_rotation * (2 * M_PI / UINT32_MAX);
+    gui_state->y_rotation = update.y_rotation * (2 * M_PI / UINT32_MAX);
 
-    gui_state->x = ((double)update.x_position) / 255;
-    gui_state->y = ((double)update.y_position) / 255;
-    gui_state->z = ((double)update.z_position) / 255;
+    gui_state->x_position = update.x_position * (1 / (double)255);
+    gui_state->y_position = update.y_position * (1 / (double)255);
+    gui_state->z_position = update.z_position * (1 / (double)255);
 
     return 0;
 }
@@ -943,6 +953,7 @@ static void render_graphics(struct gl_state const *gl_state,
     glLoadIdentity();
 
     /* Correct the aspect ratio */
+    /* TODO: Move this into the projection matrix */
     GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
     {
         GLfloat const matrix[][4] = {
@@ -954,13 +965,38 @@ static void render_graphics(struct gl_state const *gl_state,
         glMultMatrixf(matrix[0]);
     }
 
+    /* Rotate the camera */
+    {
+        GLfloat cos_y = cosf(gui_state->y_rotation);
+        GLfloat sin_y = sinf(gui_state->y_rotation);
+        GLfloat const rotation[][4] = {
+            {1, 0,     0,      0},
+            {0, cos_y, -sin_y, 0},
+            {0, sin_y, cos_y,  0},
+            {0, 0,     0,      1}
+        };
+        glMultMatrixf(rotation[0]);
+    }
+
+    {
+        GLfloat cos_x = cosf(gui_state->x_rotation);
+        GLfloat sin_x = sinf(gui_state->x_rotation);
+        GLfloat const rotation[][4] = {
+            {cos_x,  0, sin_x, 0},
+            {0,      1, 0,     0},
+            {-sin_x, 0, cos_x, 0},
+            {0,      0, 0,     1}
+        };
+        glMultMatrixf(rotation[0]);
+    }
+
     /* Move the camera */
     {
         GLfloat const camera[][4] = {
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 0},
-            {gui_state->x, gui_state->y, gui_state->z, 1}
+            {gui_state->x_position, gui_state->y_position, gui_state->z_position, 1}
         };
         glMultMatrixf(camera[0]);
     }
