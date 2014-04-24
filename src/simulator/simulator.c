@@ -61,8 +61,8 @@ struct simulator_state {
     int_fast32_t y_velocity;
     int_fast32_t z_velocity;
 
-    uint_fast32_t x_rotation;
-    uint_fast32_t y_rotation;
+    uint_least32_t x_rotation;
+    uint_least32_t y_rotation;
 
     bool update_pending:1;
 };
@@ -469,8 +469,8 @@ static errno_t on_timer_readable(int timer,
         int_fast32_t y_thrust = 2 * (int_fast32_t) action_state->y;
         int_fast32_t z_thrust = 2 * (int_fast32_t) action_state->jumping;
 
-        int x_tilt = sign(action_state->x_tilt);
-        int y_tilt = sign(action_state->y_tilt);
+        int_fast32_t x_tilt = action_state->x_tilt;
+        int_fast32_t y_tilt = action_state->y_tilt;
 
         int_fast32_t guess_x_velocity =
             saturate((int_fast64_t) x_thrust + x_velocity);
@@ -508,8 +508,10 @@ static errno_t on_timer_readable(int timer,
         simulator_state->y_velocity = new_y_velocity;
         simulator_state->z_velocity = new_z_velocity;
 
-        simulator_state->x_rotation = (int_fast64_t)x_rotation + x_tilt;
-        simulator_state->y_rotation = (int_fast64_t)y_rotation + y_tilt;
+        simulator_state->x_rotation = ((int_fast64_t)x_rotation)
+            + (imaxabs(x_tilt) > INT32_MAX / 8) * sign(x_tilt) * ((int_fast64_t)UINT32_MAX / 1024);
+        simulator_state->y_rotation = ((int_fast64_t)y_rotation)
+            + (imaxabs(y_tilt) > INT32_MAX / 8) * sign(y_tilt) * ((int_fast64_t)UINT32_MAX / 1024);
 
         simulator_state->update_pending = true;
     }
