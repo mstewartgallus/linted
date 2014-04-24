@@ -21,11 +21,46 @@
 #include <stdint.h>
 #include <string.h>
 
-#define INT_MIN (-(intmax_t) (UINTMAX_C(1) << 31u))
-
 struct linted_rpc_int32 {
     char bytes[4];
 };
+
+struct linted_rpc_uint32 {
+    char bytes[4];
+};
+
+static inline struct linted_rpc_uint32 linted_rpc_pack_uint32(uint_fast32_t fast)
+{
+    /*
+     * Unlike with the code in unpack converting from a signed to an
+     * unsigned value is not implementation defined.
+     */
+    uint_fast32_t positive = fast;
+
+    unsigned char bytes[LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)] = {
+        ((uintmax_t) positive) & 0xFFu,
+        (((uintmax_t) positive) >> 8u) & 0xFFu,
+        (((uintmax_t) positive) >> 16u) & 0xFFu,
+        (((uintmax_t) positive) >> 24u) & 0xFFu
+    };
+
+    struct linted_rpc_uint32 raw;
+    memcpy(raw.bytes, &bytes, sizeof raw.bytes);
+    return raw;
+}
+
+static inline uint_fast32_t linted_rpc_unpack_uint32(struct linted_rpc_uint32 raw)
+{
+    unsigned char pos_bytes[sizeof raw.bytes];
+    memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
+
+    uint_fast32_t positive = ((uintmax_t) pos_bytes[0])
+        | (((uintmax_t) pos_bytes[1]) << 8u)
+        | (((uintmax_t) pos_bytes[2]) << 16u)
+        | (((uintmax_t) pos_bytes[3]) << 24u);
+
+    return positive;
+}
 
 static inline struct linted_rpc_int32 linted_rpc_pack(int_fast32_t fast)
 {

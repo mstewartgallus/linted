@@ -29,8 +29,8 @@
         + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
         + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
                                                                 \
-        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
-        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)  \
+        + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)  \
         )
 
 typedef char message_type[MESSAGE_SIZE];
@@ -64,11 +64,11 @@ errno_t linted_updater_send_update(linted_updater updater,
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
     tip += sizeof z_position.bytes;
 
-    struct linted_rpc_int32 x_rotation = linted_rpc_pack(update->x_rotation);
+    struct linted_rpc_uint32 x_rotation = linted_rpc_pack_uint32(update->x_rotation);
     memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
     tip += sizeof x_rotation.bytes;
 
-    struct linted_rpc_int32 y_rotation = linted_rpc_pack(update->y_rotation);
+    struct linted_rpc_uint32 y_rotation = linted_rpc_pack_uint32(update->y_rotation);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
@@ -104,14 +104,14 @@ errno_t linted_updater_receive_update(linted_updater updater,
     update->z_position = linted_rpc_unpack(z_position);
     tip += sizeof z_position.bytes;
 
-    struct linted_rpc_int32 x_rotation;
+    struct linted_rpc_uint32 x_rotation;
     memcpy(x_rotation.bytes, tip, sizeof x_rotation.bytes);
-    update->x_rotation = linted_rpc_unpack(x_rotation);
+    update->x_rotation = linted_rpc_unpack_uint32(x_rotation);
     tip += sizeof x_rotation.bytes;
 
-    struct linted_rpc_int32 y_rotation;
+    struct linted_rpc_uint32 y_rotation;
     memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
-    update->y_rotation = linted_rpc_unpack(y_rotation);
+    update->y_rotation = linted_rpc_unpack_uint32(y_rotation);
 
     return 0;
 }

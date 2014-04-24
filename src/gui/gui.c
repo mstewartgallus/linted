@@ -705,13 +705,10 @@ static errno_t on_updater_readable(linted_updater updater,
         return read_status;
     }
 
-    /* We use the minimum because it's absolute value is one larger
-     * than the maximum.
-     */
-    int_fast32_t x_rot = linted_uint32_to_int32(update.x_rotation);
-    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %f %i\n",
-                           (-(double)x_rot) / (double)INT32_MIN,
-        x_rot);
+    uint_fast32_t x_rot = update.x_rotation;
+    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %f %u\n",
+                           ((double)x_rot) / (double)UINT32_MAX,
+                           x_rot);
 
     gui_state->x = ((double)update.x_position) / 255;
     gui_state->y = ((double)update.y_position) / 255;
