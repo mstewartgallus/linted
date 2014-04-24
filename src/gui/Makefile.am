@@ -27,8 +27,10 @@ gui_LDADD=\
   src/shutdowner/libshutdowner.la\
   src/updater/libupdater.la\
   \
+  -lm\
+  libs/SDL/build/libSDL2.la\
   $(GL_LIBS)
-gui_LDFLAGS=libs/SDL/build/libSDL2.la $(AM_LDFLAGS)
+gui_LDFLAGS=$(AM_LDFLAGS)
 
 gui_CPPFLAGS=-I$(srcdir)/libs/SDL/include -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 
