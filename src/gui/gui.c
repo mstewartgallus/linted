@@ -705,10 +705,9 @@ static errno_t on_updater_readable(linted_updater updater,
         return read_status;
     }
 
-    uint_fast32_t x_rot = update.x_rotation;
-    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %f %u\n",
-                           ((double)x_rot) / (double)UINT32_MAX,
-                           x_rot);
+    linted_io_write_format(STDERR_FILENO, NULL, "Mouse motion: %f %f\n",
+                           update.x_rotation / (double)UINT32_MAX,
+                           update.y_rotation / (double)UINT32_MAX);
 
     gui_state->x = ((double)update.x_position) / 255;
     gui_state->y = ((double)update.y_position) / 255;
