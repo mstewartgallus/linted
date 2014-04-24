@@ -158,7 +158,8 @@ static errno_t init_graphics(linted_logger logger,
 static void render_graphics(struct gl_state const *gl_state,
                             struct gui_state const *gui_state,
                             struct window_state const *window_state);
-static void destroy_gl(struct gl_state *gl_state);
+static void destroy_graphics(struct gl_state *gl_state);
+static void resize_graphics(unsigned width, unsigned height);
 
 static double square(double x);
 
@@ -489,7 +490,7 @@ int main(int argc, char *argv[])
                     goto cleanup_gl;
 
                 case SHOULD_RESIZE:
-                    glViewport(0, 0, window_state.width, window_state.height);
+                    resize_graphics(window_state.width, window_state.height);
                     break;
                 }
             }
@@ -572,7 +573,7 @@ int main(int argc, char *argv[])
     }
 
  cleanup_gl:
-    destroy_gl(&gl_state);
+    destroy_graphics(&gl_state);
 
  delete_context:
     SDL_GL_DeleteContext(gl_context);
@@ -806,8 +807,6 @@ static errno_t init_graphics(linted_logger logger,
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    glCullFace(GL_FRONT);
-
     /* The brightest colour is (1, 1, 1) */
     /* The darkest colour is (0, 0, 0) */
     /* We want a neutral, middle brightness */
@@ -857,20 +856,6 @@ static errno_t init_graphics(linted_logger logger,
                     GL_FLOAT, 0, linted_assets_triangle_vertices);
 
     glNormalPointer(GL_FLOAT, 0, linted_assets_triangle_normals);
-
-    glMatrixMode(GL_PROJECTION);
-
-    {
-        GLfloat projection[][4] = {
-            {1, 0, 0, 0},
-            {0, 1, 0, 0},
-            {0, 0, 1, 1},
-            {0, 0, 0, 1}
-        };
-        glLoadMatrixf(projection[0]);
-    }
-
-    glMatrixMode(GL_MODELVIEW);
 
     flush_gl_errors();
     GLuint program = glCreateProgram();
@@ -975,11 +960,37 @@ static errno_t init_graphics(linted_logger logger,
     return error_status;
 }
 
-static void destroy_gl(struct gl_state *gl_state)
+static void destroy_graphics(struct gl_state *gl_state)
 {
     glUseProgram(0);
     glDeleteProgram(gl_state->program);
     memset(gl_state, 0, sizeof *gl_state);
+}
+
+static void resize_graphics(unsigned width, unsigned height)
+{
+    glViewport(0, 0, width, height);
+
+    glMatrixMode(GL_PROJECTION);
+
+    {
+        GLfloat aspect = width / (GLfloat)height;
+        double fov = M_PI / 4;
+
+        double d = 1 / tan(fov / 2);
+        double far = 1000;
+        double near = 1;
+
+        GLfloat projection[][4] = {
+            {d / aspect, 0, 0, 0},
+            {0, d, 0, 0},
+            {0, 0, -(far + near) / (near - far), 2 * far * near / (near - far)},
+            {0, 0, 0, -1}
+        };
+        glLoadMatrixf(projection[0]);
+    }
+
+    glMatrixMode(GL_MODELVIEW);
 }
 
 static void render_graphics(struct gl_state const *gl_state,
@@ -992,19 +1003,6 @@ static void render_graphics(struct gl_state const *gl_state,
      *  sums of the columns (row major order).
      */
     glLoadIdentity();
-
-    /* Correct the aspect ratio */
-    /* TODO: Move this into the projection matrix */
-    GLfloat aspect = ((GLfloat) window_state->width) / window_state->height;
-    {
-        GLfloat const matrix[][4] = {
-            {1, 0, 0, 0},
-            {0, aspect, 0, 0},
-            {0, 0, 1, 0},
-            {0, 0, 0, 1}
-        };
-        glMultMatrixf(matrix[0]);
-    }
 
     /* Rotate the camera */
     {
