@@ -80,6 +80,9 @@ static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
 static errno_t on_controller_readable(linted_controller controller,
                                       struct action_state *action_state);
 
+static void simulate_forces(int_fast32_t * position,
+                            int_fast32_t * velocity,
+                            int_fast32_t thrust);
 static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
@@ -454,64 +457,25 @@ static errno_t on_timer_readable(int timer,
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
-        int_fast32_t x_position = simulator_state->x_position;
-        int_fast32_t y_position = simulator_state->y_position;
-        int_fast32_t z_position = simulator_state->z_position;
+        simulate_forces(&simulator_state->x_position,
+                        &simulator_state->x_velocity,
+                        2 * (int_fast32_t) action_state->x);
 
-        int_fast32_t x_velocity = simulator_state->x_velocity;
-        int_fast32_t y_velocity = simulator_state->y_velocity;
-        int_fast32_t z_velocity = simulator_state->z_velocity;
+        simulate_forces(&simulator_state->y_position,
+                        &simulator_state->y_velocity,
+                        2 * (int_fast32_t) action_state->y);
 
-        uint_fast32_t x_rotation = simulator_state->x_rotation;
-        uint_fast32_t y_rotation = simulator_state->y_rotation;
-
-        int_fast32_t x_thrust = 2 * (int_fast32_t) action_state->x;
-        int_fast32_t y_thrust = 2 * (int_fast32_t) action_state->y;
-        int_fast32_t z_thrust = 2 * (int_fast32_t) action_state->jumping;
+        simulate_forces(&simulator_state->z_position,
+                        &simulator_state->z_velocity,
+                        2 * (int_fast32_t) action_state->jumping);
 
         int_fast32_t x_tilt = action_state->x_tilt;
         int_fast32_t y_tilt = action_state->y_tilt;
 
-        int_fast32_t guess_x_velocity =
-            saturate((int_fast64_t) x_thrust + x_velocity);
-        int_fast32_t guess_y_velocity =
-            saturate((int_fast64_t) y_thrust + y_velocity);
-        int_fast32_t guess_z_velocity =
-            saturate((int_fast64_t) z_thrust + z_velocity);
-
-        int_fast32_t x_friction = min(imaxabs(guess_x_velocity), 1)
-            * sign(guess_x_velocity);
-        int_fast32_t y_friction = min(imaxabs(guess_y_velocity), 1)
-            * sign(guess_y_velocity);
-        int_fast32_t z_friction = min(imaxabs(guess_z_velocity), 1)
-            * sign(guess_z_velocity);
-
-        int_fast32_t new_x_velocity =
-            saturate((int_fast64_t) guess_x_velocity + x_friction);
-        int_fast32_t new_y_velocity =
-            saturate((int_fast64_t) guess_y_velocity + y_friction);
-        int_fast32_t new_z_velocity =
-            saturate((int_fast64_t) guess_z_velocity + z_friction);
-
-        int_fast32_t new_x_position =
-            saturate((int_fast64_t) x_position + new_x_velocity);
-        int_fast32_t new_y_position =
-            saturate((int_fast64_t) y_position + new_y_velocity);
-        int_fast32_t new_z_position =
-            saturate((int_fast64_t) z_position + new_z_velocity);
-
-        simulator_state->x_position = new_x_position;
-        simulator_state->y_position = new_y_position;
-        simulator_state->z_position = new_z_position;
-
-        simulator_state->x_velocity = new_x_velocity;
-        simulator_state->y_velocity = new_y_velocity;
-        simulator_state->z_velocity = new_z_velocity;
-
-        simulator_state->x_rotation = ((int_fast64_t)x_rotation)
-            + (imaxabs(x_tilt) > INT32_MAX / 8) * sign(x_tilt) * ((int_fast64_t)UINT32_MAX / 1024);
-        simulator_state->y_rotation = ((int_fast64_t)y_rotation)
-            + (imaxabs(y_tilt) > INT32_MAX / 8) * sign(y_tilt) * ((int_fast64_t)UINT32_MAX / 1024);
+        simulator_state->x_rotation += (imaxabs(x_tilt) > INT32_MAX / 8)
+            * (x_tilt / ((int_fast64_t)UINT32_MAX / 512));
+        simulator_state->y_rotation += (imaxabs(y_tilt) > INT32_MAX / 8)
+            * (y_tilt / ((int_fast64_t)UINT32_MAX / 512));
 
         simulator_state->update_pending = true;
     }
@@ -597,6 +561,28 @@ static errno_t on_controller_readable(linted_controller controller,
     action_state->jumping = message.jumping;
 
     return 0;
+}
+
+static void simulate_forces(int_fast32_t * position,
+                            int_fast32_t * velocity,
+                            int_fast32_t thrust)
+{
+    int_fast32_t old_position = *position;
+    int_fast32_t old_velocity = *velocity;
+
+    int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust)
+                                           + old_velocity);
+
+    int_fast32_t friction = min(imaxabs(guess_velocity), 1)
+            * sign(guess_velocity);
+
+    int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity)
+                                         + friction);
+    int_fast32_t new_position = saturate(((int_fast64_t)old_position)
+                                         + new_velocity);
+
+    *position = new_position;
+    *velocity = new_velocity;
 }
 
 static int_fast32_t min(int_fast32_t x, int_fast32_t y)
