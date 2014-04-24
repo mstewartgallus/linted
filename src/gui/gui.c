@@ -169,12 +169,12 @@ static errno_t gui_help(int fildes, char const *program_name,
                         struct linted_str package_bugreport);
 static errno_t on_bad_option(int fildes, char const *program_name,
                              char const *bad_option);
+static errno_t try_for_more_help(int fildes, char const *program_name,
+                                 struct linted_str help_option);
 static errno_t version_text(int fildes, struct linted_str package_string,
                             struct linted_str copyright_year);
 static errno_t missing_option(int fildes, char const *program_name,
                               struct linted_str help_option);
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option);
 static errno_t invalid_fildes(int fildes, char const *program_name,
                               struct linted_str option, errno_t errnum);
 static errno_t failure(int fildes, char const *program_name,

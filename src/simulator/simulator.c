@@ -88,12 +88,25 @@ static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t max(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
+static errno_t missing_process_name(int fildes, struct linted_str package_name);
+static errno_t simulator_help(int fildes, char const *program_name,
+                              struct linted_str package_name,
+                              struct linted_str package_url,
+                              struct linted_str package_bugreport);
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option);
+static errno_t try_for_more_help(int fildes, char const *program_name,
+                                 struct linted_str help_option);
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year);
+static errno_t missing_option(int fildes, char const *program_name,
+                              struct linted_str help_option);
+
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing process name\n",
-                               PACKAGE_TARNAME "-simulator");
+        missing_process_name(STDERR_FILENO,
+                             LINTED_STR(PACKAGE_TARNAME "-simulator"));
         return EXIT_FAILURE;
     }
 
@@ -132,84 +145,40 @@ int main(int argc, char *argv[])
     }
 
     if (need_help) {
-        linted_io_write_format(STDOUT_FILENO, NULL, "Usage: %s [OPTIONS]\n",
-                               program_name);
-
-        linted_io_write_format(STDOUT_FILENO, NULL,
-                               "Run the %s program simulator.\n", PACKAGE_NAME);
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\
-  --logger            the logger file descriptor\n\
-  --controller        the controller file descriptor\n\
-  --updater           the updater file descriptor\n\
-  --shutdowner        the shutdowner file descriptor\n"));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-
-        linted_io_write_format(STDOUT_FILENO, NULL, "Report bugs to <%s>\n",
-                               PACKAGE_BUGREPORT);
-        linted_io_write_format(STDOUT_FILENO, NULL, "%s home page: <%s>\n",
-                               PACKAGE_NAME, PACKAGE_URL);
-
+        simulator_help(STDOUT_FILENO,
+                       program_name,
+                       LINTED_STR(PACKAGE_NAME),
+                       LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: urecognized option '%s'\n",
-                               program_name, bad_option);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        on_bad_option(STDERR_FILENO, program_name, bad_option);
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR(PACKAGE_STRING));
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n\n"));
-
-        linted_io_write_format(STDOUT_FILENO, NULL, "\
-Copyright (C) %s Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
-
+        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                     LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
     if (NULL == controller_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, CONTROLLER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        missing_option(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, SHUTDOWNER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        missing_option(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing %s option\n",
-                               program_name, UPDATER_OPTION);
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "Try `%s %s' for more information.\n",
-                               program_name, HELP_OPTION);
+        missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
+        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -222,9 +191,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                    program_name,
                                    LOGGER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         logger = fd;
@@ -239,9 +206,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                    program_name,
                                    CONTROLLER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         controller = fd;
@@ -256,9 +221,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                    program_name,
                                    SHUTDOWNER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -273,9 +236,7 @@ There is NO WARRANTY, to the extent permitted by law.\n", COPYRIGHT_YEAR);
                                    program_name,
                                    UPDATER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "Try `%s %s' for more information.\n",
-                                   program_name, HELP_OPTION);
+            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -615,4 +576,208 @@ static int_fast32_t saturate(int_fast64_t x)
 static int_fast32_t negative_absolute(int_fast32_t x)
 {
     return INT32_MIN == x ? INT32_MIN : -imaxabs(x);
+}
+
+static errno_t missing_process_name(int fildes, struct linted_str package_name)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: missing process name\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t simulator_help(int fildes, char const *program_name,
+                              struct linted_str package_name,
+                              struct linted_str package_url,
+                              struct linted_str package_bugreport)
+{
+    errno_t errnum;
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Run the simulator.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+  --logger            the logger file descriptor\n\
+  --controller        the controller file descriptor\n\
+  --updater           the updater file descriptor\n\
+  --shutdowner        the shutdowner file descriptor\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t on_bad_option(int fildes, char const *program_name,
+                             char const *bad_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+: unrecognised option '"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t try_for_more_help(int fildes, char const *program_name,
+                                 struct linted_str help_option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+' for more information.\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t version_text(int fildes, struct linted_str package_string,
+                            struct linted_str copyright_year)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+Copyright (C) "))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+ Steven Stewart-Gallus\n\
+License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
+This is free software, and you are welcome to redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
+}
+
+static errno_t missing_option(int fildes, char const *program_name,
+                              struct linted_str option)
+{
+    errno_t errnum;
+
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum =
+         linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
 }
