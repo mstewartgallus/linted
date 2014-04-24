@@ -465,6 +465,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* Do the initial resize */
+    resize_graphics(window_state.width, window_state.height);
+
     for (;;) {
         bool had_sdl_event;
 
@@ -984,8 +987,8 @@ static void resize_graphics(unsigned width, unsigned height)
         GLfloat projection[][4] = {
             {d / aspect, 0, 0, 0},
             {0, d, 0, 0},
-            {0, 0, -(far + near) / (near - far), 2 * far * near / (near - far)},
-            {0, 0, 0, -1}
+            {0, 0, (far + near) / (near - far), 2 * far * near / (near - far)},
+            {0, 0, -1, 0}
         };
         glLoadMatrixf(projection[0]);
     }
