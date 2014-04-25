@@ -22,5 +22,5 @@ void main()
 {
     linted_varying_vertex = gl_Vertex.xyz;
     linted_varying_normal = gl_Normal.xyz;
-    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+    gl_Position = ftransform();
 }
