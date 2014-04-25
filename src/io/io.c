@@ -22,12 +22,15 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 errno_t linted_io_read_all(int fd, size_t * bytes_read_out,
@@ -203,4 +206,15 @@ errno_t linted_io_close(int fd)
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);
 
     return -1 == close_status ? errno : 0;
+}
+
+errno_t linted_io_dummy(int *fildesp, int flags)
+{
+    int fildes = open("/dev/null", O_RDONLY | flags);
+    if (-1 == fildes) {
+        return errno;
+    }
+
+    *fildesp = fildes;
+    return 0;
 }

@@ -105,4 +105,6 @@ errno_t linted_io_strtofd(char const *ptr, int *fd);
  */
 errno_t linted_io_close(int fd);
 
+errno_t linted_io_dummy(int *fildesp, int flags);
+
 #endif                          /* LINTED_IO_H */

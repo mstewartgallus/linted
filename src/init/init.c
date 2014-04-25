@@ -369,27 +369,23 @@ static errno_t run_game(char const *process_name,
         char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
         char controller_string[] = "--controller=" INT_STRING_PADDING;
 
-        logger_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
-        if (-1 == logger_placeholder) {
-            error_status = errno;
+        if ((error_status = linted_io_dummy(&logger_placeholder,
+                                            O_CLOEXEC)) != 0) {
             goto close_shutdowner;
         }
 
-        updater_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
-        if (-1 == updater_placeholder) {
-            error_status = errno;
+        if ((error_status = linted_io_dummy(&updater_placeholder,
+                                            O_CLOEXEC)) != 0) {
             goto close_logger_placeholder;
         }
 
-        shutdowner_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
-        if (-1 == shutdowner_placeholder) {
-            error_status = errno;
+        if ((error_status = linted_io_dummy(&shutdowner_placeholder,
+                                            O_CLOEXEC)) != 0) {
             goto close_updater_placeholder;
         }
 
-        controller_placeholder = open("/dev/null", O_RDONLY | O_CLOEXEC);
-        if (-1 == controller_placeholder) {
-            error_status = errno;
+        if ((error_status = linted_io_dummy(&controller_placeholder,
+                                            O_CLOEXEC)) != 0) {
             goto close_shutdowner_placeholder;
         }
 

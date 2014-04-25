@@ -608,22 +608,6 @@ static uint_fast32_t absolute(int_fast32_t x)
     return INT32_MIN == x ? -(int_fast64_t)INT32_MIN : imaxabs(x);
 }
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: missing process name\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
 static errno_t simulator_help(int fildes, char const *program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
