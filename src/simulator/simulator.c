@@ -46,11 +46,11 @@
 #define DEAD_ZONE (INT32_MAX / 8)
 
 struct action_state {
-    int x:2;
-    int y:2;
-
     int32_t x_tilt;
     int32_t y_tilt;
+
+    int x:2;
+    int y:2;
 
     bool jumping:1;
 };

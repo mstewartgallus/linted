@@ -53,13 +53,9 @@ struct linted_spawn_file_actions {
     union file_action actions[];
 };
 
-struct attr_flags {
-    bool setpgroup:1;
-};
-
 struct linted_spawn_attr {
-    struct attr_flags flags;
     pid_t pgroup;
+    bool setpgroup:1;
 };
 
 static void exit_with_error(int error_status_fd_write, errno_t errnum);
@@ -79,7 +75,7 @@ errno_t linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 
 void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
-    attr->flags.setpgroup = true;
+    attr->setpgroup = true;
     attr->pgroup = pgroup;
 }
 
@@ -257,7 +253,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         return error_status;
     }
 
-    if (attr->flags.setpgroup) {
+    if (attr->setpgroup) {
         if (-1 == setpgid(0, attr->pgroup)) {
             errno_t errnum = errno;
             if (errnum != EACCES) {
