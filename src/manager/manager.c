@@ -31,10 +31,6 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
         return EINVAL;
     }
 
-    if (0 == path_len && path != NULL) {
-        return EINVAL;
-    }
-
     if (path_len > LINTED_MANAGER_PATH_MAX) {
         return ENAMETOOLONG;
     }
@@ -57,7 +53,8 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
 
-        if (-1 == bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1 == bind(sock, (void *)&address,
+                       sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }

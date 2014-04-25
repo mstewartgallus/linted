@@ -42,6 +42,9 @@
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
 
+#define ROTATION_SPEED (UINT32_MAX / 512)
+#define DEAD_ZONE (INT32_MAX / 8)
+
 struct action_state {
     int x:2;
     int y:2;
@@ -61,8 +64,8 @@ struct simulator_state {
     int_fast32_t y_velocity;
     int_fast32_t z_velocity;
 
-    uint_least32_t x_rotation;
-    uint_least32_t y_rotation;
+    uint_fast32_t x_rotation;
+    uint_fast32_t y_rotation;
 
     bool update_pending:1;
 };
@@ -83,6 +86,7 @@ static errno_t on_controller_readable(linted_controller controller,
 static void simulate_forces(int_fast32_t * position,
                             int_fast32_t * velocity,
                             int_fast32_t thrust);
+static void simulate_rotation(uint_fast32_t * rotation, int_fast32_t tilt);
 static uint_fast32_t absolute(int_fast32_t x);
 static int_fast32_t saturate(int_fast64_t x);
 static int_fast32_t min(int_fast32_t x, int_fast32_t y);
@@ -431,15 +435,8 @@ static errno_t on_timer_readable(int timer,
                         &simulator_state->z_velocity,
                         2 * (int_fast32_t) action_state->jumping);
 
-        int_fast32_t x_tilt = action_state->x_tilt;
-        int_fast32_t y_tilt = action_state->y_tilt;
-
-        int_fast32_t rotation_speed = UINT32_MAX / 512;
-        uint_fast32_t dead_zone = INT32_MAX / 8;
-        simulator_state->x_rotation = (simulator_state->x_rotation + (absolute(x_tilt) > dead_zone)
-                                       * sign(x_tilt) * (int_fast64_t)rotation_speed) % UINT32_MAX;
-        simulator_state->y_rotation = (simulator_state->y_rotation + (absolute(y_tilt) > dead_zone)
-                                       * sign(y_tilt) * (int_fast64_t)rotation_speed) % UINT32_MAX;
+        simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
+        simulate_rotation(&simulator_state->y_rotation, action_state->y_tilt);
 
         simulator_state->update_pending = true;
     }
@@ -547,6 +544,13 @@ static void simulate_forces(int_fast32_t * position,
 
     *position = new_position;
     *velocity = new_velocity;
+}
+
+static void simulate_rotation(uint_fast32_t * rotation, int_fast32_t tilt)
+{
+    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE) * sign(tilt)
+        * ROTATION_SPEED);
+    *rotation = (*rotation + step) % UINT32_MAX;
 }
 
 static int_fast32_t min(int_fast32_t x, int_fast32_t y)
