@@ -83,9 +83,9 @@ static errno_t on_controller_readable(linted_controller controller,
 static void simulate_forces(int_fast32_t * position,
                             int_fast32_t * velocity,
                             int_fast32_t thrust);
-static int_fast32_t negative_absolute(int_fast32_t x);
+static uint_fast32_t absolute(int_fast32_t x);
 static int_fast32_t saturate(int_fast64_t x);
-static int_fast32_t max(int_fast32_t x, int_fast32_t y);
+static int_fast32_t min(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
@@ -435,9 +435,10 @@ static errno_t on_timer_readable(int timer,
         int_fast32_t y_tilt = action_state->y_tilt;
 
         int_fast32_t rotation_speed = UINT32_MAX / 512;
-        simulator_state->x_rotation = (simulator_state->x_rotation + (negative_absolute(x_tilt) < INT32_MIN / 8)
-                                       * sign(x_tilt) *(int_fast64_t)rotation_speed) % UINT32_MAX;
-        simulator_state->y_rotation = (simulator_state->y_rotation + (negative_absolute(y_tilt) < INT32_MIN / 8)
+        uint_fast32_t dead_zone = INT32_MAX / 8;
+        simulator_state->x_rotation = (simulator_state->x_rotation + (absolute(x_tilt) > dead_zone)
+                                       * sign(x_tilt) * (int_fast64_t)rotation_speed) % UINT32_MAX;
+        simulator_state->y_rotation = (simulator_state->y_rotation + (absolute(y_tilt) > dead_zone)
                                        * sign(y_tilt) * (int_fast64_t)rotation_speed) % UINT32_MAX;
 
         simulator_state->update_pending = true;
@@ -536,7 +537,7 @@ static void simulate_forces(int_fast32_t * position,
     int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust)
                                            + old_velocity);
 
-    int_fast32_t friction = max(negative_absolute(guess_velocity), -1)
+    int_fast32_t friction = min(absolute(guess_velocity), 1)
             * -sign(guess_velocity);
 
     int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity)
@@ -548,14 +549,14 @@ static void simulate_forces(int_fast32_t * position,
     *velocity = new_velocity;
 }
 
-static int_fast32_t max(int_fast32_t x, int_fast32_t y)
+static int_fast32_t min(int_fast32_t x, int_fast32_t y)
 {
-    return x > y ? x : y;
+    return x < y ? x : y;
 }
 
 static int_fast32_t sign(int_fast32_t x)
 {
-    return x < 0 ? 1 : 0 == x ? 0 : -1;
+    return x > 0 ? 1 : 0 == x ? 0 : -1;
 }
 
 static int_fast32_t saturate(int_fast64_t x)
@@ -571,11 +572,10 @@ static int_fast32_t saturate(int_fast64_t x)
     return x;
 }
 
-/* This is a workaround for the fact that imaxabs(INT32_MIN) is
- * undefined */
-static int_fast32_t negative_absolute(int_fast32_t x)
+static uint_fast32_t absolute(int_fast32_t x)
 {
-    return INT32_MIN == x ? INT32_MIN : -imaxabs(x);
+    /* The implicit cast to unsigned is okay, obviously */
+    return INT32_MIN == x ? -(int_fast64_t)INT32_MIN : imaxabs(x);
 }
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name)
