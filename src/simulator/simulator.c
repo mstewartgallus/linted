@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
         .y_velocity = 0,
         .z_velocity = 0,
 
-        .x_rotation = 0,
+        .x_rotation = UINT32_MAX / 2,
         .y_rotation = 0
     };
 
