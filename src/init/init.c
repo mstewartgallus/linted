@@ -353,6 +353,7 @@ static errno_t run_game(char const *process_name,
     pid_t process_group = -1;
 
     struct service services[] = {
+        [LINTED_MANAGER_SERVICE_INIT] = {.pid = getpid()},
         [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
         [LINTED_MANAGER_SERVICE_SIMULATOR] = {.pid = -1}
     };

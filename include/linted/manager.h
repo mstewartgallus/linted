@@ -32,6 +32,7 @@ enum linted_manager_type {
 };
 
 enum linted_manager_service {
+    LINTED_MANAGER_SERVICE_INIT,
     LINTED_MANAGER_SERVICE_GUI,
     LINTED_MANAGER_SERVICE_SIMULATOR
 };
