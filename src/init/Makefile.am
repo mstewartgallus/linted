@@ -20,6 +20,7 @@ linted_SOURCES=%D%/init.c
 linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 linted_LDADD=\
   src/io/libio.la\
+  src/locale/liblocale.la\
   src/util/libutil.la\
   \
   src/controller/libcontroller.la\

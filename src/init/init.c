@@ -20,6 +20,7 @@
 
 #include "linted/controller.h"
 #include "linted/io.h"
+#include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mq.h"
@@ -109,17 +110,10 @@ static errno_t run_game(char const *process_name,
                         struct sim_config const* sim_config,
                         struct gui_config const* gui_config);
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t linted_help(int fildes, char const *program_name,
                            struct linted_str package_name,
                            struct linted_str package_url,
                            struct linted_str package_bugreport);
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option);
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option);
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year);
 
 int main(int argc, char **argv)
 {
@@ -134,7 +128,8 @@ It is insecure to run a game as root!\n"));
     }
 
     if (argc < 1) {
-        missing_process_name(STDERR_FILENO, LINTED_STR(PACKAGE_TARNAME));
+        linted_locale_missing_process_name(STDERR_FILENO,
+                                           LINTED_STR(PACKAGE_TARNAME));
         return EXIT_FAILURE;
     }
 
@@ -180,14 +175,15 @@ It is insecure to run a game as root!\n"));
     }
 
     if (bad_option != NULL) {
-        on_bad_option(STDERR_FILENO, program_name, bad_option);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                     LINTED_STR(COPYRIGHT_YEAR));
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
@@ -196,7 +192,8 @@ It is insecure to run a game as root!\n"));
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing DISPLAY environment variable\n",
                                program_name);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -1195,22 +1192,6 @@ static errno_t on_connection_writeable(int fd,
     return linted_manager_send_reply(fd, reply);
 }
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: missing process name\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
 static errno_t linted_help(int fildes, char const *program_name,
                            struct linted_str package_name,
                            struct linted_str package_url,
@@ -1283,88 +1264,6 @@ Report bugs to <"))) != 0) {
         return errnum;
     }
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: unrecognised option '"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-' for more information.\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-Copyright (C) "))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
- Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
         return errnum;
     }
 

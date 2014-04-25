@@ -16,8 +16,9 @@
 #include "config.h"
 
 #include "linted/controller.h"
-#include "linted/logger.h"
 #include "linted/io.h"
+#include "linted/locale.h"
+#include "linted/logger.h"
 #include "linted/shutdowner.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -96,25 +97,18 @@ static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
 static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t simulator_help(int fildes, char const *program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport);
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option);
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option);
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year);
 static errno_t missing_option(int fildes, char const *program_name,
                               struct linted_str help_option);
 
 int main(int argc, char *argv[])
 {
     if (argc < 1) {
-        missing_process_name(STDERR_FILENO,
-                             LINTED_STR(PACKAGE_TARNAME "-simulator"));
+        linted_locale_missing_process_name(STDERR_FILENO,
+                                           LINTED_STR(PACKAGE_TARNAME "-simulator"));
         return EXIT_FAILURE;
     }
 
@@ -161,32 +155,32 @@ int main(int argc, char *argv[])
     }
 
     if (bad_option != NULL) {
-        on_bad_option(STDERR_FILENO, program_name, bad_option);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                     LINTED_STR(COPYRIGHT_YEAR));
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
     if (NULL == controller_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION));
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION));
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -199,7 +193,7 @@ int main(int argc, char *argv[])
                                    program_name,
                                    LOGGER_OPTION,
                                    linted_error_string_alloc(errnum));
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         logger = fd;
@@ -214,7 +208,7 @@ int main(int argc, char *argv[])
                                    program_name,
                                    CONTROLLER_OPTION,
                                    linted_error_string_alloc(errnum));
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         controller = fd;
@@ -229,7 +223,7 @@ int main(int argc, char *argv[])
                                    program_name,
                                    SHUTDOWNER_OPTION,
                                    linted_error_string_alloc(errnum));
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -244,7 +238,7 @@ int main(int argc, char *argv[])
                                    program_name,
                                    UPDATER_OPTION,
                                    linted_error_string_alloc(errnum));
-            try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -704,88 +698,6 @@ Report bugs to <"))) != 0) {
         return errnum;
     }
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: unrecognised option '"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-' for more information.\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-Copyright (C) "))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
- Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
         return errnum;
     }
 

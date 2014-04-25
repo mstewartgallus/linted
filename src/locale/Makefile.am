@@ -14,15 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=simulator
 
-simulator_SOURCES=%D%/simulator.c
-simulator_LDADD=\
-  src/io/libio.la\
-  src/locale/liblocale.la\
-  src/util/libutil.la\
-  \
-  src/controller/libcontroller.la\
-  src/logger/liblogger.la\
-  src/shutdowner/libshutdowner.la\
-  src/updater/libupdater.la
+noinst_LTLIBRARIES+=%D%/liblocale.la
+%C%_liblocale_la_SOURCES=%D%/locale.c include/linted/locale.h

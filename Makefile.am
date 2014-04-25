@@ -145,6 +145,7 @@ include src/control/Makefile.am
 include src/simulator/Makefile.am
 
 include src/io/Makefile.am
+include src/locale/Makefile.am
 include src/mq/Makefile.am
 include src/sandbox/Makefile.am
 include src/spawn/Makefile.am

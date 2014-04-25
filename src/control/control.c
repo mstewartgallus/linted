@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/io.h"
+#include "linted/locale.h"
 #include "linted/manager.h"
 #include "linted/util.h"
 
@@ -29,23 +30,15 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <signal.h>
 #include <unistd.h>
 
 static int run_status(char const *program_name, int argc, char **argv);
 static int run_stop(char const *program_name, int argc, char **argv);
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name);
 static errno_t ctl_help(int fildes, char const *program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
                         struct linted_str package_bugreport);
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option);
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option);
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year);
 static errno_t status_help(int fildes, char const *program_name,
                            struct linted_str package_name,
                            struct linted_str package_url,
@@ -60,8 +53,8 @@ static errno_t failure(int fildes, char const *program_name,
 int main(int argc, char **argv)
 {
     if (argc < 1) {
-        missing_process_name(STDERR_FILENO,
-                             LINTED_STR(PACKAGE_TARNAME "-lintedctl"));
+        linted_locale_missing_process_name(STDERR_FILENO,
+                                           LINTED_STR(PACKAGE_TARNAME "-lintedctl"));
         return EXIT_FAILURE;
     }
 
@@ -100,21 +93,21 @@ int main(int argc, char **argv)
     }
 
     if (bad_option != NULL) {
-        on_bad_option(STDERR_FILENO, program_name, bad_option);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                     LINTED_STR(COPYRIGHT_YEAR));
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
     if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing COMMAND\n", program_name);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -128,7 +121,7 @@ int main(int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n",
                                program_name, command);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 }
@@ -166,8 +159,8 @@ static int run_status(char const *program_name, int argc, char **argv)
     }
 
     if (bad_option != NULL) {
-        on_bad_option(STDERR_FILENO, program_name, bad_option);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -175,13 +168,13 @@ static int run_status(char const *program_name, int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: too many arguments: '%s'\n",
                                program_name, bad_argument);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                     LINTED_STR(COPYRIGHT_YEAR));
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
@@ -189,7 +182,7 @@ static int run_status(char const *program_name, int argc, char **argv)
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -306,8 +299,9 @@ static int run_stop(char const *program_name, int argc, char **argv)
     }
 
     if (bad_option != NULL) {
-        on_bad_option(STDERR_FILENO, program_name, bad_option);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -315,13 +309,14 @@ static int run_stop(char const *program_name, int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: too many arguments: '%s'\n",
                                program_name, bad_argument);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        version_text(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                     LINTED_STR(COPYRIGHT_YEAR));
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
@@ -329,7 +324,8 @@ static int run_stop(char const *program_name, int argc, char **argv)
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
-        try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -415,22 +411,6 @@ static int run_stop(char const *program_name, int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
-static errno_t missing_process_name(int fildes, struct linted_str package_name)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: missing process name\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
 static errno_t ctl_help(int fildes, char const *program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
@@ -511,88 +491,6 @@ Report bugs to <"))) != 0) {
         return errnum;
     }
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t on_bad_option(int fildes, char const *program_name,
-                             char const *bad_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: unrecognised option '"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t try_for_more_help(int fildes, char const *program_name,
-                                 struct linted_str help_option)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-' for more information.\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static errno_t version_text(int fildes, struct linted_str package_string,
-                            struct linted_str copyright_year)
-{
-    errno_t errnum;
-
-    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-Copyright (C) "))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
- Steven Stewart-Gallus\n\
-License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
-This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
         return errnum;
     }
 
