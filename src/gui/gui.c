@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
     };
 
     struct controller_state controller_state = {
-        .update = {.up = false,.down = false,.right = false,.left = false},
+        .update = {.forward = false,.back = false,.right = false,.left = false},
         .update_pending = false
     };
 
@@ -710,11 +710,11 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 break;
 
             case SDLK_z:
-                controller_state->update.up = is_key_down;
+                controller_state->update.forward = is_key_down;
                 break;
 
             case SDLK_LSHIFT:
-                controller_state->update.down = is_key_down;
+                controller_state->update.back = is_key_down;
                 break;
             }
 

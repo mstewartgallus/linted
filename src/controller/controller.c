@@ -57,8 +57,8 @@ errno_t linted_controller_send(linted_controller controller,
     memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
     tip += sizeof y_tilt.bytes;
 
-    unsigned char bitfield = ((uintmax_t) message->up)
-        | ((uintmax_t) message->down) << 1u
+    unsigned char bitfield = ((uintmax_t) message->forward)
+        | ((uintmax_t) message->back) << 1u
         | ((uintmax_t) message->right) << 2u
         | ((uintmax_t) message->left) << 3u
         | ((uintmax_t) message->jumping) << 4u;
@@ -107,8 +107,8 @@ errno_t linted_controller_receive(linted_controller queue,
         return EPROTO;
     }
 
-    message->up = bitfield & 1u;
-    message->down = (bitfield & (1u << 1u)) != 0u;
+    message->forward = bitfield & 1u;
+    message->back = (bitfield & (1u << 1u)) != 0u;
     message->right = (bitfield & (1u << 2u)) != 0u;
     message->left = (bitfield & (1u << 3u)) != 0u;
 

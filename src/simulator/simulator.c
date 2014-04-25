@@ -50,7 +50,7 @@ struct action_state {
     int32_t y_tilt;
 
     int x:2;
-    int y:2;
+    int z:2;
 
     bool jumping:1;
 };
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
 
     errno_t error_status = 0;
 
-    struct action_state action_state = {.x = 0,.y = 0,.jumping = false};
+    struct action_state action_state = {.x = 0,.z = 0,.jumping = false};
 
     struct simulator_state simulator_state = {
         .update_pending = true, /* Initialize the gui at start */
@@ -431,13 +431,13 @@ static errno_t on_timer_readable(int timer,
                         &simulator_state->x_velocity,
                         2 * (int_fast32_t) action_state->x);
 
-        simulate_forces(&simulator_state->y_position,
-                        &simulator_state->y_velocity,
-                        2 * (int_fast32_t) action_state->y);
-
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        2 * (int_fast32_t) action_state->jumping);
+                        2 * (int_fast32_t) action_state->z);
+
+        simulate_forces(&simulator_state->y_position,
+                        &simulator_state->y_velocity,
+                        -2 * (int_fast32_t) action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
         simulate_clamped_rotation(&simulator_state->y_rotation,
@@ -519,7 +519,7 @@ static errno_t on_controller_readable(linted_controller controller,
     }
 
     action_state->x = message.right - message.left;
-    action_state->y = message.down - message.up;
+    action_state->z = message.back - message.forward;
 
     action_state->x_tilt = -message.x_tilt;
     action_state->y_tilt = -message.y_tilt;

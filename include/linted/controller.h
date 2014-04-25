@@ -32,8 +32,8 @@ struct linted_controller_message {
 
     bool left:1;
     bool right:1;
-    bool up:1;
-    bool down:1;
+    bool forward:1;
+    bool back:1;
 
     bool jumping:1;
 };
