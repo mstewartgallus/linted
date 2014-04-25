@@ -701,19 +701,19 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 controller_state->update.jumping = is_key_down;
                 break;
 
-            case SDLK_LEFT:
+            case SDLK_LCTRL:
                 controller_state->update.left = is_key_down;
                 break;
 
-            case SDLK_RIGHT:
+            case SDLK_LALT:
                 controller_state->update.right = is_key_down;
                 break;
 
-            case SDLK_UP:
+            case SDLK_z:
                 controller_state->update.up = is_key_down;
                 break;
 
-            case SDLK_DOWN:
+            case SDLK_LSHIFT:
                 controller_state->update.down = is_key_down;
                 break;
             }

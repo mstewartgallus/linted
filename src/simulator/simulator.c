@@ -519,7 +519,7 @@ static errno_t on_controller_readable(linted_controller controller,
     }
 
     action_state->x = message.right - message.left;
-    action_state->y = message.up - message.down;
+    action_state->y = message.down - message.up;
 
     action_state->x_tilt = message.x_tilt;
     action_state->y_tilt = message.y_tilt;
