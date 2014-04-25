@@ -521,8 +521,8 @@ static errno_t on_controller_readable(linted_controller controller,
     action_state->x = message.right - message.left;
     action_state->y = message.down - message.up;
 
-    action_state->x_tilt = message.x_tilt;
-    action_state->y_tilt = message.y_tilt;
+    action_state->x_tilt = -message.x_tilt;
+    action_state->y_tilt = -message.y_tilt;
 
     action_state->jumping = message.jumping;
 
@@ -568,9 +568,9 @@ static void simulate_clamped_rotation(uint_fast32_t * rotation,
         int_fast64_t new_rotation = ((int_fast64_t)*rotation) + step;
 
         if (step > 0) {
-            *rotation = min_uint64(new_rotation, UINT32_MAX / 8);
+            *rotation = min_uint64(new_rotation, UINT32_MAX / 16);
         } else {
-            *rotation = max_int64(new_rotation, -UINT32_MAX / 16);
+            *rotation = max_int64(new_rotation, -UINT32_MAX / 8);
         }
     }
 }
