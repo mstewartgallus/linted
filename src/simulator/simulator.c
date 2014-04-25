@@ -87,9 +87,13 @@ static void simulate_forces(int_fast32_t * position,
                             int_fast32_t * velocity,
                             int_fast32_t thrust);
 static void simulate_rotation(uint_fast32_t * rotation, int_fast32_t tilt);
+static void simulate_clamped_rotation(uint_fast32_t * rotation,
+                                      int_fast32_t tilt);
 static uint_fast32_t absolute(int_fast32_t x);
 static int_fast32_t saturate(int_fast64_t x);
-static int_fast32_t min(int_fast32_t x, int_fast32_t y);
+static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y);
+static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
+static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
 static errno_t missing_process_name(int fildes, struct linted_str package_name);
@@ -436,7 +440,8 @@ static errno_t on_timer_readable(int timer,
                         2 * (int_fast32_t) action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
-        simulate_rotation(&simulator_state->y_rotation, action_state->y_tilt);
+        simulate_clamped_rotation(&simulator_state->y_rotation,
+                                  action_state->y_tilt);
 
         simulator_state->update_pending = true;
     }
@@ -534,7 +539,7 @@ static void simulate_forces(int_fast32_t * position,
     int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust)
                                            + old_velocity);
 
-    int_fast32_t friction = min(absolute(guess_velocity), 1)
+    int_fast32_t friction = min_int32(absolute(guess_velocity), 1)
             * -sign(guess_velocity);
 
     int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity)
@@ -548,12 +553,39 @@ static void simulate_forces(int_fast32_t * position,
 
 static void simulate_rotation(uint_fast32_t * rotation, int_fast32_t tilt)
 {
-    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE) * sign(tilt)
-        * ROTATION_SPEED);
+    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE)
+                                                * sign(tilt) * ROTATION_SPEED);
     *rotation = (*rotation + step) % UINT32_MAX;
 }
 
-static int_fast32_t min(int_fast32_t x, int_fast32_t y)
+static void simulate_clamped_rotation(uint_fast32_t * rotation,
+                                      int_fast32_t tilt)
+{
+    int_fast32_t tilt_sign = sign(tilt);
+    if (absolute(tilt) > DEAD_ZONE) {
+        int_fast32_t step = tilt_sign * ROTATION_SPEED;
+
+        int_fast64_t new_rotation = ((int_fast64_t)*rotation) + step;
+
+        if (step > 0) {
+            *rotation = min_uint64(new_rotation, UINT32_MAX / 8);
+        } else {
+            *rotation = max_int64(new_rotation, -UINT32_MAX / 16);
+        }
+    }
+}
+
+static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y)
+{
+    return x < y ? x : y;
+}
+
+static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y)
+{
+    return x > y ? x : y;
+}
+
+static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y)
 {
     return x < y ? x : y;
 }
