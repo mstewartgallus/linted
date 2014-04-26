@@ -61,11 +61,6 @@ struct connection {
     bool has_reply_ready;
 };
 
-struct waiter_data {
-    id_t process_group;
-    int fd;
-};
-
 enum waiter_message_type {
     WAITER_FINISHED,
     WAITER_ERROR
@@ -90,6 +85,19 @@ struct gui_config {
     char const *path;
     int working_directory;
 };
+
+struct waiter_data;
+
+struct waiter {
+    pthread_t pthread;
+    struct waiter_data * waiter_data;
+    int init_wait_fd;
+    int waiter_wait_fd;
+};
+
+static errno_t waiter_init(struct waiter * waiter, pid_t pid);
+static int waiter_fd(struct waiter const * waiter);
+static errno_t waiter_destroy(struct waiter const * waiter);
 
 static void *waiter_routine(void *data);
 
@@ -336,7 +344,7 @@ static errno_t run_game(char const *process_name,
         linted_controller controller_mqs[2];
         if ((errnum = linted_controller_pair(controller_mqs,
                                              O_NONBLOCK, O_NONBLOCK)) != 0) {
-            goto cleanup_updater_pair;
+            goto close_updater_pair;
         }
 
         controller_read = controller_mqs[0];
@@ -347,7 +355,7 @@ static errno_t run_game(char const *process_name,
         linted_shutdowner shutdowner_mqs[2];
         if ((errnum = linted_shutdowner_pair(shutdowner_mqs,
                                              O_NONBLOCK, 0)) != 0) {
-            goto cleanup_controller_pair;
+            goto close_controller_pair;
         }
 
         shutdowner_read = shutdowner_mqs[0];
@@ -375,7 +383,7 @@ static errno_t run_game(char const *process_name,
 
         /* Create dummy file descriptors to be overwritten later on */
         if ((errnum = linted_io_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
-            goto close_shutdowner;
+            goto close_shutdowner_pair;
         }
 
         if ((errnum = linted_io_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
@@ -387,7 +395,7 @@ static errno_t run_game(char const *process_name,
         }
 
         if ((errnum = linted_io_dummy(&controller_dummy, O_CLOEXEC)) != 0) {
-            goto close_shutdowner_dummy;
+            goto close_shutdowner_pair_dummy;
         }
 
         sprintf(logger_option, "--logger=%i", logger_dummy);
@@ -398,7 +406,7 @@ static errno_t run_game(char const *process_name,
         {
             struct linted_spawn_file_actions *file_actions;
             if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto cleanup_processes;
+                goto kill_processes;
             }
 
             struct linted_spawn_attr *attr;
@@ -481,7 +489,7 @@ static errno_t run_game(char const *process_name,
         {
             struct linted_spawn_file_actions *file_actions;
             if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto cleanup_processes;
+                goto kill_processes;
             }
 
             struct linted_spawn_attr *attr;
@@ -563,7 +571,7 @@ static errno_t run_game(char const *process_name,
             }
         }
 
- close_shutdowner_dummy:
+ close_shutdowner_pair_dummy:
         {
             errno_t close_errnum = linted_io_close(shutdowner_dummy);
             if (0 == errnum) {
@@ -588,13 +596,13 @@ static errno_t run_game(char const *process_name,
         }
 
         if (errnum != 0) {
-            goto cleanup_processes;
+            goto kill_processes;
         }
     }
 
     linted_manager new_connections;
     if ((errnum = linted_manager_bind(&new_connections, BACKLOG, NULL, 0)) != 0) {
-        goto close_new_connections;
+        goto kill_processes;
     }
 
     {
@@ -610,31 +618,19 @@ static errno_t run_game(char const *process_name,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
-    int init_wait_fd;
-    int waiter_wait_fd;
-    {
-        int waiter_fds[2];
-        if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
-                             waiter_fds)) {
-            errnum = errno;
-            goto close_new_connections;
-        }
-        init_wait_fd = waiter_fds[0];
-        waiter_wait_fd = waiter_fds[1];
+    struct waiter gui_waiter;
+    if ((errnum = waiter_init(&gui_waiter,
+                              services[LINTED_MANAGER_SERVICE_GUI].pid)) != 0) {
+        goto close_new_connections;
+    }
+
+    struct waiter simulator_waiter;
+    if ((errnum = waiter_init(&simulator_waiter,
+                              services[LINTED_MANAGER_SERVICE_SIMULATOR].pid)) != 0) {
+        goto destroy_gui_waiter;
     }
 
     {
-        struct waiter_data waiter_data = {
-            .fd = waiter_wait_fd,
-            .process_group = process_group
-        };
-
-        pthread_t waiter_thread;
-        if (-1 == pthread_create(&waiter_thread, NULL,
-                                 waiter_routine, &waiter_data)) {
-            goto close_waiter_fds;
-        }
-
         size_t connection_count = 0;
         struct connection connections[MAX_MANAGE_CONNECTIONS];
 
@@ -644,14 +640,16 @@ static errno_t run_game(char const *process_name,
 
         for (;;) {
             enum {
-                WAITER,
+                GUI_WAITER,
+                SIMULATOR_WAITER,
                 LOGGER,
                 NEW_CONNECTIONS,
                 CONNECTION
             };
             /* TODO: Allocate off the stack */
             struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS] = {
-                [WAITER] = {.fd = init_wait_fd,.events = POLLIN},
+                [GUI_WAITER] = {.fd = waiter_fd(&gui_waiter),.events = POLLIN},
+                [SIMULATOR_WAITER] = {.fd = waiter_fd(&simulator_waiter),.events = POLLIN},
                 [LOGGER] = {.fd = logger_read,.events = POLLIN},
                 [NEW_CONNECTIONS] = {.fd = new_connections,.events = POLLIN}
             };
@@ -708,22 +706,20 @@ static errno_t run_game(char const *process_name,
                 linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
             }
 
-            if ((pollfds[WAITER].revents & POLLIN) != 0) {
+            if ((pollfds[GUI_WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
 
-                if ((errnum = linted_io_read_all(init_wait_fd, NULL,
+                if ((errnum = linted_io_read_all(waiter_fd(&gui_waiter), NULL,
                                                  &message,
                                                  sizeof message)) != 0) {
                     goto close_connections;
                 }
 
                 if ((errnum = message.errnum) != 0) {
-                    if (errnum != ECHILD) {
-                        goto close_connections;
-                    }
-                    errnum = 0;
                     goto close_connections;
                 }
+
+                services[LINTED_MANAGER_SERVICE_GUI].pid = -1;
 
                 siginfo_t *exit_info = &message.exit_info;
 
@@ -745,10 +741,47 @@ static errno_t run_game(char const *process_name,
                     assert(false);
                 }
 
-                /* If not exiting, tell the waiter to continue */
-                char dummy = 0;
-                if ((errnum = linted_io_write_all(init_wait_fd, NULL,
-                                                  &dummy, sizeof dummy)) != 0) {
+                if (-1 == services[LINTED_MANAGER_SERVICE_SIMULATOR].pid) {
+                    goto close_connections;
+                }
+            }
+
+            if ((pollfds[SIMULATOR_WAITER].revents & POLLIN) != 0) {
+                struct waiter_message message;
+
+                if ((errnum = linted_io_read_all(waiter_fd(&simulator_waiter),
+                                                 NULL,
+                                                 &message, sizeof message)) != 0) {
+                    goto close_connections;
+                }
+
+                if ((errnum = message.errnum) != 0) {
+                    goto close_connections;
+                }
+
+                services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = -1;
+
+                siginfo_t *exit_info = &message.exit_info;
+
+                switch (exit_info->si_code) {
+                case CLD_DUMPED:
+                case CLD_KILLED:
+                    raise(exit_info->si_status);
+                    errnum = errno;
+                    goto close_connections;
+
+                case CLD_EXITED:
+                    if (exit_info->si_status != 0) {
+                        errnum = exit_info->si_status;
+                        goto close_connections;
+                    }
+                    break;
+
+                default:
+                    assert(false);
+                }
+
+                if (-1 == services[LINTED_MANAGER_SERVICE_GUI].pid) {
                     goto close_connections;
                 }
             }
@@ -851,23 +884,20 @@ static errno_t run_game(char const *process_name,
                 }
             }
         }
-
-        pthread_cancel(waiter_thread);
-        pthread_join(waiter_thread, NULL);
     }
 
- close_waiter_fds:
     {
-        errno_t close_errnum = linted_io_close(init_wait_fd);
+        errno_t destroy_errnum = waiter_destroy(&simulator_waiter);
         if (0 == errnum) {
-            errnum = close_errnum;
+            errnum = destroy_errnum;
         }
     }
 
+ destroy_gui_waiter:
     {
-        errno_t close_errnum = linted_io_close(waiter_wait_fd);
+        errno_t destroy_errnum = waiter_destroy(&gui_waiter);
         if (0 == errnum) {
-            errnum = close_errnum;
+            errnum = destroy_errnum;
         }
     }
 
@@ -879,15 +909,15 @@ static errno_t run_game(char const *process_name,
         }
     }
 
- cleanup_processes:
+ kill_processes:
     if (errnum != 0 && process_group != -1) {
-        errno_t kill_errnum = -1 == kill(-process_group, SIGQUIT) ? errno : 0;
+        errno_t kill_errnum = -1 == kill(-process_group, SIGKILL) ? errno : 0;
         /* kill_errnum == ESRCH is fine */
         assert(kill_errnum != EINVAL);
         assert(kill_errnum != EPERM);
     }
 
- close_shutdowner:
+ close_shutdowner_pair:
     {
         errno_t close_errnum = linted_shutdowner_close(shutdowner_read);
         if (0 == errnum) {
@@ -902,7 +932,7 @@ static errno_t run_game(char const *process_name,
         }
     }
 
- cleanup_controller_pair:
+ close_controller_pair:
     {
         errno_t close_errnum = linted_controller_close(controller_read);
         if (0 == errnum) {
@@ -917,7 +947,7 @@ static errno_t run_game(char const *process_name,
         }
     }
 
- cleanup_updater_pair:
+close_updater_pair:
     {
         errno_t close_errnum = linted_updater_close(updater_read);
         if (0 == errnum) {
@@ -948,42 +978,6 @@ static errno_t run_game(char const *process_name,
     }
 
     return errnum;
-}
-
-static void *waiter_routine(void *data)
-{
-    struct waiter_data *waiter_data = data;
-
-    for (;;) {
-        siginfo_t exit_info;
-        memset(&exit_info, 0, sizeof exit_info);
-
-        errno_t errnum;
-        do {
-            int wait_status = waitid(P_PGID, waiter_data->process_group,
-                                     &exit_info, WEXITED);
-            errnum = -1 == wait_status ? errno : 0;
-            assert(errnum != EINVAL);
-        } while (EINTR == errnum);
-
-        {
-            struct waiter_message message;
-            memset(&message, 0, sizeof message);
-
-            message.exit_info = exit_info;
-            message.errnum = errnum;
-
-            linted_io_write_all(waiter_data->fd, NULL,
-                                &message, sizeof message);
-            /* TODO: Handle the error */
-        }
-
-        /* Loop forever until cancelled */
-        char dummy;
-        linted_io_read_all(waiter_data->fd, NULL, &dummy, sizeof dummy);
-
-        /* TODO: Handle the error */
-    }
 }
 
 static errno_t on_new_connections_readable(linted_manager new_connections,
@@ -1175,6 +1169,113 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply)
 {
     return linted_manager_send_reply(fd, reply);
+}
+
+struct waiter_data {
+    pid_t process;
+    int fd;
+};
+
+
+static void *waiter_routine(void *data)
+{
+    struct waiter_data *waiter_data = data;
+
+    siginfo_t exit_info;
+    memset(&exit_info, 0, sizeof exit_info);
+
+    errno_t errnum;
+    do {
+        int wait_status = waitid(P_PID, waiter_data->process,
+                                 &exit_info, WEXITED);
+        errnum = -1 == wait_status ? errno : 0;
+        assert(errnum != EINVAL);
+    } while (EINTR == errnum);
+
+    {
+        struct waiter_message message;
+        memset(&message, 0, sizeof message);
+
+        message.exit_info = exit_info;
+        message.errnum = errnum;
+
+        linted_io_write_all(waiter_data->fd, NULL,
+                            &message, sizeof message);
+        /* TODO: Handle the error */
+    }
+
+    /* Loop forever until cancelled */
+    char dummy;
+    linted_io_read_all(waiter_data->fd, NULL, &dummy, sizeof dummy);
+
+    /* TODO: Handle the error */
+
+    return NULL;
+}
+
+static errno_t waiter_init(struct waiter * waiter, pid_t pid)
+{
+    errno_t errnum;
+
+    int init_wait_fd;
+    int waiter_wait_fd;
+    {
+        int waiter_fds[2];
+        if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+                             waiter_fds)) {
+            return errno;
+        }
+        init_wait_fd = waiter_fds[0];
+        waiter_wait_fd = waiter_fds[1];
+    }
+
+    struct waiter_data * waiter_data = malloc(sizeof *waiter_data);
+    if (NULL == waiter_data) {
+        errnum = errno;
+        goto close_fds;
+    }
+
+    waiter_data->fd = waiter_wait_fd;
+    waiter_data->process = pid;
+
+    if (-1 == pthread_create(&waiter->pthread, NULL,
+                             waiter_routine, waiter_data)) {
+        errnum = errno;
+        goto free_waiter;
+    }
+
+    waiter->waiter_data = waiter_data;
+    waiter->init_wait_fd = init_wait_fd;
+    waiter->waiter_wait_fd = waiter_wait_fd;
+
+    return 0;
+
+free_waiter:;
+    free(waiter_data);
+
+close_fds:;
+    linted_io_close(init_wait_fd);
+    linted_io_close(waiter_wait_fd);
+
+    return errnum;
+}
+
+static int waiter_fd(struct waiter const * waiter)
+{
+    return waiter->init_wait_fd;
+}
+
+static errno_t waiter_destroy(struct waiter const * waiter)
+{
+    pthread_cancel(waiter->pthread);
+    pthread_join(waiter->pthread, NULL);
+
+    free(waiter->waiter_data);
+
+    linted_io_close(waiter->init_wait_fd);
+    linted_io_close(waiter->waiter_wait_fd);
+
+    return 0;
 }
 
 static errno_t linted_help(int fildes, char const *program_name,
