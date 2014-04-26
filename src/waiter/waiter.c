@@ -87,8 +87,8 @@ errno_t linted_waiter_destroy(struct linted_waiter const * waiter)
 {
     errno_t errnum = 0;
 
-    errnum = pthread_cancel(waiter->pthread);
-    assert(errnum != ESRCH);
+    pthread_cancel(waiter->pthread);
+    /* ESRCH is perfectly fine here */
 
     errnum = pthread_join(waiter->pthread, NULL);
     assert(errnum != ESRCH);
@@ -138,12 +138,6 @@ static void *waiter_routine(void *data)
                             &message, sizeof message);
         /* TODO: Handle the error */
     }
-
-    /* Loop forever until cancelled */
-    char dummy;
-    linted_io_read_all(waiter_data->fd, NULL, &dummy, sizeof dummy);
-
-    /* TODO: Handle the error */
 
     return NULL;
 }
