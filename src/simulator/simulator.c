@@ -28,12 +28,11 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
 #include <time.h>
-#include <unistd.h>
+
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"

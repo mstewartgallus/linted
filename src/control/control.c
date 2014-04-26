@@ -25,12 +25,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
+
 
 static int run_status(char const *program_name, int argc, char **argv);
 static int run_stop(char const *program_name, int argc, char **argv);
