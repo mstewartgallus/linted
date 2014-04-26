@@ -666,13 +666,17 @@ static errno_t run_game(char const *process_name,
 
             if ((pollfds[GUI_WAITER].revents & POLLIN) != 0) {
                 struct linted_waiter_message message;
+                size_t bytes_read;
 
                 if ((errnum = linted_io_read_all(linted_waiter_fd(&gui_waiter),
-                                                 NULL,
+                                                 &bytes_read,
                                                  &message,
                                                  sizeof message)) != 0) {
                     goto close_connections;
                 }
+
+                /* Hungup, shouldn't happen */
+                assert(bytes_read != 0);
 
                 if ((errnum = message.errnum) != 0) {
                     goto close_connections;
@@ -707,12 +711,16 @@ static errno_t run_game(char const *process_name,
 
             if ((pollfds[SIMULATOR_WAITER].revents & POLLIN) != 0) {
                 struct linted_waiter_message message;
+                size_t bytes_read;
 
                 if ((errnum = linted_io_read_all(linted_waiter_fd(&simulator_waiter),
-                                                 NULL,
+                                                 &bytes_read,
                                                  &message, sizeof message)) != 0) {
                     goto close_connections;
                 }
+
+                /* Hungup, shouldn't happen */
+                assert(bytes_read != 0);
 
                 if ((errnum = message.errnum) != 0) {
                     goto close_connections;

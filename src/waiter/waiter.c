@@ -47,6 +47,16 @@ errno_t linted_waiter_init(struct linted_waiter * waiter, pid_t pid)
         waiter_wait_fd = waiter_fds[1];
     }
 
+    if (-1 == shutdown(init_wait_fd, SHUT_WR)) {
+        errnum = errno;
+        goto close_fds;
+    }
+
+    if (-1 == shutdown(waiter_wait_fd, SHUT_RD)) {
+        errnum = errno;
+        goto close_fds;
+    }
+
     struct linted_waiter_data * waiter_data = malloc(sizeof *waiter_data);
     if (NULL == waiter_data) {
         errnum = errno;
