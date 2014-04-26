@@ -376,8 +376,7 @@ static int run_stop(char const *program_name, int argc, char **argv)
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        errno_t errnum = linted_io_read_all(linted, &bytes_read,
-                                            &reply, sizeof reply);
+        errno_t errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errno);
@@ -387,14 +386,6 @@ static int run_stop(char const *program_name, int argc, char **argv)
         if (0 == bytes_read) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: socket hung up\n", program_name);
-            return EXIT_FAILURE;
-        }
-
-        /* Sent malformed input */
-        if (bytes_read != sizeof reply) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: reply was too small: %i\n",
-                                   program_name, bytes_read);
             return EXIT_FAILURE;
         }
 
