@@ -362,8 +362,6 @@ static errno_t run_game(char const *process_name,
         shutdowner_write = shutdowner_mqs[1];
     }
 
-    pid_t process_group = -1;
-
     struct service services[] = {
         [LINTED_MANAGER_SERVICE_INIT] = {.pid = getpid()},
         [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
@@ -442,8 +440,6 @@ static errno_t run_game(char const *process_name,
                 goto destroy_spawnattr;
             }
 
-            linted_spawn_attr_setpgroup(attr, 0);
-
             {
                 char *args[] = {
                     (char *)gui_config->path,
@@ -465,14 +461,6 @@ static errno_t run_game(char const *process_name,
                 }
 
                 services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
-
-                process_group = gui_process;
-
-                int set_status = setpgid(gui_process, process_group);
-                errnum = -1 == set_status ? errno : 0;
-                if (EACCES == errnum) {
-                    errnum = 0;
-                }
             }
 
  destroy_spawnattr:
@@ -525,8 +513,6 @@ static errno_t run_game(char const *process_name,
                 goto destroy_sim_spawnattr;
             }
 
-            linted_spawn_attr_setpgroup(attr, process_group);
-
             {
                 char *args[] = {
                     (char *)sim_config->path,
@@ -548,12 +534,6 @@ static errno_t run_game(char const *process_name,
                 }
 
                 services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
-
-                int set_status = setpgid(process, process_group);
-                errnum = -1 == set_status ? errno : 0;
-                if (EACCES == errnum) {
-                    errnum = 0;
-                }
             }
 
  destroy_sim_spawnattr:
@@ -910,11 +890,21 @@ static errno_t run_game(char const *process_name,
     }
 
  kill_processes:
-    if (errnum != 0 && process_group != -1) {
-        errno_t kill_errnum = -1 == kill(-process_group, SIGKILL) ? errno : 0;
-        /* kill_errnum == ESRCH is fine */
-        assert(kill_errnum != EINVAL);
-        assert(kill_errnum != EPERM);
+    if (errnum != 0) {
+        for (size_t ii = 1; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+            pid_t pid = services[ii].pid;
+
+            if (-1 == pid) {
+                continue;
+            }
+
+            errno_t kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
+            /* kill_errnum == ESRCH is fine */
+            assert(kill_errnum != EINVAL);
+            assert(kill_errnum != EPERM);
+
+            services[ii].pid = -1;
+        }
     }
 
  close_shutdowner_pair:
