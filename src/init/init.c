@@ -83,13 +83,13 @@ struct service {
 };
 
 struct sim_config {
-    char const * path;
+    char const *path;
     int working_directory;
 };
 
 struct gui_config {
-    char const * const * environment;
-    char const * path;
+    char const *const *environment;
+    char const *path;
     int working_directory;
 };
 
@@ -107,8 +107,8 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
 static errno_t run_game(char const *process_name,
-                        struct sim_config const* sim_config,
-                        struct gui_config const* gui_config);
+                        struct sim_config const *sim_config,
+                        struct gui_config const *gui_config);
 
 static errno_t linted_help(int fildes, char const *program_name,
                            struct linted_str package_name,
@@ -229,7 +229,8 @@ It is insecure to run a game as root!\n"));
         };
 
         errno_t errnum = linted_util_sanitize_environment(kept_fds,
-                                                          LINTED_ARRAY_SIZE(kept_fds));
+                                                          LINTED_ARRAY_SIZE
+                                                          (kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n", program_name, linted_error_string_alloc(errnum));
@@ -266,7 +267,7 @@ It is insecure to run a game as root!\n"));
             .working_directory = cwd
         };
         struct gui_config gui_config = {
-            .environment = (char const * const[]) { display, NULL },
+            .environment = (char const *const[]){display, NULL},
             .path = gui_path,
             .working_directory = cwd
         };
@@ -296,8 +297,8 @@ It is insecure to run a game as root!\n"));
 }
 
 static errno_t run_game(char const *process_name,
-                        struct sim_config const* sim_config,
-                        struct gui_config const* gui_config)
+                        struct sim_config const *sim_config,
+                        struct gui_config const *gui_config)
 {
     errno_t errnum = 0;
 
@@ -438,7 +439,6 @@ static errno_t run_game(char const *process_name,
             linted_spawn_attr_setpgroup(attr, 0);
 
             {
-
                 char *args[] = {
                     (char *)gui_config->path,
                     logger_option,
@@ -449,22 +449,23 @@ static errno_t run_game(char const *process_name,
                 };
 
                 pid_t gui_process;
-                errnum = linted_spawn(&gui_process,
-                                      gui_config->working_directory,
-                                      gui_config->path,
-                                      file_actions, attr, args,
-                                      (char **)gui_config->environment);
+                if ((errnum = linted_spawn(&gui_process,
+                                           gui_config->working_directory,
+                                           gui_config->path,
+                                           file_actions, attr, args,
+                                           (char **)gui_config->environment)) !=
+                    0) {
+                    goto destroy_spawnattr;
+                }
 
-                if (0 == errnum) {
-                    services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
+                services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
 
-                    process_group = gui_process;
+                process_group = gui_process;
 
-                    int set_status = setpgid(gui_process, process_group);
-                    errno_t set_errnum = -1 == set_status ? errno : 0;
-                    if (set_errnum != 0 && set_errnum != EACCES) {
-                        errnum = set_errnum;
-                    }
+                int set_status = setpgid(gui_process, process_group);
+                errnum = -1 == set_status ? errno : 0;
+                if (EACCES == errnum) {
+                    errnum = 0;
                 }
             }
 
@@ -532,18 +533,20 @@ static errno_t run_game(char const *process_name,
                 char *envp[] = { NULL };
 
                 pid_t process;
-                errnum = linted_spawn(&process,
-                                            sim_config->working_directory,
-                                            sim_config->path,
-                                            file_actions, attr, args, envp);
-                if (0 == errnum) {
-                    services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
+                if ((errnum = linted_spawn(&process,
+                                           sim_config->working_directory,
+                                           sim_config->path,
+                                           file_actions, attr, args,
+                                           envp)) != 0) {
+                    goto destroy_sim_spawnattr;
+                }
 
-                    int set_status = setpgid(process, process_group);
-                    errno_t set_errnum = -1 == set_status ? errno : 0;
-                    if (set_errnum != 0 && set_errnum != EACCES) {
-                        errnum = set_errnum;
-                    }
+                services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
+
+                int set_status = setpgid(process, process_group);
+                errnum = -1 == set_status ? errno : 0;
+                if (EACCES == errnum) {
+                    errnum = 0;
                 }
             }
 
@@ -592,8 +595,7 @@ static errno_t run_game(char const *process_name,
     }
 
     linted_manager new_connections;
-    if ((errnum = linted_manager_bind(&new_connections, BACKLOG,
-                                      NULL, 0)) != 0) {
+    if ((errnum = linted_manager_bind(&new_connections, BACKLOG, NULL, 0)) != 0) {
         goto close_new_connections;
     }
 
@@ -776,8 +778,7 @@ static errno_t run_game(char const *process_name,
                     union linted_manager_reply reply;
                     bool hungup;
                     errnum = on_connection_readable(fd, services,
-                                                    &hungup,
-                                                    &reply);
+                                                    &hungup, &reply);
                     switch (errnum) {
                     case 0:
                         if (hungup) {
@@ -1123,7 +1124,8 @@ static errno_t on_connection_readable(int fd,
     memset(reply, 0, sizeof *reply);
 
     switch (request.type) {
-    case LINTED_MANAGER_STATUS:{
+        {
+    case LINTED_MANAGER_STATUS:;
             struct service const *service = &services[request.status.service];
             errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
             assert(errnum != EINVAL);
@@ -1142,7 +1144,8 @@ static errno_t on_connection_readable(int fd,
             break;
         }
 
-    case LINTED_MANAGER_STOP:{
+        {
+    case LINTED_MANAGER_STOP:;
             struct service const *service = &services[request.stop.service];
             errno_t errnum = -1 == kill(service->pid, SIGKILL) ? errno : 0;
             assert(errnum != EINVAL);

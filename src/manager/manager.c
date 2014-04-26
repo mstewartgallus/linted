@@ -53,8 +53,7 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
 
-        if (-1 == bind(sock, (void *)&address,
-                       sizeof(sa_family_t) + path_len)) {
+        if (-1 == bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }
@@ -137,7 +136,7 @@ errno_t linted_manager_path(linted_manager manager,
 
 errno_t linted_manager_recv_request(linted_manager manager,
                                     union linted_manager_request * request,
-                                    size_t *size)
+                                    size_t * size)
 {
     errno_t errnum = linted_io_read_all(manager, size,
                                         request, sizeof *request);
@@ -167,7 +166,7 @@ errno_t linted_manager_send_request(linted_manager manager,
 
 errno_t linted_manager_recv_reply(linted_manager manager,
                                   union linted_manager_reply *reply,
-                                  size_t *size)
+                                  size_t * size)
 {
     errno_t errnum = linted_io_read_all(manager, size, reply, sizeof *reply);
 

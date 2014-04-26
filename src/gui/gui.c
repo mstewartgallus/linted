@@ -230,7 +230,8 @@ int main(int argc, char *argv[])
 
     if (bad_option != NULL) {
         linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -242,27 +243,31 @@ int main(int argc, char *argv[])
 
     if (NULL == logger_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(LOGGER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == controller_name) {
         missing_option(STDERR_FILENO,
                        program_name, LINTED_STR(CONTROLLER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
         missing_option(STDERR_FILENO,
                        program_name, LINTED_STR(SHUTDOWNER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -274,7 +279,8 @@ int main(int argc, char *argv[])
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(LOGGER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO,
-                              program_name, LINTED_STR(HELP_OPTION));
+                                            program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         logger = fd;
@@ -288,7 +294,8 @@ int main(int argc, char *argv[])
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(CONTROLLER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO,
-                              program_name, LINTED_STR(HELP_OPTION));
+                                            program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         controller = fd;
@@ -302,7 +309,7 @@ int main(int argc, char *argv[])
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(SHUTDOWNER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR(HELP_OPTION));
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -316,7 +323,7 @@ int main(int argc, char *argv[])
             invalid_fildes(STDERR_FILENO,
                            program_name, LINTED_STR(UPDATER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                              LINTED_STR(HELP_OPTION));
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -332,7 +339,8 @@ int main(int argc, char *argv[])
         linted_io_write_string(STDERR_FILENO, NULL, program_name);
         linted_io_write_str(STDERR_FILENO, NULL,
                             LINTED_STR(": no DISPLAY environment variable\n"));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -358,7 +366,8 @@ int main(int argc, char *argv[])
             shutdowner
         };
         errno_t errnum = linted_util_sanitize_environment(kept_fds,
-                                                          LINTED_ARRAY_SIZE(kept_fds));
+                                                          LINTED_ARRAY_SIZE
+                                                          (kept_fds));
         if (errnum != 0) {
             failure(STDERR_FILENO,
                     program_name,
@@ -611,7 +620,7 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         return 0;
 
         {
-        case SDL_WINDOWEVENT:;
+    case SDL_WINDOWEVENT:;
             SDL_WindowEvent const *const window_event = &sdl_event->window;
             switch (window_event->event) {
             case SDL_WINDOWEVENT_RESIZED:
@@ -626,14 +635,13 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
                 return 0;
 
                 {
-                case SDL_WINDOWEVENT_ENTER:
+            case SDL_WINDOWEVENT_ENTER:
                     window_state->focused = true;
 
                     int x, y;
                     SDL_GetMouseState(&x, &y);
 
-                    on_tilt(x, y,
-                            window_state, controller_state);
+                    on_tilt(x, y, window_state, controller_state);
 
                     *transition = DO_NOTHING;
                     return 0;
@@ -668,7 +676,7 @@ static errno_t on_sdl_event(SDL_Event const *sdl_event,
         }
 
         {
-        case SDL_MOUSEMOTION:;
+    case SDL_MOUSEMOTION:;
             SDL_MouseMotionEvent const *const motion_event = &sdl_event->motion;
 
             on_tilt(motion_event->x, motion_event->y,
@@ -725,8 +733,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_state const *window_state,
                     struct controller_state *controller_state)
 {
-    int32_t x = (2 * mouse_x - (int)window_state->width)/2;
-    int32_t y = (2 * mouse_y - (int)window_state->height)/2;
+    int32_t x = (2 * mouse_x - (int)window_state->width) / 2;
+    int32_t y = (2 * mouse_y - (int)window_state->height) / 2;
 
     /* Normalize and scale up to UINT32_MAX sized screen */
     x *= INT32_MAX / window_state->width;
@@ -972,7 +980,7 @@ static void resize_graphics(unsigned width, unsigned height)
     glMatrixMode(GL_PROJECTION);
 
     {
-        GLfloat aspect = width / (GLfloat)height;
+        GLfloat aspect = width / (GLfloat) height;
         double fov = M_PI / 4;
 
         double d = 1 / tan(fov / 2);
@@ -1007,10 +1015,10 @@ static void render_graphics(struct gl_state const *gl_state,
         GLfloat cos_y = cosf(gui_state->y_rotation);
         GLfloat sin_y = sinf(gui_state->y_rotation);
         GLfloat const rotation[][4] = {
-            {1, 0,     0,      0},
+            {1, 0, 0, 0},
             {0, cos_y, -sin_y, 0},
-            {0, sin_y, cos_y,  0},
-            {0, 0,     0,      1}
+            {0, sin_y, cos_y, 0},
+            {0, 0, 0, 1}
         };
         glMultMatrixf(rotation[0]);
     }
@@ -1019,10 +1027,10 @@ static void render_graphics(struct gl_state const *gl_state,
         GLfloat cos_x = cosf(gui_state->x_rotation);
         GLfloat sin_x = sinf(gui_state->x_rotation);
         GLfloat const rotation[][4] = {
-            {cos_x,  0, sin_x, 0},
-            {0,      1, 0,     0},
+            {cos_x, 0, sin_x, 0},
+            {0, 1, 0, 0},
             {-sin_x, 0, cos_x, 0},
-            {0,      0, 0,     1}
+            {0, 0, 0, 1}
         };
         glMultMatrixf(rotation[0]);
     }
@@ -1033,7 +1041,8 @@ static void render_graphics(struct gl_state const *gl_state,
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 0},
-            {gui_state->x_position, gui_state->y_position, gui_state->z_position, 1}
+            {gui_state->x_position, gui_state->y_position,
+             gui_state->z_position, 1}
         };
         glMultMatrixf(camera[0]);
     }

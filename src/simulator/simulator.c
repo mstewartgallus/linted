@@ -85,8 +85,7 @@ static errno_t on_controller_readable(linted_controller controller,
                                       struct action_state *action_state);
 
 static void simulate_forces(int_fast32_t * position,
-                            int_fast32_t * velocity,
-                            int_fast32_t thrust);
+                            int_fast32_t * velocity, int_fast32_t thrust);
 static void simulate_rotation(uint_fast32_t * rotation, int_fast32_t tilt);
 static void simulate_clamped_rotation(uint_fast32_t * rotation,
                                       int_fast32_t tilt);
@@ -108,7 +107,8 @@ int main(int argc, char *argv[])
 {
     if (argc < 1) {
         linted_locale_missing_process_name(STDERR_FILENO,
-                                           LINTED_STR(PACKAGE_TARNAME "-simulator"));
+                                           LINTED_STR(PACKAGE_TARNAME
+                                                      "-simulator"));
         return EXIT_FAILURE;
     }
 
@@ -156,7 +156,8 @@ int main(int argc, char *argv[])
 
     if (bad_option != NULL) {
         linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -167,20 +168,25 @@ int main(int argc, char *argv[])
     }
 
     if (NULL == controller_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(CONTROLLER_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(SHUTDOWNER_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == updater_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -193,7 +199,8 @@ int main(int argc, char *argv[])
                                    program_name,
                                    LOGGER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         logger = fd;
@@ -208,7 +215,8 @@ int main(int argc, char *argv[])
                                    program_name,
                                    CONTROLLER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         controller = fd;
@@ -223,7 +231,8 @@ int main(int argc, char *argv[])
                                    program_name,
                                    SHUTDOWNER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         shutdowner = fd;
@@ -238,7 +247,8 @@ int main(int argc, char *argv[])
                                    program_name,
                                    UPDATER_OPTION,
                                    linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR(HELP_OPTION));
+            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                            LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
         updater = fd;
@@ -262,7 +272,8 @@ int main(int argc, char *argv[])
         };
 
         errno_t errnum = linted_util_sanitize_environment(kept_fds,
-                                                          LINTED_ARRAY_SIZE(kept_fds));
+                                                          LINTED_ARRAY_SIZE
+                                                          (kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s", program_name, linted_error_string_alloc(errnum));
@@ -277,7 +288,7 @@ int main(int argc, char *argv[])
 
     errno_t error_status = 0;
 
-    struct action_state action_state = {.x = 0,.z = 0,.jumping = false};
+    struct action_state action_state = {.x = 0,.z = 0,.jumping = false };
 
     struct simulator_state simulator_state = {
         .update_pending = true, /* Initialize the gui at start */
@@ -524,21 +535,20 @@ static errno_t on_controller_readable(linted_controller controller,
 }
 
 static void simulate_forces(int_fast32_t * position,
-                            int_fast32_t * velocity,
-                            int_fast32_t thrust)
+                            int_fast32_t * velocity, int_fast32_t thrust)
 {
     int_fast32_t old_position = *position;
     int_fast32_t old_velocity = *velocity;
 
-    int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust)
+    int_fast32_t guess_velocity = saturate(((int_fast64_t) thrust)
                                            + old_velocity);
 
     int_fast32_t friction = min_int32(absolute(guess_velocity), 1)
-            * -sign(guess_velocity);
+        * -sign(guess_velocity);
 
-    int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity)
+    int_fast32_t new_velocity = saturate(((int_fast64_t) guess_velocity)
                                          + friction);
-    int_fast32_t new_position = saturate(((int_fast64_t)old_position)
+    int_fast32_t new_position = saturate(((int_fast64_t) old_position)
                                          + new_velocity);
 
     *position = new_position;
@@ -559,7 +569,7 @@ static void simulate_clamped_rotation(uint_fast32_t * rotation,
     if (absolute(tilt) > DEAD_ZONE) {
         int_fast32_t step = tilt_sign * ROTATION_SPEED;
 
-        int_fast64_t new_rotation = ((int_fast64_t)*rotation) + step;
+        int_fast64_t new_rotation = ((int_fast64_t) * rotation) + step;
 
         if (step > 0) {
             *rotation = min_uint64(new_rotation, UINT32_MAX / 16);
@@ -605,7 +615,7 @@ static int_fast32_t saturate(int_fast64_t x)
 static uint_fast32_t absolute(int_fast32_t x)
 {
     /* The implicit cast to unsigned is okay, obviously */
-    return INT32_MIN == x ? -(int_fast64_t)INT32_MIN : imaxabs(x);
+    return INT32_MIN == x ? -(int_fast64_t) INT32_MIN : imaxabs(x);
 }
 
 static errno_t simulator_help(int fildes, char const *program_name,

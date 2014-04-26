@@ -34,7 +34,7 @@ extern char **environ;
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
 
-static errno_t close_fds_except(int const * kept_fds, size_t size);
+static errno_t close_fds_except(int const *kept_fds, size_t size);
 
 char const *linted_error_string_alloc(int errnum)
 {
@@ -79,7 +79,7 @@ void linted_error_string_free(char const *error_string)
     }
 }
 
-errno_t linted_util_sanitize_environment(int const * kept_fds, size_t size)
+errno_t linted_util_sanitize_environment(int const *kept_fds, size_t size)
 {
     errno_t errnum = close_fds_except(kept_fds, size);
     if (errnum != 0) {
@@ -99,7 +99,7 @@ errno_t linted_util_sanitize_environment(int const * kept_fds, size_t size)
     return 0;
 }
 
-static errno_t close_fds_except(int const * kept_fds, size_t size)
+static errno_t close_fds_except(int const *kept_fds, size_t size)
 {
     errno_t error_status = 0;
     DIR *const fds_dir = opendir("/proc/self/fd");
@@ -156,9 +156,9 @@ static errno_t close_fds_except(int const * kept_fds, size_t size)
                 }
             }
             goto not_kept;
-        kept_fd:
+ kept_fd:
             continue;
-        not_kept:
+ not_kept:
 
             ++fds_to_close_count;
             int *new_fds = realloc(fds_to_close,

@@ -85,8 +85,7 @@ errno_t linted_manager_recv_request(linted_manager manager,
 errno_t linted_manager_send_reply(linted_manager manager,
                                   union linted_manager_reply const *reply);
 
-errno_t linted_manager_send_request(linted_manager manager,
-                                    union linted_manager_request const
+errno_t linted_manager_send_request(linted_manager manager, union linted_manager_request const
                                     *request);
 
 errno_t linted_manager_recv_reply(linted_manager manager,

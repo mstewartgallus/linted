@@ -54,7 +54,8 @@ int main(int argc, char **argv)
 {
     if (argc < 1) {
         linted_locale_missing_process_name(STDERR_FILENO,
-                                           LINTED_STR(PACKAGE_TARNAME "-lintedctl"));
+                                           LINTED_STR(PACKAGE_TARNAME
+                                                      "-lintedctl"));
         return EXIT_FAILURE;
     }
 
@@ -94,7 +95,8 @@ int main(int argc, char **argv)
 
     if (bad_option != NULL) {
         linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -107,7 +109,8 @@ int main(int argc, char **argv)
     if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing COMMAND\n", program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -121,7 +124,8 @@ int main(int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n",
                                program_name, command);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 }
@@ -160,7 +164,8 @@ static int run_status(char const *program_name, int argc, char **argv)
 
     if (bad_option != NULL) {
         linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -168,7 +173,8 @@ static int run_status(char const *program_name, int argc, char **argv)
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: too many arguments: '%s'\n",
                                program_name, bad_argument);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -182,7 +188,8 @@ static int run_status(char const *program_name, int argc, char **argv)
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name, LINTED_STR("--help"));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
