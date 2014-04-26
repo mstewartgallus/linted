@@ -301,12 +301,6 @@ static errno_t run_game(char const *process_name,
 {
     errno_t errnum = 0;
 
-    linted_logger logger_logds[2];
-
-    linted_updater updater_mqs[2];
-    linted_controller controller_mqs[2];
-    linted_shutdowner simulator_shutdowner_mqs[2];
-
     linted_logger logger_read;
     linted_logger logger_write;
 
@@ -316,39 +310,50 @@ static errno_t run_game(char const *process_name,
     linted_controller controller_read;
     linted_controller controller_write;
 
-    linted_shutdowner simulator_shutdowner_read;
-    linted_shutdowner simulator_shutdowner_write;
+    linted_shutdowner shutdowner_read;
+    linted_shutdowner shutdowner_write;
 
-    if ((errnum = linted_logger_pair(logger_logds)) != 0) {
-        return errnum;
+    {
+        linted_logger logger_logds[2];
+        if ((errnum = linted_logger_pair(logger_logds)) != 0) {
+            return errnum;
+        }
+
+        logger_read = logger_logds[0];
+        logger_write = logger_logds[1];
     }
 
-    logger_read = logger_logds[0];
-    logger_write = logger_logds[1];
-
-    if ((errnum = linted_updater_pair(updater_mqs,
-                                      O_NONBLOCK, O_NONBLOCK)) != 0) {
-        goto close_logger_pair;
+    {
+        linted_updater updater_mqs[2];
+        if ((errnum = linted_updater_pair(updater_mqs,
+                                          O_NONBLOCK, O_NONBLOCK)) != 0) {
+            goto close_logger_pair;
+        }
+        updater_read = updater_mqs[0];
+        updater_write = updater_mqs[1];
     }
 
-    updater_read = updater_mqs[0];
-    updater_write = updater_mqs[1];
+    {
+        linted_controller controller_mqs[2];
+        if ((errnum = linted_controller_pair(controller_mqs,
+                                             O_NONBLOCK, O_NONBLOCK)) != 0) {
+            goto cleanup_updater_pair;
+        }
 
-    if ((errnum = linted_controller_pair(controller_mqs,
-                                         O_NONBLOCK, O_NONBLOCK)) != 0) {
-        goto cleanup_updater_pair;
+        controller_read = controller_mqs[0];
+        controller_write = controller_mqs[1];
     }
 
-    controller_read = controller_mqs[0];
-    controller_write = controller_mqs[1];
+    {
+        linted_shutdowner shutdowner_mqs[2];
+        if ((errnum = linted_shutdowner_pair(shutdowner_mqs,
+                                             O_NONBLOCK, 0)) != 0) {
+            goto cleanup_controller_pair;
+        }
 
-    if ((errnum = linted_shutdowner_pair(simulator_shutdowner_mqs,
-                                         O_NONBLOCK, 0)) != 0) {
-        goto cleanup_controller_pair;
+        shutdowner_read = shutdowner_mqs[0];
+        shutdowner_write = shutdowner_mqs[1];
     }
-
-    simulator_shutdowner_read = simulator_shutdowner_mqs[0];
-    simulator_shutdowner_write = simulator_shutdowner_mqs[1];
 
     pid_t process_group = -1;
 
@@ -417,7 +422,7 @@ static errno_t run_game(char const *process_name,
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            simulator_shutdowner_write,
+                                                            shutdowner_write,
                                                             shutdowner_dummy))
                 != 0) {
                 goto destroy_spawnattr;
@@ -500,7 +505,7 @@ static errno_t run_game(char const *process_name,
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            simulator_shutdowner_read,
+                                                            shutdowner_read,
                                                             shutdowner_dummy))
                 != 0) {
                 goto destroy_sim_spawnattr;
@@ -605,15 +610,22 @@ static errno_t run_game(char const *process_name,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
-    int waiter_fds[2];
-    if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, waiter_fds)) {
-        errnum = errno;
-        goto close_new_connections;
+    int init_wait_fd;
+    int waiter_wait_fd;
+    {
+        int waiter_fds[2];
+        if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+                             waiter_fds)) {
+            errnum = errno;
+            goto close_new_connections;
+        }
+        init_wait_fd = waiter_fds[0];
+        waiter_wait_fd = waiter_fds[1];
     }
 
     {
         struct waiter_data waiter_data = {
-            .fd = waiter_fds[1],
+            .fd = waiter_wait_fd,
             .process_group = process_group
         };
 
@@ -639,7 +651,7 @@ static errno_t run_game(char const *process_name,
             };
             /* TODO: Allocate off the stack */
             struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS] = {
-                [WAITER] = {.fd = waiter_fds[0],.events = POLLIN},
+                [WAITER] = {.fd = init_wait_fd,.events = POLLIN},
                 [LOGGER] = {.fd = logger_read,.events = POLLIN},
                 [NEW_CONNECTIONS] = {.fd = new_connections,.events = POLLIN}
             };
@@ -699,7 +711,7 @@ static errno_t run_game(char const *process_name,
             if ((pollfds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
 
-                if ((errnum = linted_io_read_all(waiter_fds[0], NULL,
+                if ((errnum = linted_io_read_all(init_wait_fd, NULL,
                                                  &message,
                                                  sizeof message)) != 0) {
                     goto close_connections;
@@ -735,7 +747,7 @@ static errno_t run_game(char const *process_name,
 
                 /* If not exiting, tell the waiter to continue */
                 char dummy = 0;
-                if ((errnum = linted_io_write_all(waiter_fds[0], NULL,
+                if ((errnum = linted_io_write_all(init_wait_fd, NULL,
                                                   &dummy, sizeof dummy)) != 0) {
                     goto close_connections;
                 }
@@ -847,14 +859,14 @@ static errno_t run_game(char const *process_name,
 
  close_waiter_fds:
     {
-        errno_t close_errnum = linted_io_close(waiter_fds[0]);
+        errno_t close_errnum = linted_io_close(init_wait_fd);
         if (0 == errnum) {
             errnum = close_errnum;
         }
     }
 
     {
-        errno_t close_errnum = linted_io_close(waiter_fds[1]);
+        errno_t close_errnum = linted_io_close(waiter_wait_fd);
         if (0 == errnum) {
             errnum = close_errnum;
         }
@@ -878,14 +890,14 @@ static errno_t run_game(char const *process_name,
 
  close_shutdowner:
     {
-        errno_t close_errnum = linted_shutdowner_close(simulator_shutdowner_read);
+        errno_t close_errnum = linted_shutdowner_close(shutdowner_read);
         if (0 == errnum) {
             errnum = close_errnum;
         }
     }
 
     {
-        errno_t close_errnum = linted_shutdowner_close(simulator_shutdowner_write);
+        errno_t close_errnum = linted_shutdowner_close(shutdowner_write);
         if (0 == errnum) {
             errnum = close_errnum;
         }
