@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 
         .x_position = 0,
         .y_position = 0,
-        .z_position = 3 * 255,
+        .z_position = 3 * 1024,
 
         .x_velocity = 0,
         .y_velocity = 0,
