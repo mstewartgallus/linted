@@ -299,7 +299,7 @@ static errno_t run_game(char const *process_name,
                         struct sim_config const* sim_config,
                         struct gui_config const* gui_config)
 {
-    errno_t error_status = 0;
+    errno_t errnum = 0;
 
     linted_logger logger_logds[2];
 
@@ -319,31 +319,31 @@ static errno_t run_game(char const *process_name,
     linted_shutdowner simulator_shutdowner_read;
     linted_shutdowner simulator_shutdowner_write;
 
-    if ((error_status = linted_logger_pair(logger_logds)) != 0) {
-        return error_status;
+    if ((errnum = linted_logger_pair(logger_logds)) != 0) {
+        return errnum;
     }
 
     logger_read = logger_logds[0];
     logger_write = logger_logds[1];
 
-    if ((error_status = linted_updater_pair(updater_mqs,
-                                            O_NONBLOCK, O_NONBLOCK)) != 0) {
+    if ((errnum = linted_updater_pair(updater_mqs,
+                                      O_NONBLOCK, O_NONBLOCK)) != 0) {
         goto close_logger_pair;
     }
 
     updater_read = updater_mqs[0];
     updater_write = updater_mqs[1];
 
-    if ((error_status = linted_controller_pair(controller_mqs,
-                                               O_NONBLOCK, O_NONBLOCK)) != 0) {
+    if ((errnum = linted_controller_pair(controller_mqs,
+                                         O_NONBLOCK, O_NONBLOCK)) != 0) {
         goto cleanup_updater_pair;
     }
 
     controller_read = controller_mqs[0];
     controller_write = controller_mqs[1];
 
-    if ((error_status = linted_shutdowner_pair(simulator_shutdowner_mqs,
-                                               O_NONBLOCK, 0)) != 0) {
+    if ((errnum = linted_shutdowner_pair(simulator_shutdowner_mqs,
+                                         O_NONBLOCK, 0)) != 0) {
         goto cleanup_controller_pair;
     }
 
@@ -358,79 +358,74 @@ static errno_t run_game(char const *process_name,
         [LINTED_MANAGER_SERVICE_SIMULATOR] = {.pid = -1}
     };
 
-    /* Create placeholder file descriptors to be overwritten later on */
     {
-        int logger_placeholder;
-        int updater_placeholder;
-        int shutdowner_placeholder;
-        int controller_placeholder;
+        int logger_dummy;
+        int updater_dummy;
+        int shutdowner_dummy;
+        int controller_dummy;
 
-        char logger_string[] = "--logger=" INT_STRING_PADDING;
-        char updater_string[] = "--updater=" INT_STRING_PADDING;
-        char shutdowner_string[] = "--shutdowner=" INT_STRING_PADDING;
-        char controller_string[] = "--controller=" INT_STRING_PADDING;
+        char logger_option[] = "--logger=" INT_STRING_PADDING;
+        char updater_option[] = "--updater=" INT_STRING_PADDING;
+        char shutdowner_option[] = "--shutdowner=" INT_STRING_PADDING;
+        char controller_option[] = "--controller=" INT_STRING_PADDING;
 
-        if ((error_status = linted_io_dummy(&logger_placeholder,
-                                            O_CLOEXEC)) != 0) {
+        /* Create dummy file descriptors to be overwritten later on */
+        if ((errnum = linted_io_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
             goto close_shutdowner;
         }
 
-        if ((error_status = linted_io_dummy(&updater_placeholder,
-                                            O_CLOEXEC)) != 0) {
-            goto close_logger_placeholder;
+        if ((errnum = linted_io_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
+            goto close_logger_dummy;
         }
 
-        if ((error_status = linted_io_dummy(&shutdowner_placeholder,
-                                            O_CLOEXEC)) != 0) {
-            goto close_updater_placeholder;
+        if ((errnum = linted_io_dummy(&shutdowner_dummy, O_CLOEXEC)) != 0) {
+            goto close_updater_dummy;
         }
 
-        if ((error_status = linted_io_dummy(&controller_placeholder,
-                                            O_CLOEXEC)) != 0) {
-            goto close_shutdowner_placeholder;
+        if ((errnum = linted_io_dummy(&controller_dummy, O_CLOEXEC)) != 0) {
+            goto close_shutdowner_dummy;
         }
 
-        sprintf(logger_string, "--logger=%i", logger_placeholder);
-        sprintf(updater_string, "--updater=%i", updater_placeholder);
-        sprintf(shutdowner_string, "--shutdowner=%i", shutdowner_placeholder);
-        sprintf(controller_string, "--controller=%i", controller_placeholder);
+        sprintf(logger_option, "--logger=%i", logger_dummy);
+        sprintf(updater_option, "--updater=%i", updater_dummy);
+        sprintf(shutdowner_option, "--shutdowner=%i", shutdowner_dummy);
+        sprintf(controller_option, "--controller=%i", controller_dummy);
 
         {
             struct linted_spawn_file_actions *file_actions;
-            if ((error_status =
-                 linted_spawn_file_actions_init(&file_actions)) != 0) {
+            if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
             struct linted_spawn_attr *attr;
-            if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
+            if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_gui_file_actions;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  logger_write,
-                                                                  logger_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            logger_write,
+                                                            logger_dummy))
                 != 0) {
                 goto destroy_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  updater_read,
-                                                                  updater_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            updater_read,
+                                                            updater_dummy))
                 != 0) {
                 goto destroy_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  simulator_shutdowner_write,
-                                                                  shutdowner_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            simulator_shutdowner_write,
+                                                            shutdowner_dummy))
                 != 0) {
                 goto destroy_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  controller_write,
-                                                                  controller_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            controller_write,
+                                                            controller_dummy))
                 != 0) {
                 goto destroy_spawnattr;
             }
@@ -441,29 +436,29 @@ static errno_t run_game(char const *process_name,
 
                 char *args[] = {
                     (char *)gui_config->path,
-                    logger_string,
-                    updater_string,
-                    shutdowner_string,
-                    controller_string,
+                    logger_option,
+                    updater_option,
+                    shutdowner_option,
+                    controller_option,
                     NULL
                 };
 
                 pid_t gui_process;
-                error_status = linted_spawn(&gui_process,
-                                            gui_config->working_directory,
-                                            gui_config->path,
-                                            file_actions, attr, args,
-                                            (char **)gui_config->environment);
+                errnum = linted_spawn(&gui_process,
+                                      gui_config->working_directory,
+                                      gui_config->path,
+                                      file_actions, attr, args,
+                                      (char **)gui_config->environment);
 
-                if (0 == error_status) {
+                if (0 == errnum) {
                     services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
 
                     process_group = gui_process;
 
-                    errno_t errnum =
-                        -1 == setpgid(gui_process, process_group) ? errno : 0;
-                    if (errnum != 0 && errnum != EACCES) {
-                        error_status = errnum;
+                    int set_status = setpgid(gui_process, process_group);
+                    errno_t set_errnum = -1 == set_status ? errno : 0;
+                    if (set_errnum != 0 && set_errnum != EACCES) {
+                        errnum = set_errnum;
                     }
                 }
             }
@@ -474,47 +469,46 @@ static errno_t run_game(char const *process_name,
  destroy_gui_file_actions:
             linted_spawn_file_actions_destroy(file_actions);
 
-            if (error_status != 0) {
-                goto close_controller_placeholder;
+            if (errnum != 0) {
+                goto close_controller_dummy;
             }
         }
 
         {
             struct linted_spawn_file_actions *file_actions;
-            if ((error_status =
-                 linted_spawn_file_actions_init(&file_actions)) != 0) {
+            if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
                 goto cleanup_processes;
             }
 
             struct linted_spawn_attr *attr;
-            if ((error_status = linted_spawn_attr_init(&attr)) != 0) {
+            if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
                 goto destroy_sim_file_actions;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  logger_write,
-                                                                  logger_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            logger_write,
+                                                            logger_dummy))
                 != 0) {
                 goto destroy_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  updater_write,
-                                                                  updater_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            updater_write,
+                                                            updater_dummy))
                 != 0) {
                 goto destroy_sim_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  simulator_shutdowner_read,
-                                                                  shutdowner_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            simulator_shutdowner_read,
+                                                            shutdowner_dummy))
                 != 0) {
                 goto destroy_sim_spawnattr;
             }
 
-            if ((error_status = linted_spawn_file_actions_adddup2(&file_actions,
-                                                                  controller_read,
-                                                                  controller_placeholder))
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            controller_read,
+                                                            controller_dummy))
                 != 0) {
                 goto destroy_sim_spawnattr;
             }
@@ -524,26 +518,26 @@ static errno_t run_game(char const *process_name,
             {
                 char *args[] = {
                     (char *)sim_config->path,
-                    logger_string,
-                    updater_string,
-                    shutdowner_string,
-                    controller_string,
+                    logger_option,
+                    updater_option,
+                    shutdowner_option,
+                    controller_option,
                     NULL
                 };
                 char *envp[] = { NULL };
 
                 pid_t process;
-                error_status = linted_spawn(&process,
+                errnum = linted_spawn(&process,
                                             sim_config->working_directory,
                                             sim_config->path,
                                             file_actions, attr, args, envp);
-                if (0 == error_status) {
+                if (0 == errnum) {
                     services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
 
-                    errno_t errnum =
-                        -1 == setpgid(process, process_group) ? errno : 0;
-                    if (errnum != 0 && errnum != EACCES) {
-                        error_status = errnum;
+                    int set_status = setpgid(process, process_group);
+                    errno_t set_errnum = -1 == set_status ? errno : 0;
+                    if (set_errnum != 0 && set_errnum != EACCES) {
+                        errnum = set_errnum;
                     }
                 }
             }
@@ -555,60 +549,53 @@ static errno_t run_game(char const *process_name,
             linted_spawn_file_actions_destroy(file_actions);
         }
 
- close_controller_placeholder:
+ close_controller_dummy:
         {
-            errno_t errnum = linted_io_close(controller_placeholder);
-            if (0 == error_status) {
-                error_status = errnum;
+            errno_t close_errnum = linted_io_close(controller_dummy);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
         }
 
- close_shutdowner_placeholder:
+ close_shutdowner_dummy:
         {
-            errno_t errnum = linted_io_close(shutdowner_placeholder);
-            if (0 == error_status) {
-                error_status = errnum;
+            errno_t close_errnum = linted_io_close(shutdowner_dummy);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
         }
 
- close_updater_placeholder:
+ close_updater_dummy:
         {
-            errno_t errnum = linted_io_close(updater_placeholder);
-            if (0 == error_status) {
-                error_status = errnum;
+            errno_t close_errnum = linted_io_close(updater_dummy);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
         }
 
- close_logger_placeholder:
+ close_logger_dummy:
         {
-            errno_t errnum = linted_io_close(logger_placeholder);
-            if (0 == error_status) {
-                error_status = errnum;
+            errno_t close_errnum = linted_io_close(logger_dummy);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
         }
 
-        if (error_status != 0) {
+        if (errnum != 0) {
             goto cleanup_processes;
         }
     }
 
     linted_manager new_connections;
-    {
-        errno_t errnum = linted_manager_bind(&new_connections, BACKLOG,
-                                             NULL, 0);
-        if (errnum != 0) {
-            error_status = errnum;
-            goto close_new_connections;
-        }
+    if ((errnum = linted_manager_bind(&new_connections, BACKLOG,
+                                      NULL, 0)) != 0) {
+        goto close_new_connections;
     }
 
     {
         char buf[LINTED_MANAGER_PATH_MAX];
         size_t len;
-        errno_t errnum = linted_manager_path(new_connections, buf, &len);
-
-        if (errnum != 0) {
-            error_status = errnum;
+        if ((errnum = linted_manager_path(new_connections, buf, &len)) != 0) {
             goto close_new_connections;
         }
 
@@ -620,7 +607,7 @@ static errno_t run_game(char const *process_name,
 
     int waiter_fds[2];
     if (-1 == socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, waiter_fds)) {
-        error_status = errno;
+        errnum = errno;
         goto close_new_connections;
     }
 
@@ -673,25 +660,23 @@ static errno_t run_game(char const *process_name,
                 }
             }
 
-            errno_t poll_status;
+            errno_t poll_errnum;
             size_t constantfds =
                 LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGE_CONNECTIONS;
             size_t pollfd_count = constantfds + active_connections;
             do {
-                poll_status = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
-            } while (EINTR == poll_status);
-            if (poll_status != 0) {
-                error_status = poll_status;
+                poll_errnum = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
+            } while (EINTR == poll_errnum);
+            if (poll_errnum != 0) {
+                errnum = poll_errnum;
                 goto close_connections;
             }
 
             if ((pollfds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
-                errno_t errnum = on_new_connections_readable(new_connections,
-                                                             services,
-                                                             &connection_count,
-                                                             connections);
-                if (errnum != 0) {
-                    error_status = errnum;
+                if ((errnum = on_new_connections_readable(new_connections,
+                                                          services,
+                                                          &connection_count,
+                                                          connections)) != 0) {
                     goto close_connections;
                 }
             }
@@ -700,10 +685,8 @@ static errno_t run_game(char const *process_name,
                 size_t log_size;
                 /* TODO: Allocate buffer off the stack */
                 char entry[LINTED_LOGGER_LOG_MAX];
-                errno_t errnum = linted_logger_recv_log(logger_read, entry,
-                                                        &log_size);
-                if (errnum != 0) {
-                    error_status = errnum;
+                if ((errnum = linted_logger_recv_log(logger_read, entry,
+                                                     &log_size)) != 0) {
                     goto close_connections;
                 }
 
@@ -716,24 +699,18 @@ static errno_t run_game(char const *process_name,
             if ((pollfds[WAITER].revents & POLLIN) != 0) {
                 struct waiter_message message;
 
-                {
-                    errno_t errnum = linted_io_read_all(waiter_fds[0], NULL,
-                                                        &message,
-                                                        sizeof message);
-                    if (errnum != 0) {
-                        error_status = errnum;
-                        goto close_connections;
-                    }
+                if ((errnum = linted_io_read_all(waiter_fds[0], NULL,
+                                                 &message,
+                                                 sizeof message)) != 0) {
+                    goto close_connections;
                 }
 
-                {
-                    errno_t errnum = message.errnum;
-                    if (errnum != 0) {
-                        if (errnum != ECHILD) {
-                            error_status = errnum;
-                        }
+                if ((errnum = message.errnum) != 0) {
+                    if (errnum != ECHILD) {
                         goto close_connections;
                     }
+                    errnum = 0;
+                    goto close_connections;
                 }
 
                 siginfo_t *exit_info = &message.exit_info;
@@ -742,12 +719,12 @@ static errno_t run_game(char const *process_name,
                 case CLD_DUMPED:
                 case CLD_KILLED:
                     raise(exit_info->si_status);
-                    error_status = errno;
+                    errnum = errno;
                     goto close_connections;
 
                 case CLD_EXITED:
                     if (exit_info->si_status != 0) {
-                        error_status = exit_info->si_status;
+                        errnum = exit_info->si_status;
                         goto close_connections;
                     }
                     break;
@@ -758,10 +735,8 @@ static errno_t run_game(char const *process_name,
 
                 /* If not exiting, tell the waiter to continue */
                 char dummy = 0;
-                errno_t errnum = linted_io_write_all(waiter_fds[0], NULL,
-                                                     &dummy, sizeof dummy);
-                if (errnum != 0) {
-                    error_status = errnum;
+                if ((errnum = linted_io_write_all(waiter_fds[0], NULL,
+                                                  &dummy, sizeof dummy)) != 0) {
                     goto close_connections;
                 }
             }
@@ -788,9 +763,9 @@ static errno_t run_game(char const *process_name,
                 {
                     union linted_manager_reply reply;
                     bool hungup;
-                    errno_t errnum = on_connection_readable(fd, services,
-                                                            &hungup,
-                                                            &reply);
+                    errnum = on_connection_readable(fd, services,
+                                                    &hungup,
+                                                    &reply);
                     switch (errnum) {
                     case 0:
                         if (hungup) {
@@ -802,14 +777,15 @@ static errno_t run_game(char const *process_name,
                     case EAGAIN:
                         /* Maybe the socket was only available for
                          * writing but not reading */
+                        errnum = 0;
                         continue;
 
                     case EPROTO:
                         /* Ignore the misbehaving other end */
+                        errnum = 0;
                         goto remove_connection;
 
                     default:
-                        error_status = errnum;
                         goto close_connections;
                     }
 
@@ -818,27 +794,25 @@ static errno_t run_game(char const *process_name,
                 }
 
  try_writing:
-                {
-                    errno_t errnum = on_connection_writeable(fd,
-                                                             &connection->reply);
-                    switch (errnum) {
-                    case 0:
-                        break;
+                errnum = on_connection_writeable(fd, &connection->reply);
+                switch (errnum) {
+                case 0:
+                    break;
 
-                    case EAGAIN:
-                        /* Maybe the socket was only available for
-                         * reading but not writing */
-                        continue;
+                case EAGAIN:
+                    /* Maybe the socket was only available for
+                     * reading but not writing */
+                    errnum = 0;
+                    continue;
 
-                    case EPIPE:
-                    case EPROTO:
-                        /* Ignore the misbehaving other end */
-                        goto remove_connection;
+                case EPIPE:
+                case EPROTO:
+                    /* Ignore the misbehaving other end */
+                    errnum = 0;
+                    goto remove_connection;
 
-                    default:
-                        error_status = errnum;
-                        goto close_connections;
-                    }
+                default:
+                    goto close_connections;
                 }
 
  remove_connection:
@@ -846,9 +820,9 @@ static errno_t run_game(char const *process_name,
                 --connection_count;
 
                 {
-                    errno_t errnum = linted_io_close(fd);
-                    if (errnum != 0) {
-                        error_status = errnum;
+                    errno_t close_errnum = linted_io_close(fd);
+                    if (close_errnum != 0) {
+                        errnum = close_errnum;
                         goto close_connections;
                     }
                 }
@@ -860,9 +834,9 @@ static errno_t run_game(char const *process_name,
             struct connection *const connection = &connections[ii];
             int const fd = connection->fd;
             if (fd != -1) {
-                errno_t errnum = linted_io_close(fd);
-                if (0 == error_status) {
-                    error_status = errnum;
+                errno_t close_errnum = linted_io_close(fd);
+                if (0 == errnum) {
+                    errnum = close_errnum;
                 }
             }
         }
@@ -873,96 +847,96 @@ static errno_t run_game(char const *process_name,
 
  close_waiter_fds:
     {
-        errno_t errnum = linted_io_close(waiter_fds[0]);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_io_close(waiter_fds[0]);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
     {
-        errno_t errnum = linted_io_close(waiter_fds[1]);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_io_close(waiter_fds[1]);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
  close_new_connections:
     {
-        errno_t errnum = linted_manager_close(new_connections);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_manager_close(new_connections);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
  cleanup_processes:
-    if (error_status != 0 && process_group != -1) {
-        errno_t errnum = -1 == kill(-process_group, SIGQUIT) ? errno : 0;
-        /* errnum == ESRCH is fine */
-        assert(errnum != EINVAL);
-        assert(errnum != EPERM);
+    if (errnum != 0 && process_group != -1) {
+        errno_t kill_errnum = -1 == kill(-process_group, SIGQUIT) ? errno : 0;
+        /* kill_errnum == ESRCH is fine */
+        assert(kill_errnum != EINVAL);
+        assert(kill_errnum != EPERM);
     }
 
  close_shutdowner:
     {
-        errno_t errnum = linted_shutdowner_close(simulator_shutdowner_read);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_shutdowner_close(simulator_shutdowner_read);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
     {
-        errno_t errnum = linted_shutdowner_close(simulator_shutdowner_write);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_shutdowner_close(simulator_shutdowner_write);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
  cleanup_controller_pair:
     {
-        errno_t errnum = linted_controller_close(controller_read);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_controller_close(controller_read);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
     {
-        errno_t errnum = linted_controller_close(controller_write);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_controller_close(controller_write);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
  cleanup_updater_pair:
     {
-        errno_t errnum = linted_updater_close(updater_read);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_updater_close(updater_read);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
     {
-        errno_t errnum = linted_updater_close(updater_write);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_updater_close(updater_write);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
  close_logger_pair:
     {
-        errno_t errnum = linted_logger_close(logger_read);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_logger_close(logger_read);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
     {
-        errno_t errnum = linted_updater_close(logger_write);
-        if (0 == error_status) {
-            error_status = errnum;
+        errno_t close_errnum = linted_updater_close(logger_write);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
 
-    return error_status;
+    return errnum;
 }
 
 static void *waiter_routine(void *data)
@@ -973,19 +947,20 @@ static void *waiter_routine(void *data)
         siginfo_t exit_info;
         memset(&exit_info, 0, sizeof exit_info);
 
-        errno_t wait_status;
+        errno_t errnum;
         do {
-            wait_status = -1 == waitid(P_PGID, waiter_data->process_group,
-                                       &exit_info, WEXITED) ? errno : 0;
-            assert(wait_status != EINVAL);
-        } while (EINTR == wait_status);
+            int wait_status = waitid(P_PGID, waiter_data->process_group,
+                                     &exit_info, WEXITED);
+            errnum = -1 == wait_status ? errno : 0;
+            assert(errnum != EINVAL);
+        } while (EINTR == errnum);
 
         {
             struct waiter_message message;
             memset(&message, 0, sizeof message);
 
             message.exit_info = exit_info;
-            message.errnum = wait_status;
+            message.errnum = errnum;
 
             linted_io_write_all(waiter_data->fd, NULL,
                                 &message, sizeof message);
