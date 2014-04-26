@@ -1267,15 +1267,31 @@ static int waiter_fd(struct waiter const * waiter)
 
 static errno_t waiter_destroy(struct waiter const * waiter)
 {
-    pthread_cancel(waiter->pthread);
-    pthread_join(waiter->pthread, NULL);
+    errno_t errnum = 0;
+
+    errnum = pthread_cancel(waiter->pthread);
+    assert(errnum != ESRCH);
+
+    errnum = pthread_join(waiter->pthread, NULL);
+    assert(errnum != ESRCH);
 
     free(waiter->waiter_data);
 
-    linted_io_close(waiter->init_wait_fd);
-    linted_io_close(waiter->waiter_wait_fd);
+    {
+        errno_t close_errnum = linted_io_close(waiter->init_wait_fd);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
+    }
 
-    return 0;
+    {
+        errno_t close_errnum = linted_io_close(waiter->waiter_wait_fd);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
+    }
+
+    return errnum;
 }
 
 static errno_t linted_help(int fildes, char const *program_name,
