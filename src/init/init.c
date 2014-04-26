@@ -64,15 +64,21 @@ struct service {
     pid_t pid;
 };
 
-struct sim_config {
+enum service_type {
+    SERVICE_INIT,
+    SERVICE_PROCESS
+};
+
+struct service_process {
+    enum service_type type;
+    char const *const *environment;
     char const *path;
     int working_directory;
 };
 
-struct gui_config {
-    char const *const *environment;
-    char const *path;
-    int working_directory;
+union service_config {
+    enum service_type type;
+    struct service_process process;
 };
 
 static errno_t on_new_connections_readable(linted_manager new_connections,
@@ -87,8 +93,7 @@ static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
 static errno_t run_game(char const *process_name,
-                        struct sim_config const *sim_config,
-                        struct gui_config const *gui_config);
+                        union service_config const *config);
 
 static errno_t linted_help(int fildes, char const *program_name,
                            struct linted_str package_name,
@@ -242,16 +247,28 @@ It is insecure to run a game as root!\n"));
 
     errno_t game_status;
     {
-        struct sim_config sim_config = {
-            .path = simulator_path,
-            .working_directory = cwd
+        union service_config configuration[] = {
+            [LINTED_MANAGER_SERVICE_INIT] = {
+                .type = SERVICE_INIT
+            },
+            [LINTED_MANAGER_SERVICE_SIMULATOR] = {
+                .process = {
+                    .type = SERVICE_PROCESS,
+                    .environment = (char const *const[]){NULL},
+                    .path = simulator_path,
+                    .working_directory = cwd
+                }
+            },
+            [LINTED_MANAGER_SERVICE_GUI] = {
+                .process = {
+                    .type = SERVICE_PROCESS,
+                    .environment = (char const *const[]){display, NULL},
+                    .path = gui_path,
+                    .working_directory = cwd
+                }
+            }
         };
-        struct gui_config gui_config = {
-            .environment = (char const *const[]){display, NULL},
-            .path = gui_path,
-            .working_directory = cwd
-        };
-        game_status = run_game(program_name, &sim_config, &gui_config);
+        game_status = run_game(program_name, configuration);
     }
     if (game_status != 0) {
         succesfully_executing = -1;
@@ -277,8 +294,7 @@ It is insecure to run a game as root!\n"));
 }
 
 static errno_t run_game(char const *process_name,
-                        struct sim_config const *sim_config,
-                        struct gui_config const *gui_config)
+                        union service_config const *config)
 {
     errno_t errnum = 0;
 
@@ -415,6 +431,7 @@ static errno_t run_game(char const *process_name,
             }
 
             {
+                struct service_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
                 char *args[] = {
                     (char *)gui_config->path,
                     logger_option,
@@ -488,6 +505,7 @@ static errno_t run_game(char const *process_name,
             }
 
             {
+                struct service_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
                 char *args[] = {
                     (char *)sim_config->path,
                     logger_option,
@@ -496,14 +514,13 @@ static errno_t run_game(char const *process_name,
                     controller_option,
                     NULL
                 };
-                char *envp[] = { NULL };
 
                 pid_t process;
                 if ((errnum = linted_spawn(&process,
                                            sim_config->working_directory,
                                            sim_config->path,
                                            file_actions, attr, args,
-                                           envp)) != 0) {
+                                           (char **)sim_config->environment)) != 0) {
                     goto destroy_sim_spawnattr;
                 }
 
@@ -881,7 +898,13 @@ static errno_t run_game(char const *process_name,
 
  kill_processes:
     if (errnum != 0) {
-        for (size_t ii = 1; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+            union service_config const * service_config = &config[ii];
+
+            if (SERVICE_INIT == service_config->type) {
+                continue;
+            }
+
             pid_t pid = services[ii].pid;
 
             if (-1 == pid) {
