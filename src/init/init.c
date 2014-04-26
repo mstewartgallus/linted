@@ -627,35 +627,39 @@ static errno_t run_game(char const *process_name,
                 CONNECTION
             };
             /* TODO: Allocate off the stack */
+
             struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS] = {
-                [GUI_WAITER] = {.fd = waiter_fd(&gui_waiter),.events = POLLIN},
-                [SIMULATOR_WAITER] = {.fd = waiter_fd(&simulator_waiter),.events = POLLIN},
+                [GUI_WAITER] = {
+                    .fd = -1 == services[LINTED_MANAGER_SERVICE_GUI].pid
+                    ? -1 : waiter_fd(&gui_waiter),
+                    .events = POLLIN
+                },
+                [SIMULATOR_WAITER] =  {
+                    .fd = -1 == services[LINTED_MANAGER_SERVICE_SIMULATOR].pid
+                    ? -1 : waiter_fd(&simulator_waiter),
+                    .events = POLLIN
+                },
                 [LOGGER] = {.fd = logger_read,.events = POLLIN},
                 [NEW_CONNECTIONS] = {.fd = new_connections,.events = POLLIN}
             };
-            /* TODO: Allocate off the stack */
-            size_t connection_ids[MAX_MANAGE_CONNECTIONS];
 
-            size_t active_connections = 0;
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
                 struct connection *connection = &connections[ii];
-                if (connection->fd != -1) {
-                    struct pollfd *pollfd =
-                        &pollfds[CONNECTION + active_connections];
-                    pollfd->fd = connection->fd;
-                    pollfd->events =
-                        connection->has_reply_ready ? POLLOUT : POLLIN;
-                    connection_ids[active_connections] = ii;
-                    ++active_connections;
+                struct pollfd *pollfd = &pollfds[CONNECTION + ii];
+
+                if (-1 == connection->fd) {
+                    pollfd->fd = -1;
+                    continue;
                 }
+
+                pollfd->fd = connection->fd;
+                pollfd->events = connection->has_reply_ready ? POLLOUT : POLLIN;
             }
 
             errno_t poll_errnum;
-            size_t constantfds =
-                LINTED_ARRAY_SIZE(pollfds) - MAX_MANAGE_CONNECTIONS;
-            size_t pollfd_count = constantfds + active_connections;
             do {
-                poll_errnum = -1 == poll(pollfds, pollfd_count, -1) ? errno : 0;
+                int poll_status = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
+                poll_errnum = -1 == poll_status ? errno : 0;
             } while (EINTR == poll_errnum);
             if (poll_errnum != 0) {
                 errnum = poll_errnum;
@@ -766,11 +770,14 @@ static errno_t run_game(char const *process_name,
                 }
             }
 
-            for (size_t ii = 0; ii < active_connections; ++ii) {
-                size_t connection_id = connection_ids[ii];
-                struct connection *connection = &connections[connection_id];
+            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
+                struct connection *connection = &connections[ii];
 
                 int fd = connection->fd;
+
+                if (-1 == fd) {
+                    continue;
+                }
 
                 if (connection->has_reply_ready) {
                     if ((pollfds[CONNECTION + ii].revents & POLLOUT) != 0) {
