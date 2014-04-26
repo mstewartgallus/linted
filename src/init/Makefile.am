@@ -21,13 +21,14 @@ linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 linted_LDADD=\
   src/io/libio.la\
   src/locale/liblocale.la\
+  src/spawn/libspawn.la\
   src/util/libutil.la\
+  src/waiter/libwaiter.la\
   \
   src/controller/libcontroller.la\
   src/logger/liblogger.la\
   src/manager/libmanager.la\
   src/shutdowner/libshutdowner.la\
-  src/spawn/libspawn.la\
   src/updater/libupdater.la
 
 BUILT_SOURCES+=%D%/binaries.h
