@@ -433,15 +433,15 @@ static errno_t on_timer_readable(int timer,
     for (size_t ii = 0; ii < ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
-                        2 * (int_fast32_t) action_state->x);
+                        8 * (int_fast32_t) action_state->x);
 
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        2 * (int_fast32_t) action_state->z);
+                        8 * (int_fast32_t) action_state->z);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,
-                        -2 * (int_fast32_t) action_state->jumping);
+                        -8 * (int_fast32_t) action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
         simulate_clamped_rotation(&simulator_state->y_rotation,
@@ -542,7 +542,7 @@ static void simulate_forces(int_fast32_t * position,
     int_fast32_t guess_velocity = saturate(((int_fast64_t) thrust)
                                            + old_velocity);
 
-    int_fast32_t friction = min_int32(absolute(guess_velocity), 1)
+    int_fast32_t friction = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
         * -sign(guess_velocity);
 
     int_fast32_t new_velocity = saturate(((int_fast64_t) guess_velocity)

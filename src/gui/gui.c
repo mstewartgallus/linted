@@ -767,9 +767,9 @@ static errno_t on_updater_readable(linted_updater updater,
     gui_state->x_rotation = update.x_rotation * (2 * M_PI / UINT32_MAX);
     gui_state->y_rotation = update.y_rotation * (2 * M_PI / UINT32_MAX);
 
-    gui_state->x_position = update.x_position * (1 / (double)255);
-    gui_state->y_position = update.y_position * (1 / (double)255);
-    gui_state->z_position = update.z_position * (1 / (double)255);
+    gui_state->x_position = update.x_position * (1 / (double)2048);
+    gui_state->y_position = update.y_position * (1 / (double)2048);
+    gui_state->z_position = update.z_position * (1 / (double)2048);
 
     return 0;
 }
