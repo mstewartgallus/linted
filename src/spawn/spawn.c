@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -58,7 +59,12 @@ struct linted_spawn_attr {
     bool setpgroup:1;
 };
 
-static void exit_with_error(int error_status_fd_write, errno_t errnum);
+struct spawn_error {
+    errno_t errnum;
+};
+
+static void exit_with_error(volatile struct spawn_error * spawn_error,
+                            errno_t errnum);
 
 errno_t linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -144,16 +150,22 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
                      struct linted_spawn_attr const *attr,
                      char *const argv[], char *const envp[])
 {
-    int error_status_fd_read;
-    int error_status_fd_write;
-    {
-        int error_status_fds[2];
-        if (-1 == pipe2(error_status_fds, O_CLOEXEC)) {
-            return errno;
-        }
-        error_status_fd_read = error_status_fds[0];
-        error_status_fd_write = error_status_fds[1];
+    /*
+     * So adddup2 works use memory mapping instead of a pipe to
+     * communicate an error.
+     */
+    long spawn_error_length = sysconf(_SC_PAGE_SIZE);
+    if (-1 == spawn_error_length) {
+        spawn_error_length = sizeof (struct spawn_error);
     }
+    volatile struct spawn_error * spawn_error = mmap(NULL, spawn_error_length,
+                                                     PROT_READ | PROT_WRITE,
+                                                     MAP_SHARED | MAP_ANONYMOUS,
+                                                     -1, 0);
+    if (MAP_FAILED == spawn_error) {
+        return errno;
+    }
+    spawn_error->errnum = 0;
 
     pid_t child = fork();
     if (child != 0) {
@@ -161,7 +173,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
 
         if (-1 == child) {
             error_status = errno;
-            goto close_fds;
+            goto unmap_spawn_error;
         }
 
         {
@@ -175,7 +187,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
                 } while (EINTR == errnum);
                 if (errnum != 0) {
                     error_status = errnum;
-                    goto close_fds;
+                    goto unmap_spawn_error;
                 }
             }
 
@@ -186,11 +198,11 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
                     switch (exit_status) {
                     case 0:
                         error_status = EINVAL;
-                        goto close_fds;
+                        goto unmap_spawn_error;
 
                     default:
                         error_status = ENOSYS;
-                        goto close_fds;
+                        goto unmap_spawn_error;
                     }
                 }
 
@@ -199,25 +211,16 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
                     errno_t signo = info.si_status;
                     if (signo != SIGKILL) {
                         error_status = ENOSYS;
-                        goto close_fds;
+                        goto unmap_spawn_error;
                     }
 
-                    errno_t errnum;
-
-                    errno_t read_status =
-                        linted_io_read_all(error_status_fd_read, NULL,
-                                           &errnum, sizeof errnum);
-                    if (read_status != 0) {
-                        error_status = read_status;
-                    } else {
-                        error_status = errnum;
-                    }
-                    goto close_fds;
+                    error_status = spawn_error->errnum;
+                    goto unmap_spawn_error;
                 }
 
             case CLD_DUMPED:
                 error_status = ENOSYS;
-                goto close_fds;
+                goto unmap_spawn_error;
 
             case CLD_STOPPED:
                 if (-1 == kill(child, SIGCONT)) {
@@ -234,18 +237,10 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
             }
         }
 
- close_fds:
-        {
-            errno_t errnum = linted_io_close(error_status_fd_read);
+ unmap_spawn_error:
+        if (-1 == munmap((void*) spawn_error, spawn_error_length)) {
             if (0 == error_status) {
-                error_status = errnum;
-            }
-        }
-
-        {
-            errno_t errnum = linted_io_close(error_status_fd_write);
-            if (0 == error_status) {
-                error_status = errnum;
+                error_status = errno;
             }
         }
 
@@ -258,10 +253,17 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
             if (-1 == setpgid(0, attr->pgroup)) {
                 errno_t errnum = errno;
                 if (errnum != EACCES) {
-                    exit_with_error(error_status_fd_write, errnum);
+                    exit_with_error(spawn_error, errnum);
                 }
             }
         }
+    }
+
+    /* This must be done before file actions to prevent the wrong
+     * directory being used.
+     */
+    if (-1 == fchdir(dirfd)) {
+        exit_with_error(spawn_error, errno);
     }
 
     if (file_actions != NULL) {
@@ -271,18 +273,14 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
             case FILE_ACTION_ADDDUP2:
                 if (-1 == dup2(action->adddup2.oldfildes,
                                action->adddup2.newfildes)) {
-                    exit_with_error(error_status_fd_write, errno);
+                    exit_with_error(spawn_error, errno);
                 }
                 break;
 
             default:
-                exit_with_error(error_status_fd_write, EINVAL);
+                exit_with_error(spawn_error, EINVAL);
             }
         }
-    }
-
-    if (-1 == fchdir(dirfd)) {
-        exit_with_error(error_status_fd_write, errno);
     }
 
     /* Bizarre hack to achieve error reporting on a bad execve */
@@ -291,22 +289,22 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
     {
         int stop_fds[2];
         if (-1 == pipe2(stop_fds, O_CLOEXEC)) {
-            exit_with_error(error_status_fd_write, errno);
+            exit_with_error(spawn_error, errno);
         }
         stop_fd_read = stop_fds[0];
         stop_fd_write = stop_fds[1];
     }
 
     if (-1 == fcntl(stop_fd_read, F_SETSIG, (long)SIGSTOP)) {
-        exit_with_error(error_status_fd_write, errno);
+        exit_with_error(spawn_error, errno);
     }
 
     if (-1 == fcntl(stop_fd_read, F_SETOWN, (long)getpid())) {
-        exit_with_error(error_status_fd_write, errno);
+        exit_with_error(spawn_error, errno);
     }
 
     if (-1 == fcntl(stop_fd_read, F_SETFL, (long)O_ASYNC)) {
-        exit_with_error(error_status_fd_write, errno);
+        exit_with_error(spawn_error, errno);
     }
 
     /*
@@ -314,18 +312,19 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
      * fd.
      */
     if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long)stop_fd_write)) {
-        exit_with_error(error_status_fd_write, errno);
+        exit_with_error(spawn_error, errno);
     }
 
     execve(path, argv, envp);
 
-    exit_with_error(error_status_fd_write, errno);
+    exit_with_error(spawn_error, errno);
     return 0;
 }
 
-static void exit_with_error(int error_status_fd_write, errno_t errnum)
+static void exit_with_error(volatile struct spawn_error * spawn_error,
+                            errno_t errnum)
 {
-    linted_io_write_all(error_status_fd_write, NULL, &errnum, sizeof errnum);
+    spawn_error->errnum = errnum;
 
     raise(SIGKILL);
 
