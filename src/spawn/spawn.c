@@ -253,27 +253,31 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         return error_status;
     }
 
-    if (attr->setpgroup) {
-        if (-1 == setpgid(0, attr->pgroup)) {
-            errno_t errnum = errno;
-            if (errnum != EACCES) {
-                exit_with_error(error_status_fd_write, errnum);
+    if (attr != NULL) {
+        if (attr->setpgroup) {
+            if (-1 == setpgid(0, attr->pgroup)) {
+                errno_t errnum = errno;
+                if (errnum != EACCES) {
+                    exit_with_error(error_status_fd_write, errnum);
+                }
             }
         }
     }
 
-    for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
-        union file_action const *action = &file_actions->actions[ii];
-        switch (action->type) {
-        case FILE_ACTION_ADDDUP2:
-            if (-1 == dup2(action->adddup2.oldfildes,
-                           action->adddup2.newfildes)) {
-                exit_with_error(error_status_fd_write, errno);
-            }
-            break;
+    if (file_actions != NULL) {
+        for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
+            union file_action const *action = &file_actions->actions[ii];
+            switch (action->type) {
+            case FILE_ACTION_ADDDUP2:
+                if (-1 == dup2(action->adddup2.oldfildes,
+                               action->adddup2.newfildes)) {
+                    exit_with_error(error_status_fd_write, errno);
+                }
+                break;
 
-        default:
-            exit_with_error(error_status_fd_write, EINVAL);
+            default:
+                exit_with_error(error_status_fd_write, EINVAL);
+            }
         }
     }
 
@@ -281,6 +285,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         exit_with_error(error_status_fd_write, errno);
     }
 
+    /* Bizarre hack to achieve error reporting on a bad execve */
     int stop_fd_read;
     int stop_fd_write;
     {

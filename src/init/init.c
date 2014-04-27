@@ -383,7 +383,7 @@ static errno_t run_game(char const *process_name,
         }
 
         if ((errnum = linted_io_dummy(&controller_dummy, O_CLOEXEC)) != 0) {
-            goto close_shutdowner_pair_dummy;
+            goto close_shutdowner_dummy;
         }
 
         sprintf(logger_option, "--logger=%i", logger_dummy);
@@ -394,40 +394,35 @@ static errno_t run_game(char const *process_name,
         {
             struct linted_spawn_file_actions *file_actions;
             if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto kill_processes;
-            }
-
-            struct linted_spawn_attr *attr;
-            if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
-                goto destroy_gui_file_actions;
+                goto close_controller_dummy;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             logger_write,
                                                             logger_dummy))
                 != 0) {
-                goto destroy_spawnattr;
+                goto destroy_gui_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             updater_read,
                                                             updater_dummy))
                 != 0) {
-                goto destroy_spawnattr;
+                goto destroy_gui_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             shutdowner_write,
                                                             shutdowner_dummy))
                 != 0) {
-                goto destroy_spawnattr;
+                goto destroy_gui_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             controller_write,
                                                             controller_dummy))
                 != 0) {
-                goto destroy_spawnattr;
+                goto destroy_gui_file_actions;
             }
 
             {
@@ -445,17 +440,14 @@ static errno_t run_game(char const *process_name,
                 if ((errnum = linted_spawn(&gui_process,
                                            gui_config->working_directory,
                                            gui_config->path,
-                                           file_actions, attr, args,
+                                           file_actions, NULL, args,
                                            (char **)gui_config->environment)) !=
                     0) {
-                    goto destroy_spawnattr;
+                    goto destroy_gui_file_actions;
                 }
 
                 services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
             }
-
- destroy_spawnattr:
-            linted_spawn_attr_destroy(attr);
 
  destroy_gui_file_actions:
             linted_spawn_file_actions_destroy(file_actions);
@@ -468,40 +460,35 @@ static errno_t run_game(char const *process_name,
         {
             struct linted_spawn_file_actions *file_actions;
             if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto kill_processes;
-            }
-
-            struct linted_spawn_attr *attr;
-            if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
-                goto destroy_sim_file_actions;
+                goto close_controller_dummy;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             logger_write,
                                                             logger_dummy))
                 != 0) {
-                goto destroy_spawnattr;
+                goto destroy_sim_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             updater_write,
                                                             updater_dummy))
                 != 0) {
-                goto destroy_sim_spawnattr;
+                goto destroy_sim_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             shutdowner_read,
                                                             shutdowner_dummy))
                 != 0) {
-                goto destroy_sim_spawnattr;
+                goto destroy_sim_file_actions;
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             controller_read,
                                                             controller_dummy))
                 != 0) {
-                goto destroy_sim_spawnattr;
+                goto destroy_sim_file_actions;
             }
 
             {
@@ -519,16 +506,13 @@ static errno_t run_game(char const *process_name,
                 if ((errnum = linted_spawn(&process,
                                            sim_config->working_directory,
                                            sim_config->path,
-                                           file_actions, attr, args,
+                                           file_actions, NULL, args,
                                            (char **)sim_config->environment)) != 0) {
-                    goto destroy_sim_spawnattr;
+                    goto destroy_sim_file_actions;
                 }
 
                 services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
             }
-
- destroy_sim_spawnattr:
-            linted_spawn_attr_destroy(attr);
 
  destroy_sim_file_actions:
             linted_spawn_file_actions_destroy(file_actions);
@@ -542,7 +526,7 @@ static errno_t run_game(char const *process_name,
             }
         }
 
- close_shutdowner_pair_dummy:
+ close_shutdowner_dummy:
         {
             errno_t close_errnum = linted_io_close(shutdowner_dummy);
             if (0 == errnum) {
