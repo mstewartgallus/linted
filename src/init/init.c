@@ -33,10 +33,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <poll.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
