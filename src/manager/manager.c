@@ -52,6 +52,9 @@ errno_t linted_manager_bind(linted_manager * manager, int backlog,
 
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
+        if ('@' == address.sun_path[0]) {
+            address.sun_path[0] = '\0';
+        }
 
         if (-1 == bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
@@ -94,6 +97,10 @@ errno_t linted_manager_connect(linted_manager * manager,
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
 
+        if ('@' == address.sun_path[0]) {
+            address.sun_path[0] = '\0';
+        }
+
         if (-1 == connect(sock, (void *)&address,
                           sizeof(sa_family_t) + path_len)) {
             goto close_sock;
@@ -130,6 +137,10 @@ errno_t linted_manager_path(linted_manager manager,
 
     *len = addr_len - sizeof(sa_family_t);
     memcpy(buf, address.sun_path, *len);
+
+    if ('\0' == buf[0]) {
+        buf[0] = '@';
+    }
 
     return 0;
 }

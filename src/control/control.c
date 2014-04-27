@@ -200,12 +200,7 @@ static int run_status(char const *program_name, int argc, char **argv)
 
     {
         linted_manager manager;
-        char buf[LINTED_MANAGER_PATH_MAX];
-
-        buf[0] = '\0';
-        memcpy(buf + 1, path, path_len);
-
-        errno_t errnum = linted_manager_connect(&manager, buf, path_len + 1);
+        errno_t errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not create socket"), errnum);
@@ -343,12 +338,7 @@ static int run_stop(char const *program_name, int argc, char **argv)
 
     {
         linted_manager manager;
-        char buf[LINTED_MANAGER_PATH_MAX];
-
-        buf[0] = '\0';
-        memcpy(buf + 1, path, path_len);
-
-        errno_t errnum = linted_manager_connect(&manager, buf, path_len + 1);
+        errno_t errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not create socket"), errnum);

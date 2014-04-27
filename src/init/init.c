@@ -569,7 +569,7 @@ static errno_t run_game(char const *process_name,
 
         linted_io_write_str(STDOUT_FILENO, NULL,
                             LINTED_STR("management socket: "));
-        linted_io_write_all(STDOUT_FILENO, NULL, buf + 1, len - 1);
+        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
