@@ -77,8 +77,9 @@ enum service_type {
 
 struct service_process {
     enum service_type type;
-    char const *const *environment;
     char const *path;
+    char const *const *arguments;
+    char const *const *environment;
     int working_directory;
 };
 
@@ -253,24 +254,40 @@ It is insecure to run a game as root!\n"));
 
     errno_t game_status;
     {
-        union service_config configuration[] = {
+        union service_config const configuration[] = {
             [LINTED_MANAGER_SERVICE_INIT] = {
                 .type = SERVICE_INIT
             },
             [LINTED_MANAGER_SERVICE_SIMULATOR] = {
                 .process = {
                     .type = SERVICE_PROCESS,
-                    .environment = (char const *const[]){NULL},
+                    .working_directory = cwd,
                     .path = simulator_path,
-                    .working_directory = cwd
+                    .arguments = (char const * const[]) {
+                        simulator_path,
+                        "--logger=" XSTR(LOGGER_FD),
+                        "--updater=" XSTR(UPDATER_FD),
+                        "--shutdowner=" XSTR(SHUTDOWNER_FD),
+                        "--controller=" XSTR(CONTROLLER_FD),
+                        NULL
+                    },
+                    .environment = (char const *const[]){NULL}
                 }
             },
             [LINTED_MANAGER_SERVICE_GUI] = {
                 .process = {
                     .type = SERVICE_PROCESS,
-                    .environment = (char const *const[]){display, NULL},
+                    .working_directory = cwd,
                     .path = gui_path,
-                    .working_directory = cwd
+                    .arguments = (char const * const[]) {
+                        gui_path,
+                        "--logger=" XSTR(LOGGER_FD),
+                        "--updater=" XSTR(UPDATER_FD),
+                        "--shutdowner=" XSTR(SHUTDOWNER_FD),
+                        "--controller=" XSTR(CONTROLLER_FD),
+                        NULL
+                    },
+                    .environment = (char const *const[]){display, NULL}
                 }
             }
         };
@@ -400,22 +417,14 @@ static errno_t run_game(char const *process_name,
 
         {
             struct service_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
-            char const * const args[] = {
-                gui_config->path,
-                "--logger=" XSTR(LOGGER_FD),
-                "--updater=" XSTR(UPDATER_FD),
-                "--shutdowner=" XSTR(SHUTDOWNER_FD),
-                "--controller=" XSTR(CONTROLLER_FD),
-                NULL
-            };
 
             pid_t gui_process;
             if ((errnum = linted_spawn(&gui_process,
                                        gui_config->working_directory,
                                        gui_config->path,
-                                       file_actions, NULL, (char **)args,
-                                       (char **)gui_config->environment)) !=
-                0) {
+                                       file_actions, NULL,
+                                       (char **)gui_config->arguments,
+                                       (char **)gui_config->environment)) != 0) {
                 goto destroy_gui_file_actions;
             }
 
@@ -466,21 +475,13 @@ static errno_t run_game(char const *process_name,
 
         {
             struct service_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
-            char const * const args[] = {
-                sim_config->path,
-                "--logger=" XSTR(LOGGER_FD),
-                "--updater=" XSTR(UPDATER_FD),
-                "--shutdowner=" XSTR(SHUTDOWNER_FD),
-                "--controller=" XSTR(CONTROLLER_FD),
-                NULL
-            };
 
             pid_t process;
             if ((errnum = linted_spawn(&process,
                                        sim_config->working_directory,
                                        sim_config->path,
                                        file_actions, NULL,
-                                       (char **)args,
+                                       (char **)sim_config->arguments,
                                        (char **)sim_config->environment)) != 0) {
                 goto destroy_sim_file_actions;
             }
@@ -845,7 +846,6 @@ static errno_t run_game(char const *process_name,
         }
     }
 
- close_shutdowner_pair:
     {
         errno_t close_errnum = linted_shutdowner_close(shutdowner_read);
         if (0 == errnum) {
