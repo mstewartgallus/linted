@@ -52,7 +52,13 @@
 #define SIMULATOR_OPTION "--simulator"
 #define GUI_OPTION "--gui"
 
-#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
+#define LOGGER_FD 4
+#define UPDATER_FD 5
+#define CONTROLLER_FD 6
+#define SHUTDOWNER_FD 7
+
+#define STR(X) #X
+#define XSTR(X) STR(X)
 
 struct connection {
     union linted_manager_reply reply;
@@ -359,200 +365,135 @@ static errno_t run_game(char const *process_name,
     };
 
     {
-        int logger_dummy;
-        int updater_dummy;
-        int shutdowner_dummy;
-        int controller_dummy;
-
-        char logger_option[] = "--logger=" INT_STRING_PADDING;
-        char updater_option[] = "--updater=" INT_STRING_PADDING;
-        char shutdowner_option[] = "--shutdowner=" INT_STRING_PADDING;
-        char controller_option[] = "--controller=" INT_STRING_PADDING;
-
-        /* Create dummy file descriptors to be overwritten later on */
-        if ((errnum = linted_io_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
-            goto close_shutdowner_pair;
+        struct linted_spawn_file_actions *file_actions;
+        if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
+            goto kill_processes;
         }
 
-        if ((errnum = linted_io_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
-            goto close_logger_dummy;
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        logger_write,
+                                                        LOGGER_FD))
+            != 0) {
+            goto destroy_gui_file_actions;
         }
 
-        if ((errnum = linted_io_dummy(&shutdowner_dummy, O_CLOEXEC)) != 0) {
-            goto close_updater_dummy;
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        updater_read,
+                                                        UPDATER_FD))
+            != 0) {
+            goto destroy_gui_file_actions;
         }
 
-        if ((errnum = linted_io_dummy(&controller_dummy, O_CLOEXEC)) != 0) {
-            goto close_shutdowner_dummy;
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        shutdowner_write,
+                                                        SHUTDOWNER_FD))
+            != 0) {
+            goto destroy_gui_file_actions;
         }
 
-        sprintf(logger_option, "--logger=%i", logger_dummy);
-        sprintf(updater_option, "--updater=%i", updater_dummy);
-        sprintf(shutdowner_option, "--shutdowner=%i", shutdowner_dummy);
-        sprintf(controller_option, "--controller=%i", controller_dummy);
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        controller_write,
+                                                        CONTROLLER_FD))
+            != 0) {
+            goto destroy_gui_file_actions;
+        }
 
         {
-            struct linted_spawn_file_actions *file_actions;
-            if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto close_controller_dummy;
-            }
+            struct service_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
+            char const * const args[] = {
+                gui_config->path,
+                "--logger=" XSTR(LOGGER_FD),
+                "--updater=" XSTR(UPDATER_FD),
+                "--shutdowner=" XSTR(SHUTDOWNER_FD),
+                "--controller=" XSTR(CONTROLLER_FD),
+                NULL
+            };
 
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            logger_write,
-                                                            logger_dummy))
-                != 0) {
+            pid_t gui_process;
+            if ((errnum = linted_spawn(&gui_process,
+                                       gui_config->working_directory,
+                                       gui_config->path,
+                                       file_actions, NULL, (char **)args,
+                                       (char **)gui_config->environment)) !=
+                0) {
                 goto destroy_gui_file_actions;
             }
 
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            updater_read,
-                                                            updater_dummy))
-                != 0) {
-                goto destroy_gui_file_actions;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            shutdowner_write,
-                                                            shutdowner_dummy))
-                != 0) {
-                goto destroy_gui_file_actions;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            controller_write,
-                                                            controller_dummy))
-                != 0) {
-                goto destroy_gui_file_actions;
-            }
-
-            {
-                struct service_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
-                char *args[] = {
-                    (char *)gui_config->path,
-                    logger_option,
-                    updater_option,
-                    shutdowner_option,
-                    controller_option,
-                    NULL
-                };
-
-                pid_t gui_process;
-                if ((errnum = linted_spawn(&gui_process,
-                                           gui_config->working_directory,
-                                           gui_config->path,
-                                           file_actions, NULL, args,
-                                           (char **)gui_config->environment)) !=
-                    0) {
-                    goto destroy_gui_file_actions;
-                }
-
-                services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
-            }
-
- destroy_gui_file_actions:
-            linted_spawn_file_actions_destroy(file_actions);
-
-            if (errnum != 0) {
-                goto close_controller_dummy;
-            }
+            services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
         }
 
-        {
-            struct linted_spawn_file_actions *file_actions;
-            if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-                goto close_controller_dummy;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            logger_write,
-                                                            logger_dummy))
-                != 0) {
-                goto destroy_sim_file_actions;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            updater_write,
-                                                            updater_dummy))
-                != 0) {
-                goto destroy_sim_file_actions;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            shutdowner_read,
-                                                            shutdowner_dummy))
-                != 0) {
-                goto destroy_sim_file_actions;
-            }
-
-            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                            controller_read,
-                                                            controller_dummy))
-                != 0) {
-                goto destroy_sim_file_actions;
-            }
-
-            {
-                struct service_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
-                char *args[] = {
-                    (char *)sim_config->path,
-                    logger_option,
-                    updater_option,
-                    shutdowner_option,
-                    controller_option,
-                    NULL
-                };
-
-                pid_t process;
-                if ((errnum = linted_spawn(&process,
-                                           sim_config->working_directory,
-                                           sim_config->path,
-                                           file_actions, NULL, args,
-                                           (char **)sim_config->environment)) != 0) {
-                    goto destroy_sim_file_actions;
-                }
-
-                services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
-            }
-
- destroy_sim_file_actions:
-            linted_spawn_file_actions_destroy(file_actions);
-        }
-
- close_controller_dummy:
-        {
-            errno_t close_errnum = linted_io_close(controller_dummy);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-        }
-
- close_shutdowner_dummy:
-        {
-            errno_t close_errnum = linted_io_close(shutdowner_dummy);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-        }
-
- close_updater_dummy:
-        {
-            errno_t close_errnum = linted_io_close(updater_dummy);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-        }
-
- close_logger_dummy:
-        {
-            errno_t close_errnum = linted_io_close(logger_dummy);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-        }
+    destroy_gui_file_actions:
+        linted_spawn_file_actions_destroy(file_actions);
 
         if (errnum != 0) {
             goto kill_processes;
         }
+    }
+
+    {
+        struct linted_spawn_file_actions *file_actions;
+        if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
+            goto kill_processes;
+        }
+
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        logger_write,
+                                                        LOGGER_FD))
+            != 0) {
+            goto destroy_sim_file_actions;
+        }
+
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        updater_write,
+                                                        UPDATER_FD))
+            != 0) {
+            goto destroy_sim_file_actions;
+        }
+
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        shutdowner_read,
+                                                        SHUTDOWNER_FD))
+            != 0) {
+            goto destroy_sim_file_actions;
+        }
+
+        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                        controller_read,
+                                                        CONTROLLER_FD))
+            != 0) {
+            goto destroy_sim_file_actions;
+        }
+
+        {
+            struct service_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
+            char const * const args[] = {
+                sim_config->path,
+                "--logger=" XSTR(LOGGER_FD),
+                "--updater=" XSTR(UPDATER_FD),
+                "--shutdowner=" XSTR(SHUTDOWNER_FD),
+                "--controller=" XSTR(CONTROLLER_FD),
+                NULL
+            };
+
+            pid_t process;
+            if ((errnum = linted_spawn(&process,
+                                       sim_config->working_directory,
+                                       sim_config->path,
+                                       file_actions, NULL,
+                                       (char **)args,
+                                       (char **)sim_config->environment)) != 0) {
+                goto destroy_sim_file_actions;
+            }
+
+            services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
+        }
+
+    destroy_sim_file_actions:
+        linted_spawn_file_actions_destroy(file_actions);
+    }
+
+    if (errnum != 0) {
+        goto kill_processes;
     }
 
     linted_manager new_connections;
