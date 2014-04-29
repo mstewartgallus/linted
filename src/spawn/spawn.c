@@ -154,10 +154,11 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
      * So adddup2 works use memory mapping instead of a pipe to
      * communicate an error.
      */
-    long spawn_error_length = sysconf(_SC_PAGE_SIZE);
-    if (-1 == spawn_error_length) {
-        spawn_error_length = sizeof (struct spawn_error);
-    }
+    long page_size = sysconf(_SC_PAGESIZE);
+
+    /* Align size to the page length  */
+    size_t spawn_error_length = ((sizeof (struct spawn_error) + page_size - 1) / page_size) * page_size;
+
     volatile struct spawn_error * spawn_error = mmap(NULL, spawn_error_length,
                                                      PROT_READ | PROT_WRITE,
                                                      MAP_SHARED | MAP_ANONYMOUS,
