@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
@@ -50,30 +51,16 @@
 #define SIMULATOR_OPTION "--simulator"
 #define GUI_OPTION "--gui"
 
-#define LOGGER_FD 4
-#define UPDATER_FD 5
-#define CONTROLLER_FD 6
-#define SHUTDOWNER_FD 7
-
 #define STR(X) #X
 #define XSTR(X) STR(X)
 
-struct connection {
-    union linted_manager_reply reply;
-    int fd;
-    bool has_reply_ready;
-};
-
-struct service {
-    pid_t pid;
-};
-
 enum service_type {
     SERVICE_INIT,
-    SERVICE_PROCESS
+    SERVICE_PROCESS,
+    SERVICE_FILE_PAIR
 };
 
-struct service_process {
+struct service_config_process {
     enum service_type type;
     char const *path;
     char const *const *arguments;
@@ -81,24 +68,67 @@ struct service_process {
     int working_directory;
 };
 
-union service_config {
+struct service_config_file_pair {
     enum service_type type;
-    struct service_process process;
+    errno_t (*generator)(int fildes[2]);
 };
 
+union service_config {
+    enum service_type type;
+    struct service_config_process process;
+    struct service_config_file_pair file_pair;
+};
+
+struct service_file_pair {
+    int read_end;
+    int write_end;
+};
+
+union service {
+    pid_t pid;
+    struct service_file_pair file_pair;
+};
+
+struct connection {
+    union linted_manager_reply reply;
+    int fd;
+    bool has_reply_ready;
+};
+
+static errno_t updater_pair(int fildes[2])
+{
+    return linted_updater_pair(fildes, O_NONBLOCK, O_NONBLOCK);
+}
+
+static errno_t controller_pair(int fildes[2])
+{
+    return linted_controller_pair(fildes, O_NONBLOCK, O_NONBLOCK);
+}
+
+static errno_t shutdowner_pair(int fildes[2])
+{
+    return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
+}
+
 static errno_t on_new_connections_readable(linted_manager new_connections,
-                                           struct service const *services,
+                                           union service_config const *config,
+                                           union service const *services,
                                            size_t * connection_count,
                                            struct connection *connections);
 static errno_t on_connection_readable(int fd,
-                                      struct service const *services,
+                                      union service_config const *config,
+                                      union service const *services,
                                       bool * hungup,
                                       union linted_manager_reply *reply);
 static errno_t on_connection_writeable(int fd,
                                        union linted_manager_reply *reply);
 
 static errno_t run_game(char const *process_name,
-                        union service_config const *config);
+                        union service_config const *config,
+                        int logger_dummy,
+                        int updater_dummy,
+                        int shutdowner_dummy,
+                        int controller_dummy);
 
 static errno_t linted_help(int fildes, char const *program_name,
                            struct linted_str package_name,
@@ -252,6 +282,39 @@ It is insecure to run a game as root!\n"));
 
     errno_t game_status;
     {
+        int logger_dummy;
+        int updater_dummy;
+        int shutdowner_dummy;
+        int controller_dummy;
+
+        if ((game_status = linted_io_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
+            goto done;
+        }
+
+        if ((game_status = linted_io_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
+            goto done;
+        }
+
+        if ((game_status = linted_io_dummy(&shutdowner_dummy, O_CLOEXEC)) != 0) {
+            goto done;
+        }
+
+        if ((game_status = linted_io_dummy(&controller_dummy, O_CLOEXEC)) != 0) {
+            goto done;
+        }
+
+        char logger_option[] = "--logger=XXXXXXXXXXX";
+        sprintf(logger_option, "--logger=%i", logger_dummy);
+
+        char updater_option[] = "--updater=XXXXXXXXXXX";
+        sprintf(updater_option, "--updater=%i", updater_dummy);
+
+        char shutdowner_option[] = "--shutdowner=XXXXXXXXXXX";
+        sprintf(shutdowner_option, "--shutdowner=%i", shutdowner_dummy);
+
+        char controller_option[] = "--controller=XXXXXXXXXXX";
+        sprintf(controller_option, "--controller=%i", controller_dummy);
+
         union service_config const configuration[] = {
             [LINTED_MANAGER_SERVICE_INIT] = {
                 .type = SERVICE_INIT
@@ -263,10 +326,10 @@ It is insecure to run a game as root!\n"));
                     .path = simulator_path,
                     .arguments = (char const * const[]) {
                         simulator_path,
-                        "--logger=" XSTR(LOGGER_FD),
-                        "--updater=" XSTR(UPDATER_FD),
-                        "--shutdowner=" XSTR(SHUTDOWNER_FD),
-                        "--controller=" XSTR(CONTROLLER_FD),
+                        logger_option,
+                        updater_option,
+                        shutdowner_option,
+                        controller_option,
                         NULL
                     },
                     .environment = (char const *const[]){NULL}
@@ -279,18 +342,47 @@ It is insecure to run a game as root!\n"));
                     .path = gui_path,
                     .arguments = (char const * const[]) {
                         gui_path,
-                        "--logger=" XSTR(LOGGER_FD),
-                        "--updater=" XSTR(UPDATER_FD),
-                        "--shutdowner=" XSTR(SHUTDOWNER_FD),
-                        "--controller=" XSTR(CONTROLLER_FD),
+                        logger_option,
+                        updater_option,
+                        shutdowner_option,
+                        controller_option,
                         NULL
                     },
                     .environment = (char const *const[]){display, NULL}
                 }
+            },
+            [LINTED_MANAGER_SERVICE_LOGGER] = {
+                .file_pair = {
+                    .type = SERVICE_FILE_PAIR,
+                    .generator = linted_logger_pair
+                }
+            },
+            [LINTED_MANAGER_SERVICE_UPDATER] = {
+                .file_pair = {
+                    .type = SERVICE_FILE_PAIR,
+                    .generator = updater_pair
+                }
+            },
+            [LINTED_MANAGER_SERVICE_CONTROLLER] = {
+                .file_pair = {
+                    .type = SERVICE_FILE_PAIR,
+                    .generator = controller_pair
+                }
+            },
+            [LINTED_MANAGER_SERVICE_SHUTDOWNER] = {
+                .file_pair = {
+                    .type = SERVICE_FILE_PAIR,
+                    .generator = shutdowner_pair
+                }
             }
         };
-        game_status = run_game(program_name, configuration);
+        game_status = run_game(program_name, configuration,
+                               logger_dummy,
+                               updater_dummy,
+                               shutdowner_dummy,
+                               controller_dummy);
     }
+done:;
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
@@ -315,106 +407,79 @@ It is insecure to run a game as root!\n"));
 }
 
 static errno_t run_game(char const *process_name,
-                        union service_config const *config)
+                        union service_config const *config,
+                        int logger_dummy,
+                        int updater_dummy,
+                        int shutdowner_dummy,
+                        int controller_dummy)
 {
     errno_t errnum = 0;
 
-    linted_logger logger_read;
-    linted_logger logger_write;
-
-    linted_updater updater_read;
-    linted_updater updater_write;
-
-    linted_controller controller_read;
-    linted_controller controller_write;
-
-    linted_shutdowner shutdowner_read;
-    linted_shutdowner shutdowner_write;
-
-    {
-        linted_logger logger_logds[2];
-        if ((errnum = linted_logger_pair(logger_logds)) != 0) {
-            return errnum;
-        }
-
-        logger_read = logger_logds[0];
-        logger_write = logger_logds[1];
-    }
-
-    {
-        linted_updater updater_mqs[2];
-        if ((errnum = linted_updater_pair(updater_mqs,
-                                          O_NONBLOCK, O_NONBLOCK)) != 0) {
-            goto close_logger_pair;
-        }
-        updater_read = updater_mqs[0];
-        updater_write = updater_mqs[1];
-    }
-
-    {
-        linted_controller controller_mqs[2];
-        if ((errnum = linted_controller_pair(controller_mqs,
-                                             O_NONBLOCK, O_NONBLOCK)) != 0) {
-            goto close_updater_pair;
-        }
-
-        controller_read = controller_mqs[0];
-        controller_write = controller_mqs[1];
-    }
-
-    {
-        linted_shutdowner shutdowner_mqs[2];
-        if ((errnum = linted_shutdowner_pair(shutdowner_mqs,
-                                             O_NONBLOCK, 0)) != 0) {
-            goto close_controller_pair;
-        }
-
-        shutdowner_read = shutdowner_mqs[0];
-        shutdowner_write = shutdowner_mqs[1];
-    }
-
-    struct service services[] = {
+    union service services[] = {
         [LINTED_MANAGER_SERVICE_INIT] = {.pid = getpid()},
         [LINTED_MANAGER_SERVICE_GUI] = {.pid = -1},
-        [LINTED_MANAGER_SERVICE_SIMULATOR] = {.pid = -1}
+        [LINTED_MANAGER_SERVICE_SIMULATOR] = {.pid = -1},
+
+        [LINTED_MANAGER_SERVICE_LOGGER] = {.file_pair = {.read_end = -1,.write_end = -1}},
+        [LINTED_MANAGER_SERVICE_UPDATER] = {.file_pair = {.read_end = -1,.write_end = -1}},
+        [LINTED_MANAGER_SERVICE_CONTROLLER] = {.file_pair = {.read_end = -1,.write_end = -1}},
+        [LINTED_MANAGER_SERVICE_SHUTDOWNER] = {.file_pair = {.read_end = -1,.write_end = -1}}
     };
+
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        union service_config const * service_config = &config[ii];
+        if (SERVICE_FILE_PAIR == service_config->type) {
+            union service * service = &services[ii];
+
+            int fildes[2];
+            if ((errnum = service_config->file_pair.generator(fildes)) != 0) {
+                goto exit_services;
+            }
+
+            service->file_pair.read_end = fildes[0];
+            service->file_pair.write_end = fildes[1];
+        }
+    }
+
+    linted_logger logger_read = services[LINTED_MANAGER_SERVICE_LOGGER].file_pair.read_end;
+    linted_logger logger_write = services[LINTED_MANAGER_SERVICE_LOGGER].file_pair.write_end;
 
     {
         struct linted_spawn_file_actions *file_actions;
         if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-            goto kill_processes;
+            goto exit_services;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                         logger_write,
-                                                        LOGGER_FD))
+                                                        logger_dummy))
             != 0) {
             goto destroy_gui_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        updater_read,
-                                                        UPDATER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_UPDATER].file_pair.read_end,
+                                                        updater_dummy))
             != 0) {
             goto destroy_gui_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        shutdowner_write,
-                                                        SHUTDOWNER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_SHUTDOWNER].file_pair.write_end,
+                                                        shutdowner_dummy))
             != 0) {
             goto destroy_gui_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        controller_write,
-                                                        CONTROLLER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_CONTROLLER].file_pair.write_end,
+                                                        controller_dummy))
             != 0) {
             goto destroy_gui_file_actions;
         }
 
         {
-            struct service_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
+            struct service_config_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
 
             pid_t gui_process;
             if ((errnum = linted_spawn(&gui_process,
@@ -433,46 +498,46 @@ static errno_t run_game(char const *process_name,
         linted_spawn_file_actions_destroy(file_actions);
 
         if (errnum != 0) {
-            goto kill_processes;
+            goto exit_services;
         }
     }
 
     {
         struct linted_spawn_file_actions *file_actions;
         if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-            goto kill_processes;
+            goto exit_services;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                         logger_write,
-                                                        LOGGER_FD))
+                                                        logger_dummy))
             != 0) {
             goto destroy_sim_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        updater_write,
-                                                        UPDATER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_UPDATER].file_pair.write_end,
+                                                        updater_dummy))
             != 0) {
             goto destroy_sim_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        shutdowner_read,
-                                                        SHUTDOWNER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_SHUTDOWNER].file_pair.read_end,
+                                                        shutdowner_dummy))
             != 0) {
             goto destroy_sim_file_actions;
         }
 
         if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        controller_read,
-                                                        CONTROLLER_FD))
+                                                        services[LINTED_MANAGER_SERVICE_CONTROLLER].file_pair.read_end,
+                                                        controller_dummy))
             != 0) {
             goto destroy_sim_file_actions;
         }
 
         {
-            struct service_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
+            struct service_config_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
 
             pid_t process;
             if ((errnum = linted_spawn(&process,
@@ -492,12 +557,12 @@ static errno_t run_game(char const *process_name,
     }
 
     if (errnum != 0) {
-        goto kill_processes;
+        goto exit_services;
     }
 
     linted_manager new_connections;
     if ((errnum = linted_manager_bind(&new_connections, BACKLOG, NULL, 0)) != 0) {
-        goto kill_processes;
+        goto exit_services;
     }
 
     {
@@ -583,7 +648,7 @@ static errno_t run_game(char const *process_name,
 
             if ((pollfds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
                 if ((errnum = on_new_connections_readable(new_connections,
-                                                          services,
+                                                          config, services,
                                                           &connection_count,
                                                           connections)) != 0) {
                     goto close_connections;
@@ -719,7 +784,8 @@ static errno_t run_game(char const *process_name,
                 {
                     union linted_manager_reply reply;
                     bool hungup;
-                    errnum = on_connection_readable(fd, services,
+                    errnum = on_connection_readable(fd,
+                                                    config, services,
                                                     &hungup, &reply);
                     switch (errnum) {
                     case 0:
@@ -820,86 +886,47 @@ static errno_t run_game(char const *process_name,
         }
     }
 
- kill_processes:
-    if (errnum != 0) {
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
-            union service_config const * service_config = &config[ii];
+ exit_services:
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        union service_config const * service_config = &config[ii];
 
-            if (SERVICE_INIT == service_config->type) {
-                continue;
+        switch (service_config->type) {
+            {
+            case SERVICE_PROCESS:;
+                pid_t pid = services[ii].pid;
+
+                if (pid != -1) {
+                    errno_t kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
+                    /* kill_errnum == ESRCH is fine */
+                    assert(kill_errnum != EINVAL);
+                    assert(kill_errnum != EPERM);
+
+                    services[ii].pid = -1;
+                }
+                break;
             }
 
-            pid_t pid = services[ii].pid;
-
-            if (-1 == pid) {
-                continue;
+            {
+            case SERVICE_FILE_PAIR:;
+                struct service_file_pair * file_pair = &services[ii].file_pair;
+                int read_end = file_pair->read_end;
+                int write_end = file_pair->write_end;
+                if (read_end != -1) {
+                    errno_t close_errnum = linted_io_close(read_end);
+                    if (0 == errnum) {
+                        errnum = close_errnum;
+                    }
+                }
+                if (write_end != -1) {
+                    errno_t close_errnum = linted_io_close(write_end);
+                    if (0 == errnum) {
+                        errnum = close_errnum;
+                    }
+                }
+                break;
             }
-
-            errno_t kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
-            /* kill_errnum == ESRCH is fine */
-            assert(kill_errnum != EINVAL);
-            assert(kill_errnum != EPERM);
-
-            services[ii].pid = -1;
-        }
-    }
-
-    {
-        errno_t close_errnum = linted_shutdowner_close(shutdowner_read);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-    {
-        errno_t close_errnum = linted_shutdowner_close(shutdowner_write);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
- close_controller_pair:
-    {
-        errno_t close_errnum = linted_controller_close(controller_read);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-    {
-        errno_t close_errnum = linted_controller_close(controller_write);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-close_updater_pair:
-    {
-        errno_t close_errnum = linted_updater_close(updater_read);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-    {
-        errno_t close_errnum = linted_updater_close(updater_write);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
- close_logger_pair:
-    {
-        errno_t close_errnum = linted_logger_close(logger_read);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-    {
-        errno_t close_errnum = linted_updater_close(logger_write);
-        if (0 == errnum) {
-            errnum = close_errnum;
+        default:
+            break;
         }
     }
 
@@ -907,7 +934,8 @@ close_updater_pair:
 }
 
 static errno_t on_new_connections_readable(linted_manager new_connections,
-                                           struct service const *services,
+                                           union service_config const *config,
+                                           union service const *services,
                                            size_t * connection_count,
                                            struct connection *connections)
 {
@@ -929,7 +957,8 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
         union linted_manager_reply reply;
         {
             bool hungup;
-            errno_t errnum = on_connection_readable(new_socket, services,
+            errno_t errnum = on_connection_readable(new_socket,
+                                                    config, services,
                                                     &hungup,
                                                     &reply);
             switch (errnum) {
@@ -1019,7 +1048,8 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
 }
 
 static errno_t on_connection_readable(int fd,
-                                      struct service const *services,
+                                      union service_config const *config,
+                                      union service const *services,
                                       bool * hungup,
                                       union linted_manager_reply *reply)
 {
@@ -1043,41 +1073,60 @@ static errno_t on_connection_readable(int fd,
 
     switch (request.type) {
         {
-    case LINTED_MANAGER_STATUS:;
-            struct service const *service = &services[request.status.service];
-            errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
-            assert(errnum != EINVAL);
-            switch (errnum) {
-            case 0:
-                reply->status.is_up = true;
-                break;
+        case LINTED_MANAGER_STATUS:;
+            union service const *service = &services[request.status.service];
 
-            case ESRCH:
-                reply->status.is_up = false;
-                break;
+            switch (config[request.status.service].type) {
+                {
+                case SERVICE_INIT:;
+                case SERVICE_PROCESS:;
+                    errno_t errnum = -1 == kill(service->pid, 0) ? errno : 0;
+                    assert(errnum != EINVAL);
+                    switch (errnum) {
+                    case 0:
+                        reply->status.is_up = true;
+                        break;
 
+                    case ESRCH:
+                        reply->status.is_up = false;
+                        break;
+
+                    default:
+                        return errnum;
+                    }
+                    break;
+                }
             default:
-                return errnum;
+                break;
             }
             break;
         }
 
         {
     case LINTED_MANAGER_STOP:;
-            struct service const *service = &services[request.stop.service];
-            errno_t errnum = -1 == kill(service->pid, SIGKILL) ? errno : 0;
-            assert(errnum != EINVAL);
-            switch (errnum) {
-            case 0:
-                reply->stop.was_up = true;
-                break;
+            union service const *service = &services[request.stop.service];
 
-            case ESRCH:
-                reply->stop.was_up = false;
-                break;
+            switch (config[request.status.service].type) {
+                {
+                case SERVICE_INIT:;
+                case SERVICE_PROCESS:;
+                    errno_t errnum = -1 == kill(service->pid, SIGKILL) ? errno : 0;
+                    assert(errnum != EINVAL);
+                    switch (errnum) {
+                    case 0:
+                        reply->stop.was_up = true;
+                        break;
 
+                    case ESRCH:
+                        reply->stop.was_up = false;
+                        break;
+
+                    default:
+                        return errnum;
+                    }
+                }
             default:
-                return errnum;
+                break;
             }
             break;
         }
