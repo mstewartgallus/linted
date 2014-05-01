@@ -168,8 +168,16 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
     }
     spawn_error->errnum = 0;
 
+    sigset_t fullset;
+    sigfillset(&fullset);
+
+    sigset_t oldset;
+	pthread_sigmask(SIG_BLOCK, &fullset, &oldset);
+
     pid_t child = fork();
     if (child != 0) {
+        pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+
         errno_t error_status = 0;
 
         if (-1 == child) {
@@ -248,6 +256,26 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         *childp = child;
         return error_status;
     }
+
+    /* Stop signal handlers from doing bad stuff to us */
+    for (int ii = 1; ii < NSIG; ++ii) {
+        /* Ugly OS specific code here */
+        struct sigaction action;
+        memset(&action, 0, sizeof action);
+
+        if (ii < 32 + 3) {
+            action.sa_handler = SIG_IGN;
+        } else {
+            sigaction(ii, NULL, &action);
+            if (action.sa_handler != SIG_IGN) {
+                action.sa_handler = SIG_DFL;
+            }
+        }
+
+        sigaction(ii, &action, NULL);
+    }
+
+    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     if (attr != NULL) {
         if (attr->setpgroup) {
