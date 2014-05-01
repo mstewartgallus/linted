@@ -61,23 +61,33 @@ enum service_type {
 };
 
 enum service_end {
-    END_MARKER,
     READ,
     WRITE
 };
 
-struct duppair {
+struct dup_pair {
     enum service_end service_end;
     enum linted_manager_service service;
     int newfildes;
 };
+
+struct dup_pairs {
+    size_t size;
+    struct dup_pair const * dup_pairs;
+};
+
+#define DUP_PAIRS(...)                                                  \
+    ((struct dup_pairs const) {                                         \
+                               .size = LINTED_ARRAY_SIZE(__VA_ARGS__),  \
+                                    .dup_pairs = __VA_ARGS__            \
+                                    })
 
 struct service_config_process {
     enum service_type type;
     char const *path;
     char const *const *arguments;
     char const *const *environment;
-    struct duppair const *duppair;
+    struct dup_pairs dup_pairs;
     int working_directory;
 };
 
@@ -346,13 +356,12 @@ It is insecure to run a game as root!\n"));
                         NULL
                     },
                     .environment = (char const *const[]){NULL},
-                    .duppair = (struct duppair const[]){
-                        {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
-                        {WRITE, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
-                        {READ, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
-                        {READ, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy},
-                        {0, 0, 0}
-                    }
+                    .dup_pairs = DUP_PAIRS((struct dup_pair const[]){
+                            {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
+                            {WRITE, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
+                            {READ, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
+                            {READ, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy}
+                        })
                 }
             },
             [LINTED_MANAGER_SERVICE_GUI] = {
@@ -369,13 +378,12 @@ It is insecure to run a game as root!\n"));
                         NULL
                     },
                     .environment = (char const *const[]){display, NULL},
-                    .duppair = (struct duppair const[]) {
-                        {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
-                        {READ, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
-                        {WRITE, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
-                        {WRITE, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy},
-                        {0, 0, 0}
-                    }
+                    .dup_pairs = DUP_PAIRS((struct dup_pair const[]){
+                            {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
+                            {READ, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
+                            {WRITE, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
+                            {WRITE, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy}
+                        })
                 }
             },
             [LINTED_MANAGER_SERVICE_LOGGER] = {
@@ -485,21 +493,29 @@ static errno_t run_game(char const *process_name,
             goto exit_services;
         }
 
-        for (size_t jj = 0;;++jj) {
-            struct duppair const * duppair = &proc_config->duppair[jj];
+        size_t dup_pairs_size = proc_config->dup_pairs.size;
+        for (size_t jj = 0; jj < dup_pairs_size; ++jj) {
+            struct dup_pair const * dup_pair = &proc_config->dup_pairs.dup_pairs[jj];
 
-            if (0 == duppair->service_end) {
+            struct service_file_pair const * file_pair = &services[dup_pair->service].file_pair;
+
+            int oldfildes;
+            switch (dup_pair->service_end) {
+            case READ:
+                oldfildes = file_pair->read_end;
                 break;
+
+            case WRITE:
+                oldfildes = file_pair->write_end;
+                break;
+
+            default:
+                assert(false);
             }
-
-            struct service_file_pair const * file_pair = &services[duppair->service].file_pair;
-
-            int oldfildes = READ == duppair->service_end
-                ? file_pair->read_end : file_pair->write_end;
 
             if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
                                                             oldfildes,
-                                                            duppair->newfildes))
+                                                            dup_pair->newfildes))
                 != 0) {
                 goto destroy_file_actions;
             }

@@ -24,7 +24,7 @@
 
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
 
-#define LINTED_ARRAY_SIZE(array) ((sizeof (array)) / sizeof ((array)[0]))
+#define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
 /**
  * A useful utility macro for exiting a task upon failing to
