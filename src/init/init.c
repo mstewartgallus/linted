@@ -60,11 +60,24 @@ enum service_type {
     SERVICE_FILE_PAIR
 };
 
+enum service_end {
+    END_MARKER,
+    READ,
+    WRITE
+};
+
+struct duppair {
+    enum service_end service_end;
+    enum linted_manager_service service;
+    int newfildes;
+};
+
 struct service_config_process {
     enum service_type type;
     char const *path;
     char const *const *arguments;
     char const *const *environment;
+    struct duppair const *duppair;
     int working_directory;
 };
 
@@ -332,7 +345,14 @@ It is insecure to run a game as root!\n"));
                         controller_option,
                         NULL
                     },
-                    .environment = (char const *const[]){NULL}
+                    .environment = (char const *const[]){NULL},
+                    .duppair = (struct duppair const[]){
+                        {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
+                        {WRITE, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
+                        {READ, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
+                        {READ, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy},
+                        {0, 0, 0}
+                    }
                 }
             },
             [LINTED_MANAGER_SERVICE_GUI] = {
@@ -348,7 +368,14 @@ It is insecure to run a game as root!\n"));
                         controller_option,
                         NULL
                     },
-                    .environment = (char const *const[]){display, NULL}
+                    .environment = (char const *const[]){display, NULL},
+                    .duppair = (struct duppair const[]) {
+                        {WRITE, LINTED_MANAGER_SERVICE_LOGGER, logger_dummy},
+                        {READ, LINTED_MANAGER_SERVICE_UPDATER, updater_dummy},
+                        {WRITE, LINTED_MANAGER_SERVICE_SHUTDOWNER, shutdowner_dummy},
+                        {WRITE, LINTED_MANAGER_SERVICE_CONTROLLER, controller_dummy},
+                        {0, 0, 0}
+                    }
                 }
             },
             [LINTED_MANAGER_SERVICE_LOGGER] = {
@@ -428,136 +455,76 @@ static errno_t run_game(char const *process_name,
 
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const * service_config = &config[ii];
-        if (SERVICE_FILE_PAIR == service_config->type) {
-            union service * service = &services[ii];
-
-            int fildes[2];
-            if ((errnum = service_config->file_pair.generator(fildes)) != 0) {
-                goto exit_services;
-            }
-
-            service->file_pair.read_end = fildes[0];
-            service->file_pair.write_end = fildes[1];
+        if (service_config->type != SERVICE_FILE_PAIR) {
+            continue;
         }
+
+        union service * service = &services[ii];
+
+        int fildes[2];
+        if ((errnum = service_config->file_pair.generator(fildes)) != 0) {
+            goto exit_services;
+        }
+
+        service->file_pair.read_end = fildes[0];
+        service->file_pair.write_end = fildes[1];
     }
 
     linted_logger logger_read = services[LINTED_MANAGER_SERVICE_LOGGER].file_pair.read_end;
-    linted_logger logger_write = services[LINTED_MANAGER_SERVICE_LOGGER].file_pair.write_end;
 
-    {
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        if (config[ii].type != SERVICE_PROCESS) {
+            continue;
+        }
+
+        union service * service = &services[ii];
+        struct service_config_process const * proc_config = &config[ii].process;
         struct linted_spawn_file_actions *file_actions;
+
         if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
             goto exit_services;
         }
 
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        logger_write,
-                                                        logger_dummy))
-            != 0) {
-            goto destroy_gui_file_actions;
-        }
+        for (size_t jj = 0;;++jj) {
+            struct duppair const * duppair = &proc_config->duppair[jj];
 
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_UPDATER].file_pair.read_end,
-                                                        updater_dummy))
-            != 0) {
-            goto destroy_gui_file_actions;
-        }
+            if (0 == duppair->service_end) {
+                break;
+            }
 
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_SHUTDOWNER].file_pair.write_end,
-                                                        shutdowner_dummy))
-            != 0) {
-            goto destroy_gui_file_actions;
-        }
+            struct service_file_pair const * file_pair = &services[duppair->service].file_pair;
 
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_CONTROLLER].file_pair.write_end,
-                                                        controller_dummy))
-            != 0) {
-            goto destroy_gui_file_actions;
+            int oldfildes = READ == duppair->service_end
+                ? file_pair->read_end : file_pair->write_end;
+
+            if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
+                                                            oldfildes,
+                                                            duppair->newfildes))
+                != 0) {
+                goto destroy_file_actions;
+            }
         }
 
         {
-            struct service_config_process const * gui_config = &config[LINTED_MANAGER_SERVICE_GUI].process;
-
-            pid_t gui_process;
-            if ((errnum = linted_spawn(&gui_process,
-                                       gui_config->working_directory,
-                                       gui_config->path,
+            pid_t process;
+            if ((errnum = linted_spawn(&process,
+                                       proc_config->working_directory,
+                                       proc_config->path,
                                        file_actions, NULL,
-                                       (char **)gui_config->arguments,
-                                       (char **)gui_config->environment)) != 0) {
-                goto destroy_gui_file_actions;
+                                       (char **)proc_config->arguments,
+                                       (char **)proc_config->environment)) != 0) {
+                goto destroy_file_actions;
             }
 
-            services[LINTED_MANAGER_SERVICE_GUI].pid = gui_process;
+            service->pid = process;
         }
 
-    destroy_gui_file_actions:
+    destroy_file_actions:
         linted_spawn_file_actions_destroy(file_actions);
 
         if (errnum != 0) {
             goto exit_services;
         }
-    }
-
-    {
-        struct linted_spawn_file_actions *file_actions;
-        if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-            goto exit_services;
-        }
-
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        logger_write,
-                                                        logger_dummy))
-            != 0) {
-            goto destroy_sim_file_actions;
-        }
-
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_UPDATER].file_pair.write_end,
-                                                        updater_dummy))
-            != 0) {
-            goto destroy_sim_file_actions;
-        }
-
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_SHUTDOWNER].file_pair.read_end,
-                                                        shutdowner_dummy))
-            != 0) {
-            goto destroy_sim_file_actions;
-        }
-
-        if ((errnum = linted_spawn_file_actions_adddup2(&file_actions,
-                                                        services[LINTED_MANAGER_SERVICE_CONTROLLER].file_pair.read_end,
-                                                        controller_dummy))
-            != 0) {
-            goto destroy_sim_file_actions;
-        }
-
-        {
-            struct service_config_process const * sim_config = &config[LINTED_MANAGER_SERVICE_SIMULATOR].process;
-
-            pid_t process;
-            if ((errnum = linted_spawn(&process,
-                                       sim_config->working_directory,
-                                       sim_config->path,
-                                       file_actions, NULL,
-                                       (char **)sim_config->arguments,
-                                       (char **)sim_config->environment)) != 0) {
-                goto destroy_sim_file_actions;
-            }
-
-            services[LINTED_MANAGER_SERVICE_SIMULATOR].pid = process;
-        }
-
-    destroy_sim_file_actions:
-        linted_spawn_file_actions_destroy(file_actions);
-    }
-
-    if (errnum != 0) {
-        goto exit_services;
     }
 
     linted_manager new_connections;
