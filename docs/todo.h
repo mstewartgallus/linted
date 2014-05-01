@@ -34,6 +34,10 @@
  * @todo Move away from C legacy practises
  * - move away from null terminated strings
  *
+ * @todo Move back to dummy file descriptor spawn strategy
+ * - The other approach is fragile because file descriptors yet to be
+ *   dupped can be overwritten.
+ *
  * @todo Solve banding problems that are occuring in the shader
  *
  * @todo Make a hang check timer
