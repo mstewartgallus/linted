@@ -619,7 +619,7 @@ int main(int argc, char *argv[])
             switch (event.type) {
                 {
                 case ConfigureNotify:;
-                    XConfigureEvent* configure_event = (void*)&event;
+                    XConfigureEvent* configure_event = &event.xconfigure;
                     window_state.width = configure_event->width;
                     window_state.height = configure_event->height;
                     resize_graphics(window_state.width, window_state.height);
@@ -628,7 +628,7 @@ int main(int argc, char *argv[])
 
                 {
                 case MotionNotify:;
-                    XMotionEvent* motion_event = (void*)&event;
+                    XMotionEvent* motion_event = &event.xmotion;
                     on_tilt(motion_event->x, motion_event->y,
                             &window_state, &controller_state);
                     break;
@@ -668,7 +668,7 @@ int main(int argc, char *argv[])
 
                 {
                 case MappingNotify:;
-                    XMappingEvent* mapping_event = (void*)&event;
+                    XMappingEvent* mapping_event = &event.xmapping;
                     XRefreshKeyboardMapping(mapping_event);
                 }
 
@@ -684,7 +684,7 @@ int main(int argc, char *argv[])
                     goto on_key_event;
 
                 on_key_event:;
-                    XKeyEvent* key_event = (void*)&event;
+                    XKeyEvent* key_event = &event.xkey;
                     switch (XLookupKeysym(key_event, 0)) {
                     default:
                         goto no_key_event;
