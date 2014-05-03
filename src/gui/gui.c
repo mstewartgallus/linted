@@ -969,7 +969,6 @@ static errno_t init_graphics(linted_logger logger,
     double green = x;
 
     glClearColor(red, green, blue, 1);
-    glViewport(0, 0, window_state->width, window_state->height);
 
     glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0]),
                     GL_FLOAT, 0, linted_assets_triangle_vertices);
