@@ -19,8 +19,8 @@
  *
  * @todo Don't do security theater.
  * - Security theater is when people do big and impressive things with
- *   sandboxing but then conveniently forget a back door that lets
- *   attackers in.
+ *   sandboxing but then leave a tiny door in the back open because
+ *   it's convenient
  * - See "Don't do cargo cult security" for why this is impossible.
  *
  * @todo Integrate more documentation with Doxygen.
@@ -34,18 +34,16 @@
  * @todo Move away from C legacy practises
  * - move away from null terminated strings
  *
- * @todo Move back to dummy file descriptor spawn strategy
- * - The other approach is fragile because file descriptors yet to be
- *   dupped can be overwritten.
- *
  * @todo Solve banding problems that are occuring in the shader
  *
- * @todo Make a hang check timer
- * - This timer will periodically make sure tasks are reaching their
+ * @todo Make hang check timers in init
+ * - These timers will periodically make sure tasks are reaching their
  *   deadlines by sending a message to every message queue and seeing
  *   if the owner of the queue responds within appropriate
  *   deadlines. It will then kill and restart the process if it is not
  *   responding.
+ *
+ * @todo Move shell scripts to Python.
  *
  * @todo Monitor vulnerabilities in dependencies and supported platforms
  *
