@@ -172,7 +172,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
     sigfillset(&fullset);
 
     sigset_t oldset;
-	pthread_sigmask(SIG_BLOCK, &fullset, &oldset);
+    pthread_sigmask(SIG_BLOCK, &fullset, &oldset);
 
     pid_t child = fork();
     if (child != 0) {
@@ -262,6 +262,11 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         /* Ugly OS specific code here */
         struct sigaction action;
         memset(&action, 0, sizeof action);
+
+        /* Uncatchable */
+        if (SIGSTOP == ii || SIGKILL == ii) {
+            continue;
+        }
 
         if (ii < 32 + 3) {
             action.sa_handler = SIG_IGN;

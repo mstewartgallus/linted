@@ -427,33 +427,43 @@ int main(int argc, char *argv[])
     /* Query framebuffer configurations */
     GLXFBConfig fb_config;
     {
-/* static struct attribute_value_pair const attribute_values[] = { */
-/*     {SDL_GL_RED_SIZE, 5}, */
-/*     {SDL_GL_GREEN_SIZE, 5}, */
-/*     {SDL_GL_BLUE_SIZE, 5}, */
-
-/*     {SDL_GL_DOUBLEBUFFER, 1}, */
-
-/*     {SDL_GL_BUFFER_SIZE, 16}, */
-/*     {SDL_GL_DEPTH_SIZE, 16}, */
-
-/*     /\* The following are unused *\/ */
-/*     {SDL_GL_ALPHA_SIZE, 0}, */
-/*     {SDL_GL_STENCIL_SIZE, 0}, */
-
-/*     {SDL_GL_ACCUM_RED_SIZE, 0}, */
-/*     {SDL_GL_ACCUM_GREEN_SIZE, 0}, */
-/*     {SDL_GL_ACCUM_BLUE_SIZE, 0}, */
-/*     {SDL_GL_ACCUM_ALPHA_SIZE, 0}, */
-
-/*     {SDL_GL_STEREO, 0}, */
-
-/*     {SDL_GL_MULTISAMPLEBUFFERS, 0}, */
-/*     {SDL_GL_MULTISAMPLESAMPLES, 0} */
-/* }; */
-
         static int const attrib_list[] = {
-            GLX_DOUBLEBUFFER, True,
+            GLX_BUFFER_SIZE, 0,       /* color index buffer size */
+            GLX_LEVEL, 0    ,         /* buffer-level */
+            GLX_DOUBLEBUFFER, True,   /* double buffer */
+
+            GLX_STEREO, False,
+            GLX_AUX_BUFFERS, 0,
+
+            GLX_RED_SIZE, GLX_DONT_CARE,
+            GLX_GREEN_SIZE, GLX_DONT_CARE,
+            GLX_BLUE_SIZE, GLX_DONT_CARE,
+            GLX_ALPHA_SIZE, GLX_DONT_CARE,
+
+            GLX_DEPTH_SIZE, 16,
+
+            GLX_STENCIL_SIZE, 0,
+            GLX_ACCUM_RED_SIZE, 0,
+            GLX_ACCUM_GREEN_SIZE, 0,
+            GLX_ACCUM_BLUE_SIZE, 0,
+            GLX_ACCUM_ALPHA_SIZE, 0,
+            GLX_RENDER_TYPE, GLX_RGBA_BIT,
+
+            GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+
+            GLX_X_RENDERABLE, True,
+
+            GLX_X_VISUAL_TYPE, GLX_DONT_CARE,
+
+            GLX_CONFIG_CAVEAT, GLX_DONT_CARE,
+
+            GLX_TRANSPARENT_TYPE, GLX_NONE,
+
+            GLX_TRANSPARENT_INDEX_VALUE, GLX_DONT_CARE,
+            GLX_TRANSPARENT_RED_VALUE, GLX_DONT_CARE,
+            GLX_TRANSPARENT_GREEN_VALUE, GLX_DONT_CARE,
+            GLX_TRANSPARENT_BLUE_VALUE, GLX_DONT_CARE,
+            GLX_TRANSPARENT_ALPHA_VALUE, GLX_DONT_CARE,
             None
         };
 
@@ -509,7 +519,6 @@ int main(int argc, char *argv[])
             XCB_EVENT_MASK_STRUCTURE_NOTIFY
             | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW
             | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
-            | XCB_EVENT_MASK_KEYMAP_STATE
             | XCB_EVENT_MASK_POINTER_MOTION,
             colormap,
             0};
@@ -655,7 +664,7 @@ int main(int argc, char *argv[])
                 break;
 
                 {
-                case KeymapNotify:;
+                case MappingNotify:;
                     XMappingEvent* mapping_event = (void*)&event;
                     XRefreshKeyboardMapping(mapping_event);
                 }

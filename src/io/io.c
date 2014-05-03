@@ -195,11 +195,11 @@ errno_t linted_io_strtofd(char const *str, int *fd)
 
 errno_t linted_io_close(int fd)
 {
-    sigset_t full_set;
-    sigfillset(&full_set);
+    sigset_t fullset;
+    sigfillset(&fullset);
 
     sigset_t old_set;
-    pthread_sigmask(SIG_BLOCK, &full_set, &old_set);
+    pthread_sigmask(SIG_BLOCK, &fullset, &old_set);
 
     int close_status = close(fd);
 
