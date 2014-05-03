@@ -21,15 +21,32 @@ import sys
 
 def go():
     clang = sys.argv[1]
-    cc = sys.argv[2]
-    options = sys.argv[3:]
+    cppcheck = sys.argv[2]
+    cc = sys.argv[3]
+    options = sys.argv[4:]
 
-    if clang != "" and '-c' in options:
-        subprocess.check_call([clang, '-Qunused-arguments', '-Wno-unknown-warning-option', '--analyze'] + options)
+    if '-c' in options:
+        if clang != "":
+            subprocess.check_call([clang, '-Qunused-arguments', '-Wno-unknown-warning-option', '--analyze'] + options)
+        if cppcheck != "":
+            subprocess.check_call([cppcheck,
+                                   '--enable=performance',
+                                   '--enable=portability'] + cppcheck_filter(options))
 
     subprocess.check_call([cc] + options)
 
     sys.exit(0)
+
+def cppcheck_filter(options):
+    return [option for option in options if cppcheck_match(option)]
+
+def cppcheck_match(option):
+    return (not option.startswith('-')
+            or option.startswith('-D')
+            or option.startswith('-U')
+            or option.startswith('-I')
+            or option.startswith('-i')
+            or option.startswith('-I'))
 
 if __name__ == '__main__':
     go()

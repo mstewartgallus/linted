@@ -36,7 +36,7 @@ gui_LDADD=\
 gui_LDFLAGS=$(AM_LDFLAGS)
 
 gui_CPPFLAGS=\
-  -I$(X11_FLAGS) -I$(XCB_FLAGS) -I$(X11_XCB_FLAGS) -I$(GL_FLAGS)\
+  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GL_FLAGS)\
   -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 
 BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
