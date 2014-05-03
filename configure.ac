@@ -103,11 +103,19 @@ LINTED_HARDEN
 LINTED_DEBUG
 LINTED_WARNINGS
 dnl
-AC_CHECK_LIB([GL], [glClear], [
-  [GL_LIBS="-lGL"]
-  AC_SUBST([GL_LIBS])
-], [
-  AC_MSG_ERROR([Unable to find an OpenGL library])
+PKG_CHECK_MODULES(X11, x11, [], [
+ AC_MSG_ERROR([Unable to find an X11 library])
+])
+dnl
+PKG_CHECK_MODULES(XCB, xcb, [], [
+ AC_MSG_ERROR([Unable to find an XCB library])
+])
+PKG_CHECK_MODULES(X11_XCB, x11-xcb, [], [
+ AC_MSG_ERROR([Unable to find an XCB-X11 interop library])
+])
+dnl
+PKG_CHECK_MODULES(GL, gl, [], [
+ AC_MSG_ERROR([Unable to find an OpenGL library])
 ])
 dnl
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
@@ -119,5 +127,4 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 dnl
 [CC="${srcdir}/scripts/ccwrapper '${CLANG}' '${CC}'"]
-AC_CONFIG_SUBDIRS([libs/SDL])
 AC_OUTPUT

@@ -29,11 +29,15 @@ gui_LDADD=\
   src/updater/libupdater.la\
   \
   -lm\
-  libs/SDL/build/libSDL2.la\
+  $(X11_LIBS)\
+  $(XCB_LIBS)\
+  $(X11_XCB_LIBS)\
   $(GL_LIBS)
 gui_LDFLAGS=$(AM_LDFLAGS)
 
-gui_CPPFLAGS=-I$(srcdir)/libs/SDL/include -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
+gui_CPPFLAGS=\
+  -I$(X11_FLAGS) -I$(XCB_FLAGS) -I$(X11_XCB_FLAGS) -I$(GL_FLAGS)\
+  -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 
 BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
 

@@ -27,8 +27,7 @@
 #include "linted/updater.h"
 #include "linted/util.h"
 
-#include "SDL.h"
-
+#include <assert.h>
 #include <errno.h>
 #include <poll.h>
 #include <math.h>
@@ -37,6 +36,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <GL/glx.h>
+#include <xcb/xcb.h>
+#include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
 #include <unistd.h>
 
 #define HELP_OPTION "--help"
@@ -46,60 +49,6 @@
 #define CONTROLLER_OPTION "--controller"
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
-
-struct attribute_value_pair {
-    SDL_GLattr attribute;
-    int value;
-};
-
-static struct attribute_value_pair const attribute_values[] = {
-    {SDL_GL_RED_SIZE, 5},
-    {SDL_GL_GREEN_SIZE, 5},
-    {SDL_GL_BLUE_SIZE, 5},
-
-    {SDL_GL_DOUBLEBUFFER, 1},
-
-    {SDL_GL_BUFFER_SIZE, 16},
-    {SDL_GL_DEPTH_SIZE, 16},
-
-    /* The following are unused */
-    {SDL_GL_ALPHA_SIZE, 0},
-    {SDL_GL_STENCIL_SIZE, 0},
-
-    {SDL_GL_ACCUM_RED_SIZE, 0},
-    {SDL_GL_ACCUM_GREEN_SIZE, 0},
-    {SDL_GL_ACCUM_BLUE_SIZE, 0},
-    {SDL_GL_ACCUM_ALPHA_SIZE, 0},
-
-    {SDL_GL_STEREO, 0},
-
-    {SDL_GL_MULTISAMPLEBUFFERS, 0},
-    {SDL_GL_MULTISAMPLESAMPLES, 0}
-};
-
-static SDL_EventType const default_events[] = {
-    SDL_KEYDOWN, SDL_KEYUP,
-    SDL_MOUSEMOTION,
-    SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
-    SDL_JOYAXISMOTION, SDL_JOYBALLMOTION,
-    SDL_JOYHATMOTION,
-    SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP,
-    SDL_QUIT,
-    SDL_SYSWMEVENT,
-    SDL_WINDOWEVENT,
-    SDL_USEREVENT
-};
-
-static SDL_EventType const enabled_events[] = {
-    SDL_WINDOWEVENT,
-
-    SDL_MOUSEMOTION,
-
-    SDL_KEYDOWN,
-    SDL_KEYUP,
-
-    SDL_QUIT
-};
 
 enum transition {
     SHOULD_EXIT,
@@ -133,6 +82,60 @@ struct gl_state {
     GLuint program;
 };
 
+static errno_t errnum_from_connection(xcb_connection_t * connection)
+{
+    switch (xcb_connection_has_error(connection)) {
+    case 0:
+        return 0;
+
+    case XCB_CONN_ERROR:
+        return EPROTO;
+
+    case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
+        return ENOSYS;
+
+    case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
+        return ENOMEM;
+
+    case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
+        return EINVAL;
+
+    case XCB_CONN_CLOSED_PARSE_ERR:
+        return EINVAL;
+
+    default:
+        assert(false);
+    }
+}
+
+static errno_t get_mouse_position(xcb_connection_t * connection,
+                                  xcb_window_t window,
+                                  int * x, int * y)
+{
+    errno_t errnum;
+
+    xcb_query_pointer_cookie_t cookie = xcb_query_pointer(connection, window);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        return errnum;
+    }
+
+    xcb_generic_error_t * error;
+    xcb_query_pointer_reply_t* reply = xcb_query_pointer_reply(connection,
+                                                               cookie,
+                                                               &error);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        free(reply);
+        return errnum;
+    }
+
+    *x = reply->win_x;
+    *y = reply->win_y;
+
+    free(reply);
+
+    return 0;
+}
+
 static void flush_gl_errors(void);
 
 /* TODO: This usage of glGetError is incorrect. Multiple error flags
@@ -140,10 +143,6 @@ static void flush_gl_errors(void);
  */
 static errno_t get_gl_error(void);
 
-static errno_t on_sdl_event(SDL_Event const *sdl_event,
-                            struct window_state *window_state,
-                            struct controller_state *controller_state,
-                            enum transition *transition);
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_state const *window_state,
                     struct controller_state *controller_state);
@@ -345,14 +344,14 @@ int main(int argc, char *argv[])
     }
 
     size_t display_string_length = strlen(original_display) + 1;
-    char *display = malloc(display_string_length);
-    if (NULL == display) {
+    char *display_env_var = malloc(display_string_length);
+    if (NULL == display_env_var) {
         failure(STDERR_FILENO,
                 program_name, LINTED_STR("no DISPLAY environment variable"),
                 errno);
         return EXIT_FAILURE;
     }
-    memcpy(display, original_display, display_string_length);
+    memcpy(display_env_var, original_display, display_string_length);
 
     {
         int kept_fds[] = {
@@ -377,19 +376,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (-1 == setenv("DISPLAY", display, true)) {
-        failure(STDERR_FILENO,
-                program_name,
-                LINTED_STR("cannot set the environment variable `DISPLAY'"),
-                errno);
-        return EXIT_FAILURE;
-    }
-
-    free(display);
-
     errno_t error_status = 0;
+
     struct window_state window_state = {.width = 640,.height = 800,
-        .viewable = true
+                                        .viewable = true
     };
 
     struct controller_state controller_state = {
@@ -405,136 +395,342 @@ int main(int argc, char *argv[])
         .y_position = 0,
         .z_position = 0
     };
-    SDL_Window *window;
-    SDL_GLContext gl_context;
-    struct gl_state gl_state;
 
-    if (-1 == SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE)) {
-        error_status = ENOSYS;
-        log_str(logger, LINTED_STR("cannot initialize the GUI: "),
-                SDL_GetError());
+    Display * display = XOpenDisplay(display_env_var);
+    if (NULL == display) {
+        errno = ENOSYS;
         goto shutdown;
     }
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(default_events); ++ii) {
-        SDL_EventState(default_events[ii], SDL_IGNORE);
-    }
+    xcb_connection_t * connection = XGetXCBConnection(display);
+    unsigned screen_number = XDefaultScreen(display);
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(enabled_events); ++ii) {
-        SDL_EventState(enabled_events[ii], SDL_ENABLE);
-    }
+    xcb_screen_t * screen = NULL;
+    {
+        xcb_screen_iterator_t iter = xcb_setup_roots_iterator (xcb_get_setup (connection));
+        for (size_t ii = 0; ii < screen_number; ++ii) {
+            if (0 == iter.rem) {
+                break;
+            }
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(attribute_values); ++ii) {
-        struct attribute_value_pair const pair = attribute_values[ii];
-        if (-1 == SDL_GL_SetAttribute(pair.attribute, pair.value)) {
-            error_status = ENOSYS;
-            log_str(logger, LINTED_STR("cannot set an SDL OpenGL attribute: "),
-                    SDL_GetError());
-            goto cleanup_SDL;
+            xcb_screen_next (&iter);
         }
+
+        if (0 == iter.rem) {
+            error_status = EINVAL;
+            goto disconnect;
+        }
+
+        screen = iter.data;
     }
 
-    window = SDL_CreateWindow(PACKAGE_NAME,
-                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              window_state.width, window_state.height,
-                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-    if (NULL == window) {
-        error_status = ENOSYS;
-        log_str(logger, LINTED_STR("cannot create a window: "), SDL_GetError());
-        goto cleanup_SDL;
+    /* Query framebuffer configurations */
+    GLXFBConfig fb_config;
+    {
+/* static struct attribute_value_pair const attribute_values[] = { */
+/*     {SDL_GL_RED_SIZE, 5}, */
+/*     {SDL_GL_GREEN_SIZE, 5}, */
+/*     {SDL_GL_BLUE_SIZE, 5}, */
+
+/*     {SDL_GL_DOUBLEBUFFER, 1}, */
+
+/*     {SDL_GL_BUFFER_SIZE, 16}, */
+/*     {SDL_GL_DEPTH_SIZE, 16}, */
+
+/*     /\* The following are unused *\/ */
+/*     {SDL_GL_ALPHA_SIZE, 0}, */
+/*     {SDL_GL_STENCIL_SIZE, 0}, */
+
+/*     {SDL_GL_ACCUM_RED_SIZE, 0}, */
+/*     {SDL_GL_ACCUM_GREEN_SIZE, 0}, */
+/*     {SDL_GL_ACCUM_BLUE_SIZE, 0}, */
+/*     {SDL_GL_ACCUM_ALPHA_SIZE, 0}, */
+
+/*     {SDL_GL_STEREO, 0}, */
+
+/*     {SDL_GL_MULTISAMPLEBUFFERS, 0}, */
+/*     {SDL_GL_MULTISAMPLESAMPLES, 0} */
+/* }; */
+
+        static int const attrib_list[] = {
+            GLX_DOUBLEBUFFER, True,
+            None
+        };
+
+        int configs_count;
+        GLXFBConfig *configs = glXChooseFBConfig(display, screen_number,
+                                                 attrib_list,
+                                                 &configs_count);
+        if (NULL == configs) {
+            error_status = ENOSYS;
+            goto disconnect;
+        }
+        fb_config = configs[0];
+        XFree(configs);
     }
 
-    gl_context = SDL_GL_CreateContext(window);
-    if (NULL == gl_context) {
+    int visual_id;
+    switch (glXGetFBConfigAttrib(display, fb_config, GLX_VISUAL_ID, &visual_id)) {
+    case GLX_NO_EXTENSION:
+    case GLX_BAD_ATTRIBUTE:
         error_status = ENOSYS;
-        log_str(logger, LINTED_STR("cannot create an OpenGL context: "),
-                SDL_GetError());
+        goto disconnect;
+
+    default:
+        break;
+    }
+
+    GLXContext glx_context = glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
+    if (NULL == glx_context) {
+        error_status = ENOSYS;
+        goto disconnect;
+    }
+
+    xcb_colormap_t colormap = xcb_generate_id(connection);
+    if ((error_status = errnum_from_connection(connection)) != 0) {
+        goto destroy_glx_context;
+    }
+
+    xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE,
+                        colormap,
+                        screen->root,
+                        visual_id);
+    if ((error_status = errnum_from_connection(connection)) != 0) {
+        goto destroy_glx_context;
+    }
+
+    xcb_window_t window = xcb_generate_id(connection);
+    if ((error_status = errnum_from_connection(connection)) != 0) {
+        goto destroy_glx_context;
+    }
+
+    {
+        uint32_t values[] = {
+            XCB_EVENT_MASK_STRUCTURE_NOTIFY
+            | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW
+            | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
+            | XCB_EVENT_MASK_KEYMAP_STATE
+            | XCB_EVENT_MASK_POINTER_MOTION,
+            colormap,
+            0};
+        xcb_create_window(connection,
+                          XCB_COPY_FROM_PARENT,
+                          window,
+                          screen->root,
+                          0, 0,
+                          window_state.width, window_state.height,
+                          0,
+                          XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                          visual_id,
+                          XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
+    }
+    if ((error_status = errnum_from_connection(connection)) != 0) {
+        goto disconnect;
+    }
+
+    xcb_map_window(connection, window);
+    if ((error_status = errnum_from_connection(connection)) != 0) {
         goto destroy_window;
     }
 
-    /* Get actual window size, and not the requested window size */
-    {
-        int width;
-        int height;
-        SDL_GetWindowSize(window, &width, &height);
-        window_state.width = width;
-        window_state.height = height;
+    xcb_flush(connection);
+    if ((error_status = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
     }
 
+    GLXWindow glxwindow = glXCreateWindow(display,
+                                          fb_config,
+                                          window,
+                                          0);
+    if(!window) {
+        error_status = ENOSYS;
+        goto destroy_window;
+    }
+
+    if (!glXMakeContextCurrent(display, glxwindow, glxwindow, glx_context)) {
+        error_status = ENOSYS;
+        goto destroy_glx_window;
+    }
+
+    xcb_atom_t wm_delete_window;
     {
-        errno_t errnum = init_graphics(logger, &gl_state, &window_state);
-        if (errnum != 0) {
-            error_status = errnum;
-            goto delete_context;
+        xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12,
+                                                          "WM_PROTOCOLS");
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_glx_window;
         }
+
+        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(connection, cookie, 0);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_glx_window;
+        }
+        xcb_atom_t wm_protocols = reply->atom;
+        free(reply);
+
+        xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,
+                                                           "WM_DELETE_WINDOW");
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_glx_window;
+        }
+
+        xcb_intern_atom_reply_t* reply2 = xcb_intern_atom_reply(connection, cookie2, 0);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_glx_window;
+        }
+        wm_delete_window = reply2->atom;
+        free(reply2);
+
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, wm_protocols, 4, 32, 1,
+                            &wm_delete_window);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_glx_window;
+        }
+    }
+
+    struct gl_state gl_state;
+
+    if ((error_status = init_graphics(logger, &gl_state, &window_state)) != 0) {
+        goto destroy_glx_window;
     }
 
     /* Do the initial resize */
     resize_graphics(window_state.width, window_state.height);
-
     for (;;) {
-        bool had_sdl_event;
-
-        /* Handle SDL events first before rendering */
-        {
-            SDL_Event sdl_event;
-            had_sdl_event = SDL_PollEvent(&sdl_event);
-            if (had_sdl_event) {
-                enum transition transition;
-                errno_t errnum = on_sdl_event(&sdl_event, &window_state,
-                                              &controller_state,
-                                              &transition);
-                if (errnum != 0) {
-                    error_status = errnum;
-                    goto cleanup_gl;
-                }
-
-                switch (transition) {
-                case DO_NOTHING:
-                    break;
-
-                case SHOULD_EXIT:
-                    goto cleanup_gl;
-
-                case SHOULD_RESIZE:
+        /* Handle GUI events first before rendering */
+        /* We have to use the Xlib event queue because of broken Mesa
+         * libraries which abuse it.
+         */
+        bool had_gui_event = XPending(display) > 0;
+        if (had_gui_event) {
+            XEvent event;
+            XNextEvent(display, &event);
+            switch (event.type) {
+                {
+                case ConfigureNotify:;
+                    XConfigureEvent* configure_event = (void*)&event;
+                    window_state.width = configure_event->width;
+                    window_state.height = configure_event->height;
                     resize_graphics(window_state.width, window_state.height);
                     break;
                 }
+
+                {
+                case MotionNotify:;
+                    XMotionEvent* motion_event = (void*)&event;
+                    on_tilt(motion_event->x, motion_event->y,
+                            &window_state, &controller_state);
+                    break;
+                }
+
+            case UnmapNotify:
+                window_state.viewable = false;
+                break;
+
+            case MapNotify:
+                window_state.viewable = true;
+                break;
+
+                {
+                case EnterNotify:
+                    window_state.focused = true;
+
+                    int x, y;
+                    if ((error_status = get_mouse_position(connection,
+                                                           window,
+                                                           &x, &y)) != 0) {
+                        goto cleanup_gl;
+                    }
+
+                    on_tilt(x, y, &window_state, &controller_state);
+                    break;
+                }
+
+            case LeaveNotify:
+                window_state.focused = false;
+
+                controller_state.update.x_tilt = 0;
+                controller_state.update.y_tilt = 0;
+
+                controller_state.update_pending = true;
+                break;
+
+                {
+                case KeymapNotify:;
+                    XMappingEvent* mapping_event = (void*)&event;
+                    XRefreshKeyboardMapping(mapping_event);
+                }
+
+                {
+                    bool is_key_down;
+
+                case KeyPress:
+                    is_key_down = true;
+                    goto on_key_event;
+
+                case KeyRelease:
+                    is_key_down = false;
+                    goto on_key_event;
+
+                on_key_event:;
+                    XKeyEvent* key_event = (void*)&event;
+                    switch (XLookupKeysym(key_event, 0)) {
+                    default:
+                        goto no_key_event;
+
+                    case XK_space:
+                        controller_state.update.jumping = is_key_down;
+                        break;
+
+                    case XK_Control_L:
+                        controller_state.update.left = is_key_down;
+                        break;
+
+                    case XK_Alt_L:
+                        controller_state.update.right = is_key_down;
+                        break;
+
+                    case XK_z:
+                        controller_state.update.forward = is_key_down;
+                        break;
+
+                    case XK_Shift_L:
+                        controller_state.update.back = is_key_down;
+                        break;
+                    }
+
+                    controller_state.update_pending = true;
+
+                no_key_event:
+                    break;
+                }
+
+            case ClientMessage:;
+                goto cleanup_gl;
+
+            default:
+                /* Unknown event type, ignore it */
+                break;
             }
         }
 
         enum {
             UPDATER,
-
             CONTROLLER
         };
 
-        size_t fds_size;
-        struct pollfd *fds;
-
-        struct pollfd fds_with_controller[] = {
+        struct pollfd fds[] = {
             [UPDATER] = {.fd = updater,.events = POLLIN},
-
-            [CONTROLLER] = {.fd = controller,.events = POLLOUT},
+            [CONTROLLER] = {
+                .fd = controller_state.update_pending ? controller : -1,
+                .events = POLLOUT},
         };
 
-        struct pollfd fds_without_controller[] = {
-            [UPDATER] = {.fd = updater,.events = POLLIN},
-        };
-
-        if (controller_state.update_pending) {
-            fds = fds_with_controller;
-            fds_size = LINTED_ARRAY_SIZE(fds_with_controller);
-        } else {
-            fds = fds_without_controller;
-            fds_size = LINTED_ARRAY_SIZE(fds_without_controller);
-        }
 
         errno_t poll_status;
         int fds_active;
 
         do {
-            fds_active = poll(fds, fds_size, 0);
+            fds_active = poll(fds, LINTED_ARRAY_SIZE(fds), 0);
             poll_status = -1 == fds_active ? errno : 0;
         } while (EINTR == poll_status);
         if (poll_status != 0) {
@@ -563,10 +759,10 @@ int main(int argc, char *argv[])
         }
 
         /* Only render if we have time to waste */
-        if (!had_sdl_event && !had_selected_event) {
+        if (!had_gui_event && !had_selected_event) {
             if (window_state.viewable) {
                 render_graphics(&gl_state, &gui_state, &window_state);
-                SDL_GL_SwapWindow(window);
+                glXSwapBuffers(display, glxwindow);
             } else {
                 /*
                  * This is an ugly hack but SDL cannot give us a
@@ -574,7 +770,19 @@ int main(int argc, char *argv[])
                  * still require us to pump events with
                  * SDL_PumpEvents.
                  */
-                SDL_Delay(10);
+                struct timespec request = {
+                    .tv_sec = 0,
+                    .tv_nsec = 10
+                };
+                errno_t errnum;
+                do {
+                    int status = nanosleep(&request, &request);
+                    errnum = -1 == status ? errno : 0;
+                } while (EINTR == errnum);
+                if (errnum != 0) {
+                    error_status = errnum;
+                    goto cleanup_gl;
+                }
             }
         }
     }
@@ -582,14 +790,31 @@ int main(int argc, char *argv[])
  cleanup_gl:
     destroy_graphics(&gl_state);
 
- delete_context:
-    SDL_GL_DeleteContext(gl_context);
+ destroy_glx_window:
+    glXDestroyWindow(display, glxwindow);
 
  destroy_window:
-    SDL_DestroyWindow(window);
+    xcb_destroy_window(connection, window);
+    {
+        errno_t errnum = errnum_from_connection(connection);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
 
- cleanup_SDL:
-    SDL_Quit();
+ destroy_glx_context:
+    glXDestroyContext(display, glx_context);
+
+ disconnect:
+    xcb_flush(connection);
+    {
+        errno_t errnum = errnum_from_connection(connection);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
+    XCloseDisplay(display);
 
  shutdown:
     {
@@ -603,130 +828,6 @@ int main(int argc, char *argv[])
     }
 
     return error_status;
-}
-
-static errno_t on_sdl_event(SDL_Event const *sdl_event,
-                            struct window_state *window_state,
-                            struct controller_state *controller_state,
-                            enum transition *transition)
-{
-    switch (sdl_event->type) {
-    default:
-        *transition = DO_NOTHING;
-        return 0;
-
-    case SDL_QUIT:
-        *transition = SHOULD_EXIT;
-        return 0;
-
-        {
-    case SDL_WINDOWEVENT:;
-            SDL_WindowEvent const *const window_event = &sdl_event->window;
-            switch (window_event->event) {
-            case SDL_WINDOWEVENT_RESIZED:
-                /*
-                 * Fuse multiple resize attempts into just one to prevent the
-                 * worse case scenario of a whole bunch of resize events from
-                 * killing the application's speed.
-                 */
-                window_state->width = window_event->data1;
-                window_state->height = window_event->data2;
-                *transition = SHOULD_RESIZE;
-                return 0;
-
-                {
-            case SDL_WINDOWEVENT_ENTER:
-                    window_state->focused = true;
-
-                    int x, y;
-                    SDL_GetMouseState(&x, &y);
-
-                    on_tilt(x, y, window_state, controller_state);
-
-                    *transition = DO_NOTHING;
-                    return 0;
-                }
-
-            case SDL_WINDOWEVENT_LEAVE:
-                window_state->focused = false;
-
-                controller_state->update.x_tilt = 0;
-                controller_state->update.y_tilt = 0;
-
-                controller_state->update_pending = true;
-
-                *transition = DO_NOTHING;
-                return 0;
-
-            case SDL_WINDOWEVENT_HIDDEN:
-                window_state->viewable = false;
-                *transition = DO_NOTHING;
-                return 0;
-
-            case SDL_WINDOWEVENT_SHOWN:
-            case SDL_WINDOWEVENT_EXPOSED:
-                window_state->viewable = true;
-                *transition = DO_NOTHING;
-                return 0;
-
-            default:
-                *transition = DO_NOTHING;
-                return 0;
-            }
-        }
-
-        {
-    case SDL_MOUSEMOTION:;
-            SDL_MouseMotionEvent const *const motion_event = &sdl_event->motion;
-
-            on_tilt(motion_event->x, motion_event->y,
-                    window_state, controller_state);
-
-            *transition = DO_NOTHING;
-            return 0;
-        }
-
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:{
-            bool is_key_down = SDL_KEYDOWN == sdl_event->type;
-
-            switch (sdl_event->key.keysym.sym) {
-            default:
-                *transition = DO_NOTHING;
-                return 0;
-
-            case SDLK_q:
-            case SDLK_ESCAPE:
-                *transition = is_key_down ? DO_NOTHING : SHOULD_EXIT;
-                return 0;
-
-            case SDLK_SPACE:
-                controller_state->update.jumping = is_key_down;
-                break;
-
-            case SDLK_LCTRL:
-                controller_state->update.left = is_key_down;
-                break;
-
-            case SDLK_LALT:
-                controller_state->update.right = is_key_down;
-                break;
-
-            case SDLK_z:
-                controller_state->update.forward = is_key_down;
-                break;
-
-            case SDLK_LSHIFT:
-                controller_state->update.back = is_key_down;
-                break;
-            }
-
-            controller_state->update_pending = true;
-
-            *transition = DO_NOTHING;
-            return 0;
-        }
-    }
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
@@ -764,8 +865,10 @@ static errno_t on_updater_readable(linted_updater updater,
         return read_status;
     }
 
-    gui_state->x_rotation = update.x_rotation * (2 * M_PI / UINT32_MAX);
-    gui_state->y_rotation = update.y_rotation * (2 * M_PI / UINT32_MAX);
+    float pi = acosf(-1.0f);
+
+    gui_state->x_rotation = update.x_rotation * (2 * pi / UINT32_MAX);
+    gui_state->y_rotation = update.y_rotation * (2 * pi / UINT32_MAX);
 
     gui_state->x_position = update.x_position * (1 / (double)2048);
     gui_state->y_position = update.y_position * (1 / (double)2048);
@@ -981,7 +1084,7 @@ static void resize_graphics(unsigned width, unsigned height)
 
     {
         GLfloat aspect = width / (GLfloat) height;
-        double fov = M_PI / 4;
+        double fov = acosf(-1.0f) / 4;
 
         double d = 1 / tan(fov / 2);
         double far = 1000;
