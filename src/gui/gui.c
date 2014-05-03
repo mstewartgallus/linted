@@ -152,6 +152,7 @@ static errno_t on_updater_readable(linted_updater updater,
 static errno_t on_controller_writeable(linted_controller controller, struct controller_state
                                        *controller_state);
 
+static int const attrib_list[];
 static errno_t init_graphics(linted_logger logger,
                              struct gl_state *gl_state,
                              struct window_state const *window_state);
@@ -427,46 +428,6 @@ int main(int argc, char *argv[])
     /* Query framebuffer configurations */
     GLXFBConfig fb_config;
     {
-        static int const attrib_list[] = {
-            GLX_BUFFER_SIZE, 0,       /* color index buffer size */
-            GLX_LEVEL, 0    ,         /* buffer-level */
-            GLX_DOUBLEBUFFER, True,   /* double buffer */
-
-            GLX_STEREO, False,
-            GLX_AUX_BUFFERS, 0,
-
-            GLX_RED_SIZE, GLX_DONT_CARE,
-            GLX_GREEN_SIZE, GLX_DONT_CARE,
-            GLX_BLUE_SIZE, GLX_DONT_CARE,
-            GLX_ALPHA_SIZE, GLX_DONT_CARE,
-
-            GLX_DEPTH_SIZE, 16,
-
-            GLX_STENCIL_SIZE, 0,
-            GLX_ACCUM_RED_SIZE, 0,
-            GLX_ACCUM_GREEN_SIZE, 0,
-            GLX_ACCUM_BLUE_SIZE, 0,
-            GLX_ACCUM_ALPHA_SIZE, 0,
-            GLX_RENDER_TYPE, GLX_RGBA_BIT,
-
-            GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-
-            GLX_X_RENDERABLE, True,
-
-            GLX_X_VISUAL_TYPE, GLX_DONT_CARE,
-
-            GLX_CONFIG_CAVEAT, GLX_DONT_CARE,
-
-            GLX_TRANSPARENT_TYPE, GLX_NONE,
-
-            GLX_TRANSPARENT_INDEX_VALUE, GLX_DONT_CARE,
-            GLX_TRANSPARENT_RED_VALUE, GLX_DONT_CARE,
-            GLX_TRANSPARENT_GREEN_VALUE, GLX_DONT_CARE,
-            GLX_TRANSPARENT_BLUE_VALUE, GLX_DONT_CARE,
-            GLX_TRANSPARENT_ALPHA_VALUE, GLX_DONT_CARE,
-            None
-        };
-
         int configs_count;
         GLXFBConfig *configs = glXChooseFBConfig(display, screen_number,
                                                  attrib_list,
@@ -490,15 +451,9 @@ int main(int argc, char *argv[])
         break;
     }
 
-    GLXContext glx_context = glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
-    if (NULL == glx_context) {
-        error_status = ENOSYS;
-        goto disconnect;
-    }
-
     xcb_colormap_t colormap = xcb_generate_id(connection);
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto destroy_glx_context;
+        goto disconnect;
     }
 
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE,
@@ -506,12 +461,12 @@ int main(int argc, char *argv[])
                         screen->root,
                         visual_id);
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto destroy_glx_context;
+        goto disconnect;
     }
 
     xcb_window_t window = xcb_generate_id(connection);
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto destroy_glx_context;
+        goto disconnect;
     }
 
     {
@@ -591,18 +546,24 @@ int main(int argc, char *argv[])
         }
     }
 
+    GLXContext glx_context = glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
+    if (NULL == glx_context) {
+        error_status = ENOSYS;
+        goto destroy_glx_window;
+    }
+
     if (!glXMakeContextCurrent(display,
                                glxwindow,
                                glxwindow,
                                glx_context)) {
         error_status = ENOSYS;
-        goto destroy_glx_window;
+        goto destroy_glx_context;
     }
 
     struct gl_state gl_state;
 
     if ((error_status = init_graphics(logger, &gl_state, &window_state)) != 0) {
-        goto destroy_glx_window;
+        goto destroy_glx_context;
     }
 
     /* Do the initial resize */
@@ -799,6 +760,10 @@ int main(int argc, char *argv[])
  cleanup_gl:
     destroy_graphics(&gl_state);
 
+ destroy_glx_context:
+    glXMakeContextCurrent(display, None, None, NULL);
+    glXDestroyContext(display, glx_context);
+
  destroy_glx_window:
     glXDestroyWindow(display, glxwindow);
 
@@ -810,10 +775,6 @@ int main(int argc, char *argv[])
             error_status = errnum;
         }
     }
-
- destroy_glx_context:
-    glXMakeContextCurrent(display, None, None, NULL);
-    glXDestroyContext(display, glx_context);
 
  disconnect:
     xcb_flush(connection);
@@ -908,6 +869,46 @@ static int on_controller_writeable(linted_controller controller,
 
     return 0;
 }
+
+static int const attrib_list[] = {
+    GLX_BUFFER_SIZE, 0,       /* color index buffer size */
+    GLX_LEVEL, 0    ,         /* buffer-level */
+    GLX_DOUBLEBUFFER, True,   /* double buffer */
+
+    GLX_STEREO, False,
+    GLX_AUX_BUFFERS, 0,
+
+    GLX_RED_SIZE, GLX_DONT_CARE,
+    GLX_GREEN_SIZE, GLX_DONT_CARE,
+    GLX_BLUE_SIZE, GLX_DONT_CARE,
+    GLX_ALPHA_SIZE, GLX_DONT_CARE,
+
+    GLX_DEPTH_SIZE, 16,
+
+    GLX_STENCIL_SIZE, 0,
+    GLX_ACCUM_RED_SIZE, 0,
+    GLX_ACCUM_GREEN_SIZE, 0,
+    GLX_ACCUM_BLUE_SIZE, 0,
+    GLX_ACCUM_ALPHA_SIZE, 0,
+    GLX_RENDER_TYPE, GLX_RGBA_BIT,
+
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+
+    GLX_X_RENDERABLE, True,
+
+    GLX_X_VISUAL_TYPE, GLX_DONT_CARE,
+
+    GLX_CONFIG_CAVEAT, GLX_DONT_CARE,
+
+    GLX_TRANSPARENT_TYPE, GLX_NONE,
+
+    GLX_TRANSPARENT_INDEX_VALUE, GLX_DONT_CARE,
+    GLX_TRANSPARENT_RED_VALUE, GLX_DONT_CARE,
+    GLX_TRANSPARENT_GREEN_VALUE, GLX_DONT_CARE,
+    GLX_TRANSPARENT_BLUE_VALUE, GLX_DONT_CARE,
+    GLX_TRANSPARENT_ALPHA_VALUE, GLX_DONT_CARE,
+    None
+};
 
 static errno_t init_graphics(linted_logger logger,
                              struct gl_state *gl_state,
