@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define LINTED_SIZEOF_MEMBER(type, member) (sizeof ((type *) 0)->member)
+#define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type*)0)->member)
 
 #define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
@@ -32,12 +32,11 @@
  *
  * Should be used really, really rarely.
  */
-#define LINTED_FATAL_FAILURE(errnum, format_string, ...)                \
-    do {                                                                \
+#define LINTED_FATAL_FAILURE(errnum, format_string, ...)                                                         \
+    do {                                                                                                         \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-fatal failure in file %s, function %s, and line %i: " format_string,    \
-                         __FILE__, __func__, __LINE__,  __VA_ARGS__);   \
-        exit(errnum);                                                   \
+fatal failure in file %s, function %s, and line %i: " format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
+        exit(errnum);                                                                                            \
     } while (0)
 
 /**
@@ -55,12 +54,11 @@ fatal failure in file %s, function %s, and line %i: " format_string,    \
  * Nonpermissible errors to use this for may include EMFILE, ENFILE
  * and ENOMEM. These cases should be handled properly.
  */
-#define LINTED_IMPOSSIBILITY(format_string, ...)                        \
-    do {                                                                \
+#define LINTED_IMPOSSIBILITY(format_string, ...)                                                                    \
+    do {                                                                                                            \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-impossible error in file %s, function %s, and line %i: " format_string, \
-               __FILE__, __func__, __LINE__,  __VA_ARGS__);             \
-        abort();                                                        \
+impossible error in file %s, function %s, and line %i: " format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
+        abort();                                                                                                    \
     } while (0)
 
 /**
@@ -68,34 +66,33 @@ impossible error in file %s, function %s, and line %i: " format_string, \
  * developer is too lazy to handle properly. This macro should only
  * ever be used during development and not during release.
  */
-#define LINTED_LAZY_DEV(format_string, ...)                             \
-    do {                                                                \
+#define LINTED_LAZY_DEV(format_string, ...)                                                                            \
+    do {                                                                                                               \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-lazy developer error in file %s, function %s, and line %i:" format_string, \
-                         __FILE__, __func__, __LINE__,  __VA_ARGS__);   \
-        abort();                                                        \
+lazy developer error in file %s, function %s, and line %i:" format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
+        abort();                                                                                                       \
     } while (0)
 
 static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
 {
     /*
-     * Section 6.3.1.2 "Signed and unsigned integers" of the C99
-     * standard specifies that the behaviour is implementation-defined
-     * (or that a signal could be raised) if the new type is signed
-     * and the value can't be represented in it so we do this.
-     */
-    if (positive > (int_fast64_t) INT32_MAX) {
-        return -(uint_fast32_t) ((UINT32_MAX - (int_fast64_t) positive) + 1u);
+   * Section 6.3.1.2 "Signed and unsigned integers" of the C99
+   * standard specifies that the behaviour is implementation-defined
+   * (or that a signal could be raised) if the new type is signed
+   * and the value can't be represented in it so we do this.
+   */
+    if (positive > (int_fast64_t)INT32_MAX) {
+        return -(uint_fast32_t)((UINT32_MAX - (int_fast64_t)positive) + 1u);
     }
 
     return positive;
 }
 
-char const *linted_error_string_alloc(errno_t errnum);
+char const* linted_error_string_alloc(errno_t errnum);
 
-void linted_error_string_free(char const *error_string);
+void linted_error_string_free(char const* error_string);
 
-errno_t linted_util_sanitize_environment(int const *kept_fds,
+errno_t linted_util_sanitize_environment(int const* kept_fds,
                                          size_t kept_fds_size);
 
-#endif                          /* LINTED_UTIL_H */
+#endif /* LINTED_UTIL_H */

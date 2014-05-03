@@ -24,15 +24,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#define MESSAGE_SIZE (                                          \
-        LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)    \
-        + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)  \
-        + 1)
+#define MESSAGE_SIZE \
+    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1)
 
 typedef char message_type[MESSAGE_SIZE];
 
-errno_t linted_controller_pair(linted_controller controller[2],
-                               int readflags, int writeflags)
+errno_t linted_controller_pair(linted_controller controller[2], int readflags,
+                               int writeflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -43,11 +41,12 @@ errno_t linted_controller_pair(linted_controller controller[2],
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-errno_t linted_controller_send(linted_controller controller,
-                               struct linted_controller_message const *message)
+errno_t linted_controller_send(
+    linted_controller controller,
+    struct linted_controller_message const* message)
 {
     message_type raw_message;
-    char *tip = raw_message;
+    char* tip = raw_message;
 
     struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
     memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
@@ -57,15 +56,11 @@ errno_t linted_controller_send(linted_controller controller,
     memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
     tip += sizeof y_tilt.bytes;
 
-    unsigned char bitfield = ((uintmax_t) message->forward)
-        | ((uintmax_t) message->back) << 1u
-        | ((uintmax_t) message->right) << 2u
-        | ((uintmax_t) message->left) << 3u
-        | ((uintmax_t) message->jumping) << 4u;
+    unsigned char bitfield = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 
-    return -1 == mq_send(controller, raw_message, sizeof raw_message, 0)
-        ? errno : 0;
+    return -1 == mq_send(controller, raw_message, sizeof raw_message, 0) ? errno
+                                                                         : 0;
 }
 
 errno_t linted_controller_close(linted_controller controller)
@@ -74,11 +69,10 @@ errno_t linted_controller_close(linted_controller controller)
 }
 
 errno_t linted_controller_receive(linted_controller queue,
-                                  struct linted_controller_message * message)
+                                  struct linted_controller_message* message)
 {
     message_type raw_message;
-    ssize_t recv_status = mq_receive(queue, raw_message, sizeof raw_message,
-                                     NULL);
+    ssize_t recv_status = mq_receive(queue, raw_message, sizeof raw_message, NULL);
     if (-1 == recv_status) {
         return errno;
     }
@@ -88,7 +82,7 @@ errno_t linted_controller_receive(linted_controller queue,
         return EPROTO;
     }
 
-    char *tip = raw_message;
+    char* tip = raw_message;
 
     struct linted_rpc_int32 x_tilt;
     memcpy(x_tilt.bytes, tip, sizeof x_tilt.bytes);

@@ -37,11 +37,11 @@ struct linted_updater_update {
 errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
 
 errno_t linted_updater_send_update(linted_updater updater,
-                                   struct linted_updater_update const *update);
+                                   struct linted_updater_update const* update);
 
 errno_t linted_updater_receive_update(linted_updater updater,
-                                      struct linted_updater_update *update);
+                                      struct linted_updater_update* update);
 
 errno_t linted_updater_close(linted_updater updater);
 
-#endif                          /* LINTED_UPDATER_H */
+#endif /* LINTED_UPDATER_H */

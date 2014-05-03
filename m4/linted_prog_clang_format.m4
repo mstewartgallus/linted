@@ -7,9 +7,9 @@ dnl This program is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
-AC_DEFUN([LINTED_PROG_INDENT],[
+AC_DEFUN([LINTED_PROG_CLANG_FORMAT],[
 dnl
-AC_ARG_VAR([INDENT], [The indent indentation tool])
+AC_ARG_VAR([CLANG_FORMAT], [The Clang Format formatting tool])
 dnl
-test -z "${INDENT}" && AC_CHECK_PROGS([INDENT], [indent])
+test -z "${CLANG_FORMAT}" && AC_CHECK_PROGS([CLANG_FORMAT], [clang-format])
 ])

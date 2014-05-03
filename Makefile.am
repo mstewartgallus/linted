@@ -67,7 +67,7 @@ dist-hook:
 
 .PHONY: indent
 indent: $(SOURCES)
-	$(INDENT) $(linted_INDENTFLAGS) $^
+	$(CLANG_FORMAT) $(linted_CLANG_FORMATFLAGS) $^
 
 .PHONY: doxygen
 doxygen:
@@ -131,10 +131,9 @@ cbmc-lint: scripts/cbmcwrapper
 	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/linted
 	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/lintedctl
 
-linted_INDENTFLAGS=\
-  --linux-style\
-  --no-tabs\
-  --indent-level4
+linted_CLANG_FORMATFLAGS=\
+  -i\
+  --style=webkit
 
 EXTRA_DIST+=include/linted/check.h include/linted/rpc.h include/linted/str.h
 

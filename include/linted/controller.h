@@ -30,22 +30,22 @@ struct linted_controller_message {
     int_fast32_t x_tilt;
     int_fast32_t y_tilt;
 
-    bool left:1;
-    bool right:1;
-    bool forward:1;
-    bool back:1;
+    bool left : 1;
+    bool right : 1;
+    bool forward : 1;
+    bool back : 1;
 
-    bool jumping:1;
+    bool jumping : 1;
 };
 
-errno_t linted_controller_pair(linted_controller controller[2],
-                               int readflags, int writeflags);
+errno_t linted_controller_pair(linted_controller controller[2], int readflags,
+                               int writeflags);
 errno_t linted_controller_close(linted_controller controller);
 
 errno_t linted_controller_send(linted_controller controller,
-                               struct linted_controller_message const *message);
+                               struct linted_controller_message const* message);
 
 errno_t linted_controller_receive(linted_controller controller,
-                                  struct linted_controller_message *message);
+                                  struct linted_controller_message* message);
 
-#endif                          /* LINTED_CONTROLLER_H */
+#endif /* LINTED_CONTROLLER_H */

@@ -18,4 +18,4 @@
 
 void linted_sandbox(void);
 
-#endif                          /* LINTED_SANDBOX_H */
+#endif /* LINTED_SANDBOX_H */

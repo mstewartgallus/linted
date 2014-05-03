@@ -21,7 +21,7 @@
 #include <signal.h>
 #include <sys/un.h>
 
-#define LINTED_MANAGER_PATH_MAX                     \
+#define LINTED_MANAGER_PATH_MAX \
     (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
 typedef int linted_manager;
@@ -33,10 +33,8 @@ enum linted_manager_type {
 
 enum linted_manager_service {
     LINTED_MANAGER_SERVICE_INIT,
-
     LINTED_MANAGER_SERVICE_GUI,
     LINTED_MANAGER_SERVICE_SIMULATOR,
-
     LINTED_MANAGER_SERVICE_LOGGER,
     LINTED_MANAGER_SERVICE_CONTROLLER,
     LINTED_MANAGER_SERVICE_UPDATER,
@@ -72,30 +70,30 @@ union linted_manager_reply {
     struct linted_manager_stop_reply stop;
 };
 
-errno_t linted_manager_bind(linted_manager * manager, int backlog,
-                            char const *path, size_t path_len);
+errno_t linted_manager_bind(linted_manager* manager, int backlog,
+                            char const* path, size_t path_len);
 
-errno_t linted_manager_connect(linted_manager * manager,
-                               char const *path, size_t path_len);
+errno_t linted_manager_connect(linted_manager* manager, char const* path,
+                               size_t path_len);
 
 errno_t linted_manager_close(linted_manager manager);
 
 errno_t linted_manager_path(linted_manager manager,
                             char buf[static LINTED_MANAGER_PATH_MAX],
-                            size_t * len);
+                            size_t* len);
 
 errno_t linted_manager_recv_request(linted_manager manager,
-                                    union linted_manager_request *request,
-                                    size_t * size);
+                                    union linted_manager_request* request,
+                                    size_t* size);
 
 errno_t linted_manager_send_reply(linted_manager manager,
-                                  union linted_manager_reply const *reply);
+                                  union linted_manager_reply const* reply);
 
-errno_t linted_manager_send_request(linted_manager manager, union linted_manager_request const
-                                    *request);
+errno_t linted_manager_send_request(
+    linted_manager manager, union linted_manager_request const* request);
 
 errno_t linted_manager_recv_reply(linted_manager manager,
-                                  union linted_manager_reply *reply,
-                                  size_t * size);
+                                  union linted_manager_reply* reply,
+                                  size_t* size);
 
-#endif                          /* LINTED_MANAGER_H */
+#endif /* LINTED_MANAGER_H */

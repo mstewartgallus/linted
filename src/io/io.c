@@ -33,15 +33,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-errno_t linted_io_read_all(int fd, size_t * bytes_read_out,
-                           void *buf, size_t count)
+errno_t linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
+                           size_t count)
 {
     errno_t error_status = 0;
     size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_read = read(fd, (char *)buf + total_bytes_read,
-                                  count - total_bytes_read);
+        ssize_t bytes_read = read(fd, (char*)buf + total_bytes_read, count - total_bytes_read);
 
         if (0 == bytes_read) {
             /* Hang up */
@@ -61,21 +60,21 @@ errno_t linted_io_read_all(int fd, size_t * bytes_read_out,
         total_bytes_read += bytes_read;
     } while (total_bytes_read != count);
 
- output_bytes_read:
+output_bytes_read:
     if (bytes_read_out != NULL) {
         *bytes_read_out = total_bytes_read;
     }
     return error_status;
 }
 
-errno_t linted_io_write_all(int fd, size_t * bytes_wrote_out,
-                            void const *buf, size_t count)
+errno_t linted_io_write_all(int fd, size_t* bytes_wrote_out, void const* buf,
+                            size_t count)
 {
     errno_t error_status = 0;
     size_t total_bytes_wrote = 0;
 
     do {
-        ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
+        ssize_t bytes_wrote = write(fd, (char const*)buf + total_bytes_wrote,
                                     count - total_bytes_wrote);
         errno_t write_status = -1 == bytes_wrote ? errno : 0;
         if (EINTR == write_status) {
@@ -90,25 +89,26 @@ errno_t linted_io_write_all(int fd, size_t * bytes_wrote_out,
         total_bytes_wrote += bytes_wrote;
     } while (total_bytes_wrote != count);
 
- output_bytes_wrote:
+output_bytes_wrote:
     if (bytes_wrote_out != NULL) {
         *bytes_wrote_out = total_bytes_wrote;
     }
     return error_status;
 }
 
-errno_t linted_io_write_str(int fd, size_t * bytes_wrote, struct linted_str str)
+errno_t linted_io_write_str(int fd, size_t* bytes_wrote,
+                            struct linted_str str)
 {
     return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
 
-errno_t linted_io_write_string(int fd, size_t * bytes_wrote_out, char const *s)
+errno_t linted_io_write_string(int fd, size_t* bytes_wrote_out, char const* s)
 {
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
-errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
-                               char const *format_str, ...)
+errno_t linted_io_write_format(int fd, size_t* bytes_wrote_out,
+                               char const* format_str, ...)
 {
     errno_t error_status = 0;
 
@@ -127,7 +127,7 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
     {
         size_t string_size = bytes_should_write + 1;
 
-        char *string = malloc(string_size);
+        char* string = malloc(string_size);
         if (NULL == string) {
             error_status = errno;
             goto free_va_lists;
@@ -139,26 +139,25 @@ errno_t linted_io_write_format(int fd, size_t * bytes_wrote_out,
         }
 
         {
-            errno_t errnum = linted_io_write_string(fd, bytes_wrote_out,
-                                                    string);
+            errno_t errnum = linted_io_write_string(fd, bytes_wrote_out, string);
             if (errnum != 0) {
                 error_status = errnum;
                 goto free_string;
             }
         }
 
- free_string:
+    free_string:
         free(string);
     }
 
- free_va_lists:
+free_va_lists:
     va_end(ap);
     va_end(ap_copy);
 
     return error_status;
 }
 
-errno_t linted_io_strtofd(char const *str, int *fd)
+errno_t linted_io_strtofd(char const* str, int* fd)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
@@ -208,7 +207,7 @@ errno_t linted_io_close(int fd)
     return -1 == close_status ? errno : 0;
 }
 
-errno_t linted_io_dummy(int *fildesp, int flags)
+errno_t linted_io_dummy(int* fildesp, int flags)
 {
     int fildes = open("/dev/null", O_RDONLY | flags);
     if (-1 == fildes) {
