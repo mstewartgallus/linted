@@ -56,7 +56,16 @@ enum transition {
     DO_NOTHING
 };
 
-struct window_state {
+struct controller_state {
+    struct linted_controller_message update;
+    bool update_pending;
+};
+
+struct graphics_state {
+    GLuint program;
+};
+
+struct window_model {
     unsigned width;
     unsigned height;
 
@@ -64,22 +73,13 @@ struct window_state {
     bool focused:1;
 };
 
-struct controller_state {
-    struct linted_controller_message update;
-    bool update_pending;
-};
-
-struct gui_state {
+struct sim_model {
     float x_rotation;
     float y_rotation;
 
     float x_position;
     float y_position;
     float z_position;
-};
-
-struct gl_state {
-    GLuint program;
 };
 
 static errno_t errnum_from_connection(xcb_connection_t * connection)
@@ -144,22 +144,22 @@ static void flush_gl_errors(void);
 static errno_t get_gl_error(void);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_state const *window_state,
+                    struct window_model const *window_model,
                     struct controller_state *controller_state);
 
 static errno_t on_updater_readable(linted_updater updater,
-                                   struct gui_state *gui_state);
+                                   struct sim_model *sim_model);
 static errno_t on_controller_writeable(linted_controller controller, struct controller_state
                                        *controller_state);
 
 static int const attrib_list[];
 static errno_t init_graphics(linted_logger logger,
-                             struct gl_state *gl_state,
-                             struct window_state const *window_state);
-static void render_graphics(struct gl_state const *gl_state,
-                            struct gui_state const *gui_state,
-                            struct window_state const *window_state);
-static void destroy_graphics(struct gl_state *gl_state);
+                             struct graphics_state *graphics_state,
+                             struct window_model const *window_model);
+static void render_graphics(struct graphics_state const *graphics_state,
+                            struct sim_model const *sim_model,
+                            struct window_model const *window_model);
+static void destroy_graphics(struct graphics_state *graphics_state);
 static void resize_graphics(unsigned width, unsigned height);
 
 static double square(double x);
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 
     errno_t error_status = 0;
 
-    struct window_state window_state = {.width = 640,.height = 800,
+    struct window_model window_model = {.width = 640,.height = 800,
                                         .viewable = true
     };
 
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
         .update_pending = false
     };
 
-    struct gui_state gui_state = {
+    struct sim_model sim_model = {
         .x_rotation = 0,
         .y_rotation = 0,
 
@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
                           window,
                           screen->root,
                           0, 0,
-                          window_state.width, window_state.height,
+                          window_model.width, window_model.height,
                           0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT,
                           visual_id,
@@ -560,14 +560,14 @@ int main(int argc, char *argv[])
         goto destroy_glx_context;
     }
 
-    struct gl_state gl_state;
+    struct graphics_state graphics_state;
 
-    if ((error_status = init_graphics(logger, &gl_state, &window_state)) != 0) {
+    if ((error_status = init_graphics(logger, &graphics_state, &window_model)) != 0) {
         goto destroy_glx_context;
     }
 
     /* Do the initial resize */
-    resize_graphics(window_state.width, window_state.height);
+    resize_graphics(window_model.width, window_model.height);
     for (;;) {
         /* Handle GUI events first before rendering */
         /* We have to use the Xlib event queue because of broken Mesa
@@ -581,9 +581,9 @@ int main(int argc, char *argv[])
                 {
                 case ConfigureNotify:;
                     XConfigureEvent* configure_event = &event.xconfigure;
-                    window_state.width = configure_event->width;
-                    window_state.height = configure_event->height;
-                    resize_graphics(window_state.width, window_state.height);
+                    window_model.width = configure_event->width;
+                    window_model.height = configure_event->height;
+                    resize_graphics(window_model.width, window_model.height);
                     break;
                 }
 
@@ -591,21 +591,21 @@ int main(int argc, char *argv[])
                 case MotionNotify:;
                     XMotionEvent* motion_event = &event.xmotion;
                     on_tilt(motion_event->x, motion_event->y,
-                            &window_state, &controller_state);
+                            &window_model, &controller_state);
                     break;
                 }
 
             case UnmapNotify:
-                window_state.viewable = false;
+                window_model.viewable = false;
                 break;
 
             case MapNotify:
-                window_state.viewable = true;
+                window_model.viewable = true;
                 break;
 
                 {
                 case EnterNotify:
-                    window_state.focused = true;
+                    window_model.focused = true;
 
                     int x, y;
                     if ((error_status = get_mouse_position(connection,
@@ -614,12 +614,12 @@ int main(int argc, char *argv[])
                         goto cleanup_gl;
                     }
 
-                    on_tilt(x, y, &window_state, &controller_state);
+                    on_tilt(x, y, &window_model, &controller_state);
                     break;
                 }
 
             case LeaveNotify:
-                window_state.focused = false;
+                window_model.focused = false;
 
                 controller_state.update.x_tilt = 0;
                 controller_state.update.y_tilt = 0;
@@ -713,7 +713,7 @@ int main(int argc, char *argv[])
         bool had_selected_event = fds_active > 0;
 
         if ((fds[UPDATER].revents & POLLIN) != 0) {
-            errno_t errnum = on_updater_readable(updater, &gui_state);
+            errno_t errnum = on_updater_readable(updater, &sim_model);
             if (errnum != 0) {
                 error_status = errnum;
                 goto cleanup_gl;
@@ -732,8 +732,8 @@ int main(int argc, char *argv[])
 
         /* Only render if we have time to waste */
         if (!had_gui_event && !had_selected_event) {
-            if (window_state.viewable) {
-                render_graphics(&gl_state, &gui_state, &window_state);
+            if (window_model.viewable) {
+                render_graphics(&graphics_state, &sim_model, &window_model);
                 glXSwapBuffers(display, glxwindow);
             } else {
                 /*
@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
     }
 
  cleanup_gl:
-    destroy_graphics(&gl_state);
+    destroy_graphics(&graphics_state);
 
  destroy_glx_context:
     glXMakeContextCurrent(display, None, None, NULL);
@@ -802,15 +802,15 @@ int main(int argc, char *argv[])
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_state const *window_state,
+                    struct window_model const *window_model,
                     struct controller_state *controller_state)
 {
-    int32_t x = (2 * mouse_x - (int)window_state->width) / 2;
-    int32_t y = (2 * mouse_y - (int)window_state->height) / 2;
+    int32_t x = (2 * mouse_x - (int)window_model->width) / 2;
+    int32_t y = (2 * mouse_y - (int)window_model->height) / 2;
 
     /* Normalize and scale up to UINT32_MAX sized screen */
-    x *= INT32_MAX / window_state->width;
-    y *= INT32_MAX / window_state->height;
+    x *= INT32_MAX / window_model->width;
+    y *= INT32_MAX / window_model->height;
 
     controller_state->update.x_tilt = x;
     controller_state->update.y_tilt = y;
@@ -819,7 +819,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 }
 
 static errno_t on_updater_readable(linted_updater updater,
-                                   struct gui_state *gui_state)
+                                   struct sim_model *sim_model)
 {
     struct linted_updater_update update;
 
@@ -838,12 +838,12 @@ static errno_t on_updater_readable(linted_updater updater,
 
     float pi = acosf(-1.0f);
 
-    gui_state->x_rotation = update.x_rotation * (2 * pi / UINT32_MAX);
-    gui_state->y_rotation = update.y_rotation * (2 * pi / UINT32_MAX);
+    sim_model->x_rotation = update.x_rotation * (2 * pi / UINT32_MAX);
+    sim_model->y_rotation = update.y_rotation * (2 * pi / UINT32_MAX);
 
-    gui_state->x_position = update.x_position * (1 / (double)2048);
-    gui_state->y_position = update.y_position * (1 / (double)2048);
-    gui_state->z_position = update.z_position * (1 / (double)2048);
+    sim_model->x_position = update.x_position * (1 / (double)2048);
+    sim_model->y_position = update.y_position * (1 / (double)2048);
+    sim_model->z_position = update.z_position * (1 / (double)2048);
 
     return 0;
 }
@@ -911,8 +911,8 @@ static int const attrib_list[] = {
 };
 
 static errno_t init_graphics(linted_logger logger,
-                             struct gl_state *gl_state,
-                             struct window_state const *window_state)
+                             struct graphics_state *graphics_state,
+                             struct window_model const *window_model)
 {
     errno_t error_status = 0;
 
@@ -1069,7 +1069,7 @@ static errno_t init_graphics(linted_logger logger,
     }
     glUseProgram(program);
 
-    gl_state->program = program;
+    graphics_state->program = program;
 
     return 0;
 
@@ -1079,11 +1079,11 @@ static errno_t init_graphics(linted_logger logger,
     return error_status;
 }
 
-static void destroy_graphics(struct gl_state *gl_state)
+static void destroy_graphics(struct graphics_state *graphics_state)
 {
     glUseProgram(0);
-    glDeleteProgram(gl_state->program);
-    memset(gl_state, 0, sizeof *gl_state);
+    glDeleteProgram(graphics_state->program);
+    memset(graphics_state, 0, sizeof *graphics_state);
 }
 
 static void resize_graphics(unsigned width, unsigned height)
@@ -1112,9 +1112,9 @@ static void resize_graphics(unsigned width, unsigned height)
     glMatrixMode(GL_MODELVIEW);
 }
 
-static void render_graphics(struct gl_state const *gl_state,
-                            struct gui_state const *gui_state,
-                            struct window_state const *window_state)
+static void render_graphics(struct graphics_state const *graphics_state,
+                            struct sim_model const *sim_model,
+                            struct window_model const *window_model)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1125,8 +1125,8 @@ static void render_graphics(struct gl_state const *gl_state,
 
     /* Rotate the camera */
     {
-        GLfloat cos_y = cosf(gui_state->y_rotation);
-        GLfloat sin_y = sinf(gui_state->y_rotation);
+        GLfloat cos_y = cosf(sim_model->y_rotation);
+        GLfloat sin_y = sinf(sim_model->y_rotation);
         GLfloat const rotation[][4] = {
             {1, 0, 0, 0},
             {0, cos_y, -sin_y, 0},
@@ -1137,8 +1137,8 @@ static void render_graphics(struct gl_state const *gl_state,
     }
 
     {
-        GLfloat cos_x = cosf(gui_state->x_rotation);
-        GLfloat sin_x = sinf(gui_state->x_rotation);
+        GLfloat cos_x = cosf(sim_model->x_rotation);
+        GLfloat sin_x = sinf(sim_model->x_rotation);
         GLfloat const rotation[][4] = {
             {cos_x, 0, sin_x, 0},
             {0, 1, 0, 0},
@@ -1154,8 +1154,8 @@ static void render_graphics(struct gl_state const *gl_state,
             {1, 0, 0, 0},
             {0, 1, 0, 0},
             {0, 0, 1, 0},
-            {gui_state->x_position, gui_state->y_position,
-             gui_state->z_position, 1}
+            {sim_model->x_position, sim_model->y_position,
+             sim_model->z_position, 1}
         };
         glMultMatrixf(camera[0]);
     }
