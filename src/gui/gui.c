@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 
     xcb_screen_t * screen = NULL;
     {
-        xcb_screen_iterator_t iter = xcb_setup_roots_iterator (xcb_get_setup (connection));
+        xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(connection));
         for (size_t ii = 0; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
                                           fb_config,
                                           window,
                                           0);
-    if(!window) {
+    if (!window) {
         error_status = ENOSYS;
         goto destroy_window;
     }
@@ -774,10 +774,8 @@ int main(int argc, char *argv[])
                 glXSwapBuffers(display, glxwindow);
             } else {
                 /*
-                 * This is an ugly hack but SDL cannot give us a
-                 * better solution. Even SDL event filters and a pipe
-                 * still require us to pump events with
-                 * SDL_PumpEvents.
+                 * This is an ugly hack and waiting the X11 file
+                 * descriptor should be implemented eventually.
                  */
                 struct timespec request = {
                     .tv_sec = 0,
