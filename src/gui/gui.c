@@ -556,11 +556,6 @@ int main(int argc, char *argv[])
         goto destroy_window;
     }
 
-    if (!glXMakeContextCurrent(display, glxwindow, glxwindow, glx_context)) {
-        error_status = ENOSYS;
-        goto destroy_glx_window;
-    }
-
     xcb_atom_t wm_delete_window;
     {
         xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12,
@@ -594,6 +589,14 @@ int main(int argc, char *argv[])
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_glx_window;
         }
+    }
+
+    if (!glXMakeContextCurrent(display,
+                               glxwindow,
+                               glxwindow,
+                               glx_context)) {
+        error_status = ENOSYS;
+        goto destroy_glx_window;
     }
 
     struct gl_state gl_state;
@@ -734,7 +737,6 @@ int main(int argc, char *argv[])
                 .events = POLLOUT},
         };
 
-
         errno_t poll_status;
         int fds_active;
 
@@ -810,6 +812,7 @@ int main(int argc, char *argv[])
     }
 
  destroy_glx_context:
+    glXMakeContextCurrent(display, None, None, NULL);
     glXDestroyContext(display, glx_context);
 
  disconnect:
