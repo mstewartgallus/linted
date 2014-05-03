@@ -197,33 +197,46 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
             }
 
             switch (info.si_code) {
-                {
-                case CLD_EXITED:
-                    ;
-                    errno_t exit_status = info.si_status;
-                    switch (exit_status) {
-                    case 0:
-                        error_status = EINVAL;
-                        goto unmap_spawn_error;
+            case CLD_EXITED: {
+                errno_t exit_status = info.si_status;
+                switch (exit_status) {
+                case 0:
+                    error_status = EINVAL;
+                    goto unmap_spawn_error;
 
-                    default:
-                        error_status = ENOSYS;
-                        goto unmap_spawn_error;
-                    }
-                }
-
-                {
-                case CLD_KILLED:
-                    ;
-                    errno_t signo = info.si_status;
-                    if (signo != SIGKILL) {
-                        error_status = ENOSYS;
-                        goto unmap_spawn_error;
-                    }
-
-                    error_status = spawn_error->errnum;
+                default:
+                    error_status = ENOSYS;
                     goto unmap_spawn_error;
                 }
+            }
+
+            case CLD_KILLED: {
+#if defined __linux__
+                errno_t signo = info.si_status;
+                switch (signo) {
+                case SIGKILL:
+                    error_status = ENOMEM;
+                    break;
+
+                case SIGSEGV:
+                    /* Corrupted elf file */
+                    error_status = ENOEXEC;
+                    break;
+
+                case SIGTERM:
+                    /* Exited with error and passed an error code */
+                    error_status = spawn_error->errnum;
+                    break;
+
+                default:
+                    error_status = ENOSYS;
+                    break;
+                }
+                goto unmap_spawn_error;
+#else
+#error The exit status of an aborted execve is very OS specific
+#endif
+            }
 
             case CLD_DUMPED:
                 error_status = ENOSYS;
@@ -357,7 +370,13 @@ static void exit_with_error(volatile struct spawn_error* spawn_error,
 {
     spawn_error->errnum = errnum;
 
-    raise(SIGKILL);
+    sigset_t termset;
+    sigemptyset(&termset);
+    sigaddset(&termset, SIGTERM);
+
+    pthread_sigmask(SIG_UNBLOCK, &termset, NULL);
+
+    raise(SIGTERM);
 
     assert(false);
 }
