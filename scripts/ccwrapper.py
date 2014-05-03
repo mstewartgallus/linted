@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /usr/bin/env python3.2
 # Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-CLANG="$1"
-shift
-
-CC="$1"
-shift
-
-# Check if linking
-if test -z "${CLANG}" &&\
-   echo -E $@ | grep -E -- '([[:blank:]]|^)-c([[:blank:]]|$)' > /dev/null; then
-    "${CLANG}" -Qunused-arguments -Wno-unknown-warning-option --analyze $@
-fi
-
-${CC} $@
-
-exit "$?"
+import subprocess
+import sys
 
 # TODO: Add the following checkers
 
 # cppcheck
+
+def go():
+    clang = sys.argv[1]
+    cc = sys.argv[2]
+    options = sys.argv[3:]
+
+    if clang != "" and '-c' in options:
+        subprocess.check_call([clang, '-Qunused-arguments', '-Wno-unknown-warning-option', '--analyze'] + options)
+
+    subprocess.check_call([cc] + options)
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    go()

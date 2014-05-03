@@ -801,10 +801,12 @@ static errno_t run_game(char const *process_name,
                 {
                     union linted_manager_reply reply;
                     bool hungup;
-                    errnum = on_connection_readable(fd,
-                                                    config, services,
-                                                    &hungup, &reply);
-                    switch (errnum) {
+                    errno_t read_errnum = on_connection_readable(fd,
+                                                                 config,
+                                                                 services,
+                                                                 &hungup,
+                                                                 &reply);
+                    switch (read_errnum) {
                     case 0:
                         if (hungup) {
                             /* Ignore the misbehaving other end */
@@ -815,15 +817,14 @@ static errno_t run_game(char const *process_name,
                     case EAGAIN:
                         /* Maybe the socket was only available for
                          * writing but not reading */
-                        errnum = 0;
                         continue;
 
                     case EPROTO:
                         /* Ignore the misbehaving other end */
-                        errnum = 0;
                         goto remove_connection;
 
                     default:
+                        errnum = read_errnum;
                         goto close_connections;
                     }
 
@@ -832,25 +833,27 @@ static errno_t run_game(char const *process_name,
                 }
 
  try_writing:
-                errnum = on_connection_writeable(fd, &connection->reply);
-                switch (errnum) {
-                case 0:
-                    break;
+                {
+                    errno_t write_errnum = on_connection_writeable(fd,
+                                                                   &connection->reply);
+                    switch (write_errnum) {
+                    case 0:
+                        break;
 
-                case EAGAIN:
-                    /* Maybe the socket was only available for
-                     * reading but not writing */
-                    errnum = 0;
-                    continue;
+                    case EAGAIN:
+                        /* Maybe the socket was only available for
+                         * reading but not writing */
+                        continue;
 
-                case EPIPE:
-                case EPROTO:
-                    /* Ignore the misbehaving other end */
-                    errnum = 0;
-                    goto remove_connection;
+                    case EPIPE:
+                    case EPROTO:
+                        /* Ignore the misbehaving other end */
+                        goto remove_connection;
 
-                default:
-                    goto close_connections;
+                    default:
+                        errnum = write_errnum;
+                        goto close_connections;
+                    }
                 }
 
  remove_connection:
@@ -859,7 +862,7 @@ static errno_t run_game(char const *process_name,
 
                 {
                     errno_t close_errnum = linted_io_close(fd);
-                    if (close_errnum != 0) {
+                    if (0 == errnum) {
                         errnum = close_errnum;
                         goto close_connections;
                     }

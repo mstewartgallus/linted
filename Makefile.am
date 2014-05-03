@@ -24,7 +24,7 @@ nodist_linted_SOURCES=
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 
-EXTRA_DIST+=scripts/ccwrapper libs/glloadgen-reloaded
+EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
 
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
