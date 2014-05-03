@@ -63,7 +63,7 @@ struct spawn_error {
     errno_t errnum;
 };
 
-static void exit_with_error(volatile struct spawn_error * spawn_error,
+static void exit_with_error(volatile struct spawn_error *spawn_error,
                             errno_t errnum);
 
 errno_t linted_spawn_attr_init(struct linted_spawn_attr **attrp)
@@ -157,12 +157,13 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
     long page_size = sysconf(_SC_PAGESIZE);
 
     /* Align size to the page length  */
-    size_t spawn_error_length = ((sizeof (struct spawn_error) + page_size - 1) / page_size) * page_size;
+    size_t spawn_error_length =
+        ((sizeof(struct spawn_error) + page_size - 1) / page_size) * page_size;
 
-    volatile struct spawn_error * spawn_error = mmap(NULL, spawn_error_length,
-                                                     PROT_READ | PROT_WRITE,
-                                                     MAP_SHARED | MAP_ANONYMOUS,
-                                                     -1, 0);
+    volatile struct spawn_error *spawn_error = mmap(NULL, spawn_error_length,
+                                                    PROT_READ | PROT_WRITE,
+                                                    MAP_SHARED | MAP_ANONYMOUS,
+                                                    -1, 0);
     if (MAP_FAILED == spawn_error) {
         return errno;
     }
@@ -247,7 +248,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
         }
 
  unmap_spawn_error:
-        if (-1 == munmap((void*) spawn_error, spawn_error_length)) {
+        if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
             if (0 == error_status) {
                 error_status = errno;
             }
@@ -355,7 +356,7 @@ errno_t linted_spawn(pid_t * childp, int dirfd, char const *path,
     return 0;
 }
 
-static void exit_with_error(volatile struct spawn_error * spawn_error,
+static void exit_with_error(volatile struct spawn_error *spawn_error,
                             errno_t errnum)
 {
     spawn_error->errnum = errnum;

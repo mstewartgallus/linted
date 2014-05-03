@@ -30,13 +30,13 @@ struct linted_waiter_message {
 
 struct linted_waiter {
     pthread_t pthread;
-    struct linted_waiter_data * waiter_data;
+    struct linted_waiter_data *waiter_data;
     int init_wait_fd;
     int waiter_wait_fd;
 };
 
-errno_t linted_waiter_init(struct linted_waiter * waiter, pid_t pid);
-int linted_waiter_fd(struct linted_waiter const * waiter);
-errno_t linted_waiter_destroy(struct linted_waiter const * waiter);
+errno_t linted_waiter_init(struct linted_waiter *waiter, pid_t pid);
+int linted_waiter_fd(struct linted_waiter const *waiter);
+errno_t linted_waiter_destroy(struct linted_waiter const *waiter);
 
 #endif                          /* LINTED_WAITER_H */

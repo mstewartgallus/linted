@@ -31,7 +31,7 @@ struct linted_waiter_data {
 
 static void *waiter_routine(void *data);
 
-errno_t linted_waiter_init(struct linted_waiter * waiter, pid_t pid)
+errno_t linted_waiter_init(struct linted_waiter *waiter, pid_t pid)
 {
     errno_t errnum;
 
@@ -57,7 +57,7 @@ errno_t linted_waiter_init(struct linted_waiter * waiter, pid_t pid)
         goto close_fds;
     }
 
-    struct linted_waiter_data * waiter_data = malloc(sizeof *waiter_data);
+    struct linted_waiter_data *waiter_data = malloc(sizeof *waiter_data);
     if (NULL == waiter_data) {
         errnum = errno;
         goto close_fds;
@@ -78,22 +78,22 @@ errno_t linted_waiter_init(struct linted_waiter * waiter, pid_t pid)
 
     return 0;
 
-free_waiter:;
+ free_waiter:;
     free(waiter_data);
 
-close_fds:;
+ close_fds:;
     linted_io_close(init_wait_fd);
     linted_io_close(waiter_wait_fd);
 
     return errnum;
 }
 
-int linted_waiter_fd(struct linted_waiter const * waiter)
+int linted_waiter_fd(struct linted_waiter const *waiter)
 {
     return waiter->init_wait_fd;
 }
 
-errno_t linted_waiter_destroy(struct linted_waiter const * waiter)
+errno_t linted_waiter_destroy(struct linted_waiter const *waiter)
 {
     errno_t errnum = 0;
 
@@ -144,8 +144,7 @@ static void *waiter_routine(void *data)
         message.exit_info = exit_info;
         message.errnum = errnum;
 
-        linted_io_write_all(waiter_data->fd, NULL,
-                            &message, sizeof message);
+        linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
         /* TODO: Handle the error */
     }
 

@@ -56,7 +56,7 @@ enum transition {
     DO_NOTHING
 };
 
-struct controller_state {
+struct controller_data {
     struct linted_controller_message update;
     bool update_pending;
 };
@@ -109,8 +109,7 @@ static errno_t errnum_from_connection(xcb_connection_t * connection)
 }
 
 static errno_t get_mouse_position(xcb_connection_t * connection,
-                                  xcb_window_t window,
-                                  int * x, int * y)
+                                  xcb_window_t window, int *x, int *y)
 {
     errno_t errnum;
 
@@ -119,8 +118,8 @@ static errno_t get_mouse_position(xcb_connection_t * connection,
         return errnum;
     }
 
-    xcb_generic_error_t * error;
-    xcb_query_pointer_reply_t* reply = xcb_query_pointer_reply(connection,
+    xcb_generic_error_t *error;
+    xcb_query_pointer_reply_t *reply = xcb_query_pointer_reply(connection,
                                                                cookie,
                                                                &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
@@ -145,12 +144,12 @@ static errno_t get_gl_error(void);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
-                    struct controller_state *controller_state);
+                    struct controller_data *controller_data);
 
 static errno_t on_updater_readable(linted_updater updater,
                                    struct sim_model *sim_model);
-static errno_t on_controller_writeable(linted_controller controller, struct controller_state
-                                       *controller_state);
+static errno_t on_controller_writeable(linted_controller controller,
+                                       struct controller_data *controller_data);
 
 static int const attrib_list[];
 static errno_t init_graphics(linted_logger logger,
@@ -380,10 +379,10 @@ int main(int argc, char *argv[])
     errno_t error_status = 0;
 
     struct window_model window_model = {.width = 640,.height = 800,
-                                        .viewable = true
+        .viewable = true
     };
 
-    struct controller_state controller_state = {
+    struct controller_data controller_data = {
         .update = {.forward = false,.back = false,.right = false,.left = false},
         .update_pending = false
     };
@@ -397,24 +396,25 @@ int main(int argc, char *argv[])
         .z_position = 0
     };
 
-    Display * display = XOpenDisplay(display_env_var);
+    Display *display = XOpenDisplay(display_env_var);
     if (NULL == display) {
         errno = ENOSYS;
         goto shutdown;
     }
 
-    xcb_connection_t * connection = XGetXCBConnection(display);
+    xcb_connection_t *connection = XGetXCBConnection(display);
     unsigned screen_number = XDefaultScreen(display);
 
-    xcb_screen_t * screen = NULL;
+    xcb_screen_t *screen = NULL;
     {
-        xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(connection));
+        xcb_screen_iterator_t iter =
+            xcb_setup_roots_iterator(xcb_get_setup(connection));
         for (size_t ii = 0; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
             }
 
-            xcb_screen_next (&iter);
+            xcb_screen_next(&iter);
         }
 
         if (0 == iter.rem) {
@@ -457,9 +457,7 @@ int main(int argc, char *argv[])
     }
 
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE,
-                        colormap,
-                        screen->root,
-                        visual_id);
+                        colormap, screen->root, visual_id);
     if ((error_status = errnum_from_connection(connection)) != 0) {
         goto disconnect;
     }
@@ -472,11 +470,12 @@ int main(int argc, char *argv[])
     {
         uint32_t values[] = {
             XCB_EVENT_MASK_STRUCTURE_NOTIFY
-            | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW
-            | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
-            | XCB_EVENT_MASK_POINTER_MOTION,
+                | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW
+                | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE
+                | XCB_EVENT_MASK_POINTER_MOTION,
             colormap,
-            0};
+            0
+        };
         xcb_create_window(connection,
                           XCB_COPY_FROM_PARENT,
                           window,
@@ -519,7 +518,8 @@ int main(int argc, char *argv[])
             goto destroy_glx_window;
         }
 
-        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(connection, cookie, 0);
+        xcb_intern_atom_reply_t *reply =
+            xcb_intern_atom_reply(connection, cookie, 0);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_glx_window;
         }
@@ -532,37 +532,37 @@ int main(int argc, char *argv[])
             goto destroy_glx_window;
         }
 
-        xcb_intern_atom_reply_t* reply2 = xcb_intern_atom_reply(connection, cookie2, 0);
+        xcb_intern_atom_reply_t *reply2 =
+            xcb_intern_atom_reply(connection, cookie2, 0);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_glx_window;
         }
         wm_delete_window = reply2->atom;
         free(reply2);
 
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, wm_protocols, 4, 32, 1,
-                            &wm_delete_window);
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+                            wm_protocols, 4, 32, 1, &wm_delete_window);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_glx_window;
         }
     }
 
-    GLXContext glx_context = glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
+    GLXContext glx_context =
+        glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
     if (NULL == glx_context) {
         error_status = ENOSYS;
         goto destroy_glx_window;
     }
 
-    if (!glXMakeContextCurrent(display,
-                               glxwindow,
-                               glxwindow,
-                               glx_context)) {
+    if (!glXMakeContextCurrent(display, glxwindow, glxwindow, glx_context)) {
         error_status = ENOSYS;
         goto destroy_glx_context;
     }
 
     struct graphics_state graphics_state;
 
-    if ((error_status = init_graphics(logger, &graphics_state, &window_model)) != 0) {
+    if ((error_status =
+         init_graphics(logger, &graphics_state, &window_model)) != 0) {
         goto destroy_glx_context;
     }
 
@@ -579,8 +579,8 @@ int main(int argc, char *argv[])
             XNextEvent(display, &event);
             switch (event.type) {
                 {
-                case ConfigureNotify:;
-                    XConfigureEvent* configure_event = &event.xconfigure;
+            case ConfigureNotify:;
+                    XConfigureEvent *configure_event = &event.xconfigure;
                     window_model.width = configure_event->width;
                     window_model.height = configure_event->height;
                     resize_graphics(window_model.width, window_model.height);
@@ -588,10 +588,10 @@ int main(int argc, char *argv[])
                 }
 
                 {
-                case MotionNotify:;
-                    XMotionEvent* motion_event = &event.xmotion;
+            case MotionNotify:;
+                    XMotionEvent *motion_event = &event.xmotion;
                     on_tilt(motion_event->x, motion_event->y,
-                            &window_model, &controller_state);
+                            &window_model, &controller_data);
                     break;
                 }
 
@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
                 break;
 
                 {
-                case EnterNotify:
+            case EnterNotify:
                     window_model.focused = true;
 
                     int x, y;
@@ -614,66 +614,66 @@ int main(int argc, char *argv[])
                         goto cleanup_gl;
                     }
 
-                    on_tilt(x, y, &window_model, &controller_state);
+                    on_tilt(x, y, &window_model, &controller_data);
                     break;
                 }
 
             case LeaveNotify:
                 window_model.focused = false;
 
-                controller_state.update.x_tilt = 0;
-                controller_state.update.y_tilt = 0;
+                controller_data.update.x_tilt = 0;
+                controller_data.update.y_tilt = 0;
 
-                controller_state.update_pending = true;
+                controller_data.update_pending = true;
                 break;
 
                 {
-                case MappingNotify:;
-                    XMappingEvent* mapping_event = &event.xmapping;
+            case MappingNotify:;
+                    XMappingEvent *mapping_event = &event.xmapping;
                     XRefreshKeyboardMapping(mapping_event);
                 }
 
                 {
                     bool is_key_down;
 
-                case KeyPress:
+            case KeyPress:
                     is_key_down = true;
                     goto on_key_event;
 
-                case KeyRelease:
+            case KeyRelease:
                     is_key_down = false;
                     goto on_key_event;
 
-                on_key_event:;
-                    XKeyEvent* key_event = &event.xkey;
+ on_key_event:     ;
+                    XKeyEvent *key_event = &event.xkey;
                     switch (XLookupKeysym(key_event, 0)) {
                     default:
                         goto no_key_event;
 
                     case XK_space:
-                        controller_state.update.jumping = is_key_down;
+                        controller_data.update.jumping = is_key_down;
                         break;
 
                     case XK_Control_L:
-                        controller_state.update.left = is_key_down;
+                        controller_data.update.left = is_key_down;
                         break;
 
                     case XK_Alt_L:
-                        controller_state.update.right = is_key_down;
+                        controller_data.update.right = is_key_down;
                         break;
 
                     case XK_z:
-                        controller_state.update.forward = is_key_down;
+                        controller_data.update.forward = is_key_down;
                         break;
 
                     case XK_Shift_L:
-                        controller_state.update.back = is_key_down;
+                        controller_data.update.back = is_key_down;
                         break;
                     }
 
-                    controller_state.update_pending = true;
+                    controller_data.update_pending = true;
 
-                no_key_event:
+ no_key_event:
                     break;
                 }
 
@@ -694,8 +694,9 @@ int main(int argc, char *argv[])
         struct pollfd fds[] = {
             [UPDATER] = {.fd = updater,.events = POLLIN},
             [CONTROLLER] = {
-                .fd = controller_state.update_pending ? controller : -1,
-                .events = POLLOUT},
+                            .fd =
+                            controller_data.update_pending ? controller : -1,
+                            .events = POLLOUT},
         };
 
         errno_t poll_status;
@@ -720,10 +721,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (controller_state.update_pending
+        if (controller_data.update_pending
             && (fds[CONTROLLER].revents & POLLOUT) != 0) {
             errno_t errnum = on_controller_writeable(controller,
-                                                     &controller_state);
+                                                     &controller_data);
             if (errnum != 0) {
                 error_status = errnum;
                 goto cleanup_gl;
@@ -803,7 +804,7 @@ int main(int argc, char *argv[])
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
-                    struct controller_state *controller_state)
+                    struct controller_data *controller_data)
 {
     int32_t x = (2 * mouse_x - (int)window_model->width) / 2;
     int32_t y = (2 * mouse_y - (int)window_model->height) / 2;
@@ -812,10 +813,10 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     x *= INT32_MAX / window_model->width;
     y *= INT32_MAX / window_model->height;
 
-    controller_state->update.x_tilt = x;
-    controller_state->update.y_tilt = y;
+    controller_data->update.x_tilt = x;
+    controller_data->update.y_tilt = y;
 
-    controller_state->update_pending = true;
+    controller_data->update_pending = true;
 }
 
 static errno_t on_updater_readable(linted_updater updater,
@@ -849,12 +850,12 @@ static errno_t on_updater_readable(linted_updater updater,
 }
 
 static int on_controller_writeable(linted_controller controller,
-                                   struct controller_state *controller_state)
+                                   struct controller_data *controller_data)
 {
     errno_t send_status;
     do {
         send_status = linted_controller_send(controller,
-                                             &controller_state->update);
+                                             &controller_data->update);
     } while (EINTR == send_status);
 
     if (EAGAIN == send_status) {
@@ -865,15 +866,15 @@ static int on_controller_writeable(linted_controller controller,
         return send_status;
     }
 
-    controller_state->update_pending = false;
+    controller_data->update_pending = false;
 
     return 0;
 }
 
 static int const attrib_list[] = {
-    GLX_BUFFER_SIZE, 0,       /* color index buffer size */
-    GLX_LEVEL, 0    ,         /* buffer-level */
-    GLX_DOUBLEBUFFER, True,   /* double buffer */
+    GLX_BUFFER_SIZE, 0,         /* color index buffer size */
+    GLX_LEVEL, 0,               /* buffer-level */
+    GLX_DOUBLEBUFFER, True,     /* double buffer */
 
     GLX_STEREO, False,
     GLX_AUX_BUFFERS, 0,

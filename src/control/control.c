@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 static int run_status(char const *program_name, int argc, char **argv);
 static int run_stop(char const *program_name, int argc, char **argv);
 

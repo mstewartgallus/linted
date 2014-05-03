@@ -33,7 +33,6 @@
 #include <sys/timerfd.h>
 #include <time.h>
 
-
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
@@ -542,7 +541,8 @@ static void simulate_forces(int_fast32_t * position,
     int_fast32_t guess_velocity = saturate(((int_fast64_t) thrust)
                                            + old_velocity);
 
-    int_fast32_t friction = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
+    int_fast32_t friction =
+        min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */ )
         * -sign(guess_velocity);
 
     int_fast32_t new_velocity = saturate(((int_fast64_t) guess_velocity)
