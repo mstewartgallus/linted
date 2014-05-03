@@ -426,29 +426,16 @@ int main(int argc, char *argv[])
     }
 
     /* Query framebuffer configurations */
-    GLXFBConfig fb_config;
+    XVisualInfo visual_info;
     {
-        int configs_count;
-        GLXFBConfig *configs = glXChooseFBConfig(display, screen_number,
-                                                 attrib_list,
-                                                 &configs_count);
-        if (NULL == configs) {
+        XVisualInfo *ptr = glXChooseVisual(display, screen_number,
+                                           (int*)attrib_list);
+        if (NULL == ptr) {
             error_status = ENOSYS;
             goto disconnect;
         }
-        fb_config = configs[0];
-        XFree(configs);
-    }
-
-    int visual_id;
-    switch (glXGetFBConfigAttrib(display, fb_config, GLX_VISUAL_ID, &visual_id)) {
-    case GLX_NO_EXTENSION:
-    case GLX_BAD_ATTRIBUTE:
-        error_status = ENOSYS;
-        goto disconnect;
-
-    default:
-        break;
+        visual_info = *ptr;
+        XFree(ptr);
     }
 
     xcb_colormap_t colormap = xcb_generate_id(connection);
@@ -457,7 +444,7 @@ int main(int argc, char *argv[])
     }
 
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE,
-                        colormap, screen->root, visual_id);
+                        colormap, screen->root, visual_info.visualid);
     if ((error_status = errnum_from_connection(connection)) != 0) {
         goto disconnect;
     }
@@ -477,18 +464,55 @@ int main(int argc, char *argv[])
             0
         };
         xcb_create_window(connection,
-                          XCB_COPY_FROM_PARENT,
+                          visual_info.depth,
                           window,
                           screen->root,
                           0, 0,
                           window_model.width, window_model.height,
                           0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT,
-                          visual_id,
+                          visual_info.visualid,
                           XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     }
     if ((error_status = errnum_from_connection(connection)) != 0) {
         goto disconnect;
+    }
+
+    xcb_atom_t wm_delete_window;
+    {
+        xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12,
+                                                          "WM_PROTOCOLS");
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
+
+        xcb_intern_atom_reply_t *reply =
+            xcb_intern_atom_reply(connection, cookie, 0);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
+        xcb_atom_t wm_protocols = reply->atom;
+        free(reply);
+
+        xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,
+                                                           "WM_DELETE_WINDOW");
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
+
+        xcb_intern_atom_reply_t *reply2 =
+            xcb_intern_atom_reply(connection, cookie2, 0);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
+        wm_delete_window = reply2->atom;
+        free(reply2);
+
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+                            wm_protocols, 4, 32, 1, &wm_delete_window);
+        if ((error_status = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
     }
 
     xcb_map_window(connection, window);
@@ -501,68 +525,22 @@ int main(int argc, char *argv[])
         goto destroy_window;
     }
 
-    GLXWindow glxwindow = glXCreateWindow(display,
-                                          fb_config,
-                                          window,
-                                          0);
-    if (!window) {
+    GLXContext glx_context = glXCreateContext(display, &visual_info,
+                                              NULL, GL_TRUE);
+    if (NULL == glx_context) {
         error_status = ENOSYS;
         goto destroy_window;
     }
 
-    xcb_atom_t wm_delete_window;
-    {
-        xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12,
-                                                          "WM_PROTOCOLS");
-        if ((error_status = errnum_from_connection(connection)) != 0) {
-            goto destroy_glx_window;
-        }
-
-        xcb_intern_atom_reply_t *reply =
-            xcb_intern_atom_reply(connection, cookie, 0);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
-            goto destroy_glx_window;
-        }
-        xcb_atom_t wm_protocols = reply->atom;
-        free(reply);
-
-        xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,
-                                                           "WM_DELETE_WINDOW");
-        if ((error_status = errnum_from_connection(connection)) != 0) {
-            goto destroy_glx_window;
-        }
-
-        xcb_intern_atom_reply_t *reply2 =
-            xcb_intern_atom_reply(connection, cookie2, 0);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
-            goto destroy_glx_window;
-        }
-        wm_delete_window = reply2->atom;
-        free(reply2);
-
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-                            wm_protocols, 4, 32, 1, &wm_delete_window);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
-            goto destroy_glx_window;
-        }
-    }
-
-    GLXContext glx_context =
-        glXCreateNewContext(display, fb_config, GLX_RGBA_TYPE, 0, true);
-    if (NULL == glx_context) {
-        error_status = ENOSYS;
-        goto destroy_glx_window;
-    }
-
-    if (!glXMakeContextCurrent(display, glxwindow, glxwindow, glx_context)) {
+    if (!glXMakeContextCurrent(display, window, window, glx_context)) {
         error_status = ENOSYS;
         goto destroy_glx_context;
     }
 
     struct graphics_state graphics_state;
 
-    if ((error_status =
-         init_graphics(logger, &graphics_state, &window_model)) != 0) {
+    if ((error_status = init_graphics(logger, &graphics_state,
+                                      &window_model)) != 0) {
         goto destroy_glx_context;
     }
 
@@ -735,7 +713,7 @@ int main(int argc, char *argv[])
         if (!had_gui_event && !had_selected_event) {
             if (window_model.viewable) {
                 render_graphics(&graphics_state, &sim_model, &window_model);
-                glXSwapBuffers(display, glxwindow);
+                glXSwapBuffers(display, window);
             } else {
                 /*
                  * This is an ugly hack and waiting the X11 file
@@ -764,9 +742,6 @@ int main(int argc, char *argv[])
  destroy_glx_context:
     glXMakeContextCurrent(display, None, None, NULL);
     glXDestroyContext(display, glx_context);
-
- destroy_glx_window:
-    glXDestroyWindow(display, glxwindow);
 
  destroy_window:
     xcb_destroy_window(connection, window);
@@ -872,42 +847,14 @@ static int on_controller_writeable(linted_controller controller,
 }
 
 static int const attrib_list[] = {
-    GLX_BUFFER_SIZE, 0,         /* color index buffer size */
-    GLX_LEVEL, 0,               /* buffer-level */
-    GLX_DOUBLEBUFFER, True,     /* double buffer */
+    GLX_RGBA, True,
 
-    GLX_STEREO, False,
-    GLX_AUX_BUFFERS, 0,
+    GLX_RED_SIZE, 5,
+    GLX_GREEN_SIZE, 5,
+    GLX_BLUE_SIZE, 3,
 
-    GLX_RED_SIZE, GLX_DONT_CARE,
-    GLX_GREEN_SIZE, GLX_DONT_CARE,
-    GLX_BLUE_SIZE, GLX_DONT_CARE,
-    GLX_ALPHA_SIZE, GLX_DONT_CARE,
-
+    GLX_DOUBLEBUFFER, True,
     GLX_DEPTH_SIZE, 16,
-
-    GLX_STENCIL_SIZE, 0,
-    GLX_ACCUM_RED_SIZE, 0,
-    GLX_ACCUM_GREEN_SIZE, 0,
-    GLX_ACCUM_BLUE_SIZE, 0,
-    GLX_ACCUM_ALPHA_SIZE, 0,
-    GLX_RENDER_TYPE, GLX_RGBA_BIT,
-
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-
-    GLX_X_RENDERABLE, True,
-
-    GLX_X_VISUAL_TYPE, GLX_DONT_CARE,
-
-    GLX_CONFIG_CAVEAT, GLX_DONT_CARE,
-
-    GLX_TRANSPARENT_TYPE, GLX_NONE,
-
-    GLX_TRANSPARENT_INDEX_VALUE, GLX_DONT_CARE,
-    GLX_TRANSPARENT_RED_VALUE, GLX_DONT_CARE,
-    GLX_TRANSPARENT_GREEN_VALUE, GLX_DONT_CARE,
-    GLX_TRANSPARENT_BLUE_VALUE, GLX_DONT_CARE,
-    GLX_TRANSPARENT_ALPHA_VALUE, GLX_DONT_CARE,
     None
 };
 
