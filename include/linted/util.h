@@ -32,11 +32,12 @@
  *
  * Should be used really, really rarely.
  */
-#define LINTED_FATAL_FAILURE(errnum, format_string, ...)                                                         \
-    do {                                                                                                         \
+#define LINTED_FATAL_FAILURE(errnum, format_string, ...)                       \
+    do {                                                                       \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-fatal failure in file %s, function %s, and line %i: " format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
-        exit(errnum);                                                                                            \
+fatal failure in file %s, function %s, and line %i: " format_string,           \
+                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
+        exit(errnum);                                                          \
     } while (0)
 
 /**
@@ -54,11 +55,12 @@ fatal failure in file %s, function %s, and line %i: " format_string, __FILE__, _
  * Nonpermissible errors to use this for may include EMFILE, ENFILE
  * and ENOMEM. These cases should be handled properly.
  */
-#define LINTED_IMPOSSIBILITY(format_string, ...)                                                                    \
-    do {                                                                                                            \
+#define LINTED_IMPOSSIBILITY(format_string, ...)                               \
+    do {                                                                       \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-impossible error in file %s, function %s, and line %i: " format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
-        abort();                                                                                                    \
+impossible error in file %s, function %s, and line %i: " format_string,        \
+                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
+        abort();                                                               \
     } while (0)
 
 /**
@@ -66,11 +68,12 @@ impossible error in file %s, function %s, and line %i: " format_string, __FILE__
  * developer is too lazy to handle properly. This macro should only
  * ever be used during development and not during release.
  */
-#define LINTED_LAZY_DEV(format_string, ...)                                                                            \
-    do {                                                                                                               \
+#define LINTED_LAZY_DEV(format_string, ...)                                    \
+    do {                                                                       \
         linted_io_write_format(STDERR_FILENO, NULL, "\
-lazy developer error in file %s, function %s, and line %i:" format_string, __FILE__, __func__, __LINE__, __VA_ARGS__); \
-        abort();                                                                                                       \
+lazy developer error in file %s, function %s, and line %i:" format_string,     \
+                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
+        abort();                                                               \
     } while (0)
 
 static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)

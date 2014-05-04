@@ -24,8 +24,12 @@
 #include <stddef.h>
 #include <string.h>
 
-#define MESSAGE_SIZE \
-    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes))
+#define MESSAGE_SIZE                                                           \
+    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                      \
+     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                    \
+     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                    \
+     + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)                   \
+     + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes))
 
 typedef char message_type[MESSAGE_SIZE];
 
@@ -58,11 +62,13 @@ errno_t linted_updater_send_update(linted_updater updater,
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
     tip += sizeof z_position.bytes;
 
-    struct linted_rpc_uint32 x_rotation = linted_rpc_pack_uint32(update->x_rotation);
+    struct linted_rpc_uint32 x_rotation
+        = linted_rpc_pack_uint32(update->x_rotation);
     memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
     tip += sizeof x_rotation.bytes;
 
-    struct linted_rpc_uint32 y_rotation = linted_rpc_pack_uint32(update->y_rotation);
+    struct linted_rpc_uint32 y_rotation
+        = linted_rpc_pack_uint32(update->y_rotation);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;

@@ -25,7 +25,8 @@
  */
 typedef mqd_t linted_updater;
 
-struct linted_updater_update {
+struct linted_updater_update
+{
     int_fast32_t x_position;
     int_fast32_t y_position;
     int_fast32_t z_position;

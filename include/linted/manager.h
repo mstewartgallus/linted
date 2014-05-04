@@ -21,7 +21,7 @@
 #include <signal.h>
 #include <sys/un.h>
 
-#define LINTED_MANAGER_PATH_MAX \
+#define LINTED_MANAGER_PATH_MAX                                                \
     (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
 typedef int linted_manager;
@@ -41,31 +41,37 @@ enum linted_manager_service {
     LINTED_MANAGER_SERVICE_SHUTDOWNER
 };
 
-struct linted_manager_status_request {
+struct linted_manager_status_request
+{
     enum linted_manager_type type;
     enum linted_manager_service service;
 };
 
-struct linted_manager_status_reply {
+struct linted_manager_status_reply
+{
     bool is_up;
 };
 
-struct linted_manager_stop_request {
+struct linted_manager_stop_request
+{
     enum linted_manager_type type;
     enum linted_manager_service service;
 };
 
-struct linted_manager_stop_reply {
+struct linted_manager_stop_reply
+{
     bool was_up;
 };
 
-union linted_manager_request {
+union linted_manager_request
+{
     enum linted_manager_type type;
     struct linted_manager_status_request status;
     struct linted_manager_stop_request stop;
 };
 
-union linted_manager_reply {
+union linted_manager_reply
+{
     struct linted_manager_status_reply status;
     struct linted_manager_stop_reply stop;
 };
@@ -89,8 +95,9 @@ errno_t linted_manager_recv_request(linted_manager manager,
 errno_t linted_manager_send_reply(linted_manager manager,
                                   union linted_manager_reply const* reply);
 
-errno_t linted_manager_send_request(
-    linted_manager manager, union linted_manager_request const* request);
+errno_t linted_manager_send_request(linted_manager manager,
+                                    union linted_manager_request const
+                                    * request);
 
 errno_t linted_manager_recv_reply(linted_manager manager,
                                   union linted_manager_reply* reply,

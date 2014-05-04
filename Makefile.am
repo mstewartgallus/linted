@@ -131,9 +131,7 @@ cbmc-lint: scripts/cbmcwrapper
 	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/linted
 	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/lintedctl
 
-linted_CLANG_FORMATFLAGS=\
-  -i\
-  --style=webkit
+linted_CLANG_FORMATFLAGS=-i
 
 EXTRA_DIST+=include/linted/check.h include/linted/rpc.h include/linted/str.h
 

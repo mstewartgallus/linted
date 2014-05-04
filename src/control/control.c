@@ -110,7 +110,8 @@ int main(int argc, char** argv)
         return run_status(program_name, argc - last_index + 1,
                           argv + last_index - 1);
     } else if (0 == strcmp("stop", command)) {
-        return run_stop(program_name, argc - last_index + 1, argv + last_index - 1);
+        return run_stop(program_name, argc - last_index + 1,
+                        argv + last_index - 1);
     } else {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n", program_name,
@@ -175,8 +176,8 @@ static int run_status(char const* program_name, int argc, char** argv)
 
     char const* path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -195,8 +196,8 @@ static int run_status(char const* program_name, int argc, char** argv)
         linted_manager manager;
         errno_t errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not create socket"),
-                    errnum);
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not create socket"), errnum);
             return EXIT_FAILURE;
         }
         linted = manager;
@@ -215,8 +216,8 @@ static int run_status(char const* program_name, int argc, char** argv)
 
         errno_t errnum = linted_manager_send_request(linted, &request);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not send request"),
-                    errnum);
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not send request"), errnum);
             return EXIT_FAILURE;
         }
     }
@@ -226,8 +227,8 @@ static int run_status(char const* program_name, int argc, char** argv)
         size_t bytes_read;
         errno_t errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not read reply"),
-                    errnum);
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
         }
 
@@ -240,8 +241,8 @@ static int run_status(char const* program_name, int argc, char** argv)
         /* Sent malformed input */
         if (bytes_read != sizeof reply) {
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: reply was too small: %i\n", program_name,
-                                   bytes_read);
+                                   "%s: reply was too small: %i\n",
+                                   program_name, bytes_read);
             return EXIT_FAILURE;
         }
 
@@ -311,8 +312,8 @@ static int run_stop(char const* program_name, int argc, char** argv)
 
     char const* path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               program_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -331,8 +332,8 @@ static int run_stop(char const* program_name, int argc, char** argv)
         linted_manager manager;
         errno_t errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not create socket"),
-                    errnum);
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not create socket"), errnum);
             return EXIT_FAILURE;
         }
         linted = manager;
@@ -362,8 +363,8 @@ static int run_stop(char const* program_name, int argc, char** argv)
         size_t bytes_read;
         errno_t errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not read reply"),
-                    errno);
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("can not read reply"), errno);
             return EXIT_FAILURE;
         }
 
@@ -378,7 +379,8 @@ static int run_stop(char const* program_name, int argc, char** argv)
                                    program_name);
         } else {
             linted_io_write_format(STDOUT_FILENO, NULL,
-                                   "%s: the gui was not killed\n", program_name);
+                                   "%s: the gui was not killed\n",
+                                   program_name);
         }
     }
 
@@ -392,7 +394,8 @@ static errno_t ctl_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+        != 0) {
         return errnum;
     }
 
@@ -400,8 +403,8 @@ static errno_t ctl_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+        != 0) {
         return errnum;
     }
 
@@ -477,7 +480,8 @@ static errno_t status_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+        != 0) {
         return errnum;
     }
 
@@ -485,8 +489,8 @@ static errno_t status_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(" status [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(
+             fildes, NULL, LINTED_STR(" status [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
@@ -553,7 +557,8 @@ static errno_t stop_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+        != 0) {
         return errnum;
     }
 

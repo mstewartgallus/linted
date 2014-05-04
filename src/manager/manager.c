@@ -35,7 +35,8 @@ errno_t linted_manager_bind(linted_manager* manager, int backlog,
         return ENAMETOOLONG;
     }
 
-    int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    int sock
+        = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
         return errno;
     }
@@ -99,7 +100,8 @@ errno_t linted_manager_connect(linted_manager* manager, char const* path,
             address.sun_path[0] = '\0';
         }
 
-        if (-1 == connect(sock, (void*)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1
+            == connect(sock, (void*)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }
@@ -145,7 +147,8 @@ errno_t linted_manager_recv_request(linted_manager manager,
                                     union linted_manager_request* request,
                                     size_t* size)
 {
-    errno_t errnum = linted_io_read_all(manager, size, request, sizeof *request);
+    errno_t errnum
+        = linted_io_read_all(manager, size, request, sizeof *request);
     if (errnum != 0) {
         return errnum;
     }
@@ -164,8 +167,8 @@ errno_t linted_manager_send_reply(linted_manager manager,
     return linted_io_write_all(manager, NULL, reply, sizeof *reply);
 }
 
-errno_t linted_manager_send_request(
-    linted_manager manager, union linted_manager_request const* request)
+errno_t linted_manager_send_request(linted_manager manager,
+                                    union linted_manager_request const* request)
 {
     return linted_io_write_all(manager, NULL, request, sizeof *request);
 }

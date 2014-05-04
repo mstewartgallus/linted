@@ -40,7 +40,8 @@ errno_t linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
     size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_read = read(fd, (char*)buf + total_bytes_read, count - total_bytes_read);
+        ssize_t bytes_read
+            = read(fd, (char*)buf + total_bytes_read, count - total_bytes_read);
 
         if (0 == bytes_read) {
             /* Hang up */
@@ -96,8 +97,7 @@ output_bytes_wrote:
     return error_status;
 }
 
-errno_t linted_io_write_str(int fd, size_t* bytes_wrote,
-                            struct linted_str str)
+errno_t linted_io_write_str(int fd, size_t* bytes_wrote, struct linted_str str)
 {
     return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
@@ -139,7 +139,8 @@ errno_t linted_io_write_format(int fd, size_t* bytes_wrote_out,
         }
 
         {
-            errno_t errnum = linted_io_write_string(fd, bytes_wrote_out, string);
+            errno_t errnum
+                = linted_io_write_string(fd, bytes_wrote_out, string);
             if (errnum != 0) {
                 error_status = errnum;
                 goto free_string;

@@ -1,0 +1,4 @@
+# -*- mode: yaml -*-
+BasedOnStyle: WebKit
+BreakBeforeBraces: Linux
+ColumnLimit: 80

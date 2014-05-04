@@ -160,7 +160,8 @@ static errno_t close_fds_except(int const* kept_fds, size_t size)
         not_kept:
 
             ++fds_to_close_count;
-            int* new_fds = realloc(fds_to_close, fds_to_close_count * sizeof fds_to_close[0]);
+            int* new_fds = realloc(fds_to_close,
+                                   fds_to_close_count * sizeof fds_to_close[0]);
             if (NULL == new_fds) {
                 error_status = errno;
                 goto free_fds_to_close;

@@ -56,16 +56,19 @@ enum transition {
     DO_NOTHING
 };
 
-struct controller_data {
+struct controller_data
+{
     struct linted_controller_message update;
     bool update_pending;
 };
 
-struct graphics_state {
+struct graphics_state
+{
     GLuint program;
 };
 
-struct window_model {
+struct window_model
+{
     unsigned width;
     unsigned height;
 
@@ -74,7 +77,8 @@ struct window_model {
     bool focused : 1;
 };
 
-struct sim_model {
+struct sim_model
+{
     float x_rotation;
     float y_rotation;
 
@@ -120,7 +124,8 @@ static errno_t get_mouse_position(xcb_connection_t* connection,
     }
 
     xcb_generic_error_t* error;
-    xcb_query_pointer_reply_t* reply = xcb_query_pointer_reply(connection, cookie, &error);
+    xcb_query_pointer_reply_t* reply
+        = xcb_query_pointer_reply(connection, cookie, &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
         free(reply);
         return errnum;
@@ -245,14 +250,16 @@ int main(int argc, char* argv[])
     }
 
     if (NULL == controller_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(CONTROLLER_OPTION));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(SHUTDOWNER_OPTION));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
@@ -270,8 +277,8 @@ int main(int argc, char* argv[])
         int fd;
         errno_t errnum = linted_io_strtofd(logger_name, &fd);
         if (errnum != 0) {
-            invalid_fildes(STDERR_FILENO, program_name, LINTED_STR(LOGGER_OPTION),
-                           errnum);
+            invalid_fildes(STDERR_FILENO, program_name,
+                           LINTED_STR(LOGGER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
@@ -284,8 +291,8 @@ int main(int argc, char* argv[])
         int fd;
         errno_t errnum = linted_io_strtofd(controller_name, &fd);
         if (errnum != 0) {
-            invalid_fildes(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION),
-                           errnum);
+            invalid_fildes(STDERR_FILENO, program_name,
+                           LINTED_STR(CONTROLLER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
@@ -298,8 +305,8 @@ int main(int argc, char* argv[])
         int fd;
         errno_t errnum = linted_io_strtofd(shutdowner_name, &fd);
         if (errnum != 0) {
-            invalid_fildes(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION),
-                           errnum);
+            invalid_fildes(STDERR_FILENO, program_name,
+                           LINTED_STR(SHUTDOWNER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
@@ -312,8 +319,8 @@ int main(int argc, char* argv[])
         int fd;
         errno_t errnum = linted_io_strtofd(updater_name, &fd);
         if (errnum != 0) {
-            invalid_fildes(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION),
-                           errnum);
+            invalid_fildes(STDERR_FILENO, program_name,
+                           LINTED_STR(UPDATER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
@@ -347,11 +354,13 @@ int main(int argc, char* argv[])
 
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
-                           controller, updater, shutdowner };
-        errno_t errnum = linted_util_sanitize_environment(kept_fds, LINTED_ARRAY_SIZE(kept_fds));
+                           controller,    updater,      shutdowner };
+        errno_t errnum = linted_util_sanitize_environment(
+            kept_fds, LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
-                    LINTED_STR("cannot sanitize the program environment"), errnum);
+                    LINTED_STR("cannot sanitize the program environment"),
+                    errnum);
             return EXIT_FAILURE;
         }
     }
@@ -365,11 +374,11 @@ int main(int argc, char* argv[])
                                          /* Do the initial resize */
                                          .resize_pending = true };
 
-    struct controller_data controller_data = { .update = { .forward = false,
-                                                           .back = false,
-                                                           .right = false,
-                                                           .left = false },
-                                               .update_pending = false };
+    struct controller_data controller_data = {
+        .update
+        = { .forward = false, .back = false, .right = false, .left = false },
+        .update_pending = false
+    };
 
     struct sim_model sim_model = { .x_rotation = 0,
                                    .y_rotation = 0,
@@ -388,7 +397,8 @@ int main(int argc, char* argv[])
 
     xcb_screen_t* screen = NULL;
     {
-        xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(connection));
+        xcb_screen_iterator_t iter
+            = xcb_setup_roots_iterator(xcb_get_setup(connection));
         for (size_t ii = 0; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
@@ -408,7 +418,8 @@ int main(int argc, char* argv[])
     /* Query framebuffer configurations */
     XVisualInfo visual_info;
     {
-        XVisualInfo* ptr = glXChooseVisual(display, screen_number, (int*)attrib_list);
+        XVisualInfo* ptr
+            = glXChooseVisual(display, screen_number, (int*)attrib_list);
         if (NULL == ptr) {
             error_status = ENOSYS;
             goto disconnect;
@@ -441,8 +452,8 @@ int main(int argc, char* argv[])
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
         uint32_t values[] = { event_max, colormap, 0 };
-        xcb_create_window(connection, visual_info.depth, window, screen->root, 0, 0,
-                          window_model.width, window_model.height, 0,
+        xcb_create_window(connection, visual_info.depth, window, screen->root,
+                          0, 0, window_model.width, window_model.height, 0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,
                           XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     }
@@ -452,32 +463,36 @@ int main(int argc, char* argv[])
 
     xcb_atom_t wm_delete_window;
     {
-        xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+        xcb_intern_atom_cookie_t cookie
+            = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(connection, cookie, 0);
+        xcb_intern_atom_reply_t* reply
+            = xcb_intern_atom_reply(connection, cookie, 0);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         xcb_atom_t wm_protocols = reply->atom;
         free(reply);
 
-        xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+        xcb_intern_atom_cookie_t cookie2
+            = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t* reply2 = xcb_intern_atom_reply(connection, cookie2, 0);
+        xcb_intern_atom_reply_t* reply2
+            = xcb_intern_atom_reply(connection, cookie2, 0);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         wm_delete_window = reply2->atom;
         free(reply2);
 
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, wm_protocols,
-                            4, 32, 1, &wm_delete_window);
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+                            wm_protocols, 4, 32, 1, &wm_delete_window);
         if ((error_status = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
@@ -493,7 +508,8 @@ int main(int argc, char* argv[])
         goto destroy_window;
     }
 
-    GLXContext glx_context = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
+    GLXContext glx_context
+        = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
     if (NULL == glx_context) {
         error_status = ENOSYS;
         goto destroy_window;
@@ -506,7 +522,8 @@ int main(int argc, char* argv[])
 
     struct graphics_state graphics_state;
 
-    if ((error_status = init_graphics(logger, &graphics_state, &window_model)) != 0) {
+    if ((error_status = init_graphics(logger, &graphics_state, &window_model))
+        != 0) {
         goto destroy_glx_context;
     }
 
@@ -547,7 +564,8 @@ int main(int argc, char* argv[])
                 window_model.focused = true;
 
                 int x, y;
-                if ((error_status = get_mouse_position(connection, window, &x, &y)) != 0) {
+                if ((error_status
+                     = get_mouse_position(connection, window, &x, &y)) != 0) {
                     goto cleanup_gl;
                 }
 
@@ -628,11 +646,11 @@ int main(int argc, char* argv[])
             CONTROLLER
         };
 
-        struct pollfd fds[] = {[UPDATER] = { .fd = updater, .events = POLLIN },
-                               [CONTROLLER] = { .fd = controller_data.update_pending
-                                                          ? controller
-                                                          : -1,
-                                                .events = POLLOUT }, };
+        struct pollfd fds[]
+            = {[UPDATER] = { .fd = updater, .events = POLLIN },
+               [CONTROLLER]
+                   = { .fd = controller_data.update_pending ? controller : -1,
+                       .events = POLLOUT }, };
 
         errno_t poll_status;
         int fds_active;
@@ -656,8 +674,10 @@ int main(int argc, char* argv[])
             }
         }
 
-        if (controller_data.update_pending && (fds[CONTROLLER].revents & POLLOUT) != 0) {
-            errno_t errnum = on_controller_writeable(controller, &controller_data);
+        if (controller_data.update_pending
+            && (fds[CONTROLLER].revents & POLLOUT) != 0) {
+            errno_t errnum
+                = on_controller_writeable(controller, &controller_data);
             if (errnum != 0) {
                 error_status = errnum;
                 goto cleanup_gl;
@@ -794,7 +814,8 @@ static int on_controller_writeable(linted_controller controller,
 {
     errno_t send_status;
     do {
-        send_status = linted_controller_send(controller, &controller_data->update);
+        send_status
+            = linted_controller_send(controller, &controller_data->update);
     } while (EINTR == send_status);
 
     if (EAGAIN == send_status) {
@@ -810,10 +831,10 @@ static int on_controller_writeable(linted_controller controller,
     return 0;
 }
 
-static int const attrib_list[] = { GLX_RGBA, True, GLX_RED_SIZE, 5,
-                                   GLX_GREEN_SIZE, 5, GLX_BLUE_SIZE, 3,
-                                   GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
-                                   None };
+static int const attrib_list[]
+    = { GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
+        GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
+        None };
 
 static errno_t init_graphics(linted_logger logger,
                              struct graphics_state* graphics_state,
@@ -897,7 +918,8 @@ static errno_t init_graphics(linted_logger logger,
         glAttachShader(program, fragment_shader);
         glDeleteShader(fragment_shader);
 
-        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader, NULL);
+        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader,
+                       NULL);
         glCompileShader(fragment_shader);
 
         GLint is_valid;
@@ -906,11 +928,13 @@ static errno_t init_graphics(linted_logger logger,
             error_status = EINVAL;
 
             GLint info_log_length;
-            glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &info_log_length);
+            glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
+                          &info_log_length);
 
             GLchar* info_log = malloc(info_log_length);
             if (info_log != NULL) {
-                glGetShaderInfoLog(fragment_shader, info_log_length, NULL, info_log);
+                glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
+                                   info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
                 free(info_log);
             }
@@ -941,7 +965,8 @@ static errno_t init_graphics(linted_logger logger,
 
             GLchar* info_log = malloc(info_log_length);
             if (info_log != NULL) {
-                glGetShaderInfoLog(vertex_shader, info_log_length, NULL, info_log);
+                glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
+                                   info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
                 free(info_log);
             }
@@ -1002,12 +1027,11 @@ static void resize_graphics(unsigned width, unsigned height)
         double far = 1000;
         double near = 1;
 
-        GLfloat projection[][4] = {
-            { d / aspect, 0, 0, 0 },
-            { 0, d, 0, 0 },
-            { 0, 0, (far + near) / (near - far), 2 * far * near / (near - far) },
-            { 0, 0, -1, 0 }
-        };
+        GLfloat projection[][4]
+            = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+                { 0,                           0,
+                  (far + near) / (near - far), 2 * far * near / (near - far) },
+                { 0, 0, -1, 0 } };
         glLoadMatrixf(projection[0]);
     }
 
@@ -1048,11 +1072,10 @@ static void render_graphics(struct graphics_state const* graphics_state,
 
     /* Move the camera */
     {
-        GLfloat const camera[][4] = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
-                                      { 0, 0, 1, 0 }, { sim_model->x_position,
-                                                        sim_model->y_position,
-                                                        sim_model->z_position,
-                                                        1 } };
+        GLfloat const camera[][4]
+            = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
+                { sim_model->x_position, sim_model->y_position,
+                  sim_model->z_position, 1 } };
         glMultMatrixf(camera[0]);
     }
 
@@ -1106,7 +1129,8 @@ static errno_t gui_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+        != 0) {
         return errnum;
     }
 
@@ -1114,8 +1138,8 @@ static errno_t gui_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+        != 0) {
         return errnum;
     }
 
@@ -1195,7 +1219,8 @@ static errno_t invalid_fildes(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: ")))
+        != 0) {
         return errnum;
     }
 
@@ -1223,7 +1248,8 @@ static errno_t missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
+        != 0) {
         return errnum;
     }
 
@@ -1231,7 +1257,8 @@ static errno_t missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
+        != 0) {
         return errnum;
     }
 
@@ -1288,7 +1315,8 @@ static errno_t log_str(linted_logger logger, struct linted_str start,
     memcpy(full_string, start.bytes, start.size);
     memcpy(full_string + start.size, error, error_size);
 
-    errno_t errnum = linted_logger_log(logger, full_string, start.size + error_size);
+    errno_t errnum
+        = linted_logger_log(logger, full_string, start.size + error_size);
 
     free(full_string);
 

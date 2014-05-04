@@ -24,8 +24,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#define MESSAGE_SIZE \
-    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1)
+#define MESSAGE_SIZE                                                           \
+    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                      \
+     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1)
 
 typedef char message_type[MESSAGE_SIZE];
 
@@ -41,9 +42,8 @@ errno_t linted_controller_pair(linted_controller controller[2], int readflags,
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-errno_t linted_controller_send(
-    linted_controller controller,
-    struct linted_controller_message const* message)
+errno_t linted_controller_send(linted_controller controller,
+                               struct linted_controller_message const* message)
 {
     message_type raw_message;
     char* tip = raw_message;
@@ -56,7 +56,10 @@ errno_t linted_controller_send(
     memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
     tip += sizeof y_tilt.bytes;
 
-    unsigned char bitfield = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u | ((uintmax_t)message->jumping) << 4u;
+    unsigned char bitfield
+        = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u
+          | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
+          | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 
     return -1 == mq_send(controller, raw_message, sizeof raw_message, 0) ? errno
@@ -72,7 +75,8 @@ errno_t linted_controller_receive(linted_controller queue,
                                   struct linted_controller_message* message)
 {
     message_type raw_message;
-    ssize_t recv_status = mq_receive(queue, raw_message, sizeof raw_message, NULL);
+    ssize_t recv_status
+        = mq_receive(queue, raw_message, sizeof raw_message, NULL);
     if (-1 == recv_status) {
         return errno;
     }

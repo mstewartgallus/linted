@@ -40,28 +40,33 @@ enum file_action_type {
     FILE_ACTION_ADDDUP2
 };
 
-struct adddup2 {
+struct adddup2
+{
     enum file_action_type type;
     int oldfildes;
     int newfildes;
 };
 
-union file_action {
+union file_action
+{
     enum file_action_type type;
     struct adddup2 adddup2;
 };
 
-struct linted_spawn_file_actions {
+struct linted_spawn_file_actions
+{
     size_t action_count;
     union file_action actions[];
 };
 
-struct linted_spawn_attr {
+struct linted_spawn_attr
+{
     pid_t pgroup;
     bool setpgroup : 1;
 };
 
-struct spawn_error {
+struct spawn_error
+{
     errno_t errnum;
 };
 
@@ -92,10 +97,11 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr* attr)
     free(attr);
 }
 
-errno_t linted_spawn_file_actions_init(
-    struct linted_spawn_file_actions** file_actionsp)
+errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions
+                                       ** file_actionsp)
 {
-    struct linted_spawn_file_actions* file_actions = malloc(sizeof *file_actions);
+    struct linted_spawn_file_actions* file_actions
+        = malloc(sizeof *file_actions);
     if (NULL == file_actions) {
         return errno;
     }
@@ -106,9 +112,9 @@ errno_t linted_spawn_file_actions_init(
     return 0;
 }
 
-errno_t linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions** file_actionsp, int oldfildes,
-    int newfildes)
+errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
+                                          ** file_actionsp,
+                                          int oldfildes, int newfildes)
 {
     struct linted_spawn_file_actions* file_actions;
     struct linted_spawn_file_actions* new_file_actions;
@@ -120,7 +126,9 @@ errno_t linted_spawn_file_actions_adddup2(
 
     old_count = file_actions->action_count;
     new_count = old_count + 1;
-    new_file_actions = realloc(file_actions, sizeof *file_actions + new_count * sizeof file_actions->actions[0]);
+    new_file_actions
+        = realloc(file_actions, sizeof *file_actions
+                                + new_count * sizeof file_actions->actions[0]);
     if (NULL == new_file_actions) {
         return errno;
     }
@@ -138,8 +146,8 @@ errno_t linted_spawn_file_actions_adddup2(
     return 0;
 }
 
-void linted_spawn_file_actions_destroy(
-    struct linted_spawn_file_actions* file_actions)
+void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
+                                       * file_actions)
 {
     free(file_actions);
 }
@@ -156,10 +164,12 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
     long page_size = sysconf(_SC_PAGESIZE);
 
     /* Align size to the page length  */
-    size_t spawn_error_length = ((sizeof(struct spawn_error) + page_size - 1) / page_size) * page_size;
+    size_t spawn_error_length = ((sizeof(struct spawn_error) + page_size - 1)
+                                 / page_size) * page_size;
 
-    volatile struct spawn_error* spawn_error = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-                                                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    volatile struct spawn_error* spawn_error
+        = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         return errno;
     }
@@ -187,7 +197,8 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
             {
                 errno_t errnum;
                 do {
-                    int wait_status = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
+                    int wait_status
+                        = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
                     errnum = -1 == wait_status ? errno : 0;
                 } while (EINTR == errnum);
                 if (errnum != 0) {
@@ -313,7 +324,8 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
             union file_action const* action = &file_actions->actions[ii];
             switch (action->type) {
             case FILE_ACTION_ADDDUP2:
-                if (-1 == dup2(action->adddup2.oldfildes, action->adddup2.newfildes)) {
+                if (-1 == dup2(action->adddup2.oldfildes,
+                               action->adddup2.newfildes)) {
                     exit_with_error(spawn_error, errno);
                 }
                 break;

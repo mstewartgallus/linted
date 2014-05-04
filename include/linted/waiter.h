@@ -23,12 +23,14 @@
 
 struct linted_waiter_data;
 
-struct linted_waiter_message {
+struct linted_waiter_message
+{
     siginfo_t exit_info;
     errno_t errnum;
 };
 
-struct linted_waiter {
+struct linted_waiter
+{
     pthread_t pthread;
     struct linted_waiter_data* waiter_data;
     int init_wait_fd;

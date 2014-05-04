@@ -24,7 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct message {
+struct message
+{
     char dummy;
 };
 

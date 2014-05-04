@@ -44,7 +44,8 @@
 #define ROTATION_SPEED (UINT32_MAX / 512)
 #define DEAD_ZONE (INT32_MAX / 8)
 
-struct action_state {
+struct action_state
+{
     int32_t x_tilt;
     int32_t y_tilt;
 
@@ -54,7 +55,8 @@ struct action_state {
     bool jumping : 1;
 };
 
-struct simulator_state {
+struct simulator_state
+{
     int_fast32_t x_position;
     int_fast32_t y_position;
     int_fast32_t z_position;
@@ -163,14 +165,16 @@ int main(int argc, char* argv[])
     }
 
     if (NULL == controller_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(CONTROLLER_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(CONTROLLER_OPTION));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (NULL == shutdowner_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(SHUTDOWNER_OPTION));
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(SHUTDOWNER_OPTION));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
@@ -250,13 +254,15 @@ int main(int argc, char* argv[])
 
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
-                           controller, updater, shutdowner };
+                           controller,    updater,      shutdowner };
 
-        errno_t errnum = linted_util_sanitize_environment(kept_fds, LINTED_ARRAY_SIZE(kept_fds));
+        errno_t errnum = linted_util_sanitize_environment(
+            kept_fds, LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
-                                   program_name, linted_error_string_alloc(errnum));
+                                   program_name,
+                                   linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
     }
@@ -270,17 +276,16 @@ int main(int argc, char* argv[])
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
-    struct simulator_state simulator_state = {
-        .update_pending = true, /* Initialize the gui at start */
-        .x_position = 0,
-        .y_position = 0,
-        .z_position = 3 * 1024,
-        .x_velocity = 0,
-        .y_velocity = 0,
-        .z_velocity = 0,
-        .x_rotation = UINT32_MAX / 2,
-        .y_rotation = 0
-    };
+    struct simulator_state simulator_state
+        = { .update_pending = true, /* Initialize the gui at start */
+            .x_position = 0,
+            .y_position = 0,
+            .z_position = 3 * 1024,
+            .x_velocity = 0,
+            .y_velocity = 0,
+            .z_velocity = 0,
+            .x_rotation = UINT32_MAX / 2,
+            .y_rotation = 0 };
 
     int timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
     if (-1 == timer) {
@@ -315,12 +320,11 @@ int main(int argc, char* argv[])
         };
         size_t fds_size;
 
-        struct pollfd fds[] = {[SHUTDOWNER] = { .fd = shutdowner,
-                                                .events = POLLIN },
-                               [TIMER] = { .fd = timer, .events = POLLIN },
-                               [CONTROLLER] = { .fd = controller,
-                                                .events = POLLIN },
-                               [UPDATER] = { .fd = updater, .events = POLLOUT } };
+        struct pollfd fds[]
+            = {[SHUTDOWNER] = { .fd = shutdowner, .events = POLLIN },
+               [TIMER] = { .fd = timer, .events = POLLIN },
+               [CONTROLLER] = { .fd = controller, .events = POLLIN },
+               [UPDATER] = { .fd = updater, .events = POLLOUT } };
 
         if (simulator_state.update_pending) {
             fds_size = LINTED_ARRAY_SIZE(fds);
@@ -351,7 +355,8 @@ int main(int argc, char* argv[])
         }
 
         if ((fds[TIMER].revents & POLLIN) != 0) {
-            errno_t errnum = on_timer_readable(timer, &action_state, &simulator_state);
+            errno_t errnum
+                = on_timer_readable(timer, &action_state, &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -366,7 +371,8 @@ int main(int argc, char* argv[])
             }
         }
 
-        if (simulator_state.update_pending && (fds[UPDATER].revents & POLLOUT) != 0) {
+        if (simulator_state.update_pending && (fds[UPDATER].revents & POLLOUT)
+                                              != 0) {
             errno_t errnum = on_updater_writeable(updater, &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
@@ -403,13 +409,16 @@ static errno_t on_timer_readable(int timer,
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
-        simulate_forces(&simulator_state->x_position, &simulator_state->x_velocity,
+        simulate_forces(&simulator_state->x_position,
+                        &simulator_state->x_velocity,
                         8 * (int_fast32_t)action_state->x);
 
-        simulate_forces(&simulator_state->z_position, &simulator_state->z_velocity,
+        simulate_forces(&simulator_state->z_position,
+                        &simulator_state->z_velocity,
                         8 * (int_fast32_t)action_state->z);
 
-        simulate_forces(&simulator_state->y_position, &simulator_state->y_velocity,
+        simulate_forces(&simulator_state->y_position,
+                        &simulator_state->y_velocity,
                         -8 * (int_fast32_t)action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
@@ -425,13 +434,12 @@ static errno_t on_timer_readable(int timer,
 static errno_t on_updater_writeable(linted_updater updater,
                                     struct simulator_state* simulator_state)
 {
-    struct linted_updater_update update = {
-        .x_position = simulator_state->x_position,
-        .y_position = simulator_state->y_position,
-        .z_position = simulator_state->z_position,
-        .x_rotation = simulator_state->x_rotation,
-        .y_rotation = simulator_state->y_rotation
-    };
+    struct linted_updater_update update
+        = { .x_position = simulator_state->x_position,
+            .y_position = simulator_state->y_position,
+            .z_position = simulator_state->z_position,
+            .x_rotation = simulator_state->x_rotation,
+            .y_rotation = simulator_state->y_rotation };
 
     errno_t update_status;
     do {
@@ -507,13 +515,16 @@ static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
     int_fast32_t old_position = *position;
     int_fast32_t old_velocity = *velocity;
 
-    int_fast32_t guess_velocity = saturate(((int_fast64_t)thrust) + old_velocity);
+    int_fast32_t guess_velocity
+        = saturate(((int_fast64_t)thrust) + old_velocity);
 
-    int_fast32_t friction = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */) *
-                            -sign(guess_velocity);
+    int_fast32_t friction = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
+                            * -sign(guess_velocity);
 
-    int_fast32_t new_velocity = saturate(((int_fast64_t)guess_velocity) + friction);
-    int_fast32_t new_position = saturate(((int_fast64_t)old_position) + new_velocity);
+    int_fast32_t new_velocity
+        = saturate(((int_fast64_t)guess_velocity) + friction);
+    int_fast32_t new_position
+        = saturate(((int_fast64_t)old_position) + new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
@@ -521,7 +532,8 @@ static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
 
 static void simulate_rotation(uint_fast32_t* rotation, int_fast32_t tilt)
 {
-    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE) * sign(tilt) * ROTATION_SPEED);
+    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE)
+                                                * sign(tilt) * ROTATION_SPEED);
     *rotation = (*rotation + step) % UINT32_MAX;
 }
 
@@ -588,7 +600,8 @@ static errno_t simulator_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+        != 0) {
         return errnum;
     }
 
@@ -596,8 +609,8 @@ static errno_t simulator_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+        != 0) {
         return errnum;
     }
 
@@ -669,7 +682,8 @@ static errno_t missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
+        != 0) {
         return errnum;
     }
 
@@ -677,7 +691,8 @@ static errno_t missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
+        != 0) {
         return errnum;
     }
 

@@ -63,7 +63,8 @@ errno_t linted_locale_try_for_more_help(int fildes, char const* program_name,
 {
     errno_t errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `")))
+        != 0) {
         return errnum;
     }
 
