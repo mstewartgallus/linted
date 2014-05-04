@@ -425,26 +425,29 @@ int main(int argc, char* argv[])
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, colormap,
                         screen->root, visual_info.visualid);
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto disconnect;
+        goto destroy_colormap;
     }
 
     xcb_window_t window = xcb_generate_id(connection);
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto disconnect;
+        goto destroy_colormap;
     }
 
     {
-        uint32_t values[] = {
-            XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_POINTER_MOTION,
-            colormap, 0
-        };
+        uint32_t event_max = 0;
+        event_max |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+        event_max |= XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW;
+        event_max |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
+        event_max |= XCB_EVENT_MASK_POINTER_MOTION;
+
+        uint32_t values[] = { event_max, colormap, 0};
         xcb_create_window(connection, visual_info.depth, window, screen->root, 0, 0,
                           window_model.width, window_model.height, 0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,
                           XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     }
     if ((error_status = errnum_from_connection(connection)) != 0) {
-        goto disconnect;
+        goto destroy_colormap;
     }
 
     xcb_atom_t wm_delete_window;
@@ -612,7 +615,6 @@ int main(int argc, char* argv[])
                 }
 
             case ClientMessage:
-                ;
                 goto cleanup_gl;
 
             default:
@@ -672,9 +674,9 @@ int main(int argc, char* argv[])
                 glXSwapBuffers(display, window);
             } else {
                 /*
-         * This is an ugly hack and waiting the X11 file
-         * descriptor should be implemented eventually.
-         */
+                 * This is an ugly hack and waiting on the X11 file
+                 * descriptor should be implemented eventually.
+                 */
                 struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
                 errno_t errnum;
                 do {
@@ -705,6 +707,15 @@ destroy_window:
         }
     }
 
+destroy_colormap:
+    xcb_free_colormap(connection, colormap);
+    {
+        errno_t errnum = errnum_from_connection(connection);
+        if (0 == error_status) {
+            error_status = errnum;
+        }
+    }
+
 disconnect:
     xcb_flush(connection);
     {
@@ -714,17 +725,20 @@ disconnect:
         }
     }
 
+    /* TODO: Check errors */
+
     XCloseDisplay(display);
 
-shutdown : {
-    errno_t shutdown_status;
-    do {
-        shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
-    } while (EINTR == shutdown_status);
-    if (0 == error_status) {
-        error_status = shutdown_status;
+shutdown:
+    {
+        errno_t shutdown_status;
+        do {
+            shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
+        } while (EINTR == shutdown_status);
+        if (0 == error_status) {
+            error_status = shutdown_status;
+        }
     }
-}
 
     return error_status;
 }
