@@ -69,6 +69,7 @@ struct window_model {
     unsigned width;
     unsigned height;
 
+    bool resize_pending : 1;
     bool viewable : 1;
     bool focused : 1;
 };
@@ -359,7 +360,10 @@ int main(int argc, char* argv[])
 
     struct window_model window_model = { .width = 640,
                                          .height = 800,
-                                         .viewable = true };
+                                         .viewable = true,
+
+                                         /* Do the initial resize */
+                                         .resize_pending = true};
 
     struct controller_data controller_data = { .update = { .forward = false,
                                                            .back = false,
@@ -503,13 +507,11 @@ int main(int argc, char* argv[])
         goto destroy_glx_context;
     }
 
-    /* Do the initial resize */
-    resize_graphics(window_model.width, window_model.height);
     for (;;) {
         /* Handle GUI events first before rendering */
         /* We have to use the Xlib event queue because of broken Mesa
-     * libraries which abuse it.
-     */
+         * libraries which abuse it.
+         */
         bool had_gui_event = XPending(display) > 0;
         if (had_gui_event) {
             XEvent event;
@@ -519,7 +521,7 @@ int main(int argc, char* argv[])
                 XConfigureEvent* configure_event = &event.xconfigure;
                 window_model.width = configure_event->width;
                 window_model.height = configure_event->height;
-                resize_graphics(window_model.width, window_model.height);
+                window_model.resize_pending = true;
                 break;
             }
 
@@ -660,9 +662,12 @@ int main(int argc, char* argv[])
             }
         }
 
-        /* Only render if we have time to waste */
+        /* Only render or resize if we have time to waste */
         if (!had_gui_event && !had_selected_event) {
-            if (window_model.viewable) {
+            if (window_model.resize_pending) {
+                resize_graphics(window_model.width, window_model.height);
+                window_model.resize_pending = false;
+            } else if (window_model.viewable) {
                 render_graphics(&graphics_state, &sim_model, &window_model);
                 glXSwapBuffers(display, window);
             } else {
