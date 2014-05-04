@@ -456,9 +456,9 @@ static errno_t run_game(char const* process_name,
 {
     errno_t errnum = 0;
 
-    union service services[] = {[LINTED_MANAGER_SERVICE_INIT] = { .init = {.pid = getpid()} },
-                                [LINTED_MANAGER_SERVICE_GUI] = { .process = {.pid = -1} },
-                                [LINTED_MANAGER_SERVICE_SIMULATOR] = { .process = {.pid = -1} },
+    union service services[] = {[LINTED_MANAGER_SERVICE_INIT] = { .init = { .pid = getpid() } },
+                                [LINTED_MANAGER_SERVICE_GUI] = { .process = { .pid = -1 } },
+                                [LINTED_MANAGER_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
                                 [LINTED_MANAGER_SERVICE_LOGGER] = { .file_pair = { .read_end = -1,
                                                                                    .write_end = -1 } },
                                 [LINTED_MANAGER_SERVICE_UPDATER] = { .file_pair = { .read_end = -1,
@@ -579,8 +579,8 @@ static errno_t run_game(char const* process_name,
             connections[ii].fd = -1;
         }
 
-        struct service_process * gui_service = &services[LINTED_MANAGER_SERVICE_GUI].process;
-        struct service_process * sim_service = &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
+        struct service_process* gui_service = &services[LINTED_MANAGER_SERVICE_GUI].process;
+        struct service_process* sim_service = &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
         for (;;) {
             enum {
                 GUI_WAITER,
@@ -591,19 +591,19 @@ static errno_t run_game(char const* process_name,
             };
             /* TODO: Allocate off the stack */
             struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS] = {
-                [GUI_WAITER] = { .fd = -1 == gui_service->pid
-                                 ? -1
-                                 : linted_waiter_fd(&gui_service->waiter),
-                                 .events = POLLIN },
-                [SIMULATOR_WAITER] = {
-                    .fd =
-                    -1 == sim_service->pid
-                    ? -1
-                    : linted_waiter_fd(&sim_service->waiter),
-                    .events = POLLIN
-                },
-                [LOGGER] = { .fd = logger_read, .events = POLLIN },
-                [NEW_CONNECTIONS] = { .fd = new_connections, .events = POLLIN }
+                    [GUI_WAITER] = { .fd = -1 == gui_service->pid
+                                               ? -1
+                                               : linted_waiter_fd(&gui_service->waiter),
+                                     .events = POLLIN },
+                    [SIMULATOR_WAITER] = {
+                                           .fd =
+                                               -1 == sim_service->pid
+                                                   ? -1
+                                                   : linted_waiter_fd(&sim_service->waiter),
+                                           .events = POLLIN
+                                       },
+                    [LOGGER] = { .fd = logger_read, .events = POLLIN },
+                    [NEW_CONNECTIONS] = { .fd = new_connections, .events = POLLIN }
             };
 
             for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
@@ -852,7 +852,7 @@ exit_services:
 
         switch (service_config->type) {
         case SERVICE_PROCESS: {
-            struct service_process * service = &services[ii].process;
+            struct service_process* service = &services[ii].process;
             pid_t pid = service->pid;
 
             if (pid != -1) {

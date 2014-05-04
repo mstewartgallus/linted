@@ -363,7 +363,7 @@ int main(int argc, char* argv[])
                                          .viewable = true,
 
                                          /* Do the initial resize */
-                                         .resize_pending = true};
+                                         .resize_pending = true };
 
     struct controller_data controller_data = { .update = { .forward = false,
                                                            .back = false,
@@ -440,7 +440,7 @@ int main(int argc, char* argv[])
         event_max |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
-        uint32_t values[] = { event_max, colormap, 0};
+        uint32_t values[] = { event_max, colormap, 0 };
         xcb_create_window(connection, visual_info.depth, window, screen->root, 0, 0,
                           window_model.width, window_model.height, 0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,
@@ -729,16 +729,15 @@ disconnect:
 
     XCloseDisplay(display);
 
-shutdown:
-    {
-        errno_t shutdown_status;
-        do {
-            shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
-        } while (EINTR == shutdown_status);
-        if (0 == error_status) {
-            error_status = shutdown_status;
-        }
+shutdown : {
+    errno_t shutdown_status;
+    do {
+        shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
+    } while (EINTR == shutdown_status);
+    if (0 == error_status) {
+        error_status = shutdown_status;
     }
+}
 
     return error_status;
 }
