@@ -367,11 +367,23 @@ static void exit_with_error(volatile struct spawn_error* spawn_error,
 {
     spawn_error->errnum = errnum;
 
-    sigset_t termset;
-    sigemptyset(&termset);
-    sigaddset(&termset, SIGTERM);
+    /* Stop the SIG_IGN handler from catching SIGTERM */
+    {
+        struct sigaction action;
+        memset(&action, 0, sizeof 0);
+        action.sa_handler = SIG_DFL;
 
-    pthread_sigmask(SIG_UNBLOCK, &termset, NULL);
+        sigaction(SIGTERM, &action, NULL);
+    }
+
+    /* Unlock SIGTERM */
+    {
+        sigset_t termset;
+        sigemptyset(&termset);
+        sigaddset(&termset, SIGTERM);
+
+        pthread_sigmask(SIG_UNBLOCK, &termset, NULL);
+    }
 
     raise(SIGTERM);
 
