@@ -31,22 +31,26 @@ def go():
         if cppcheck != "":
             subprocess.check_call([cppcheck,
                                    '--enable=performance',
-                                   '--enable=portability'] + cppcheck_filter(options))
+                                   '--enable=portability',
+                                   '--std=c99',
+                                   '--std=posix'] + cppcheck_filter(options))
 
     subprocess.check_call([cc] + options)
 
     sys.exit(0)
 
 def cppcheck_filter(options):
-    return [option for option in options if cppcheck_match(option)]
-
-def cppcheck_match(option):
-    return (not option.startswith('-')
+    cppcheck_options = []
+    for option in options:
+        if ((not option.startswith('-') and option.endswith('.c'))
             or option.startswith('-D')
             or option.startswith('-U')
             or option.startswith('-I')
             or option.startswith('-i')
-            or option.startswith('-I'))
+            or option.startswith('-I')):
+            cppcheck_options.append(option)
+
+    return cppcheck_options
 
 if __name__ == '__main__':
     go()
