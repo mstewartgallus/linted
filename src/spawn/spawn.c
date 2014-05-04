@@ -268,27 +268,24 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
         return error_status;
     }
 
-    /* Stop signal handlers from doing bad stuff to us */
+    /*
+     * Get rid of signal handlers so that they can't be called before
+     * execve.
+     */
     for (int ii = 1; ii < NSIG; ++ii) {
-        /* Ugly OS specific code here */
-        struct sigaction action;
-        memset(&action, 0, sizeof action);
-
-        /* Uncatchable */
+        /* Uncatchable, avoid Valgrind warnings */
         if (SIGSTOP == ii || SIGKILL == ii) {
             continue;
         }
 
-        if (ii < 32 + 3) {
-            action.sa_handler = SIG_IGN;
-        } else {
-            sigaction(ii, NULL, &action);
-            if (action.sa_handler != SIG_IGN) {
-                action.sa_handler = SIG_DFL;
-            }
-        }
+        struct sigaction action;
+        sigaction(ii, NULL, &action);
 
-        sigaction(ii, &action, NULL);
+        if (action.sa_handler != SIG_IGN) {
+            action.sa_handler = SIG_DFL;
+
+            sigaction(ii, &action, NULL);
+        }
     }
 
     pthread_sigmask(SIG_SETMASK, &oldset, NULL);
