@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
     errno_t error_status = 0;
 
     struct window_model window_model = { .width = 640,
-                                         .height = 800,
+                                         .height = 480,
                                          .viewable = true,
 
                                          /* Do the initial resize */
