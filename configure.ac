@@ -30,7 +30,6 @@ AS_IF([test "x${CFLAGS}" = "x"], [
 AM_PROG_AR
 LT_INIT
 AC_PROG_CC
-AC_PROG_CC_C99
 AM_PROG_CC_C_O
 dnl
 AC_CHECK_HEADERS([dnl
