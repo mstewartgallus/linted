@@ -35,7 +35,7 @@ def go():
                                    '--std=c99',
                                    '--std=posix'] + cppcheck_filter(options))
 
-    subprocess.check_call([cc] + options)
+    subprocess.check_call(cc.split() + options)
 
     sys.exit(0)
 
