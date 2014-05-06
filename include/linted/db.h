@@ -1,0 +1,47 @@
+/*
+ * Copyright 2014 Steven Stewart-Gallus
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef LINTED_DB_H
+#define LINTED_DB_H
+
+#include <errno.h>
+
+/**
+ * @file
+ *
+ * Primitive concurrently accessible database functionality.
+ *
+ * @todo Add garbage collection. Have better temporaries for the
+ *       version file.
+ *
+ * @todo Use a better random number generator.
+ */
+
+#define LINTED_DB_CREAT 1
+
+#define LINTED_DB_EXCL (1 << 1)
+#define LINTED_DB_RDONLY (1 << 2)
+#define LINTED_DB_WRONLY (1 << 3)
+#define LINTED_DB_RDWR (1 << 4)
+
+typedef int linted_db;
+
+errno_t linted_db_open(linted_db * dbp, char const * pathname, int flags);
+errno_t linted_db_close(linted_db * dbp);
+
+errno_t linted_db_temp_file(linted_db * dbp, int * fildesp);
+errno_t linted_db_temp_send(linted_db * db, char const *name, int fildes);
+
+#endif /* LINTED_DB_H */

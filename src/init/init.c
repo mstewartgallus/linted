@@ -19,6 +19,7 @@
 #include "binaries.h"
 
 #include "linted/controller.h"
+#include "linted/db.h"
 #include "linted/io.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
@@ -244,6 +245,60 @@ It is insecure to run a game as root!\n"));
         return EXIT_SUCCESS;
     }
 
+    errno_t errnum;
+
+    linted_db my_db;
+    {
+        /* TODO: Use the XDG base directory specification */
+        int xx;
+        if ((errnum = linted_db_open(&xx, "linted-db", LINTED_DB_CREAT)) != 0) {
+            errno = errnum;
+            perror("linted_db_open");
+            return EXIT_FAILURE;
+        }
+        my_db = xx;
+    }
+
+    {
+        int tmp;
+        {
+            int xx;
+            if ((errnum = linted_db_temp_file(&my_db, &xx)) != 0) {
+                errno = errnum;
+                perror("linted_db_temp_file");
+                return EXIT_FAILURE;
+            }
+            tmp = xx;
+        }
+
+        {
+            static char const hello[] = "Hello anybody!";
+            char const * data = hello;
+            size_t data_size = sizeof hello - 1;
+
+            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size)) != 0) {
+                perror("linted_io_write");
+                return EXIT_FAILURE;
+            }
+        }
+
+        if ((errnum = linted_db_temp_send(&my_db, "hello", tmp)) != 0) {
+            perror("linted_db_send");
+            return EXIT_FAILURE;
+        }
+
+        if ((errnum = linted_io_close(tmp)) != 0) {
+            perror("linted_io_close");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if ((errnum = linted_db_close(&my_db)) != 0) {
+        errno = errnum;
+        perror("linted_db_close");
+        return EXIT_FAILURE;
+    }
+
     char const* original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_format(STDERR_FILENO, NULL,
@@ -281,8 +336,8 @@ It is insecure to run a game as root!\n"));
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, cwd };
 
-        errno_t errnum = linted_util_sanitize_environment(
-            kept_fds, LINTED_ARRAY_SIZE(kept_fds));
+        errnum = linted_util_sanitize_environment(kept_fds,
+                                                  LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n",
@@ -423,16 +478,13 @@ done:
         linted_error_string_free(error_string);
     }
 
-    {
-        errno_t errnum = linted_io_close(STDERR_FILENO);
-        if (errnum != 0) {
-            succesfully_executing = -1;
-            char const* const error_string = linted_error_string_alloc(errnum);
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "could not close standard error: %s\n",
-                                   error_string);
-            linted_error_string_free(error_string);
-        }
+    if ((errnum = linted_io_close(STDERR_FILENO)) != 0) {
+        succesfully_executing = -1;
+        char const* const error_string = linted_error_string_alloc(errnum);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "could not close standard error: %s\n",
+                               error_string);
+        linted_error_string_free(error_string);
     }
 
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;

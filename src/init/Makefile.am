@@ -26,6 +26,7 @@ linted_LDADD=\
   src/waiter/libwaiter.la\
   \
   src/controller/libcontroller.la\
+  src/db/libdb.la\
   src/logger/liblogger.la\
   src/manager/libmanager.la\
   src/shutdowner/libshutdowner.la\
