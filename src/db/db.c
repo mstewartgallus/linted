@@ -509,12 +509,12 @@ free_buf:
 static int fname(int fd, char * buf, size_t * sizep)
 {
     {
-        struct stat stat;
-        if (-1 == fstat(fd, &stat)) {
+        struct stat statistics;
+        if (-1 == fstat(fd, &statistics)) {
             return errno;
         }
 
-        if (0 == stat.st_nlink) {
+        if (0 == statistics.st_nlink) {
             return ENOENT;
         }
     }

@@ -87,6 +87,16 @@ struct sim_model
     float z_position;
 };
 
+static int const attribute_list[] = {
+    GLX_RGBA, True,
+    GLX_RED_SIZE, 5,
+    GLX_GREEN_SIZE, 5,
+    GLX_BLUE_SIZE, 3,
+    GLX_DOUBLEBUFFER, True,
+    GLX_DEPTH_SIZE, 16,
+    None
+};
+
 static errno_t errnum_from_connection(xcb_connection_t* connection)
 {
     switch (xcb_connection_has_error(connection)) {
@@ -155,7 +165,6 @@ static errno_t on_updater_readable(linted_updater updater,
 static errno_t on_controller_writeable(linted_controller controller,
                                        struct controller_data* controller_data);
 
-static int const attrib_list[];
 static errno_t init_graphics(linted_logger logger,
                              struct graphics_state* graphics_state,
                              struct window_model const* window_model);
@@ -418,8 +427,8 @@ int main(int argc, char* argv[])
     /* Query framebuffer configurations */
     XVisualInfo visual_info;
     {
-        XVisualInfo* ptr
-            = glXChooseVisual(display, screen_number, (int*)attrib_list);
+        XVisualInfo* ptr = glXChooseVisual(display, screen_number,
+                                           (int*)attribute_list);
         if (NULL == ptr) {
             error_status = ENOSYS;
             goto disconnect;
@@ -830,11 +839,6 @@ static int on_controller_writeable(linted_controller controller,
 
     return 0;
 }
-
-static int const attrib_list[]
-    = { GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
-        GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
-        None };
 
 static errno_t init_graphics(linted_logger logger,
                              struct graphics_state* graphics_state,
