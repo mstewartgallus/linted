@@ -36,12 +36,14 @@ typedef int linted_ko;
 #elif defined _WIN32
 struct linted_ko_vtable;
 
-typedef struct linted_ko {
-    struct linted_ko_vtable const * vtable;
+typedef struct linted_ko
+{
+    struct linted_ko_vtable const* vtable;
     char contents[];
-} * linted_ko;
+}* linted_ko;
 
-struct linted_ko_vtable {
+struct linted_ko_vtable
+{
     linted_error (*close)(linted_ko ko);
 };
 

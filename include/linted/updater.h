@@ -36,13 +36,16 @@ struct linted_updater_update
     uint_fast32_t y_rotation;
 };
 
-linted_error linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
+linted_error linted_updater_pair(linted_updater updater[2], int rflags,
+                                 int wflags);
 
 linted_error linted_updater_send_update(linted_updater updater,
-                                   struct linted_updater_update const* update);
+                                        struct linted_updater_update const
+                                        * update);
 
 linted_error linted_updater_receive_update(linted_updater updater,
-                                      struct linted_updater_update* update);
+                                           struct linted_updater_update
+                                           * update);
 
 linted_error linted_updater_close(linted_updater updater);
 

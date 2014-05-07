@@ -23,7 +23,7 @@
 typedef mqd_t linted_shutdowner;
 
 linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
-                               int wflags);
+                                    int wflags);
 
 linted_error linted_shutdowner_close(linted_shutdowner move);
 

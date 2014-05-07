@@ -33,10 +33,10 @@ linted_error linted_logger_pair(linted_logger logger[2]);
 linted_error linted_logger_close(linted_logger logger);
 
 linted_error linted_logger_log(linted_logger logger, char const* msg_ptr,
-                          size_t msg_len);
+                               size_t msg_len);
 
 linted_error linted_logger_recv_log(linted_logger logger,
-                               char msg_ptr[static LINTED_LOGGER_LOG_MAX],
-                               size_t* msg_len);
+                                    char msg_ptr[static LINTED_LOGGER_LOG_MAX],
+                                    size_t* msg_len);
 
 #endif /* LINTED_LOGGER_H */

@@ -87,15 +87,10 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[] = {
-    GLX_RGBA, True,
-    GLX_RED_SIZE, 5,
-    GLX_GREEN_SIZE, 5,
-    GLX_BLUE_SIZE, 3,
-    GLX_DOUBLEBUFFER, True,
-    GLX_DEPTH_SIZE, 16,
-    None
-};
+static int const attribute_list[]
+    = { GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
+        GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
+        None };
 
 static linted_error errnum_from_connection(xcb_connection_t* connection)
 {
@@ -124,7 +119,7 @@ static linted_error errnum_from_connection(xcb_connection_t* connection)
 }
 
 static linted_error get_mouse_position(xcb_connection_t* connection,
-                                  xcb_window_t window, int* x, int* y)
+                                       xcb_window_t window, int* x, int* y)
 {
     linted_error errnum;
 
@@ -161,13 +156,14 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct controller_data* controller_data);
 
 static linted_error on_updater_readable(linted_updater updater,
-                                   struct sim_model* sim_model);
+                                        struct sim_model* sim_model);
 static linted_error on_controller_writeable(linted_controller controller,
-                                       struct controller_data* controller_data);
+                                            struct controller_data
+                                            * controller_data);
 
 static linted_error init_graphics(linted_logger logger,
-                             struct graphics_state* graphics_state,
-                             struct window_model const* window_model);
+                                  struct graphics_state* graphics_state,
+                                  struct window_model const* window_model);
 static void render_graphics(struct graphics_state const* graphics_state,
                             struct sim_model const* sim_model,
                             struct window_model const* window_model);
@@ -177,17 +173,18 @@ static void resize_graphics(unsigned width, unsigned height);
 static double square(double x);
 
 static linted_error gui_help(int fildes, char const* program_name,
-                        struct linted_str package_name,
-                        struct linted_str package_url,
-                        struct linted_str package_bugreport);
+                             struct linted_str package_name,
+                             struct linted_str package_url,
+                             struct linted_str package_bugreport);
 static linted_error missing_option(int fildes, char const* program_name,
-                              struct linted_str help_option);
+                                   struct linted_str help_option);
 static linted_error invalid_fildes(int fildes, char const* program_name,
-                              struct linted_str option, linted_error errnum);
+                                   struct linted_str option,
+                                   linted_error errnum);
 static linted_error failure(int fildes, char const* program_name,
-                       struct linted_str message, linted_error errnum);
+                            struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
-                       char const* str);
+                            char const* str);
 
 int main(int argc, char* argv[])
 {
@@ -427,8 +424,8 @@ int main(int argc, char* argv[])
     /* Query framebuffer configurations */
     XVisualInfo visual_info;
     {
-        XVisualInfo* ptr = glXChooseVisual(display, screen_number,
-                                           (int*)attribute_list);
+        XVisualInfo* ptr
+            = glXChooseVisual(display, screen_number, (int*)attribute_list);
         if (NULL == ptr) {
             error_status = ENOSYS;
             goto disconnect;
@@ -789,7 +786,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 }
 
 static linted_error on_updater_readable(linted_updater updater,
-                                   struct sim_model* sim_model)
+                                        struct sim_model* sim_model)
 {
     struct linted_updater_update update;
 
@@ -841,8 +838,8 @@ static int on_controller_writeable(linted_controller controller,
 }
 
 static linted_error init_graphics(linted_logger logger,
-                             struct graphics_state* graphics_state,
-                             struct window_model const* window_model)
+                                  struct graphics_state* graphics_state,
+                                  struct window_model const* window_model)
 {
     linted_error error_status = 0;
 
@@ -1127,9 +1124,9 @@ static double square(double x)
 }
 
 static linted_error gui_help(int fildes, char const* program_name,
-                        struct linted_str package_name,
-                        struct linted_str package_url,
-                        struct linted_str package_bugreport)
+                             struct linted_str package_name,
+                             struct linted_str package_url,
+                             struct linted_str package_bugreport)
 {
     linted_error errnum;
 
@@ -1207,7 +1204,8 @@ Report bugs to <"))) != 0) {
 }
 
 static linted_error invalid_fildes(int fildes, char const* program_name,
-                              struct linted_str option, linted_error error_display)
+                                   struct linted_str option,
+                                   linted_error error_display)
 {
     linted_error errnum;
 
@@ -1244,7 +1242,7 @@ static linted_error invalid_fildes(int fildes, char const* program_name,
 }
 
 static linted_error missing_option(int fildes, char const* program_name,
-                              struct linted_str option)
+                                   struct linted_str option)
 {
     linted_error errnum;
 
@@ -1270,7 +1268,7 @@ static linted_error missing_option(int fildes, char const* program_name,
 }
 
 static linted_error failure(int fildes, char const* program_name,
-                       struct linted_str message, linted_error error)
+                            struct linted_str message, linted_error error)
 {
     linted_error errnum;
 
@@ -1306,7 +1304,7 @@ static linted_error failure(int fildes, char const* program_name,
 }
 
 static linted_error log_str(linted_logger logger, struct linted_str start,
-                       char const* error)
+                            char const* error)
 {
     size_t error_size = strlen(error);
 

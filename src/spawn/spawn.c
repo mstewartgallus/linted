@@ -98,7 +98,7 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr* attr)
 }
 
 linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
-                                       ** file_actionsp)
+                                            ** file_actionsp)
 {
     struct linted_spawn_file_actions* file_actions
         = malloc(sizeof *file_actions);
@@ -113,8 +113,8 @@ linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
 }
 
 linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
-                                          ** file_actionsp,
-                                          int oldfildes, int newfildes)
+                                               ** file_actionsp,
+                                               int oldfildes, int newfildes)
 {
     struct linted_spawn_file_actions* file_actions;
     struct linted_spawn_file_actions* new_file_actions;
@@ -153,9 +153,9 @@ void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
 }
 
 linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
-                     struct linted_spawn_file_actions const* file_actions,
-                     struct linted_spawn_attr const* attr, char* const argv[],
-                     char* const envp[])
+                          struct linted_spawn_file_actions const* file_actions,
+                          struct linted_spawn_attr const* attr,
+                          char* const argv[], char* const envp[])
 {
     /*
    * So adddup2 works use memory mapping instead of a pipe to

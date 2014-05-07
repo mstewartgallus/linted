@@ -72,17 +72,18 @@ struct simulator_state
 };
 
 static linted_error on_timer_readable(int timer,
-                                 struct action_state const* action_state,
-                                 struct simulator_state* simulator_state);
+                                      struct action_state const* action_state,
+                                      struct simulator_state* simulator_state);
 
 static linted_error on_updater_writeable(linted_updater updater,
-                                    struct simulator_state* simulator_state);
+                                         struct simulator_state
+                                         * simulator_state);
 
 static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
-                                      bool* should_exit);
+                                           bool* should_exit);
 
 static linted_error on_controller_readable(linted_controller controller,
-                                      struct action_state* action_state);
+                                           struct action_state* action_state);
 
 static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
                             int_fast32_t thrust);
@@ -97,11 +98,11 @@ static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
 static linted_error simulator_help(int fildes, char const* program_name,
-                              struct linted_str package_name,
-                              struct linted_str package_url,
-                              struct linted_str package_bugreport);
+                                   struct linted_str package_name,
+                                   struct linted_str package_url,
+                                   struct linted_str package_bugreport);
 static linted_error missing_option(int fildes, char const* program_name,
-                              struct linted_str help_option);
+                                   struct linted_str help_option);
 
 int main(int argc, char* argv[])
 {
@@ -344,7 +345,8 @@ int main(int argc, char* argv[])
 
         if ((fds[SHUTDOWNER].revents & POLLIN) != 0) {
             bool should_exit;
-            linted_error errnum = on_shutdowner_readable(shutdowner, &should_exit);
+            linted_error errnum
+                = on_shutdowner_readable(shutdowner, &should_exit);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -364,7 +366,8 @@ int main(int argc, char* argv[])
         }
 
         if ((fds[CONTROLLER].revents & POLLIN) != 0) {
-            linted_error errnum = on_controller_readable(controller, &action_state);
+            linted_error errnum
+                = on_controller_readable(controller, &action_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -373,7 +376,8 @@ int main(int argc, char* argv[])
 
         if (simulator_state.update_pending && (fds[UPDATER].revents & POLLOUT)
                                               != 0) {
-            linted_error errnum = on_updater_writeable(updater, &simulator_state);
+            linted_error errnum
+                = on_updater_writeable(updater, &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -397,12 +401,13 @@ exit:
 }
 
 static linted_error on_timer_readable(int timer,
-                                 struct action_state const* action_state,
-                                 struct simulator_state* simulator_state)
+                                      struct action_state const* action_state,
+                                      struct simulator_state* simulator_state)
 {
     uint64_t ticks;
     {
-        linted_error errnum = linted_ko_read_all(timer, NULL, &ticks, sizeof ticks);
+        linted_error errnum
+            = linted_ko_read_all(timer, NULL, &ticks, sizeof ticks);
         if (errnum != 0) {
             return errnum;
         }
@@ -432,7 +437,8 @@ static linted_error on_timer_readable(int timer,
 }
 
 static linted_error on_updater_writeable(linted_updater updater,
-                                    struct simulator_state* simulator_state)
+                                         struct simulator_state
+                                         * simulator_state)
 {
     struct linted_updater_update update
         = { .x_position = simulator_state->x_position,
@@ -460,7 +466,7 @@ static linted_error on_updater_writeable(linted_updater updater,
 }
 
 static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
-                                      bool* should_exit)
+                                           bool* should_exit)
 {
     linted_error read_status;
     do {
@@ -481,7 +487,7 @@ static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
 }
 
 static linted_error on_controller_readable(linted_controller controller,
-                                      struct action_state* action_state)
+                                           struct action_state* action_state)
 {
     struct linted_controller_message message;
 
@@ -594,9 +600,9 @@ static uint_fast32_t absolute(int_fast32_t x)
 }
 
 static linted_error simulator_help(int fildes, char const* program_name,
-                              struct linted_str package_name,
-                              struct linted_str package_url,
-                              struct linted_str package_bugreport)
+                                   struct linted_str package_name,
+                                   struct linted_str package_url,
+                                   struct linted_str package_bugreport)
 {
     linted_error errnum;
 
@@ -674,7 +680,7 @@ Report bugs to <"))) != 0) {
 }
 
 static linted_error missing_option(int fildes, char const* program_name,
-                              struct linted_str option)
+                                   struct linted_str option)
 {
     linted_error errnum;
 

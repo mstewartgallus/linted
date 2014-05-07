@@ -20,7 +20,7 @@
 #include "linted/ko.h"
 
 linted_error linted_locale_missing_process_name(int fildes,
-                                           struct linted_str package_name)
+                                                struct linted_str package_name)
 {
     linted_error errnum;
 
@@ -37,7 +37,7 @@ linted_error linted_locale_missing_process_name(int fildes,
 }
 
 linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
-                                    char const* bad_option)
+                                         char const* bad_option)
 {
     linted_error errnum;
 
@@ -58,8 +58,9 @@ linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
     return 0;
 }
 
-linted_error linted_locale_try_for_more_help(int fildes, char const* program_name,
-                                        struct linted_str help_option)
+linted_error linted_locale_try_for_more_help(int fildes,
+                                             char const* program_name,
+                                             struct linted_str help_option)
 {
     linted_error errnum;
 
@@ -89,7 +90,7 @@ linted_error linted_locale_try_for_more_help(int fildes, char const* program_nam
 }
 
 linted_error linted_locale_version(int fildes, struct linted_str package_string,
-                              struct linted_str copyright_year)
+                                   struct linted_str copyright_year)
 {
     linted_error errnum;
 

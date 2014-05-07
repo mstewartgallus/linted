@@ -33,7 +33,8 @@
 
 typedef char message_type[MESSAGE_SIZE];
 
-linted_error linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
+linted_error linted_updater_pair(linted_updater updater[2], int rflags,
+                                 int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -45,7 +46,8 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags, int wfla
 }
 
 linted_error linted_updater_send_update(linted_updater updater,
-                                   struct linted_updater_update const* update)
+                                        struct linted_updater_update const
+                                        * update)
 {
     message_type message;
     char* tip = message;
@@ -75,7 +77,7 @@ linted_error linted_updater_send_update(linted_updater updater,
 }
 
 linted_error linted_updater_receive_update(linted_updater updater,
-                                      struct linted_updater_update* update)
+                                           struct linted_updater_update* update)
 {
     message_type message;
     ssize_t recv_status = mq_receive(updater, message, sizeof message, NULL);

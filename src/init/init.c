@@ -153,27 +153,28 @@ static linted_error shutdowner_pair(int fildes[2])
 }
 
 static linted_error on_new_connections_readable(linted_manager new_connections,
+                                                union service_config const
+                                                * config,
+                                                union service const* services,
+                                                size_t* connection_count,
+                                                struct connection* connections);
+static linted_error on_connection_readable(int fd,
                                            union service_config const* config,
                                            union service const* services,
-                                           size_t* connection_count,
-                                           struct connection* connections);
-static linted_error on_connection_readable(int fd,
-                                      union service_config const* config,
-                                      union service const* services,
-                                      bool* hungup,
-                                      union linted_manager_reply* reply);
+                                           bool* hungup,
+                                           union linted_manager_reply* reply);
 static linted_error on_connection_writeable(int fd,
-                                       union linted_manager_reply* reply);
+                                            union linted_manager_reply* reply);
 
 static linted_error run_game(char const* process_name,
-                        union service_config const* config, int logger_dummy,
-                        int updater_dummy, int shutdowner_dummy,
-                        int controller_dummy);
+                             union service_config const* config,
+                             int logger_dummy, int updater_dummy,
+                             int shutdowner_dummy, int controller_dummy);
 
 static linted_error linted_help(int fildes, char const* program_name,
-                           struct linted_str package_name,
-                           struct linted_str package_url,
-                           struct linted_str package_bugreport);
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport);
 
 int main(int argc, char** argv)
 {
@@ -273,10 +274,11 @@ It is insecure to run a game as root!\n"));
 
         {
             static char const hello[] = "Hello anybody!";
-            char const * data = hello;
+            char const* data = hello;
             size_t data_size = sizeof hello - 1;
 
-            if ((errnum = linted_ko_write_all(tmp, NULL, data, data_size)) != 0) {
+            if ((errnum = linted_ko_write_all(tmp, NULL, data, data_size))
+                != 0) {
                 perror("linted_ko_write");
                 return EXIT_FAILURE;
             }
@@ -491,9 +493,9 @@ done:
 }
 
 static linted_error run_game(char const* process_name,
-                        union service_config const* config, int logger_dummy,
-                        int updater_dummy, int shutdowner_dummy,
-                        int controller_dummy)
+                             union service_config const* config,
+                             int logger_dummy, int updater_dummy,
+                             int shutdowner_dummy, int controller_dummy)
 {
     linted_error errnum = 0;
 
@@ -948,10 +950,11 @@ exit_services:
 }
 
 static linted_error on_new_connections_readable(linted_manager new_connections,
-                                           union service_config const* config,
-                                           union service const* services,
-                                           size_t* connection_count,
-                                           struct connection* connections)
+                                                union service_config const
+                                                * config,
+                                                union service const* services,
+                                                size_t* connection_count,
+                                                struct connection* connections)
 {
     for (;;) {
         int new_socket = accept4(new_connections, NULL, NULL,
@@ -971,8 +974,8 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
         union linted_manager_reply reply;
         {
             bool hungup;
-            linted_error errnum = on_connection_readable(new_socket, config,
-                                                    services, &hungup, &reply);
+            linted_error errnum = on_connection_readable(
+                new_socket, config, services, &hungup, &reply);
             switch (errnum) {
             case 0:
                 if (hungup) {
@@ -1062,16 +1065,17 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
 }
 
 static linted_error on_connection_readable(int fd,
-                                      union service_config const* config,
-                                      union service const* services,
-                                      bool* hungup,
-                                      union linted_manager_reply* reply)
+                                           union service_config const* config,
+                                           union service const* services,
+                                           bool* hungup,
+                                           union linted_manager_reply* reply)
 {
     union linted_manager_request request;
 
     {
         size_t bytes_read;
-        linted_error errnum = linted_manager_recv_request(fd, &request, &bytes_read);
+        linted_error errnum
+            = linted_manager_recv_request(fd, &request, &bytes_read);
         if (errnum != 0) {
             return errnum;
         }
@@ -1171,15 +1175,15 @@ static linted_error on_connection_readable(int fd,
 }
 
 static linted_error on_connection_writeable(int fd,
-                                       union linted_manager_reply* reply)
+                                            union linted_manager_reply* reply)
 {
     return linted_manager_send_reply(fd, reply);
 }
 
 static linted_error linted_help(int fildes, char const* program_name,
-                           struct linted_str package_name,
-                           struct linted_str package_url,
-                           struct linted_str package_bugreport)
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport)
 {
     linted_error errnum;
 

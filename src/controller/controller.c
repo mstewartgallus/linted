@@ -30,8 +30,8 @@
 
 typedef char message_type[MESSAGE_SIZE];
 
-linted_error linted_controller_pair(linted_controller controller[2], int readflags,
-                               int writeflags)
+linted_error linted_controller_pair(linted_controller controller[2],
+                                    int readflags, int writeflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -43,7 +43,8 @@ linted_error linted_controller_pair(linted_controller controller[2], int readfla
 }
 
 linted_error linted_controller_send(linted_controller controller,
-                               struct linted_controller_message const* message)
+                                    struct linted_controller_message const
+                                    * message)
 {
     message_type raw_message;
     char* tip = raw_message;
@@ -72,7 +73,8 @@ linted_error linted_controller_close(linted_controller controller)
 }
 
 linted_error linted_controller_receive(linted_controller queue,
-                                  struct linted_controller_message* message)
+                                       struct linted_controller_message
+                                       * message)
 {
     message_type raw_message;
     ssize_t recv_status

@@ -34,7 +34,7 @@
 #include <unistd.h>
 
 linted_error linted_ko_read_all(int fd, size_t* bytes_read_out, void* buf,
-                           size_t count)
+                                size_t count)
 {
     linted_error error_status = 0;
     size_t total_bytes_read = 0;
@@ -68,8 +68,8 @@ output_bytes_read:
     return error_status;
 }
 
-linted_error linted_ko_write_all(int fd, size_t* bytes_wrote_out, void const* buf,
-                            size_t count)
+linted_error linted_ko_write_all(int fd, size_t* bytes_wrote_out,
+                                 void const* buf, size_t count)
 {
     linted_error error_status = 0;
     size_t total_bytes_wrote = 0;
@@ -97,18 +97,20 @@ output_bytes_wrote:
     return error_status;
 }
 
-linted_error linted_ko_write_str(int fd, size_t* bytes_wrote, struct linted_str str)
+linted_error linted_ko_write_str(int fd, size_t* bytes_wrote,
+                                 struct linted_str str)
 {
     return linted_ko_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
 
-linted_error linted_ko_write_string(int fd, size_t* bytes_wrote_out, char const* s)
+linted_error linted_ko_write_string(int fd, size_t* bytes_wrote_out,
+                                    char const* s)
 {
     return linted_ko_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
 linted_error linted_ko_write_format(int fd, size_t* bytes_wrote_out,
-                               char const* format_str, ...)
+                                    char const* format_str, ...)
 {
     linted_error error_status = 0;
 

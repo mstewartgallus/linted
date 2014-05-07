@@ -31,19 +31,19 @@ static int run_status(char const* program_name, int argc, char** argv);
 static int run_stop(char const* program_name, int argc, char** argv);
 
 static linted_error ctl_help(int fildes, char const* program_name,
-                        struct linted_str package_name,
-                        struct linted_str package_url,
-                        struct linted_str package_bugreport);
+                             struct linted_str package_name,
+                             struct linted_str package_url,
+                             struct linted_str package_bugreport);
 static linted_error status_help(int fildes, char const* program_name,
-                           struct linted_str package_name,
-                           struct linted_str package_url,
-                           struct linted_str package_bugreport);
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport);
 static linted_error stop_help(int fildes, char const* program_name,
-                         struct linted_str package_name,
-                         struct linted_str package_url,
-                         struct linted_str package_bugreport);
+                              struct linted_str package_name,
+                              struct linted_str package_url,
+                              struct linted_str package_bugreport);
 static linted_error failure(int fildes, char const* program_name,
-                       struct linted_str message, linted_error errnum);
+                            struct linted_str message, linted_error errnum);
 
 int main(int argc, char** argv)
 {
@@ -225,7 +225,8 @@ static int run_status(char const* program_name, int argc, char** argv)
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
+        linted_error errnum
+            = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errnum);
@@ -361,7 +362,8 @@ static int run_stop(char const* program_name, int argc, char** argv)
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
+        linted_error errnum
+            = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errno);
@@ -388,9 +390,9 @@ static int run_stop(char const* program_name, int argc, char** argv)
 }
 
 static linted_error ctl_help(int fildes, char const* program_name,
-                        struct linted_str package_name,
-                        struct linted_str package_url,
-                        struct linted_str package_bugreport)
+                             struct linted_str package_name,
+                             struct linted_str package_url,
+                             struct linted_str package_bugreport)
 {
     linted_error errnum;
 
@@ -474,9 +476,9 @@ Report bugs to <"))) != 0) {
 }
 
 static linted_error status_help(int fildes, char const* program_name,
-                           struct linted_str package_name,
-                           struct linted_str package_url,
-                           struct linted_str package_bugreport)
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport)
 {
     linted_error errnum;
 
@@ -551,9 +553,9 @@ Report bugs to <"))) != 0) {
 }
 
 static linted_error stop_help(int fildes, char const* program_name,
-                         struct linted_str package_name,
-                         struct linted_str package_url,
-                         struct linted_str package_bugreport)
+                              struct linted_str package_name,
+                              struct linted_str package_url,
+                              struct linted_str package_bugreport)
 {
     linted_error errnum;
 
@@ -628,7 +630,7 @@ Report bugs to <"))) != 0) {
 }
 
 static linted_error failure(int fildes, char const* program_name,
-                       struct linted_str message, linted_error error)
+                            struct linted_str message, linted_error error)
 {
     linted_error errnum;
 

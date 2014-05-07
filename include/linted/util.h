@@ -92,6 +92,6 @@ static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
 }
 
 linted_error linted_util_sanitize_environment(int const* kept_fds,
-                                         size_t kept_fds_size);
+                                              size_t kept_fds_size);
 
 #endif /* LINTED_UTIL_H */

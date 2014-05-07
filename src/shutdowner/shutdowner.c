@@ -30,7 +30,7 @@ struct message
 };
 
 linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
-                               int wflags)
+                                    int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
