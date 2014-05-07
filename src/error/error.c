@@ -17,17 +17,10 @@
 
 #include "linted/error.h"
 
-#include "linted/ko.h"
-#include "linted/util.h"
-
 #include <assert.h>
-#include <dirent.h>
-#include <fcntl.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
@@ -36,7 +29,8 @@ char const* linted_error_string_alloc(linted_error errnum)
 {
     size_t size = 40;
     char* string = NULL;
-    int strerror_status;
+
+    linted_error strerror_errnum;
     do {
         size_t const multiplicand = 3;
 
@@ -53,9 +47,10 @@ char const* linted_error_string_alloc(linted_error errnum)
         }
         string = new_string;
 
-        strerror_status = strerror_r(errnum, string, size);
-    } while (-1 == strerror_status && ERANGE == errno);
-    assert(strerror_status != -1);
+        int strerror_status = strerror_r(errnum, string, size);
+        strerror_errnum = -1 == strerror_status ? errno : 0;
+    } while (ERANGE == strerror_errnum);
+    assert(strerror_errnum != EINVAL);
 
     return string;
 
