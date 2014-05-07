@@ -28,12 +28,6 @@ def go():
     if '-c' in options:
         if clang != "":
             subprocess.check_call([clang, '-Qunused-arguments', '-Wno-unknown-warning-option', '--analyze'] + options)
-        if cppcheck != "":
-            subprocess.check_call([cppcheck,
-                                   '--enable=performance',
-                                   '--enable=portability',
-                                   '--std=c99',
-                                   '--std=posix'] + cppcheck_filter(options))
 
     subprocess.check_call(cc.split() + options)
 
