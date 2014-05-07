@@ -16,20 +16,19 @@
 #ifndef LINTED_LOCALE_H
 #define LINTED_LOCALE_H
 
-#include <errno.h>
-
+#include "linted/error.h"
 #include "linted/str.h"
 
-errno_t linted_locale_missing_process_name(int fildes,
+linted_error linted_locale_missing_process_name(int fildes,
                                            struct linted_str package_name);
 
-errno_t linted_locale_on_bad_option(int fildes, char const* program_name,
+linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
                                     char const* bad_option);
 
-errno_t linted_locale_try_for_more_help(int fildes, char const* program_name,
+linted_error linted_locale_try_for_more_help(int fildes, char const* program_name,
                                         struct linted_str help_option);
 
-errno_t linted_locale_version(int fildes, struct linted_str package_string,
+linted_error linted_locale_version(int fildes, struct linted_str package_string,
                               struct linted_str copyright_year);
 
 #endif /* LINTED_LOCALE_H */

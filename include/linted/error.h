@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_SHUTDOWNER_H
-#define LINTED_SHUTDOWNER_H
+#ifndef LINTED_ERROR_H
+#define LINTED_ERROR_H
 
-#include "linted/error.h"
+#if defined __unix__
+#include <errno.h>
 
-#include <mqueue.h>
+typedef int linted_error;
+#elif defined _WIN32
+#include <windows/wtypes.h>
 
-typedef mqd_t linted_shutdowner;
+typedef HRESULT linted_error;
+#else
+#error no known most primitive platform error type
+#endif
 
-linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
-                               int wflags);
+char const* linted_error_string_alloc(linted_error errnum);
+void linted_error_string_free(char const* error_string);
 
-linted_error linted_shutdowner_close(linted_shutdowner move);
-
-linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
-
-linted_error linted_shutdowner_receive(linted_shutdowner queue);
-
-#endif /* LINTED_SHUTDOWNER_H */
+#endif /* LINTED_ERROR_H */

@@ -16,10 +16,10 @@
 #include "config.h"
 
 #include "linted/db.h"
+#include "linted/error.h"
 
-#include "linted/io.h"
+#include "linted/ko.h"
 
-#include <errno.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <stdbool.h>
@@ -40,17 +40,17 @@
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
 
-static errno_t lock_db(linted_db * dbp);
-static errno_t unlock_db(linted_db * dbp);
+static linted_error lock_db(linted_db * dbp);
+static linted_error unlock_db(linted_db * dbp);
 
-static errno_t prepend(char ** result, char const * base, char const * end);
+static linted_error prepend(char ** result, char const * base, char const * end);
 
-static errno_t fname_alloc(int fd, char ** buf);
-static errno_t fname(int fd, char * buf, size_t * sizep);
+static linted_error fname_alloc(int fd, char ** buf);
+static linted_error fname(int fd, char * buf, size_t * sizep);
 
-errno_t linted_db_open(linted_db * dbp, char const * pathname, int flags)
+linted_error linted_db_open(linted_db * dbp, char const * pathname, int flags)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     if ((flags & ~LINTED_DB_CREAT) != 0) {
         return EINVAL;
@@ -84,7 +84,7 @@ errno_t linted_db_open(linted_db * dbp, char const * pathname, int flags)
      */
 
 try_to_open_lock_again:;
-    errno_t lock_errnum = lock_db(&the_db);
+    linted_error lock_errnum = lock_db(&the_db);
     if (lock_errnum != 0) {
         if (lock_errnum != ENOENT) {
             errnum = lock_errnum;
@@ -99,7 +99,7 @@ try_to_open_lock_again:;
         int temp_file = openat(the_db, GLOBAL_LOCK_TEMPORARY,
                                O_RDWR | O_SYNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
         if (-1 == temp_file) {
-            errno_t open_errnum = errno;
+            linted_error open_errnum = errno;
             if (EEXIST == open_errnum) {
                 goto try_to_open_lock_again;
             } else {
@@ -110,7 +110,7 @@ try_to_open_lock_again:;
 
         if (-1 == ftruncate(temp_file, sizeof (sem_t))) {
             errnum = errno;
-            linted_io_close(temp_file);
+            linted_ko_close(temp_file);
             goto unlink_temp;
         }
 
@@ -121,11 +121,11 @@ try_to_open_lock_again:;
                                 MAP_SHARED, temp_file, 0);
         if (MAP_FAILED == semaphore) {
             errnum = errno;
-            linted_io_close(temp_file);
+            linted_ko_close(temp_file);
             goto unlink_temp;
         }
 
-        if ((errnum = linted_io_close(temp_file)) != 0) {
+        if ((errnum = linted_ko_close(temp_file)) != 0) {
             munmap(semaphore, map_size);
             goto unlink_temp;
         }
@@ -191,7 +191,7 @@ try_to_open_lock_again:;
             goto close_version_file;
         }
 
-        if ((errnum = linted_io_read_all(version_file, NULL, version_text,
+        if ((errnum = linted_ko_read_all(version_file, NULL, version_text,
                                          version_file_size)) != 0) {
             goto free_version_text;
         }
@@ -212,13 +212,13 @@ try_to_open_lock_again:;
 
     close_version_file:
         {
-            errno_t close_errnum = linted_io_close(version_file);
+            linted_error close_errnum = linted_ko_close(version_file);
             if (0 == errnum) {
                 errnum = close_errnum;
             }
         }
     } else  {
-        errno_t open_errnum = errno;
+        linted_error open_errnum = errno;
         if (open_errnum != ENOENT) {
             errnum = open_errnum;
             goto unlock_semaphore;
@@ -238,11 +238,11 @@ try_to_open_lock_again:;
             goto unlock_semaphore;
         }
 
-        errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
+        errnum = linted_ko_write_all(version_file_write, NULL, CURRENT_VERSION,
                                      sizeof CURRENT_VERSION - 1);
 
         {
-            errno_t close_errnum = linted_io_close(version_file_write);
+            linted_error close_errnum = linted_ko_close(version_file_write);
             if (0 == errnum) {
                 errnum = close_errnum;
             }
@@ -278,14 +278,14 @@ close_db:
     return errnum;
 }
 
-errno_t linted_db_close(linted_db * dbp)
+linted_error linted_db_close(linted_db * dbp)
 {
-    return linted_io_close(*dbp);
+    return linted_ko_close(*dbp);
 }
 
-errno_t linted_db_temp_file(linted_db * dbp, int * fildesp)
+linted_error linted_db_temp_file(linted_db * dbp, int * fildesp)
 {
-    errno_t errnum = 0;
+    linted_error errnum = 0;
 
     static char const field_name[] = "field-XXXXXX.tmp";
 
@@ -313,7 +313,7 @@ try_again:
                             O_RDWR | O_SYNC | O_CLOEXEC | O_CREAT | O_EXCL,
                             S_IRUSR | S_IWUSR);
     if (-1 == temp_field) {
-        errno_t open_errnum = errno;
+        linted_error open_errnum = errno;
         if (EEXIST == open_errnum) {
             goto try_again;
         } else {
@@ -331,9 +331,9 @@ try_again:
     return 0;
 }
 
-errno_t linted_db_temp_send(linted_db * dbp, char const *name, int tmp)
+linted_error linted_db_temp_send(linted_db * dbp, char const *name, int tmp)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     char * temp_path;
     if ((errnum = fname_alloc(tmp, &temp_path)) != 0) {
@@ -357,9 +357,9 @@ free_temp_path:
     return errnum;
 }
 
-static errno_t lock_db(linted_db * dbp)
+static linted_error lock_db(linted_db * dbp)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     int lock_file = openat(*dbp, GLOBAL_LOCK, O_RDWR | O_SYNC | O_CLOEXEC);
     if (-1 == lock_file) {
@@ -373,17 +373,17 @@ static errno_t lock_db(linted_db * dbp)
                             lock_file, 0);
     if (MAP_FAILED == semaphore) {
         errnum = errno;
-        linted_io_close(lock_file);
+        linted_ko_close(lock_file);
         return errnum;
     }
 
-    if ((errnum = linted_io_close(lock_file)) != 0) {
+    if ((errnum = linted_ko_close(lock_file)) != 0) {
         munmap(semaphore, map_size);
         return errnum;
     }
 
     /* Lock */
-    errno_t wait_errnum;
+    linted_error wait_errnum;
     do {
         int wait_status = sem_wait(semaphore);
         wait_errnum = -1 == wait_status ? errno : 0;
@@ -394,9 +394,9 @@ static errno_t lock_db(linted_db * dbp)
     return 0;
 }
 
-static errno_t unlock_db(linted_db * dbp)
+static linted_error unlock_db(linted_db * dbp)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     int lock_file = openat(*dbp, GLOBAL_LOCK, O_RDWR | O_SYNC | O_CLOEXEC);
     if (-1 == lock_file) {
@@ -410,11 +410,11 @@ static errno_t unlock_db(linted_db * dbp)
                             lock_file, 0);
     if (MAP_FAILED == semaphore) {
         errnum = errno;
-        linted_io_close(lock_file);
+        linted_ko_close(lock_file);
         return errnum;
     }
 
-    if ((errnum = linted_io_close(lock_file)) != 0) {
+    if ((errnum = linted_ko_close(lock_file)) != 0) {
         munmap(semaphore, map_size);
         return errnum;
     }
@@ -427,7 +427,7 @@ static errno_t unlock_db(linted_db * dbp)
     return 0;
 }
 
-static errno_t prepend(char ** result, char const * base, char const * pathname)
+static linted_error prepend(char ** result, char const * base, char const * pathname)
 {
     size_t base_size = strlen(base);
     size_t pathname_size = strlen(pathname);

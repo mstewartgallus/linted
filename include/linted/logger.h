@@ -16,7 +16,8 @@
 #ifndef LINTED_LOGGER_H
 #define LINTED_LOGGER_H
 
-#include <errno.h>
+#include "linted/error.h"
+
 #include <mqueue.h>
 #include <stddef.h>
 
@@ -27,14 +28,14 @@
  */
 typedef mqd_t linted_logger;
 
-errno_t linted_logger_pair(linted_logger logger[2]);
+linted_error linted_logger_pair(linted_logger logger[2]);
 
-errno_t linted_logger_close(linted_logger logger);
+linted_error linted_logger_close(linted_logger logger);
 
-errno_t linted_logger_log(linted_logger logger, char const* msg_ptr,
+linted_error linted_logger_log(linted_logger logger, char const* msg_ptr,
                           size_t msg_len);
 
-errno_t linted_logger_recv_log(linted_logger logger,
+linted_error linted_logger_recv_log(linted_logger logger,
                                char msg_ptr[static LINTED_LOGGER_LOG_MAX],
                                size_t* msg_len);
 

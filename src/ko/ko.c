@@ -15,13 +15,13 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
+#include "linted/ko.h"
 
+#include "linted/error.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -33,10 +33,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-errno_t linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
+linted_error linted_ko_read_all(int fd, size_t* bytes_read_out, void* buf,
                            size_t count)
 {
-    errno_t error_status = 0;
+    linted_error error_status = 0;
     size_t total_bytes_read = 0;
 
     do {
@@ -48,7 +48,7 @@ errno_t linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
             goto output_bytes_read;
         }
 
-        errno_t read_status = -1 == bytes_read ? errno : 0;
+        linted_error read_status = -1 == bytes_read ? errno : 0;
         if (EINTR == read_status) {
             continue;
         }
@@ -68,16 +68,16 @@ output_bytes_read:
     return error_status;
 }
 
-errno_t linted_io_write_all(int fd, size_t* bytes_wrote_out, void const* buf,
+linted_error linted_ko_write_all(int fd, size_t* bytes_wrote_out, void const* buf,
                             size_t count)
 {
-    errno_t error_status = 0;
+    linted_error error_status = 0;
     size_t total_bytes_wrote = 0;
 
     do {
         ssize_t bytes_wrote = write(fd, (char const*)buf + total_bytes_wrote,
                                     count - total_bytes_wrote);
-        errno_t write_status = -1 == bytes_wrote ? errno : 0;
+        linted_error write_status = -1 == bytes_wrote ? errno : 0;
         if (EINTR == write_status) {
             continue;
         }
@@ -97,20 +97,20 @@ output_bytes_wrote:
     return error_status;
 }
 
-errno_t linted_io_write_str(int fd, size_t* bytes_wrote, struct linted_str str)
+linted_error linted_ko_write_str(int fd, size_t* bytes_wrote, struct linted_str str)
 {
-    return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
+    return linted_ko_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
 
-errno_t linted_io_write_string(int fd, size_t* bytes_wrote_out, char const* s)
+linted_error linted_ko_write_string(int fd, size_t* bytes_wrote_out, char const* s)
 {
-    return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
+    return linted_ko_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
-errno_t linted_io_write_format(int fd, size_t* bytes_wrote_out,
+linted_error linted_ko_write_format(int fd, size_t* bytes_wrote_out,
                                char const* format_str, ...)
 {
-    errno_t error_status = 0;
+    linted_error error_status = 0;
 
     va_list ap;
     va_start(ap, format_str);
@@ -139,8 +139,8 @@ errno_t linted_io_write_format(int fd, size_t* bytes_wrote_out,
         }
 
         {
-            errno_t errnum
-                = linted_io_write_string(fd, bytes_wrote_out, string);
+            linted_error errnum
+                = linted_ko_write_string(fd, bytes_wrote_out, string);
             if (errnum != 0) {
                 error_status = errnum;
                 goto free_string;
@@ -158,7 +158,7 @@ free_va_lists:
     return error_status;
 }
 
-errno_t linted_io_strtofd(char const* str, int* fd)
+linted_error linted_ko_strtofd(char const* str, int* fd)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
@@ -193,7 +193,7 @@ errno_t linted_io_strtofd(char const* str, int* fd)
     return 0;
 }
 
-errno_t linted_io_close(int fd)
+linted_error linted_ko_close(int fd)
 {
     sigset_t fullset;
     sigfillset(&fullset);
@@ -208,7 +208,7 @@ errno_t linted_io_close(int fd)
     return -1 == close_status ? errno : 0;
 }
 
-errno_t linted_io_dummy(int* fildesp, int flags)
+linted_error linted_ko_dummy(int* fildesp, int flags)
 {
     int fildes = open("/dev/null", O_RDONLY | flags);
     if (-1 == fildes) {

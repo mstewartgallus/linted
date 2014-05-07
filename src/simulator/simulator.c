@@ -15,8 +15,9 @@
  */
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/controller.h"
-#include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/shutdowner.h"
@@ -24,7 +25,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -71,17 +71,17 @@ struct simulator_state
     bool update_pending : 1;
 };
 
-static errno_t on_timer_readable(int timer,
+static linted_error on_timer_readable(int timer,
                                  struct action_state const* action_state,
                                  struct simulator_state* simulator_state);
 
-static errno_t on_updater_writeable(linted_updater updater,
+static linted_error on_updater_writeable(linted_updater updater,
                                     struct simulator_state* simulator_state);
 
-static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
+static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
                                       bool* should_exit);
 
-static errno_t on_controller_readable(linted_controller controller,
+static linted_error on_controller_readable(linted_controller controller,
                                       struct action_state* action_state);
 
 static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
@@ -96,11 +96,11 @@ static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
 static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y);
 static int_fast32_t sign(int_fast32_t x);
 
-static errno_t simulator_help(int fildes, char const* program_name,
+static linted_error simulator_help(int fildes, char const* program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport);
-static errno_t missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const* program_name,
                               struct linted_str help_option);
 
 int main(int argc, char* argv[])
@@ -190,9 +190,9 @@ int main(int argc, char* argv[])
     linted_logger logger;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(logger_name, &fd);
+        linted_error errnum = linted_ko_strtofd(logger_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, LOGGER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -205,9 +205,9 @@ int main(int argc, char* argv[])
     linted_controller controller;
     {
         int fd;
-        int errnum = linted_io_strtofd(controller_name, &fd);
+        int errnum = linted_ko_strtofd(controller_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, CONTROLLER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -220,9 +220,9 @@ int main(int argc, char* argv[])
     linted_shutdowner shutdowner;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(shutdowner_name, &fd);
+        linted_error errnum = linted_ko_strtofd(shutdowner_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, SHUTDOWNER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -235,9 +235,9 @@ int main(int argc, char* argv[])
     linted_updater updater;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(updater_name, &fd);
+        linted_error errnum = linted_ko_strtofd(updater_name, &fd);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, UPDATER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -256,10 +256,10 @@ int main(int argc, char* argv[])
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
                            controller,    updater,      shutdowner };
 
-        errno_t errnum = linted_util_sanitize_environment(
+        linted_error errnum = linted_util_sanitize_environment(
             kept_fds, LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
+            linted_ko_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
                                    program_name,
                                    linted_error_string_alloc(errnum));
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
         linted_logger_log(logger, message, sizeof message - 1);
     }
 
-    errno_t error_status = 0;
+    linted_error error_status = 0;
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
@@ -332,7 +332,7 @@ int main(int argc, char* argv[])
             fds_size = LINTED_ARRAY_SIZE(fds) - 1;
         }
 
-        errno_t poll_status;
+        linted_error poll_status;
         do {
             int fds_active = poll(fds, fds_size, -1);
             poll_status = -1 == fds_active ? errno : 0;
@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
 
         if ((fds[SHUTDOWNER].revents & POLLIN) != 0) {
             bool should_exit;
-            errno_t errnum = on_shutdowner_readable(shutdowner, &should_exit);
+            linted_error errnum = on_shutdowner_readable(shutdowner, &should_exit);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -355,7 +355,7 @@ int main(int argc, char* argv[])
         }
 
         if ((fds[TIMER].revents & POLLIN) != 0) {
-            errno_t errnum
+            linted_error errnum
                 = on_timer_readable(timer, &action_state, &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
@@ -364,7 +364,7 @@ int main(int argc, char* argv[])
         }
 
         if ((fds[CONTROLLER].revents & POLLIN) != 0) {
-            errno_t errnum = on_controller_readable(controller, &action_state);
+            linted_error errnum = on_controller_readable(controller, &action_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -373,7 +373,7 @@ int main(int argc, char* argv[])
 
         if (simulator_state.update_pending && (fds[UPDATER].revents & POLLOUT)
                                               != 0) {
-            errno_t errnum = on_updater_writeable(updater, &simulator_state);
+            linted_error errnum = on_updater_writeable(updater, &simulator_state);
             if (errnum != 0) {
                 error_status = errnum;
                 goto close_timer;
@@ -384,7 +384,7 @@ int main(int argc, char* argv[])
 exit_main_loop:
 
 close_timer : {
-    errno_t errnum = linted_io_close(timer);
+    linted_error errnum = linted_ko_close(timer);
     if (0 == error_status) {
         assert(errnum != EBADF);
 
@@ -396,13 +396,13 @@ exit:
     return error_status;
 }
 
-static errno_t on_timer_readable(int timer,
+static linted_error on_timer_readable(int timer,
                                  struct action_state const* action_state,
                                  struct simulator_state* simulator_state)
 {
     uint64_t ticks;
     {
-        errno_t errnum = linted_io_read_all(timer, NULL, &ticks, sizeof ticks);
+        linted_error errnum = linted_ko_read_all(timer, NULL, &ticks, sizeof ticks);
         if (errnum != 0) {
             return errnum;
         }
@@ -431,7 +431,7 @@ static errno_t on_timer_readable(int timer,
     return 0;
 }
 
-static errno_t on_updater_writeable(linted_updater updater,
+static linted_error on_updater_writeable(linted_updater updater,
                                     struct simulator_state* simulator_state)
 {
     struct linted_updater_update update
@@ -441,7 +441,7 @@ static errno_t on_updater_writeable(linted_updater updater,
             .x_rotation = simulator_state->x_rotation,
             .y_rotation = simulator_state->y_rotation };
 
-    errno_t update_status;
+    linted_error update_status;
     do {
         update_status = linted_updater_send_update(updater, &update);
     } while (EINTR == update_status);
@@ -459,10 +459,10 @@ static errno_t on_updater_writeable(linted_updater updater,
     return 0;
 }
 
-static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
+static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
                                       bool* should_exit)
 {
-    errno_t read_status;
+    linted_error read_status;
     do {
         read_status = linted_shutdowner_receive(shutdowner);
     } while (EINTR == read_status);
@@ -480,12 +480,12 @@ static errno_t on_shutdowner_readable(linted_shutdowner shutdowner,
     return 0;
 }
 
-static errno_t on_controller_readable(linted_controller controller,
+static linted_error on_controller_readable(linted_controller controller,
                                       struct action_state* action_state)
 {
     struct linted_controller_message message;
 
-    errno_t read_status;
+    linted_error read_status;
     do {
         read_status = linted_controller_receive(controller, &message);
     } while (EINTR == read_status);
@@ -593,47 +593,47 @@ static uint_fast32_t absolute(int_fast32_t x)
     return INT32_MIN == x ? -(int_fast64_t)INT32_MIN : imaxabs(x);
 }
 
-static errno_t simulator_help(int fildes, char const* program_name,
+static linted_error simulator_help(int fildes, char const* program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Run the simulator.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --logger            the logger file descriptor\n\
   --controller        the controller file descriptor\n\
   --updater           the updater file descriptor\n\
@@ -641,57 +641,57 @@ Run the simulator.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static errno_t missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const* program_name,
                               struct linted_str option)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": missing ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" option\n")))
         != 0) {
         return errnum;
     }

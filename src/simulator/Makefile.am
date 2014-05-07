@@ -18,7 +18,8 @@ pkglibexec_PROGRAMS+=simulator
 
 simulator_SOURCES=%D%/simulator.c
 simulator_LDADD=\
-  src/io/libio.la\
+  src/error/liberror.la\
+  src/ko/libko.la\
   src/locale/liblocale.la\
   src/util/libutil.la\
   \

@@ -14,13 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=linted-control
 
-linted_control_SOURCES=%D%/control.c
-linted_control_LDADD=\
-  src/error/liberror.la\
-  src/ko/libko.la\
-  src/locale/liblocale.la\
-  src/util/libutil.la\
-  \
-  src/manager/libmanager.la
+noinst_LTLIBRARIES+=%D%/libko.la
+%C%_libko_la_SOURCES=%D%/ko.c include/linted/ko.h

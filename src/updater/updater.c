@@ -33,7 +33,7 @@
 
 typedef char message_type[MESSAGE_SIZE];
 
-errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
+linted_error linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
 {
     struct mq_attr attr;
     memset(&attr, 0, sizeof attr);
@@ -44,7 +44,7 @@ errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags)
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-errno_t linted_updater_send_update(linted_updater updater,
+linted_error linted_updater_send_update(linted_updater updater,
                                    struct linted_updater_update const* update)
 {
     message_type message;
@@ -74,7 +74,7 @@ errno_t linted_updater_send_update(linted_updater updater,
     return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
 }
 
-errno_t linted_updater_receive_update(linted_updater updater,
+linted_error linted_updater_receive_update(linted_updater updater,
                                       struct linted_updater_update* update)
 {
     message_type message;
@@ -116,7 +116,7 @@ errno_t linted_updater_receive_update(linted_updater updater,
     return 0;
 }
 
-errno_t linted_updater_close(linted_updater const updater)
+linted_error linted_updater_close(linted_updater const updater)
 {
     return -1 == mq_close(updater) ? errno : 0;
 }

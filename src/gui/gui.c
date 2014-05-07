@@ -18,8 +18,9 @@
 #include "assets.h"
 #include "gl_core.h"
 
+#include "linted/error.h"
 #include "linted/controller.h"
-#include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/mq.h"
@@ -28,7 +29,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <poll.h>
 #include <math.h>
 #include <stdbool.h>
@@ -97,7 +97,7 @@ static int const attribute_list[] = {
     None
 };
 
-static errno_t errnum_from_connection(xcb_connection_t* connection)
+static linted_error errnum_from_connection(xcb_connection_t* connection)
 {
     switch (xcb_connection_has_error(connection)) {
     case 0:
@@ -123,10 +123,10 @@ static errno_t errnum_from_connection(xcb_connection_t* connection)
     }
 }
 
-static errno_t get_mouse_position(xcb_connection_t* connection,
+static linted_error get_mouse_position(xcb_connection_t* connection,
                                   xcb_window_t window, int* x, int* y)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     xcb_query_pointer_cookie_t cookie = xcb_query_pointer(connection, window);
     if ((errnum = errnum_from_connection(connection)) != 0) {
@@ -154,18 +154,18 @@ static void flush_gl_errors(void);
 /* TODO: This usage of glGetError is incorrect. Multiple error flags
  * be set and returned by a single function.
  */
-static errno_t get_gl_error(void);
+static linted_error get_gl_error(void);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const* window_model,
                     struct controller_data* controller_data);
 
-static errno_t on_updater_readable(linted_updater updater,
+static linted_error on_updater_readable(linted_updater updater,
                                    struct sim_model* sim_model);
-static errno_t on_controller_writeable(linted_controller controller,
+static linted_error on_controller_writeable(linted_controller controller,
                                        struct controller_data* controller_data);
 
-static errno_t init_graphics(linted_logger logger,
+static linted_error init_graphics(linted_logger logger,
                              struct graphics_state* graphics_state,
                              struct window_model const* window_model);
 static void render_graphics(struct graphics_state const* graphics_state,
@@ -176,17 +176,17 @@ static void resize_graphics(unsigned width, unsigned height);
 
 static double square(double x);
 
-static errno_t gui_help(int fildes, char const* program_name,
+static linted_error gui_help(int fildes, char const* program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
                         struct linted_str package_bugreport);
-static errno_t missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const* program_name,
                               struct linted_str help_option);
-static errno_t invalid_fildes(int fildes, char const* program_name,
-                              struct linted_str option, errno_t errnum);
-static errno_t failure(int fildes, char const* program_name,
-                       struct linted_str message, errno_t errnum);
-static errno_t log_str(linted_logger logger, struct linted_str start,
+static linted_error invalid_fildes(int fildes, char const* program_name,
+                              struct linted_str option, linted_error errnum);
+static linted_error failure(int fildes, char const* program_name,
+                       struct linted_str message, linted_error errnum);
+static linted_error log_str(linted_logger logger, struct linted_str start,
                        char const* str);
 
 int main(int argc, char* argv[])
@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
     linted_logger logger;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(logger_name, &fd);
+        linted_error errnum = linted_ko_strtofd(logger_name, &fd);
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(LOGGER_OPTION), errnum);
@@ -298,7 +298,7 @@ int main(int argc, char* argv[])
     linted_controller controller;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(controller_name, &fd);
+        linted_error errnum = linted_ko_strtofd(controller_name, &fd);
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(CONTROLLER_OPTION), errnum);
@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
     linted_shutdowner shutdowner;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(shutdowner_name, &fd);
+        linted_error errnum = linted_ko_strtofd(shutdowner_name, &fd);
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(SHUTDOWNER_OPTION), errnum);
@@ -326,7 +326,7 @@ int main(int argc, char* argv[])
     linted_updater updater;
     {
         int fd;
-        errno_t errnum = linted_io_strtofd(updater_name, &fd);
+        linted_error errnum = linted_ko_strtofd(updater_name, &fd);
         if (errnum != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(UPDATER_OPTION), errnum);
@@ -344,8 +344,8 @@ int main(int argc, char* argv[])
 
     char const* original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_string(STDERR_FILENO, NULL, program_name);
-        linted_io_write_str(STDERR_FILENO, NULL,
+        linted_ko_write_string(STDERR_FILENO, NULL, program_name);
+        linted_ko_write_str(STDERR_FILENO, NULL,
                             LINTED_STR(": no DISPLAY environment variable\n"));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
@@ -364,7 +364,7 @@ int main(int argc, char* argv[])
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
                            controller,    updater,      shutdowner };
-        errno_t errnum = linted_util_sanitize_environment(
+        linted_error errnum = linted_util_sanitize_environment(
             kept_fds, LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
@@ -374,7 +374,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    errno_t error_status = 0;
+    linted_error error_status = 0;
 
     struct window_model window_model = { .width = 640,
                                          .height = 480,
@@ -661,7 +661,7 @@ int main(int argc, char* argv[])
                    = { .fd = controller_data.update_pending ? controller : -1,
                        .events = POLLOUT }, };
 
-        errno_t poll_status;
+        linted_error poll_status;
         int fds_active;
 
         do {
@@ -676,7 +676,7 @@ int main(int argc, char* argv[])
         bool had_selected_event = fds_active > 0;
 
         if ((fds[UPDATER].revents & POLLIN) != 0) {
-            errno_t errnum = on_updater_readable(updater, &sim_model);
+            linted_error errnum = on_updater_readable(updater, &sim_model);
             if (errnum != 0) {
                 error_status = errnum;
                 goto cleanup_gl;
@@ -685,7 +685,7 @@ int main(int argc, char* argv[])
 
         if (controller_data.update_pending
             && (fds[CONTROLLER].revents & POLLOUT) != 0) {
-            errno_t errnum
+            linted_error errnum
                 = on_controller_writeable(controller, &controller_data);
             if (errnum != 0) {
                 error_status = errnum;
@@ -707,7 +707,7 @@ int main(int argc, char* argv[])
                  * descriptor should be implemented eventually.
                  */
                 struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
-                errno_t errnum;
+                linted_error errnum;
                 do {
                     int status = nanosleep(&request, &request);
                     errnum = -1 == status ? errno : 0;
@@ -730,7 +730,7 @@ destroy_glx_context:
 destroy_window:
     xcb_destroy_window(connection, window);
     {
-        errno_t errnum = errnum_from_connection(connection);
+        linted_error errnum = errnum_from_connection(connection);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -739,7 +739,7 @@ destroy_window:
 destroy_colormap:
     xcb_free_colormap(connection, colormap);
     {
-        errno_t errnum = errnum_from_connection(connection);
+        linted_error errnum = errnum_from_connection(connection);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -748,7 +748,7 @@ destroy_colormap:
 disconnect:
     xcb_flush(connection);
     {
-        errno_t errnum = errnum_from_connection(connection);
+        linted_error errnum = errnum_from_connection(connection);
         if (0 == error_status) {
             error_status = errnum;
         }
@@ -759,7 +759,7 @@ disconnect:
     XCloseDisplay(display);
 
 shutdown : {
-    errno_t shutdown_status;
+    linted_error shutdown_status;
     do {
         shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
     } while (EINTR == shutdown_status);
@@ -788,12 +788,12 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static errno_t on_updater_readable(linted_updater updater,
+static linted_error on_updater_readable(linted_updater updater,
                                    struct sim_model* sim_model)
 {
     struct linted_updater_update update;
 
-    errno_t read_status;
+    linted_error read_status;
     do {
         read_status = linted_updater_receive_update(updater, &update);
     } while (EINTR == read_status);
@@ -821,7 +821,7 @@ static errno_t on_updater_readable(linted_updater updater,
 static int on_controller_writeable(linted_controller controller,
                                    struct controller_data* controller_data)
 {
-    errno_t send_status;
+    linted_error send_status;
     do {
         send_status
             = linted_controller_send(controller, &controller_data->update);
@@ -840,11 +840,11 @@ static int on_controller_writeable(linted_controller controller,
     return 0;
 }
 
-static errno_t init_graphics(linted_logger logger,
+static linted_error init_graphics(linted_logger logger,
                              struct graphics_state* graphics_state,
                              struct window_model const* window_model)
 {
-    errno_t error_status = 0;
+    linted_error error_status = 0;
 
     if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
         return ENOSYS;
@@ -1095,7 +1095,7 @@ static void flush_gl_errors(void)
     } while (error != GL_NO_ERROR);
 }
 
-static errno_t get_gl_error(void)
+static linted_error get_gl_error(void)
 {
     /* Get the first error. Note that a single OpenGL call may return
    * multiple errors so this only gives the first of many possible
@@ -1126,47 +1126,47 @@ static double square(double x)
     return x * x;
 }
 
-static errno_t gui_help(int fildes, char const* program_name,
+static linted_error gui_help(int fildes, char const* program_name,
                         struct linted_str package_name,
                         struct linted_str package_url,
                         struct linted_str package_bugreport)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Run the gui program.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --logger            the logger file descriptor\n\
   --controller        the controller file descriptor\n\
   --updater           the updater file descriptor\n\
@@ -1174,94 +1174,94 @@ Run the gui program.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static errno_t invalid_fildes(int fildes, char const* program_name,
-                              struct linted_str option, errno_t error_display)
+static linted_error invalid_fildes(int fildes, char const* program_name,
+                              struct linted_str option, linted_error error_display)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" argument: ")))
         != 0) {
         return errnum;
     }
 
     char const* error_string = linted_error_string_alloc(error_display);
-    errnum = linted_io_write_string(fildes, NULL, error_string);
+    errnum = linted_ko_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
     if (errnum != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static errno_t missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const* program_name,
                               struct linted_str option)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": missing ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" option\n")))
         != 0) {
         return errnum;
     }
@@ -1269,43 +1269,43 @@ static errno_t missing_option(int fildes, char const* program_name,
     return 0;
 }
 
-static errno_t failure(int fildes, char const* program_name,
-                       struct linted_str message, errno_t error)
+static linted_error failure(int fildes, char const* program_name,
+                       struct linted_str message, linted_error error)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, message)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, message)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
     char const* error_string = linted_error_string_alloc(error);
-    errnum = linted_io_write_string(fildes, NULL, error_string);
+    errnum = linted_ko_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
     if (errnum != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static errno_t log_str(linted_logger logger, struct linted_str start,
+static linted_error log_str(linted_logger logger, struct linted_str start,
                        char const* error)
 {
     size_t error_size = strlen(error);
@@ -1319,7 +1319,7 @@ static errno_t log_str(linted_logger logger, struct linted_str start,
     memcpy(full_string, start.bytes, start.size);
     memcpy(full_string + start.size, error, error_size);
 
-    errno_t errnum
+    linted_error errnum
         = linted_logger_log(logger, full_string, start.size + error_size);
 
     free(full_string);

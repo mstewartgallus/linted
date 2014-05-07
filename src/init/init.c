@@ -20,7 +20,8 @@
 
 #include "linted/controller.h"
 #include "linted/db.h"
-#include "linted/io.h"
+#include "linted/error.h"
+#include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
@@ -32,7 +33,6 @@
 #include "linted/waiter.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -96,7 +96,7 @@ struct service_config_process
 struct service_config_file_pair
 {
     enum service_type type;
-    errno_t (*generator)(int fildes[2]);
+    linted_error (*generator)(int fildes[2]);
 };
 
 union service_config
@@ -137,40 +137,40 @@ struct connection
     bool has_reply_ready;
 };
 
-static errno_t updater_pair(int fildes[2])
+static linted_error updater_pair(int fildes[2])
 {
     return linted_updater_pair(fildes, O_NONBLOCK, O_NONBLOCK);
 }
 
-static errno_t controller_pair(int fildes[2])
+static linted_error controller_pair(int fildes[2])
 {
     return linted_controller_pair(fildes, O_NONBLOCK, O_NONBLOCK);
 }
 
-static errno_t shutdowner_pair(int fildes[2])
+static linted_error shutdowner_pair(int fildes[2])
 {
     return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
 }
 
-static errno_t on_new_connections_readable(linted_manager new_connections,
+static linted_error on_new_connections_readable(linted_manager new_connections,
                                            union service_config const* config,
                                            union service const* services,
                                            size_t* connection_count,
                                            struct connection* connections);
-static errno_t on_connection_readable(int fd,
+static linted_error on_connection_readable(int fd,
                                       union service_config const* config,
                                       union service const* services,
                                       bool* hungup,
                                       union linted_manager_reply* reply);
-static errno_t on_connection_writeable(int fd,
+static linted_error on_connection_writeable(int fd,
                                        union linted_manager_reply* reply);
 
-static errno_t run_game(char const* process_name,
+static linted_error run_game(char const* process_name,
                         union service_config const* config, int logger_dummy,
                         int updater_dummy, int shutdowner_dummy,
                         int controller_dummy);
 
-static errno_t linted_help(int fildes, char const* program_name,
+static linted_error linted_help(int fildes, char const* program_name,
                            struct linted_str package_name,
                            struct linted_str package_url,
                            struct linted_str package_bugreport);
@@ -181,7 +181,7 @@ int main(int argc, char** argv)
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+        linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR("\
 Bad administrator!\n\
 It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
@@ -245,7 +245,7 @@ It is insecure to run a game as root!\n"));
         return EXIT_SUCCESS;
     }
 
-    errno_t errnum;
+    linted_error errnum;
 
     linted_db my_db;
     {
@@ -276,8 +276,8 @@ It is insecure to run a game as root!\n"));
             char const * data = hello;
             size_t data_size = sizeof hello - 1;
 
-            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size)) != 0) {
-                perror("linted_io_write");
+            if ((errnum = linted_ko_write_all(tmp, NULL, data, data_size)) != 0) {
+                perror("linted_ko_write");
                 return EXIT_FAILURE;
             }
         }
@@ -287,8 +287,8 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        if ((errnum = linted_io_close(tmp)) != 0) {
-            perror("linted_io_close");
+        if ((errnum = linted_ko_close(tmp)) != 0) {
+            perror("linted_ko_close");
             return EXIT_FAILURE;
         }
     }
@@ -301,7 +301,7 @@ It is insecure to run a game as root!\n"));
 
     char const* original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_format(STDERR_FILENO, NULL,
+        linted_ko_write_format(STDERR_FILENO, NULL,
                                "%s: missing DISPLAY environment variable\n",
                                program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -314,7 +314,7 @@ It is insecure to run a game as root!\n"));
                                    + 1;
     char* display = malloc(display_string_length);
     if (NULL == display) {
-        linted_io_write_format(STDERR_FILENO, NULL,
+        linted_ko_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
@@ -326,7 +326,7 @@ It is insecure to run a game as root!\n"));
 
     int cwd = open("./", O_CLOEXEC | O_DIRECTORY);
     if (-1 == cwd) {
-        linted_io_write_format(
+        linted_ko_write_format(
             STDERR_FILENO, NULL,
             "%s: can't open the current working directory: %s\n", program_name,
             linted_error_string_alloc(errno));
@@ -339,7 +339,7 @@ It is insecure to run a game as root!\n"));
         errnum = linted_util_sanitize_environment(kept_fds,
                                                   LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
+            linted_ko_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n",
                                    program_name,
                                    linted_error_string_alloc(errnum));
@@ -351,7 +351,7 @@ It is insecure to run a game as root!\n"));
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         assert(errno != EINVAL);
 
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_ko_write_format(STDERR_FILENO, NULL, "\
 %s: can not drop ability to raise privileges: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
@@ -370,27 +370,27 @@ It is insecure to run a game as root!\n"));
 
     int succesfully_executing = 0;
 
-    errno_t game_status;
+    linted_error game_status;
     {
         int logger_dummy;
         int updater_dummy;
         int shutdowner_dummy;
         int controller_dummy;
 
-        if ((game_status = linted_io_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
+        if ((game_status = linted_ko_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
             goto done;
         }
 
-        if ((game_status = linted_io_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
+        if ((game_status = linted_ko_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
             goto done;
         }
 
-        if ((game_status = linted_io_dummy(&shutdowner_dummy, O_CLOEXEC))
+        if ((game_status = linted_ko_dummy(&shutdowner_dummy, O_CLOEXEC))
             != 0) {
             goto done;
         }
 
-        if ((game_status = linted_io_dummy(&controller_dummy, O_CLOEXEC))
+        if ((game_status = linted_ko_dummy(&controller_dummy, O_CLOEXEC))
             != 0) {
             goto done;
         }
@@ -473,15 +473,15 @@ done:
     if (game_status != 0) {
         succesfully_executing = -1;
         char const* error_string = linted_error_string_alloc(game_status);
-        linted_io_write_format(STDERR_FILENO, NULL,
+        linted_ko_write_format(STDERR_FILENO, NULL,
                                "could not run the game: %s\n", error_string);
         linted_error_string_free(error_string);
     }
 
-    if ((errnum = linted_io_close(STDERR_FILENO)) != 0) {
+    if ((errnum = linted_ko_close(STDERR_FILENO)) != 0) {
         succesfully_executing = -1;
         char const* const error_string = linted_error_string_alloc(errnum);
-        linted_io_write_format(STDERR_FILENO, NULL,
+        linted_ko_write_format(STDERR_FILENO, NULL,
                                "could not close standard error: %s\n",
                                error_string);
         linted_error_string_free(error_string);
@@ -490,12 +490,12 @@ done:
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static errno_t run_game(char const* process_name,
+static linted_error run_game(char const* process_name,
                         union service_config const* config, int logger_dummy,
                         int updater_dummy, int shutdowner_dummy,
                         int controller_dummy)
 {
-    errno_t errnum = 0;
+    linted_error errnum = 0;
 
     union service services[]
         = {[LINTED_MANAGER_SERVICE_INIT] = { .init = { .pid = getpid() } },
@@ -610,10 +610,10 @@ static errno_t run_game(char const* process_name,
             goto close_new_connections;
         }
 
-        linted_io_write_str(STDOUT_FILENO, NULL,
+        linted_ko_write_str(STDOUT_FILENO, NULL,
                             LINTED_STR("management socket: "));
-        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+        linted_ko_write_all(STDOUT_FILENO, NULL, buf, len);
+        linted_ko_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
     {
@@ -665,7 +665,7 @@ static errno_t run_game(char const* process_name,
                 pollfd->events = connection->has_reply_ready ? POLLOUT : POLLIN;
             }
 
-            errno_t poll_errnum;
+            linted_error poll_errnum;
             do {
                 int poll_status = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
                 poll_errnum = -1 == poll_status ? errno : 0;
@@ -692,17 +692,17 @@ static errno_t run_game(char const* process_name,
                     goto close_connections;
                 }
 
-                linted_io_write_string(STDERR_FILENO, NULL, process_name);
-                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
-                linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
-                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
+                linted_ko_write_string(STDERR_FILENO, NULL, process_name);
+                linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
+                linted_ko_write_all(STDERR_FILENO, NULL, entry, log_size);
+                linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
             }
 
             if ((pollfds[GUI_WAITER].revents & POLLIN) != 0) {
                 struct linted_waiter_message message;
                 size_t bytes_read;
 
-                if ((errnum = linted_io_read_all(
+                if ((errnum = linted_ko_read_all(
                          linted_waiter_fd(&gui_service->waiter), &bytes_read,
                          &message, sizeof message)) != 0) {
                     goto close_connections;
@@ -746,7 +746,7 @@ static errno_t run_game(char const* process_name,
                 struct linted_waiter_message message;
                 size_t bytes_read;
 
-                if ((errnum = linted_io_read_all(
+                if ((errnum = linted_ko_read_all(
                          linted_waiter_fd(&sim_service->waiter), &bytes_read,
                          &message, sizeof message)) != 0) {
                     goto close_connections;
@@ -810,7 +810,7 @@ static errno_t run_game(char const* process_name,
             try_reading : {
                 union linted_manager_reply reply;
                 bool hungup;
-                errno_t read_errnum = on_connection_readable(
+                linted_error read_errnum = on_connection_readable(
                     fd, config, services, &hungup, &reply);
                 switch (read_errnum) {
                 case 0:
@@ -839,7 +839,7 @@ static errno_t run_game(char const* process_name,
             }
 
             try_writing : {
-                errno_t write_errnum
+                linted_error write_errnum
                     = on_connection_writeable(fd, &connection->reply);
                 switch (write_errnum) {
                 case 0:
@@ -866,7 +866,7 @@ static errno_t run_game(char const* process_name,
                 --connection_count;
 
                 {
-                    errno_t close_errnum = linted_io_close(fd);
+                    linted_error close_errnum = linted_ko_close(fd);
                     if (0 == errnum) {
                         errnum = close_errnum;
                         goto close_connections;
@@ -880,7 +880,7 @@ static errno_t run_game(char const* process_name,
             struct connection* const connection = &connections[ii];
             int const fd = connection->fd;
             if (fd != -1) {
-                errno_t close_errnum = linted_io_close(fd);
+                linted_error close_errnum = linted_ko_close(fd);
                 if (0 == errnum) {
                     errnum = close_errnum;
                 }
@@ -889,7 +889,7 @@ static errno_t run_game(char const* process_name,
     }
 
 close_new_connections : {
-    errno_t close_errnum = linted_manager_close(new_connections);
+    linted_error close_errnum = linted_manager_close(new_connections);
     if (0 == errnum) {
         errnum = close_errnum;
     }
@@ -905,14 +905,14 @@ exit_services:
             pid_t pid = service->pid;
 
             if (pid != -1) {
-                errno_t kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
+                linted_error kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
                 /* kill_errnum == ESRCH is fine */
                 assert(kill_errnum != EINVAL);
                 assert(kill_errnum != EPERM);
 
                 service->pid = -1;
 
-                errno_t destroy_errnum
+                linted_error destroy_errnum
                     = linted_waiter_destroy(&service->waiter);
                 if (0 == errnum) {
                     errnum = destroy_errnum;
@@ -926,13 +926,13 @@ exit_services:
             int read_end = file_pair->read_end;
             int write_end = file_pair->write_end;
             if (read_end != -1) {
-                errno_t close_errnum = linted_io_close(read_end);
+                linted_error close_errnum = linted_ko_close(read_end);
                 if (0 == errnum) {
                     errnum = close_errnum;
                 }
             }
             if (write_end != -1) {
-                errno_t close_errnum = linted_io_close(write_end);
+                linted_error close_errnum = linted_ko_close(write_end);
                 if (0 == errnum) {
                     errnum = close_errnum;
                 }
@@ -947,7 +947,7 @@ exit_services:
     return errnum;
 }
 
-static errno_t on_new_connections_readable(linted_manager new_connections,
+static linted_error on_new_connections_readable(linted_manager new_connections,
                                            union service_config const* config,
                                            union service const* services,
                                            size_t* connection_count,
@@ -957,7 +957,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
         int new_socket = accept4(new_connections, NULL, NULL,
                                  SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (-1 == new_socket) {
-            errno_t errnum = errno;
+            linted_error errnum = errno;
 
             if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
                 break;
@@ -966,12 +966,12 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
             return errnum;
         }
 
-        errno_t error_status = 0;
+        linted_error error_status = 0;
 
         union linted_manager_reply reply;
         {
             bool hungup;
-            errno_t errnum = on_connection_readable(new_socket, config,
+            linted_error errnum = on_connection_readable(new_socket, config,
                                                     services, &hungup, &reply);
             switch (errnum) {
             case 0:
@@ -996,7 +996,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
         }
 
         {
-            errno_t errnum = on_connection_writeable(new_socket, &reply);
+            linted_error errnum = on_connection_writeable(new_socket, &reply);
             switch (errnum) {
             case 0:
                 break;
@@ -1016,7 +1016,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
 
         /* Connection completed, do the next connection */
         {
-            errno_t errnum = linted_io_close(new_socket);
+            linted_error errnum = linted_ko_close(new_socket);
             if (errnum != 0) {
                 return errnum;
             }
@@ -1050,7 +1050,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
     close_new_socket:
         ;
         {
-            errno_t errnum = linted_io_close(new_socket);
+            linted_error errnum = linted_ko_close(new_socket);
             if (0 == error_status) {
                 error_status = errnum;
             }
@@ -1061,7 +1061,7 @@ static errno_t on_new_connections_readable(linted_manager new_connections,
     return 0;
 }
 
-static errno_t on_connection_readable(int fd,
+static linted_error on_connection_readable(int fd,
                                       union service_config const* config,
                                       union service const* services,
                                       bool* hungup,
@@ -1071,7 +1071,7 @@ static errno_t on_connection_readable(int fd,
 
     {
         size_t bytes_read;
-        errno_t errnum = linted_manager_recv_request(fd, &request, &bytes_read);
+        linted_error errnum = linted_manager_recv_request(fd, &request, &bytes_read);
         if (errnum != 0) {
             return errnum;
         }
@@ -1101,7 +1101,7 @@ static errno_t on_connection_readable(int fd,
                     pid = service->process.pid;
                 }
 
-                errno_t errnum = -1 == kill(pid, 0) ? errno : 0;
+                linted_error errnum = -1 == kill(pid, 0) ? errno : 0;
                 assert(errnum != EINVAL);
                 switch (errnum) {
                 case 0:
@@ -1139,7 +1139,7 @@ static errno_t on_connection_readable(int fd,
                     pid = service->process.pid;
                 }
 
-                errno_t errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
+                linted_error errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
                 assert(errnum != EINVAL);
                 switch (errnum) {
                 case 0:
@@ -1170,84 +1170,84 @@ static errno_t on_connection_readable(int fd,
     return 0;
 }
 
-static errno_t on_connection_writeable(int fd,
+static linted_error on_connection_writeable(int fd,
                                        union linted_manager_reply* reply)
 {
     return linted_manager_send_reply(fd, reply);
 }
 
-static errno_t linted_help(int fildes, char const* program_name,
+static linted_error linted_help(int fildes, char const* program_name,
                            struct linted_str package_name,
                            struct linted_str package_url,
                            struct linted_str package_bugreport)
 {
-    errno_t errnum;
+    linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Play the game.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 

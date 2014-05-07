@@ -19,10 +19,10 @@
 
 #include "linted/spawn.h"
 
-#include "linted/io.h"
+#include "linted/error.h"
+#include "linted/ko.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -67,13 +67,13 @@ struct linted_spawn_attr
 
 struct spawn_error
 {
-    errno_t errnum;
+    linted_error errnum;
 };
 
 static void exit_with_error(volatile struct spawn_error* spawn_error,
-                            errno_t errnum);
+                            linted_error errnum);
 
-errno_t linted_spawn_attr_init(struct linted_spawn_attr** attrp)
+linted_error linted_spawn_attr_init(struct linted_spawn_attr** attrp)
 {
     struct linted_spawn_attr* attr = malloc(sizeof *attr);
     if (NULL == attr) {
@@ -97,7 +97,7 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr* attr)
     free(attr);
 }
 
-errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions
+linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
                                        ** file_actionsp)
 {
     struct linted_spawn_file_actions* file_actions
@@ -112,7 +112,7 @@ errno_t linted_spawn_file_actions_init(struct linted_spawn_file_actions
     return 0;
 }
 
-errno_t linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
+linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
                                           ** file_actionsp,
                                           int oldfildes, int newfildes)
 {
@@ -152,7 +152,7 @@ void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
     free(file_actions);
 }
 
-errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
+linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
                      struct linted_spawn_file_actions const* file_actions,
                      struct linted_spawn_attr const* attr, char* const argv[],
                      char* const envp[])
@@ -185,7 +185,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
     if (child != 0) {
         pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
-        errno_t error_status = 0;
+        linted_error error_status = 0;
 
         if (-1 == child) {
             error_status = errno;
@@ -195,7 +195,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
         {
             siginfo_t info;
             {
-                errno_t errnum;
+                linted_error errnum;
                 do {
                     int wait_status
                         = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
@@ -209,7 +209,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
 
             switch (info.si_code) {
             case CLD_EXITED: {
-                errno_t exit_status = info.si_status;
+                linted_error exit_status = info.si_status;
                 switch (exit_status) {
                 case 0:
                     error_status = EINVAL;
@@ -223,7 +223,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
 
             case CLD_KILLED: {
 #if defined __linux__
-                errno_t signo = info.si_status;
+                linted_error signo = info.si_status;
                 switch (signo) {
                 case SIGKILL:
                     error_status = ENOMEM;
@@ -255,7 +255,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
 
             case CLD_STOPPED:
                 if (-1 == kill(child, SIGCONT)) {
-                    errno_t errnum = errno;
+                    linted_error errnum = errno;
                     assert(errnum != EINVAL);
                     assert(errnum != EPERM);
                     assert(errnum != ESRCH);
@@ -304,7 +304,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
     if (attr != NULL) {
         if (attr->setpgroup) {
             if (-1 == setpgid(0, attr->pgroup)) {
-                errno_t errnum = errno;
+                linted_error errnum = errno;
                 if (errnum != EACCES) {
                     exit_with_error(spawn_error, errnum);
                 }
@@ -375,7 +375,7 @@ errno_t linted_spawn(pid_t* childp, int dirfd, char const* path,
 }
 
 static void exit_with_error(volatile struct spawn_error* spawn_error,
-                            errno_t errnum)
+                            linted_error errnum)
 {
     spawn_error->errnum = errnum;
 

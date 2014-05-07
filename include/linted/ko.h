@@ -13,24 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_IO_H
-#define LINTED_IO_H
+#ifndef LINTED_KO_H
+#define LINTED_KO_H
 
+#include "linted/error.h"
 #include "linted/str.h"
 
-#include <errno.h>
 #include <stddef.h>
 
 /**
  * @file
  *
- * Utility functions for working with file descriptors.
+ * This module abstracts over the concept of a kernel object.
  */
-errno_t linted_io_read_all(int fd, size_t* bytes_wrote, void* buf,
-                           size_t count);
+
+#if defined _WIN32
+#include <windows/wtypes.h>
+#endif
+
+#if defined __unix__
+typedef int linted_ko;
+#elif defined _WIN32
+struct linted_ko_vtable;
+
+typedef struct linted_ko {
+    struct linted_ko_vtable const * vtable;
+    char contents[];
+} * linted_ko;
+
+struct linted_ko_vtable {
+    linted_error (*close)(linted_ko ko);
+};
+
+#else
+#error no known most primitive platform kernel object type
+#endif
+
+linted_error linted_ko_strtofd(char const* ptr, linted_ko* ko);
+
+linted_error linted_ko_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
+                                size_t count);
 
 /**
- * The linted_io_write_all function repeatedly writes to fd until of
+ * The linted_ko_write_all function repeatedly writes to fd until of
  * buf is written or an error occurs (except for EINTR).
  *
  * For example, a bit could be written and then fd could be closed and
@@ -74,17 +99,17 @@ errno_t linted_io_read_all(int fd, size_t* bytes_wrote, void* buf,
  *
  * @error EISDIR fd is a directory.
  */
-errno_t linted_io_write_all(int fd, size_t* bytes_wrote, void const* buf,
-                            size_t count);
+linted_error linted_ko_write_all(linted_ko ko, size_t* bytes_wrote,
+                                 void const* buf, size_t count);
 
-errno_t linted_io_write_str(int fd, size_t* bytes_wrote, struct linted_str str);
+linted_error linted_ko_write_str(linted_ko ko, size_t* bytes_wrote,
+                                 struct linted_str str);
 
-errno_t linted_io_write_string(int fd, size_t* bytes_wrote_out, char const* s);
+linted_error linted_ko_write_string(linted_ko ko, size_t* bytes_wrote_out,
+                                    char const* s);
 
-errno_t linted_io_write_format(int fd, size_t* bytes_wrote_out, char const* s,
-                               ...);
-
-errno_t linted_io_strtofd(char const* ptr, int* fd);
+linted_error linted_ko_write_format(linted_ko ko, size_t* bytes_wrote_out,
+                                    char const* s, ...);
 
 /**
  * The linted_io_close function closes a file descriptor. The state of
@@ -102,8 +127,8 @@ errno_t linted_io_strtofd(char const* ptr, int* fd);
  *
  * @error EBADF Not a valid file descriptor.
  */
-errno_t linted_io_close(int fd);
+linted_error linted_ko_close(linted_ko ko);
 
-errno_t linted_io_dummy(int* fildesp, int flags);
+linted_error linted_ko_dummy(linted_ko* kp, int flags);
 
-#endif /* LINTED_IO_H */
+#endif /* LINTED_KO_H */

@@ -16,9 +16,9 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
-#include "linted/io.h"
+#include "linted/error.h"
+#include "linted/ko.h"
 
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -34,7 +34,7 @@
  */
 #define LINTED_FATAL_FAILURE(errnum, format_string, ...)                       \
     do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_ko_write_format(STDERR_FILENO, NULL, "\
 fatal failure in file %s, function %s, and line %i: " format_string,           \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         exit(errnum);                                                          \
@@ -57,7 +57,7 @@ fatal failure in file %s, function %s, and line %i: " format_string,           \
  */
 #define LINTED_IMPOSSIBILITY(format_string, ...)                               \
     do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_ko_write_format(STDERR_FILENO, NULL, "\
 impossible error in file %s, function %s, and line %i: " format_string,        \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \
@@ -70,7 +70,7 @@ impossible error in file %s, function %s, and line %i: " format_string,        \
  */
 #define LINTED_LAZY_DEV(format_string, ...)                                    \
     do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_ko_write_format(STDERR_FILENO, NULL, "\
 lazy developer error in file %s, function %s, and line %i:" format_string,     \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \
@@ -91,11 +91,7 @@ static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
     return positive;
 }
 
-char const* linted_error_string_alloc(errno_t errnum);
-
-void linted_error_string_free(char const* error_string);
-
-errno_t linted_util_sanitize_environment(int const* kept_fds,
+linted_error linted_util_sanitize_environment(int const* kept_fds,
                                          size_t kept_fds_size);
 
 #endif /* LINTED_UTIL_H */

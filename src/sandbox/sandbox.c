@@ -17,9 +17,9 @@
 
 #include "linted/sandbox.h"
 
+#include "linted/error.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <string.h>
 
 #ifdef HAVE_SYS_RESOURCE_H

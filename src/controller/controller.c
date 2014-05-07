@@ -30,7 +30,7 @@
 
 typedef char message_type[MESSAGE_SIZE];
 
-errno_t linted_controller_pair(linted_controller controller[2], int readflags,
+linted_error linted_controller_pair(linted_controller controller[2], int readflags,
                                int writeflags)
 {
     struct mq_attr attr;
@@ -42,7 +42,7 @@ errno_t linted_controller_pair(linted_controller controller[2], int readflags,
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-errno_t linted_controller_send(linted_controller controller,
+linted_error linted_controller_send(linted_controller controller,
                                struct linted_controller_message const* message)
 {
     message_type raw_message;
@@ -66,12 +66,12 @@ errno_t linted_controller_send(linted_controller controller,
                                                                          : 0;
 }
 
-errno_t linted_controller_close(linted_controller controller)
+linted_error linted_controller_close(linted_controller controller)
 {
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-errno_t linted_controller_receive(linted_controller queue,
+linted_error linted_controller_receive(linted_controller queue,
                                   struct linted_controller_message* message)
 {
     message_type raw_message;

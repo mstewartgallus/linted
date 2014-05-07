@@ -82,10 +82,6 @@ AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
 dnl
-AC_CHECK_TYPE([errno_t], [], [
-    AC_DEFINE([errno_t], [int], [error number type])
-], [[#include <errno.h>]])
-dnl
 LINTED_PROG_BLENDER
 LINTED_PROG_CBMC
 LINTED_PROG_GOTO_CC

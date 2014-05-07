@@ -16,7 +16,8 @@
 #ifndef LINTED_WAITER_H
 #define LINTED_WAITER_H
 
-#include <errno.h>
+#include "linted/error.h"
+
 #include <pthread.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -26,7 +27,7 @@ struct linted_waiter_data;
 struct linted_waiter_message
 {
     siginfo_t exit_info;
-    errno_t errnum;
+    linted_error errnum;
 };
 
 struct linted_waiter
@@ -37,8 +38,8 @@ struct linted_waiter
     int waiter_wait_fd;
 };
 
-errno_t linted_waiter_init(struct linted_waiter* waiter, pid_t pid);
+linted_error linted_waiter_init(struct linted_waiter* waiter, pid_t pid);
 int linted_waiter_fd(struct linted_waiter const* waiter);
-errno_t linted_waiter_destroy(struct linted_waiter const* waiter);
+linted_error linted_waiter_destroy(struct linted_waiter const* waiter);
 
 #endif /* LINTED_WAITER_H */

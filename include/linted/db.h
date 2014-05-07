@@ -16,7 +16,7 @@
 #ifndef LINTED_DB_H
 #define LINTED_DB_H
 
-#include <errno.h>
+#include "linted/error.h"
 
 /**
  * @file
@@ -38,10 +38,10 @@
 
 typedef int linted_db;
 
-errno_t linted_db_open(linted_db * dbp, char const * pathname, int flags);
-errno_t linted_db_close(linted_db * dbp);
+linted_error linted_db_open(linted_db * dbp, char const * pathname, int flags);
+linted_error linted_db_close(linted_db * dbp);
 
-errno_t linted_db_temp_file(linted_db * dbp, int * fildesp);
-errno_t linted_db_temp_send(linted_db * db, char const *name, int fildes);
+linted_error linted_db_temp_file(linted_db * dbp, int * fildesp);
+linted_error linted_db_temp_send(linted_db * db, char const *name, int fildes);
 
 #endif /* LINTED_DB_H */

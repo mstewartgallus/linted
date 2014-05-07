@@ -15,10 +15,10 @@
  */
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/mq.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <limits.h>
 #include <mqueue.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@
 #define TEMPLATE_PREFIX "/anonymous-mq-"
 #define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
 
-errno_t linted_mq_pair(mqd_t mqdes[2], struct mq_attr* attr, int rflags,
+linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr* attr, int rflags,
                        int wflags)
 {
     char random_mq_name[sizeof TEMPLATE_NAME];

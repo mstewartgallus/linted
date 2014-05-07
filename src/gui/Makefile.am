@@ -19,7 +19,8 @@ pkglibexec_PROGRAMS+=gui
 gui_SOURCES=%D%/gui.c %D%/assets.c
 nodist_gui_SOURCES=%D%/gl_core.c
 gui_LDADD=\
-  src/io/libio.la\
+  src/error/liberror.la\
+  src/ko/libko.la\
   src/locale/liblocale.la\
   src/util/libutil.la\
   \

@@ -16,7 +16,8 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
-#include <errno.h>
+#include "linted/error.h"
+
 #include <mqueue.h>
 #include <stdint.h>
 
@@ -35,14 +36,14 @@ struct linted_updater_update
     uint_fast32_t y_rotation;
 };
 
-errno_t linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
+linted_error linted_updater_pair(linted_updater updater[2], int rflags, int wflags);
 
-errno_t linted_updater_send_update(linted_updater updater,
+linted_error linted_updater_send_update(linted_updater updater,
                                    struct linted_updater_update const* update);
 
-errno_t linted_updater_receive_update(linted_updater updater,
+linted_error linted_updater_receive_update(linted_updater updater,
                                       struct linted_updater_update* update);
 
-errno_t linted_updater_close(linted_updater updater);
+linted_error linted_updater_close(linted_updater updater);
 
 #endif /* LINTED_UPDATER_H */

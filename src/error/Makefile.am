@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+noinst_LTLIBRARIES+=%D%/liberror.la
 
-noinst_LTLIBRARIES+=%D%/libio.la
-%C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
+%C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h

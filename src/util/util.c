@@ -15,12 +15,13 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
 #include "linted/util.h"
+
+#include "linted/error.h"
+#include "linted/ko.h"
 
 #include <assert.h>
 #include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdint.h>
@@ -34,53 +35,11 @@ extern char** environ;
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
 
-static errno_t close_fds_except(int const* kept_fds, size_t size);
+static linted_error close_fds_except(int const* kept_fds, size_t size);
 
-char const* linted_error_string_alloc(int errnum)
+linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
 {
-    size_t size = 40;
-    char* string = NULL;
-    int strerror_status;
-    do {
-        size_t const multiplicand = 3;
-
-        if (size > SIZE_MAX / multiplicand) {
-            errno = ENOMEM;
-            goto out_of_memory;
-        }
-
-        size = (multiplicand * size) / 2;
-
-        char* const new_string = realloc(string, size);
-        if (NULL == new_string) {
-            goto out_of_memory;
-        }
-        string = new_string;
-
-        strerror_status = strerror_r(errnum, string, size);
-    } while (-1 == strerror_status && ERANGE == errno);
-    assert(strerror_status != -1);
-
-    return string;
-
-out_of_memory : {
-    int new_errnum = errno;
-    free(string);
-    errno = new_errnum;
-}
-    return no_memory_string;
-}
-
-void linted_error_string_free(char const* error_string)
-{
-    if (error_string != no_memory_string) {
-        free((void*)error_string);
-    }
-}
-
-errno_t linted_util_sanitize_environment(int const* kept_fds, size_t size)
-{
-    errno_t errnum = close_fds_except(kept_fds, size);
+    linted_error errnum = close_fds_except(kept_fds, size);
     if (errnum != 0) {
         return errnum;
     }
@@ -98,9 +57,9 @@ errno_t linted_util_sanitize_environment(int const* kept_fds, size_t size)
     return 0;
 }
 
-static errno_t close_fds_except(int const* kept_fds, size_t size)
+static linted_error close_fds_except(int const* kept_fds, size_t size)
 {
-    errno_t error_status = 0;
+    linted_error error_status = 0;
     DIR* const fds_dir = opendir("/proc/self/fd");
     if (NULL == fds_dir) {
         return errno;
@@ -172,7 +131,7 @@ static errno_t close_fds_except(int const* kept_fds, size_t size)
         }
 
         for (size_t ii = 0; ii < fds_to_close_count; ++ii) {
-            errno_t errnum = linted_io_close(fds_to_close[ii]);
+            linted_error errnum = linted_ko_close(fds_to_close[ii]);
             assert(errnum != EBADF);
 
             /*

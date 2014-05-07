@@ -15,11 +15,11 @@
  */
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,7 +29,7 @@ struct message
     char dummy;
 };
 
-errno_t linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
+linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
                                int wflags)
 {
     struct mq_attr attr;
@@ -41,13 +41,13 @@ errno_t linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
     return linted_mq_pair(shutdowner, &attr, rflags, wflags);
 }
 
-errno_t linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
+linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
 {
     char dummy;
     return -1 == mq_send(shutdowner, &dummy, 0, 0) ? errno : 0;
 }
 
-errno_t linted_shutdowner_receive(linted_shutdowner shutdowner)
+linted_error linted_shutdowner_receive(linted_shutdowner shutdowner)
 {
     char dummy;
     ssize_t recv_status = mq_receive(shutdowner, &dummy, 1, NULL);
@@ -63,7 +63,7 @@ errno_t linted_shutdowner_receive(linted_shutdowner shutdowner)
     return 0;
 }
 
-errno_t linted_shutdowner_close(linted_shutdowner shutdowner)
+linted_error linted_shutdowner_close(linted_shutdowner shutdowner)
 {
     return -1 == mq_close(shutdowner) ? errno : 0;
 }

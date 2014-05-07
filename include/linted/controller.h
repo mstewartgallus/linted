@@ -16,7 +16,8 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
-#include <errno.h>
+#include "linted/error.h"
+
 #include <mqueue.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,14 +40,14 @@ struct linted_controller_message
     bool jumping : 1;
 };
 
-errno_t linted_controller_pair(linted_controller controller[2], int readflags,
+linted_error linted_controller_pair(linted_controller controller[2], int readflags,
                                int writeflags);
-errno_t linted_controller_close(linted_controller controller);
+linted_error linted_controller_close(linted_controller controller);
 
-errno_t linted_controller_send(linted_controller controller,
+linted_error linted_controller_send(linted_controller controller,
                                struct linted_controller_message const* message);
 
-errno_t linted_controller_receive(linted_controller controller,
+linted_error linted_controller_receive(linted_controller controller,
                                   struct linted_controller_message* message);
 
 #endif /* LINTED_CONTROLLER_H */

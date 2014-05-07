@@ -15,7 +15,7 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/waiter.h"
 
 #include <assert.h>
@@ -32,9 +32,9 @@ struct linted_waiter_data
 
 static void* waiter_routine(void* data);
 
-errno_t linted_waiter_init(struct linted_waiter* waiter, pid_t pid)
+linted_error linted_waiter_init(struct linted_waiter* waiter, pid_t pid)
 {
-    errno_t errnum;
+    linted_error errnum;
 
     int init_wait_fd;
     int waiter_wait_fd;
@@ -85,8 +85,8 @@ free_waiter:
 
 close_fds:
     ;
-    linted_io_close(init_wait_fd);
-    linted_io_close(waiter_wait_fd);
+    linted_ko_close(init_wait_fd);
+    linted_ko_close(waiter_wait_fd);
 
     return errnum;
 }
@@ -96,9 +96,9 @@ int linted_waiter_fd(struct linted_waiter const* waiter)
     return waiter->init_wait_fd;
 }
 
-errno_t linted_waiter_destroy(struct linted_waiter const* waiter)
+linted_error linted_waiter_destroy(struct linted_waiter const* waiter)
 {
-    errno_t errnum = 0;
+    linted_error errnum = 0;
 
     pthread_cancel(waiter->pthread);
     /* ESRCH is perfectly fine here */
@@ -109,14 +109,14 @@ errno_t linted_waiter_destroy(struct linted_waiter const* waiter)
     free(waiter->waiter_data);
 
     {
-        errno_t close_errnum = linted_io_close(waiter->init_wait_fd);
+        linted_error close_errnum = linted_ko_close(waiter->init_wait_fd);
         if (0 == errnum) {
             errnum = close_errnum;
         }
     }
 
     {
-        errno_t close_errnum = linted_io_close(waiter->waiter_wait_fd);
+        linted_error close_errnum = linted_ko_close(waiter->waiter_wait_fd);
         if (0 == errnum) {
             errnum = close_errnum;
         }
@@ -132,7 +132,7 @@ static void* waiter_routine(void* data)
     siginfo_t exit_info;
     memset(&exit_info, 0, sizeof exit_info);
 
-    errno_t errnum;
+    linted_error errnum;
     do {
         int wait_status
             = waitid(P_PID, waiter_data->process, &exit_info, WEXITED);
@@ -147,7 +147,7 @@ static void* waiter_routine(void* data)
         message.exit_info = exit_info;
         message.errnum = errnum;
 
-        linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
+        linted_ko_write_all(waiter_data->fd, NULL, &message, sizeof message);
         /* TODO: Handle the error */
     }
 
