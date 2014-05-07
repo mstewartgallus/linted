@@ -179,8 +179,8 @@ linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply* reply,
                                        size_t* size)
 {
-    linted_error errnum = linted_io_read_all(manager, size, reply,
-                                             sizeof *reply);
+    linted_error errnum
+        = linted_io_read_all(manager, size, reply, sizeof *reply);
 
     if (errnum != 0) {
         return errnum;

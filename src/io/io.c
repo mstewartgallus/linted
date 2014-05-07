@@ -40,8 +40,8 @@ linted_error linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
     size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_read = read(fd, (char*)buf + total_bytes_read,
-                                  count - total_bytes_read);
+        ssize_t bytes_read
+            = read(fd, (char*)buf + total_bytes_read, count - total_bytes_read);
 
         if (0 == bytes_read) {
             /* Hang up */
