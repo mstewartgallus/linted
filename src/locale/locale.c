@@ -17,6 +17,7 @@
 
 #include "linted/locale.h"
 
+#include "linted/io.h"
 #include "linted/ko.h"
 
 linted_error linted_locale_missing_process_name(int fildes,
@@ -24,11 +25,11 @@ linted_error linted_locale_missing_process_name(int fildes,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 : missing process name\n"))) != 0) {
         return errnum;
     }
@@ -41,17 +42,17 @@ linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 : unrecognised option '"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_string(fildes, NULL, bad_option)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
         return errnum;
     }
 
@@ -64,24 +65,24 @@ linted_error linted_locale_try_for_more_help(int fildes,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Try `")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, help_option)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 ' for more information.\n"))) != 0) {
         return errnum;
     }
@@ -94,22 +95,22 @@ linted_error linted_locale_version(int fildes, struct linted_str package_string,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_string)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Copyright (C) "))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, copyright_year)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\

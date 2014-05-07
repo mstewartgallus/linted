@@ -17,3 +17,7 @@
 noinst_LTLIBRARIES+=%D%/libsandbox.la
 
 %C%_libsandbox_la_SOURCES=%D%/sandbox.c include/linted/sandbox.h
+%C%_libsandbox_la_LIBADD=\
+  src/error/liberror.la\
+  src/io/libio.la\
+  src/ko/libko.la

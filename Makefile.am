@@ -142,6 +142,7 @@ include src/simulator/Makefile.am
 
 include src/db/Makefile.am
 include src/error/Makefile.am
+include src/io/Makefile.am
 include src/ko/Makefile.am
 include src/locale/Makefile.am
 include src/mq/Makefile.am

@@ -18,6 +18,7 @@
 #include "linted/sandbox.h"
 
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/util.h"
 
 #include <string.h>

@@ -17,3 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libdb.la
 %C%_libdb_la_SOURCES=%D%/db.c include/linted/db.h
+%C%_libdb_la_LIBADD=\
+  src/error/liberror.la\
+  src/io/libio.la\
+  src/ko/libko.la

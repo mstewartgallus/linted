@@ -17,9 +17,11 @@
 #define LINTED_UTIL_H
 
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type*)0)->member)
@@ -34,7 +36,7 @@
  */
 #define LINTED_FATAL_FAILURE(errnum, format_string, ...)                       \
     do {                                                                       \
-        linted_ko_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 fatal failure in file %s, function %s, and line %i: " format_string,           \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         exit(errnum);                                                          \
@@ -70,7 +72,7 @@ impossible error in file %s, function %s, and line %i: " format_string,        \
  */
 #define LINTED_LAZY_DEV(format_string, ...)                                    \
     do {                                                                       \
-        linted_ko_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 lazy developer error in file %s, function %s, and line %i:" format_string,     \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \

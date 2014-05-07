@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/manager.h"
 #include "linted/util.h"
@@ -148,7 +149,7 @@ linted_error linted_manager_recv_request(linted_manager manager,
                                          size_t* size)
 {
     linted_error errnum
-        = linted_ko_read_all(manager, size, request, sizeof *request);
+        = linted_io_read_all(manager, size, request, sizeof *request);
     if (errnum != 0) {
         return errnum;
     }
@@ -164,22 +165,22 @@ linted_error linted_manager_recv_request(linted_manager manager,
 linted_error linted_manager_send_reply(linted_manager manager,
                                        union linted_manager_reply const* reply)
 {
-    return linted_ko_write_all(manager, NULL, reply, sizeof *reply);
+    return linted_io_write_all(manager, NULL, reply, sizeof *reply);
 }
 
 linted_error linted_manager_send_request(linted_manager manager,
                                          union linted_manager_request const
                                          * request)
 {
-    return linted_ko_write_all(manager, NULL, request, sizeof *request);
+    return linted_io_write_all(manager, NULL, request, sizeof *request);
 }
 
 linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply* reply,
                                        size_t* size)
 {
-    linted_error errnum
-        = linted_ko_read_all(manager, size, reply, sizeof *reply);
+    linted_error errnum = linted_io_read_all(manager, size, reply,
+                                             sizeof *reply);
 
     if (errnum != 0) {
         return errnum;

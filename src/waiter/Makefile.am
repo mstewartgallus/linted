@@ -17,3 +17,6 @@
 
 noinst_LTLIBRARIES+=%D%/libwaiter.la
 %C%_libwaiter_la_SOURCES=%D%/waiter.c include/linted/waiter.h
+%C%_libwaiter_la_LIBADD=\
+  src/ko/libko.la\
+  src/io/libio.la

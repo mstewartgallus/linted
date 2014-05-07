@@ -15,8 +15,10 @@
  */
 #include "config.h"
 
-#include "linted/ko.h"
 #include "linted/waiter.h"
+
+#include "linted/ko.h"
+#include "linted/io.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -147,7 +149,7 @@ static void* waiter_routine(void* data)
         message.exit_info = exit_info;
         message.errnum = errnum;
 
-        linted_ko_write_all(waiter_data->fd, NULL, &message, sizeof message);
+        linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
         /* TODO: Handle the error */
     }
 

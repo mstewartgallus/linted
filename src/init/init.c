@@ -21,6 +21,7 @@
 #include "linted/controller.h"
 #include "linted/db.h"
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
@@ -182,7 +183,7 @@ int main(int argc, char** argv)
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
     if (0 == euid || 0 == uid) {
-        linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
 Bad administrator!\n\
 It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
@@ -277,9 +278,9 @@ It is insecure to run a game as root!\n"));
             char const* data = hello;
             size_t data_size = sizeof hello - 1;
 
-            if ((errnum = linted_ko_write_all(tmp, NULL, data, data_size))
+            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size))
                 != 0) {
-                perror("linted_ko_write");
+                perror("linted_io_write");
                 return EXIT_FAILURE;
             }
         }
@@ -303,7 +304,7 @@ It is insecure to run a game as root!\n"));
 
     char const* original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing DISPLAY environment variable\n",
                                program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -316,7 +317,7 @@ It is insecure to run a game as root!\n"));
                                    + 1;
     char* display = malloc(display_string_length);
     if (NULL == display) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
@@ -328,7 +329,7 @@ It is insecure to run a game as root!\n"));
 
     int cwd = open("./", O_CLOEXEC | O_DIRECTORY);
     if (-1 == cwd) {
-        linted_ko_write_format(
+        linted_io_write_format(
             STDERR_FILENO, NULL,
             "%s: can't open the current working directory: %s\n", program_name,
             linted_error_string_alloc(errno));
@@ -341,7 +342,7 @@ It is insecure to run a game as root!\n"));
         errnum = linted_util_sanitize_environment(kept_fds,
                                                   LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "\
+            linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n",
                                    program_name,
                                    linted_error_string_alloc(errnum));
@@ -353,7 +354,7 @@ It is insecure to run a game as root!\n"));
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         assert(errno != EINVAL);
 
-        linted_ko_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not drop ability to raise privileges: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
@@ -475,7 +476,7 @@ done:
     if (game_status != 0) {
         succesfully_executing = -1;
         char const* error_string = linted_error_string_alloc(game_status);
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "could not run the game: %s\n", error_string);
         linted_error_string_free(error_string);
     }
@@ -483,7 +484,7 @@ done:
     if ((errnum = linted_ko_close(STDERR_FILENO)) != 0) {
         succesfully_executing = -1;
         char const* const error_string = linted_error_string_alloc(errnum);
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "could not close standard error: %s\n",
                                error_string);
         linted_error_string_free(error_string);
@@ -612,10 +613,10 @@ static linted_error run_game(char const* process_name,
             goto close_new_connections;
         }
 
-        linted_ko_write_str(STDOUT_FILENO, NULL,
+        linted_io_write_str(STDOUT_FILENO, NULL,
                             LINTED_STR("management socket: "));
-        linted_ko_write_all(STDOUT_FILENO, NULL, buf, len);
-        linted_ko_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
     {
@@ -694,17 +695,17 @@ static linted_error run_game(char const* process_name,
                     goto close_connections;
                 }
 
-                linted_ko_write_string(STDERR_FILENO, NULL, process_name);
-                linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
-                linted_ko_write_all(STDERR_FILENO, NULL, entry, log_size);
-                linted_ko_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
+                linted_io_write_string(STDERR_FILENO, NULL, process_name);
+                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
+                linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
+                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
             }
 
             if ((pollfds[GUI_WAITER].revents & POLLIN) != 0) {
                 struct linted_waiter_message message;
                 size_t bytes_read;
 
-                if ((errnum = linted_ko_read_all(
+                if ((errnum = linted_io_read_all(
                          linted_waiter_fd(&gui_service->waiter), &bytes_read,
                          &message, sizeof message)) != 0) {
                     goto close_connections;
@@ -748,7 +749,7 @@ static linted_error run_game(char const* process_name,
                 struct linted_waiter_message message;
                 size_t bytes_read;
 
-                if ((errnum = linted_ko_read_all(
+                if ((errnum = linted_io_read_all(
                          linted_waiter_fd(&sim_service->waiter), &bytes_read,
                          &message, sizeof message)) != 0) {
                     goto close_connections;
@@ -1187,71 +1188,71 @@ static linted_error linted_help(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Play the game.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 

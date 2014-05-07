@@ -16,8 +16,9 @@
 #include "config.h"
 
 #include "linted/db.h"
-#include "linted/error.h"
 
+#include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 
 #include <fcntl.h>
@@ -194,7 +195,7 @@ try_to_open_lock_again:
             goto close_version_file;
         }
 
-        if ((errnum = linted_ko_read_all(version_file, NULL, version_text,
+        if ((errnum = linted_io_read_all(version_file, NULL, version_text,
                                          version_file_size)) != 0) {
             goto free_version_text;
         }
@@ -240,7 +241,7 @@ try_to_open_lock_again:
             goto unlock_semaphore;
         }
 
-        errnum = linted_ko_write_all(version_file_write, NULL, CURRENT_VERSION,
+        errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
                                      sizeof CURRENT_VERSION - 1);
 
         {

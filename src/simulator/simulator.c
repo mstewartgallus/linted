@@ -17,6 +17,7 @@
 
 #include "linted/error.h"
 #include "linted/controller.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
@@ -193,7 +194,7 @@ int main(int argc, char* argv[])
         int fd;
         linted_error errnum = linted_ko_strtofd(logger_name, &fd);
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, LOGGER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -208,7 +209,7 @@ int main(int argc, char* argv[])
         int fd;
         int errnum = linted_ko_strtofd(controller_name, &fd);
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, CONTROLLER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -223,7 +224,7 @@ int main(int argc, char* argv[])
         int fd;
         linted_error errnum = linted_ko_strtofd(shutdowner_name, &fd);
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, SHUTDOWNER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -238,7 +239,7 @@ int main(int argc, char* argv[])
         int fd;
         linted_error errnum = linted_ko_strtofd(updater_name, &fd);
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
                                    program_name, UPDATER_OPTION,
                                    linted_error_string_alloc(errnum));
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -260,7 +261,7 @@ int main(int argc, char* argv[])
         linted_error errnum = linted_util_sanitize_environment(
             kept_fds, LINTED_ARRAY_SIZE(kept_fds));
         if (errnum != 0) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "\
+            linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
                                    program_name,
                                    linted_error_string_alloc(errnum));
@@ -404,13 +405,10 @@ static linted_error on_timer_readable(int timer,
                                       struct action_state const* action_state,
                                       struct simulator_state* simulator_state)
 {
+    linted_error errnum;
     uint64_t ticks;
-    {
-        linted_error errnum
-            = linted_ko_read_all(timer, NULL, &ticks, sizeof ticks);
-        if (errnum != 0) {
-            return errnum;
-        }
+    if ((errnum = linted_io_read_all(timer, NULL, &ticks, sizeof ticks)) != 0) {
+        return errnum;
     }
 
     for (size_t ii = 0; ii < ticks; ++ii) {
@@ -606,40 +604,40 @@ static linted_error simulator_help(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Run the simulator.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --logger            the logger file descriptor\n\
   --controller        the controller file descriptor\n\
   --updater           the updater file descriptor\n\
@@ -647,32 +645,32 @@ Run the simulator.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
@@ -684,20 +682,20 @@ static linted_error missing_option(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": missing ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, option)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" option\n")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
         != 0) {
         return errnum;
     }

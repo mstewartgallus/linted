@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/manager.h"
@@ -99,7 +100,7 @@ int main(int argc, char** argv)
     }
 
     if (NULL == command) {
-        linted_ko_write_format(STDERR_FILENO, NULL, "%s: missing COMMAND\n",
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing COMMAND\n",
                                program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
@@ -113,7 +114,7 @@ int main(int argc, char** argv)
         return run_stop(program_name, argc - last_index + 1,
                         argv + last_index - 1);
     } else {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n", program_name,
                                command);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -160,7 +161,7 @@ static int run_status(char const* program_name, int argc, char** argv)
     }
 
     if (bad_argument != NULL) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: too many arguments: '%s'\n", program_name,
                                bad_argument);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -176,7 +177,7 @@ static int run_status(char const* program_name, int argc, char** argv)
 
     char const* path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
@@ -185,7 +186,7 @@ static int run_status(char const* program_name, int argc, char** argv)
 
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: LINTED_SOCKET is too long\n", program_name);
         return EXIT_FAILURE;
     }
@@ -210,7 +211,7 @@ static int run_status(char const* program_name, int argc, char** argv)
         request.type = LINTED_MANAGER_STATUS;
         request.status.service = LINTED_MANAGER_SERVICE_GUI;
 
-        linted_ko_write_format(STDOUT_FILENO, NULL,
+        linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the status request for the gui\n",
                                program_name);
 
@@ -234,24 +235,24 @@ static int run_status(char const* program_name, int argc, char** argv)
         }
 
         if (0 == bytes_read) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
                                    program_name);
             return EXIT_FAILURE;
         }
 
         /* Sent malformed input */
         if (bytes_read != sizeof reply) {
-            linted_ko_write_format(STDERR_FILENO, NULL,
+            linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: reply was too small: %i\n",
                                    program_name, bytes_read);
             return EXIT_FAILURE;
         }
 
         if (reply.status.is_up) {
-            linted_ko_write_format(STDOUT_FILENO, NULL, "%s: gui is up\n",
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: gui is up\n",
                                    program_name);
         } else {
-            linted_ko_write_format(STDOUT_FILENO, NULL, "%s: the gui is down\n",
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: the gui is down\n",
                                    program_name);
         }
     }
@@ -297,7 +298,7 @@ static int run_stop(char const* program_name, int argc, char** argv)
     }
 
     if (bad_argument != NULL) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: too many arguments: '%s'\n", program_name,
                                bad_argument);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -313,7 +314,7 @@ static int run_stop(char const* program_name, int argc, char** argv)
 
     char const* path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
@@ -322,7 +323,7 @@ static int run_stop(char const* program_name, int argc, char** argv)
 
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1) {
-        linted_ko_write_format(STDERR_FILENO, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: LINTED_SOCKET is too long\n", program_name);
         return EXIT_FAILURE;
     }
@@ -347,7 +348,7 @@ static int run_stop(char const* program_name, int argc, char** argv)
         request.type = LINTED_MANAGER_STOP;
         request.stop.service = LINTED_MANAGER_SERVICE_GUI;
 
-        linted_ko_write_format(STDOUT_FILENO, NULL,
+        linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the stop request for the gui\n",
                                program_name);
 
@@ -371,16 +372,16 @@ static int run_stop(char const* program_name, int argc, char** argv)
         }
 
         if (0 == bytes_read) {
-            linted_ko_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
                                    program_name);
             return EXIT_FAILURE;
         }
 
         if (reply.stop.was_up) {
-            linted_ko_write_format(STDOUT_FILENO, NULL, "%s: gui was killed\n",
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: gui was killed\n",
                                    program_name);
         } else {
-            linted_ko_write_format(STDOUT_FILENO, NULL,
+            linted_io_write_format(STDOUT_FILENO, NULL,
                                    "%s: the gui was not killed\n",
                                    program_name);
         }
@@ -396,79 +397,79 @@ static linted_error ctl_help(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Run the manager program.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   status              request the status of the gui service\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
@@ -482,70 +483,70 @@ static linted_error status_help(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(
+    if ((errnum = linted_io_write_str(
              fildes, NULL, LINTED_STR(" status [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report the status.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
@@ -559,70 +560,70 @@ static linted_error stop_help(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("Usage: ")))
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
         != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL,
+    if ((errnum = linted_io_write_str(fildes, NULL,
                                       LINTED_STR(" stop [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Stop a service.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
@@ -634,31 +635,31 @@ static linted_error failure(int fildes, char const* program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_ko_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, message)) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, message)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
     char const* error_string = linted_error_string_alloc(error);
-    errnum = linted_ko_write_string(fildes, NULL, error_string);
+    errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
     if (errnum != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_ko_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
