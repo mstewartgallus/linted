@@ -18,13 +18,16 @@
 
 #if defined __unix__
 #include <errno.h>
+#endif
 
+#if defined _WIN32
+#include <windows.h>
+#endif
+
+#if defined __unix__
 typedef int linted_error;
-#elif defined _WIN32
-#include <windows/wtypes.h>
-
+#elif defined __WIN32
 typedef HRESULT linted_error;
-#else
 #error no known most primitive platform error type
 #endif
 

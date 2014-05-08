@@ -32,6 +32,8 @@ LT_INIT
 AC_PROG_CC
 AM_PROG_CC_C_O
 dnl
+AC_CANONICAL_HOST
+dnl
 AC_CHECK_HEADERS([dnl
         limits.h dnl
         fcntl.h dnl
@@ -59,28 +61,33 @@ AC_FUNC_REALLOC
 AS_IF([test "x${ac_cv_func_realloc}" = "xno"],[
  AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
 ])
-AC_FUNC_STRERROR_R
-AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
- AC_MSG_ERROR([Unable to find strerror_r function])
-])
-AC_FUNC_FORK
-AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
- AC_MSG_ERROR([Unable to find good fork function])
-])
-AC_CHECK_FUNCS([memset select setenv strchr], [], [
- AC_MSG_ERROR([Unable to find function ${ac_func}])
-])
 dnl
-AC_CHECK_FUNCS([environ], [], [
- AC_MSG_ERROR([Unable to find global variable ${ac_func}])
+AS_IF([test "x${host_vendor}" = "xw64" -o "x{host_vendor}" = "xw32"],[
+  dnl Special case Microsoft Windows and assume POSIX elsewhere
+], [
+  AC_FUNC_STRERROR_R
+  AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+   AC_MSG_ERROR([Unable to find strerror_r function])
+  ])
+  AC_FUNC_FORK
+  AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+   AC_MSG_ERROR([Unable to find good fork function])
+  ])
+  AC_CHECK_FUNCS([memset select setenv strchr], [], [
+   AC_MSG_ERROR([Unable to find function ${ac_func}])
+  ])
+  dnl
+  AC_CHECK_FUNCS([environ], [], [
+   AC_MSG_ERROR([Unable to find global variable ${ac_func}])
+  ])
+  dnl
+  AC_TYPE_UINT64_T
+  dnl
+  AC_TYPE_SSIZE_T
+  AC_TYPE_SIZE_T
+  AC_TYPE_PID_T
+  AC_TYPE_UID_T
 ])
-dnl
-AC_TYPE_UINT64_T
-dnl
-AC_TYPE_SSIZE_T
-AC_TYPE_SIZE_T
-AC_TYPE_PID_T
-AC_TYPE_UID_T
 dnl
 LINTED_PROG_BLENDER
 LINTED_PROG_CBMC

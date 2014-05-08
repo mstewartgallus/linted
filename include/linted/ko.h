@@ -25,7 +25,7 @@
  */
 
 #if defined _WIN32
-#include <windows/wtypes.h>
+#include <windows.h>
 #endif
 
 #if defined __unix__
