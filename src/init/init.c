@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
 #include "config.h"
 
 #include "binaries.h"
@@ -957,27 +956,24 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
                                                 size_t* connection_count,
                                                 struct connection* connections)
 {
-    for (;;) {
-        int new_socket = accept4(new_connections, NULL, NULL,
-                                 SOCK_NONBLOCK | SOCK_CLOEXEC);
-        if (-1 == new_socket) {
-            linted_error errnum = errno;
+    linted_error errnum;
 
-            if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
+    for (;;) {
+        linted_manager new_socket;
+        if ((errnum = linted_manager_accept(new_connections, &new_socket)) != 0) {
+            if (EAGAIN == errnum) {
                 break;
             }
 
             return errnum;
         }
 
-        linted_error error_status = 0;
-
         union linted_manager_reply reply;
         {
             bool hungup;
-            linted_error errnum = on_connection_readable(
+            linted_error read_errnum = on_connection_readable(
                 new_socket, config, services, &hungup, &reply);
-            switch (errnum) {
+            switch (read_errnum) {
             case 0:
                 if (hungup) {
                     /* Ignore the misbehaving other end */
@@ -994,14 +990,14 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
                 continue;
 
             default:
-                error_status = errnum;
+                errnum = read_errnum;
                 goto close_new_socket;
             }
         }
 
         {
-            linted_error errnum = on_connection_writeable(new_socket, &reply);
-            switch (errnum) {
+            linted_error write_errnum = on_connection_writeable(new_socket, &reply);
+            switch (write_errnum) {
             case 0:
                 break;
 
@@ -1013,16 +1009,16 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
                 continue;
 
             default:
-                error_status = errnum;
+                errnum = write_errnum;
                 goto close_new_socket;
             }
         }
 
         /* Connection completed, do the next connection */
         {
-            linted_error errnum = linted_ko_close(new_socket);
-            if (errnum != 0) {
-                return errnum;
+            linted_error close_errnum = linted_ko_close(new_socket);
+            if (close_errnum != 0) {
+                return close_errnum;
             }
         }
         continue;
@@ -1054,11 +1050,11 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
     close_new_socket:
         ;
         {
-            linted_error errnum = linted_ko_close(new_socket);
-            if (0 == error_status) {
-                error_status = errnum;
+            linted_error close_errnum = linted_ko_close(new_socket);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
-            return error_status;
+            return errnum;
         }
     }
 

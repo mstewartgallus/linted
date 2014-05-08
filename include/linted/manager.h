@@ -80,6 +80,9 @@ union linted_manager_reply
 linted_error linted_manager_bind(linted_manager* manager, int backlog,
                                  char const* path, size_t path_len);
 
+linted_error linted_manager_accept(linted_manager manager,
+                                   linted_manager * newp);
+
 linted_error linted_manager_connect(linted_manager* manager, char const* path,
                                     size_t path_len);
 

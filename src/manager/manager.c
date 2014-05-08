@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
 #include "config.h"
 
 #include "linted/error.h"
@@ -76,6 +77,23 @@ close_sock : {
     linted_ko_close(sock);
     return errnum;
 }
+}
+
+linted_error linted_manager_accept(linted_manager manager,
+                                   linted_manager * newp)
+{
+    int fildes = accept4(manager, NULL, NULL,
+                         SOCK_NONBLOCK | SOCK_CLOEXEC);
+    if (-1 == fildes) {
+        linted_error error = errno;
+        if (EWOULDBLOCK == error) {
+            return EAGAIN;
+        }
+        return error;
+    }
+
+    *newp = fildes;
+    return 0;
 }
 
 linted_error linted_manager_connect(linted_manager* manager, char const* path,
