@@ -90,7 +90,7 @@ struct service_config_process
     char const* const* arguments;
     char const* const* environment;
     struct dup_pairs dup_pairs;
-    int working_directory;
+    linted_ko working_directory;
 };
 
 struct service_config_file_pair
@@ -119,8 +119,8 @@ struct service_process
 
 struct service_file_pair
 {
-    int read_end;
-    int write_end;
+    linted_ko read_end;
+    linted_ko write_end;
 };
 
 union service
@@ -133,7 +133,7 @@ union service
 struct connection
 {
     union linted_manager_reply reply;
-    int fd;
+    linted_ko fd;
     bool has_reply_ready;
 };
 
