@@ -21,19 +21,27 @@
 #include <mqueue.h>
 #include <stdint.h>
 
+#define LINTED_UPDATER_UINT_MAX UINT32_MAX
+
+#define LINTED_UPDATER_INT_MAX INT32_MAX
+#define LINTED_UPDATER_INT_MIN INT32_MIN
+
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
 typedef mqd_t linted_updater;
 
+typedef uint_fast32_t linted_updater_uint_fast;
+typedef int_fast32_t linted_updater_int_fast;
+
 struct linted_updater_update
 {
-    int_fast32_t x_position;
-    int_fast32_t y_position;
-    int_fast32_t z_position;
+    linted_updater_int_fast x_position;
+    linted_updater_int_fast y_position;
+    linted_updater_int_fast z_position;
 
-    uint_fast32_t x_rotation;
-    uint_fast32_t y_rotation;
+    linted_updater_uint_fast x_rotation;
+    linted_updater_uint_fast y_rotation;
 };
 
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,

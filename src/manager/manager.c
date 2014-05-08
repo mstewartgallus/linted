@@ -79,11 +79,9 @@ close_sock : {
 }
 }
 
-linted_error linted_manager_accept(linted_manager manager,
-                                   linted_manager * newp)
+linted_error linted_manager_accept(linted_manager manager, linted_manager* newp)
 {
-    int fildes = accept4(manager, NULL, NULL,
-                         SOCK_NONBLOCK | SOCK_CLOEXEC);
+    int fildes = accept4(manager, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (-1 == fildes) {
         linted_error error = errno;
         if (EWOULDBLOCK == error) {

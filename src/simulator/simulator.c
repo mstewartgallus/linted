@@ -42,13 +42,13 @@
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
 
-#define ROTATION_SPEED (UINT32_MAX / 512)
-#define DEAD_ZONE (INT32_MAX / 8)
+#define ROTATION_SPEED (LINTED_UPDATER_UINT_MAX / 512u)
+#define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
 struct action_state
 {
-    int32_t x_tilt;
-    int32_t y_tilt;
+    linted_updater_int_fast x_tilt;
+    linted_updater_int_fast y_tilt;
 
     int x : 2;
     int z : 2;
@@ -58,16 +58,16 @@ struct action_state
 
 struct simulator_state
 {
-    int_fast32_t x_position;
-    int_fast32_t y_position;
-    int_fast32_t z_position;
+    linted_updater_int_fast x_position;
+    linted_updater_int_fast y_position;
+    linted_updater_int_fast z_position;
 
-    int_fast32_t x_velocity;
-    int_fast32_t y_velocity;
-    int_fast32_t z_velocity;
+    linted_updater_int_fast x_velocity;
+    linted_updater_int_fast y_velocity;
+    linted_updater_int_fast z_velocity;
 
-    uint_fast32_t x_rotation;
-    uint_fast32_t y_rotation;
+    linted_updater_uint_fast x_rotation;
+    linted_updater_uint_fast y_rotation;
 
     bool update_pending : 1;
 };
@@ -86,17 +86,20 @@ static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
 static linted_error on_controller_readable(linted_controller controller,
                                            struct action_state* action_state);
 
-static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
-                            int_fast32_t thrust);
-static void simulate_rotation(uint_fast32_t* rotation, int_fast32_t tilt);
-static void simulate_clamped_rotation(uint_fast32_t* rotation,
-                                      int_fast32_t tilt);
-static uint_fast32_t absolute(int_fast32_t x);
-static int_fast32_t saturate(int_fast64_t x);
+static void simulate_forces(linted_updater_int_fast* position,
+                            linted_updater_int_fast* velocity,
+                            linted_updater_int_fast thrust);
+static void simulate_rotation(linted_updater_uint_fast* rotation,
+                              linted_updater_int_fast tilt);
+static void simulate_clamped_rotation(linted_updater_uint_fast* rotation,
+                                      linted_updater_int_fast tilt);
+static linted_updater_uint_fast absolute(linted_updater_int_fast x);
+static linted_updater_int_fast saturate(int_fast64_t x);
 static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y);
 static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
-static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y);
-static int_fast32_t sign(int_fast32_t x);
+static linted_updater_int_fast min_int32(linted_updater_int_fast x,
+                                         linted_updater_int_fast y);
+static linted_updater_int_fast sign(linted_updater_int_fast x);
 
 static linted_error simulator_help(linted_ko ko, char const* program_name,
                                    struct linted_str package_name,
@@ -284,7 +287,7 @@ int main(int argc, char* argv[])
             .x_rotation = UINT32_MAX / 2,
             .y_rotation = 0 };
 
-    int timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+    linted_ko timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
     if (-1 == timer) {
         errnum = errno;
         goto exit;
@@ -397,15 +400,15 @@ static linted_error on_timer_readable(linted_ko timer,
     for (size_t ii = 0; ii < ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
-                        8 * (int_fast32_t)action_state->x);
+                        8 * (linted_updater_int_fast)action_state->x);
 
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        8 * (int_fast32_t)action_state->z);
+                        8 * (linted_updater_int_fast)action_state->z);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,
-                        -8 * (int_fast32_t)action_state->jumping);
+                        -8 * (linted_updater_int_fast)action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
         simulate_clamped_rotation(&simulator_state->y_rotation,
@@ -496,40 +499,43 @@ static linted_error on_controller_readable(linted_controller controller,
     return 0;
 }
 
-static void simulate_forces(int_fast32_t* position, int_fast32_t* velocity,
-                            int_fast32_t thrust)
+static void simulate_forces(linted_updater_int_fast* position,
+                            linted_updater_int_fast* velocity,
+                            linted_updater_int_fast thrust)
 {
-    int_fast32_t old_position = *position;
-    int_fast32_t old_velocity = *velocity;
+    linted_updater_int_fast old_position = *position;
+    linted_updater_int_fast old_velocity = *velocity;
 
-    int_fast32_t guess_velocity
+    linted_updater_int_fast guess_velocity
         = saturate(((int_fast64_t)thrust) + old_velocity);
 
-    int_fast32_t friction = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
-                            * -sign(guess_velocity);
+    linted_updater_int_fast friction
+        = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
+          * -sign(guess_velocity);
 
-    int_fast32_t new_velocity
+    linted_updater_int_fast new_velocity
         = saturate(((int_fast64_t)guess_velocity) + friction);
-    int_fast32_t new_position
+    linted_updater_int_fast new_position
         = saturate(((int_fast64_t)old_position) + new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
 }
 
-static void simulate_rotation(uint_fast32_t* rotation, int_fast32_t tilt)
+static void simulate_rotation(linted_updater_uint_fast* rotation,
+                              linted_updater_int_fast tilt)
 {
-    uint_fast32_t step = linted_uint32_to_int32((absolute(tilt) > DEAD_ZONE)
-                                                * sign(tilt) * ROTATION_SPEED);
+    linted_updater_uint_fast step = linted_uint32_to_int32(
+        (absolute(tilt) > DEAD_ZONE) * sign(tilt) * ROTATION_SPEED);
     *rotation = (*rotation + step) % UINT32_MAX;
 }
 
-static void simulate_clamped_rotation(uint_fast32_t* rotation,
-                                      int_fast32_t tilt)
+static void simulate_clamped_rotation(linted_updater_uint_fast* rotation,
+                                      linted_updater_int_fast tilt)
 {
-    int_fast32_t tilt_sign = sign(tilt);
+    linted_updater_int_fast tilt_sign = sign(tilt);
     if (absolute(tilt) > DEAD_ZONE) {
-        int_fast32_t step = tilt_sign * ROTATION_SPEED;
+        linted_updater_int_fast step = tilt_sign * ROTATION_SPEED;
 
         int_fast64_t new_rotation = ((int_fast64_t) * rotation) + step;
 
@@ -551,33 +557,35 @@ static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y)
     return x > y ? x : y;
 }
 
-static int_fast32_t min_int32(int_fast32_t x, int_fast32_t y)
+static linted_updater_int_fast min_int32(linted_updater_int_fast x,
+                                         linted_updater_int_fast y)
 {
     return x < y ? x : y;
 }
 
-static int_fast32_t sign(int_fast32_t x)
+static linted_updater_int_fast sign(linted_updater_int_fast x)
 {
     return x > 0 ? 1 : 0 == x ? 0 : -1;
 }
 
-static int_fast32_t saturate(int_fast64_t x)
+static linted_updater_int_fast saturate(int_fast64_t x)
 {
-    if (x > INT32_MAX) {
-        return INT32_MAX;
+    if (x > LINTED_UPDATER_INT_MAX) {
+        return LINTED_UPDATER_INT_MAX;
     }
 
-    if (x < INT32_MIN) {
-        return INT32_MIN;
+    if (x < LINTED_UPDATER_INT_MIN) {
+        return LINTED_UPDATER_INT_MIN;
     }
 
     return x;
 }
 
-static uint_fast32_t absolute(int_fast32_t x)
+static linted_updater_uint_fast absolute(linted_updater_int_fast x)
 {
     /* The implicit cast to unsigned is okay, obviously */
-    return INT32_MIN == x ? -(int_fast64_t)INT32_MIN : imaxabs(x);
+    return LINTED_UPDATER_INT_MIN == x ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
+                                       : imaxabs(x);
 }
 
 static linted_error simulator_help(int fildes, char const* program_name,

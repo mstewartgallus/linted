@@ -960,7 +960,8 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
 
     for (;;) {
         linted_manager new_socket;
-        if ((errnum = linted_manager_accept(new_connections, &new_socket)) != 0) {
+        if ((errnum = linted_manager_accept(new_connections, &new_socket))
+            != 0) {
             if (EAGAIN == errnum) {
                 break;
             }
@@ -996,7 +997,8 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
         }
 
         {
-            linted_error write_errnum = on_connection_writeable(new_socket, &reply);
+            linted_error write_errnum
+                = on_connection_writeable(new_socket, &reply);
             switch (write_errnum) {
             case 0:
                 break;
