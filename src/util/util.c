@@ -32,9 +32,6 @@
 
 extern char** environ;
 
-static char const no_memory_string[] = "\
-could not allocate memory for error string";
-
 static linted_error close_fds_except(int const* kept_fds, size_t size);
 
 linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
@@ -71,9 +68,9 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
 
         for (;;) {
             /*
-       * Use readdir because this function isn't thread safe
-       * anyways and readdir_r has a very broken interface.
-       */
+             * Use readdir because this function isn't thread safe
+             * anyways and readdir_r has a very broken interface.
+             */
             errno = 0;
             struct dirent* const result = readdir(fds_dir);
             {
@@ -100,9 +97,9 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
             int const fd = atoi(d_name);
 
             /*
-       * This is Linux specific code so we can rely on dirfd to
-       * not return ENOTSUP here.
-       */
+             * This is Linux specific code so we can rely on dirfd to
+             * not return ENOTSUP here.
+             */
 
             if (fd == dirfd(fds_dir)) {
                 continue;
