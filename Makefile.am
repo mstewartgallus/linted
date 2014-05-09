@@ -44,16 +44,12 @@ AM_CFLAGS=\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_WARNINGS)
 
-bin_SCRIPTS=
-
-bin_SCRIPTS+=scripts/test
 EXTRA_DIST+=scripts/test.in
 scripts/test: $(MAKEFILE) scripts/test.in
 	$(MKDIR_P) scripts
 	cat $(srcdir)/scripts/test.in > $@
 	chmod u+x $@
 
-bin_SCRIPTS+=scripts/cbmcwrapper
 EXTRA_DIST+=scripts/cbmcwrapper.in
 scripts/cbmcwrapper: $(MAKEFILE) scripts/cbmcwrapper.in
 	$(MKDIR_P) scripts

@@ -75,7 +75,7 @@ MOSTLYCLEANFILES+=%D%/gl_core.c
 	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
 	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
 
-MOSTLYCLEANFILES+=include/gui/gl_core.h
+MOSTLYCLEANFILES+=%D%/gl_core.h
 %D%/gl_core.h:
 	$(MKDIR_P) $(builddir)/%D%/
 	cd $(builddir)/%D% && \

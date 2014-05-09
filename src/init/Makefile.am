@@ -35,8 +35,8 @@ linted_LDADD=\
   src/updater/libupdater.la
 
 BUILT_SOURCES+=%D%/binaries.h
-
 EXTRA_DIST+=%D%/binaries.h.in
+MOSTLYCLEANFILES+=%D%/binaries.h
 %D%/binaries.h: $(MAKEFILE) %D%/binaries.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
