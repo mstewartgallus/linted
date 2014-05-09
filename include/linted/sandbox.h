@@ -16,6 +16,12 @@
 #ifndef LINTED_SANDBOX_H
 #define LINTED_SANDBOX_H
 
+/**
+ * @file
+ *
+ * Sandboxes processes.
+ */
+
 void linted_sandbox(void);
 
 #endif /* LINTED_SANDBOX_H */

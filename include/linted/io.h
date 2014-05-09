@@ -25,7 +25,7 @@
 /**
  * @file
  *
- * This module abstracts over I/O
+ * Abstracts over chunked input and output.
  */
 
 linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
@@ -39,7 +39,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
  * an error would be returned but some bytes would still have been
  * written.
  *
- * @param fd The file to be written to.
+ * @param ko The kernel object to be written to.
  *
  * @param bytes_wrote The amount written. Is set to no larger than
  *                    count bytes and at least zero bytes. If NULL
@@ -56,7 +56,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
  * @error EAGAIN The file descriptor has been marked nonblocking and
  *               one of the writes would block.
  *
- * @error EBADF fd is not a valid file descriptor or is not open for
+ * @error EBADF ko is not a valid file descriptor or is not open for
  *              writing.
  *
  * @error EWOULDBLOCK Means the same as EAGAIN but may be a different
@@ -64,7 +64,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
  *
  * @error EFAULT buf is not accessible.
  *
- * @error EINVAL fd is not writable or the file was opened with
+ * @error EINVAL ko is not writable or the file was opened with
  *               O_DIRECT and alignment restrictions weren't
  *               satisfied.
  *
@@ -72,9 +72,9 @@ linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
  *
  * @error ENOSPC No room for the data.
  *
- * @error EPIPE fd is a pipe or socket with a closed read end.
+ * @error EPIPE ko is a pipe or socket with a closed read end.
  *
- * @error EISDIR fd is a directory.
+ * @error EISDIR ko is a directory.
  */
 linted_error linted_io_write_all(linted_ko ko, size_t* bytes_wrote,
                                  void const* buf, size_t count);

@@ -18,6 +18,12 @@
 
 #include <stdint.h>
 
+/**
+ * @file
+ *
+ * Not null terminated strings.
+ */
+
 struct linted_str {
     char const * bytes;
     uint_least16_t size;

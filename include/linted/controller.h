@@ -23,6 +23,12 @@
 #include <stdint.h>
 
 /**
+ * @file
+ *
+ * Communicates user input to another process.
+ */
+
+/**
  * A handle to access the controller. Is safe to share between processes.
  */
 typedef mqd_t linted_controller;

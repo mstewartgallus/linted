@@ -21,6 +21,12 @@
 #include <mqueue.h>
 #include <stddef.h>
 
+/**
+ * @file
+ *
+ * Exposes a protocol for logging events.
+ */
+
 #define LINTED_LOGGER_LOG_MAX 1024
 
 /**

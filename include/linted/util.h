@@ -24,6 +24,14 @@
 #include <stdint.h>
 #include <unistd.h>
 
+/**
+ * @file
+ *
+ * Various utility macroes and functions.
+ *
+ * @todo Factor this out and clean this up.
+ */
+
 #define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type*)0)->member)
 
 #define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])

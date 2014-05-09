@@ -24,6 +24,12 @@
 #include <windows.h>
 #endif
 
+/**
+ * @file
+ *
+ * Abstracts over the system's basic error type.
+ */
+
 #if defined __unix__
 typedef int linted_error;
 #elif defined __WIN32

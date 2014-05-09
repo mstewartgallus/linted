@@ -21,7 +21,7 @@
 /**
  * @file
  *
- * This module abstracts over the concept of a kernel object.
+ * Abstracts over the concept of a kernel object.
  */
 
 #if defined _WIN32
@@ -53,14 +53,9 @@ linted_error linted_ko_strtofd(char const* ptr, linted_ko* ko);
 linted_error linted_ko_dummy(linted_ko* kop, int flags);
 
 /**
- * The linted_ko_close function closes a file descriptor. The state of
- * a file descriptor after close gives an EINTR error is unspecified
- * by POSIX so this function avoids the problem by simply blocking all
- * signals.
+ * The linted_ko_close function closes a kernel object.
  *
- * @warning This function blocks on close.
- *
- * @param fd The file to close.
+ * @param ko The kernel object to close.
  *
  * @returns Zero on success or an error code.
  *

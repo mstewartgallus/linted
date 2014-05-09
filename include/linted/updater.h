@@ -21,6 +21,13 @@
 #include <mqueue.h>
 #include <stdint.h>
 
+/**
+ * @file
+ *
+ * Exposes a protocol for updating a GUI on the progress of a
+ * simulator.
+ */
+
 #define LINTED_UPDATER_UINT_MAX UINT32_MAX
 
 #define LINTED_UPDATER_INT_MAX INT32_MAX

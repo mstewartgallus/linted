@@ -20,6 +20,7 @@
 
 /**
  * @file
+ *
  * Utility functions for POSIX message queues.
  */
 

@@ -22,6 +22,13 @@
 #include <signal.h>
 #include <sys/types.h>
 
+
+/**
+ * @file
+ *
+ * Wait for a process to finish.
+ */
+
 struct linted_waiter_data;
 
 struct linted_waiter_message

@@ -81,6 +81,12 @@ linted_error linted_ko_dummy(linted_ko* kop, int flags)
 
 linted_error linted_ko_close(linted_ko ko)
 {
+    /*
+     * The state of a file descriptor after close gives an EINTR error
+     * is unspecified by POSIX so this function avoids the problem by
+     * simply blocking all signals.
+     */
+
     sigset_t fullset;
     sigfillset(&fullset);
 

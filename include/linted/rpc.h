@@ -21,6 +21,12 @@
 #include <stdint.h>
 #include <string.h>
 
+/**
+ * @file
+ *
+ * Converts native numbers to lists of bytes.
+ */
+
 struct linted_rpc_int32 {
     char bytes[4];
 };

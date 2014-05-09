@@ -21,7 +21,8 @@
 /**
  * @file
  *
- * Primitive concurrently accessible database functionality.
+ * Safely store and read shared (concurrently accessed) persistent
+ * data.
  *
  * @todo Add garbage collection. Have better temporaries for the
  *       version file.

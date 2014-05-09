@@ -19,6 +19,12 @@
 #include <limits.h>
 #include <float.h>
 
+/**
+ * @file
+ *
+ * Utility module for checking for overflow of constants.
+ */
+
 #define LINTED_CHECK_UNSIGNED(T, X) (0u / ((X) <= ((T) -1)) + X)
 
 #define LINTED_CHECK_SIGNED_MAX_(T) (                   \

@@ -20,6 +20,12 @@
 
 #include <sys/types.h>
 
+/**
+ * @file
+ *
+ * Safely, spawn a new process.
+ */
+
 struct linted_spawn_file_actions;
 struct linted_spawn_attr;
 

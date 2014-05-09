@@ -22,6 +22,12 @@
 #include <signal.h>
 #include <sys/un.h>
 
+/**
+ * @file
+ *
+ * Monitor, probe and control an init process.
+ */
+
 #define LINTED_MANAGER_PATH_MAX                                                \
     (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 

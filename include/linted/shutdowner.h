@@ -20,6 +20,12 @@
 
 #include <mqueue.h>
 
+/**
+ * @file
+ *
+ * Exposes a protocol for shutting down a service.
+ */
+
 typedef mqd_t linted_shutdowner;
 
 linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
