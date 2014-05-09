@@ -319,16 +319,30 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
         exit_with_error(spawn_error, errno);
     }
 
+    /* Copy it in case it is overwritten */
+    int dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long) 0);
+    if (-1 == dirfd_copy) {
+        exit_with_error(spawn_error, errno);
+    }
+
     if (file_actions != NULL) {
         for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
             union file_action const* action = &file_actions->actions[ii];
             switch (action->type) {
-            case FILE_ACTION_ADDDUP2:
-                if (-1 == dup2(action->adddup2.oldfildes,
-                               action->adddup2.newfildes)) {
+            case FILE_ACTION_ADDDUP2: {
+                int newfildes = action->adddup2.newfildes;
+                if (dirfd_copy == newfildes) {
+                    dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long) 0);
+                    if (-1 == dirfd_copy) {
+                        exit_with_error(spawn_error, errno);
+                    }
+                }
+
+                if (-1 == dup2(action->adddup2.oldfildes, newfildes)) {
                     exit_with_error(spawn_error, errno);
                 }
                 break;
+            }
 
             default:
                 exit_with_error(spawn_error, EINVAL);
@@ -361,11 +375,20 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     }
 
     /*
-   * Duplicate the read fd so that it is closed after the write
-   * fd.
-   */
+     * Duplicate the read fd so that it is closed after the write
+     * fd.
+     */
     if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long)stop_fd_write)) {
         exit_with_error(spawn_error, errno);
+    }
+
+    if (path[0] != '/') {
+        char * new_path = malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
+        if (NULL == new_path) {
+            exit_with_error(spawn_error, errno);
+        }
+        sprintf(new_path, "/proc/self/fd/%i/%s", dirfd_copy, path);
+        path = new_path;
     }
 
     execve(path, argv, envp);
