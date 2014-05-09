@@ -250,7 +250,10 @@ It is insecure to run a game as root!\n"));
 
     linted_db my_db;
     {
-        /* TODO: Use the XDG base directory specification */
+        /**
+         * @todo Place the database according to the XDG base
+         *       directory specification.
+         */
         int xx;
         if ((errnum = linted_db_open(&xx, "linted-db", LINTED_DB_CREAT)) != 0) {
             errno = errnum;
@@ -638,7 +641,9 @@ static linted_error run_game(char const* process_name,
                 NEW_CONNECTIONS,
                 CONNECTION
             };
-            /* TODO: Allocate off the stack */
+            /**
+             * @todo Allocate big data such as pollfds off of the stack.
+             */
             struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS]
                 = {[GUI_WAITER]
                    = { .fd = -1 == gui_service->pid
@@ -687,7 +692,9 @@ static linted_error run_game(char const* process_name,
 
             if ((pollfds[LOGGER].revents & POLLIN) != 0) {
                 size_t log_size;
-                /* TODO: Allocate buffer off the stack */
+                /**
+                 * @todo Allocate the entry buffer off of the stack.
+                 */
                 char entry[LINTED_LOGGER_LOG_MAX];
                 if ((errnum = linted_logger_recv_log(logger_read, entry,
                                                      &log_size)) != 0) {

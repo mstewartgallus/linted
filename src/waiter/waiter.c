@@ -150,7 +150,9 @@ static void* waiter_routine(void* data)
         message.errnum = errnum;
 
         linted_io_write_all(waiter_data->fd, NULL, &message, sizeof message);
-        /* TODO: Handle the error */
+        /**
+         * @todo Handle possible errors here.
+         */
     }
 
     return NULL;

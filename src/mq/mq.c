@@ -38,7 +38,9 @@ linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr* attr, int rflags,
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
     /* Seed the generator with rand */
-    /* TODO: Replace rand which is terrible */
+    /**
+     * @todo Replace the use of the terrible rand function.
+     */
     /* Use unsigned so possibly overflowing later on is defined */
     unsigned long generator_state = rand();
 

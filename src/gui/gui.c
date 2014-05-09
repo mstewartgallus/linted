@@ -147,8 +147,9 @@ static linted_error get_mouse_position(xcb_connection_t* connection,
 
 static void flush_gl_errors(void);
 
-/* TODO: This usage of glGetError is incorrect. Multiple error flags
- * be set and returned by a single function.
+/**
+ * @todo get_gl_error's use of glGetError is incorrect. Multiple error
+ *       flags may be set and returned by a single function.
  */
 static linted_error get_gl_error(void);
 
@@ -752,7 +753,9 @@ disconnect:
         }
     }
 
-    /* TODO: Check errors */
+    /**
+     * @todo Check for errors that have accumulated on the connection.
+     */
 
     XCloseDisplay(display);
 
