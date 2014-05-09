@@ -157,10 +157,15 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
                           struct linted_spawn_attr const* attr,
                           char* const argv[], char* const envp[])
 {
+    bool is_relative_path = path[0] != '/';
+    if (is_relative_path && dirfd < 0) {
+        return EBADF;
+    }
+
     /*
-   * So adddup2 works use memory mapping instead of a pipe to
-   * communicate an error.
-   */
+     * So adddup2 works use memory mapping instead of a pipe to
+     * communicate an error.
+     */
     long page_size = sysconf(_SC_PAGESIZE);
 
     /* Align size to the page length  */
@@ -312,17 +317,14 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
         }
     }
 
-    /* This must be done before file actions to prevent the wrong
-   * directory being used.
-   */
-    if (-1 == fchdir(dirfd)) {
-        exit_with_error(spawn_error, errno);
-    }
-
     /* Copy it in case it is overwritten */
-    int dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long) 0);
-    if (-1 == dirfd_copy) {
-        exit_with_error(spawn_error, errno);
+
+    int dirfd_copy;
+
+    if (is_relative_path) {
+        if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long) 0))) {
+            exit_with_error(spawn_error, errno);
+        }
     }
 
     if (file_actions != NULL) {
@@ -331,10 +333,13 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
             switch (action->type) {
             case FILE_ACTION_ADDDUP2: {
                 int newfildes = action->adddup2.newfildes;
-                if (dirfd_copy == newfildes) {
-                    dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long) 0);
-                    if (-1 == dirfd_copy) {
-                        exit_with_error(spawn_error, errno);
+
+                if (is_relative_path) {
+                    if (dirfd_copy == newfildes) {
+                        dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long) 0);
+                        if (-1 == dirfd_copy) {
+                            exit_with_error(spawn_error, errno);
+                        }
                     }
                 }
 
@@ -382,7 +387,7 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
         exit_with_error(spawn_error, errno);
     }
 
-    if (path[0] != '/') {
+    if (is_relative_path) {
         char * new_path = malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
         if (NULL == new_path) {
             exit_with_error(spawn_error, errno);
