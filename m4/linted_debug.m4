@@ -18,7 +18,10 @@ AC_ARG_ENABLE(
 dnl
 AS_IF([test "x${enable_debug}" != "xno"], [
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[[-g]])
+LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
+        [-g]dnl
+        [-fno-omit-frame-pointer]dnl
+])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG])
 ])
