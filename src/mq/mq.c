@@ -26,7 +26,7 @@
 #include <sys/stat.h>
 
 #define TEMPLATE_PREFIX "/anonymous-mq-"
-#define TEMPLATE_NAME (TEMPLATE_PREFIX "XXXXXXXXXX")
+#define TEMPLATE_NAME TEMPLATE_PREFIX "XXXXXXXXXX"
 
 linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr* attr, int rflags,
                             int wflags)
