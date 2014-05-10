@@ -188,7 +188,15 @@ static linted_error failure(int fildes, char const* program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const* str);
 
+
+static uint_fast8_t real_main(size_t argc, char const * const argv[const]);
+
 int main(int argc, char* argv[])
+{
+    return real_main(argc, (char const * const *)argv);
+}
+
+static uint_fast8_t real_main(size_t argc, char const * const argv[const])
 {
     if (argc < 1) {
         linted_locale_missing_process_name(STDERR_FILENO,
@@ -207,8 +215,8 @@ int main(int argc, char* argv[])
     char const* controller_name = NULL;
     char const* shutdowner_name = NULL;
     char const* updater_name = NULL;
-    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
-        char* argument = argv[ii];
+    for (size_t ii = 1; ii < argc; ++ii) {
+        char const * argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
             need_help = true;

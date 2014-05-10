@@ -176,7 +176,14 @@ static linted_error linted_help(int fildes, char const* program_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-int main(int argc, char** argv)
+static uint_fast8_t real_main(size_t argc, char const * const argv[const]);
+
+int main(int argc, char* argv[])
+{
+    return real_main(argc, (char const * const *)argv);
+}
+
+static uint_fast8_t real_main(size_t argc, char const * const argv[const])
 {
     /* First we check if we are run with proper security */
     uid_t const uid = getuid();
@@ -204,7 +211,7 @@ It is insecure to run a game as root!\n"));
     char const* simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const* gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
 
-    for (unsigned ii = 1; ii < (unsigned)argc; ++ii) {
+    for (size_t ii = 1; ii < argc; ++ii) {
         char const* argument = argv[ii];
 
         if (0 == strcmp(argument, HELP_OPTION)) {

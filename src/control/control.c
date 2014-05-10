@@ -28,8 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int run_status(char const* program_name, int argc, char** argv);
-static int run_stop(char const* program_name, int argc, char** argv);
+static uint_fast8_t run_status(char const* program_name,
+                               size_t argc, char const * const argv[const]);
+static uint_fast8_t run_stop(char const* program_name,
+                             size_t argc, char const * const argv[const]);
 
 static linted_error ctl_help(int fildes, char const* program_name,
                              struct linted_str package_name,
@@ -46,7 +48,14 @@ static linted_error stop_help(int fildes, char const* program_name,
 static linted_error failure(int fildes, char const* program_name,
                             struct linted_str message, linted_error errnum);
 
-int main(int argc, char** argv)
+static uint_fast8_t real_main(size_t argc, char const * const argv[const]);
+
+int main(int argc, char* argv[])
+{
+    return real_main(argc, (char const * const *)argv);
+}
+
+static uint_fast8_t real_main(size_t argc, char const * const argv[const])
 {
     if (argc < 1) {
         linted_locale_missing_process_name(
@@ -61,8 +70,8 @@ int main(int argc, char** argv)
 
     char const* bad_option = NULL;
     char const* command = NULL;
-    unsigned last_index = 1;
-    for (; last_index < (unsigned)argc; ++last_index) {
+    size_t last_index = 1;
+    for (; last_index < argc; ++last_index) {
         char const* argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
@@ -123,14 +132,15 @@ int main(int argc, char** argv)
     }
 }
 
-static int run_status(char const* program_name, int argc, char** argv)
+static uint_fast8_t run_status(char const* program_name,
+                               size_t argc, char const * const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;
     char const* bad_option = NULL;
     char const* bad_argument = NULL;
-    unsigned last_index = 1;
-    for (; last_index < (unsigned)argc; ++last_index) {
+    size_t last_index = 1;
+    for (; last_index < argc; ++last_index) {
         char const* argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
@@ -260,14 +270,15 @@ static int run_status(char const* program_name, int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-static int run_stop(char const* program_name, int argc, char** argv)
+static uint_fast8_t run_stop(char const* program_name,
+                             size_t argc, char const * const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;
     char const* bad_option = NULL;
     char const* bad_argument = NULL;
-    unsigned last_index = 1;
-    for (; last_index < (unsigned)argc; ++last_index) {
+    size_t last_index = 1;
+    for (; last_index < argc; ++last_index) {
         char const* argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
