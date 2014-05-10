@@ -70,7 +70,7 @@ linted_error linted_ko_strtofd(char const* str, int* fd)
 
 linted_error linted_ko_dummy(linted_ko* kop, int flags)
 {
-    int fildes = open("/dev/null", O_RDONLY | flags);
+    int fildes = openat(-1, "/dev/null", O_RDONLY | flags);
     if (-1 == fildes) {
         return errno;
     }
