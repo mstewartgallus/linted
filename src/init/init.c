@@ -382,21 +382,19 @@ It is insecure to run a game as root!\n"));
         int shutdowner_dummy;
         int controller_dummy;
 
-        if ((game_status = linted_ko_dummy(&logger_dummy, O_CLOEXEC)) != 0) {
+        if ((game_status = linted_ko_dummy(&logger_dummy)) != 0) {
             goto done;
         }
 
-        if ((game_status = linted_ko_dummy(&updater_dummy, O_CLOEXEC)) != 0) {
+        if ((game_status = linted_ko_dummy(&updater_dummy)) != 0) {
             goto done;
         }
 
-        if ((game_status = linted_ko_dummy(&shutdowner_dummy, O_CLOEXEC))
-            != 0) {
+        if ((game_status = linted_ko_dummy(&shutdowner_dummy)) != 0) {
             goto done;
         }
 
-        if ((game_status = linted_ko_dummy(&controller_dummy, O_CLOEXEC))
-            != 0) {
+        if ((game_status = linted_ko_dummy(&controller_dummy)) != 0) {
             goto done;
         }
 

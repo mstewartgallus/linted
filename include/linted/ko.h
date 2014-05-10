@@ -50,7 +50,7 @@ struct linted_ko_vtable
 
 linted_error linted_ko_strtofd(char const* ptr, linted_ko* ko);
 
-linted_error linted_ko_dummy(linted_ko* kop, int flags);
+linted_error linted_ko_dummy(linted_ko* kop);
 
 linted_error linted_ko_open(linted_ko* kop,
                             linted_ko dirko, char const * pathname,

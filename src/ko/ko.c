@@ -68,9 +68,9 @@ linted_error linted_ko_strtofd(char const* str, int* fd)
     return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko* kop, int flags)
+linted_error linted_ko_dummy(linted_ko* kop)
 {
-    int fildes = openat(-1, "/dev/null", O_RDONLY | flags);
+    int fildes = openat(-1, "/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == fildes) {
         return errno;
     }
