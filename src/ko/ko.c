@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -81,9 +82,32 @@ linted_error linted_ko_dummy(linted_ko* kop)
 
 linted_error linted_ko_open(linted_ko* kop,
                             linted_ko dirko, char const * pathname,
-                            int flags)
+                            linted_ko_flags flags)
 {
-    int fildes = openat(dirko, pathname, flags);
+    if ((flags
+         & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) != 0u) {
+        return EINVAL;
+    }
+
+    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0u;
+    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
+    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
+
+    if (ko_rdonly && ko_wronly) {
+        return EINVAL;
+    }
+
+    if (ko_rdwr && ko_rdonly) {
+        return EINVAL;
+    }
+
+    if (ko_rdwr && ko_wronly) {
+        return EINVAL;
+    }
+
+    int oflags = O_CLOEXEC;
+
+    int fildes = openat(dirko, pathname, oflags);
     if (-1 == fildes) {
         return errno;
     }
