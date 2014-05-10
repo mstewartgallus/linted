@@ -17,6 +17,7 @@
 #define LINTED_DB_H
 
 #include "linted/error.h"
+#include "linted/ko.h"
 
 /**
  * @file
@@ -39,7 +40,8 @@
 
 typedef int linted_db;
 
-linted_error linted_db_open(linted_db* dbp, char const* pathname, int flags);
+linted_error linted_db_open(linted_db* dbp,
+                            linted_ko cwd, char const* pathname, int flags);
 linted_error linted_db_close(linted_db* dbp);
 
 linted_error linted_db_temp_file(linted_db* dbp, int* fildesp);

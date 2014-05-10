@@ -41,10 +41,6 @@ linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
         return errnum;
     }
 
-    if (-1 == chdir("/")) {
-        return errno;
-    }
-
     /* Sanitize the environment */
     for (char** env = environ; *env != NULL; ++env) {
         memset(*env, '\0', strlen(*env));

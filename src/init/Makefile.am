@@ -19,6 +19,8 @@ bin_PROGRAMS+=linted
 linted_SOURCES=%D%/init.c
 linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 linted_LDADD=\
+  src/start/libstart.la\
+  \
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\

@@ -1,0 +1,67 @@
+/*
+ * Copyright 2013, 2014 Steven Stewart-Gallus
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "config.h"
+
+#include "linted/start.h"
+
+#include "linted/error.h"
+#include "linted/io.h"
+#include "linted/locale.h"
+#include "linted/ko.h"
+
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char* argv[])
+{
+    /* First we check if we are run with proper security */
+    uid_t const uid = getuid();
+    uid_t const euid = geteuid();
+    if (0 == euid || 0 == uid) {
+        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+Bad administrator!\n\
+It is insecure to run a game as root!\n"));
+        return EXIT_FAILURE;
+    }
+
+    if (argc < 1) {
+        linted_locale_missing_process_name(STDERR_FILENO,
+                                           LINTED_STR(PACKAGE_TARNAME));
+        return EXIT_FAILURE;
+    }
+
+    char const* const program_name = argv[0];
+
+    int cwd = open("./", O_DIRECTORY | O_CLOEXEC);
+    if (-1 == cwd) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not open the current working directory: %s\n",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == chdir("/")) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not change to the root directory: %s\n",
+                               program_name,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    return linted_start(cwd, program_name, argc, (char const * const *)argv);
+}

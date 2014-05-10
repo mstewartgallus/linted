@@ -49,7 +49,8 @@ static linted_error prepend(char** result, char const* base, char const* end);
 static linted_error fname_alloc(int fd, char** buf);
 static linted_error fname(int fd, char* buf, size_t* sizep);
 
-linted_error linted_db_open(linted_db* dbp, char const* pathname, int flags)
+linted_error linted_db_open(linted_db* dbp,
+                            linted_ko cwd, char const* pathname, int flags)
 {
     linted_error errnum;
 
@@ -64,7 +65,7 @@ linted_error linted_db_open(linted_db* dbp, char const* pathname, int flags)
     bool db_creat = (flags & LINTED_DB_CREAT) != 0;
 
     if (db_creat) {
-        if (-1 == mkdir(pathname, S_IRWXU)) {
+        if (-1 == mkdirat(cwd, pathname, S_IRWXU)) {
             errnum = errno;
             if (errnum != EEXIST) {
                 return errnum;
@@ -74,7 +75,7 @@ linted_error linted_db_open(linted_db* dbp, char const* pathname, int flags)
 
     int o_flags = O_DIRECTORY | O_CLOEXEC;
 
-    linted_db the_db = open(pathname, o_flags);
+    linted_db the_db = openat(cwd, pathname, o_flags);
     if (-1 == the_db) {
         return errno;
     }

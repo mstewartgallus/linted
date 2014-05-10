@@ -22,6 +22,7 @@
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/shutdowner.h"
+#include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
 
@@ -108,22 +109,11 @@ static linted_error simulator_help(linted_ko ko, char const* program_name,
 static linted_error missing_option(linted_ko ko, char const* program_name,
                                    struct linted_str help_option);
 
-static uint_fast8_t real_main(size_t argc, char const * const argv[const]);
-
-int main(int argc, char* argv[])
+uint_fast8_t linted_start(int cwd,
+                          char const* const program_name,
+                          size_t argc, char const * const argv[const])
 {
-    return real_main(argc, (char const * const *)argv);
-}
-
-static uint_fast8_t real_main(size_t argc, char const * const argv[const])
-{
-    if (argc < 1) {
-        linted_locale_missing_process_name(
-            STDERR_FILENO, LINTED_STR(PACKAGE_TARNAME "-simulator"));
-        return EXIT_FAILURE;
-    }
-
-    char const* const program_name = argv[0];
+    linted_ko_close(cwd);
 
     bool need_help = false;
     bool need_version = false;

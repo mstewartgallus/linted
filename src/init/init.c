@@ -27,6 +27,7 @@
 #include "linted/manager.h"
 #include "linted/mq.h"
 #include "linted/shutdowner.h"
+#include "linted/start.h"
 #include "linted/spawn.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -176,33 +177,10 @@ static linted_error linted_help(int fildes, char const* program_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-static uint_fast8_t real_main(size_t argc, char const * const argv[const]);
-
-int main(int argc, char* argv[])
+uint_fast8_t linted_start(int cwd,
+                          char const* const program_name,
+                          size_t argc, char const * const argv[const])
 {
-    return real_main(argc, (char const * const *)argv);
-}
-
-static uint_fast8_t real_main(size_t argc, char const * const argv[const])
-{
-    /* First we check if we are run with proper security */
-    uid_t const uid = getuid();
-    uid_t const euid = geteuid();
-    if (0 == euid || 0 == uid) {
-        linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
-Bad administrator!\n\
-It is insecure to run a game as root!\n"));
-        return EXIT_FAILURE;
-    }
-
-    if (argc < 1) {
-        linted_locale_missing_process_name(STDERR_FILENO,
-                                           LINTED_STR(PACKAGE_TARNAME));
-        return EXIT_FAILURE;
-    }
-
-    char const* const program_name = argv[0];
-
     bool need_help = false;
     bool need_version = false;
 
@@ -262,7 +240,9 @@ It is insecure to run a game as root!\n"));
          *       directory specification.
          */
         int xx;
-        if ((errnum = linted_db_open(&xx, "linted-db", LINTED_DB_CREAT)) != 0) {
+        if ((errnum = linted_db_open(&xx,
+                                     cwd, "linted-db",
+                                     LINTED_DB_CREAT)) != 0) {
             errno = errnum;
             perror("linted_db_open");
             return EXIT_FAILURE;
@@ -335,15 +315,6 @@ It is insecure to run a game as root!\n"));
     memcpy(display + strlen("DISPLAY="), original_display,
            display_value_length);
     display[display_string_length - 1] = 0;
-
-    int cwd = open("./", O_CLOEXEC | O_DIRECTORY);
-    if (-1 == cwd) {
-        linted_io_write_format(
-            STDERR_FILENO, NULL,
-            "%s: can't open the current working directory: %s\n", program_name,
-            linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
 
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, cwd };
