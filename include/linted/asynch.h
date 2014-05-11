@@ -31,10 +31,7 @@
  * queue.
  *
  * @todo Dynamically resize the worker pool based upon if values are
- * successfully transferred or not.
- *
- * @todo Create and use a concurrent linked queue for the list of
- * workers.
+ * successfully transferred or not (this will need a set and a lock).
  */
 
 struct linted_array_queue;
