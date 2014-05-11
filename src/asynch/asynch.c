@@ -2,7 +2,7 @@
 
 #include "linted/asynch.h"
 
-#include "linted/queue.h"
+#include "linted/array_queue.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -20,8 +20,8 @@
 
 struct linted_asynch_worker_pool
 {
-    struct linted_queue* command_queue;
-    struct linted_queue* event_queue;
+    struct linted_array_queue* command_queue;
+    struct linted_array_queue* event_queue;
     size_t worker_count;
     pthread_t workers[];
 };
@@ -33,14 +33,14 @@ int linted_asynch_pool_create(struct linted_asynch_pool* pool)
     int errnum;
     size_t created_threads = 0;
 
-    struct linted_queue* command_queue;
-    if ((errnum = linted_queue_create(&command_queue,
+    struct linted_array_queue* command_queue;
+    if ((errnum = linted_array_queue_create(&command_queue,
                                       sizeof(union linted_asynch_task))) != 0) {
         return errnum;
     }
 
-    struct linted_queue* event_queue;
-    if ((errnum = linted_queue_create(
+    struct linted_array_queue* event_queue;
+    if ((errnum = linted_array_queue_create(
              &event_queue, sizeof(union linted_asynch_event))) != 0) {
         goto destroy_command_queue;
     }
@@ -77,10 +77,10 @@ destroy_threads:
     }
 
 destroy_event_queue:
-    linted_queue_destroy(event_queue);
+    linted_array_queue_destroy(event_queue);
 
 destroy_command_queue:
-    linted_queue_destroy(command_queue);
+    linted_array_queue_destroy(command_queue);
 
     return errnum;
 }
@@ -101,8 +101,8 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
 
     free(pool->worker_pool);
 
-    linted_queue_destroy(pool->command_queue);
-    linted_queue_destroy(pool->event_queue);
+    linted_array_queue_destroy(pool->command_queue);
+    linted_array_queue_destroy(pool->event_queue);
 
     return errnum;
 }
@@ -115,7 +115,7 @@ linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
     // Unfortunately, I am not smart enough to create a dynamically
     // sized thread pool.
     do {
-        errnum = linted_queue_send(pool->command_queue, task);
+        errnum = linted_array_queue_send(pool->command_queue, task);
     } while (EINTR == errnum);
     return errnum;
 }
@@ -131,7 +131,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     }
 
     /* Just receive one at a time right now */
-    if ((errnum = linted_queue_recv(pool->event_queue, &events[0])) != 0) {
+    if ((errnum = linted_array_queue_recv(pool->event_queue, &events[0])) != 0) {
         return errnum;
     }
 
@@ -147,7 +147,7 @@ static void* worker_routine(void* arg)
         union linted_asynch_task task;
         linted_error recv_errnum;
         do {
-            recv_errnum = linted_queue_recv(worker_pool->command_queue, &task);
+            recv_errnum = linted_array_queue_recv(worker_pool->command_queue, &task);
         } while (EINTR == recv_errnum);
 
         union linted_asynch_event event;
@@ -271,7 +271,7 @@ static void* worker_routine(void* arg)
 
         linted_error send_errnum;
         do {
-            send_errnum = linted_queue_send(worker_pool->event_queue, &event);
+            send_errnum = linted_array_queue_send(worker_pool->event_queue, &event);
         } while (EINTR == send_errnum);
     }
 }

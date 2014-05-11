@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_QUEUE_H
-#define LINTED_QUEUE_H
+#ifndef LINTED_ARRAY_QUEUE_H
+#define LINTED_ARRAY_QUEUE_H
 
 #include "linted/error.h"
 
@@ -23,18 +23,22 @@
 /**
  * @file
  *
- * Safely mediates between different threads.
+ * Mediates chunked communication between threads.
+ *
+ * @todo Allow users to set the size of the queue.
+ *
+ * @todo Allow users to receive multiple values at once.
  */
 
-struct linted_queue;
+struct linted_array_queue;
 
-linted_error linted_queue_create(struct linted_queue** queuep, size_t msgsize);
-void linted_queue_destroy(struct linted_queue* queue);
+linted_error linted_array_queue_create(struct linted_array_queue** queuep, size_t msgsize);
+void linted_array_queue_destroy(struct linted_array_queue* queue);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_queue_send(struct linted_queue* queue, void const* message);
+linted_error linted_array_queue_send(struct linted_array_queue* queue, void const* message);
 
 /**
  * deferred cancellation safe
@@ -42,8 +46,8 @@ linted_error linted_queue_send(struct linted_queue* queue, void const* message);
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is full.
  */
-linted_error linted_queue_try_send(struct linted_queue* queue,
-                                   void const* message);
+linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
+                                         void const* message);
 
 /**
  * deferred cancellation safe
@@ -51,11 +55,11 @@ linted_error linted_queue_try_send(struct linted_queue* queue,
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is empty.
  */
-linted_error linted_queue_try_recv(struct linted_queue* queue, void* message);
+linted_error linted_array_queue_try_recv(struct linted_array_queue* queue, void* message);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_queue_recv(struct linted_queue* queue, void* message);
+linted_error linted_array_queue_recv(struct linted_array_queue* queue, void* message);
 
-#endif /* LINTED_QUEUE_H */
+#endif /* LINTED_ARRAY_QUEUE_H */

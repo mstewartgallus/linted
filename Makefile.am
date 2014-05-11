@@ -136,6 +136,7 @@ include src/init/Makefile.am
 include src/control/Makefile.am
 include src/simulator/Makefile.am
 
+include src/array_queue/Makefile.am
 include src/asynch/Makefile.am
 include src/db/Makefile.am
 include src/error/Makefile.am
@@ -143,7 +144,6 @@ include src/io/Makefile.am
 include src/ko/Makefile.am
 include src/locale/Makefile.am
 include src/mq/Makefile.am
-include src/queue/Makefile.am
 include src/sandbox/Makefile.am
 include src/start/Makefile.am
 include src/spawn/Makefile.am

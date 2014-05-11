@@ -26,16 +26,25 @@
  * @file
  *
  * Schedule tasks on kernel objects to be completed asynchronously.
+ *
+ * @todo Create and use a linked transfer queue for the command
+ * queue.
+ *
+ * @todo Dynamically resize the worker pool based upon if values are
+ * successfully transferred or not.
+ *
+ * @todo Create and use a concurrent linked queue for the list of
+ * workers.
  */
 
-struct linted_queue;
+struct linted_array_queue;
 struct linted_asynch_worker_pool;
 
 struct linted_asynch_pool
 {
     struct linted_asynch_worker_pool* worker_pool;
-    struct linted_queue* command_queue;
-    struct linted_queue* event_queue;
+    struct linted_array_queue* command_queue;
+    struct linted_array_queue* event_queue;
 };
 
 enum {
