@@ -15,7 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libio.la
-%C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
-%C%_libio_la_LIBADD=\
-  src/asynch/libasynch.la
+noinst_LTLIBRARIES+=%D%/libqueue.la
+%C%_libqueue_la_SOURCES=%D%/queue.c include/linted/queue.h

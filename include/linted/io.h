@@ -16,6 +16,7 @@
 #ifndef LINTED_IO_H
 #define LINTED_IO_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/str.h"
@@ -27,6 +28,21 @@
  *
  * Abstracts over chunked input and output.
  */
+
+linted_error linted_io_read(struct linted_asynch_pool * pool,
+                            int task_id,
+                            linted_ko ko,
+                            char * buf, size_t size);
+
+linted_error linted_io_mq_receive(struct linted_asynch_pool * pool,
+                                  int task_id,
+                                  linted_ko ko,
+                                  char * buf, size_t size);
+
+linted_error linted_io_mq_send(struct linted_asynch_pool * pool,
+                               int task_id,
+                               linted_ko ko,
+                               char * buf, size_t size);
 
 linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
                                 size_t count);

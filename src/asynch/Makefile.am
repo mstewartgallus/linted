@@ -14,8 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+noinst_LTLIBRARIES+=%D%/libasynch.la
 
-noinst_LTLIBRARIES+=%D%/libio.la
-%C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
-%C%_libio_la_LIBADD=\
-  src/asynch/libasynch.la
+%C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
+%C%_libasynch_la_LIBADD=\
+  src/queue/libqueue.la\
+  -lrt
