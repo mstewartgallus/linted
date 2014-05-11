@@ -33,6 +33,20 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+linted_error linted_io_poll(struct linted_asynch_pool* pool, int task_id,
+                            struct pollfd * fds, size_t size)
+{
+    union linted_asynch_task task;
+    memset(&task, 0, sizeof task);
+
+    task.poll.type = LINTED_ASYNCH_TASK_POLL;
+    task.poll.task_id = task_id;
+    task.poll.fds = fds;
+    task.poll.size = size;
+
+    return linted_asynch_pool_submit(pool, &task);
+}
+
 linted_error linted_io_read(struct linted_asynch_pool* pool, int task_id,
                             linted_ko ko, char* buf, size_t size)
 {

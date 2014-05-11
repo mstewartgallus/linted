@@ -20,6 +20,7 @@
 #include "linted/ko.h"
 
 #include <stddef.h>
+#include <poll.h>
 #include <pthread.h>
 
 /**
@@ -45,11 +46,19 @@ struct linted_asynch_pool
 };
 
 enum {
+    LINTED_ASYNCH_EVENT_POLL,
     LINTED_ASYNCH_EVENT_READ,
     LINTED_ASYNCH_EVENT_WRITE
 };
 
 struct linted_asynch_event_typical
+{
+    unsigned type;
+    unsigned task_id;
+    int errnum;
+};
+
+struct linted_asynch_event_poll
 {
     unsigned type;
     unsigned task_id;
@@ -75,11 +84,13 @@ struct linted_asynch_event_write
 union linted_asynch_event
 {
     struct linted_asynch_event_typical typical;
+    struct linted_asynch_event_poll poll;
     struct linted_asynch_event_read read;
     struct linted_asynch_event_write write;
 };
 
 enum {
+    LINTED_ASYNCH_TASK_POLL,
     LINTED_ASYNCH_TASK_READ,
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
     LINTED_ASYNCH_TASK_MQ_SEND
@@ -89,6 +100,14 @@ struct linted_asynch_task_typical
 {
     unsigned type;
     unsigned task_id;
+};
+
+struct linted_asynch_task_poll
+{
+    unsigned type;
+    int task_id;
+    struct pollfd * fds;
+    size_t size;
 };
 
 struct linted_asynch_task_read
@@ -121,6 +140,7 @@ struct linted_asynch_task_mq_send
 union linted_asynch_task
 {
     struct linted_asynch_task_typical typical;
+    struct linted_asynch_task_poll poll;
     struct linted_asynch_task_read read;
     struct linted_asynch_task_mq_receive mq_receive;
     struct linted_asynch_task_mq_send mq_send;

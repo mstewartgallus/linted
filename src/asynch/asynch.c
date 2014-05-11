@@ -156,6 +156,20 @@ static void* worker_routine(void* arg)
         memset(&event, 0, sizeof event);
 
         switch (task.typical.type) {
+        case LINTED_ASYNCH_TASK_POLL: {
+            struct linted_asynch_task_poll* task_poll = &task.poll;
+            linted_error errnum;
+            do {
+                int poll_status = poll(task_poll->fds, task_poll->size, -1);
+                errnum = -1 == poll_status ? errno : 0;
+            } while (EINTR == errnum);
+
+            event.poll.type = LINTED_ASYNCH_EVENT_POLL;
+            event.poll.task_id = task_poll->task_id;
+            event.poll.errnum = errnum;
+            break;
+        }
+
         case LINTED_ASYNCH_TASK_READ: {
             struct linted_asynch_task_read* task_read = &task.read;
             size_t bytes_read = 0;
