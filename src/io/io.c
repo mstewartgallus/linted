@@ -33,10 +33,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-linted_error linted_io_read(struct linted_asynch_pool * pool,
-                            int task_id,
-                            linted_ko ko,
-                            char * buf, size_t size)
+linted_error linted_io_read(struct linted_asynch_pool* pool, int task_id,
+                            linted_ko ko, char* buf, size_t size)
 {
     union linted_asynch_task task;
     memset(&task, 0, sizeof task);
@@ -50,10 +48,8 @@ linted_error linted_io_read(struct linted_asynch_pool * pool,
     return linted_asynch_pool_submit(pool, &task);
 }
 
-linted_error linted_io_mq_receive(struct linted_asynch_pool * pool,
-                                  int task_id,
-                                  linted_ko ko,
-                                  char * buf, size_t size)
+linted_error linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
+                                  linted_ko ko, char* buf, size_t size)
 {
     union linted_asynch_task task;
     memset(&task, 0, sizeof task);
@@ -67,10 +63,8 @@ linted_error linted_io_mq_receive(struct linted_asynch_pool * pool,
     return linted_asynch_pool_submit(pool, &task);
 }
 
-linted_error linted_io_mq_send(struct linted_asynch_pool * pool,
-                               int task_id,
-                               linted_ko ko,
-                               char * buf, size_t size)
+linted_error linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
+                               linted_ko ko, char* buf, size_t size)
 {
     union linted_asynch_task task;
     memset(&task, 0, sizeof task);

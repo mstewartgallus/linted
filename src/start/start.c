@@ -50,18 +50,16 @@ It is insecure to run a game as root!\n"));
     if (-1 == cwd) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
-                               program_name,
-                               linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
     if (-1 == chdir("/")) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not change to the root directory: %s\n",
-                               program_name,
-                               linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
-    return linted_start(cwd, program_name, argc, (char const * const *)argv);
+    return linted_start(cwd, program_name, argc, (char const * const*)argv);
 }

@@ -28,13 +28,13 @@
 
 struct linted_queue;
 
-linted_error linted_queue_create(struct linted_queue **queuep, size_t msgsize);
-void linted_queue_destroy(struct linted_queue *queue);
+linted_error linted_queue_create(struct linted_queue** queuep, size_t msgsize);
+void linted_queue_destroy(struct linted_queue* queue);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_queue_send(struct linted_queue *queue, void const *message);
+linted_error linted_queue_send(struct linted_queue* queue, void const* message);
 
 /**
  * deferred cancellation safe
@@ -42,8 +42,8 @@ linted_error linted_queue_send(struct linted_queue *queue, void const *message);
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is full.
  */
-linted_error linted_queue_try_send(struct linted_queue *queue,
-                                   void const *message);
+linted_error linted_queue_try_send(struct linted_queue* queue,
+                                   void const* message);
 
 /**
  * deferred cancellation safe
@@ -51,11 +51,11 @@ linted_error linted_queue_try_send(struct linted_queue *queue,
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is empty.
  */
-linted_error linted_queue_try_recv(struct linted_queue *queue, void *message);
+linted_error linted_queue_try_recv(struct linted_queue* queue, void* message);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_queue_recv(struct linted_queue *queue, void *message);
+linted_error linted_queue_recv(struct linted_queue* queue, void* message);
 
 #endif /* LINTED_QUEUE_H */

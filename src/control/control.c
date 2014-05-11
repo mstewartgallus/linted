@@ -29,10 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint_fast8_t run_status(char const* program_name,
-                               size_t argc, char const * const argv[const]);
-static uint_fast8_t run_stop(char const* program_name,
-                             size_t argc, char const * const argv[const]);
+static uint_fast8_t run_status(char const* program_name, size_t argc,
+                               char const* const argv[const]);
+static uint_fast8_t run_stop(char const* program_name, size_t argc,
+                             char const* const argv[const]);
 
 static linted_error ctl_help(int fildes, char const* program_name,
                              struct linted_str package_name,
@@ -49,9 +49,8 @@ static linted_error stop_help(int fildes, char const* program_name,
 static linted_error failure(int fildes, char const* program_name,
                             struct linted_str message, linted_error errnum);
 
-uint_fast8_t linted_start(int cwd,
-                          char const* const program_name,
-                          size_t argc, char const * const argv[const])
+uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
+                          char const* const argv[const])
 {
     linted_ko_close(cwd);
 
@@ -122,8 +121,8 @@ uint_fast8_t linted_start(int cwd,
     }
 }
 
-static uint_fast8_t run_status(char const* program_name,
-                               size_t argc, char const * const argv[const])
+static uint_fast8_t run_status(char const* program_name, size_t argc,
+                               char const* const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;
@@ -260,8 +259,8 @@ static uint_fast8_t run_status(char const* program_name,
     return EXIT_SUCCESS;
 }
 
-static uint_fast8_t run_stop(char const* program_name,
-                             size_t argc, char const * const argv[const])
+static uint_fast8_t run_stop(char const* program_name, size_t argc,
+                             char const* const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;

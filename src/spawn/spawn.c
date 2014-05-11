@@ -323,7 +323,7 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     int dirfd_copy;
 
     if (is_relative_path && !at_fdcwd) {
-        if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long) 0))) {
+        if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long)0))) {
             exit_with_error(spawn_error, errno);
         }
     }
@@ -337,7 +337,8 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
 
                 if (is_relative_path && !at_fdcwd) {
                     if (dirfd_copy == newfildes) {
-                        dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long) 0);
+                        dirfd_copy
+                            = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
                         if (-1 == dirfd_copy) {
                             exit_with_error(spawn_error, errno);
                         }
@@ -389,7 +390,8 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     }
 
     if (is_relative_path && !at_fdcwd) {
-        char * new_path = malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
+        char* new_path
+            = malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
         if (NULL == new_path) {
             exit_with_error(spawn_error, errno);
         }

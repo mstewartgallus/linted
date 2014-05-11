@@ -21,8 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-uint_fast8_t linted_start(linted_ko cwd,
-                          char const* const program_name,
-                          size_t argc, char const * const argv[const]);
+uint_fast8_t linted_start(linted_ko cwd, char const* const program_name,
+                          size_t argc, char const* const argv[const]);
 
 #endif /* LINTED_START_H */

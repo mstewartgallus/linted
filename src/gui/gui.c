@@ -189,9 +189,8 @@ static linted_error failure(int fildes, char const* program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const* str);
 
-uint_fast8_t linted_start(int cwd,
-                          char const* const program_name,
-                          size_t argc, char const * const argv[const])
+uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
+                          char const* const argv[const])
 {
     linted_ko_close(cwd);
 
@@ -205,7 +204,7 @@ uint_fast8_t linted_start(int cwd,
     char const* shutdowner_name = NULL;
     char const* updater_name = NULL;
     for (size_t ii = 1; ii < argc; ++ii) {
-        char const * argument = argv[ii];
+        char const* argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
             need_help = true;

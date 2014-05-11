@@ -109,9 +109,8 @@ static linted_error simulator_help(linted_ko ko, char const* program_name,
 static linted_error missing_option(linted_ko ko, char const* program_name,
                                    struct linted_str help_option);
 
-uint_fast8_t linted_start(int cwd,
-                          char const* const program_name,
-                          size_t argc, char const * const argv[const])
+uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
+                          char const* const argv[const])
 {
     linted_ko_close(cwd);
 

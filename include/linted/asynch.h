@@ -31,10 +31,11 @@
 struct linted_queue;
 struct linted_asynch_worker_pool;
 
-struct linted_asynch_pool {
-    struct linted_asynch_worker_pool * worker_pool;
-    struct linted_queue * command_queue;
-    struct linted_queue * event_queue;
+struct linted_asynch_pool
+{
+    struct linted_asynch_worker_pool* worker_pool;
+    struct linted_queue* command_queue;
+    struct linted_queue* event_queue;
 };
 
 enum {
@@ -42,27 +43,31 @@ enum {
     LINTED_ASYNCH_EVENT_WRITE
 };
 
-struct linted_asynch_event_typical {
+struct linted_asynch_event_typical
+{
     unsigned type;
     unsigned task_id;
     int errnum;
 };
 
-struct linted_asynch_event_read {
+struct linted_asynch_event_read
+{
     unsigned type;
     unsigned task_id;
     int errnum;
     size_t bytes_read;
 };
 
-struct linted_asynch_event_write {
+struct linted_asynch_event_write
+{
     unsigned type;
     unsigned task_id;
     int errnum;
     size_t bytes_wrote;
 };
 
-union linted_asynch_event {
+union linted_asynch_event
+{
     struct linted_asynch_event_typical typical;
     struct linted_asynch_event_read read;
     struct linted_asynch_event_write write;
@@ -74,51 +79,55 @@ enum {
     LINTED_ASYNCH_TASK_MQ_SEND
 };
 
-struct linted_asynch_task_typical {
+struct linted_asynch_task_typical
+{
     unsigned type;
     unsigned task_id;
 };
 
-struct linted_asynch_task_read {
+struct linted_asynch_task_read
+{
     unsigned type;
     int task_id;
     linted_ko ko;
-    char * buf;
+    char* buf;
     size_t size;
 };
 
-struct linted_asynch_task_mq_receive {
+struct linted_asynch_task_mq_receive
+{
     unsigned type;
     int task_id;
     linted_ko ko;
-    char * buf;
+    char* buf;
     size_t size;
 };
 
-struct linted_asynch_task_mq_send {
+struct linted_asynch_task_mq_send
+{
     unsigned type;
     int task_id;
     linted_ko ko;
-    char const * buf;
+    char const* buf;
     size_t size;
 };
 
-union linted_asynch_task {
+union linted_asynch_task
+{
     struct linted_asynch_task_typical typical;
     struct linted_asynch_task_read read;
     struct linted_asynch_task_mq_receive mq_receive;
     struct linted_asynch_task_mq_send mq_send;
 };
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool * pool);
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool * pool);
+linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool);
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
 
-linted_error linted_asynch_pool_submit(struct linted_asynch_pool * pool,
-                                       union linted_asynch_task * task);
+linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
+                                       union linted_asynch_task* task);
 
-linted_error linted_asynch_pool_wait(struct linted_asynch_pool * pool,
-                                     union linted_asynch_event *events,
-                                     size_t size,
-                                     size_t * event_count);
+linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
+                                     union linted_asynch_event* events,
+                                     size_t size, size_t* event_count);
 
 #endif /* LINTED_ASYNCH_H */

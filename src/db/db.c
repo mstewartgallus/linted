@@ -49,8 +49,8 @@ static linted_error prepend(char** result, char const* base, char const* end);
 static linted_error fname_alloc(int fd, char** buf);
 static linted_error fname(int fd, char* buf, size_t* sizep);
 
-linted_error linted_db_open(linted_db* dbp,
-                            linted_ko cwd, char const* pathname, int flags)
+linted_error linted_db_open(linted_db* dbp, linted_ko cwd, char const* pathname,
+                            int flags)
 {
     linted_error errnum;
 

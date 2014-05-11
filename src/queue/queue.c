@@ -25,7 +25,8 @@
 #include <stdbool.h>
 #include <string.h>
 
-struct linted_queue {
+struct linted_queue
+{
     pthread_mutex_t mutex;
     pthread_cond_t on_empty;
     pthread_cond_t on_full;
@@ -35,15 +36,15 @@ struct linted_queue {
 };
 
 static inline struct timespec get_the_end(void);
-static void unlock_routine(void * arg);
+static void unlock_routine(void* arg);
 
-linted_error linted_queue_create(struct linted_queue **queuep, size_t msgsize)
+linted_error linted_queue_create(struct linted_queue** queuep, size_t msgsize)
 {
     if (0 == msgsize) {
         return EINVAL;
     }
 
-    struct linted_queue * queue = malloc(sizeof *queue + msgsize);
+    struct linted_queue* queue = malloc(sizeof *queue + msgsize);
     if (NULL == queue) {
         return errno;
     }
@@ -60,7 +61,7 @@ linted_error linted_queue_create(struct linted_queue **queuep, size_t msgsize)
     return 0;
 }
 
-void linted_queue_destroy(struct linted_queue *queue)
+void linted_queue_destroy(struct linted_queue* queue)
 {
     pthread_mutex_destroy(&queue->mutex);
     pthread_cond_destroy(&queue->on_full);
@@ -69,8 +70,8 @@ void linted_queue_destroy(struct linted_queue *queue)
     free(queue);
 }
 
-linted_error linted_queue_try_send(struct linted_queue *queue,
-                                   void const *message)
+linted_error linted_queue_try_send(struct linted_queue* queue,
+                                   void const* message)
 {
     linted_error errnum = 0;
 
@@ -93,10 +94,9 @@ pop_cleanup_handle:
     pthread_cleanup_pop(0 == errnum);
 
     return errnum;
-
 }
 
-linted_error linted_queue_try_recv(struct linted_queue *queue, void *message)
+linted_error linted_queue_try_recv(struct linted_queue* queue, void* message)
 {
     linted_error errnum = 0;
 
@@ -123,7 +123,7 @@ pop_cleanup_handle:
     return errnum;
 }
 
-linted_error linted_queue_send(struct linted_queue *queue, void const *message)
+linted_error linted_queue_send(struct linted_queue* queue, void const* message)
 {
     linted_error errnum = 0;
 
@@ -149,7 +149,7 @@ pop_cleanup_handle:
     return errnum;
 }
 
-linted_error linted_queue_recv(struct linted_queue *queue, void *message)
+linted_error linted_queue_recv(struct linted_queue* queue, void* message)
 {
     linted_error errnum = 0;
 
@@ -191,8 +191,8 @@ static inline struct timespec get_the_end(void)
     return the_end;
 }
 
-static void unlock_routine(void * arg)
+static void unlock_routine(void* arg)
 {
-    pthread_mutex_t * mutex = arg;
+    pthread_mutex_t* mutex = arg;
     pthread_mutex_unlock(mutex);
 }

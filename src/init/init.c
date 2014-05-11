@@ -177,9 +177,8 @@ static linted_error linted_help(int fildes, char const* program_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-uint_fast8_t linted_start(int cwd,
-                          char const* const program_name,
-                          size_t argc, char const * const argv[const])
+uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
+                          char const* const argv[const])
 {
     bool need_help = false;
     bool need_version = false;
@@ -240,9 +239,8 @@ uint_fast8_t linted_start(int cwd,
          *       directory specification.
          */
         int xx;
-        if ((errnum = linted_db_open(&xx,
-                                     cwd, "linted-db",
-                                     LINTED_DB_CREAT)) != 0) {
+        if ((errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT))
+            != 0) {
             errno = errnum;
             perror("linted_db_open");
             return EXIT_FAILURE;
