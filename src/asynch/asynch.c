@@ -34,8 +34,8 @@ int linted_asynch_pool_create(struct linted_asynch_pool* pool)
     size_t created_threads = 0;
 
     struct linted_array_queue* command_queue;
-    if ((errnum = linted_array_queue_create(&command_queue,
-                                      sizeof(union linted_asynch_task))) != 0) {
+    if ((errnum = linted_array_queue_create(
+             &command_queue, sizeof(union linted_asynch_task))) != 0) {
         return errnum;
     }
 
@@ -131,7 +131,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     }
 
     /* Just receive one at a time right now */
-    if ((errnum = linted_array_queue_recv(pool->event_queue, &events[0])) != 0) {
+    if ((errnum = linted_array_queue_recv(pool->event_queue, &events[0]))
+        != 0) {
         return errnum;
     }
 
@@ -147,7 +148,8 @@ static void* worker_routine(void* arg)
         union linted_asynch_task task;
         linted_error recv_errnum;
         do {
-            recv_errnum = linted_array_queue_recv(worker_pool->command_queue, &task);
+            recv_errnum
+                = linted_array_queue_recv(worker_pool->command_queue, &task);
         } while (EINTR == recv_errnum);
 
         union linted_asynch_event event;
@@ -271,7 +273,8 @@ static void* worker_routine(void* arg)
 
         linted_error send_errnum;
         do {
-            send_errnum = linted_array_queue_send(worker_pool->event_queue, &event);
+            send_errnum
+                = linted_array_queue_send(worker_pool->event_queue, &event);
         } while (EINTR == send_errnum);
     }
 }

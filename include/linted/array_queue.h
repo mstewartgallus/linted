@@ -32,13 +32,15 @@
 
 struct linted_array_queue;
 
-linted_error linted_array_queue_create(struct linted_array_queue** queuep, size_t msgsize);
+linted_error linted_array_queue_create(struct linted_array_queue** queuep,
+                                       size_t msgsize);
 void linted_array_queue_destroy(struct linted_array_queue* queue);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_array_queue_send(struct linted_array_queue* queue, void const* message);
+linted_error linted_array_queue_send(struct linted_array_queue* queue,
+                                     void const* message);
 
 /**
  * deferred cancellation safe
@@ -55,11 +57,13 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is empty.
  */
-linted_error linted_array_queue_try_recv(struct linted_array_queue* queue, void* message);
+linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
+                                         void* message);
 
 /**
  * deferred cancellation safe
  */
-linted_error linted_array_queue_recv(struct linted_array_queue* queue, void* message);
+linted_error linted_array_queue_recv(struct linted_array_queue* queue,
+                                     void* message);
 
 #endif /* LINTED_ARRAY_QUEUE_H */
