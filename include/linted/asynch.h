@@ -35,14 +35,14 @@
  * successfully transferred or not (this will need a set and a lock).
  */
 
-struct linted_array_queue;
+struct linted_linked_queue;
 struct linted_asynch_worker_pool;
 
 struct linted_asynch_pool
 {
     struct linted_asynch_worker_pool* worker_pool;
     struct linted_array_queue* command_queue;
-    struct linted_array_queue* event_queue;
+    struct linted_linked_queue* event_queue;
 };
 
 enum {
@@ -96,14 +96,18 @@ enum {
     LINTED_ASYNCH_TASK_MQ_SEND
 };
 
+struct linted_linked_queue_node;
+
 struct linted_asynch_task_typical
 {
+    struct linted_linked_queue_node * reply_node;
     unsigned type;
     unsigned task_id;
 };
 
 struct linted_asynch_task_poll
 {
+    struct linted_linked_queue_node * reply_node;
     unsigned type;
     int task_id;
     struct pollfd * fds;
@@ -112,6 +116,7 @@ struct linted_asynch_task_poll
 
 struct linted_asynch_task_read
 {
+    struct linted_linked_queue_node * reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -121,6 +126,7 @@ struct linted_asynch_task_read
 
 struct linted_asynch_task_mq_receive
 {
+    struct linted_linked_queue_node * reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -130,6 +136,7 @@ struct linted_asynch_task_mq_receive
 
 struct linted_asynch_task_mq_send
 {
+    struct linted_linked_queue_node * reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;
