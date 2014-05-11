@@ -20,6 +20,7 @@ simulator_SOURCES=%D%/simulator.c
 simulator_LDADD=\
   src/start/libstart.la\
   \
+  src/asynch/libasynch.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
