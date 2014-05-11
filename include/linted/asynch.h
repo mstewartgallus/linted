@@ -27,12 +27,13 @@
  * @file
  *
  * Schedule tasks on kernel objects to be completed asynchronously.
+
+ * @todo Make the array queue a synchronous (not buffering at all
+ *       queue).
  *
- * @todo Create and use a linked transfer queue for the command
- * queue.
- *
- * @todo Dynamically resize the worker pool based upon if values are
- * successfully transferred or not (this will need a set and a lock).
+ * @todo Dynamically resize the worker pool based upon if commands are
+ *       successfully transferred or not (the worker pool will need a
+ *       set and a lock).
  */
 
 struct linted_linked_queue;
@@ -41,7 +42,18 @@ struct linted_asynch_worker_pool;
 struct linted_asynch_pool
 {
     struct linted_asynch_worker_pool* worker_pool;
+
+    /**
+     * A one writer to many readers queue.
+     */
     struct linted_array_queue* command_queue;
+
+    /**
+     * A one reader to many writers queue. Should be able to retrieve
+     * many values at once. As all writes are a direct result of
+     * submitted commands there is no need to worry about it growing
+     * too large.
+     */
     struct linted_linked_queue* event_queue;
 };
 
@@ -100,23 +112,23 @@ struct linted_linked_queue_node;
 
 struct linted_asynch_task_typical
 {
-    struct linted_linked_queue_node * reply_node;
+    struct linted_linked_queue_node* reply_node;
     unsigned type;
     unsigned task_id;
 };
 
 struct linted_asynch_task_poll
 {
-    struct linted_linked_queue_node * reply_node;
+    struct linted_linked_queue_node* reply_node;
     unsigned type;
     int task_id;
-    struct pollfd * fds;
+    struct pollfd* fds;
     size_t size;
 };
 
 struct linted_asynch_task_read
 {
-    struct linted_linked_queue_node * reply_node;
+    struct linted_linked_queue_node* reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -126,7 +138,7 @@ struct linted_asynch_task_read
 
 struct linted_asynch_task_mq_receive
 {
-    struct linted_linked_queue_node * reply_node;
+    struct linted_linked_queue_node* reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -136,7 +148,7 @@ struct linted_asynch_task_mq_receive
 
 struct linted_asynch_task_mq_send
 {
-    struct linted_linked_queue_node * reply_node;
+    struct linted_linked_queue_node* reply_node;
     unsigned type;
     int task_id;
     linted_ko ko;

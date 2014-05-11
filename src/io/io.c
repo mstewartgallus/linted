@@ -34,7 +34,7 @@
 #include <unistd.h>
 
 linted_error linted_io_poll(struct linted_asynch_pool* pool, int task_id,
-                            struct pollfd * fds, size_t size)
+                            struct pollfd* fds, size_t size)
 {
     union linted_asynch_task task;
     memset(&task, 0, sizeof task);

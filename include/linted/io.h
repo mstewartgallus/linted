@@ -30,7 +30,7 @@
  */
 
 linted_error linted_io_poll(struct linted_asynch_pool* pool, int task_id,
-                            struct pollfd * fds, size_t size);
+                            struct pollfd* fds, size_t size);
 
 linted_error linted_io_read(struct linted_asynch_pool* pool, int task_id,
                             linted_ko ko, char* buf, size_t size);

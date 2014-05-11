@@ -31,7 +31,7 @@ static void unlock_routine(void* arg);
 
 linted_error linted_linked_queue_create(struct linted_linked_queue* queue)
 {
-    struct linted_linked_queue_node * tip = malloc(sizeof *tip);
+    struct linted_linked_queue_node* tip = malloc(sizeof *tip);
     if (NULL == tip) {
         return errno;
     }
@@ -50,7 +50,7 @@ linted_error linted_linked_queue_create(struct linted_linked_queue* queue)
 void linted_linked_queue_destroy(struct linted_linked_queue* queue)
 {
     for (;;) {
-        struct linted_linked_queue_node * node;
+        struct linted_linked_queue_node* node;
         linted_error errnum = linted_linked_queue_try_recv(queue, &node);
         if (EAGAIN == errnum) {
             break;
@@ -67,10 +67,10 @@ void linted_linked_queue_send(struct linted_linked_queue* queue,
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
-    struct linted_linked_queue_node * tip = queue->tip;
+    struct linted_linked_queue_node* tip = queue->tip;
 
     /* The nodes previous to the tip are the tail */
-    struct linted_linked_queue_node * tail = tip->prev;
+    struct linted_linked_queue_node* tail = tip->prev;
     tail->next = node;
     node->prev = tail;
     node->next = tip;
@@ -85,12 +85,12 @@ linted_error linted_linked_queue_recv(struct linted_linked_queue* queue,
                                       struct linted_linked_queue_node** nodep)
 {
     linted_error errnum = 0;
-    struct linted_linked_queue_node * head;
+    struct linted_linked_queue_node* head;
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
-    struct linted_linked_queue_node * tip = queue->tip;
+    struct linted_linked_queue_node* tip = queue->tip;
 
     /* The nodes next to the tip are the head */
     for (;;) {
@@ -100,14 +100,13 @@ linted_error linted_linked_queue_recv(struct linted_linked_queue* queue,
         }
 
         struct timespec the_end = get_the_end();
-        if ((errnum = pthread_cond_timedwait(&queue->gains_member,
-                                             &queue->lock,
+        if ((errnum = pthread_cond_timedwait(&queue->gains_member, &queue->lock,
                                              &the_end)) != 0) {
             goto pop_cleanup;
         }
     }
 
-    struct linted_linked_queue_node * next = head->next;
+    struct linted_linked_queue_node* next = head->next;
     tip->next = next;
     next->prev = tip;
 
@@ -124,15 +123,16 @@ pop_cleanup:
 }
 
 linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
-                                          struct linted_linked_queue_node** nodep)
+                                          struct linted_linked_queue_node
+                                          ** nodep)
 {
     linted_error errnum = 0;
-    struct linted_linked_queue_node * head;
+    struct linted_linked_queue_node* head;
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
-    struct linted_linked_queue_node * tip = queue->tip;
+    struct linted_linked_queue_node* tip = queue->tip;
 
     /* The nodes next to the tip are the head */
     head = tip->next;
@@ -141,7 +141,7 @@ linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
         goto pop_cleanup;
     }
 
-    struct linted_linked_queue_node * next = head->next;
+    struct linted_linked_queue_node* next = head->next;
     tip->next = next;
     next->prev = tip;
 

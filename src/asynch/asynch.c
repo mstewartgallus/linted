@@ -121,8 +121,8 @@ linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
 {
     int errnum;
 
-    struct linted_linked_queue_node * reply_node = malloc(sizeof *reply_node
-                                                          + sizeof (union linted_asynch_event));
+    struct linted_linked_queue_node* reply_node
+        = malloc(sizeof *reply_node + sizeof(union linted_asynch_event));
     if (NULL == reply_node) {
         return errno;
     }
@@ -149,9 +149,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     }
 
     /* Wait for one event */
-    struct linted_linked_queue_node * node;
-    if ((errnum = linted_linked_queue_recv(pool->event_queue, &node))
-        != 0) {
+    struct linted_linked_queue_node* node;
+    if ((errnum = linted_linked_queue_recv(pool->event_queue, &node)) != 0) {
         return errnum;
     }
 
