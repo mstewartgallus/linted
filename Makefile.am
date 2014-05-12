@@ -33,9 +33,10 @@ AM_LDFLAGS=\
   $(linted_LDFLAGS_DEBUG)'
 
 AM_CPPFLAGS=\
+  $(linted_CPPFLAGS_LANGUAGE)\
   $(linted_CPPFLAGS_OPTIMIZE)\
   $(linted_CPPFLAGS_HARDEN)\
-  $(linted_CPPFLAGS_LANGUAGE)\
+  $(linted_CPPFLAGS_DEBUG)\
   -I$(srcdir)/include
 
 AM_CFLAGS=\

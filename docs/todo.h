@@ -47,6 +47,8 @@
  *
  * @todo Monitor vulnerabilities in dependencies and supported platforms
  *
+ * @todo Make a minor and a major debug mode
+ *
  * @todo Think about whether to use -Wa,--noexecstack and -Wl,-z,noexecstack
  * - I think I read somewhere that these force a nonexecutable stack
  *   but that if things are done correctly that the shouldn't be

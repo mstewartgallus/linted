@@ -35,5 +35,8 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
+], [
+[linted_CPPFLAGS_DEBUG=-DNDEBUG]
+AC_SUBST([linted_CPPFLAGS_DEBUG])
 ])
 ])
