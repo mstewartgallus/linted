@@ -67,7 +67,7 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
 
 void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
                          linted_updater updater,
-                         struct linted_updater_update const *update,
+                         struct linted_updater_update const* update,
                          struct linted_updater_task* task);
 
 void linted_updater_receive(struct linted_asynch_pool* pool, int task_id,

@@ -31,19 +31,18 @@
 
 void linted_io_poll(struct linted_asynch_pool* pool, int task_id,
                     struct pollfd* fds, size_t size,
-                    union linted_asynch_task * task);
+                    union linted_asynch_task* task);
 
-void linted_io_read(struct linted_asynch_pool* pool, int task_id,
-                    linted_ko ko, char* buf, size_t size,
-                    union linted_asynch_task * task);
+void linted_io_read(struct linted_asynch_pool* pool, int task_id, linted_ko ko,
+                    char* buf, size_t size, union linted_asynch_task* task);
 
 void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
                           linted_ko ko, char* buf, size_t size,
-                          union linted_asynch_task * task);
+                          union linted_asynch_task* task);
 
 void linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
                        linted_ko ko, char const* buf, size_t size,
-                       union linted_asynch_task * task);
+                       union linted_asynch_task* task);
 
 linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
                                 size_t count);

@@ -42,8 +42,7 @@ linted_error linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-void linted_controller_send(struct linted_asynch_pool* pool,
-                            int task_id,
+void linted_controller_send(struct linted_asynch_pool* pool, int task_id,
                             linted_controller controller,
                             struct linted_controller_message const* message,
                             struct linted_controller_task* task)
@@ -65,22 +64,18 @@ void linted_controller_send(struct linted_asynch_pool* pool,
     memcpy(tip, &bitfield, sizeof bitfield);
 
     linted_io_mq_send(pool, task_id, controller, task->message,
-                      sizeof task->message,
-                      &task->asynch_task);
+                      sizeof task->message, &task->asynch_task);
 }
 
-void linted_controller_receive(struct linted_asynch_pool* pool,
-                               int task_id,
+void linted_controller_receive(struct linted_asynch_pool* pool, int task_id,
                                linted_controller controller,
                                struct linted_controller_task* task)
 {
     linted_io_mq_receive(pool, task_id, controller, task->message,
-                         sizeof task->message,
-                         &task->asynch_task);
+                         sizeof task->message, &task->asynch_task);
 }
 
-linted_error linted_controller_decode(struct linted_controller_task const
-                                      * task,
+linted_error linted_controller_decode(struct linted_controller_task const* task,
                                       struct linted_controller_message* message)
 {
     char const* tip = task->message;

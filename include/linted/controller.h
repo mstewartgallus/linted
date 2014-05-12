@@ -60,19 +60,16 @@ linted_error linted_controller_pair(linted_controller controller[2],
                                     int readflags, int writeflags);
 linted_error linted_controller_close(linted_controller controller);
 
-void linted_controller_send(struct linted_asynch_pool* pool,
-                            int task_id,
+void linted_controller_send(struct linted_asynch_pool* pool, int task_id,
                             linted_controller controller,
                             struct linted_controller_message const* message,
                             struct linted_controller_task* task);
 
-void linted_controller_receive(struct linted_asynch_pool* pool,
-                               int task_id,
+void linted_controller_receive(struct linted_asynch_pool* pool, int task_id,
                                linted_controller controller,
                                struct linted_controller_task* task);
 
-linted_error linted_controller_decode(struct linted_controller_task const
-                                      * task,
+linted_error linted_controller_decode(struct linted_controller_task const* task,
                                       struct linted_controller_message
                                       * message);
 

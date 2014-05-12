@@ -202,10 +202,10 @@ static void* worker_routine(void* arg)
     struct linted_asynch_worker_pool* worker_pool = arg;
 
     for (;;) {
-        union linted_asynch_task * task;
+        union linted_asynch_task* task;
         linted_array_queue_recv(worker_pool->command_queue, &task);
 
-        union linted_asynch_event * event = &task->typical.event;
+        union linted_asynch_event* event = &task->typical.event;
 
         switch (task->typical.type) {
         case LINTED_ASYNCH_TASK_POLL: {

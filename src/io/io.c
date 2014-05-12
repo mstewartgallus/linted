@@ -35,7 +35,7 @@
 
 void linted_io_poll(struct linted_asynch_pool* pool, int task_id,
                     struct pollfd* fds, size_t size,
-                    union linted_asynch_task * task)
+                    union linted_asynch_task* task)
 {
     task->poll.type = LINTED_ASYNCH_TASK_POLL;
     task->poll.task_id = task_id;
@@ -45,9 +45,8 @@ void linted_io_poll(struct linted_asynch_pool* pool, int task_id,
     linted_asynch_pool_submit(pool, task);
 }
 
-void linted_io_read(struct linted_asynch_pool* pool, int task_id,
-                    linted_ko ko, char* buf, size_t size,
-                    union linted_asynch_task * task)
+void linted_io_read(struct linted_asynch_pool* pool, int task_id, linted_ko ko,
+                    char* buf, size_t size, union linted_asynch_task* task)
 {
     task->read.type = LINTED_ASYNCH_TASK_READ;
     task->read.task_id = task_id;
@@ -60,7 +59,7 @@ void linted_io_read(struct linted_asynch_pool* pool, int task_id,
 
 void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
                           linted_ko ko, char* buf, size_t size,
-                          union linted_asynch_task * task)
+                          union linted_asynch_task* task)
 {
     task->mq_receive.type = LINTED_ASYNCH_TASK_MQ_RECEIVE;
     task->mq_receive.task_id = task_id;
@@ -73,7 +72,7 @@ void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
 
 void linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
                        linted_ko ko, char const* buf, size_t size,
-                       union linted_asynch_task * task)
+                       union linted_asynch_task* task)
 {
     task->mq_send.type = LINTED_ASYNCH_TASK_MQ_SEND;
     task->mq_send.task_id = task_id;

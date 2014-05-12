@@ -30,15 +30,14 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize
-        = LINTED_SIZEOF_MEMBER(struct linted_updater_task, message);
+    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_updater_task, message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
 void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
                          linted_updater updater,
-                         struct linted_updater_update const *update,
+                         struct linted_updater_update const* update,
                          struct linted_updater_task* task)
 {
     char* tip = task->message;
@@ -65,8 +64,7 @@ void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 
     linted_io_mq_send(pool, task_id, updater, task->message,
-                      sizeof task->message,
-                      &task->asynch_task);
+                      sizeof task->message, &task->asynch_task);
 }
 
 void linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
@@ -74,8 +72,7 @@ void linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
                             struct linted_updater_task* task)
 {
     linted_io_mq_receive(pool, task_id, updater, task->message,
-                         sizeof task->message,
-                         &task->asynch_task);
+                         sizeof task->message, &task->asynch_task);
 }
 
 void linted_updater_decode(struct linted_updater_task const* task,

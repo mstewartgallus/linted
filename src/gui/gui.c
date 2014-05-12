@@ -160,7 +160,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const* window_model,
                     struct controller_data* controller_data);
 
-static void on_updater_read(struct linted_updater_task const * task,
+static void on_updater_read(struct linted_updater_task const* task,
                             struct sim_model* sim_model);
 
 static linted_error init_graphics(linted_logger logger,
@@ -380,7 +380,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct controller_data controller_data = {
         .update
         = { .forward = false, .back = false, .right = false, .left = false },
-        .update_pending = false, .update_in_progress = false
+        .update_pending = false,
+        .update_in_progress = false
     };
 
     struct sim_model sim_model = { .x_rotation = 0,
@@ -681,8 +682,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                     if (controller_data.update_pending
                         && !controller_data.update_in_progress) {
-                        linted_controller_send(&pool, CONTROLLER,
-                                               controller,
+                        linted_controller_send(&pool, CONTROLLER, controller,
                                                &controller_data.update,
                                                &controller_task);
 
@@ -698,8 +698,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     }
 
                     if (controller_data.update_pending) {
-                        linted_controller_send(&pool, CONTROLLER,
-                                               controller,
+                        linted_controller_send(&pool, CONTROLLER, controller,
                                                &controller_data.update,
                                                &controller_task);
 
@@ -813,7 +812,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static void on_updater_read(struct linted_updater_task const * task,
+static void on_updater_read(struct linted_updater_task const* task,
                             struct sim_model* sim_model)
 {
     struct linted_updater_update update;

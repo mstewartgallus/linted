@@ -329,8 +329,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     memset(&updater_task, 0, sizeof updater_task);
 
     linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner, &shutdowner_task);
-    linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
-                   sizeof timer_ticks, &timer_task);
+    linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks, sizeof timer_ticks,
+                   &timer_task);
     linted_controller_receive(&pool, CONTROLLER, controller, &controller_task);
 
     for (;;) {
@@ -372,8 +372,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                             .x_rotation = simulator_state.x_rotation,
                             .y_rotation = simulator_state.y_rotation };
 
-                    linted_updater_send(&pool, UPDATER, updater,
-                                        &update,
+                    linted_updater_send(&pool, UPDATER, updater, &update,
                                         &updater_task);
 
                     simulator_state.update_pending = false;
@@ -414,8 +413,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                             .x_rotation = simulator_state.x_rotation,
                             .y_rotation = simulator_state.y_rotation };
 
-                    linted_updater_send(&pool, UPDATER, updater,
-                                        &update,
+                    linted_updater_send(&pool, UPDATER, updater, &update,
                                         &updater_task);
 
                     simulator_state.update_pending = false;
