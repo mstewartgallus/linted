@@ -17,18 +17,12 @@
 
 #include "linted/controller.h"
 
+#include "linted/io.h"
 #include "linted/mq.h"
-#include "linted/rpc.h"
 #include "linted/util.h"
 
 #include <stdint.h>
 #include <string.h>
-
-#define MESSAGE_SIZE                                                           \
-    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                      \
-     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1)
-
-typedef char message_type[MESSAGE_SIZE];
 
 linted_error linted_controller_pair(linted_controller controller[2],
                                     int readflags, int writeflags)
@@ -37,7 +31,8 @@ linted_error linted_controller_pair(linted_controller controller[2],
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = sizeof(message_type);
+    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_controller_event,
+                                           message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
@@ -46,8 +41,8 @@ linted_error linted_controller_send(linted_controller controller,
                                     struct linted_controller_message const
                                     * message)
 {
-    message_type raw_message;
-    char* tip = raw_message;
+    struct linted_controller_event event;
+    char* tip = event.message;
 
     struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
     memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
@@ -63,7 +58,7 @@ linted_error linted_controller_send(linted_controller controller,
           | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 
-    return -1 == mq_send(controller, raw_message, sizeof raw_message, 0) ? errno
+    return -1 == mq_send(controller, event.message, sizeof event.message, 0) ? errno
                                                                          : 0;
 }
 
@@ -72,23 +67,20 @@ linted_error linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-linted_error linted_controller_receive(linted_controller queue,
-                                       struct linted_controller_message
-                                       * message)
+
+linted_error linted_controller_receive(struct linted_asynch_pool* pool,
+                                       int task_id,
+                                       linted_controller controller,
+                                       struct linted_controller_event * event)
 {
-    message_type raw_message;
-    ssize_t recv_status
-        = mq_receive(queue, raw_message, sizeof raw_message, NULL);
-    if (-1 == recv_status) {
-        return errno;
-    }
+    return linted_io_mq_receive(pool, task_id, controller, event->message,
+                                sizeof event->message);
+}
 
-    size_t bytes_read = recv_status;
-    if (bytes_read != sizeof raw_message) {
-        return EPROTO;
-    }
-
-    char* tip = raw_message;
+linted_error linted_controller_decode(struct linted_controller_event const* event,
+                                      struct linted_controller_message *message)
+{
+    char const* tip = event->message;
 
     struct linted_rpc_int32 x_tilt;
     memcpy(x_tilt.bytes, tip, sizeof x_tilt.bytes);

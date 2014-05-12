@@ -83,8 +83,8 @@ static linted_error on_updater_writeable(linted_updater updater,
                                          struct simulator_state
                                          * simulator_state);
 
-static linted_error on_controller_readable(linted_controller controller,
-                                           struct action_state* action_state);
+static void on_controller_receive(struct linted_controller_message const* message,
+                                  struct action_state* action_state);
 
 static void simulate_forces(linted_updater_int_fast* position,
                             linted_updater_int_fast* velocity,
@@ -319,8 +319,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     };
 
     uint64_t timer_ticks;
+
     struct linted_shutdowner_event shutdowner_event;
-    struct pollfd controller_fd = { .fd = controller, .events = POLLIN };
+    memset(&shutdowner_event, 0, sizeof shutdowner_event);
+
+    struct linted_controller_event controller_event;
+    memset(&controller_event, 0, sizeof controller_event);
+
     struct pollfd updater_fd = { .fd = updater, .events = POLLOUT };
 
     if ((errnum = linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner,
@@ -331,7 +336,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                                  sizeof timer_ticks)) != 0) {
         goto destroy_pool;
     }
-    if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd, 1)) != 0) {
+    if ((errnum = linted_controller_receive(&pool, CONTROLLER, controller,
+                                            &controller_event)) != 0) {
         goto destroy_pool;
     }
 
@@ -343,7 +349,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 
     for (;;) {
-
         union linted_asynch_event events[20];
         size_t event_count;
         do {
@@ -390,21 +395,25 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
                 break;
 
-            case CONTROLLER:
-                if ((errnum = events[ii].poll.errnum) != 0) {
+            case CONTROLLER:{
+                if ((errnum = events[ii].read.errnum) != 0) {
                     goto destroy_pool;
                 }
 
-                if ((errnum = on_controller_readable(controller, &action_state))
-                    != 0) {
+                struct linted_controller_message message;
+                if ((errnum = linted_controller_decode(&controller_event,
+                                                        &message)) != 0) {
                     goto destroy_pool;
                 }
 
-                if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd,
-                                             1)) != 0) {
+                on_controller_receive(&message, &action_state);
+
+                if ((errnum = linted_controller_receive(&pool, CONTROLLER, controller,
+                                                        &controller_event)) != 0) {
                     goto destroy_pool;
                 }
                 break;
+            }
 
             case UPDATER:
                 simulator_state.write_in_progress = false;
@@ -500,33 +509,16 @@ static linted_error on_updater_writeable(linted_updater updater,
     return 0;
 }
 
-static linted_error on_controller_readable(linted_controller controller,
-                                           struct action_state* action_state)
+static void on_controller_receive(struct linted_controller_message const* message,
+                                  struct action_state* action_state)
 {
-    struct linted_controller_message message;
+    action_state->x = message->right - message->left;
+    action_state->z = message->back - message->forward;
 
-    linted_error read_status;
-    do {
-        read_status = linted_controller_receive(controller, &message);
-    } while (EINTR == read_status);
+    action_state->x_tilt = -message->x_tilt;
+    action_state->y_tilt = -message->y_tilt;
 
-    if (EAGAIN == read_status) {
-        return 0;
-    }
-
-    if (read_status != 0) {
-        return read_status;
-    }
-
-    action_state->x = message.right - message.left;
-    action_state->z = message.back - message.forward;
-
-    action_state->x_tilt = -message.x_tilt;
-    action_state->y_tilt = -message.y_tilt;
-
-    action_state->jumping = message.jumping;
-
-    return 0;
+    action_state->jumping = message->jumping;
 }
 
 static void simulate_forces(linted_updater_int_fast* position,

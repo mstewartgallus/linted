@@ -45,6 +45,4 @@ linted_error linted_shutdowner_receive(struct linted_asynch_pool* pool,
                                        linted_shutdowner shutdowner,
                                        struct linted_shutdowner_event * event);
 
-linted_error linted_shutdowner_decode(struct linted_shutdowner_event const * event);
-
 #endif /* LINTED_SHUTDOWNER_H */
