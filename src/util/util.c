@@ -50,6 +50,13 @@ linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
     return 0;
 }
 
+#ifndef NDEBUG
+static linted_error close_fds_except(int const* kept_fds, size_t size)
+{
+    /* Valgrind has trouble with closing fds*/
+    return 0;
+}
+#else
 static linted_error close_fds_except(int const* kept_fds, size_t size)
 {
     linted_error error_status = 0;
@@ -151,3 +158,4 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
 
     return error_status;
 }
+#endif
