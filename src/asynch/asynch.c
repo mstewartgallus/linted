@@ -75,9 +75,11 @@ int linted_asynch_pool_create(struct linted_asynch_pool* pool)
 
 destroy_threads:
     for (size_t ii = 0; ii < created_threads; ++ii) {
-        pthread_t worker = worker_pool->workers[ii];
-        pthread_cancel(worker);
-        pthread_join(worker, NULL);
+        pthread_cancel(worker_pool->workers[ii]);
+    }
+
+    for (size_t ii = 0; ii < created_threads; ++ii) {
+        pthread_join(worker_pool->workers[ii], NULL);
     }
 
 destroy_event_queue:
@@ -98,12 +100,13 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
 
     struct linted_asynch_worker_pool* worker_pool = pool->worker_pool;
     size_t worker_count = worker_pool->worker_count;
-    pthread_t* workers = worker_pool->workers;
 
     for (size_t ii = 0; ii < worker_count; ++ii) {
-        pthread_t worker = workers[ii];
-        pthread_cancel(worker);
-        pthread_join(worker, NULL);
+        pthread_cancel(worker_pool->workers[ii]);
+    }
+
+    for (size_t ii = 0; ii < worker_count; ++ii) {
+        pthread_join(worker_pool->workers[ii], NULL);
     }
 
     free(pool->worker_pool);
