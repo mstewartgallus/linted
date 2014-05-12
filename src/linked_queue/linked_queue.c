@@ -49,6 +49,8 @@ void linted_linked_queue_destroy(struct linted_linked_queue* queue)
 {
     pthread_cond_destroy(&queue->gains_member);
     pthread_mutex_destroy(&queue->lock);
+
+    free(queue->tip);
 }
 
 void linted_linked_queue_send(struct linted_linked_queue* queue,
