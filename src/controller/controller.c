@@ -37,12 +37,24 @@ linted_error linted_controller_pair(linted_controller controller[2],
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
 
-linted_error linted_controller_send(linted_controller controller,
-                                    struct linted_controller_message const
-                                    * message)
+linted_error linted_controller_close(linted_controller controller)
 {
-    struct linted_controller_event event;
-    char* tip = event.message;
+    return -1 == mq_close(controller) ? errno : 0;
+}
+
+linted_error linted_controller_send(struct linted_asynch_pool* pool,
+                                    int task_id,
+                                    linted_controller controller,
+                                    struct linted_controller_event const* event)
+{
+    return linted_io_mq_send(pool, task_id, controller, event->message,
+                             sizeof event->message);
+}
+
+void linted_controller_encode(struct linted_controller_message const * message,
+                              struct linted_controller_event * event)
+{
+    char* tip = event->message;
 
     struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
     memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
@@ -57,15 +69,6 @@ linted_error linted_controller_send(linted_controller controller,
           | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
           | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
-
-    return -1 == mq_send(controller, event.message, sizeof event.message, 0)
-               ? errno
-               : 0;
-}
-
-linted_error linted_controller_close(linted_controller controller)
-{
-    return -1 == mq_close(controller) ? errno : 0;
 }
 
 linted_error linted_controller_receive(struct linted_asynch_pool* pool,

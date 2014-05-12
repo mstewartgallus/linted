@@ -62,7 +62,8 @@ enum transition {
 struct controller_data
 {
     struct linted_controller_message update;
-    bool update_pending;
+    bool update_pending : 1;
+    bool update_in_progress : 1;
 };
 
 struct graphics_state
@@ -161,9 +162,6 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 
 static void on_updater_read(struct linted_updater_event * event,
                             struct sim_model* sim_model);
-static linted_error on_controller_writeable(linted_controller controller,
-                                            struct controller_data
-                                            * controller_data);
 
 static linted_error init_graphics(linted_logger logger,
                                   struct graphics_state* graphics_state,
@@ -382,7 +380,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct controller_data controller_data = {
         .update
         = { .forward = false, .back = false, .right = false, .left = false },
-        .update_pending = false
+        .update_pending = false, .update_in_progress = false
     };
 
     struct sim_model sim_model = { .x_rotation = 0,
@@ -537,7 +535,10 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     };
 
     struct linted_updater_event updater_event;
-    struct pollfd controller_fd = { .fd = controller, .events = POLLOUT };
+    memset(&updater_event, 0, sizeof updater_event);
+
+    struct linted_controller_event controller_event;
+    memset(&controller_event, 0, sizeof controller_event);
 
     if ((errnum = linted_updater_receive(&pool, UPDATER, updater,
                                          &updater_event)) != 0) {
@@ -684,24 +685,36 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                         goto cleanup_gl;
                     }
 
-                    if (controller_data.update_pending) {
-                        if ((errnum = linted_io_poll(&pool, CONTROLLER,
-                                                     &controller_fd, 1)) != 0) {
+                    if (controller_data.update_pending
+                        && !controller_data.update_in_progress) {
+                        linted_controller_encode(&controller_data.update,
+                                                 &controller_event);
+                        if ((errnum = linted_controller_send(&pool, CONTROLLER,
+                                                             controller,
+                                                             &controller_event)) != 0) {
                             goto cleanup_gl;
                         }
+                        controller_data.update_pending = false;
+                        controller_data.update_in_progress = true;
                     }
                     break;
 
                 case CONTROLLER:
+                    controller_data.update_in_progress = false;
                     if ((errnum = events[ii].poll.errnum) != 0) {
                         goto cleanup_gl;
                     }
 
                     if (controller_data.update_pending) {
-                        if ((errnum = on_controller_writeable(
-                                 controller, &controller_data)) != 0) {
+                        linted_controller_encode(&controller_data.update,
+                                                 &controller_event);
+                        if ((errnum = linted_controller_send(&pool, CONTROLLER,
+                                                             controller,
+                                                             &controller_event)) != 0) {
                             goto cleanup_gl;
                         }
+                        controller_data.update_pending = false;
+                        controller_data.update_in_progress = true;
                     }
                     break;
                 }
@@ -824,28 +837,6 @@ static void on_updater_read(struct linted_updater_event * event,
     sim_model->x_position = update.x_position * (1 / (double)2048);
     sim_model->y_position = update.y_position * (1 / (double)2048);
     sim_model->z_position = update.z_position * (1 / (double)2048);
-}
-
-static int on_controller_writeable(linted_controller controller,
-                                   struct controller_data* controller_data)
-{
-    linted_error send_status;
-    do {
-        send_status
-            = linted_controller_send(controller, &controller_data->update);
-    } while (EINTR == send_status);
-
-    if (EAGAIN == send_status) {
-        return 0;
-    }
-
-    if (send_status != 0) {
-        return send_status;
-    }
-
-    controller_data->update_pending = false;
-
-    return 0;
 }
 
 static linted_error init_graphics(linted_logger logger,
