@@ -27,7 +27,9 @@
  * @file
  *
  * Schedule tasks on kernel objects to be completed asynchronously.
-
+ *
+ * @todo Make the allocated notes part of the task structures.
+ *
  * @todo Make the array queue a synchronous (not buffering at all
  *       queue).
  *
