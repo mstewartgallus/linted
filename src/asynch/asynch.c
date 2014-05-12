@@ -136,17 +136,20 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     }
 
     /* Wait for one event */
-    struct linted_linked_queue_node* node;
-    linted_linked_queue_recv(pool->event_queue, &node);
+    {
+        struct linted_linked_queue_node* node;
+        linted_linked_queue_recv(pool->event_queue, &node);
 
-    /* The node is the first member of the task */
-    union linted_asynch_task* task = (union linted_asynch_task*)node;
-    memcpy(&events[event_count], &task->typical.event,
-           sizeof events[event_count]);
-    ++event_count;
+        /* The node is the first member of the task */
+        union linted_asynch_task* task = (union linted_asynch_task*)node;
+        memcpy(&events[event_count], &task->typical.event,
+               sizeof events[event_count]);
+        ++event_count;
+    }
 
     /* Then poll for more */
     for (; event_count < size; ++event_count) {
+        struct linted_linked_queue_node* node;
         errnum = linted_linked_queue_try_recv(pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
