@@ -102,7 +102,7 @@ linted_error linted_linked_queue_recv(struct linted_linked_queue* queue,
         struct timespec the_end = get_the_end();
         if ((errnum = pthread_cond_timedwait(&queue->gains_member, &queue->lock,
                                              &the_end)) != 0) {
-            goto pop_cleanup;
+            return errnum;
         }
     }
 
@@ -110,7 +110,6 @@ linted_error linted_linked_queue_recv(struct linted_linked_queue* queue,
     tip->next = next;
     next->prev = tip;
 
-pop_cleanup:
     pthread_cleanup_pop(true);
 
     if (errnum != 0) {

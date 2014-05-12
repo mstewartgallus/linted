@@ -92,7 +92,7 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
     pthread_cond_signal(&queue->on_full);
 
 pop_cleanup_handle:
-    pthread_cleanup_pop(0 == errnum);
+    pthread_cleanup_pop(true);
 
     return errnum;
 }
@@ -105,22 +105,21 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
     if (EBUSY == pthread_mutex_trylock(&queue->mutex)) {
         return EBUSY;
     }
+
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     if (!queue->occupied) {
         errnum = EAGAIN;
-        goto pop_cleanup_handle;
+        goto unlock_mutex;
     }
-    queue->occupied = false;
 
+    queue->occupied = false;
     memcpy(message, queue->message_buffer, queue->message_size);
 
     pthread_cond_signal(&queue->on_empty);
 
-    pthread_mutex_unlock(&queue->mutex);
-
-pop_cleanup_handle:
-    pthread_cleanup_pop(0 == errnum);
+unlock_mutex:
+    pthread_cleanup_pop(true);
 
     return errnum;
 }
@@ -137,17 +136,16 @@ linted_error linted_array_queue_send(struct linted_array_queue* queue,
         struct timespec the_end = get_the_end();
         if ((errnum = pthread_cond_timedwait(&queue->on_empty, &queue->mutex,
                                              &the_end)) != 0) {
-            goto pop_cleanup_handle;
+            return errnum;
         }
     }
-    queue->occupied = true;
 
+    queue->occupied = true;
     memcpy(queue->message_buffer, message, queue->message_size);
 
     pthread_cond_signal(&queue->on_full);
 
-pop_cleanup_handle:
-    pthread_cleanup_pop(0 == errnum);
+    pthread_cleanup_pop(true);
 
     return errnum;
 }
@@ -164,19 +162,16 @@ linted_error linted_array_queue_recv(struct linted_array_queue* queue,
         struct timespec the_end = get_the_end();
         if ((errnum = pthread_cond_timedwait(&queue->on_full, &queue->mutex,
                                              &the_end)) != 0) {
-            goto pop_cleanup_handle;
+            return errnum;
         }
     }
-    queue->occupied = false;
 
+    queue->occupied = false;
     memcpy(message, queue->message_buffer, queue->message_size);
 
     pthread_cond_signal(&queue->on_empty);
 
-    pthread_mutex_unlock(&queue->mutex);
-
-pop_cleanup_handle:
-    pthread_cleanup_pop(0 == errnum);
+    pthread_cleanup_pop(true);
 
     return errnum;
 }
