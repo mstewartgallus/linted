@@ -48,9 +48,9 @@ linted_error linted_array_queue_create(struct linted_array_queue** queuep,
         return errno;
     }
 
+    pthread_mutex_init(&queue->mutex, NULL);
     pthread_cond_init(&queue->on_empty, NULL);
     pthread_cond_init(&queue->on_full, NULL);
-    pthread_mutex_init(&queue->mutex, NULL);
 
     queue->message_size = msgsize;
     queue->occupied = false;
@@ -62,9 +62,13 @@ linted_error linted_array_queue_create(struct linted_array_queue** queuep,
 
 void linted_array_queue_destroy(struct linted_array_queue* queue)
 {
-    pthread_mutex_destroy(&queue->mutex);
     pthread_cond_destroy(&queue->on_full);
     pthread_cond_destroy(&queue->on_empty);
+
+    /*
+     * The mutex is destroyed last to make Valgrind debugging easier.
+     */
+    pthread_mutex_destroy(&queue->mutex);
 
     free(queue);
 }
