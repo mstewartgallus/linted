@@ -71,9 +71,12 @@ linted_error linted_updater_send(struct linted_asynch_pool* pool, int task_id,
                                  linted_updater updater,
                                  struct linted_updater_event const* update);
 
-linted_error linted_updater_receive_update(linted_updater updater,
-                                           struct linted_updater_update
-                                           * update);
+linted_error linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
+                                    linted_updater updater,
+                                    struct linted_updater_event* update);
+
+void linted_updater_decode(struct linted_updater_event const* event,
+                           struct linted_updater_update* update);
 
 linted_error linted_updater_close(linted_updater updater);
 

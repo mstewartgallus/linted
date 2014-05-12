@@ -71,21 +71,18 @@ linted_error linted_updater_send(struct linted_asynch_pool* pool, int task_id,
                              sizeof event->message);
 }
 
-linted_error linted_updater_receive_update(linted_updater updater,
-                                           struct linted_updater_update* update)
+linted_error linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
+                                    linted_updater updater,
+                                    struct linted_updater_event* event)
 {
-    struct linted_updater_event event;
-    ssize_t recv_status
-        = mq_receive(updater, event.message, sizeof event.message, NULL);
-    if (-1 == recv_status) {
-        return errno;
-    }
+    return linted_io_mq_receive(pool, task_id, updater, event->message,
+                                sizeof event->message);
+}
 
-    if (recv_status != sizeof event.message) {
-        return EPROTO;
-    }
-
-    char* tip = event.message;
+void linted_updater_decode(struct linted_updater_event const* event,
+                           struct linted_updater_update* update)
+{
+    char const* tip = event->message;
 
     struct linted_rpc_int32 x_position;
     memcpy(x_position.bytes, tip, sizeof x_position.bytes);
@@ -110,8 +107,6 @@ linted_error linted_updater_receive_update(linted_updater updater,
     struct linted_rpc_uint32 y_rotation;
     memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
     update->y_rotation = linted_rpc_unpack_uint32(y_rotation);
-
-    return 0;
 }
 
 linted_error linted_updater_close(linted_updater const updater)

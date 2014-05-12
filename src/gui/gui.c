@@ -159,8 +159,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const* window_model,
                     struct controller_data* controller_data);
 
-static linted_error on_updater_readable(linted_updater updater,
-                                        struct sim_model* sim_model);
+static void on_updater_read(struct linted_updater_event * event,
+                            struct sim_model* sim_model);
 static linted_error on_controller_writeable(linted_controller controller,
                                             struct controller_data
                                             * controller_data);
@@ -536,11 +536,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         CONTROLLER
     };
 
-    struct pollfd updater_fd = { .fd = updater, .events = POLLIN };
+    struct linted_updater_event updater_event;
     struct pollfd controller_fd = { .fd = controller, .events = POLLOUT };
 
-    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
-        goto destroy_pool;
+    if ((errnum = linted_updater_receive(&pool, UPDATER, updater,
+                                         &updater_event)) != 0) {
+        goto cleanup_gl;
     }
 
     for (;;) {
@@ -662,8 +663,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         linted_error poll_errnum = linted_asynch_pool_poll(
             &pool, events, LINTED_ARRAY_SIZE(events), &event_count);
 
-        bool had_selected_event = poll_errnum != EAGAIN;
-        if (had_selected_event) {
+        bool had_asynch_event = poll_errnum != EAGAIN;
+        if (had_asynch_event) {
             for (size_t ii = 0; ii < event_count; ++ii) {
                 switch (events[ii].typical.task_id) {
                 default:
@@ -675,13 +676,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                         goto cleanup_gl;
                     }
 
-                    if ((errnum = on_updater_readable(updater, &sim_model))
-                        != 0) {
-                        goto cleanup_gl;
-                    }
+                    on_updater_read(&updater_event, &sim_model);
 
-                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd,
-                                                 1)) != 0) {
+
+                    if ((errnum = linted_updater_receive(&pool, UPDATER, updater,
+                                                         &updater_event)) != 0) {
                         goto cleanup_gl;
                     }
 
@@ -710,7 +709,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
 
         /* Only render or resize if we have time to waste */
-        if (!had_gui_event && !had_selected_event) {
+        if (!had_gui_event && !had_asynch_event) {
             if (window_model.resize_pending) {
                 resize_graphics(window_model.width, window_model.height);
                 window_model.resize_pending = false;
@@ -811,23 +810,11 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static linted_error on_updater_readable(linted_updater updater,
-                                        struct sim_model* sim_model)
+static void on_updater_read(struct linted_updater_event * event,
+                            struct sim_model* sim_model)
 {
     struct linted_updater_update update;
-
-    linted_error read_status;
-    do {
-        read_status = linted_updater_receive_update(updater, &update);
-    } while (EINTR == read_status);
-
-    if (EAGAIN == read_status) {
-        return 0;
-    }
-
-    if (read_status != 0) {
-        return read_status;
-    }
+    linted_updater_decode(event, &update);
 
     float pi = acosf(-1.0f);
 
@@ -837,8 +824,6 @@ static linted_error on_updater_readable(linted_updater updater,
     sim_model->x_position = update.x_position * (1 / (double)2048);
     sim_model->y_position = update.y_position * (1 / (double)2048);
     sim_model->z_position = update.z_position * (1 / (double)2048);
-
-    return 0;
 }
 
 static int on_controller_writeable(linted_controller controller,
