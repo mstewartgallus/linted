@@ -72,6 +72,7 @@ struct simulator_state
     linted_updater_uint_fast y_rotation;
 
     bool update_pending : 1;
+    bool write_in_progress : 1;
 };
 
 static linted_error on_timer_readable(linted_ko timer,
@@ -313,29 +314,36 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         goto close_timer;
     }
 
-    for (;;) {
-        enum {
-            POLL_COMPLETED
-        };
+    struct pollfd shutdowner_fd = { .fd = shutdowner, .events = POLLIN };
+    struct pollfd timer_fd = { .fd = timer, .events = POLLIN };
+    struct pollfd controller_fd = { .fd = controller, .events = POLLIN };
+    struct pollfd updater_fd = {.fd = updater,.events = POLLOUT };
 
-        enum {
-            SHUTDOWNER,
-            TIMER,
-            CONTROLLER,
-            UPDATER
-        };
-        struct pollfd fds[]
-            = {[SHUTDOWNER] = { .fd = shutdowner, .events = POLLIN },
-               [TIMER] = { .fd = timer, .events = POLLIN },
-               [CONTROLLER] = { .fd = controller, .events = POLLIN },
-               [UPDATER]
-                   = { .fd = simulator_state.update_pending ? updater : -1,
-                       .events = POLLOUT } };
+    enum {
+        SHUTDOWNER,
+        TIMER,
+        CONTROLLER,
+        UPDATER
+    };
 
-        if ((errnum = linted_io_poll(&pool, POLL_COMPLETED, fds,
-                                     LINTED_ARRAY_SIZE(fds))) != 0) {
+    if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd, 1)) != 0) {
+        goto destroy_pool;
+    }
+    if ((errnum = linted_io_poll(&pool, TIMER, &timer_fd, 1)) != 0) {
+        goto destroy_pool;
+    }
+    if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd, 1)) != 0) {
+        goto destroy_pool;
+    }
+
+    if (simulator_state.update_pending) {
+        if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
             goto destroy_pool;
         }
+        simulator_state.write_in_progress = true;
+    }
+
+    for (;;) {
 
         union linted_asynch_event events[20];
         size_t event_count;
@@ -353,43 +361,71 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 errnum = events[ii].typical.errnum;
                 goto destroy_pool;
 
-            case LINTED_ASYNCH_EVENT_POLL:
+            case SHUTDOWNER:
                 if ((errnum = events[ii].poll.errnum) != 0) {
                     goto destroy_pool;
                 }
 
-                if ((fds[SHUTDOWNER].revents & POLLIN) != 0) {
-                    bool should_exit;
-                    if ((errnum = on_shutdowner_readable(shutdowner,
-                                                         &should_exit)) != 0) {
-                        goto destroy_pool;
-                    }
-                    if (should_exit) {
-                        goto exit_main_loop;
-                    }
+                bool should_exit;
+                if ((errnum = on_shutdowner_readable(shutdowner,
+                                                     &should_exit)) != 0) {
+                    goto destroy_pool;
+                }
+                if (should_exit) {
+                    goto exit_main_loop;
                 }
 
-                if ((fds[TIMER].revents & POLLIN) != 0) {
-                    if ((errnum = on_timer_readable(timer, &action_state,
-                                                    &simulator_state)) != 0) {
-                        goto destroy_pool;
-                    }
+                if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd, 1)) != 0) {
+                    goto destroy_pool;
+                }
+                break;
+
+            case TIMER:
+                if ((errnum = on_timer_readable(timer, &action_state,
+                                                &simulator_state)) != 0) {
+                    goto destroy_pool;
                 }
 
-                if ((fds[CONTROLLER].revents & POLLIN) != 0) {
-                    if ((errnum = on_controller_readable(controller,
-                                                         &action_state)) != 0) {
-                        goto destroy_pool;
-                    }
+                if ((errnum = linted_io_poll(&pool, TIMER, &timer_fd, 1)) != 0) {
+                    goto destroy_pool;
                 }
 
-                if (simulator_state.update_pending
-                    && (fds[UPDATER].revents & POLLOUT) != 0) {
-                    if ((errnum = on_updater_writeable(
-                             updater, &simulator_state)) != 0) {
+                if (simulator_state.update_pending && !simulator_state.write_in_progress) {
+                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
+                        goto destroy_pool;
+                    }
+                    simulator_state.write_in_progress = true;
+                }
+                break;
+
+            case CONTROLLER:
+                if ((errnum = events[ii].poll.errnum) != 0) {
+                    goto destroy_pool;
+                }
+
+                if ((errnum = on_controller_readable(controller,
+                                                     &action_state)) != 0) {
+                    goto destroy_pool;
+                }
+
+                if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd, 1)) != 0) {
+                    goto destroy_pool;
+                }
+                break;
+
+            case UPDATER:
+                simulator_state.write_in_progress = false;
+
+                if ((errnum = events[ii].poll.errnum) != 0) {
+                    goto destroy_pool;
+                }
+
+                if (simulator_state.update_pending) {
+                    if ((errnum = on_updater_writeable(updater, &simulator_state)) != 0) {
                         goto destroy_pool;
                     }
                 }
+                break;
             }
         }
     }
