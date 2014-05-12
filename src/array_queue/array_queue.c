@@ -140,8 +140,7 @@ void linted_array_queue_send(struct linted_array_queue* queue,
     pthread_cleanup_pop(true);
 }
 
-void linted_array_queue_recv(struct linted_array_queue* queue,
-                             void* message)
+void linted_array_queue_recv(struct linted_array_queue* queue, void* message)
 {
     pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);

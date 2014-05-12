@@ -192,6 +192,8 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
 uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                           char const* const argv[const])
 {
+    linted_error errnum = 0;
+
     linted_ko_close(cwd);
 
     bool need_help = false;
@@ -279,8 +281,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     linted_logger logger;
     {
         int fd;
-        linted_error errnum = linted_ko_strtofd(logger_name, &fd);
-        if (errnum != 0) {
+        if ((errnum = linted_ko_strtofd(logger_name, &fd)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(LOGGER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -293,8 +294,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     linted_controller controller;
     {
         int fd;
-        linted_error errnum = linted_ko_strtofd(controller_name, &fd);
-        if (errnum != 0) {
+        if ((errnum = linted_ko_strtofd(controller_name, &fd)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(CONTROLLER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -307,8 +307,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     linted_shutdowner shutdowner;
     {
         int fd;
-        linted_error errnum = linted_ko_strtofd(shutdowner_name, &fd);
-        if (errnum != 0) {
+        if ((linted_ko_strtofd(shutdowner_name, &fd)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(SHUTDOWNER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -321,8 +320,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     linted_updater updater;
     {
         int fd;
-        linted_error errnum = linted_ko_strtofd(updater_name, &fd);
-        if (errnum != 0) {
+        if ((errnum = linted_ko_strtofd(updater_name, &fd)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(UPDATER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -359,17 +357,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
                            controller,    updater,      shutdowner };
-        linted_error errnum = linted_util_sanitize_environment(
-            kept_fds, LINTED_ARRAY_SIZE(kept_fds));
-        if (errnum != 0) {
+        if ((errnum = linted_util_sanitize_environment(
+                 kept_fds, LINTED_ARRAY_SIZE(kept_fds))) != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("cannot sanitize the program environment"),
                     errnum);
             return EXIT_FAILURE;
         }
     }
-
-    linted_error error_status = 0;
 
     struct window_model window_model = { .width = 640,
                                          .height = 480,
@@ -392,7 +387,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
     Display* display = XOpenDisplay(display_env_var);
     if (NULL == display) {
-        errno = ENOSYS;
+        errnum = ENOSYS;
         goto shutdown;
     }
 
@@ -412,7 +407,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
 
         if (0 == iter.rem) {
-            error_status = EINVAL;
+            errnum = EINVAL;
             goto disconnect;
         }
 
@@ -425,7 +420,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         XVisualInfo* ptr
             = glXChooseVisual(display, screen_number, (int*)attribute_list);
         if (NULL == ptr) {
-            error_status = ENOSYS;
+            errnum = ENOSYS;
             goto disconnect;
         }
         visual_info = *ptr;
@@ -433,18 +428,18 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 
     xcb_colormap_t colormap = xcb_generate_id(connection);
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto disconnect;
     }
 
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, colormap,
                         screen->root, visual_info.visualid);
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_colormap;
     }
 
     xcb_window_t window = xcb_generate_id(connection);
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_colormap;
     }
 
@@ -461,7 +456,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,
                           XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     }
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_colormap;
     }
 
@@ -469,13 +464,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     {
         xcb_intern_atom_cookie_t cookie
             = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-        if ((error_status = errnum_from_connection(connection)) != 0) {
+        if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
         xcb_intern_atom_reply_t* reply
             = xcb_intern_atom_reply(connection, cookie, 0);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
+        if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         xcb_atom_t wm_protocols = reply->atom;
@@ -483,13 +478,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
         xcb_intern_atom_cookie_t cookie2
             = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-        if ((error_status = errnum_from_connection(connection)) != 0) {
+        if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
         xcb_intern_atom_reply_t* reply2
             = xcb_intern_atom_reply(connection, cookie2, 0);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
+        if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         wm_delete_window = reply2->atom;
@@ -497,37 +492,36 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
         xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
                             wm_protocols, 4, 32, 1, &wm_delete_window);
-        if ((error_status = errnum_from_connection(connection)) != 0) {
+        if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
     }
 
     xcb_map_window(connection, window);
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_window;
     }
 
     xcb_flush(connection);
-    if ((error_status = errnum_from_connection(connection)) != 0) {
+    if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_window;
     }
 
     GLXContext glx_context
         = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
     if (NULL == glx_context) {
-        error_status = ENOSYS;
+        errnum = ENOSYS;
         goto destroy_window;
     }
 
     if (!glXMakeContextCurrent(display, window, window, glx_context)) {
-        error_status = ENOSYS;
+        errnum = ENOSYS;
         goto destroy_glx_context;
     }
 
     struct graphics_state graphics_state;
 
-    if ((error_status = init_graphics(logger, &graphics_state, &window_model))
-        != 0) {
+    if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
         goto destroy_glx_context;
     }
 
@@ -568,8 +562,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 window_model.focused = true;
 
                 int x, y;
-                if ((error_status
-                     = get_mouse_position(connection, window, &x, &y)) != 0) {
+                if ((errnum = get_mouse_position(connection, window, &x, &y))
+                    != 0) {
                     goto cleanup_gl;
                 }
 
@@ -656,34 +650,27 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                    = { .fd = controller_data.update_pending ? controller : -1,
                        .events = POLLOUT }, };
 
-        linted_error poll_status;
         int fds_active;
-
         do {
             fds_active = poll(fds, LINTED_ARRAY_SIZE(fds), 0);
-            poll_status = -1 == fds_active ? errno : 0;
-        } while (EINTR == poll_status);
-        if (poll_status != 0) {
-            error_status = poll_status;
+            errnum = -1 == fds_active ? errno : 0;
+        } while (EINTR == errnum);
+        if (errnum != 0) {
             goto cleanup_gl;
         }
 
         bool had_selected_event = fds_active > 0;
 
         if ((fds[UPDATER].revents & POLLIN) != 0) {
-            linted_error errnum = on_updater_readable(updater, &sim_model);
-            if (errnum != 0) {
-                error_status = errnum;
+            if ((errnum = on_updater_readable(updater, &sim_model)) != 0) {
                 goto cleanup_gl;
             }
         }
 
         if (controller_data.update_pending
             && (fds[CONTROLLER].revents & POLLOUT) != 0) {
-            linted_error errnum
-                = on_controller_writeable(controller, &controller_data);
-            if (errnum != 0) {
-                error_status = errnum;
+            if ((errnum = on_controller_writeable(controller, &controller_data))
+                != 0) {
                 goto cleanup_gl;
             }
         }
@@ -702,13 +689,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                  * descriptor should be implemented eventually.
                  */
                 struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
-                linted_error errnum;
                 do {
                     int status = nanosleep(&request, &request);
                     errnum = -1 == status ? errno : 0;
                 } while (EINTR == errnum);
                 if (errnum != 0) {
-                    error_status = errnum;
                     goto cleanup_gl;
                 }
             }
@@ -725,27 +710,27 @@ destroy_glx_context:
 destroy_window:
     xcb_destroy_window(connection, window);
     {
-        linted_error errnum = errnum_from_connection(connection);
-        if (0 == error_status) {
-            error_status = errnum;
+        linted_error conn_errnum = errnum_from_connection(connection);
+        if (0 == errnum) {
+            errnum = conn_errnum;
         }
     }
 
 destroy_colormap:
     xcb_free_colormap(connection, colormap);
     {
-        linted_error errnum = errnum_from_connection(connection);
-        if (0 == error_status) {
-            error_status = errnum;
+        linted_error conn_errnum = errnum_from_connection(connection);
+        if (0 == errnum) {
+            errnum = conn_errnum;
         }
     }
 
 disconnect:
     xcb_flush(connection);
     {
-        linted_error errnum = errnum_from_connection(connection);
-        if (0 == error_status) {
-            error_status = errnum;
+        linted_error conn_errnum = errnum_from_connection(connection);
+        if (0 == errnum) {
+            errnum = conn_errnum;
         }
     }
 
@@ -756,16 +741,16 @@ disconnect:
     XCloseDisplay(display);
 
 shutdown : {
-    linted_error shutdown_status;
+    linted_error shutdown_errnum;
     do {
-        shutdown_status = linted_shutdowner_send_shutdown(shutdowner);
-    } while (EINTR == shutdown_status);
-    if (0 == error_status) {
-        error_status = shutdown_status;
+        shutdown_errnum = linted_shutdowner_send_shutdown(shutdowner);
+    } while (EINTR == shutdown_errnum);
+    if (0 == errnum) {
+        errnum = shutdown_errnum;
     }
 }
 
-    return error_status;
+    return errnum;
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
@@ -841,7 +826,7 @@ static linted_error init_graphics(linted_logger logger,
                                   struct graphics_state* graphics_state,
                                   struct window_model const* window_model)
 {
-    linted_error error_status = 0;
+    linted_error errnum = 0;
 
     if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
         return ENOSYS;
@@ -913,7 +898,7 @@ static linted_error init_graphics(linted_logger logger,
         flush_gl_errors();
         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         if (0 == fragment_shader) {
-            error_status = get_gl_error();
+            errnum = get_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, fragment_shader);
@@ -926,7 +911,7 @@ static linted_error init_graphics(linted_logger logger,
         GLint is_valid;
         glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = EINVAL;
+            errnum = EINVAL;
 
             GLint info_log_length;
             glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
@@ -947,7 +932,7 @@ static linted_error init_graphics(linted_logger logger,
         flush_gl_errors();
         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         if (0 == vertex_shader) {
-            error_status = get_gl_error();
+            errnum = get_gl_error();
             goto cleanup_program;
         }
         glAttachShader(program, vertex_shader);
@@ -959,7 +944,7 @@ static linted_error init_graphics(linted_logger logger,
         GLint is_valid;
         glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
         if (!is_valid) {
-            error_status = EINVAL;
+            errnum = EINVAL;
 
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -981,7 +966,7 @@ static linted_error init_graphics(linted_logger logger,
     GLint is_valid;
     glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
     if (!is_valid) {
-        error_status = EINVAL;
+        errnum = EINVAL;
 
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
@@ -1001,10 +986,9 @@ static linted_error init_graphics(linted_logger logger,
     return 0;
 
 cleanup_program:
-    ;
     glDeleteProgram(program);
 
-    return error_status;
+    return errnum;
 }
 
 static void destroy_graphics(struct graphics_state* graphics_state)

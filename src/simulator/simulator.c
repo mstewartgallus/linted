@@ -79,7 +79,8 @@ static void on_timer_read(uint64_t timer_ticks,
                           struct action_state const* action_state,
                           struct simulator_state* simulator_state);
 
-static void on_controller_receive(struct linted_controller_message const* message,
+static void on_controller_receive(struct linted_controller_message const
+                                  * message,
                                   struct action_state* action_state);
 
 static void simulate_forces(linted_updater_int_fast* position,
@@ -342,8 +343,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     for (;;) {
         union linted_asynch_event events[20];
         size_t event_count;
-        linted_asynch_pool_wait(&pool, events,
-                                LINTED_ARRAY_SIZE(events), &event_count);
+        linted_asynch_pool_wait(&pool, events, LINTED_ARRAY_SIZE(events),
+                                &event_count);
 
         for (size_t ii = 0; ii < event_count; ++ii) {
             switch (events[ii].typical.task_id) {
@@ -394,21 +395,22 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
                 break;
 
-            case CONTROLLER:{
+            case CONTROLLER: {
                 if ((errnum = events[ii].read.errnum) != 0) {
                     goto destroy_pool;
                 }
 
                 struct linted_controller_message message;
                 if ((errnum = linted_controller_decode(&controller_event,
-                                                        &message)) != 0) {
+                                                       &message)) != 0) {
                     goto destroy_pool;
                 }
 
                 on_controller_receive(&message, &action_state);
 
-                if ((errnum = linted_controller_receive(&pool, CONTROLLER, controller,
-                                                        &controller_event)) != 0) {
+                if ((errnum = linted_controller_receive(
+                         &pool, CONTROLLER, controller, &controller_event))
+                    != 0) {
                     goto destroy_pool;
                 }
                 break;
@@ -492,7 +494,8 @@ static void on_timer_read(uint64_t timer_ticks,
     }
 }
 
-static void on_controller_receive(struct linted_controller_message const* message,
+static void on_controller_receive(struct linted_controller_message const
+                                  * message,
                                   struct action_state* action_state)
 {
     action_state->x = message->right - message->left;

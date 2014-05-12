@@ -49,7 +49,8 @@ struct linted_controller_message
     bool jumping : 1;
 };
 
-struct linted_controller_event {
+struct linted_controller_event
+{
     char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
                  + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
 };
@@ -65,9 +66,11 @@ linted_error linted_controller_send(linted_controller controller,
 linted_error linted_controller_receive(struct linted_asynch_pool* pool,
                                        int task_id,
                                        linted_controller controller,
-                                       struct linted_controller_event * event);
+                                       struct linted_controller_event* event);
 
-linted_error linted_controller_decode(struct linted_controller_event const* event,
-                                      struct linted_controller_message *message);
+linted_error linted_controller_decode(struct linted_controller_event const
+                                      * event,
+                                      struct linted_controller_message
+                                      * message);
 
 #endif /* LINTED_CONTROLLER_H */

@@ -63,7 +63,6 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
 /**
  * deferred cancellation safe
  */
-void linted_array_queue_recv(struct linted_array_queue* queue,
-                             void* message);
+void linted_array_queue_recv(struct linted_array_queue* queue, void* message);
 
 #endif /* LINTED_ARRAY_QUEUE_H */

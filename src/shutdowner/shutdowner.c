@@ -51,7 +51,7 @@ linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
 linted_error linted_shutdowner_receive(struct linted_asynch_pool* pool,
                                        int task_id,
                                        linted_shutdowner shutdowner,
-                                       struct linted_shutdowner_event * event)
+                                       struct linted_shutdowner_event* event)
 {
     return linted_io_mq_receive(pool, task_id, shutdowner, &event->dummy[0], 1);
 }

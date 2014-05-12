@@ -30,8 +30,8 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_updater_event,
-                                           message);
+    attr.mq_msgsize
+        = LINTED_SIZEOF_MEMBER(struct linted_updater_event, message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
@@ -63,10 +63,9 @@ void linted_updater_encode(struct linted_updater_update const* update,
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 }
 
-linted_error linted_updater_send(struct linted_asynch_pool* pool,
-                                 int task_id,
+linted_error linted_updater_send(struct linted_asynch_pool* pool, int task_id,
                                  linted_updater updater,
-                                 struct linted_updater_event const *event)
+                                 struct linted_updater_event const* event)
 {
     return linted_io_mq_send(pool, task_id, updater, event->message,
                              sizeof event->message);
@@ -76,8 +75,8 @@ linted_error linted_updater_receive_update(linted_updater updater,
                                            struct linted_updater_update* update)
 {
     struct linted_updater_event event;
-    ssize_t recv_status = mq_receive(updater, event.message,
-                                     sizeof event.message, NULL);
+    ssize_t recv_status
+        = mq_receive(updater, event.message, sizeof event.message, NULL);
     if (-1 == recv_status) {
         return errno;
     }

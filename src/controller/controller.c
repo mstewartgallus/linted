@@ -31,8 +31,8 @@ linted_error linted_controller_pair(linted_controller controller[2],
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_controller_event,
-                                           message);
+    attr.mq_msgsize
+        = LINTED_SIZEOF_MEMBER(struct linted_controller_event, message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
@@ -58,8 +58,9 @@ linted_error linted_controller_send(linted_controller controller,
           | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 
-    return -1 == mq_send(controller, event.message, sizeof event.message, 0) ? errno
-                                                                         : 0;
+    return -1 == mq_send(controller, event.message, sizeof event.message, 0)
+               ? errno
+               : 0;
 }
 
 linted_error linted_controller_close(linted_controller controller)
@@ -67,18 +68,18 @@ linted_error linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-
 linted_error linted_controller_receive(struct linted_asynch_pool* pool,
                                        int task_id,
                                        linted_controller controller,
-                                       struct linted_controller_event * event)
+                                       struct linted_controller_event* event)
 {
     return linted_io_mq_receive(pool, task_id, controller, event->message,
                                 sizeof event->message);
 }
 
-linted_error linted_controller_decode(struct linted_controller_event const* event,
-                                      struct linted_controller_message *message)
+linted_error linted_controller_decode(struct linted_controller_event const
+                                      * event,
+                                      struct linted_controller_message* message)
 {
     char const* tip = event->message;
 
