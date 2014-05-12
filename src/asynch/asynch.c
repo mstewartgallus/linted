@@ -172,6 +172,38 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     return 0;
 }
 
+linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
+                                     union linted_asynch_event* events,
+                                     size_t size, size_t* event_countp)
+{
+    linted_error errnum;
+    size_t event_count = 0;
+
+    if (0 == size) {
+        return EINVAL;
+    }
+
+    for (; event_count < size; ++event_count) {
+        struct linted_linked_queue_node* node;
+        errnum = linted_linked_queue_try_recv(pool->event_queue, &node);
+        if (EAGAIN == errnum) {
+            break;
+        }
+        memcpy(&events[event_count], node->contents,
+               sizeof events[event_count]);
+
+        free(node);
+    }
+
+    *event_countp = event_count;
+
+    if (0 == event_count) {
+        return EAGAIN;
+    }
+
+    return 0;
+}
+
 static void* worker_routine(void* arg)
 {
     struct linted_asynch_worker_pool* worker_pool = arg;

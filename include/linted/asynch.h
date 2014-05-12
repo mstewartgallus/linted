@@ -173,6 +173,10 @@ linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
                                      union linted_asynch_event* events,
-                                     size_t size, size_t* event_count);
+                                     size_t size, size_t* event_countp);
+
+linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
+                                     union linted_asynch_event* events,
+                                     size_t size, size_t* event_countp);
 
 #endif /* LINTED_ASYNCH_H */
