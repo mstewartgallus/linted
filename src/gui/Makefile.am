@@ -21,6 +21,7 @@ nodist_gui_SOURCES=%D%/gl_core.c
 gui_LDADD=\
   src/start/libstart.la\
   \
+  src/asynch/libasynch.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\

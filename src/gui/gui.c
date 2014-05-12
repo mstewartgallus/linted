@@ -18,6 +18,7 @@
 #include "assets.h"
 #include "gl_core.h"
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/controller.h"
 #include "linted/io.h"
@@ -366,6 +367,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
+    struct linted_asynch_pool pool;
+    if ((errnum = linted_asynch_pool_create(&pool)) != 0) {
+        goto shutdown;
+    }
+
     struct window_model window_model = { .width = 640,
                                          .height = 480,
                                          .viewable = true,
@@ -388,7 +394,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     Display* display = XOpenDisplay(display_env_var);
     if (NULL == display) {
         errnum = ENOSYS;
-        goto shutdown;
+        goto destroy_pool;
     }
 
     xcb_connection_t* connection = XGetXCBConnection(display);
@@ -525,6 +531,18 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         goto destroy_glx_context;
     }
 
+    enum {
+        UPDATER,
+        CONTROLLER
+    };
+
+    struct pollfd updater_fd = { .fd = updater, .events = POLLIN };
+    struct pollfd controller_fd = { .fd = controller, .events = POLLOUT };
+
+    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
+        goto destroy_pool;
+    }
+
     for (;;) {
         /* Handle GUI events first before rendering */
         /* We have to use the Xlib event queue because of broken Mesa
@@ -639,39 +657,55 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             }
         }
 
-        enum {
-            UPDATER,
-            CONTROLLER
-        };
+        union linted_asynch_event events[20];
+        size_t event_count;
+        linted_error poll_errnum = linted_asynch_pool_poll(
+            &pool, events, LINTED_ARRAY_SIZE(events), &event_count);
 
-        struct pollfd fds[]
-            = {[UPDATER] = { .fd = updater, .events = POLLIN },
-               [CONTROLLER]
-                   = { .fd = controller_data.update_pending ? controller : -1,
-                       .events = POLLOUT }, };
+        bool had_selected_event = poll_errnum != EAGAIN;
+        if (had_selected_event) {
+            for (size_t ii = 0; ii < event_count; ++ii) {
+                switch (events[ii].typical.task_id) {
+                default:
+                    errnum = events[ii].typical.errnum;
+                    goto cleanup_gl;
 
-        int fds_active;
-        do {
-            fds_active = poll(fds, LINTED_ARRAY_SIZE(fds), 0);
-            errnum = -1 == fds_active ? errno : 0;
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            goto cleanup_gl;
-        }
+                case UPDATER:
+                    if ((errnum = events[ii].poll.errnum) != 0) {
+                        goto cleanup_gl;
+                    }
 
-        bool had_selected_event = fds_active > 0;
+                    if ((errnum = on_updater_readable(updater, &sim_model))
+                        != 0) {
+                        goto cleanup_gl;
+                    }
 
-        if ((fds[UPDATER].revents & POLLIN) != 0) {
-            if ((errnum = on_updater_readable(updater, &sim_model)) != 0) {
-                goto cleanup_gl;
-            }
-        }
+                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd,
+                                                 1)) != 0) {
+                        goto cleanup_gl;
+                    }
 
-        if (controller_data.update_pending
-            && (fds[CONTROLLER].revents & POLLOUT) != 0) {
-            if ((errnum = on_controller_writeable(controller, &controller_data))
-                != 0) {
-                goto cleanup_gl;
+                    if (controller_data.update_pending) {
+                        if ((errnum = linted_io_poll(&pool, CONTROLLER,
+                                                     &controller_fd, 1)) != 0) {
+                            goto cleanup_gl;
+                        }
+                    }
+                    break;
+
+                case CONTROLLER:
+                    if ((errnum = events[ii].poll.errnum) != 0) {
+                        goto cleanup_gl;
+                    }
+
+                    if (controller_data.update_pending) {
+                        if ((errnum = on_controller_writeable(
+                                 controller, &controller_data)) != 0) {
+                            goto cleanup_gl;
+                        }
+                    }
+                    break;
+                }
             }
         }
 
@@ -739,6 +773,13 @@ disconnect:
      */
 
     XCloseDisplay(display);
+
+destroy_pool : {
+    linted_error destroy_errnum = linted_asynch_pool_destroy(&pool);
+    if (0 == errnum) {
+        errnum = destroy_errnum;
+    }
+}
 
 shutdown : {
     linted_error shutdown_errnum;
