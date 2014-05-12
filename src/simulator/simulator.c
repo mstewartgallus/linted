@@ -304,17 +304,18 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool pool;
-    if ((errnum = linted_asynch_pool_create(&pool)) != 0) {
-        goto close_timer;
-    }
-
     enum {
         SHUTDOWNER,
         TIMER,
         CONTROLLER,
-        UPDATER
+        UPDATER,
+        MAX_TASKS
     };
+
+    struct linted_asynch_pool pool;
+    if ((errnum = linted_asynch_pool_create(&pool, MAX_TASKS)) != 0) {
+        goto close_timer;
+    }
 
     uint64_t timer_ticks;
     union linted_asynch_task timer_task;

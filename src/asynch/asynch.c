@@ -17,8 +17,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define POOL_SIZE 20u
-
 struct linted_asynch_worker_pool
 {
     struct linted_array_queue* command_queue;
@@ -29,7 +27,8 @@ struct linted_asynch_worker_pool
 
 static void* worker_routine(void* arg);
 
-int linted_asynch_pool_create(struct linted_asynch_pool* pool)
+int linted_asynch_pool_create(struct linted_asynch_pool* pool,
+                              unsigned max_tasks)
 {
     int errnum;
     size_t created_threads = 0;
@@ -50,17 +49,17 @@ int linted_asynch_pool_create(struct linted_asynch_pool* pool)
     }
 
     struct linted_asynch_worker_pool* worker_pool = malloc(
-        sizeof *worker_pool + POOL_SIZE * sizeof worker_pool->workers[0]);
+        sizeof *worker_pool + max_tasks * sizeof worker_pool->workers[0]);
     if (NULL == worker_pool) {
         errnum = errno;
         goto destroy_event_queue;
     }
 
-    worker_pool->worker_count = POOL_SIZE;
+    worker_pool->worker_count = max_tasks;
     worker_pool->command_queue = command_queue;
     worker_pool->event_queue = event_queue;
 
-    for (; created_threads < POOL_SIZE; ++created_threads) {
+    for (; created_threads < max_tasks; ++created_threads) {
         if ((errnum = pthread_create(&worker_pool->workers[created_threads],
                                      NULL, worker_routine, worker_pool)) != 0) {
             goto destroy_threads;

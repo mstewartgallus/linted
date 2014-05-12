@@ -172,7 +172,8 @@ union linted_asynch_task
     struct linted_asynch_task_mq_send mq_send;
 };
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool);
+linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool,
+                                       unsigned max_tasks);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
 
 void linted_asynch_pool_submit(struct linted_asynch_pool* pool,

@@ -365,8 +365,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
+    enum {
+        UPDATER,
+        CONTROLLER,
+        MAX_TASKS
+    };
+
     struct linted_asynch_pool pool;
-    if ((errnum = linted_asynch_pool_create(&pool)) != 0) {
+    if ((errnum = linted_asynch_pool_create(&pool, MAX_TASKS)) != 0) {
         goto shutdown;
     }
 
@@ -529,11 +535,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
         goto destroy_glx_context;
     }
-
-    enum {
-        UPDATER,
-        CONTROLLER
-    };
 
     struct linted_updater_task updater_task;
     memset(&updater_task, 0, sizeof updater_task);
