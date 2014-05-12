@@ -83,9 +83,6 @@ static linted_error on_updater_writeable(linted_updater updater,
                                          struct simulator_state
                                          * simulator_state);
 
-static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
-                                           bool* should_exit);
-
 static linted_error on_controller_readable(linted_controller controller,
                                            struct action_state* action_state);
 
@@ -322,11 +319,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     };
 
     uint64_t timer_ticks;
-    struct pollfd shutdowner_fd = { .fd = shutdowner, .events = POLLIN };
+    struct linted_shutdowner_event shutdowner_event;
     struct pollfd controller_fd = { .fd = controller, .events = POLLIN };
     struct pollfd updater_fd = { .fd = updater, .events = POLLOUT };
 
-    if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd, 1)) != 0) {
+    if ((errnum = linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner,
+                                            &shutdowner_event)) != 0) {
         goto destroy_pool;
     }
     if ((errnum = linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
@@ -367,20 +365,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     goto destroy_pool;
                 }
 
-                bool should_exit;
-                if ((errnum = on_shutdowner_readable(shutdowner, &should_exit))
-                    != 0) {
-                    goto destroy_pool;
-                }
-                if (should_exit) {
-                    goto exit_main_loop;
-                }
-
-                if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd,
-                                             1)) != 0) {
-                    goto destroy_pool;
-                }
-                break;
+                goto exit_main_loop;
 
             case TIMER:
                 if ((errnum = events[ii].read.errnum) != 0) {
@@ -512,27 +497,6 @@ static linted_error on_updater_writeable(linted_updater updater,
 
     simulator_state->update_pending = false;
 
-    return 0;
-}
-
-static linted_error on_shutdowner_readable(linted_shutdowner shutdowner,
-                                           bool* should_exit)
-{
-    linted_error read_status;
-    do {
-        read_status = linted_shutdowner_receive(shutdowner);
-    } while (EINTR == read_status);
-
-    if (EAGAIN == read_status) {
-        *should_exit = false;
-        return 0;
-    }
-
-    if (read_status != 0) {
-        return read_status;
-    }
-
-    *should_exit = true;
     return 0;
 }
 

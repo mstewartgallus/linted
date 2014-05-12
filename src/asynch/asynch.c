@@ -270,7 +270,7 @@ static void* worker_routine(void* arg)
                                             task_receive->size, NULL);
                 if (-1 == result) {
                     errnum = errno;
-                    break;
+                    continue;
                 }
 
                 bytes_read = result;
@@ -302,7 +302,7 @@ static void* worker_routine(void* arg)
                 if (-1 == mq_send(task_send->ko, task_send->buf,
                                   task_send->size, 0)) {
                     errnum = errno;
-                    break;
+                    continue;
                 }
 
                 bytes_wrote = task_send->size;

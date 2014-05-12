@@ -15,9 +15,10 @@
  */
 #include "config.h"
 
+#include "linted/shutdowner.h"
+
 #include "linted/error.h"
 #include "linted/mq.h"
-#include "linted/shutdowner.h"
 #include "linted/util.h"
 
 #include <inttypes.h>
@@ -43,24 +44,16 @@ linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
 {
-    char dummy;
-    return -1 == mq_send(shutdowner, &dummy, 0, 0) ? errno : 0;
+    char dummy = 0;
+    return -1 == mq_send(shutdowner, &dummy, sizeof dummy, 0) ? errno : 0;
 }
 
-linted_error linted_shutdowner_receive(linted_shutdowner shutdowner)
+linted_error linted_shutdowner_receive(struct linted_asynch_pool* pool,
+                                       int task_id,
+                                       linted_shutdowner shutdowner,
+                                       struct linted_shutdowner_event * event)
 {
-    char dummy;
-    ssize_t recv_status = mq_receive(shutdowner, &dummy, 1, NULL);
-    if (-1 == recv_status) {
-        return errno;
-    }
-
-    size_t bytes_read = recv_status;
-    if (bytes_read != 0) {
-        return EPROTO;
-    }
-
-    return 0;
+    return linted_io_mq_receive(pool, task_id, shutdowner, &event->dummy[0], 1);
 }
 
 linted_error linted_shutdowner_close(linted_shutdowner shutdowner)

@@ -16,6 +16,7 @@
 #ifndef LINTED_SHUTDOWNER_H
 #define LINTED_SHUTDOWNER_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 
 #include <mqueue.h>
@@ -28,6 +29,10 @@
 
 typedef mqd_t linted_shutdowner;
 
+struct linted_shutdowner_event {
+    char dummy[1];
+};
+
 linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
                                     int wflags);
 
@@ -35,6 +40,11 @@ linted_error linted_shutdowner_close(linted_shutdowner move);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-linted_error linted_shutdowner_receive(linted_shutdowner queue);
+linted_error linted_shutdowner_receive(struct linted_asynch_pool* pool,
+                                       int task_id,
+                                       linted_shutdowner shutdowner,
+                                       struct linted_shutdowner_event * event);
+
+linted_error linted_shutdowner_decode(struct linted_shutdowner_event const * event);
 
 #endif /* LINTED_SHUTDOWNER_H */
