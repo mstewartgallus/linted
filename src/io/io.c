@@ -78,7 +78,7 @@ linted_error linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
 }
 
 linted_error linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
-                               linted_ko ko, char* buf, size_t size)
+                               linted_ko ko, char const* buf, size_t size)
 {
     union linted_asynch_task task;
     memset(&task, 0, sizeof task);

@@ -17,6 +17,7 @@
 #define LINTED_UPDATER_H
 
 #include "linted/error.h"
+#include "linted/rpc.h"
 
 #include <mqueue.h>
 #include <stdint.h>
@@ -51,12 +52,24 @@ struct linted_updater_update
     linted_updater_uint_fast y_rotation;
 };
 
+struct linted_updater_event {
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
+};
+
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,
                                  int wflags);
 
-linted_error linted_updater_send_update(linted_updater updater,
-                                        struct linted_updater_update const
-                                        * update);
+void linted_updater_encode(struct linted_updater_update const* update,
+                           struct linted_updater_event* event);
+
+linted_error linted_updater_send(struct linted_asynch_pool* pool,
+                                 int task_id,
+                                 linted_updater updater,
+                                 struct linted_updater_event const * update);
 
 linted_error linted_updater_receive_update(linted_updater updater,
                                            struct linted_updater_update

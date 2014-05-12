@@ -18,20 +18,10 @@
 #include "linted/updater.h"
 
 #include "linted/mq.h"
-#include "linted/rpc.h"
 #include "linted/util.h"
 
 #include <stddef.h>
 #include <string.h>
-
-#define MESSAGE_SIZE                                                           \
-    (LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                      \
-     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                    \
-     + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)                    \
-     + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)                   \
-     + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes))
-
-typedef char message_type[MESSAGE_SIZE];
 
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,
                                  int wflags)
@@ -40,17 +30,16 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = sizeof(message_type);
+    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_updater_event,
+                                           message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-linted_error linted_updater_send_update(linted_updater updater,
-                                        struct linted_updater_update const
-                                        * update)
+void linted_updater_encode(struct linted_updater_update const* update,
+                           struct linted_updater_event* event)
 {
-    message_type message;
-    char* tip = message;
+    char* tip = event->message;
 
     struct linted_rpc_int32 x_position = linted_rpc_pack(update->x_position);
     memcpy(tip, x_position.bytes, sizeof x_position.bytes);
@@ -72,24 +61,32 @@ linted_error linted_updater_send_update(linted_updater updater,
     struct linted_rpc_uint32 y_rotation
         = linted_rpc_pack_uint32(update->y_rotation);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
+}
 
-    return -1 == mq_send(updater, message, sizeof message, 0) ? errno : 0;
+linted_error linted_updater_send(struct linted_asynch_pool* pool,
+                                 int task_id,
+                                 linted_updater updater,
+                                 struct linted_updater_event const *event)
+{
+    return linted_io_mq_send(pool, task_id, updater, event->message,
+                             sizeof event->message);
 }
 
 linted_error linted_updater_receive_update(linted_updater updater,
                                            struct linted_updater_update* update)
 {
-    message_type message;
-    ssize_t recv_status = mq_receive(updater, message, sizeof message, NULL);
+    struct linted_updater_event event;
+    ssize_t recv_status = mq_receive(updater, event.message,
+                                     sizeof event.message, NULL);
     if (-1 == recv_status) {
         return errno;
     }
 
-    if (recv_status != sizeof message) {
+    if (recv_status != sizeof event.message) {
         return EPROTO;
     }
 
-    char* tip = message;
+    char* tip = event.message;
 
     struct linted_rpc_int32 x_position;
     memcpy(x_position.bytes, tip, sizeof x_position.bytes);

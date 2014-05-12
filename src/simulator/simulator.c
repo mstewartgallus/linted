@@ -79,10 +79,6 @@ static void on_timer_read(uint64_t timer_ticks,
                           struct action_state const* action_state,
                           struct simulator_state* simulator_state);
 
-static linted_error on_updater_writeable(linted_updater updater,
-                                         struct simulator_state
-                                         * simulator_state);
-
 static void on_controller_receive(struct linted_controller_message const* message,
                                   struct action_state* action_state);
 
@@ -273,6 +269,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
     struct simulator_state simulator_state
         = { .update_pending = true, /* Initialize the gui at start */
+            .write_in_progress = false,
             .x_position = 0,
             .y_position = 0,
             .z_position = 3 * 1024,
@@ -326,7 +323,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct linted_controller_event controller_event;
     memset(&controller_event, 0, sizeof controller_event);
 
-    struct pollfd updater_fd = { .fd = updater, .events = POLLOUT };
+    struct linted_updater_event updater_event;
+    memset(&updater_event, 0, sizeof updater_event);
 
     if ((errnum = linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner,
                                             &shutdowner_event)) != 0) {
@@ -339,13 +337,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     if ((errnum = linted_controller_receive(&pool, CONTROLLER, controller,
                                             &controller_event)) != 0) {
         goto destroy_pool;
-    }
-
-    if (simulator_state.update_pending) {
-        if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
-            goto destroy_pool;
-        }
-        simulator_state.write_in_progress = true;
     }
 
     for (;;) {
@@ -387,10 +378,23 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 if (simulator_state.update_pending
                     && !simulator_state.write_in_progress) {
-                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd,
-                                                 1)) != 0) {
+
+                    {
+                        struct linted_updater_update update
+                            = { .x_position = simulator_state.x_position,
+                                .y_position = simulator_state.y_position,
+                                .z_position = simulator_state.z_position,
+                                .x_rotation = simulator_state.x_rotation,
+                                .y_rotation = simulator_state.y_rotation };
+
+                        linted_updater_encode(&update, &updater_event);
+                    }
+
+                    if ((errnum = linted_updater_send(&pool, UPDATER, updater,
+                                                      &updater_event)) != 0) {
                         goto destroy_pool;
                     }
+                    simulator_state.update_pending = false;
                     simulator_state.write_in_progress = true;
                 }
                 break;
@@ -423,10 +427,23 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
 
                 if (simulator_state.update_pending) {
-                    if ((errnum = on_updater_writeable(
-                             updater, &simulator_state)) != 0) {
+                    {
+                        struct linted_updater_update update
+                            = { .x_position = simulator_state.x_position,
+                                .y_position = simulator_state.y_position,
+                                .z_position = simulator_state.z_position,
+                                .x_rotation = simulator_state.x_rotation,
+                                .y_rotation = simulator_state.y_rotation };
+
+                        linted_updater_encode(&update, &updater_event);
+                    }
+
+                    if ((errnum = linted_updater_send(&pool, UPDATER, updater,
+                                                      &updater_event)) != 0) {
                         goto destroy_pool;
                     }
+                    simulator_state.update_pending = false;
+                    simulator_state.write_in_progress = true;
                 }
                 break;
             }
@@ -478,35 +495,6 @@ static void on_timer_read(uint64_t timer_ticks,
 
         simulator_state->update_pending = true;
     }
-}
-
-static linted_error on_updater_writeable(linted_updater updater,
-                                         struct simulator_state
-                                         * simulator_state)
-{
-    struct linted_updater_update update
-        = { .x_position = simulator_state->x_position,
-            .y_position = simulator_state->y_position,
-            .z_position = simulator_state->z_position,
-            .x_rotation = simulator_state->x_rotation,
-            .y_rotation = simulator_state->y_rotation };
-
-    linted_error update_status;
-    do {
-        update_status = linted_updater_send_update(updater, &update);
-    } while (EINTR == update_status);
-
-    if (EAGAIN == update_status) {
-        return 0;
-    }
-
-    if (update_status != 0) {
-        return update_status;
-    }
-
-    simulator_state->update_pending = false;
-
-    return 0;
 }
 
 static void on_controller_receive(struct linted_controller_message const* message,
