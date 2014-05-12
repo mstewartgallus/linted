@@ -169,6 +169,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         return EXIT_FAILURE;
     }
 
+    if (NULL == logger_name) {
+        missing_option(STDERR_FILENO, program_name,
+                       LINTED_STR(LOGGER_OPTION));
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR(HELP_OPTION));
+        return EXIT_FAILURE;
+    }
+
     if (NULL == shutdowner_name) {
         missing_option(STDERR_FILENO, program_name,
                        LINTED_STR(SHUTDOWNER_OPTION));
