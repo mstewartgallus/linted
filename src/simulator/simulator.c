@@ -75,9 +75,9 @@ struct simulator_state
     bool write_in_progress : 1;
 };
 
-static linted_error on_timer_readable(linted_ko timer,
-                                      struct action_state const* action_state,
-                                      struct simulator_state* simulator_state);
+static void on_timer_read(uint64_t timer_ticks,
+                          struct action_state const* action_state,
+                          struct simulator_state* simulator_state);
 
 static linted_error on_updater_writeable(linted_updater updater,
                                          struct simulator_state
@@ -314,11 +314,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         goto close_timer;
     }
 
-    struct pollfd shutdowner_fd = { .fd = shutdowner, .events = POLLIN };
-    struct pollfd timer_fd = { .fd = timer, .events = POLLIN };
-    struct pollfd controller_fd = { .fd = controller, .events = POLLIN };
-    struct pollfd updater_fd = {.fd = updater,.events = POLLOUT };
-
     enum {
         SHUTDOWNER,
         TIMER,
@@ -326,10 +321,16 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         UPDATER
     };
 
+    uint64_t timer_ticks;
+    struct pollfd shutdowner_fd = { .fd = shutdowner, .events = POLLIN };
+    struct pollfd controller_fd = { .fd = controller, .events = POLLIN };
+    struct pollfd updater_fd = { .fd = updater, .events = POLLOUT };
+
     if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd, 1)) != 0) {
         goto destroy_pool;
     }
-    if ((errnum = linted_io_poll(&pool, TIMER, &timer_fd, 1)) != 0) {
+    if ((errnum = linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
+                                 sizeof timer_ticks)) != 0) {
         goto destroy_pool;
     }
     if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd, 1)) != 0) {
@@ -367,31 +368,37 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
 
                 bool should_exit;
-                if ((errnum = on_shutdowner_readable(shutdowner,
-                                                     &should_exit)) != 0) {
+                if ((errnum = on_shutdowner_readable(shutdowner, &should_exit))
+                    != 0) {
                     goto destroy_pool;
                 }
                 if (should_exit) {
                     goto exit_main_loop;
                 }
 
-                if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd, 1)) != 0) {
+                if ((errnum = linted_io_poll(&pool, SHUTDOWNER, &shutdowner_fd,
+                                             1)) != 0) {
                     goto destroy_pool;
                 }
                 break;
 
             case TIMER:
-                if ((errnum = on_timer_readable(timer, &action_state,
-                                                &simulator_state)) != 0) {
+                if ((errnum = events[ii].read.errnum) != 0) {
                     goto destroy_pool;
                 }
 
-                if ((errnum = linted_io_poll(&pool, TIMER, &timer_fd, 1)) != 0) {
+                on_timer_read(timer_ticks, &action_state, &simulator_state);
+
+                if ((errnum
+                     = linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
+                                      sizeof timer_ticks)) != 0) {
                     goto destroy_pool;
                 }
 
-                if (simulator_state.update_pending && !simulator_state.write_in_progress) {
-                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd, 1)) != 0) {
+                if (simulator_state.update_pending
+                    && !simulator_state.write_in_progress) {
+                    if ((errnum = linted_io_poll(&pool, UPDATER, &updater_fd,
+                                                 1)) != 0) {
                         goto destroy_pool;
                     }
                     simulator_state.write_in_progress = true;
@@ -403,12 +410,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     goto destroy_pool;
                 }
 
-                if ((errnum = on_controller_readable(controller,
-                                                     &action_state)) != 0) {
+                if ((errnum = on_controller_readable(controller, &action_state))
+                    != 0) {
                     goto destroy_pool;
                 }
 
-                if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd, 1)) != 0) {
+                if ((errnum = linted_io_poll(&pool, CONTROLLER, &controller_fd,
+                                             1)) != 0) {
                     goto destroy_pool;
                 }
                 break;
@@ -421,7 +429,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
 
                 if (simulator_state.update_pending) {
-                    if ((errnum = on_updater_writeable(updater, &simulator_state)) != 0) {
+                    if ((errnum = on_updater_writeable(
+                             updater, &simulator_state)) != 0) {
                         goto destroy_pool;
                     }
                 }
@@ -452,21 +461,11 @@ exit:
     return errnum;
 }
 
-static linted_error on_timer_readable(linted_ko timer,
-                                      struct action_state const* action_state,
-                                      struct simulator_state* simulator_state)
+static void on_timer_read(uint64_t timer_ticks,
+                          struct action_state const* action_state,
+                          struct simulator_state* simulator_state)
 {
-    linted_error errnum;
-    uint64_t ticks;
-    {
-        uint64_t xx;
-        if ((errnum = linted_io_read_all(timer, NULL, &xx, sizeof xx)) != 0) {
-            return errnum;
-        }
-        ticks = xx;
-    }
-
-    for (size_t ii = 0; ii < ticks; ++ii) {
+    for (size_t ii = 0; ii < timer_ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
                         8 * (linted_updater_int_fast)action_state->x);
@@ -485,8 +484,6 @@ static linted_error on_timer_readable(linted_ko timer,
 
         simulator_state->update_pending = true;
     }
-
-    return 0;
 }
 
 static linted_error on_updater_writeable(linted_updater updater,
