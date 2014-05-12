@@ -288,7 +288,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             .x_rotation = UINT32_MAX / 2,
             .y_rotation = 0 };
 
-    linted_ko timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+    linted_ko timer = timerfd_create(CLOCK_MONOTONIC,
+                                     TFD_NONBLOCK | TFD_CLOEXEC);
     if (-1 == timer) {
         errnum = errno;
         goto exit;
