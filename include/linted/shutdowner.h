@@ -29,8 +29,9 @@
 
 typedef mqd_t linted_shutdowner;
 
-struct linted_shutdowner_event
+struct linted_shutdowner_task
 {
+    union linted_asynch_task asynch_task;
     char dummy[1];
 };
 
@@ -41,9 +42,9 @@ linted_error linted_shutdowner_close(linted_shutdowner move);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-linted_error linted_shutdowner_receive(struct linted_asynch_pool* pool,
-                                       int task_id,
-                                       linted_shutdowner shutdowner,
-                                       struct linted_shutdowner_event* event);
+void linted_shutdowner_receive(struct linted_asynch_pool* pool,
+                               int task_id,
+                               linted_shutdowner shutdowner,
+                               struct linted_shutdowner_task* task);
 
 #endif /* LINTED_SHUTDOWNER_H */

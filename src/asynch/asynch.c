@@ -36,7 +36,7 @@ int linted_asynch_pool_create(struct linted_asynch_pool* pool)
 
     struct linted_array_queue* command_queue;
     if ((errnum = linted_array_queue_create(
-             &command_queue, sizeof(union linted_asynch_task))) != 0) {
+             &command_queue, sizeof(union linted_asynch_task*))) != 0) {
         return errnum;
     }
 
@@ -119,21 +119,10 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
     return errnum;
 }
 
-linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
-                                       union linted_asynch_task* task)
+void linted_asynch_pool_submit(struct linted_asynch_pool* pool,
+                               union linted_asynch_task* task)
 {
-    struct linted_linked_queue_node* reply_node
-        = malloc(sizeof *reply_node + sizeof(union linted_asynch_event));
-    if (NULL == reply_node) {
-        return errno;
-    }
-
-    task->typical.reply_node = reply_node;
-
-    // Unfortunately, I am not smart enough to create a dynamically
-    // sized thread pool.
-    linted_array_queue_send(pool->command_queue, task);
-    return 0;
+    linted_array_queue_send(pool->command_queue, &task);
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
@@ -151,8 +140,10 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     struct linted_linked_queue_node* node;
     linted_linked_queue_recv(pool->event_queue, &node);
 
-    memcpy(&events[event_count], node->contents, sizeof events[event_count]);
-    free(node);
+    /* The node is the first member of the task */
+    union linted_asynch_task* task = (union linted_asynch_task*)node;
+    memcpy(&events[event_count], &task->typical.event,
+           sizeof events[event_count]);
     ++event_count;
 
     /* Then poll for more */
@@ -161,10 +152,10 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
         if (EAGAIN == errnum) {
             break;
         }
-        memcpy(&events[event_count], node->contents,
-               sizeof events[event_count]);
 
-        free(node);
+        union linted_asynch_task* task = (union linted_asynch_task*)node;
+        memcpy(&events[event_count], &task->typical.event,
+               sizeof events[event_count]);
     }
 
     *event_countp = event_count;
@@ -189,10 +180,12 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
         if (EAGAIN == errnum) {
             break;
         }
-        memcpy(&events[event_count], node->contents,
-               sizeof events[event_count]);
 
-        free(node);
+        /* The node is the first member of the task */
+        union linted_asynch_task* task = (union linted_asynch_task*)node;
+
+        memcpy(&events[event_count], &task->typical.event,
+               sizeof events[event_count]);
     }
 
     *event_countp = event_count;
@@ -209,29 +202,28 @@ static void* worker_routine(void* arg)
     struct linted_asynch_worker_pool* worker_pool = arg;
 
     for (;;) {
-        union linted_asynch_task task;
+        union linted_asynch_task * task;
         linted_array_queue_recv(worker_pool->command_queue, &task);
 
-        union linted_asynch_event event;
-        memset(&event, 0, sizeof event);
+        union linted_asynch_event * event = &task->typical.event;
 
-        switch (task.typical.type) {
+        switch (task->typical.type) {
         case LINTED_ASYNCH_TASK_POLL: {
-            struct linted_asynch_task_poll* task_poll = &task.poll;
+            struct linted_asynch_task_poll* task_poll = &task->poll;
             linted_error errnum;
             do {
                 int poll_status = poll(task_poll->fds, task_poll->size, -1);
                 errnum = -1 == poll_status ? errno : 0;
             } while (EINTR == errnum);
 
-            event.poll.type = LINTED_ASYNCH_EVENT_POLL;
-            event.poll.task_id = task_poll->task_id;
-            event.poll.errnum = errnum;
+            event->poll.type = LINTED_ASYNCH_EVENT_POLL;
+            event->poll.task_id = task_poll->task_id;
+            event->poll.errnum = errnum;
             break;
         }
 
         case LINTED_ASYNCH_TASK_READ: {
-            struct linted_asynch_task_read* task_read = &task.read;
+            struct linted_asynch_task_read* task_read = &task->read;
             size_t bytes_read = 0;
             size_t bytes_left = task_read->size;
             linted_error errnum;
@@ -268,16 +260,16 @@ static void* worker_routine(void* arg)
                 }
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event.read.type = LINTED_ASYNCH_EVENT_READ;
-            event.read.task_id = task_read->task_id;
-            event.read.errnum = errnum;
-            event.read.bytes_read = bytes_read;
+            event->read.type = LINTED_ASYNCH_EVENT_READ;
+            event->read.task_id = task_read->task_id;
+            event->read.errnum = errnum;
+            event->read.bytes_read = bytes_read;
             break;
         }
 
         case LINTED_ASYNCH_TASK_MQ_RECEIVE: {
             struct linted_asynch_task_mq_receive* task_receive =
-                &task.mq_receive;
+                &task->mq_receive;
             size_t bytes_read = 0;
             linted_error errnum;
             do {
@@ -302,15 +294,15 @@ static void* worker_routine(void* arg)
                 bytes_read = result;
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event.read.type = LINTED_ASYNCH_EVENT_READ;
-            event.read.task_id = task_receive->task_id;
-            event.read.errnum = errnum;
-            event.read.bytes_read = bytes_read;
+            event->read.type = LINTED_ASYNCH_EVENT_READ;
+            event->read.task_id = task_receive->task_id;
+            event->read.errnum = errnum;
+            event->read.bytes_read = bytes_read;
             break;
         }
 
         case LINTED_ASYNCH_TASK_MQ_SEND: {
-            struct linted_asynch_task_mq_send* task_send = &task.mq_send;
+            struct linted_asynch_task_mq_send* task_send = &task->mq_send;
             size_t bytes_wrote = 0;
             linted_error errnum;
             do {
@@ -334,10 +326,10 @@ static void* worker_routine(void* arg)
                 bytes_wrote = task_send->size;
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event.write.type = LINTED_ASYNCH_EVENT_WRITE;
-            event.write.task_id = task_send->task_id;
-            event.write.errnum = errnum;
-            event.write.bytes_wrote = bytes_wrote;
+            event->write.type = LINTED_ASYNCH_EVENT_WRITE;
+            event->write.task_id = task_send->task_id;
+            event->write.errnum = errnum;
+            event->write.bytes_wrote = bytes_wrote;
             break;
         }
 
@@ -345,9 +337,8 @@ static void* worker_routine(void* arg)
             assert(false);
         }
 
-        memcpy(task.typical.reply_node->contents, &event, sizeof event);
-
         linted_linked_queue_send(worker_pool->event_queue,
-                                 task.typical.reply_node);
+                                 &task->typical.reply_node);
     }
+    return NULL;
 }

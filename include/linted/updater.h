@@ -52,8 +52,9 @@ struct linted_updater_update
     linted_updater_uint_fast y_rotation;
 };
 
-struct linted_updater_event
+struct linted_updater_task
 {
+    union linted_asynch_task asynch_task;
     char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
                  + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
                  + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
@@ -64,18 +65,16 @@ struct linted_updater_event
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,
                                  int wflags);
 
-void linted_updater_encode(struct linted_updater_update const* update,
-                           struct linted_updater_event* event);
+void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
+                         linted_updater updater,
+                         struct linted_updater_update const *update,
+                         struct linted_updater_task* task);
 
-linted_error linted_updater_send(struct linted_asynch_pool* pool, int task_id,
-                                 linted_updater updater,
-                                 struct linted_updater_event const* update);
+void linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
+                            linted_updater updater,
+                            struct linted_updater_task* task);
 
-linted_error linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
-                                    linted_updater updater,
-                                    struct linted_updater_event* update);
-
-void linted_updater_decode(struct linted_updater_event const* event,
+void linted_updater_decode(struct linted_updater_task const* task,
                            struct linted_updater_update* update);
 
 linted_error linted_updater_close(linted_updater updater);

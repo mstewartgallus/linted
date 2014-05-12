@@ -40,10 +40,14 @@ struct linted_linked_queue_node
 {
     struct linted_linked_queue_node* prev;
     struct linted_linked_queue_node* next;
-    char contents[];
 };
 
 linted_error linted_linked_queue_create(struct linted_linked_queue* queue);
+
+/**
+ * @warning It is the responsibility of the caller to fetch and
+ * destroy all nodes in the queue.
+ */
 void linted_linked_queue_destroy(struct linted_linked_queue* queue);
 
 /**

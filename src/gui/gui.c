@@ -160,7 +160,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const* window_model,
                     struct controller_data* controller_data);
 
-static void on_updater_read(struct linted_updater_event * event,
+static void on_updater_read(struct linted_updater_task const * task,
                             struct sim_model* sim_model);
 
 static linted_error init_graphics(linted_logger logger,
@@ -534,16 +534,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         CONTROLLER
     };
 
-    struct linted_updater_event updater_event;
-    memset(&updater_event, 0, sizeof updater_event);
+    struct linted_updater_task updater_task;
+    memset(&updater_task, 0, sizeof updater_task);
 
-    struct linted_controller_event controller_event;
-    memset(&controller_event, 0, sizeof controller_event);
+    struct linted_controller_task controller_task;
+    memset(&controller_task, 0, sizeof controller_task);
 
-    if ((errnum = linted_updater_receive(&pool, UPDATER, updater,
-                                         &updater_event)) != 0) {
-        goto cleanup_gl;
-    }
+    linted_updater_receive(&pool, UPDATER, updater, &updater_task);
 
     for (;;) {
         /* Handle GUI events first before rendering */
@@ -677,23 +674,18 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                         goto cleanup_gl;
                     }
 
-                    on_updater_read(&updater_event, &sim_model);
+                    on_updater_read(&updater_task, &sim_model);
 
-
-                    if ((errnum = linted_updater_receive(&pool, UPDATER, updater,
-                                                         &updater_event)) != 0) {
-                        goto cleanup_gl;
-                    }
+                    linted_updater_receive(&pool, UPDATER, updater,
+                                           &updater_task);
 
                     if (controller_data.update_pending
                         && !controller_data.update_in_progress) {
-                        linted_controller_encode(&controller_data.update,
-                                                 &controller_event);
-                        if ((errnum = linted_controller_send(&pool, CONTROLLER,
-                                                             controller,
-                                                             &controller_event)) != 0) {
-                            goto cleanup_gl;
-                        }
+                        linted_controller_send(&pool, CONTROLLER,
+                                               controller,
+                                               &controller_data.update,
+                                               &controller_task);
+
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;
                     }
@@ -706,13 +698,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     }
 
                     if (controller_data.update_pending) {
-                        linted_controller_encode(&controller_data.update,
-                                                 &controller_event);
-                        if ((errnum = linted_controller_send(&pool, CONTROLLER,
-                                                             controller,
-                                                             &controller_event)) != 0) {
-                            goto cleanup_gl;
-                        }
+                        linted_controller_send(&pool, CONTROLLER,
+                                               controller,
+                                               &controller_data.update,
+                                               &controller_task);
+
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;
                     }
@@ -823,11 +813,11 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static void on_updater_read(struct linted_updater_event * event,
+static void on_updater_read(struct linted_updater_task const * task,
                             struct sim_model* sim_model)
 {
     struct linted_updater_update update;
-    linted_updater_decode(event, &update);
+    linted_updater_decode(task, &update);
 
     float pi = acosf(-1.0f);
 

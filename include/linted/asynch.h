@@ -18,6 +18,7 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/linked_queue.h"
 
 #include <stddef.h>
 #include <poll.h>
@@ -38,7 +39,6 @@
  *       set and a lock).
  */
 
-struct linted_linked_queue;
 struct linted_asynch_worker_pool;
 
 struct linted_asynch_pool
@@ -114,14 +114,16 @@ struct linted_linked_queue_node;
 
 struct linted_asynch_task_typical
 {
-    struct linted_linked_queue_node* reply_node;
+    struct linted_linked_queue_node reply_node;
+    union linted_asynch_event event;
     unsigned type;
     unsigned task_id;
 };
 
 struct linted_asynch_task_poll
 {
-    struct linted_linked_queue_node* reply_node;
+    struct linted_linked_queue_node reply_node;
+    union linted_asynch_event event;
     unsigned type;
     int task_id;
     struct pollfd* fds;
@@ -130,7 +132,8 @@ struct linted_asynch_task_poll
 
 struct linted_asynch_task_read
 {
-    struct linted_linked_queue_node* reply_node;
+    struct linted_linked_queue_node reply_node;
+    union linted_asynch_event event;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -140,7 +143,8 @@ struct linted_asynch_task_read
 
 struct linted_asynch_task_mq_receive
 {
-    struct linted_linked_queue_node* reply_node;
+    struct linted_linked_queue_node reply_node;
+    union linted_asynch_event event;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -150,7 +154,8 @@ struct linted_asynch_task_mq_receive
 
 struct linted_asynch_task_mq_send
 {
-    struct linted_linked_queue_node* reply_node;
+    struct linted_linked_queue_node reply_node;
+    union linted_asynch_event event;
     unsigned type;
     int task_id;
     linted_ko ko;
@@ -170,8 +175,8 @@ union linted_asynch_task
 linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
 
-linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
-                                       union linted_asynch_task* task);
+void linted_asynch_pool_submit(struct linted_asynch_pool* pool,
+                               union linted_asynch_task* task);
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
                                      union linted_asynch_event* events,

@@ -47,14 +47,6 @@ linted_error linted_linked_queue_create(struct linted_linked_queue* queue)
 
 void linted_linked_queue_destroy(struct linted_linked_queue* queue)
 {
-    for (;;) {
-        struct linted_linked_queue_node* node;
-        linted_error errnum = linted_linked_queue_try_recv(queue, &node);
-        if (EAGAIN == errnum) {
-            break;
-        }
-        free(node);
-    }
     pthread_cond_destroy(&queue->gains_member);
     pthread_mutex_destroy(&queue->lock);
 }

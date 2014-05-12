@@ -317,28 +317,21 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     };
 
     uint64_t timer_ticks;
+    union linted_asynch_task timer_task;
 
-    struct linted_shutdowner_event shutdowner_event;
-    memset(&shutdowner_event, 0, sizeof shutdowner_event);
+    struct linted_shutdowner_task shutdowner_task;
+    memset(&shutdowner_task, 0, sizeof shutdowner_task);
 
-    struct linted_controller_event controller_event;
-    memset(&controller_event, 0, sizeof controller_event);
+    struct linted_controller_task controller_task;
+    memset(&controller_task, 0, sizeof controller_task);
 
-    struct linted_updater_event updater_event;
-    memset(&updater_event, 0, sizeof updater_event);
+    struct linted_updater_task updater_task;
+    memset(&updater_task, 0, sizeof updater_task);
 
-    if ((errnum = linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner,
-                                            &shutdowner_event)) != 0) {
-        goto destroy_pool;
-    }
-    if ((errnum = linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
-                                 sizeof timer_ticks)) != 0) {
-        goto destroy_pool;
-    }
-    if ((errnum = linted_controller_receive(&pool, CONTROLLER, controller,
-                                            &controller_event)) != 0) {
-        goto destroy_pool;
-    }
+    linted_shutdowner_receive(&pool, SHUTDOWNER, shutdowner, &shutdowner_task);
+    linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
+                   sizeof timer_ticks, &timer_task);
+    linted_controller_receive(&pool, CONTROLLER, controller, &controller_task);
 
     for (;;) {
         union linted_asynch_event events[20];
@@ -366,30 +359,23 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 on_timer_read(timer_ticks, &action_state, &simulator_state);
 
-                if ((errnum
-                     = linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
-                                      sizeof timer_ticks)) != 0) {
-                    goto destroy_pool;
-                }
+                linted_io_read(&pool, TIMER, timer, (char*)&timer_ticks,
+                               sizeof timer_ticks, &timer_task);
 
                 if (simulator_state.update_pending
                     && !simulator_state.write_in_progress) {
 
-                    {
-                        struct linted_updater_update update
-                            = { .x_position = simulator_state.x_position,
-                                .y_position = simulator_state.y_position,
-                                .z_position = simulator_state.z_position,
-                                .x_rotation = simulator_state.x_rotation,
-                                .y_rotation = simulator_state.y_rotation };
+                    struct linted_updater_update update
+                        = { .x_position = simulator_state.x_position,
+                            .y_position = simulator_state.y_position,
+                            .z_position = simulator_state.z_position,
+                            .x_rotation = simulator_state.x_rotation,
+                            .y_rotation = simulator_state.y_rotation };
 
-                        linted_updater_encode(&update, &updater_event);
-                    }
+                    linted_updater_send(&pool, UPDATER, updater,
+                                        &update,
+                                        &updater_task);
 
-                    if ((errnum = linted_updater_send(&pool, UPDATER, updater,
-                                                      &updater_event)) != 0) {
-                        goto destroy_pool;
-                    }
                     simulator_state.update_pending = false;
                     simulator_state.write_in_progress = true;
                 }
@@ -401,18 +387,15 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
 
                 struct linted_controller_message message;
-                if ((errnum = linted_controller_decode(&controller_event,
+                if ((errnum = linted_controller_decode(&controller_task,
                                                        &message)) != 0) {
                     goto destroy_pool;
                 }
 
                 on_controller_receive(&message, &action_state);
 
-                if ((errnum = linted_controller_receive(
-                         &pool, CONTROLLER, controller, &controller_event))
-                    != 0) {
-                    goto destroy_pool;
-                }
+                linted_controller_receive(&pool, CONTROLLER, controller,
+                                          &controller_task);
                 break;
             }
 
@@ -424,21 +407,17 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 }
 
                 if (simulator_state.update_pending) {
-                    {
-                        struct linted_updater_update update
-                            = { .x_position = simulator_state.x_position,
-                                .y_position = simulator_state.y_position,
-                                .z_position = simulator_state.z_position,
-                                .x_rotation = simulator_state.x_rotation,
-                                .y_rotation = simulator_state.y_rotation };
+                    struct linted_updater_update update
+                        = { .x_position = simulator_state.x_position,
+                            .y_position = simulator_state.y_position,
+                            .z_position = simulator_state.z_position,
+                            .x_rotation = simulator_state.x_rotation,
+                            .y_rotation = simulator_state.y_rotation };
 
-                        linted_updater_encode(&update, &updater_event);
-                    }
+                    linted_updater_send(&pool, UPDATER, updater,
+                                        &update,
+                                        &updater_task);
 
-                    if ((errnum = linted_updater_send(&pool, UPDATER, updater,
-                                                      &updater_event)) != 0) {
-                        goto destroy_pool;
-                    }
                     simulator_state.update_pending = false;
                     simulator_state.write_in_progress = true;
                 }
