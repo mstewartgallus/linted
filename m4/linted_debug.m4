@@ -13,16 +13,27 @@ dnl
 AC_ARG_ENABLE(
         [debug],
         AS_HELP_STRING(
-                [--disable-debug],
-                [disable debug mode]))
+                [--enable-debug],
+                [enable debug mode (insecure!)]))
 dnl
-AS_IF([test "x${enable_debug}" != "xno"], [
+AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
         [-g]dnl
         [-fno-omit-frame-pointer]dnl
+        [-ftrapv]dnl
+        [-fsanitize=address-all]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG])
+dnl
+LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
+        [-fsanitize=address-all]dnl This flag must appear in both the
+                                dnl linker options and compiler
+                                dnl options to link against the
+                                dnl appropriate runtime libraries.
+])
+AC_SUBST([linted_LDFLAGS_HARDEN])
+dnl
 ])
 ])

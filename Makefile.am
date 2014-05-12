@@ -27,9 +27,10 @@ MOSTLYCLEANFILES=
 EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
 
 AM_LDFLAGS=\
-  -Xcompiler '$(linted_LDFLAGS_OPTIMIZE)\
+  -Xcompiler '$(linted_LDFLAGS_LANGUAGE)\
+  $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
-  $(linted_LDFLAGS_LANGUAGE)'
+  $(linted_LDFLAGS_DEBUG)'
 
 AM_CPPFLAGS=\
   $(linted_CPPFLAGS_OPTIMIZE)\
