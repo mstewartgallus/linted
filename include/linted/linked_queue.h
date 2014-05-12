@@ -55,8 +55,8 @@ void linted_linked_queue_send(struct linted_linked_queue* queue,
 /**
  * deferred cancellation safe
  */
-linted_error linted_linked_queue_recv(struct linted_linked_queue* queue,
-                                      struct linted_linked_queue_node** node);
+void linted_linked_queue_recv(struct linted_linked_queue* queue,
+                              struct linted_linked_queue_node** node);
 
 /**
  * deferred cancellation safe

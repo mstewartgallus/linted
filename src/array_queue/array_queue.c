@@ -20,7 +20,6 @@
 #include "linted/error.h"
 #include "linted/util.h"
 
-#include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
@@ -35,7 +34,6 @@ struct linted_array_queue
     char message_buffer[];
 };
 
-static inline struct timespec get_the_end(void);
 static void unlock_routine(void* arg);
 
 linted_error linted_array_queue_create(struct linted_array_queue** queuep,
@@ -124,20 +122,14 @@ unlock_mutex:
     return errnum;
 }
 
-linted_error linted_array_queue_send(struct linted_array_queue* queue,
-                                     void const* message)
+void linted_array_queue_send(struct linted_array_queue* queue,
+                             void const* message)
 {
-    linted_error errnum = 0;
-
     pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     while (queue->occupied) {
-        struct timespec the_end = get_the_end();
-        if ((errnum = pthread_cond_timedwait(&queue->on_empty, &queue->mutex,
-                                             &the_end)) != 0) {
-            return errnum;
-        }
+        pthread_cond_wait(&queue->on_empty, &queue->mutex);
     }
 
     queue->occupied = true;
@@ -146,24 +138,16 @@ linted_error linted_array_queue_send(struct linted_array_queue* queue,
     pthread_cond_signal(&queue->on_full);
 
     pthread_cleanup_pop(true);
-
-    return errnum;
 }
 
-linted_error linted_array_queue_recv(struct linted_array_queue* queue,
-                                     void* message)
+void linted_array_queue_recv(struct linted_array_queue* queue,
+                             void* message)
 {
-    linted_error errnum = 0;
-
     pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     while (!queue->occupied) {
-        struct timespec the_end = get_the_end();
-        if ((errnum = pthread_cond_timedwait(&queue->on_full, &queue->mutex,
-                                             &the_end)) != 0) {
-            return errnum;
-        }
+        pthread_cond_wait(&queue->on_full, &queue->mutex);
     }
 
     queue->occupied = false;
@@ -172,22 +156,6 @@ linted_error linted_array_queue_recv(struct linted_array_queue* queue,
     pthread_cond_signal(&queue->on_empty);
 
     pthread_cleanup_pop(true);
-
-    return errnum;
-}
-
-static inline struct timespec get_the_end(void)
-{
-    struct timespec the_end;
-    struct tm the_end_tm;
-
-    memset(&the_end_tm, 0, sizeof the_end_tm);
-
-    the_end_tm.tm_year = INT_MAX;
-    the_end.tv_sec = mktime(&the_end_tm);
-    the_end.tv_nsec = 0;
-
-    return the_end;
 }
 
 static void unlock_routine(void* arg)

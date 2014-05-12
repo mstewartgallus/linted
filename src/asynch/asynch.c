@@ -119,8 +119,6 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
 linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
                                        union linted_asynch_task* task)
 {
-    int errnum;
-
     struct linted_linked_queue_node* reply_node
         = malloc(sizeof *reply_node + sizeof(union linted_asynch_event));
     if (NULL == reply_node) {
@@ -131,9 +129,7 @@ linted_error linted_asynch_pool_submit(struct linted_asynch_pool* pool,
 
     // Unfortunately, I am not smart enough to create a dynamically
     // sized thread pool.
-    do {
-        errnum = linted_array_queue_send(pool->command_queue, task);
-    } while (EINTR == errnum);
+    linted_array_queue_send(pool->command_queue, task);
     return 0;
 }
 
@@ -150,9 +146,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
 
     /* Wait for one event */
     struct linted_linked_queue_node* node;
-    if ((errnum = linted_linked_queue_recv(pool->event_queue, &node)) != 0) {
-        return errnum;
-    }
+    linted_linked_queue_recv(pool->event_queue, &node);
 
     memcpy(&events[event_count], node->contents, sizeof events[event_count]);
     free(node);
@@ -171,6 +165,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
     }
 
     *event_countp = event_count;
+
     return 0;
 }
 
@@ -180,11 +175,7 @@ static void* worker_routine(void* arg)
 
     for (;;) {
         union linted_asynch_task task;
-        linted_error recv_errnum;
-        do {
-            recv_errnum
-                = linted_array_queue_recv(worker_pool->command_queue, &task);
-        } while (EINTR == recv_errnum);
+        linted_array_queue_recv(worker_pool->command_queue, &task);
 
         union linted_asynch_event event;
         memset(&event, 0, sizeof event);

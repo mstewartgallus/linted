@@ -39,8 +39,8 @@ void linted_array_queue_destroy(struct linted_array_queue* queue);
 /**
  * deferred cancellation safe
  */
-linted_error linted_array_queue_send(struct linted_array_queue* queue,
-                                     void const* message);
+void linted_array_queue_send(struct linted_array_queue* queue,
+                             void const* message);
 
 /**
  * deferred cancellation safe
@@ -63,7 +63,7 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
 /**
  * deferred cancellation safe
  */
-linted_error linted_array_queue_recv(struct linted_array_queue* queue,
-                                     void* message);
+void linted_array_queue_recv(struct linted_array_queue* queue,
+                             void* message);
 
 #endif /* LINTED_ARRAY_QUEUE_H */

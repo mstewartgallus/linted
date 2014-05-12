@@ -342,13 +342,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     for (;;) {
         union linted_asynch_event events[20];
         size_t event_count;
-        do {
-            errnum = linted_asynch_pool_wait(
-                &pool, events, LINTED_ARRAY_SIZE(events), &event_count);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            goto destroy_pool;
-        }
+        linted_asynch_pool_wait(&pool, events,
+                                LINTED_ARRAY_SIZE(events), &event_count);
 
         for (size_t ii = 0; ii < event_count; ++ii) {
             switch (events[ii].typical.task_id) {
