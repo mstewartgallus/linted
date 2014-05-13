@@ -83,14 +83,14 @@ struct simulator_state
     bool write_in_progress : 1;
 };
 
-static linted_error on_read_timer_ticks(struct linted_asynch_pool * pool,
-                                        linted_ko updater,
-                                        struct linted_updater_task * updater_task,
-                                        linted_ko timer,
-                                        union linted_asynch_task * timer_task,
-                                        uint64_t * timer_ticks,
-                                        struct action_state const* action_state,
-                                        struct simulator_state* simulator_state);
+static void on_read_timer_ticks(struct linted_asynch_pool * pool,
+                                linted_ko updater,
+                                struct linted_updater_task * updater_task,
+                                linted_ko timer,
+                                union linted_asynch_task * timer_task,
+                                uint64_t * timer_ticks,
+                                struct action_state const* action_state,
+                                struct simulator_state* simulator_state);
 
 static void on_controller_receive(struct linted_controller_message const
                                   * message,
@@ -357,36 +357,30 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                                 &task_count);
 
         for (size_t ii = 0; ii < task_count; ++ii) {
-            switch (completed_tasks[ii]->typical.task_action) {
-            default:
-                errnum = completed_tasks[ii]->typical.errnum;
+            union linted_asynch_task * completed_task = completed_tasks[ii];
+            if ((errnum = completed_task->typical.errnum) != 0) {
                 goto destroy_pool;
+            }
+
+            switch (completed_task->typical.task_action) {
+            default:
+                assert(false);
 
             case ON_RECEIVE_SHUTDOWNER_EVENT:
-                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
-                    goto destroy_pool;
-                }
-
                 goto exit_main_loop;
 
             case ON_READ_TIMER_TICKS:
-                if ((errnum = on_read_timer_ticks(&pool,
-                                                  updater,
-                                                  &updater_task,
-                                                  timer,
-                                                  &timer_task,
-                                                  &timer_ticks,
-                                                  &action_state,
-                                                  &simulator_state)) != 0) {
-                    goto destroy_pool;
-                }
+                on_read_timer_ticks(&pool,
+                                    updater,
+                                    &updater_task,
+                                    timer,
+                                    &timer_task,
+                                    &timer_ticks,
+                                    &action_state,
+                                    &simulator_state);
                 break;
 
             case ON_RECEIVE_CONTROLLER_EVENT: {
-                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
-                    goto destroy_pool;
-                }
-
                 struct linted_controller_message message;
                 if ((errnum = linted_controller_decode(&controller_task,
                                                        &message)) != 0) {
@@ -402,10 +396,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
             case ON_SENT_UPDATER_EVENT:
                 simulator_state.write_in_progress = false;
-
-                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
-                    goto destroy_pool;
-                }
 
                 if (simulator_state.update_pending) {
                     struct linted_updater_update update
@@ -448,21 +438,15 @@ exit:
     return errnum;
 }
 
-static linted_error on_read_timer_ticks(struct linted_asynch_pool * pool,
-                                        linted_ko updater,
-                                        struct linted_updater_task * updater_task,
-                                        linted_ko timer,
-                                        union linted_asynch_task * timer_task,
-                                        uint64_t * timer_ticks,
-                                        struct action_state const* action_state,
-                                        struct simulator_state* simulator_state)
+static void on_read_timer_ticks(struct linted_asynch_pool * pool,
+                                linted_ko updater,
+                                struct linted_updater_task * updater_task,
+                                linted_ko timer,
+                                union linted_asynch_task * timer_task,
+                                uint64_t * timer_ticks,
+                                struct action_state const* action_state,
+                                struct simulator_state* simulator_state)
 {
-    linted_error errnum;
-
-    if ((errnum = timer_task->typical.errnum) != 0) {
-        return errnum;
-    }
-
     for (size_t ii = 0; ii < *timer_ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
@@ -504,8 +488,6 @@ static linted_error on_read_timer_ticks(struct linted_asynch_pool * pool,
         simulator_state->update_pending = false;
         simulator_state->write_in_progress = true;
     }
-
-    return 0;
 }
 
 static void on_controller_receive(struct linted_controller_message const

@@ -670,16 +670,15 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         if (had_asynch_event) {
             for (size_t ii = 0; ii < task_count; ++ii) {
                 union linted_asynch_task * completed_task = completed_tasks[ii];
+                if ((errnum = completed_task->typical.errnum) != 0) {
+                    goto cleanup_gl;
+                }
+
                 switch (completed_task->typical.task_action) {
                 default:
-                    errnum = completed_task->typical.errnum;
-                    goto cleanup_gl;
+                    assert(false);
 
                 case ON_RECEIVED_UPDATER_EVENT:
-                    if ((errnum = completed_task->typical.errnum) != 0) {
-                        goto cleanup_gl;
-                    }
-
                     on_updater_read(&updater_task, &sim_model);
 
                     linted_updater_receive(&pool, ON_RECEIVED_UPDATER_EVENT,
@@ -698,9 +697,6 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 case ON_SENT_CONTROLLER_EVENT:
                     controller_data.update_in_progress = false;
-                    if ((errnum = completed_task->typical.errnum) != 0) {
-                        goto cleanup_gl;
-                    }
 
                     if (controller_data.update_pending) {
                         linted_controller_send(
