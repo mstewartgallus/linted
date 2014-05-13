@@ -23,9 +23,10 @@ derive code or algorithms from it.**
 Some of these methods of guarding against software bugs include:
 
 - process isolation
-  - by forking off new processes
-  - using a fork server started from a known good state which
-    - protects against accidental inheritance of corrupted state
+  - by forking and executing new processes
+  - we guard against inheriting corrupted state by
+    - execveing new process images from binaries
+    - sanitizing unclosed file descriptors at process startup
 - toolchain hardening options including
   - the GNU linker options for
     - marking global symbols readonly after they are resolved with -z,relro
@@ -33,9 +34,6 @@ Some of these methods of guarding against software bugs include:
     - marking the stack not executable with -z,noexecstack
   - the GNU Compiler Collection (GCC) options for
     - stack smashing protection with -fstack-protector-all
-    - signed overflow protection with -ftrapv
-      - this can lead to denial of service attacks but sudden exit was
-        judged better than incorrect behaviour in this case
     - position independent executable support with -pie and -fPIE
 - linters including:
   - Clang's static analysis
