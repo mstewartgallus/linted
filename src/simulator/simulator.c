@@ -90,9 +90,14 @@ on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
                     struct action_state const* action_state,
                     struct simulator_state* simulator_state);
 
-static void on_controller_receive(struct linted_controller_message const
-                                  * message,
-                                  struct action_state* action_state);
+static linted_error on_controller_receive(struct linted_asynch_pool * pool,
+                                          struct linted_controller_task_receive * controller_task,
+                                          struct action_state* action_state);
+
+static void on_sent_update_event(struct linted_updater_task_send * updater_task,
+                                 linted_ko updater,
+                                 struct simulator_state * simulator_state,
+                                 struct linted_asynch_pool * pool);
 
 static void simulate_forces(linted_updater_int_fast* position,
                             linted_updater_int_fast* velocity,
@@ -379,37 +384,16 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 break;
 
             case ON_RECEIVE_CONTROLLER_EVENT: {
-                struct linted_controller_message message;
-                if ((errnum = linted_controller_decode(&controller_task,
-                                                       &message)) != 0) {
+                if ((errnum = on_controller_receive(&pool,
+                                                    &controller_task, &action_state)) != 0) {
                     goto destroy_pool;
                 }
-
-                linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
-
-                on_controller_receive(&message, &action_state);
                 break;
             }
 
             case ON_SENT_UPDATER_EVENT:
-                simulator_state.write_in_progress = false;
-
-                if (simulator_state.update_pending) {
-                    struct linted_updater_update update
-                        = { .x_position = simulator_state.x_position,
-                            .y_position = simulator_state.y_position,
-                            .z_position = simulator_state.z_position,
-                            .x_rotation = simulator_state.x_rotation,
-                            .y_rotation = simulator_state.y_rotation };
-
-                    linted_updater_send(&updater_task, ON_SENT_UPDATER_EVENT,
-                                        updater, &update);
-                    linted_asynch_pool_submit(&pool,
-                                         LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
-
-                    simulator_state.update_pending = false;
-                    simulator_state.write_in_progress = true;
-                }
+                on_sent_update_event(&updater_task, updater, &simulator_state,
+                                     &pool);
                 break;
             }
         }
@@ -488,17 +472,54 @@ on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
     }
 }
 
-static void on_controller_receive(struct linted_controller_message const
-                                  * message,
-                                  struct action_state* action_state)
+static linted_error on_controller_receive(struct linted_asynch_pool * pool,
+                                          struct linted_controller_task_receive * controller_task,
+                                          struct action_state* action_state)
 {
-    action_state->x = message->right - message->left;
-    action_state->z = message->back - message->forward;
+    struct linted_controller_message message;
+    linted_error errnum;
 
-    action_state->x_tilt = -message->x_tilt;
-    action_state->y_tilt = -message->y_tilt;
+    if ((errnum = linted_controller_decode(controller_task, &message)) != 0) {
+        return errnum;
+    }
 
-    action_state->jumping = message->jumping;
+    linted_asynch_pool_submit(pool,
+                              LINTED_UPCAST(LINTED_UPCAST(controller_task)));
+
+    action_state->x = message.right - message.left;
+    action_state->z = message.back - message.forward;
+
+    action_state->x_tilt = -message.x_tilt;
+    action_state->y_tilt = -message.y_tilt;
+
+    action_state->jumping = message.jumping;
+
+    return 0;
+}
+
+static void on_sent_update_event(struct linted_updater_task_send * updater_task,
+                                 linted_ko updater,
+                                 struct simulator_state * simulator_state,
+                                 struct linted_asynch_pool * pool)
+{
+    simulator_state->write_in_progress = false;
+
+    if (simulator_state->update_pending) {
+        struct linted_updater_update update
+            = { .x_position = simulator_state->x_position,
+                .y_position = simulator_state->y_position,
+                .z_position = simulator_state->z_position,
+                .x_rotation = simulator_state->x_rotation,
+                .y_rotation = simulator_state->y_rotation };
+
+        linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT,
+                            updater, &update);
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(LINTED_UPCAST(updater_task)));
+
+        simulator_state->update_pending = false;
+        simulator_state->write_in_progress = true;
+    }
 }
 
 static void simulate_forces(linted_updater_int_fast* position,
