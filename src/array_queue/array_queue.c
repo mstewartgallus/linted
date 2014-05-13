@@ -81,9 +81,7 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
 
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
-    if (EBUSY == (errnum == pthread_mutex_trylock(&queue->mutex))) {
-        goto restore_cancel_state;
-    }
+    pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     if (queue->occupied) {
@@ -99,7 +97,6 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
 unlock_mutex:
     pthread_cleanup_pop(true);
 
-restore_cancel_state:
     pthread_setcanceltype(old_cancel_state, NULL);
 
     return errnum;
@@ -113,10 +110,7 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
 
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
-    if (EBUSY == (errnum = pthread_mutex_trylock(&queue->mutex))) {
-        goto restore_cancel_state;
-    }
-
+    pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     if (!queue->occupied) {
@@ -132,7 +126,6 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
 unlock_mutex:
     pthread_cleanup_pop(true);
 
-restore_cancel_state:
     pthread_setcanceltype(old_cancel_state, NULL);
 
     return errnum;
