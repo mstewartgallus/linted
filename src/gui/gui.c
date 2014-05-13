@@ -160,7 +160,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const* window_model,
                     struct controller_data* controller_data);
 
-static void on_updater_read(struct linted_updater_task_receive const* task,
+static void on_updater_read(struct linted_updater_update const* update,
                             struct sim_model* sim_model);
 
 static linted_error init_graphics(linted_logger logger,
@@ -676,11 +676,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 default:
                     assert(false);
 
-                case ON_RECEIVED_UPDATER_EVENT:
-                    on_updater_read(&updater_task, &sim_model);
+                case ON_RECEIVED_UPDATER_EVENT: {
+                    struct linted_updater_update update;
+                    linted_updater_decode(&updater_task, &update);
 
                     linted_asynch_pool_submit(&pool,
                                               LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
+
+                    on_updater_read(&update, &sim_model);
 
                     if (controller_data.update_pending
                         && !controller_data.update_in_progress) {
@@ -695,6 +698,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                         controller_data.update_in_progress = true;
                     }
                     break;
+                }
 
                 case ON_SENT_CONTROLLER_EVENT:
                     controller_data.update_in_progress = false;
@@ -817,20 +821,17 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static void on_updater_read(struct linted_updater_task_receive const* task,
+static void on_updater_read(struct linted_updater_update const* update,
                             struct sim_model* sim_model)
 {
-    struct linted_updater_update update;
-    linted_updater_decode(task, &update);
-
     float pi = acosf(-1.0f);
 
-    sim_model->x_rotation = update.x_rotation * (2 * pi / UINT32_MAX);
-    sim_model->y_rotation = update.y_rotation * (2 * pi / UINT32_MAX);
+    sim_model->x_rotation = update->x_rotation * (2 * pi / UINT32_MAX);
+    sim_model->y_rotation = update->y_rotation * (2 * pi / UINT32_MAX);
 
-    sim_model->x_position = update.x_position * (1 / (double)2048);
-    sim_model->y_position = update.y_position * (1 / (double)2048);
-    sim_model->z_position = update.z_position * (1 / (double)2048);
+    sim_model->x_position = update->x_position * (1 / (double)2048);
+    sim_model->y_position = update->y_position * (1 / (double)2048);
+    sim_model->z_position = update->z_position * (1 / (double)2048);
 }
 
 static linted_error init_graphics(linted_logger logger,

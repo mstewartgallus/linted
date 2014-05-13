@@ -86,9 +86,7 @@ struct simulator_state
 static void
 on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
                     struct linted_updater_task_send* updater_task,
-                    linted_ko timer,
                     struct linted_asynch_task_read* timer_task,
-                    uint64_t* timer_ticks,
                     struct action_state const* action_state,
                     struct simulator_state* simulator_state);
 
@@ -373,8 +371,10 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 goto exit_main_loop;
 
             case ON_READ_TIMER_TICKS:
-                on_read_timer_ticks(&pool, updater, &updater_task, timer,
-                                    &timer_task, &timer_ticks, &action_state,
+                on_read_timer_ticks(&pool,
+                                    updater, &updater_task,
+                                    &timer_task,
+                                    &action_state,
                                     &simulator_state);
                 break;
 
@@ -385,9 +385,9 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     goto destroy_pool;
                 }
 
-                on_controller_receive(&message, &action_state);
-
                 linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
+
+                on_controller_receive(&message, &action_state);
                 break;
             }
 
@@ -440,13 +440,16 @@ exit:
 static void
 on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
                     struct linted_updater_task_send* updater_task,
-                    linted_ko timer,
                     struct linted_asynch_task_read* timer_task,
-                    uint64_t* timer_ticks,
                     struct action_state const* action_state,
                     struct simulator_state* simulator_state)
 {
-    for (size_t ii = 0; ii < *timer_ticks; ++ii) {
+    uint64_t timer_ticks;
+    memcpy(&timer_ticks, timer_task->buf, sizeof timer_ticks);
+
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(timer_task));
+
+    for (size_t ii = 0; ii < timer_ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
                         8 * (linted_updater_int_fast)action_state->x);
@@ -465,8 +468,6 @@ on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
 
         simulator_state->update_pending = true;
     }
-
-    linted_asynch_pool_submit(pool, LINTED_UPCAST(timer_task));
 
     if (simulator_state->update_pending
         && !simulator_state->write_in_progress) {
