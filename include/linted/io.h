@@ -29,18 +29,19 @@
  * Abstracts over chunked input and output.
  */
 
-void linted_io_poll(struct linted_asynch_pool* pool, int task_id,
+void linted_io_poll(struct linted_asynch_pool* pool, int task_action,
                     struct pollfd* fds, size_t size,
                     union linted_asynch_task* task);
 
-void linted_io_read(struct linted_asynch_pool* pool, int task_id, linted_ko ko,
+void linted_io_read(struct linted_asynch_pool* pool, int task_action,
+                    linted_ko ko,
                     char* buf, size_t size, union linted_asynch_task* task);
 
-void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
+void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_action,
                           linted_ko ko, char* buf, size_t size,
                           union linted_asynch_task* task);
 
-void linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
+void linted_io_mq_send(struct linted_asynch_pool* pool, int task_action,
                        linted_ko ko, char const* buf, size_t size,
                        union linted_asynch_task* task);
 

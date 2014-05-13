@@ -33,23 +33,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void linted_io_poll(struct linted_asynch_pool* pool, int task_id,
+void linted_io_poll(struct linted_asynch_pool* pool, int task_action,
                     struct pollfd* fds, size_t size,
                     union linted_asynch_task* task)
 {
     task->poll.type = LINTED_ASYNCH_TASK_POLL;
-    task->poll.task_id = task_id;
+    task->poll.task_action = task_action;
     task->poll.fds = fds;
     task->poll.size = size;
 
     linted_asynch_pool_submit(pool, task);
 }
 
-void linted_io_read(struct linted_asynch_pool* pool, int task_id, linted_ko ko,
+void linted_io_read(struct linted_asynch_pool* pool, int task_action, linted_ko ko,
                     char* buf, size_t size, union linted_asynch_task* task)
 {
     task->read.type = LINTED_ASYNCH_TASK_READ;
-    task->read.task_id = task_id;
+    task->read.task_action = task_action;
     task->read.ko = ko;
     task->read.buf = buf;
     task->read.size = size;
@@ -57,12 +57,12 @@ void linted_io_read(struct linted_asynch_pool* pool, int task_id, linted_ko ko,
     linted_asynch_pool_submit(pool, task);
 }
 
-void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
+void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_action,
                           linted_ko ko, char* buf, size_t size,
                           union linted_asynch_task* task)
 {
     task->mq_receive.type = LINTED_ASYNCH_TASK_MQ_RECEIVE;
-    task->mq_receive.task_id = task_id;
+    task->mq_receive.task_action = task_action;
     task->mq_receive.ko = ko;
     task->mq_receive.buf = buf;
     task->mq_receive.size = size;
@@ -70,12 +70,12 @@ void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_id,
     linted_asynch_pool_submit(pool, task);
 }
 
-void linted_io_mq_send(struct linted_asynch_pool* pool, int task_id,
+void linted_io_mq_send(struct linted_asynch_pool* pool, int task_action,
                        linted_ko ko, char const* buf, size_t size,
                        union linted_asynch_task* task)
 {
     task->mq_send.type = LINTED_ASYNCH_TASK_MQ_SEND;
-    task->mq_send.task_id = task_id;
+    task->mq_send.task_action = task_action;
     task->mq_send.ko = ko;
     task->mq_send.buf = buf;
     task->mq_send.size = size;

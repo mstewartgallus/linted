@@ -1,3 +1,18 @@
+/*
+ * Copyright 2014 Steven Stewart-Gallus
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -219,7 +234,7 @@ static void* worker_routine(void* arg)
             } while (EINTR == errnum);
 
             event->poll.type = LINTED_ASYNCH_EVENT_POLL;
-            event->poll.task_id = task_poll->task_id;
+            event->poll.task_action = task_poll->task_action;
             event->poll.errnum = errnum;
             break;
         }
@@ -263,7 +278,7 @@ static void* worker_routine(void* arg)
             } while (EAGAIN == errnum || EINTR == errnum);
 
             event->read.type = LINTED_ASYNCH_EVENT_READ;
-            event->read.task_id = task_read->task_id;
+            event->read.task_action = task_read->task_action;
             event->read.errnum = errnum;
             event->read.bytes_read = bytes_read;
             break;
@@ -297,7 +312,7 @@ static void* worker_routine(void* arg)
             } while (EAGAIN == errnum || EINTR == errnum);
 
             event->read.type = LINTED_ASYNCH_EVENT_READ;
-            event->read.task_id = task_receive->task_id;
+            event->read.task_action = task_receive->task_action;
             event->read.errnum = errnum;
             event->read.bytes_read = bytes_read;
             break;
@@ -329,7 +344,7 @@ static void* worker_routine(void* arg)
             } while (EAGAIN == errnum || EINTR == errnum);
 
             event->write.type = LINTED_ASYNCH_EVENT_WRITE;
-            event->write.task_id = task_send->task_id;
+            event->write.task_action = task_send->task_action;
             event->write.errnum = errnum;
             event->write.bytes_wrote = bytes_wrote;
             break;

@@ -350,7 +350,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                                 &event_count);
 
         for (size_t ii = 0; ii < event_count; ++ii) {
-            switch (events[ii].typical.task_id) {
+            switch (events[ii].typical.task_action) {
             default:
                 errnum = events[ii].typical.errnum;
                 goto destroy_pool;
