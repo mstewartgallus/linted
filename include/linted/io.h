@@ -34,8 +34,8 @@ void linted_io_poll(struct linted_asynch_pool* pool, int task_action,
                     union linted_asynch_task* task);
 
 void linted_io_read(struct linted_asynch_pool* pool, int task_action,
-                    linted_ko ko,
-                    char* buf, size_t size, union linted_asynch_task* task);
+                    linted_ko ko, char* buf, size_t size,
+                    union linted_asynch_task* task);
 
 void linted_io_mq_receive(struct linted_asynch_pool* pool, int task_action,
                           linted_ko ko, char* buf, size_t size,

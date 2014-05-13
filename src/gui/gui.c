@@ -366,8 +366,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 
     enum {
-        UPDATER,
-        CONTROLLER,
+        ON_RECEIVED_UPDATER_EVENT,
+        ON_SENT_CONTROLLER_EVENT,
         MAX_TASKS
     };
 
@@ -542,7 +542,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct linted_controller_task controller_task;
     memset(&controller_task, 0, sizeof controller_task);
 
-    linted_updater_receive(&pool, UPDATER, updater, &updater_task);
+    linted_updater_receive(&pool, ON_RECEIVED_UPDATER_EVENT, updater,
+                           &updater_task);
 
     for (;;) {
         /* Handle GUI events first before rendering */
@@ -671,37 +672,37 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     errnum = events[ii].typical.errnum;
                     goto cleanup_gl;
 
-                case UPDATER:
+                case ON_RECEIVED_UPDATER_EVENT:
                     if ((errnum = events[ii].poll.errnum) != 0) {
                         goto cleanup_gl;
                     }
 
                     on_updater_read(&updater_task, &sim_model);
 
-                    linted_updater_receive(&pool, UPDATER, updater,
-                                           &updater_task);
+                    linted_updater_receive(&pool, ON_RECEIVED_UPDATER_EVENT,
+                                           updater, &updater_task);
 
                     if (controller_data.update_pending
                         && !controller_data.update_in_progress) {
-                        linted_controller_send(&pool, CONTROLLER, controller,
-                                               &controller_data.update,
-                                               &controller_task);
+                        linted_controller_send(
+                            &pool, ON_SENT_CONTROLLER_EVENT, controller,
+                            &controller_data.update, &controller_task);
 
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;
                     }
                     break;
 
-                case CONTROLLER:
+                case ON_SENT_CONTROLLER_EVENT:
                     controller_data.update_in_progress = false;
                     if ((errnum = events[ii].poll.errnum) != 0) {
                         goto cleanup_gl;
                     }
 
                     if (controller_data.update_pending) {
-                        linted_controller_send(&pool, CONTROLLER, controller,
-                                               &controller_data.update,
-                                               &controller_task);
+                        linted_controller_send(
+                            &pool, ON_SENT_CONTROLLER_EVENT, controller,
+                            &controller_data.update, &controller_task);
 
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;

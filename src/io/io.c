@@ -45,8 +45,9 @@ void linted_io_poll(struct linted_asynch_pool* pool, int task_action,
     linted_asynch_pool_submit(pool, task);
 }
 
-void linted_io_read(struct linted_asynch_pool* pool, int task_action, linted_ko ko,
-                    char* buf, size_t size, union linted_asynch_task* task)
+void linted_io_read(struct linted_asynch_pool* pool, int task_action,
+                    linted_ko ko, char* buf, size_t size,
+                    union linted_asynch_task* task)
 {
     task->read.type = LINTED_ASYNCH_TASK_READ;
     task->read.task_action = task_action;
