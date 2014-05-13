@@ -60,50 +60,6 @@ struct linted_asynch_pool
 };
 
 enum {
-    LINTED_ASYNCH_EVENT_POLL,
-    LINTED_ASYNCH_EVENT_READ,
-    LINTED_ASYNCH_EVENT_WRITE
-};
-
-struct linted_asynch_event_typical
-{
-    unsigned type;
-    unsigned task_action;
-    int errnum;
-};
-
-struct linted_asynch_event_poll
-{
-    unsigned type;
-    unsigned task_action;
-    int errnum;
-};
-
-struct linted_asynch_event_read
-{
-    unsigned type;
-    unsigned task_action;
-    int errnum;
-    size_t bytes_read;
-};
-
-struct linted_asynch_event_write
-{
-    unsigned type;
-    unsigned task_action;
-    int errnum;
-    size_t bytes_wrote;
-};
-
-union linted_asynch_event
-{
-    struct linted_asynch_event_typical typical;
-    struct linted_asynch_event_poll poll;
-    struct linted_asynch_event_read read;
-    struct linted_asynch_event_write write;
-};
-
-enum {
     LINTED_ASYNCH_TASK_POLL,
     LINTED_ASYNCH_TASK_READ,
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
@@ -115,7 +71,7 @@ struct linted_linked_queue_node;
 struct linted_asynch_task_typical
 {
     struct linted_linked_queue_node reply_node;
-    union linted_asynch_event event;
+    linted_error errnum;
     unsigned type;
     unsigned task_action;
 };
@@ -123,9 +79,10 @@ struct linted_asynch_task_typical
 struct linted_asynch_task_poll
 {
     struct linted_linked_queue_node reply_node;
-    union linted_asynch_event event;
+    linted_error errnum;
     unsigned type;
     int task_action;
+
     struct pollfd* fds;
     size_t size;
 };
@@ -133,34 +90,40 @@ struct linted_asynch_task_poll
 struct linted_asynch_task_read
 {
     struct linted_linked_queue_node reply_node;
-    union linted_asynch_event event;
+    linted_error errnum;
     unsigned type;
     int task_action;
+
     linted_ko ko;
     char* buf;
     size_t size;
+    size_t bytes_read;
 };
 
 struct linted_asynch_task_mq_receive
 {
     struct linted_linked_queue_node reply_node;
-    union linted_asynch_event event;
+    linted_error errnum;
     unsigned type;
     int task_action;
+
     linted_ko ko;
     char* buf;
     size_t size;
+    size_t bytes_read;
 };
 
 struct linted_asynch_task_mq_send
 {
     struct linted_linked_queue_node reply_node;
-    union linted_asynch_event event;
+    linted_error errnum;
     unsigned type;
     int task_action;
+
     linted_ko ko;
     char const* buf;
     size_t size;
+    size_t bytes_wrote;
 };
 
 union linted_asynch_task

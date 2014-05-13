@@ -215,8 +215,6 @@ static void* worker_routine(void* arg)
         union linted_asynch_task* task;
         linted_array_queue_recv(worker_pool->command_queue, &task);
 
-        union linted_asynch_event* event = &task->typical.event;
-
         switch (task->typical.type) {
         case LINTED_ASYNCH_TASK_POLL: {
             struct linted_asynch_task_poll* task_poll = &task->poll;
@@ -226,9 +224,7 @@ static void* worker_routine(void* arg)
                 errnum = -1 == poll_status ? errno : 0;
             } while (EINTR == errnum);
 
-            event->poll.type = LINTED_ASYNCH_EVENT_POLL;
-            event->poll.task_action = task_poll->task_action;
-            event->poll.errnum = errnum;
+            task_poll->errnum = errnum;
             break;
         }
 
@@ -270,10 +266,8 @@ static void* worker_routine(void* arg)
                 }
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event->read.type = LINTED_ASYNCH_EVENT_READ;
-            event->read.task_action = task_read->task_action;
-            event->read.errnum = errnum;
-            event->read.bytes_read = bytes_read;
+            task_read->errnum = errnum;
+            task_read->bytes_read = bytes_read;
             break;
         }
 
@@ -304,10 +298,8 @@ static void* worker_routine(void* arg)
                 bytes_read = result;
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event->read.type = LINTED_ASYNCH_EVENT_READ;
-            event->read.task_action = task_receive->task_action;
-            event->read.errnum = errnum;
-            event->read.bytes_read = bytes_read;
+            task_receive->errnum = errnum;
+            task_receive->bytes_read = bytes_read;
             break;
         }
 
@@ -336,10 +328,8 @@ static void* worker_routine(void* arg)
                 bytes_wrote = task_send->size;
             } while (EAGAIN == errnum || EINTR == errnum);
 
-            event->write.type = LINTED_ASYNCH_EVENT_WRITE;
-            event->write.task_action = task_send->task_action;
-            event->write.errnum = errnum;
-            event->write.bytes_wrote = bytes_wrote;
+            task_send->errnum = errnum;
+            task_send->bytes_wrote = bytes_wrote;
             break;
         }
 

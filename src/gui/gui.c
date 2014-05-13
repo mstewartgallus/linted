@@ -672,11 +672,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 union linted_asynch_task * completed_task = completed_tasks[ii];
                 switch (completed_task->typical.task_action) {
                 default:
-                    errnum = completed_task->typical.event.typical.errnum;
+                    errnum = completed_task->typical.errnum;
                     goto cleanup_gl;
 
                 case ON_RECEIVED_UPDATER_EVENT:
-                    if ((errnum = completed_task->typical.event.typical.errnum) != 0) {
+                    if ((errnum = completed_task->typical.errnum) != 0) {
                         goto cleanup_gl;
                     }
 
@@ -698,7 +698,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 case ON_SENT_CONTROLLER_EVENT:
                     controller_data.update_in_progress = false;
-                    if ((errnum = completed_task->typical.event.typical.errnum) != 0) {
+                    if ((errnum = completed_task->typical.errnum) != 0) {
                         goto cleanup_gl;
                     }
 

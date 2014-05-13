@@ -359,11 +359,11 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         for (size_t ii = 0; ii < task_count; ++ii) {
             switch (completed_tasks[ii]->typical.task_action) {
             default:
-                errnum = completed_tasks[ii]->typical.event.typical.errnum;
+                errnum = completed_tasks[ii]->typical.errnum;
                 goto destroy_pool;
 
             case ON_RECEIVE_SHUTDOWNER_EVENT:
-                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 
@@ -383,7 +383,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 break;
 
             case ON_RECEIVE_CONTROLLER_EVENT: {
-                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 
@@ -403,7 +403,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             case ON_SENT_UPDATER_EVENT:
                 simulator_state.write_in_progress = false;
 
-                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 
@@ -459,7 +459,7 @@ static linted_error on_read_timer_ticks(struct linted_asynch_pool * pool,
 {
     linted_error errnum;
 
-    if ((errnum = timer_task->typical.event.read.errnum) != 0) {
+    if ((errnum = timer_task->typical.errnum) != 0) {
         return errnum;
     }
 
