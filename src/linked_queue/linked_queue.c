@@ -27,6 +27,12 @@
 
 static void unlock_routine(void* arg);
 
+void linted_linked_queue_node(struct linted_linked_queue_node* node)
+{
+    node->prev = NULL;
+    node->next = NULL;
+}
+
 linted_error linted_linked_queue_create(struct linted_linked_queue* queue)
 {
     struct linted_linked_queue_node* tip = malloc(sizeof *tip);
@@ -56,6 +62,10 @@ void linted_linked_queue_destroy(struct linted_linked_queue* queue)
 void linted_linked_queue_send(struct linted_linked_queue* queue,
                               struct linted_linked_queue_node* node)
 {
+    assert(NULL == node->next);
+    assert(NULL == node->prev);
+
+    /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
@@ -99,6 +109,9 @@ void linted_linked_queue_recv(struct linted_linked_queue* queue,
 
     pthread_cleanup_pop(true);
 
+    /* Refresh the node for reuse later */
+    linted_linked_queue_node(head);
+
     *nodep = head;
 }
 
@@ -131,6 +144,9 @@ pop_cleanup:
     if (errnum != 0) {
         return errnum;
     }
+
+    /* Refresh the node for reuse later */
+    linted_linked_queue_node(head);
 
     *nodep = head;
 

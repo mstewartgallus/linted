@@ -42,6 +42,8 @@ struct linted_linked_queue_node
     struct linted_linked_queue_node* next;
 };
 
+void linted_linked_queue_node(struct linted_linked_queue_node* node);
+
 linted_error linted_linked_queue_create(struct linted_linked_queue* queue);
 
 /**
