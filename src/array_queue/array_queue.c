@@ -77,15 +77,18 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
                                          void const* message)
 {
     linted_error errnum = 0;
+    int old_cancel_state;
 
-    if (EBUSY == pthread_mutex_trylock(&queue->mutex)) {
-        return EBUSY;
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
+
+    if (EBUSY == (errnum == pthread_mutex_trylock(&queue->mutex))) {
+        goto restore_cancel_state;
     }
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
     if (queue->occupied) {
         errnum = EAGAIN;
-        goto pop_cleanup_handle;
+        goto unlock_mutex;
     }
     queue->occupied = true;
 
@@ -93,8 +96,11 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
 
     pthread_cond_signal(&queue->on_full);
 
-pop_cleanup_handle:
+unlock_mutex:
     pthread_cleanup_pop(true);
+
+restore_cancel_state:
+    pthread_setcanceltype(old_cancel_state, NULL);
 
     return errnum;
 }
@@ -103,9 +109,12 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
                                          void* message)
 {
     linted_error errnum = 0;
+    int old_cancel_state;
 
-    if (EBUSY == pthread_mutex_trylock(&queue->mutex)) {
-        return EBUSY;
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
+
+    if (EBUSY == (errnum = pthread_mutex_trylock(&queue->mutex))) {
+        goto restore_cancel_state;
     }
 
     pthread_cleanup_push(unlock_routine, &queue->mutex);
@@ -123,12 +132,18 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
 unlock_mutex:
     pthread_cleanup_pop(true);
 
+restore_cancel_state:
+    pthread_setcanceltype(old_cancel_state, NULL);
+
     return errnum;
 }
 
 void linted_array_queue_send(struct linted_array_queue* queue,
                              void const* message)
 {
+    int old_cancel_state;
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
+
     pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
@@ -142,10 +157,15 @@ void linted_array_queue_send(struct linted_array_queue* queue,
     pthread_cond_signal(&queue->on_full);
 
     pthread_cleanup_pop(true);
+
+    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 void linted_array_queue_recv(struct linted_array_queue* queue, void* message)
 {
+    int old_cancel_state;
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
+
     pthread_mutex_lock(&queue->mutex);
     pthread_cleanup_push(unlock_routine, &queue->mutex);
 
@@ -159,6 +179,8 @@ void linted_array_queue_recv(struct linted_array_queue* queue, void* message)
     pthread_cond_signal(&queue->on_empty);
 
     pthread_cleanup_pop(true);
+
+    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 static void unlock_routine(void* arg)

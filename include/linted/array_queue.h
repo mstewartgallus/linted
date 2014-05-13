@@ -37,13 +37,13 @@ linted_error linted_array_queue_create(struct linted_array_queue** queuep,
 void linted_array_queue_destroy(struct linted_array_queue* queue);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  */
 void linted_array_queue_send(struct linted_array_queue* queue,
                              void const* message);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  *
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is full.
@@ -52,7 +52,7 @@ linted_error linted_array_queue_try_send(struct linted_array_queue* queue,
                                          void const* message);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  *
  * @error EBUSY The queue is being used.
  * @error EAGAIN The queue is empty.
@@ -61,7 +61,7 @@ linted_error linted_array_queue_try_recv(struct linted_array_queue* queue,
                                          void* message);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  */
 void linted_array_queue_recv(struct linted_array_queue* queue, void* message);
 

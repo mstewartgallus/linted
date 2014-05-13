@@ -53,19 +53,19 @@ linted_error linted_linked_queue_create(struct linted_linked_queue* queue);
 void linted_linked_queue_destroy(struct linted_linked_queue* queue);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  */
 void linted_linked_queue_send(struct linted_linked_queue* queue,
                               struct linted_linked_queue_node* node);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  */
 void linted_linked_queue_recv(struct linted_linked_queue* queue,
                               struct linted_linked_queue_node** node);
 
 /**
- * deferred cancellation safe
+ * asynchronous cancellation safe
  */
 linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
                                           struct linted_linked_queue_node

@@ -62,8 +62,12 @@ void linted_linked_queue_destroy(struct linted_linked_queue* queue)
 void linted_linked_queue_send(struct linted_linked_queue* queue,
                               struct linted_linked_queue_node* node)
 {
+    int old_cancel_state;
+
     assert(NULL == node->next);
     assert(NULL == node->prev);
+
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
@@ -81,12 +85,17 @@ void linted_linked_queue_send(struct linted_linked_queue* queue,
     pthread_cond_broadcast(&queue->gains_member);
 
     pthread_cleanup_pop(true);
+
+    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 void linted_linked_queue_recv(struct linted_linked_queue* queue,
                               struct linted_linked_queue_node** nodep)
 {
     struct linted_linked_queue_node* head;
+    int old_cancel_state;
+
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
@@ -113,6 +122,8 @@ void linted_linked_queue_recv(struct linted_linked_queue* queue,
     linted_linked_queue_node(head);
 
     *nodep = head;
+
+    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
@@ -120,7 +131,10 @@ linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
                                           ** nodep)
 {
     linted_error errnum = 0;
+    int old_cancel_state;
     struct linted_linked_queue_node* head;
+
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
@@ -141,16 +155,15 @@ linted_error linted_linked_queue_try_recv(struct linted_linked_queue* queue,
 pop_cleanup:
     pthread_cleanup_pop(true);
 
-    if (errnum != 0) {
-        return errnum;
+    if (0 == errnum) {
+        /* Refresh the node for reuse later */
+        linted_linked_queue_node(head);
+
+        *nodep = head;
     }
 
-    /* Refresh the node for reuse later */
-    linted_linked_queue_node(head);
-
-    *nodep = head;
-
-    return 0;
+    pthread_setcanceltype(old_cancel_state, NULL);
+    return errnum;
 }
 
 static void unlock_routine(void* arg)

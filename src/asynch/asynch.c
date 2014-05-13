@@ -212,6 +212,11 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
 
 static void* worker_routine(void* arg)
 {
+    /*
+     * Set the thread to be asynchronously killable at any time.
+     */
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
     struct linted_asynch_worker_pool* worker_pool = arg;
 
     for (;;) {
