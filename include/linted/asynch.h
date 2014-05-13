@@ -84,28 +84,28 @@ struct linted_asynch_task_poll
 struct linted_asynch_task_read
 {
     struct linted_asynch_task parent;
-    linted_ko ko;
     char* buf;
     size_t size;
     size_t bytes_read;
+    linted_ko ko;
 };
 
 struct linted_asynch_task_mq_receive
 {
     struct linted_asynch_task parent;
-    linted_ko ko;
     char* buf;
     size_t size;
     size_t bytes_read;
+    linted_ko ko;
 };
 
 struct linted_asynch_task_mq_send
 {
     struct linted_asynch_task parent;
-    linted_ko ko;
     char const* buf;
     size_t size;
     size_t bytes_wrote;
+    linted_ko ko;
 };
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool,
