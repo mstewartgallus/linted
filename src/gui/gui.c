@@ -659,17 +659,16 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             }
         }
 
-        union linted_asynch_task * completed_tasks[20];
+        union linted_asynch_task* completed_tasks[20];
         size_t task_count;
-        linted_error poll_errnum = linted_asynch_pool_poll(&pool,
-                                                           completed_tasks,
-                                                           LINTED_ARRAY_SIZE(completed_tasks),
-                                                           &task_count);
+        linted_error poll_errnum = linted_asynch_pool_poll(
+            &pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
+            &task_count);
 
         bool had_asynch_event = poll_errnum != EAGAIN;
         if (had_asynch_event) {
             for (size_t ii = 0; ii < task_count; ++ii) {
-                union linted_asynch_task * completed_task = completed_tasks[ii];
+                union linted_asynch_task* completed_task = completed_tasks[ii];
                 if ((errnum = completed_task->typical.errnum) != 0) {
                     goto cleanup_gl;
                 }
