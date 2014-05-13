@@ -66,11 +66,9 @@ enum {
     LINTED_ASYNCH_TASK_MQ_SEND
 };
 
-struct linted_linked_queue_node;
-
-struct linted_asynch_task_typical
+struct linted_asynch_task
 {
-    struct linted_linked_queue_node reply_node;
+    struct linted_linked_queue_node parent;
     linted_error errnum;
     unsigned type;
     unsigned task_action;
@@ -78,22 +76,14 @@ struct linted_asynch_task_typical
 
 struct linted_asynch_task_poll
 {
-    struct linted_linked_queue_node reply_node;
-    linted_error errnum;
-    unsigned type;
-    int task_action;
-
+    struct linted_asynch_task parent;
     struct pollfd* fds;
     size_t size;
 };
 
 struct linted_asynch_task_read
 {
-    struct linted_linked_queue_node reply_node;
-    linted_error errnum;
-    unsigned type;
-    int task_action;
-
+    struct linted_asynch_task parent;
     linted_ko ko;
     char* buf;
     size_t size;
@@ -102,11 +92,7 @@ struct linted_asynch_task_read
 
 struct linted_asynch_task_mq_receive
 {
-    struct linted_linked_queue_node reply_node;
-    linted_error errnum;
-    unsigned type;
-    int task_action;
-
+    struct linted_asynch_task parent;
     linted_ko ko;
     char* buf;
     size_t size;
@@ -115,24 +101,11 @@ struct linted_asynch_task_mq_receive
 
 struct linted_asynch_task_mq_send
 {
-    struct linted_linked_queue_node reply_node;
-    linted_error errnum;
-    unsigned type;
-    int task_action;
-
+    struct linted_asynch_task parent;
     linted_ko ko;
     char const* buf;
     size_t size;
     size_t bytes_wrote;
-};
-
-union linted_asynch_task
-{
-    struct linted_asynch_task_typical typical;
-    struct linted_asynch_task_poll poll;
-    struct linted_asynch_task_read read;
-    struct linted_asynch_task_mq_receive mq_receive;
-    struct linted_asynch_task_mq_send mq_send;
 };
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool,
@@ -140,14 +113,14 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool,
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
 
 void linted_asynch_pool_submit(struct linted_asynch_pool* pool,
-                               union linted_asynch_task* task);
+                               struct linted_asynch_task* task);
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
-                                     union linted_asynch_task** completed_tasks,
+                                     struct linted_asynch_task** completed_tasks,
                                      size_t size, size_t* task_countp);
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
-                                     union linted_asynch_task** completed_tasks,
+                                     struct linted_asynch_task** completed_tasks,
                                      size_t size, size_t* task_countp);
 
 #endif /* LINTED_ASYNCH_H */

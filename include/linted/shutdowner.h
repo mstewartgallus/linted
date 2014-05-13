@@ -31,7 +31,7 @@ typedef mqd_t linted_shutdowner;
 
 struct linted_shutdowner_task
 {
-    union linted_asynch_task asynch_task;
+    struct linted_asynch_task_mq_receive parent;
     char dummy[1];
 };
 
@@ -42,8 +42,8 @@ linted_error linted_shutdowner_close(linted_shutdowner move);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-void linted_shutdowner_receive(struct linted_asynch_pool* pool, int task_id,
-                               linted_shutdowner shutdowner,
-                               struct linted_shutdowner_task* task);
+void linted_shutdowner_receive(struct linted_shutdowner_task* task,
+                               int task_id,
+                               linted_shutdowner shutdowner);
 
 #endif /* LINTED_SHUTDOWNER_H */

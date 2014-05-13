@@ -30,16 +30,20 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_updater_task, message);
+    attr.mq_msgsize = LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
+void linted_updater_send(struct linted_updater_task_send* task, int task_id,
                          linted_updater updater,
-                         struct linted_updater_update const* update,
-                         struct linted_updater_task* task)
+                         struct linted_updater_update const* update)
 {
+    linted_io_mq_send(LINTED_UPCAST(task),
+                      task_id,
+                      updater,
+                      task->message, sizeof task->message);
+
     char* tip = task->message;
 
     struct linted_rpc_int32 x_position = linted_rpc_pack(update->x_position);
@@ -62,20 +66,19 @@ void linted_updater_send(struct linted_asynch_pool* pool, int task_id,
     struct linted_rpc_uint32 y_rotation
         = linted_rpc_pack_uint32(update->y_rotation);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
-
-    linted_io_mq_send(pool, task_id, updater, task->message,
-                      sizeof task->message, &task->asynch_task);
 }
 
-void linted_updater_receive(struct linted_asynch_pool* pool, int task_id,
-                            linted_updater updater,
-                            struct linted_updater_task* task)
+void linted_updater_receive(struct linted_updater_task_receive* task,
+                            int task_id,
+                            linted_updater updater)
 {
-    linted_io_mq_receive(pool, task_id, updater, task->message,
-                         sizeof task->message, &task->asynch_task);
+    linted_io_mq_receive(LINTED_UPCAST(task),
+                         task_id,
+                         updater,
+                         task->message, sizeof task->message);
 }
 
-void linted_updater_decode(struct linted_updater_task const* task,
+void linted_updater_decode(struct linted_updater_task_receive const* task,
                            struct linted_updater_update* update)
 {
     char const* tip = task->message;

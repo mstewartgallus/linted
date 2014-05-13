@@ -48,12 +48,14 @@ linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
     return -1 == mq_send(shutdowner, &dummy, sizeof dummy, 0) ? errno : 0;
 }
 
-void linted_shutdowner_receive(struct linted_asynch_pool* pool, int task_id,
-                               linted_shutdowner shutdowner,
-                               struct linted_shutdowner_task* task)
+void linted_shutdowner_receive(struct linted_shutdowner_task* task,
+                               int task_id,
+                               linted_shutdowner shutdowner)
 {
-    linted_io_mq_receive(pool, task_id, shutdowner, &task->dummy[0], 1,
-                         &task->asynch_task);
+    linted_io_mq_receive(LINTED_UPCAST(task),
+                         task_id,
+                         shutdowner,
+                         &task->dummy[0], 1);
 }
 
 linted_error linted_shutdowner_close(linted_shutdowner shutdowner)

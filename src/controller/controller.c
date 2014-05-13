@@ -32,7 +32,7 @@ linted_error linted_controller_pair(linted_controller controller[2],
 
     attr.mq_maxmsg = 1;
     attr.mq_msgsize
-        = LINTED_SIZEOF_MEMBER(struct linted_controller_task, message);
+        = LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
@@ -42,11 +42,16 @@ linted_error linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-void linted_controller_send(struct linted_asynch_pool* pool, int task_id,
+void linted_controller_send(struct linted_controller_task_send* task,
+                            int task_id,
                             linted_controller controller,
-                            struct linted_controller_message const* message,
-                            struct linted_controller_task* task)
+                            struct linted_controller_message const* message)
 {
+    linted_io_mq_send(LINTED_UPCAST(task),
+                      task_id,
+                      controller,
+                      task->message, sizeof task->message);
+
     char* tip = task->message;
 
     struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
@@ -62,20 +67,19 @@ void linted_controller_send(struct linted_asynch_pool* pool, int task_id,
           | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
           | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
-
-    linted_io_mq_send(pool, task_id, controller, task->message,
-                      sizeof task->message, &task->asynch_task);
 }
 
-void linted_controller_receive(struct linted_asynch_pool* pool, int task_id,
-                               linted_controller controller,
-                               struct linted_controller_task* task)
+void linted_controller_receive(struct linted_controller_task_receive* task,
+                               int task_id,
+                               linted_controller controller)
 {
-    linted_io_mq_receive(pool, task_id, controller, task->message,
-                         sizeof task->message, &task->asynch_task);
+    linted_io_mq_receive(LINTED_UPCAST(task),
+                         task_id,
+                         controller,
+                         task->message, sizeof task->message);
 }
 
-linted_error linted_controller_decode(struct linted_controller_task const* task,
+linted_error linted_controller_decode(struct linted_controller_task_receive const* task,
                                       struct linted_controller_message* message)
 {
     char const* tip = task->message;

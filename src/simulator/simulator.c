@@ -85,8 +85,10 @@ struct simulator_state
 
 static void
 on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
-                    struct linted_updater_task* updater_task, linted_ko timer,
-                    union linted_asynch_task* timer_task, uint64_t* timer_ticks,
+                    struct linted_updater_task_send* updater_task,
+                    linted_ko timer,
+                    struct linted_asynch_task_read* timer_task,
+                    uint64_t* timer_ticks,
                     struct action_state const* action_state,
                     struct simulator_state* simulator_state);
 
@@ -329,38 +331,41 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 
     uint64_t timer_ticks;
-    union linted_asynch_task timer_task;
-
+    struct linted_asynch_task_read timer_task;
     struct linted_shutdowner_task shutdowner_task;
-    memset(&shutdowner_task, 0, sizeof shutdowner_task);
+    struct linted_controller_task_receive controller_task;
+    struct linted_updater_task_send updater_task;
 
-    struct linted_controller_task controller_task;
-    memset(&controller_task, 0, sizeof controller_task);
+    linted_io_read(&timer_task,
+                   ON_READ_TIMER_TICKS,
+                   timer,
+                   (char*)&timer_ticks, sizeof timer_ticks);
 
-    struct linted_updater_task updater_task;
-    memset(&updater_task, 0, sizeof updater_task);
+    linted_shutdowner_receive(&shutdowner_task,
+                              ON_RECEIVE_SHUTDOWNER_EVENT,
+                              shutdowner);
 
-    linted_shutdowner_receive(&pool, ON_RECEIVE_SHUTDOWNER_EVENT, shutdowner,
-                              &shutdowner_task);
-    linted_io_read(&pool, ON_READ_TIMER_TICKS, timer, (char*)&timer_ticks,
-                   sizeof timer_ticks, &timer_task);
-    linted_controller_receive(&pool, ON_RECEIVE_CONTROLLER_EVENT, controller,
-                              &controller_task);
+    linted_controller_receive(&controller_task,
+                              ON_RECEIVE_CONTROLLER_EVENT, controller);
+
+    linted_asynch_pool_submit(&pool, LINTED_UPCAST(&timer_task));
+    linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&shutdowner_task)));
+    linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
 
     for (;;) {
-        union linted_asynch_task* completed_tasks[20];
+        struct linted_asynch_task* completed_tasks[20];
         size_t task_count;
         linted_asynch_pool_wait(&pool, completed_tasks,
                                 LINTED_ARRAY_SIZE(completed_tasks),
                                 &task_count);
 
         for (size_t ii = 0; ii < task_count; ++ii) {
-            union linted_asynch_task* completed_task = completed_tasks[ii];
-            if ((errnum = completed_task->typical.errnum) != 0) {
+            struct linted_asynch_task* completed_task = completed_tasks[ii];
+            if ((errnum = completed_task->errnum) != 0) {
                 goto destroy_pool;
             }
 
-            switch (completed_task->typical.task_action) {
+            switch (completed_task->task_action) {
             default:
                 assert(false);
 
@@ -382,8 +387,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 on_controller_receive(&message, &action_state);
 
-                linted_controller_receive(&pool, ON_RECEIVE_CONTROLLER_EVENT,
-                                          controller, &controller_task);
+                linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
                 break;
             }
 
@@ -398,8 +402,10 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                             .x_rotation = simulator_state.x_rotation,
                             .y_rotation = simulator_state.y_rotation };
 
-                    linted_updater_send(&pool, ON_SENT_UPDATER_EVENT, updater,
-                                        &update, &updater_task);
+                    linted_updater_send(&updater_task, ON_SENT_UPDATER_EVENT,
+                                        updater, &update);
+                    linted_asynch_pool_submit(&pool,
+                                         LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
 
                     simulator_state.update_pending = false;
                     simulator_state.write_in_progress = true;
@@ -433,8 +439,10 @@ exit:
 
 static void
 on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
-                    struct linted_updater_task* updater_task, linted_ko timer,
-                    union linted_asynch_task* timer_task, uint64_t* timer_ticks,
+                    struct linted_updater_task_send* updater_task,
+                    linted_ko timer,
+                    struct linted_asynch_task_read* timer_task,
+                    uint64_t* timer_ticks,
                     struct action_state const* action_state,
                     struct simulator_state* simulator_state)
 {
@@ -458,8 +466,7 @@ on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
         simulator_state->update_pending = true;
     }
 
-    linted_io_read(pool, ON_READ_TIMER_TICKS, timer, (char*)timer_ticks,
-                   sizeof *timer_ticks, timer_task);
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(timer_task));
 
     if (simulator_state->update_pending
         && !simulator_state->write_in_progress) {
@@ -470,8 +477,10 @@ on_read_timer_ticks(struct linted_asynch_pool* pool, linted_ko updater,
                 .x_rotation = simulator_state->x_rotation,
                 .y_rotation = simulator_state->y_rotation };
 
-        linted_updater_send(pool, ON_SENT_UPDATER_EVENT, updater, &update,
-                            updater_task);
+        linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT,
+                            updater, &update);
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(LINTED_UPCAST(updater_task)));
 
         simulator_state->update_pending = false;
         simulator_state->write_in_progress = true;
