@@ -350,19 +350,20 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                               &controller_task);
 
     for (;;) {
-        union linted_asynch_event events[20];
-        size_t event_count;
-        linted_asynch_pool_wait(&pool, events, LINTED_ARRAY_SIZE(events),
-                                &event_count);
+        union linted_asynch_task * completed_tasks[20];
+        size_t task_count;
+        linted_asynch_pool_wait(&pool, completed_tasks,
+                                LINTED_ARRAY_SIZE(completed_tasks),
+                                &task_count);
 
-        for (size_t ii = 0; ii < event_count; ++ii) {
-            switch (events[ii].typical.task_action) {
+        for (size_t ii = 0; ii < task_count; ++ii) {
+            switch (completed_tasks[ii]->typical.task_action) {
             default:
-                errnum = events[ii].typical.errnum;
+                errnum = completed_tasks[ii]->typical.event.typical.errnum;
                 goto destroy_pool;
 
             case ON_RECEIVE_SHUTDOWNER_EVENT:
-                if ((errnum = events[ii].poll.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 
@@ -382,7 +383,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 break;
 
             case ON_RECEIVE_CONTROLLER_EVENT: {
-                if ((errnum = events[ii].read.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 
@@ -402,7 +403,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             case ON_SENT_UPDATER_EVENT:
                 simulator_state.write_in_progress = false;
 
-                if ((errnum = events[ii].poll.errnum) != 0) {
+                if ((errnum = completed_tasks[ii]->typical.event.typical.errnum) != 0) {
                     goto destroy_pool;
                 }
 

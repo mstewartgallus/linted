@@ -140,11 +140,11 @@ void linted_asynch_pool_submit(struct linted_asynch_pool* pool,
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
-                                     union linted_asynch_event* events,
-                                     size_t size, size_t* event_countp)
+                                     union linted_asynch_task** completed_tasks,
+                                     size_t size, size_t* task_countp)
 {
     linted_error errnum;
-    size_t event_count = 0;
+    size_t task_count = 0;
 
     if (0 == size) {
         return EINVAL;
@@ -156,42 +156,38 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool* pool,
         linted_linked_queue_recv(pool->event_queue, &node);
 
         /* The node is the first member of the task */
-        union linted_asynch_task* task = (union linted_asynch_task*)node;
-        memcpy(&events[event_count], &task->typical.event,
-               sizeof events[event_count]);
-        ++event_count;
+        completed_tasks[task_count] = (union linted_asynch_task*)node;
+        ++task_count;
     }
 
     /* Then poll for more */
-    for (; event_count < size; ++event_count) {
+    for (; task_count < size; ++task_count) {
         struct linted_linked_queue_node* node;
         errnum = linted_linked_queue_try_recv(pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
         }
 
-        union linted_asynch_task* task = (union linted_asynch_task*)node;
-        memcpy(&events[event_count], &task->typical.event,
-               sizeof events[event_count]);
+        completed_tasks[task_count] = (union linted_asynch_task*)node;
     }
 
-    *event_countp = event_count;
+    *task_countp = task_count;
 
     return 0;
 }
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
-                                     union linted_asynch_event* events,
-                                     size_t size, size_t* event_countp)
+                                     union linted_asynch_task** completed_tasks,
+                                     size_t size, size_t* task_countp)
 {
     linted_error errnum;
-    size_t event_count = 0;
+    size_t task_count = 0;
 
     if (0 == size) {
         return EINVAL;
     }
 
-    for (; event_count < size; ++event_count) {
+    for (; task_count < size; ++task_count) {
         struct linted_linked_queue_node* node;
         errnum = linted_linked_queue_try_recv(pool->event_queue, &node);
         if (EAGAIN == errnum) {
@@ -199,15 +195,12 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
         }
 
         /* The node is the first member of the task */
-        union linted_asynch_task* task = (union linted_asynch_task*)node;
-
-        memcpy(&events[event_count], &task->typical.event,
-               sizeof events[event_count]);
+        completed_tasks[task_count] = (union linted_asynch_task*)node;
     }
 
-    *event_countp = event_count;
+    *task_countp = task_count;
 
-    if (0 == event_count) {
+    if (0 == task_count) {
         return EAGAIN;
     }
 
