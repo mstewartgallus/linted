@@ -539,10 +539,10 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct linted_updater_task_receive updater_task;
     struct linted_controller_task_send controller_task;
 
-    linted_updater_receive(&updater_task,
-                           ON_RECEIVED_UPDATER_EVENT, updater);
+    linted_updater_receive(&updater_task, ON_RECEIVED_UPDATER_EVENT, updater);
 
-    linted_asynch_pool_submit(&pool, LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
+    linted_asynch_pool_submit(&pool,
+                              LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
 
     for (;;) {
         /* Handle GUI events first before rendering */
@@ -680,19 +680,19 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     struct linted_updater_update update;
                     linted_updater_decode(&updater_task, &update);
 
-                    linted_asynch_pool_submit(&pool,
-                                              LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
+                    linted_asynch_pool_submit(
+                        &pool, LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
 
                     on_updater_read(&update, &sim_model);
 
                     if (controller_data.update_pending
                         && !controller_data.update_in_progress) {
-                        linted_controller_send(&controller_task,
-                                               ON_SENT_CONTROLLER_EVENT,
-                                               controller,
-                                               &controller_data.update);
-                        linted_asynch_pool_submit(&pool,
-                                                  LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
+                        linted_controller_send(
+                            &controller_task, ON_SENT_CONTROLLER_EVENT,
+                            controller, &controller_data.update);
+                        linted_asynch_pool_submit(
+                            &pool,
+                            LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
 
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;
@@ -704,12 +704,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                     controller_data.update_in_progress = false;
 
                     if (controller_data.update_pending) {
-                        linted_controller_send(&controller_task,
-                                               ON_SENT_CONTROLLER_EVENT,
-                                               controller,
-                                               &controller_data.update);
-                        linted_asynch_pool_submit(&pool,
-                                                  LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
+                        linted_controller_send(
+                            &controller_task, ON_SENT_CONTROLLER_EVENT,
+                            controller, &controller_data.update);
+                        linted_asynch_pool_submit(
+                            &pool,
+                            LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
 
                         controller_data.update_pending = false;
                         controller_data.update_in_progress = true;
