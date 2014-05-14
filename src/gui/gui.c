@@ -375,9 +375,9 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool * pool;
+    struct linted_asynch_pool* pool;
     {
-        struct linted_asynch_pool * xx;
+        struct linted_asynch_pool* xx;
         if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
             goto shutdown;
         }

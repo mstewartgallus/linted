@@ -75,8 +75,8 @@ int linted_asynch_pool_create(struct linted_asynch_pool** poolp,
     pool->worker_count = max_tasks;
 
     for (; created_threads < max_tasks; ++created_threads) {
-        if ((errnum = pthread_create(&pool->workers[created_threads],
-                                     NULL, worker_routine, pool)) != 0) {
+        if ((errnum = pthread_create(&pool->workers[created_threads], NULL,
+                                     worker_routine, pool)) != 0) {
             goto destroy_threads;
         }
     }
