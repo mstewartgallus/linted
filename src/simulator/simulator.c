@@ -450,23 +450,23 @@ static void on_read_timer_ticks(struct linted_asynch_pool* pool,
         simulator_state->update_pending = true;
     }
 
-    if (simulator_state->update_pending
-        && !simulator_state->write_in_progress) {
-        struct linted_updater_update update
-            = { .x_position = simulator_state->x_position,
-                .y_position = simulator_state->y_position,
-                .z_position = simulator_state->z_position,
-                .x_rotation = simulator_state->x_rotation,
-                .y_rotation = simulator_state->y_rotation };
-
-        linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater,
-                            &update);
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(LINTED_UPCAST(updater_task)));
-
-        simulator_state->update_pending = false;
-        simulator_state->write_in_progress = true;
+    if (!simulator_state->update_pending
+        || simulator_state->write_in_progress) {
+        return;
     }
+
+    struct linted_updater_update update
+        = { .x_position = simulator_state->x_position,
+            .y_position = simulator_state->y_position,
+            .z_position = simulator_state->z_position,
+            .x_rotation = simulator_state->x_rotation,
+            .y_rotation = simulator_state->y_rotation };
+
+    linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(updater_task)));
+
+    simulator_state->update_pending = false;
+    simulator_state->write_in_progress = true;
 }
 
 static linted_error on_controller_receive(struct linted_asynch_pool* pool,
@@ -502,22 +502,22 @@ static void on_sent_update_event(struct linted_updater_task_send* updater_task,
 {
     simulator_state->write_in_progress = false;
 
-    if (simulator_state->update_pending) {
-        struct linted_updater_update update
-            = { .x_position = simulator_state->x_position,
-                .y_position = simulator_state->y_position,
-                .z_position = simulator_state->z_position,
-                .x_rotation = simulator_state->x_rotation,
-                .y_rotation = simulator_state->y_rotation };
-
-        linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater,
-                            &update);
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(LINTED_UPCAST(updater_task)));
-
-        simulator_state->update_pending = false;
-        simulator_state->write_in_progress = true;
+    if (!simulator_state->update_pending) {
+        return;
     }
+
+    struct linted_updater_update update
+        = { .x_position = simulator_state->x_position,
+            .y_position = simulator_state->y_position,
+            .z_position = simulator_state->z_position,
+            .x_rotation = simulator_state->x_rotation,
+            .y_rotation = simulator_state->y_rotation };
+
+    linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(updater_task)));
+
+    simulator_state->update_pending = false;
+    simulator_state->write_in_progress = true;
 }
 
 static void simulate_forces(linted_updater_int_fast* position,
