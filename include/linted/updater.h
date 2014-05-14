@@ -16,6 +16,7 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/rpc.h"
 

@@ -344,7 +344,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct linted_controller_task_receive controller_task;
     struct linted_updater_task_send updater_task;
 
-    linted_io_read(&timer_task, ON_READ_TIMER_TICKS, timer, (char*)&timer_ticks,
+    linted_asynch_read(&timer_task, ON_READ_TIMER_TICKS, timer, (char*)&timer_ticks,
                    sizeof timer_ticks);
 
     linted_shutdowner_receive(&shutdowner_task, ON_RECEIVE_SHUTDOWNER_EVENT,

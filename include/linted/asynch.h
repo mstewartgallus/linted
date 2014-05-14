@@ -118,4 +118,20 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
                                      ** completed_tasks,
                                      size_t size, size_t* task_countp);
 
+void linted_asynch_poll(struct linted_asynch_task_poll* task, int task_action,
+                        linted_ko ko, short events);
+
+void linted_asynch_read(struct linted_asynch_task_read* task, int task_action,
+                        linted_ko ko, char* buf, size_t size);
+
+void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive* task,
+                              int task_action, linted_ko ko, char* buf,
+                              size_t size);
+
+void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
+                           linted_ko ko, char const* buf, size_t size);
+
+void linted_asynch_waitid(struct linted_asynch_task_waitid* task, int task_action,
+                          idtype_t idtype, id_t id, int options);
+
 #endif /* LINTED_ASYNCH_H */

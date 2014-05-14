@@ -50,6 +50,9 @@ struct linted_asynch_pool
     pthread_t workers[];
 };
 
+static void asynch_task(struct linted_asynch_task* task, unsigned type,
+                        unsigned task_action);
+
 static void* worker_routine(void* arg);
 
 int linted_asynch_pool_create(struct linted_asynch_pool** poolp,
@@ -204,6 +207,66 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool* pool,
     }
 
     return 0;
+}
+
+void linted_asynch_poll(struct linted_asynch_task_poll* task, int task_action,
+                        linted_ko ko, short events)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
+
+    task->ko = ko;
+    task->events = events;
+}
+
+void linted_asynch_read(struct linted_asynch_task_read* task, int task_action,
+                        linted_ko ko, char* buf, size_t size)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+}
+
+void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive* task,
+                              int task_action, linted_ko ko, char* buf, size_t size)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
+                task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+}
+
+void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
+                           linted_ko ko, char const* buf, size_t size)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+}
+
+void linted_asynch_waitid(struct linted_asynch_task_waitid* task, int task_action,
+                          idtype_t idtype, id_t id, int options)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
+
+    task->idtype = idtype;
+    task->id = id;
+    task->options = options;
+}
+
+static void asynch_task(struct linted_asynch_task* task, unsigned type,
+                        unsigned task_action)
+{
+    linted_linked_queue_node(LINTED_UPCAST(task));
+
+    task->type = type;
+    task->errnum = 0;
+    task->task_action = task_action;
 }
 
 static void* worker_routine(void* arg)

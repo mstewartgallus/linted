@@ -34,66 +34,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static void asynch_task(struct linted_asynch_task* task, unsigned type,
-                        unsigned task_action)
-{
-    linted_linked_queue_node(LINTED_UPCAST(task));
-
-    task->type = type;
-    task->errnum = 0;
-    task->task_action = task_action;
-}
-
-void linted_io_poll(struct linted_asynch_task_poll* task, int task_action,
-                    linted_ko ko, short events)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
-
-    task->ko = ko;
-    task->events = events;
-}
-
-void linted_io_read(struct linted_asynch_task_read* task, int task_action,
-                    linted_ko ko, char* buf, size_t size)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
-
-    task->ko = ko;
-    task->buf = buf;
-    task->size = size;
-}
-
-void linted_io_mq_receive(struct linted_asynch_task_mq_receive* task,
-                          int task_action, linted_ko ko, char* buf, size_t size)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
-                task_action);
-
-    task->ko = ko;
-    task->buf = buf;
-    task->size = size;
-}
-
-void linted_io_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
-                       linted_ko ko, char const* buf, size_t size)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
-
-    task->ko = ko;
-    task->buf = buf;
-    task->size = size;
-}
-
-void linted_io_waitid(struct linted_asynch_task_waitid* task, int task_action,
-                      idtype_t idtype, id_t id, int options)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
-
-    task->idtype = idtype;
-    task->id = id;
-    task->options = options;
-}
-
 linted_error linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
                                 size_t count)
 {

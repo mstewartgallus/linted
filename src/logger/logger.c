@@ -47,6 +47,6 @@ void linted_logger_receive(struct linted_logger_task* task, unsigned task_id,
                            linted_logger logger,
                            char msg_ptr[static LINTED_LOGGER_LOG_MAX])
 {
-    linted_io_mq_receive(LINTED_UPCAST(task), task_id, logger, msg_ptr,
+    linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, logger, msg_ptr,
                          LINTED_LOGGER_LOG_MAX);
 }

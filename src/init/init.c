@@ -632,15 +632,15 @@ static linted_error run_game(char const* process_name,
         struct linted_logger_task logger_task;
         struct linted_asynch_task_poll new_connections_task;
 
-        linted_io_waitid(&gui_waiter_task, GUI_WAITER, P_PID, gui_service->pid,
+        linted_asynch_waitid(&gui_waiter_task, GUI_WAITER, P_PID, gui_service->pid,
                          WEXITED);
 
-        linted_io_waitid(&sim_waiter_task, SIMULATOR_WAITER, P_PID,
+        linted_asynch_waitid(&sim_waiter_task, SIMULATOR_WAITER, P_PID,
                          sim_service->pid, WEXITED);
 
         linted_logger_receive(&logger_task, LOGGER, logger_read, logger_buffer);
 
-        linted_io_poll(&new_connections_task, NEW_CONNECTIONS, new_connections,
+        linted_asynch_poll(&new_connections_task, NEW_CONNECTIONS, new_connections,
                        POLLIN);
 
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&gui_waiter_task));
@@ -1006,7 +1006,7 @@ static linted_error on_new_connections_readable(
         connection->fd = new_socket;
         connection->has_reply_ready = false;
 
-        linted_io_poll(&connection->task, CONNECTION + ii, new_socket, POLLIN);
+        linted_asynch_poll(&connection->task, CONNECTION + ii, new_socket, POLLIN);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&connection->task));
 
         ++*connection_count;
