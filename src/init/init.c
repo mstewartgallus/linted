@@ -630,16 +630,21 @@ static linted_error run_game(char const* process_name,
         struct service_process* sim_service =
             &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
 
-        struct linted_asynch_task_poll gui_waiter_task;
-        struct linted_asynch_task_poll sim_waiter_task;
+        struct linted_asynch_task_read gui_waiter_task;
+        struct linted_asynch_task_read sim_waiter_task;
         struct linted_asynch_task_poll logger_task;
         struct linted_asynch_task_poll new_connections_task;
 
-        linted_io_poll(&gui_waiter_task, GUI_WAITER,
-                       linted_waiter_fd(&gui_service->waiter), POLLIN);
+        struct linted_waiter_message gui_waiter_message;
+        struct linted_waiter_message sim_waiter_message;
 
-        linted_io_poll(&sim_waiter_task, SIMULATOR_WAITER,
-                       linted_waiter_fd(&sim_service->waiter), POLLIN);
+        linted_io_read(&gui_waiter_task, GUI_WAITER,
+                       linted_waiter_fd(&gui_service->waiter),
+                       (char*)&gui_waiter_message, sizeof gui_waiter_message);
+
+        linted_io_read(&sim_waiter_task, SIMULATOR_WAITER,
+                       linted_waiter_fd(&sim_service->waiter),
+                       (char*)&sim_waiter_message, sizeof sim_waiter_message);
 
         linted_io_poll(&logger_task, LOGGER,
                        logger_read, POLLIN);
@@ -701,25 +706,13 @@ static linted_error run_game(char const* process_name,
                 }
 
                 case GUI_WAITER: {
-                    struct linted_waiter_message message;
-                    size_t bytes_read;
-
-                    if ((errnum = linted_io_read_all(
-                             linted_waiter_fd(&gui_service->waiter), &bytes_read,
-                             &message, sizeof message)) != 0) {
-                        goto close_connections;
-                    }
-
-                    /* Hungup, shouldn't happen */
-                    assert(bytes_read != 0);
-
-                    if ((errnum = message.errnum) != 0) {
+                    if ((errnum = gui_waiter_message.errnum) != 0) {
                         goto close_connections;
                     }
 
                     gui_service->pid = -1;
 
-                    siginfo_t* exit_info = &message.exit_info;
+                    siginfo_t* exit_info = &gui_waiter_message.exit_info;
 
                     switch (exit_info->si_code) {
                     case CLD_DUMPED:
@@ -746,25 +739,13 @@ static linted_error run_game(char const* process_name,
                 }
 
                 case SIMULATOR_WAITER: {
-                    struct linted_waiter_message message;
-                    size_t bytes_read;
-
-                    if ((errnum = linted_io_read_all(
-                             linted_waiter_fd(&sim_service->waiter), &bytes_read,
-                             &message, sizeof message)) != 0) {
-                        goto close_connections;
-                    }
-
-                    /* Hungup, shouldn't happen */
-                    assert(bytes_read != 0);
-
-                    if ((errnum = message.errnum) != 0) {
+                    if ((errnum = sim_waiter_message.errnum) != 0) {
                         goto close_connections;
                     }
 
                     sim_service->pid = -1;
 
-                    siginfo_t* exit_info = &message.exit_info;
+                    siginfo_t* exit_info = &sim_waiter_message.exit_info;
 
                     switch (exit_info->si_code) {
                     case CLD_DUMPED:
