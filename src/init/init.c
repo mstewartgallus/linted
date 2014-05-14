@@ -17,6 +17,7 @@
 
 #include "binaries.h"
 
+#include "linted/asynch.h"
 #include "linted/controller.h"
 #include "linted/db.h"
 #include "linted/error.h"
@@ -133,6 +134,7 @@ union service
 
 struct connection
 {
+    struct linted_asynch_task_poll task;
     union linted_manager_reply reply;
     linted_ko fd;
     bool has_reply_ready;
@@ -153,7 +155,8 @@ static linted_error shutdowner_pair(int fildes[2])
     return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
 }
 
-static linted_error on_new_connections_readable(linted_manager new_connections,
+static linted_error on_new_connections_readable(struct linted_asynch_pool * pool,
+                                                linted_manager new_connections,
                                                 union service_config const
                                                 * config,
                                                 union service const* services,
@@ -469,12 +472,31 @@ done:
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
+enum {
+    GUI_WAITER,
+    SIMULATOR_WAITER,
+    LOGGER,
+    NEW_CONNECTIONS,
+    CONNECTION
+};
+
 static linted_error run_game(char const* process_name,
                              union service_config const* config,
                              int logger_dummy, int updater_dummy,
                              int shutdowner_dummy, int controller_dummy)
 {
     linted_error errnum = 0;
+
+    enum { MAX_TASKS = CONNECTION + MAX_MANAGE_CONNECTIONS };
+
+    struct linted_asynch_pool* pool;
+    {
+        struct linted_asynch_pool* xx;
+        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+            return errnum;
+        }
+        pool = xx;
+    }
 
     union service services[]
         = {[LINTED_MANAGER_SERVICE_INIT] = { .init = { .pid = getpid() } },
@@ -607,256 +629,257 @@ static linted_error run_game(char const* process_name,
             &services[LINTED_MANAGER_SERVICE_GUI].process;
         struct service_process* sim_service =
             &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
+
+        struct linted_asynch_task_poll gui_waiter_task;
+        struct linted_asynch_task_poll sim_waiter_task;
+        struct linted_asynch_task_poll logger_task;
+        struct linted_asynch_task_poll new_connections_task;
+
+        linted_io_poll(&gui_waiter_task, GUI_WAITER,
+                       linted_waiter_fd(&gui_service->waiter), POLLIN);
+
+        linted_io_poll(&sim_waiter_task, SIMULATOR_WAITER,
+                       linted_waiter_fd(&sim_service->waiter), POLLIN);
+
+        linted_io_poll(&logger_task, LOGGER,
+                       logger_read, POLLIN);
+
+        linted_io_poll(&new_connections_task, NEW_CONNECTIONS,
+                       new_connections, POLLIN);
+
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(&gui_waiter_task));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(&sim_waiter_task));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(&logger_task));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(&new_connections_task));
+
         for (;;) {
-            enum {
-                GUI_WAITER,
-                SIMULATOR_WAITER,
-                LOGGER,
-                NEW_CONNECTIONS,
-                CONNECTION
-            };
-            /**
-             * @todo Allocate big data such as pollfds off of the stack.
-             */
-            struct pollfd pollfds[CONNECTION + MAX_MANAGE_CONNECTIONS]
-                = {[GUI_WAITER]
-                   = { .fd = -1 == gui_service->pid
-                                 ? -1
-                                 : linted_waiter_fd(&gui_service->waiter),
-                       .events = POLLIN },
-                   [SIMULATOR_WAITER]
-                       = { .fd = -1 == sim_service->pid
-                                     ? -1
-                                     : linted_waiter_fd(&sim_service->waiter),
-                           .events = POLLIN },
-                   [LOGGER] = { .fd = logger_read, .events = POLLIN },
-                   [NEW_CONNECTIONS]
-                       = { .fd = new_connections, .events = POLLIN } };
+            struct linted_asynch_task* completed_tasks[20];
+            size_t task_count;
+            linted_asynch_pool_wait(pool, completed_tasks,
+                                    LINTED_ARRAY_SIZE(completed_tasks),
+                                    &task_count);
 
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-                struct connection* connection = &connections[ii];
-                struct pollfd* pollfd = &pollfds[CONNECTION + ii];
-
-                if (-1 == connection->fd) {
-                    pollfd->fd = -1;
-                    continue;
-                }
-
-                pollfd->fd = connection->fd;
-                pollfd->events = connection->has_reply_ready ? POLLOUT : POLLIN;
-            }
-
-            linted_error poll_errnum;
-            do {
-                int poll_status = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
-                poll_errnum = -1 == poll_status ? errno : 0;
-            } while (EINTR == poll_errnum);
-            if (poll_errnum != 0) {
-                errnum = poll_errnum;
-                goto close_connections;
-            }
-
-            if ((pollfds[NEW_CONNECTIONS].revents & POLLIN) != 0) {
-                if ((errnum = on_new_connections_readable(
-                         new_connections, config, services, &connection_count,
-                         connections)) != 0) {
-                    goto close_connections;
-                }
-            }
-
-            if ((pollfds[LOGGER].revents & POLLIN) != 0) {
-                size_t log_size;
-                /**
-                 * @todo Allocate the entry buffer off of the stack.
-                 */
-                char entry[LINTED_LOGGER_LOG_MAX];
-                if ((errnum = linted_logger_recv_log(logger_read, entry,
-                                                     &log_size)) != 0) {
+            for (size_t ii = 0; ii < task_count; ++ii) {
+                struct linted_asynch_task* completed_task = completed_tasks[ii];
+                if ((errnum = completed_task->errnum) != 0) {
                     goto close_connections;
                 }
 
-                linted_io_write_string(STDERR_FILENO, NULL, process_name);
-                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
-                linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
-                linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
-            }
+                switch (completed_task->task_action) {
+                case NEW_CONNECTIONS:
+                    if ((errnum = on_new_connections_readable(pool,
+                             new_connections, config, services, &connection_count,
+                             connections)) != 0) {
+                        goto close_connections;
+                    }
+                    linted_asynch_pool_submit(pool, completed_task);
+                    break;
 
-            if ((pollfds[GUI_WAITER].revents & POLLIN) != 0) {
-                struct linted_waiter_message message;
-                size_t bytes_read;
 
-                if ((errnum = linted_io_read_all(
-                         linted_waiter_fd(&gui_service->waiter), &bytes_read,
-                         &message, sizeof message)) != 0) {
-                    goto close_connections;
+                case LOGGER:{
+                    size_t log_size;
+                    /**
+                     * @todo Allocate the entry buffer off of the stack.
+                     */
+                    char entry[LINTED_LOGGER_LOG_MAX];
+                    if ((errnum = linted_logger_recv_log(logger_read, entry,
+                                                         &log_size)) != 0) {
+                        goto close_connections;
+                    }
+
+                    linted_io_write_string(STDERR_FILENO, NULL, process_name);
+                    linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
+                    linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
+                    linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
+
+                    linted_asynch_pool_submit(pool, completed_task);
+                    break;
                 }
 
-                /* Hungup, shouldn't happen */
-                assert(bytes_read != 0);
+                case GUI_WAITER: {
+                    struct linted_waiter_message message;
+                    size_t bytes_read;
 
-                if ((errnum = message.errnum) != 0) {
-                    goto close_connections;
-                }
+                    if ((errnum = linted_io_read_all(
+                             linted_waiter_fd(&gui_service->waiter), &bytes_read,
+                             &message, sizeof message)) != 0) {
+                        goto close_connections;
+                    }
 
-                gui_service->pid = -1;
+                    /* Hungup, shouldn't happen */
+                    assert(bytes_read != 0);
 
-                siginfo_t* exit_info = &message.exit_info;
+                    if ((errnum = message.errnum) != 0) {
+                        goto close_connections;
+                    }
 
-                switch (exit_info->si_code) {
-                case CLD_DUMPED:
-                case CLD_KILLED:
-                    raise(exit_info->si_status);
-                    errnum = errno;
-                    goto close_connections;
+                    gui_service->pid = -1;
 
-                case CLD_EXITED:
-                    if (exit_info->si_status != 0) {
-                        errnum = exit_info->si_status;
+                    siginfo_t* exit_info = &message.exit_info;
+
+                    switch (exit_info->si_code) {
+                    case CLD_DUMPED:
+                    case CLD_KILLED:
+                        raise(exit_info->si_status);
+                        errnum = errno;
+                        goto close_connections;
+
+                    case CLD_EXITED:
+                        if (exit_info->si_status != 0) {
+                            errnum = exit_info->si_status;
+                            goto close_connections;
+                        }
+                        break;
+
+                    default:
+                        assert(false);
+                    }
+
+                    if (-1 == sim_service->pid) {
                         goto close_connections;
                     }
                     break;
-
-                default:
-                    assert(false);
                 }
 
-                if (-1 == sim_service->pid) {
-                    goto close_connections;
-                }
-            }
+                case SIMULATOR_WAITER: {
+                    struct linted_waiter_message message;
+                    size_t bytes_read;
 
-            if ((pollfds[SIMULATOR_WAITER].revents & POLLIN) != 0) {
-                struct linted_waiter_message message;
-                size_t bytes_read;
+                    if ((errnum = linted_io_read_all(
+                             linted_waiter_fd(&sim_service->waiter), &bytes_read,
+                             &message, sizeof message)) != 0) {
+                        goto close_connections;
+                    }
 
-                if ((errnum = linted_io_read_all(
-                         linted_waiter_fd(&sim_service->waiter), &bytes_read,
-                         &message, sizeof message)) != 0) {
-                    goto close_connections;
-                }
+                    /* Hungup, shouldn't happen */
+                    assert(bytes_read != 0);
 
-                /* Hungup, shouldn't happen */
-                assert(bytes_read != 0);
+                    if ((errnum = message.errnum) != 0) {
+                        goto close_connections;
+                    }
 
-                if ((errnum = message.errnum) != 0) {
-                    goto close_connections;
-                }
+                    sim_service->pid = -1;
 
-                sim_service->pid = -1;
+                    siginfo_t* exit_info = &message.exit_info;
 
-                siginfo_t* exit_info = &message.exit_info;
+                    switch (exit_info->si_code) {
+                    case CLD_DUMPED:
+                    case CLD_KILLED:
+                        raise(exit_info->si_status);
+                        errnum = errno;
+                        goto close_connections;
 
-                switch (exit_info->si_code) {
-                case CLD_DUMPED:
-                case CLD_KILLED:
-                    raise(exit_info->si_status);
-                    errnum = errno;
-                    goto close_connections;
+                    case CLD_EXITED:
+                        if (exit_info->si_status != 0) {
+                            errnum = exit_info->si_status;
+                            goto close_connections;
+                        }
+                        break;
 
-                case CLD_EXITED:
-                    if (exit_info->si_status != 0) {
-                        errnum = exit_info->si_status;
+                    default:
+                        assert(false);
+                    }
+
+                    if (-1 == gui_service->pid) {
                         goto close_connections;
                     }
                     break;
-
-                default:
-                    assert(false);
                 }
 
-                if (-1 == gui_service->pid) {
-                    goto close_connections;
-                }
-            }
+                default: {
+                    assert(CONNECTION <= completed_task->task_action);
 
-            for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-                struct connection* connection = &connections[ii];
+                    struct linted_asynch_task_poll* task_poll
+                        = LINTED_DOWNCAST(struct linted_asynch_task_poll,
+                                          completed_task);
 
-                int fd = connection->fd;
+                    size_t jj = completed_task->task_action - CONNECTION;
 
-                if (-1 == fd) {
-                    continue;
-                }
+                    struct connection* connection = &connections[jj];
 
-                if (connection->has_reply_ready) {
-                    if ((pollfds[CONNECTION + ii].revents & POLLOUT) != 0) {
+                    int fd = connection->fd;
+
+                    if ((task_poll->revents & POLLOUT) != 0) {
                         goto try_writing;
-                    }
-                } else {
-                    if ((pollfds[CONNECTION + ii].revents & POLLIN) != 0) {
+                    } else if ((task_poll->revents & POLLIN) != 0) {
                         goto try_reading;
                     }
-                }
+                    assert(false);
 
-                continue;
+                    try_reading : {
+                        union linted_manager_reply reply;
+                        bool hungup;
+                        linted_error read_errnum = on_connection_readable(
+                            fd, config, services, &hungup, &reply);
+                        switch (read_errnum) {
+                        case 0:
+                            if (hungup) {
+                                /* Ignore the misbehaving other end */
+                                goto remove_connection;
+                            }
+                            break;
 
-            try_reading : {
-                union linted_manager_reply reply;
-                bool hungup;
-                linted_error read_errnum = on_connection_readable(
-                    fd, config, services, &hungup, &reply);
-                switch (read_errnum) {
-                case 0:
-                    if (hungup) {
-                        /* Ignore the misbehaving other end */
-                        goto remove_connection;
+                        case EAGAIN:
+                            /* Maybe the socket was only available for
+                             * writing but not reading */
+                            break;
+
+                        case EPROTO:
+                            /* Ignore the misbehaving other end */
+                            goto remove_connection;
+
+                        default:
+                            errnum = read_errnum;
+                            goto close_connections;
+                        }
+
+                        connection->has_reply_ready = true;
+                        connection->reply = reply;
+                    }
+
+                    try_writing : {
+                        linted_error write_errnum
+                            = on_connection_writeable(fd, &connection->reply);
+                        switch (write_errnum) {
+                        case 0:
+                            break;
+
+                        case EAGAIN:
+                            /* Maybe the socket was only available for
+                             * reading but not writing */
+                            continue;
+
+                        case EPIPE:
+                        case EPROTO:
+                            /* Ignore the misbehaving other end */
+                            goto remove_connection;
+
+                        default:
+                            errnum = write_errnum;
+                            goto close_connections;
+                        }
+                    }
+
+                    remove_connection:
+                    connection->fd = -1;
+                    --connection_count;
+
+                    {
+                        linted_error close_errnum = linted_ko_close(fd);
+                        if (0 == errnum) {
+                            errnum = close_errnum;
+                        }
+                    }
+
+                    if (errnum != 0) {
+                        goto close_connections;
                     }
                     break;
-
-                case EAGAIN:
-                    /* Maybe the socket was only available for
-             * writing but not reading */
-                    continue;
-
-                case EPROTO:
-                    /* Ignore the misbehaving other end */
-                    goto remove_connection;
-
-                default:
-                    errnum = read_errnum;
-                    goto close_connections;
                 }
-
-                connection->has_reply_ready = true;
-                connection->reply = reply;
-            }
-
-            try_writing : {
-                linted_error write_errnum
-                    = on_connection_writeable(fd, &connection->reply);
-                switch (write_errnum) {
-                case 0:
-                    break;
-
-                case EAGAIN:
-                    /* Maybe the socket was only available for
-             * reading but not writing */
-                    continue;
-
-                case EPIPE:
-                case EPROTO:
-                    /* Ignore the misbehaving other end */
-                    goto remove_connection;
-
-                default:
-                    errnum = write_errnum;
-                    goto close_connections;
-                }
-            }
-
-            remove_connection:
-                connection->fd = -1;
-                --connection_count;
-
-                {
-                    linted_error close_errnum = linted_ko_close(fd);
-                    if (0 == errnum) {
-                        errnum = close_errnum;
-                    }
-                }
-
-                if (errnum != 0) {
-                    goto close_connections;
                 }
             }
         }
@@ -930,10 +953,18 @@ exit_services:
         }
     }
 
+    {
+        linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+        if (0 == errnum) {
+            errnum = destroy_errnum;
+        }
+    }
+
     return errnum;
 }
 
-static linted_error on_new_connections_readable(linted_manager new_connections,
+static linted_error on_new_connections_readable(struct linted_asynch_pool * pool,
+                                                linted_manager new_connections,
                                                 union service_config const
                                                 * config,
                                                 union service const* services,
@@ -1017,7 +1048,8 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
 
         struct connection* connection;
 
-        for (size_t ii = 0; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
+        size_t ii = 0;
+        for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
             connection = &connections[ii];
             if (-1 == connection->fd) {
                 goto got_space;
@@ -1029,6 +1061,10 @@ static linted_error on_new_connections_readable(linted_manager new_connections,
         ;
         connection->fd = new_socket;
         connection->has_reply_ready = false;
+
+        linted_io_poll(&connection->task, CONNECTION + ii,
+                       new_socket, POLLIN);
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&connection->task));
 
         ++*connection_count;
         continue;

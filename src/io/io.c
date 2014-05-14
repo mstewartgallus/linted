@@ -45,7 +45,7 @@ static void asynch_task(struct linted_asynch_task* task, unsigned type,
 }
 
 void linted_io_poll(struct linted_asynch_task_poll* task, int task_action,
-                    linted_ko ko, short events, size_t size)
+                    linted_ko ko, short events)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
 

@@ -31,7 +31,7 @@
 
 void linted_io_poll(struct linted_asynch_task_poll* task, int task_action,
                     linted_ko ko,
-                    short events, size_t size);
+                    short events);
 
 void linted_io_read(struct linted_asynch_task_read* task, int task_action,
                     linted_ko ko, char* buf, size_t size);
