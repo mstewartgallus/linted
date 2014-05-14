@@ -17,12 +17,11 @@
 #define LINTED_ASYNCH_H
 
 #include "linted/error.h"
-#include "linted/ko.h"
 #include "linted/linked_queue.h"
+#include "linted/ko.h"
 
 #include <stddef.h>
 #include <poll.h>
-#include <pthread.h>
 
 /**
  * @file
@@ -39,25 +38,7 @@
  *       set and a lock).
  */
 
-struct linted_asynch_worker_pool;
-
-struct linted_asynch_pool
-{
-    struct linted_asynch_worker_pool* worker_pool;
-
-    /**
-     * A one writer to many readers queue.
-     */
-    struct linted_linked_queue* command_queue;
-
-    /**
-     * A one reader to many writers queue. Should be able to retrieve
-     * many values at once. As all writes are a direct result of
-     * submitted commands there is no need to worry about it growing
-     * too large.
-     */
-    struct linted_linked_queue* event_queue;
-};
+struct linted_asynch_pool;
 
 enum {
     LINTED_ASYNCH_TASK_POLL,
@@ -108,7 +89,7 @@ struct linted_asynch_task_mq_send
     linted_ko ko;
 };
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool* pool,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool** poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
 

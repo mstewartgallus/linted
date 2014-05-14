@@ -329,9 +329,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool pool;
-    if ((errnum = linted_asynch_pool_create(&pool, MAX_TASKS)) != 0) {
-        goto close_timer;
+    struct linted_asynch_pool* pool;
+    {
+        struct linted_asynch_pool* xx;
+        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+            goto close_timer;
+        }
+        pool = xx;
     }
 
     uint64_t timer_ticks;
@@ -349,16 +353,16 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     linted_controller_receive(&controller_task, ON_RECEIVE_CONTROLLER_EVENT,
                               controller);
 
-    linted_asynch_pool_submit(&pool, LINTED_UPCAST(&timer_task));
-    linted_asynch_pool_submit(&pool,
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(&timer_task));
+    linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&shutdowner_task)));
-    linted_asynch_pool_submit(&pool,
+    linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
 
     for (;;) {
         struct linted_asynch_task* completed_tasks[20];
         size_t task_count;
-        linted_asynch_pool_wait(&pool, completed_tasks,
+        linted_asynch_pool_wait(pool, completed_tasks,
                                 LINTED_ARRAY_SIZE(completed_tasks),
                                 &task_count);
 
@@ -376,12 +380,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 goto exit_main_loop;
 
             case ON_READ_TIMER_TICKS:
-                on_read_timer_ticks(&pool, updater, &updater_task, &timer_task,
+                on_read_timer_ticks(pool, updater, &updater_task, &timer_task,
                                     &action_state, &simulator_state);
                 break;
 
             case ON_RECEIVE_CONTROLLER_EVENT: {
-                if ((errnum = on_controller_receive(&pool, &controller_task,
+                if ((errnum = on_controller_receive(pool, &controller_task,
                                                     &action_state)) != 0) {
                     goto destroy_pool;
                 }
@@ -390,7 +394,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
             case ON_SENT_UPDATER_EVENT:
                 on_sent_update_event(&updater_task, updater, &simulator_state,
-                                     &pool);
+                                     pool);
                 break;
             }
         }
@@ -399,7 +403,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 exit_main_loop:
 
 destroy_pool : {
-    linted_error destroy_errnum = linted_asynch_pool_destroy(&pool);
+    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;
     }

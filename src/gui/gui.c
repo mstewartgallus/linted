@@ -375,9 +375,13 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool pool;
-    if ((errnum = linted_asynch_pool_create(&pool, MAX_TASKS)) != 0) {
-        goto shutdown;
+    struct linted_asynch_pool * pool;
+    {
+        struct linted_asynch_pool * xx;
+        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+            goto shutdown;
+        }
+        pool = xx;
     }
 
     struct window_model window_model = { .width = 640,
@@ -545,7 +549,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
     linted_updater_receive(&updater_task, ON_RECEIVED_UPDATER_EVENT, updater);
 
-    linted_asynch_pool_submit(&pool,
+    linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
 
     for (;;) {
@@ -665,7 +669,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         struct linted_asynch_task* completed_tasks[20];
         size_t task_count;
         linted_error poll_errnum = linted_asynch_pool_poll(
-            &pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
+            pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
             &task_count);
 
         bool had_asynch_event = poll_errnum != EAGAIN;
@@ -683,12 +687,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 case ON_RECEIVED_UPDATER_EVENT:
                     on_received_updater_event(&updater_task, &sim_model,
                                               controller, &controller_task,
-                                              &controller_data, &pool);
+                                              &controller_data, pool);
                     break;
 
                 case ON_SENT_CONTROLLER_EVENT:
                     on_sent_controller_event(&controller_task, controller,
-                                             &controller_data, &pool);
+                                             &controller_data, pool);
                     break;
                 }
             }
@@ -760,7 +764,7 @@ disconnect:
     XCloseDisplay(display);
 
 destroy_pool : {
-    linted_error destroy_errnum = linted_asynch_pool_destroy(&pool);
+    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;
     }
