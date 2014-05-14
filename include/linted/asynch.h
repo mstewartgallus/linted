@@ -43,10 +43,15 @@ struct linted_asynch_pool;
 
 enum {
     LINTED_ASYNCH_TASK_POLL,
+
     LINTED_ASYNCH_TASK_READ,
+
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
     LINTED_ASYNCH_TASK_MQ_SEND,
-    LINTED_ASYNCH_TASK_WAITID
+
+    LINTED_ASYNCH_TASK_WAITID,
+
+    LINTED_ASYNCH_TASK_ACCEPT
 };
 
 struct linted_asynch_task
@@ -101,6 +106,13 @@ struct linted_asynch_task_waitid
     int options;
 };
 
+struct linted_asynch_task_accept
+{
+    struct linted_asynch_task parent;
+    linted_ko ko;
+    linted_ko returned_ko;
+};
+
 linted_error linted_asynch_pool_create(struct linted_asynch_pool** poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool);
@@ -135,5 +147,8 @@ void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task,
 void linted_asynch_waitid(struct linted_asynch_task_waitid* task,
                           int task_action, idtype_t idtype, id_t id,
                           int options);
+
+void linted_asynch_accept(struct linted_asynch_task_accept* task,
+                          int task_action, linted_ko ko);
 
 #endif /* LINTED_ASYNCH_H */

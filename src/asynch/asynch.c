@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -29,6 +31,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 struct linted_asynch_pool
@@ -262,6 +266,14 @@ void linted_asynch_waitid(struct linted_asynch_task_waitid* task,
     task->options = options;
 }
 
+void linted_asynch_accept(struct linted_asynch_task_accept* task,
+                          int task_action, linted_ko ko)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
+
+    task->ko = ko;
+}
+
 static void asynch_task(struct linted_asynch_task* task, unsigned type,
                         unsigned task_action)
 {
@@ -425,6 +437,34 @@ static void* worker_routine(void* arg)
             } while (EINTR == errnum);
 
             task->errnum = errnum;
+            break;
+        }
+
+        case LINTED_ASYNCH_TASK_ACCEPT: {
+            struct linted_asynch_task_accept* task_accept
+                = LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
+            linted_error errnum;
+            linted_ko returned_ko = -1;
+            do {
+                {
+                    struct pollfd fd
+                        = { .fd = task_accept->ko, .events = POLLIN };
+
+                    int poll_status = poll(&fd, 1, -1);
+                    errnum = -1 == poll_status ? errno : 0;
+                    if (errnum != 0) {
+                        continue;
+                    }
+                }
+
+                returned_ko = accept4(task_accept->ko,
+                                      NULL, 0,
+                                      SOCK_NONBLOCK | SOCK_CLOEXEC);
+                errnum = -1 == returned_ko ? errno : 0;
+            } while (EAGAIN == errnum || EINTR == errnum);
+
+            task->errnum = errnum;
+            task_accept->returned_ko = returned_ko;
             break;
         }
 
