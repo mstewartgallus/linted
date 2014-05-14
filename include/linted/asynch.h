@@ -128,10 +128,12 @@ void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive* task,
                               int task_action, linted_ko ko, char* buf,
                               size_t size);
 
-void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
-                           linted_ko ko, char const* buf, size_t size);
+void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task,
+                           int task_action, linted_ko ko, char const* buf,
+                           size_t size);
 
-void linted_asynch_waitid(struct linted_asynch_task_waitid* task, int task_action,
-                          idtype_t idtype, id_t id, int options);
+void linted_asynch_waitid(struct linted_asynch_task_waitid* task,
+                          int task_action, idtype_t idtype, id_t id,
+                          int options);
 
 #endif /* LINTED_ASYNCH_H */

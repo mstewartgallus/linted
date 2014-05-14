@@ -41,7 +41,7 @@ void linted_updater_send(struct linted_updater_task_send* task, int task_id,
                          struct linted_updater_update const* update)
 {
     linted_asynch_mq_send(LINTED_UPCAST(task), task_id, updater, task->message,
-                      sizeof task->message);
+                          sizeof task->message);
 
     char* tip = task->message;
 
@@ -70,8 +70,8 @@ void linted_updater_send(struct linted_updater_task_send* task, int task_id,
 void linted_updater_receive(struct linted_updater_task_receive* task,
                             int task_id, linted_updater updater)
 {
-    linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, updater, task->message,
-                         sizeof task->message);
+    linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, updater,
+                             task->message, sizeof task->message);
 }
 
 void linted_updater_decode(struct linted_updater_task_receive const* task,

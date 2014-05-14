@@ -229,7 +229,8 @@ void linted_asynch_read(struct linted_asynch_task_read* task, int task_action,
 }
 
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive* task,
-                              int task_action, linted_ko ko, char* buf, size_t size)
+                              int task_action, linted_ko ko, char* buf,
+                              size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
                 task_action);
@@ -239,8 +240,9 @@ void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive* task,
     task->size = size;
 }
 
-void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
-                           linted_ko ko, char const* buf, size_t size)
+void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task,
+                           int task_action, linted_ko ko, char const* buf,
+                           size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
 
@@ -249,8 +251,9 @@ void linted_asynch_mq_send(struct linted_asynch_task_mq_send* task, int task_act
     task->size = size;
 }
 
-void linted_asynch_waitid(struct linted_asynch_task_waitid* task, int task_action,
-                          idtype_t idtype, id_t id, int options)
+void linted_asynch_waitid(struct linted_asynch_task_waitid* task,
+                          int task_action, idtype_t idtype, id_t id,
+                          int options)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
 

@@ -46,8 +46,8 @@ void linted_controller_send(struct linted_controller_task_send* task,
                             int task_id, linted_controller controller,
                             struct linted_controller_message const* message)
 {
-    linted_asynch_mq_send(LINTED_UPCAST(task), task_id, controller, task->message,
-                      sizeof task->message);
+    linted_asynch_mq_send(LINTED_UPCAST(task), task_id, controller,
+                          task->message, sizeof task->message);
 
     char* tip = task->message;
 
@@ -70,7 +70,7 @@ void linted_controller_receive(struct linted_controller_task_receive* task,
                                int task_id, linted_controller controller)
 {
     linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, controller,
-                         task->message, sizeof task->message);
+                             task->message, sizeof task->message);
 }
 
 linted_error

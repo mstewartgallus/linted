@@ -52,7 +52,7 @@ void linted_shutdowner_receive(struct linted_shutdowner_task* task, int task_id,
                                linted_shutdowner shutdowner)
 {
     linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, shutdowner,
-                         &task->dummy[0], 1);
+                             &task->dummy[0], 1);
 }
 
 linted_error linted_shutdowner_close(linted_shutdowner shutdowner)
