@@ -150,7 +150,6 @@ include src/sandbox/Makefile.am
 include src/start/Makefile.am
 include src/spawn/Makefile.am
 include src/util/Makefile.am
-include src/waiter/Makefile.am
 
 include src/controller/Makefile.am
 include src/logger/Makefile.am

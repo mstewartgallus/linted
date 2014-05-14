@@ -21,7 +21,8 @@
 #include "linted/ko.h"
 
 #include <stddef.h>
-#include <poll.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 /**
  * @file
@@ -43,8 +44,11 @@ struct linted_asynch_pool;
 enum {
     LINTED_ASYNCH_TASK_POLL,
     LINTED_ASYNCH_TASK_READ,
+
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
-    LINTED_ASYNCH_TASK_MQ_SEND
+    LINTED_ASYNCH_TASK_MQ_SEND,
+
+    LINTED_ASYNCH_TASK_WAITID
 };
 
 struct linted_asynch_task
@@ -88,6 +92,15 @@ struct linted_asynch_task_mq_send
     size_t size;
     size_t bytes_wrote;
     linted_ko ko;
+};
+
+struct linted_asynch_task_waitid
+{
+    struct linted_asynch_task parent;
+    siginfo_t info;
+    idtype_t idtype;
+    id_t id;
+    int options;
 };
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool** poolp,

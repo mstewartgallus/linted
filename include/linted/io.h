@@ -22,6 +22,7 @@
 #include "linted/str.h"
 
 #include <stddef.h>
+#include <sys/types.h>
 
 /**
  * @file
@@ -42,6 +43,9 @@ void linted_io_mq_receive(struct linted_asynch_task_mq_receive* task,
 
 void linted_io_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
                        linted_ko ko, char const* buf, size_t size);
+
+void linted_io_waitid(struct linted_asynch_task_waitid* task, int task_action,
+                      idtype_t idtype, id_t id, int options);
 
 linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
                                 size_t count);

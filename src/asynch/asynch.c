@@ -348,6 +348,21 @@ static void* worker_routine(void* arg)
             break;
         }
 
+        case LINTED_ASYNCH_TASK_WAITID: {
+            struct linted_asynch_task_waitid* task_wait
+                = LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
+            linted_error errnum;
+            do {
+                int wait_status = waitid(task_wait->idtype, task_wait->id,
+                                         &task_wait->info,
+                                         task_wait->options);
+                errnum = -1 == wait_status ? errno : 0;
+            } while (EINTR == errnum);
+
+            task->errnum = errnum;
+            break;
+        }
+
         default:
             assert(false);
         }

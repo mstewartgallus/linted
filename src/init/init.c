@@ -32,7 +32,6 @@
 #include "linted/spawn.h"
 #include "linted/updater.h"
 #include "linted/util.h"
-#include "linted/waiter.h"
 
 #include <assert.h>
 #include <poll.h>
@@ -115,7 +114,6 @@ struct service_init
 
 struct service_process
 {
-    struct linted_waiter waiter;
     pid_t pid;
 };
 
@@ -585,11 +583,6 @@ static linted_error run_game(char const* process_name,
             service->pid = process;
         }
 
-        if ((errnum = linted_waiter_init(&service->waiter, service->pid))
-            != 0) {
-            kill(service->pid, SIGKILL);
-        }
-
     destroy_file_actions:
         linted_spawn_file_actions_destroy(file_actions);
 
@@ -635,21 +628,16 @@ static linted_error run_game(char const* process_name,
         struct service_process* sim_service =
             &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
 
-        struct linted_asynch_task_read gui_waiter_task;
-        struct linted_asynch_task_read sim_waiter_task;
+        struct linted_asynch_task_waitid gui_waiter_task;
+        struct linted_asynch_task_waitid sim_waiter_task;
         struct linted_logger_task logger_task;
         struct linted_asynch_task_poll new_connections_task;
 
-        struct linted_waiter_message gui_waiter_message;
-        struct linted_waiter_message sim_waiter_message;
+        linted_io_waitid(&gui_waiter_task, GUI_WAITER,
+                         P_PID, gui_service->pid, WEXITED);
 
-        linted_io_read(&gui_waiter_task, GUI_WAITER,
-                       linted_waiter_fd(&gui_service->waiter),
-                       (char*)&gui_waiter_message, sizeof gui_waiter_message);
-
-        linted_io_read(&sim_waiter_task, SIMULATOR_WAITER,
-                       linted_waiter_fd(&sim_service->waiter),
-                       (char*)&sim_waiter_message, sizeof sim_waiter_message);
+        linted_io_waitid(&sim_waiter_task, SIMULATOR_WAITER,
+                         P_PID, sim_service->pid, WEXITED);
 
         linted_logger_receive(&logger_task,
                               LOGGER,
@@ -705,13 +693,9 @@ static linted_error run_game(char const* process_name,
                 }
 
                 case GUI_WAITER: {
-                    if ((errnum = gui_waiter_message.errnum) != 0) {
-                        goto close_connections;
-                    }
-
                     gui_service->pid = -1;
 
-                    siginfo_t* exit_info = &gui_waiter_message.exit_info;
+                    siginfo_t* exit_info = &gui_waiter_task.info;
 
                     switch (exit_info->si_code) {
                     case CLD_DUMPED:
@@ -738,13 +722,9 @@ static linted_error run_game(char const* process_name,
                 }
 
                 case SIMULATOR_WAITER: {
-                    if ((errnum = sim_waiter_message.errnum) != 0) {
-                        goto close_connections;
-                    }
-
                     sim_service->pid = -1;
 
-                    siginfo_t* exit_info = &sim_waiter_message.exit_info;
+                    siginfo_t* exit_info = &sim_waiter_task.info;
 
                     switch (exit_info->si_code) {
                     case CLD_DUMPED:
@@ -902,12 +882,6 @@ exit_services:
                 assert(kill_errnum != EPERM);
 
                 service->pid = -1;
-
-                linted_error destroy_errnum
-                    = linted_waiter_destroy(&service->waiter);
-                if (0 == errnum) {
-                    errnum = destroy_errnum;
-                }
             }
             break;
         }

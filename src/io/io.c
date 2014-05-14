@@ -84,6 +84,16 @@ void linted_io_mq_send(struct linted_asynch_task_mq_send* task, int task_action,
     task->size = size;
 }
 
+void linted_io_waitid(struct linted_asynch_task_waitid* task, int task_action,
+                      idtype_t idtype, id_t id, int options)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
+
+    task->idtype = idtype;
+    task->id = id;
+    task->options = options;
+}
+
 linted_error linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
                                 size_t count)
 {
