@@ -30,7 +30,8 @@
  */
 
 void linted_io_poll(struct linted_asynch_task_poll* task, int task_action,
-                    struct pollfd* fds, size_t size);
+                    linted_ko ko,
+                    short events, size_t size);
 
 void linted_io_read(struct linted_asynch_task_read* task, int task_action,
                     linted_ko ko, char* buf, size_t size);

@@ -45,12 +45,12 @@ static void asynch_task(struct linted_asynch_task* task, unsigned type,
 }
 
 void linted_io_poll(struct linted_asynch_task_poll* task, int task_action,
-                    struct pollfd* fds, size_t size)
+                    linted_ko ko, short events, size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
 
-    task->fds = fds;
-    task->size = size;
+    task->ko = ko;
+    task->events = events;
 }
 
 void linted_io_read(struct linted_asynch_task_read* task, int task_action,

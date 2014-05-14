@@ -228,11 +228,15 @@ static void* worker_routine(void* arg)
             struct linted_asynch_task_poll* task_poll
                 = LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
             linted_error errnum;
+
+            struct pollfd fd = {.fd = task_poll->ko,
+                                .events = task_poll->events};
             do {
-                int poll_status = poll(task_poll->fds, task_poll->size, -1);
+                int poll_status = poll(&fd, 1, -1);
                 errnum = -1 == poll_status ? errno : 0;
             } while (EINTR == errnum);
 
+            task_poll->revents = fd.revents;
             task->errnum = errnum;
             break;
         }

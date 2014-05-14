@@ -58,8 +58,9 @@ struct linted_asynch_task
 struct linted_asynch_task_poll
 {
     struct linted_asynch_task parent;
-    struct pollfd* fds;
-    size_t size;
+    linted_ko ko;
+    short events;
+    short revents;
 };
 
 struct linted_asynch_task_read
