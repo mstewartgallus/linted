@@ -18,6 +18,5 @@ noinst_LTLIBRARIES+=%D%/libasynch.la
 
 %C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
 %C%_libasynch_la_LIBADD=\
-  src/array_queue/libarray_queue.la\
   src/linked_queue/liblinked_queue.la\
   -lrt

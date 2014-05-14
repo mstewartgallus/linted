@@ -48,7 +48,7 @@ struct linted_asynch_pool
     /**
      * A one writer to many readers queue.
      */
-    struct linted_array_queue* command_queue;
+    struct linted_linked_queue* command_queue;
 
     /**
      * A one reader to many writers queue. Should be able to retrieve
