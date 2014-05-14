@@ -617,6 +617,11 @@ static linted_error run_game(char const* process_name,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
+    char * logger_buffer = malloc(LINTED_LOGGER_LOG_MAX);
+    if (NULL == logger_buffer) {
+        goto close_connections;
+    }
+
     {
         size_t connection_count = 0;
         struct connection connections[MAX_MANAGE_CONNECTIONS];
@@ -632,7 +637,7 @@ static linted_error run_game(char const* process_name,
 
         struct linted_asynch_task_read gui_waiter_task;
         struct linted_asynch_task_read sim_waiter_task;
-        struct linted_asynch_task_poll logger_task;
+        struct linted_logger_task logger_task;
         struct linted_asynch_task_poll new_connections_task;
 
         struct linted_waiter_message gui_waiter_message;
@@ -646,8 +651,9 @@ static linted_error run_game(char const* process_name,
                        linted_waiter_fd(&sim_service->waiter),
                        (char*)&sim_waiter_message, sizeof sim_waiter_message);
 
-        linted_io_poll(&logger_task, LOGGER,
-                       logger_read, POLLIN);
+        linted_logger_receive(&logger_task,
+                              LOGGER,
+                              logger_read, logger_buffer);
 
         linted_io_poll(&new_connections_task, NEW_CONNECTIONS,
                        new_connections, POLLIN);
@@ -657,7 +663,7 @@ static linted_error run_game(char const* process_name,
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(&sim_waiter_task));
         linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(&logger_task));
+                                  LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(&new_connections_task));
 
@@ -686,19 +692,12 @@ static linted_error run_game(char const* process_name,
 
 
                 case LOGGER:{
-                    size_t log_size;
-                    /**
-                     * @todo Allocate the entry buffer off of the stack.
-                     */
-                    char entry[LINTED_LOGGER_LOG_MAX];
-                    if ((errnum = linted_logger_recv_log(logger_read, entry,
-                                                         &log_size)) != 0) {
-                        goto close_connections;
-                    }
+                    size_t log_size = LINTED_UPCAST(&logger_task)->bytes_read;
 
                     linted_io_write_string(STDERR_FILENO, NULL, process_name);
                     linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
-                    linted_io_write_all(STDERR_FILENO, NULL, entry, log_size);
+                    linted_io_write_all(STDERR_FILENO, NULL,
+                                        logger_buffer, log_size);
                     linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
 
                     linted_asynch_pool_submit(pool, completed_task);
@@ -877,6 +876,8 @@ static linted_error run_game(char const* process_name,
             }
         }
     }
+
+    free(logger_buffer);
 
 close_new_connections : {
     linted_error close_errnum = linted_manager_close(new_connections);

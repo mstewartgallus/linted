@@ -43,15 +43,11 @@ linted_error linted_logger_log(linted_logger logger, char const* msg_ptr,
     return -1 == mq_send(logger, msg_ptr, msg_len, 0) ? errno : 0;
 }
 
-linted_error linted_logger_recv_log(linted_logger logger,
-                                    char msg_ptr[static LINTED_LOGGER_LOG_MAX],
-                                    size_t* msg_len)
+void linted_logger_receive(struct linted_logger_task * task,
+                           unsigned task_id,
+                           linted_logger logger,
+                           char msg_ptr[static LINTED_LOGGER_LOG_MAX])
 {
-    ssize_t size = mq_receive(logger, msg_ptr, LINTED_LOGGER_LOG_MAX, NULL);
-    if (-1 == size) {
-        return errno;
-    }
-
-    *msg_len = size;
-    return 0;
+    linted_io_mq_receive(LINTED_UPCAST(task), task_id, logger,
+                         msg_ptr, LINTED_LOGGER_LOG_MAX);
 }
