@@ -35,7 +35,8 @@
  */
 typedef mqd_t linted_logger;
 
-struct linted_logger_task {
+struct linted_logger_task
+{
     struct linted_asynch_task_mq_receive parent;
 };
 
@@ -46,8 +47,7 @@ linted_error linted_logger_close(linted_logger logger);
 linted_error linted_logger_log(linted_logger logger, char const* msg_ptr,
                                size_t msg_len);
 
-void linted_logger_receive(struct linted_logger_task * task,
-                           unsigned task_id,
+void linted_logger_receive(struct linted_logger_task* task, unsigned task_id,
                            linted_logger logger,
                            char msg_ptr[static LINTED_LOGGER_LOG_MAX]);
 

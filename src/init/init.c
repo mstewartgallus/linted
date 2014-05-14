@@ -153,13 +153,10 @@ static linted_error shutdowner_pair(int fildes[2])
     return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
 }
 
-static linted_error on_new_connections_readable(struct linted_asynch_pool * pool,
-                                                linted_manager new_connections,
-                                                union service_config const
-                                                * config,
-                                                union service const* services,
-                                                size_t* connection_count,
-                                                struct connection* connections);
+static linted_error on_new_connections_readable(
+    struct linted_asynch_pool* pool, linted_manager new_connections,
+    union service_config const* config, union service const* services,
+    size_t* connection_count, struct connection* connections);
 static linted_error on_connection_readable(int fd,
                                            union service_config const* config,
                                            union service const* services,
@@ -485,7 +482,9 @@ static linted_error run_game(char const* process_name,
 {
     linted_error errnum = 0;
 
-    enum { MAX_TASKS = CONNECTION + MAX_MANAGE_CONNECTIONS };
+    enum {
+        MAX_TASKS = CONNECTION + MAX_MANAGE_CONNECTIONS
+    };
 
     struct linted_asynch_pool* pool;
     {
@@ -610,7 +609,7 @@ static linted_error run_game(char const* process_name,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
-    char * logger_buffer = malloc(LINTED_LOGGER_LOG_MAX);
+    char* logger_buffer = malloc(LINTED_LOGGER_LOG_MAX);
     if (NULL == logger_buffer) {
         goto close_connections;
     }
@@ -633,27 +632,22 @@ static linted_error run_game(char const* process_name,
         struct linted_logger_task logger_task;
         struct linted_asynch_task_poll new_connections_task;
 
-        linted_io_waitid(&gui_waiter_task, GUI_WAITER,
-                         P_PID, gui_service->pid, WEXITED);
+        linted_io_waitid(&gui_waiter_task, GUI_WAITER, P_PID, gui_service->pid,
+                         WEXITED);
 
-        linted_io_waitid(&sim_waiter_task, SIMULATOR_WAITER,
-                         P_PID, sim_service->pid, WEXITED);
+        linted_io_waitid(&sim_waiter_task, SIMULATOR_WAITER, P_PID,
+                         sim_service->pid, WEXITED);
 
-        linted_logger_receive(&logger_task,
-                              LOGGER,
-                              logger_read, logger_buffer);
+        linted_logger_receive(&logger_task, LOGGER, logger_read, logger_buffer);
 
-        linted_io_poll(&new_connections_task, NEW_CONNECTIONS,
-                       new_connections, POLLIN);
+        linted_io_poll(&new_connections_task, NEW_CONNECTIONS, new_connections,
+                       POLLIN);
 
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(&gui_waiter_task));
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(&sim_waiter_task));
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&gui_waiter_task));
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&sim_waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(&new_connections_task));
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&new_connections_task));
 
         for (;;) {
             struct linted_asynch_task* completed_tasks[20];
@@ -670,22 +664,21 @@ static linted_error run_game(char const* process_name,
 
                 switch (completed_task->task_action) {
                 case NEW_CONNECTIONS:
-                    if ((errnum = on_new_connections_readable(pool,
-                             new_connections, config, services, &connection_count,
-                             connections)) != 0) {
+                    if ((errnum = on_new_connections_readable(
+                             pool, new_connections, config, services,
+                             &connection_count, connections)) != 0) {
                         goto close_connections;
                     }
                     linted_asynch_pool_submit(pool, completed_task);
                     break;
 
-
-                case LOGGER:{
+                case LOGGER: {
                     size_t log_size = LINTED_UPCAST(&logger_task)->bytes_read;
 
                     linted_io_write_string(STDERR_FILENO, NULL, process_name);
                     linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR(": "));
-                    linted_io_write_all(STDERR_FILENO, NULL,
-                                        logger_buffer, log_size);
+                    linted_io_write_all(STDERR_FILENO, NULL, logger_buffer,
+                                        log_size);
                     linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\n"));
 
                     linted_asynch_pool_submit(pool, completed_task);
@@ -753,9 +746,8 @@ static linted_error run_game(char const* process_name,
                 default: {
                     assert(CONNECTION <= completed_task->task_action);
 
-                    struct linted_asynch_task_poll* task_poll
-                        = LINTED_DOWNCAST(struct linted_asynch_task_poll,
-                                          completed_task);
+                    struct linted_asynch_task_poll* task_poll = LINTED_DOWNCAST(
+                        struct linted_asynch_task_poll, completed_task);
 
                     size_t jj = completed_task->task_action - CONNECTION;
 
@@ -770,61 +762,61 @@ static linted_error run_game(char const* process_name,
                     }
                     assert(false);
 
-                    try_reading : {
-                        union linted_manager_reply reply;
-                        bool hungup;
-                        linted_error read_errnum = on_connection_readable(
-                            fd, config, services, &hungup, &reply);
-                        switch (read_errnum) {
-                        case 0:
-                            if (hungup) {
-                                /* Ignore the misbehaving other end */
-                                goto remove_connection;
-                            }
-                            break;
-
-                        case EAGAIN:
-                            /* Maybe the socket was only available for
-                             * writing but not reading */
-                            break;
-
-                        case EPROTO:
+                try_reading : {
+                    union linted_manager_reply reply;
+                    bool hungup;
+                    linted_error read_errnum = on_connection_readable(
+                        fd, config, services, &hungup, &reply);
+                    switch (read_errnum) {
+                    case 0:
+                        if (hungup) {
                             /* Ignore the misbehaving other end */
                             goto remove_connection;
-
-                        default:
-                            errnum = read_errnum;
-                            goto close_connections;
                         }
+                        break;
 
-                        connection->has_reply_ready = true;
-                        connection->reply = reply;
+                    case EAGAIN:
+                        /* Maybe the socket was only available for
+                         * writing but not reading */
+                        break;
+
+                    case EPROTO:
+                        /* Ignore the misbehaving other end */
+                        goto remove_connection;
+
+                    default:
+                        errnum = read_errnum;
+                        goto close_connections;
                     }
 
-                    try_writing : {
-                        linted_error write_errnum
-                            = on_connection_writeable(fd, &connection->reply);
-                        switch (write_errnum) {
-                        case 0:
-                            break;
+                    connection->has_reply_ready = true;
+                    connection->reply = reply;
+                }
 
-                        case EAGAIN:
-                            /* Maybe the socket was only available for
-                             * reading but not writing */
-                            continue;
+                try_writing : {
+                    linted_error write_errnum
+                        = on_connection_writeable(fd, &connection->reply);
+                    switch (write_errnum) {
+                    case 0:
+                        break;
 
-                        case EPIPE:
-                        case EPROTO:
-                            /* Ignore the misbehaving other end */
-                            goto remove_connection;
+                    case EAGAIN:
+                        /* Maybe the socket was only available for
+                         * reading but not writing */
+                        continue;
 
-                        default:
-                            errnum = write_errnum;
-                            goto close_connections;
-                        }
+                    case EPIPE:
+                    case EPROTO:
+                        /* Ignore the misbehaving other end */
+                        goto remove_connection;
+
+                    default:
+                        errnum = write_errnum;
+                        goto close_connections;
                     }
+                }
 
-                    remove_connection:
+                remove_connection:
                     connection->fd = -1;
                     --connection_count;
 
@@ -919,13 +911,10 @@ exit_services:
     return errnum;
 }
 
-static linted_error on_new_connections_readable(struct linted_asynch_pool * pool,
-                                                linted_manager new_connections,
-                                                union service_config const
-                                                * config,
-                                                union service const* services,
-                                                size_t* connection_count,
-                                                struct connection* connections)
+static linted_error on_new_connections_readable(
+    struct linted_asynch_pool* pool, linted_manager new_connections,
+    union service_config const* config, union service const* services,
+    size_t* connection_count, struct connection* connections)
 {
     linted_error errnum;
 
@@ -1014,26 +1003,22 @@ static linted_error on_new_connections_readable(struct linted_asynch_pool * pool
         /* Impossible, listen has limited this */
         assert(false);
     got_space:
-        ;
         connection->fd = new_socket;
         connection->has_reply_ready = false;
 
-        linted_io_poll(&connection->task, CONNECTION + ii,
-                       new_socket, POLLIN);
+        linted_io_poll(&connection->task, CONNECTION + ii, new_socket, POLLIN);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&connection->task));
 
         ++*connection_count;
         continue;
 
-    close_new_socket:
-        ;
-        {
-            linted_error close_errnum = linted_ko_close(new_socket);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-            return errnum;
+    close_new_socket : {
+        linted_error close_errnum = linted_ko_close(new_socket);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
+        return errnum;
+    }
     }
 
     return 0;

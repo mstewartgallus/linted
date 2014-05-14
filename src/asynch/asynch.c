@@ -229,8 +229,8 @@ static void* worker_routine(void* arg)
                 = LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
             linted_error errnum;
 
-            struct pollfd fd = {.fd = task_poll->ko,
-                                .events = task_poll->events};
+            struct pollfd fd
+                = { .fd = task_poll->ko, .events = task_poll->events };
             do {
                 int poll_status = poll(&fd, 1, -1);
                 errnum = -1 == poll_status ? errno : 0;
@@ -354,8 +354,7 @@ static void* worker_routine(void* arg)
             linted_error errnum;
             do {
                 int wait_status = waitid(task_wait->idtype, task_wait->id,
-                                         &task_wait->info,
-                                         task_wait->options);
+                                         &task_wait->info, task_wait->options);
                 errnum = -1 == wait_status ? errno : 0;
             } while (EINTR == errnum);
 
