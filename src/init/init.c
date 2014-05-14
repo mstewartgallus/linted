@@ -852,8 +852,11 @@ static linted_error run_game(char const* process_name,
                     linted_error close_errnum = linted_ko_close(fd);
                     if (0 == errnum) {
                         errnum = close_errnum;
-                        goto close_connections;
                     }
+                }
+
+                if (errnum != 0) {
+                    goto close_connections;
                 }
             }
         }
