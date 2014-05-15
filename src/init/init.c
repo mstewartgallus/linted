@@ -161,11 +161,13 @@ static linted_error on_new_connection(linted_manager new_socket,
                                       struct connection *connections);
 
 static linted_error on_connection_recv_request(struct linted_asynch_pool* pool,
-                                               size_t ii,
+                                               struct connection *connection,
                                                size_t * connection_count,
                                                struct connection *connections,
                                                union service_config const *config,
                                                union service const *services);
+static linted_error remove_connection(struct connection * connection,
+                                             size_t *connection_count);
 
 static linted_error run_game(char const *process_name,
                              union service_config const *config,
@@ -697,12 +699,12 @@ static linted_error run_game(char const *process_name,
 
             for (size_t ii = 0; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
-                if ((errnum = completed_task->errnum) != 0) {
-                    goto close_connections;
-                }
-
                 switch (completed_task->task_action) {
                 case NEW_CONNECTIONS: {
+                    if ((errnum = completed_task->errnum) != 0) {
+                        goto close_connections;
+                    }
+
                     struct linted_asynch_task_accept *task_accept = LINTED_DOWNCAST(
                         struct linted_asynch_task_accept, completed_task);
                     linted_manager returned_ko = task_accept->returned_ko;
@@ -718,6 +720,10 @@ static linted_error run_game(char const *process_name,
                 }
 
                 case LOGGER: {
+                    if ((errnum = completed_task->errnum) != 0) {
+                        goto close_connections;
+                    }
+
                     size_t log_size = LINTED_UPCAST(&logger_task)->bytes_read;
 
                     linted_io_write_string(STDERR_FILENO, NULL, process_name);
@@ -731,6 +737,10 @@ static linted_error run_game(char const *process_name,
                 }
 
                 case GUI_WAITER: {
+                    if ((errnum = completed_task->errnum) != 0) {
+                        goto close_connections;
+                    }
+
                     gui_service->pid = -1;
 
                     siginfo_t *exit_info = &gui_waiter_task.info;
@@ -760,6 +770,10 @@ static linted_error run_game(char const *process_name,
                 }
 
                 case SIMULATOR_WAITER: {
+                    if ((errnum = completed_task->errnum) != 0) {
+                        goto close_connections;
+                    }
+
                     sim_service->pid = -1;
 
                     siginfo_t *exit_info = &sim_waiter_task.info;
@@ -792,32 +806,27 @@ static linted_error run_game(char const *process_name,
                     assert(CONNECTION <= completed_task->task_action);
 
                     size_t jj = completed_task->task_action - CONNECTION;
-                    if (jj < MAX_MANAGE_CONNECTIONS) {
+                    struct connection *connection = &connections[jj];
+
+                    if ((errnum = completed_task->errnum) != 0) {
+                        /* The other end did something bad */
+                        if ((errnum = remove_connection(connection,
+                                                        &connection_count)) != 0) {
+                            goto close_connections;
+                        }
+                    }
+
+                    if (!connection->has_reply_ready) {
                         if ((errnum = on_connection_recv_request(pool,
-                                                                 jj,
+                                                                 connection,
                                                                  &connection_count,
                                                                  connections,
                                                                  config, services)) != 0) {
                             goto close_connections;
                         }
                     } else {
-                        jj -= MAX_MANAGE_CONNECTIONS;
-
-                        struct connection *connection = &connections[jj];
-
-                        int fd = connection->fd;
-
-                        connection->fd = -1;
-                        --connection_count;
-
-                        {
-                            linted_error close_errnum = linted_ko_close(fd);
-                            if (0 == errnum) {
-                                errnum = close_errnum;
-                            }
-                        }
-
-                        if (errnum != 0) {
+                        if ((errnum = remove_connection(connection,
+                                                        &connection_count)) != 0) {
                             goto close_connections;
                         }
                     }
@@ -948,14 +957,13 @@ close_new_socket : {
 }
 
 static linted_error on_connection_recv_request(struct linted_asynch_pool* pool,
-                                               size_t ii,
+                                               struct connection *connection,
                                                size_t * connection_count,
                                                struct connection *connections,
                                                union service_config const *config,
                                                union service const *services)
 {
     linted_error errnum;
-    struct connection *connection = &connections[ii];
 
     struct linted_manager_task_recv_request *task_recv = &connection->recv_request_task;
 
@@ -1042,8 +1050,9 @@ static linted_error on_connection_recv_request(struct linted_asynch_pool* pool,
     }
     connection->has_reply_ready = true;
 
+    size_t ii = connections - connection;
     linted_manager_send_reply(&connection->send_reply_task,
-                              MAX_MANAGE_CONNECTIONS + CONNECTION + ii, fd,
+                              CONNECTION + ii, fd,
                               &reply);
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&connection->send_reply_task)));
@@ -1051,12 +1060,19 @@ static linted_error on_connection_recv_request(struct linted_asynch_pool* pool,
     return 0;
 
 remove_connection:
+    remove_connection(connection, connection_count);
+    return errnum;
+}
+
+static linted_error remove_connection(struct connection * connection,
+                                             size_t *connection_count)
+{
+    int fd = connection->fd;
+
     connection->fd = -1;
     --*connection_count;
 
-    linted_ko_close(fd);
-
-    return errnum;
+    return linted_ko_close(fd);
 }
 
 static linted_error linted_help(int fildes, char const *program_name,
