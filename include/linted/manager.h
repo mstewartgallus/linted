@@ -84,16 +84,19 @@ union linted_manager_reply
     struct linted_manager_stop_reply stop;
 };
 
-struct linted_manager_task_accept {
+struct linted_manager_task_accept
+{
     struct linted_asynch_task_accept parent;
 };
 
-struct linted_manager_task_recv_request {
+struct linted_manager_task_recv_request
+{
     struct linted_asynch_task_read parent;
     union linted_manager_request request;
 };
 
-struct linted_manager_task_send_reply {
+struct linted_manager_task_send_reply
+{
     struct linted_asynch_task_write parent;
     union linted_manager_reply reply;
 };
@@ -101,7 +104,7 @@ struct linted_manager_task_send_reply {
 linted_error linted_manager_bind(linted_manager *manager, int backlog,
                                  char const *path, size_t path_len);
 
-void linted_manager_accept(struct linted_manager_task_accept* task,
+void linted_manager_accept(struct linted_manager_task_accept *task,
                            int task_action, linted_manager manager);
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
@@ -113,10 +116,10 @@ linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
                                  size_t *len);
 
-void linted_manager_recv_request(struct linted_manager_task_recv_request* task,
+void linted_manager_recv_request(struct linted_manager_task_recv_request *task,
                                  int task_action, linted_manager manager);
 
-void linted_manager_send_reply(struct linted_manager_task_send_reply* task,
+void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
                                int task_action, linted_manager manager,
                                union linted_manager_reply const *reply);
 

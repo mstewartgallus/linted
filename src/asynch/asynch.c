@@ -63,7 +63,8 @@ struct linted_asynch_pool
     pthread_t workers[];
 };
 
-struct io_poll_data {
+struct io_poll_data
+{
     struct linted_queue waiters;
     linted_ko ko;
 };
@@ -71,25 +72,25 @@ struct io_poll_data {
 static void *io_manager_routine(void *arg);
 static void *worker_routine(void *arg);
 
-static uint32_t task_notifier_flags(struct linted_asynch_task * task);
-static linted_ko task_ko(struct linted_asynch_task * task);
+static uint32_t task_notifier_flags(struct linted_asynch_task *task);
+static linted_ko task_ko(struct linted_asynch_task *task);
 
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
-static void asynch_task_poll(struct linted_asynch_pool* pool,
+static void asynch_task_poll(struct linted_asynch_pool *pool,
                              struct linted_asynch_task *task);
-static void asynch_task_read(struct linted_asynch_pool* pool,
+static void asynch_task_read(struct linted_asynch_pool *pool,
                              struct linted_asynch_task *task);
-static void asynch_task_write(struct linted_asynch_pool* pool,
+static void asynch_task_write(struct linted_asynch_pool *pool,
                               struct linted_asynch_task *task);
-static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
+static void asynch_task_mq_receive(struct linted_asynch_pool *pool,
                                    struct linted_asynch_task *task);
-static void asynch_task_mq_send(struct linted_asynch_pool* pool,
+static void asynch_task_mq_send(struct linted_asynch_pool *pool,
                                 struct linted_asynch_task *task);
-static void asynch_task_waitid(struct linted_asynch_pool* pool,
+static void asynch_task_waitid(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
-static void asynch_task_accept(struct linted_asynch_pool* pool,
+static void asynch_task_accept(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
 
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
@@ -123,19 +124,18 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
         goto destroy_io_command_queue;
     }
 
-    linted_ko on_io_manager_event = eventfd(0,
-                                            EFD_SEMAPHORE | EFD_NONBLOCK | EFD_CLOEXEC);
+    linted_ko on_io_manager_event =
+        eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK | EFD_CLOEXEC);
     if (-1 == on_io_manager_event) {
         errnum = errno;
         goto close_notifier;
     }
 
     {
-        struct epoll_event event = {
-            .events = EPOLLIN,
-            .data = {.ptr = NULL}
-        };
-        if (-1 == epoll_ctl(notifier, EPOLL_CTL_ADD, on_io_manager_event, &event)) {
+        struct epoll_event event = { .events = EPOLLIN,
+                                     .data = { .ptr = NULL } };
+        if (-1 ==
+            epoll_ctl(notifier, EPOLL_CTL_ADD, on_io_manager_event, &event)) {
             errnum = errno;
             goto close_notifier;
         }
@@ -145,8 +145,8 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     pool->on_io_manager_event = on_io_manager_event;
     pool->worker_count = max_tasks;
 
-    if ((errnum = pthread_create(&pool->io_manager, NULL,
-                                 io_manager_routine, pool)) != 0) {
+    if ((errnum = pthread_create(&pool->io_manager, NULL, io_manager_routine,
+                                 pool)) != 0) {
         goto close_on_io_manager_event;
     }
 
@@ -400,8 +400,8 @@ static void *io_manager_routine(void *arg)
         {
             linted_error errnum;
             do {
-                event_count = epoll_wait(notifier, events,
-                                         LINTED_ARRAY_SIZE(events), -1);
+                event_count =
+                    epoll_wait(notifier, events, LINTED_ARRAY_SIZE(events), -1);
                 errnum = -1 == event_count ? errno : 0;
             } while (EINTR == errnum);
             if (errnum != 0) {
@@ -413,9 +413,9 @@ static void *io_manager_routine(void *arg)
         }
 
         for (size_t ii = 0; ii < (size_t)event_count; ++ii) {
-            struct epoll_event * event = &events[ii];
+            struct epoll_event *event = &events[ii];
             uint32_t event_flags = event->events;
-            struct linted_asynch_task * task = event->data.ptr;
+            struct linted_asynch_task *task = event->data.ptr;
             if (NULL == task) {
                 has_commands_ready = true;
                 continue;
@@ -425,17 +425,18 @@ static void *io_manager_routine(void *arg)
 
             uint32_t task_flags = task_notifier_flags(task);
             if ((event_flags & task_flags) != 0) {
-                linted_queue_send(&pool->worker_command_queue, LINTED_UPCAST(task));
+                linted_queue_send(&pool->worker_command_queue,
+                                  LINTED_UPCAST(task));
             } else if ((event_flags & EPOLLERR) != 0) {
                 socklen_t size = sizeof task->errnum;
-                getsockopt(ko, SOL_SOCKET, SO_ERROR,
-                           (void *)&task->errnum, &size);
+                getsockopt(ko, SOL_SOCKET, SO_ERROR, (void *)&task->errnum,
+                           &size);
                 linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
             } else {
                 assert(false);
             }
 
-             if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
+            if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
                 linted_error errnum = errno;
                 assert(errnum != EBADF);
                 assert(errnum != EINVAL);
@@ -467,7 +468,8 @@ static void *io_manager_routine(void *arg)
                 struct linted_asynch_task *task;
                 {
                     struct linted_queue_node *node;
-                    if (EAGAIN == linted_queue_try_recv(&pool->io_command_queue, &node)) {
+                    if (EAGAIN ==
+                        linted_queue_try_recv(&pool->io_command_queue, &node)) {
                         break;
                     }
                     task = LINTED_DOWNCAST(struct linted_asynch_task, node);
@@ -477,7 +479,7 @@ static void *io_manager_routine(void *arg)
 
                 struct epoll_event event = {
                     .events = task_notifier_flags(task) | EPOLLET,
-                    .data = {.ptr = task}
+                    .data = { .ptr = task }
                 };
                 if (-1 == epoll_ctl(notifier, EPOLL_CTL_ADD, ko, &event)) {
                     errnum = errno;
@@ -500,7 +502,7 @@ static void *io_manager_routine(void *arg)
     }
 }
 
-static uint32_t task_notifier_flags(struct linted_asynch_task * task)
+static uint32_t task_notifier_flags(struct linted_asynch_task *task)
 {
     switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL: {
@@ -537,7 +539,7 @@ static uint32_t task_notifier_flags(struct linted_asynch_task * task)
     }
 }
 
-static linted_ko task_ko(struct linted_asynch_task * task)
+static linted_ko task_ko(struct linted_asynch_task *task)
 {
     switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL:
@@ -562,7 +564,6 @@ static linted_ko task_ko(struct linted_asynch_task * task)
         assert(false);
     }
 }
-
 
 static void *worker_routine(void *arg)
 {
@@ -617,8 +618,8 @@ static void *worker_routine(void *arg)
     return NULL;
 }
 
-static void send_io_command(struct linted_asynch_pool* pool,
-                            struct linted_asynch_task* task)
+static void send_io_command(struct linted_asynch_pool *pool,
+                            struct linted_asynch_task *task)
 {
     linted_queue_send(&pool->io_command_queue, LINTED_UPCAST(task));
 
@@ -634,7 +635,7 @@ retry_write:
      * We use if else, instead of switch case because some systems
      * make EWOULDBLOCK and EAGAIN the same.
      */
-    if  (EWOULDBLOCK == errnum || EAGAIN == errnum) {
+    if (EWOULDBLOCK == errnum || EAGAIN == errnum) {
         /* Currently we busy wait although we could also use
          * poll. This is such an unlikely case that I think busy
          * waiting is fine here.
@@ -649,15 +650,16 @@ retry_write:
     assert(0 == errnum);
 }
 
-
-static void asynch_task_poll(struct linted_asynch_pool* pool,
+static void asynch_task_poll(struct linted_asynch_pool *pool,
                              struct linted_asynch_task *task)
 {
     struct linted_asynch_task_poll *task_poll =
         LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
     linted_error errnum;
 
-    struct pollfd fd = { .fd = task_poll->ko, .events = task_poll->events, .revents = 0 };
+    struct pollfd fd = { .fd = task_poll->ko,
+                         .events = task_poll->events,
+                         .revents = 0 };
 
     int poll_status = poll(&fd, 1, 0);
     errnum = -1 == poll_status ? errno : 0;
@@ -674,7 +676,7 @@ static void asynch_task_poll(struct linted_asynch_pool* pool,
     }
 }
 
-static void asynch_task_read(struct linted_asynch_pool* pool,
+static void asynch_task_read(struct linted_asynch_pool *pool,
                              struct linted_asynch_task *task)
 {
     struct linted_asynch_task_read *task_read =
@@ -719,8 +721,8 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
     }
 }
 
-static void asynch_task_write(struct linted_asynch_pool* pool,
-                             struct linted_asynch_task *task)
+static void asynch_task_write(struct linted_asynch_pool *pool,
+                              struct linted_asynch_task *task)
 {
     struct linted_asynch_task_write *task_write =
         LINTED_DOWNCAST(struct linted_asynch_task_write, task);
@@ -761,7 +763,7 @@ static void asynch_task_write(struct linted_asynch_pool* pool,
     }
 }
 
-static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
+static void asynch_task_mq_receive(struct linted_asynch_pool *pool,
                                    struct linted_asynch_task *task)
 {
     struct linted_asynch_task_mq_receive *task_receive =
@@ -789,7 +791,7 @@ static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
     }
 }
 
-static void asynch_task_mq_send(struct linted_asynch_pool* pool,
+static void asynch_task_mq_send(struct linted_asynch_pool *pool,
                                 struct linted_asynch_task *task)
 {
     struct linted_asynch_task_mq_send *task_send =
@@ -815,7 +817,7 @@ static void asynch_task_mq_send(struct linted_asynch_pool* pool,
     }
 }
 
-static void asynch_task_waitid(struct linted_asynch_pool* pool,
+static void asynch_task_waitid(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
     struct linted_asynch_task_waitid *task_wait =
@@ -832,7 +834,7 @@ static void asynch_task_waitid(struct linted_asynch_pool* pool,
     linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
 }
 
-static void asynch_task_accept(struct linted_asynch_pool* pool,
+static void asynch_task_accept(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
     struct linted_asynch_task_accept *task_accept =
