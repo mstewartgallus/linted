@@ -34,7 +34,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-linted_error linted_ko_strtofd(char const* str, int* fd)
+linted_error linted_ko_strtofd(char const *str, int *fd)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
@@ -69,7 +69,7 @@ linted_error linted_ko_strtofd(char const* str, int* fd)
     return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko* kop)
+linted_error linted_ko_dummy(linted_ko *kop)
 {
     int fildes = openat(-1, "/dev/null", O_RDONLY | O_CLOEXEC);
     if (-1 == fildes) {
@@ -80,11 +80,11 @@ linted_error linted_ko_dummy(linted_ko* kop)
     return 0;
 }
 
-linted_error linted_ko_open(linted_ko* kop, linted_ko dirko,
-                            char const* pathname, linted_ko_flags flags)
+linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
+                            char const *pathname, linted_ko_flags flags)
 {
-    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR)
-        != 0u) {
+    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) !=
+        0u) {
         return EINVAL;
     }
 

@@ -52,30 +52,30 @@ struct linted_controller_message
 struct linted_controller_task_send
 {
     struct linted_asynch_task_mq_send parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
 };
 
 struct linted_controller_task_receive
 {
     struct linted_asynch_task_mq_receive parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
 };
 
 linted_error linted_controller_pair(linted_controller controller[2],
                                     int readflags, int writeflags);
 linted_error linted_controller_close(linted_controller controller);
 
-void linted_controller_send(struct linted_controller_task_send* task,
+void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,
-                            struct linted_controller_message const* message);
+                            struct linted_controller_message const *message);
 
-void linted_controller_receive(struct linted_controller_task_receive* task,
+void linted_controller_receive(struct linted_controller_task_receive *task,
                                int task_id, linted_controller controller);
 
 linted_error
-linted_controller_decode(struct linted_controller_task_receive const* task,
-                         struct linted_controller_message* message);
+linted_controller_decode(struct linted_controller_task_receive const *task,
+                         struct linted_controller_message *message);
 
 #endif /* LINTED_CONTROLLER_H */

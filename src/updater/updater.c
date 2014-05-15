@@ -30,20 +30,20 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize
-        = LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
+    attr.mq_msgsize =
+        LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
 }
 
-void linted_updater_send(struct linted_updater_task_send* task, int task_id,
+void linted_updater_send(struct linted_updater_task_send *task, int task_id,
                          linted_updater updater,
-                         struct linted_updater_update const* update)
+                         struct linted_updater_update const *update)
 {
     linted_asynch_mq_send(LINTED_UPCAST(task), task_id, updater, task->message,
                           sizeof task->message);
 
-    char* tip = task->message;
+    char *tip = task->message;
 
     struct linted_rpc_int32 x_position = linted_rpc_pack(update->x_position);
     memcpy(tip, x_position.bytes, sizeof x_position.bytes);
@@ -57,27 +57,27 @@ void linted_updater_send(struct linted_updater_task_send* task, int task_id,
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
     tip += sizeof z_position.bytes;
 
-    struct linted_rpc_uint32 x_rotation
-        = linted_rpc_pack_uint32(update->x_rotation);
+    struct linted_rpc_uint32 x_rotation =
+        linted_rpc_pack_uint32(update->x_rotation);
     memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
     tip += sizeof x_rotation.bytes;
 
-    struct linted_rpc_uint32 y_rotation
-        = linted_rpc_pack_uint32(update->y_rotation);
+    struct linted_rpc_uint32 y_rotation =
+        linted_rpc_pack_uint32(update->y_rotation);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 }
 
-void linted_updater_receive(struct linted_updater_task_receive* task,
+void linted_updater_receive(struct linted_updater_task_receive *task,
                             int task_id, linted_updater updater)
 {
     linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, updater,
                              task->message, sizeof task->message);
 }
 
-void linted_updater_decode(struct linted_updater_task_receive const* task,
-                           struct linted_updater_update* update)
+void linted_updater_decode(struct linted_updater_task_receive const *task,
+                           struct linted_updater_update *update)
 {
-    char const* tip = task->message;
+    char const *tip = task->message;
 
     struct linted_rpc_int32 x_position;
     memcpy(x_position.bytes, tip, sizeof x_position.bytes);

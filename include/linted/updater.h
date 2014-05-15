@@ -56,35 +56,35 @@ struct linted_updater_update
 struct linted_updater_task_send
 {
     struct linted_asynch_task_mq_send parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
 struct linted_updater_task_receive
 {
     struct linted_asynch_task_mq_receive parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes) +
+                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,
                                  int wflags);
 
-void linted_updater_send(struct linted_updater_task_send* task, int task_id,
+void linted_updater_send(struct linted_updater_task_send *task, int task_id,
                          linted_updater updater,
-                         struct linted_updater_update const* update);
+                         struct linted_updater_update const *update);
 
-void linted_updater_receive(struct linted_updater_task_receive* task,
+void linted_updater_receive(struct linted_updater_task_receive *task,
                             int task_id, linted_updater updater);
 
-void linted_updater_decode(struct linted_updater_task_receive const* task,
-                           struct linted_updater_update* update);
+void linted_updater_decode(struct linted_updater_task_receive const *task,
+                           struct linted_updater_update *update);
 
 linted_error linted_updater_close(linted_updater updater);
 

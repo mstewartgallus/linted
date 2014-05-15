@@ -26,8 +26,8 @@
 #include <string.h>
 #include <sys/socket.h>
 
-linted_error linted_manager_bind(linted_manager* manager, int backlog,
-                                 char const* path, size_t path_len)
+linted_error linted_manager_bind(linted_manager *manager, int backlog,
+                                 char const *path, size_t path_len)
 {
     if (NULL == path && path_len != 0) {
         return EINVAL;
@@ -37,8 +37,8 @@ linted_error linted_manager_bind(linted_manager* manager, int backlog,
         return ENAMETOOLONG;
     }
 
-    int sock
-        = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    int sock =
+        socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
         return errno;
     }
@@ -60,7 +60,8 @@ linted_error linted_manager_bind(linted_manager* manager, int backlog,
             }
         }
 
-        if (-1 == bind(sock, (void*)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1 ==
+            bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }
@@ -79,7 +80,7 @@ close_sock : {
 }
 }
 
-linted_error linted_manager_accept(linted_manager manager, linted_manager* newp)
+linted_error linted_manager_accept(linted_manager manager, linted_manager *newp)
 {
     int fildes = accept4(manager, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (-1 == fildes) {
@@ -94,7 +95,7 @@ linted_error linted_manager_accept(linted_manager manager, linted_manager* newp)
     return 0;
 }
 
-linted_error linted_manager_connect(linted_manager* manager, char const* path,
+linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len)
 {
     if (path_len > LINTED_MANAGER_PATH_MAX) {
@@ -117,8 +118,8 @@ linted_error linted_manager_connect(linted_manager* manager, char const* path,
             address.sun_path[0] = '\0';
         }
 
-        if (-1
-            == connect(sock, (void*)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1 ==
+            connect(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             goto close_sock;
         }
     }
@@ -140,13 +141,13 @@ linted_error linted_manager_close(linted_manager manager)
 
 linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
-                                 size_t* len)
+                                 size_t *len)
 {
     struct sockaddr_un address;
     memset(&address, 0, sizeof address);
 
     socklen_t addr_len = sizeof address;
-    if (-1 == getsockname(manager, (void*)&address, &addr_len)) {
+    if (-1 == getsockname(manager, (void *)&address, &addr_len)) {
         return errno;
     }
 
@@ -161,11 +162,11 @@ linted_error linted_manager_path(linted_manager manager,
 }
 
 linted_error linted_manager_recv_request(linted_manager manager,
-                                         union linted_manager_request* request,
-                                         size_t* size)
+                                         union linted_manager_request *request,
+                                         size_t *size)
 {
-    linted_error errnum
-        = linted_io_read_all(manager, size, request, sizeof *request);
+    linted_error errnum =
+        linted_io_read_all(manager, size, request, sizeof *request);
     if (errnum != 0) {
         return errnum;
     }
@@ -179,24 +180,24 @@ linted_error linted_manager_recv_request(linted_manager manager,
 }
 
 linted_error linted_manager_send_reply(linted_manager manager,
-                                       union linted_manager_reply const* reply)
+                                       union linted_manager_reply const *reply)
 {
     return linted_io_write_all(manager, NULL, reply, sizeof *reply);
 }
 
-linted_error linted_manager_send_request(linted_manager manager,
-                                         union linted_manager_request const
-                                         * request)
+linted_error
+linted_manager_send_request(linted_manager manager,
+                            union linted_manager_request const *request)
 {
     return linted_io_write_all(manager, NULL, request, sizeof *request);
 }
 
 linted_error linted_manager_recv_reply(linted_manager manager,
-                                       union linted_manager_reply* reply,
-                                       size_t* size)
+                                       union linted_manager_reply *reply,
+                                       size_t *size)
 {
-    linted_error errnum
-        = linted_io_read_all(manager, size, reply, sizeof *reply);
+    linted_error errnum =
+        linted_io_read_all(manager, size, reply, sizeof *reply);
 
     if (errnum != 0) {
         return errnum;

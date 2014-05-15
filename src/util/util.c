@@ -30,11 +30,11 @@
 #include <string.h>
 #include <unistd.h>
 
-extern char** environ;
+extern char **environ;
 
-static linted_error close_fds_except(int const* kept_fds, size_t size);
+static linted_error close_fds_except(int const *kept_fds, size_t size);
 
-linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
+linted_error linted_util_sanitize_environment(int const *kept_fds, size_t size)
 {
     linted_error errnum = close_fds_except(kept_fds, size);
     if (errnum != 0) {
@@ -42,7 +42,7 @@ linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
     }
 
     /* Sanitize the environment */
-    for (char** env = environ; *env != NULL; ++env) {
+    for (char **env = environ; *env != NULL; ++env) {
         memset(*env, '\0', strlen(*env));
     }
     environ = NULL;
@@ -51,23 +51,23 @@ linted_error linted_util_sanitize_environment(int const* kept_fds, size_t size)
 }
 
 #ifndef NDEBUG
-static linted_error close_fds_except(int const* kept_fds, size_t size)
+static linted_error close_fds_except(int const *kept_fds, size_t size)
 {
     /* Valgrind has trouble with closing fds*/
     return 0;
 }
 #else
-static linted_error close_fds_except(int const* kept_fds, size_t size)
+static linted_error close_fds_except(int const *kept_fds, size_t size)
 {
     linted_error error_status = 0;
-    DIR* const fds_dir = opendir("/proc/self/fd");
+    DIR *const fds_dir = opendir("/proc/self/fd");
     if (NULL == fds_dir) {
         return errno;
     }
 
     {
         size_t fds_to_close_count = 0;
-        int* fds_to_close = NULL;
+        int *fds_to_close = NULL;
 
         for (;;) {
             /*
@@ -75,7 +75,7 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
              * anyways and readdir_r has a very broken interface.
              */
             errno = 0;
-            struct dirent* const result = readdir(fds_dir);
+            struct dirent *const result = readdir(fds_dir);
             {
                 int errnum = errno;
                 if (errnum != 0) {
@@ -88,7 +88,7 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
                 break;
             }
 
-            char const* const d_name = result->d_name;
+            char const *const d_name = result->d_name;
             if (0 == strcmp(d_name, ".")) {
                 continue;
             }
@@ -119,7 +119,7 @@ static linted_error close_fds_except(int const* kept_fds, size_t size)
         not_kept:
 
             ++fds_to_close_count;
-            int* new_fds = realloc(fds_to_close,
+            int *new_fds = realloc(fds_to_close,
                                    fds_to_close_count * sizeof fds_to_close[0]);
             if (NULL == new_fds) {
                 error_status = errno;

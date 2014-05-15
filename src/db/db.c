@@ -41,15 +41,15 @@
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
 
-static linted_error lock_db(linted_db* dbp);
-static linted_error unlock_db(linted_db* dbp);
+static linted_error lock_db(linted_db *dbp);
+static linted_error unlock_db(linted_db *dbp);
 
-static linted_error prepend(char** result, char const* base, char const* end);
+static linted_error prepend(char **result, char const *base, char const *end);
 
-static linted_error fname_alloc(int fd, char** buf);
-static linted_error fname(int fd, char* buf, size_t* sizep);
+static linted_error fname_alloc(int fd, char **buf);
+static linted_error fname(int fd, char *buf, size_t *sizep);
 
-linted_error linted_db_open(linted_db* dbp, linted_ko cwd, char const* pathname,
+linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
 {
     linted_error errnum;
@@ -99,9 +99,9 @@ try_to_open_lock_again:
          * Note that using a constant temporary filename is not
          * incorrect just slow.
          */
-        int temp_file
-            = openat(the_db, GLOBAL_LOCK_TEMPORARY,
-                     O_RDWR | O_SYNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+        int temp_file =
+            openat(the_db, GLOBAL_LOCK_TEMPORARY,
+                   O_RDWR | O_SYNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
         if (-1 == temp_file) {
             linted_error open_errnum = errno;
             if (EEXIST == open_errnum) {
@@ -119,10 +119,10 @@ try_to_open_lock_again:
         }
 
         size_t page_size = sysconf(_SC_PAGESIZE);
-        size_t map_size = ((sizeof(sem_t) + page_size - 1) / page_size)
-                          * page_size;
+        size_t map_size =
+            ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
 
-        sem_t* semaphore = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
+        sem_t *semaphore = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
                                 MAP_SHARED, temp_file, 0);
         if (MAP_FAILED == semaphore) {
             errnum = errno;
@@ -145,8 +145,8 @@ try_to_open_lock_again:
             goto unlink_temp;
         }
 
-        if (-1
-            == linkat(the_db, GLOBAL_LOCK_TEMPORARY, the_db, GLOBAL_LOCK, 0)) {
+        if (-1 ==
+            linkat(the_db, GLOBAL_LOCK_TEMPORARY, the_db, GLOBAL_LOCK, 0)) {
             errnum = errno;
         }
 
@@ -190,7 +190,7 @@ try_to_open_lock_again:
             goto close_version_file;
         }
 
-        char* const version_text = malloc(version_file_size);
+        char *const version_text = malloc(version_file_size);
         if (NULL == version_text) {
             errnum = errno;
             goto close_version_file;
@@ -206,8 +206,8 @@ try_to_open_lock_again:
             goto free_version_text;
         }
 
-        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1)
-            != 0) {
+        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1) !=
+            0) {
             errnum = EINVAL;
             goto free_version_text;
         }
@@ -282,40 +282,40 @@ close_db:
     return errnum;
 }
 
-linted_error linted_db_close(linted_db* dbp)
+linted_error linted_db_close(linted_db *dbp)
 {
     return linted_ko_close(*dbp);
 }
 
-linted_error linted_db_temp_file(linted_db* dbp, int* fildesp)
+linted_error linted_db_temp_file(linted_db *dbp, int *fildesp)
 {
     linted_error errnum = 0;
 
     static char const field_name[] = "field-XXXXXX.tmp";
 
-    char* temp_path;
+    char *temp_path;
     if ((errnum = prepend(&temp_path, TEMP_DIR "/", field_name)) != 0) {
         return errnum;
     }
 
-    char* xxxxxx = temp_path + strlen(temp_path) + sizeof "field-"
-                   - sizeof field_name;
+    char *xxxxxx =
+        temp_path + strlen(temp_path) + sizeof "field-" - sizeof field_name;
 
 try_again:
     for (size_t ii = 0; ii < 6; ++ii) {
         for (;;) {
             char value = ((int)(unsigned char)rand()) - 255 / 2 - 1;
-            if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z')
-                || (value > '0' && value < '9')) {
+            if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z') ||
+                (value > '0' && value < '9')) {
                 xxxxxx[ii] = value;
                 break;
             }
         }
     }
 
-    int temp_field = openat(*dbp, temp_path,
-                            O_RDWR | O_SYNC | O_CLOEXEC | O_CREAT | O_EXCL,
-                            S_IRUSR | S_IWUSR);
+    int temp_field =
+        openat(*dbp, temp_path, O_RDWR | O_SYNC | O_CLOEXEC | O_CREAT | O_EXCL,
+               S_IRUSR | S_IWUSR);
     if (-1 == temp_field) {
         linted_error open_errnum = errno;
         if (EEXIST == open_errnum) {
@@ -335,16 +335,16 @@ try_again:
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db* dbp, char const* name, int tmp)
+linted_error linted_db_temp_send(linted_db *dbp, char const *name, int tmp)
 {
     linted_error errnum;
 
-    char* temp_path;
+    char *temp_path;
     if ((errnum = fname_alloc(tmp, &temp_path)) != 0) {
         return errnum;
     }
 
-    char* field_path;
+    char *field_path;
     if ((errnum = prepend(&field_path, FIELD_DIR "/", name)) != 0) {
         goto free_temp_path;
     }
@@ -361,7 +361,7 @@ free_temp_path:
     return errnum;
 }
 
-static linted_error lock_db(linted_db* dbp)
+static linted_error lock_db(linted_db *dbp)
 {
     linted_error errnum;
 
@@ -373,8 +373,8 @@ static linted_error lock_db(linted_db* dbp)
     size_t page_size = sysconf(_SC_PAGESIZE);
     size_t map_size = ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
 
-    sem_t* semaphore = mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                            lock_file, 0);
+    sem_t *semaphore =
+        mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, lock_file, 0);
     if (MAP_FAILED == semaphore) {
         errnum = errno;
         linted_ko_close(lock_file);
@@ -398,7 +398,7 @@ static linted_error lock_db(linted_db* dbp)
     return 0;
 }
 
-static linted_error unlock_db(linted_db* dbp)
+static linted_error unlock_db(linted_db *dbp)
 {
     linted_error errnum;
 
@@ -410,8 +410,8 @@ static linted_error unlock_db(linted_db* dbp)
     size_t page_size = sysconf(_SC_PAGESIZE);
     size_t map_size = ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
 
-    sem_t* semaphore = mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                            lock_file, 0);
+    sem_t *semaphore =
+        mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, lock_file, 0);
     if (MAP_FAILED == semaphore) {
         errnum = errno;
         linted_ko_close(lock_file);
@@ -431,15 +431,15 @@ static linted_error unlock_db(linted_db* dbp)
     return 0;
 }
 
-static linted_error prepend(char** result, char const* base,
-                            char const* pathname)
+static linted_error prepend(char **result, char const *base,
+                            char const *pathname)
 {
     size_t base_size = strlen(base);
     size_t pathname_size = strlen(pathname);
 
     size_t new_path_size = base_size + pathname_size + 1;
 
-    char* new_path = malloc(new_path_size);
+    char *new_path = malloc(new_path_size);
     if (NULL == new_path) {
         return errno;
     }
@@ -452,14 +452,14 @@ static linted_error prepend(char** result, char const* base,
     return 0;
 }
 
-static int fname_alloc(int fd, char** bufp)
+static int fname_alloc(int fd, char **bufp)
 {
     int errnum;
     size_t bytes_wrote;
 
     size_t buf_size = 40;
 
-    char* buf = malloc(buf_size);
+    char *buf = malloc(buf_size);
     if (NULL == buf) {
         return errno;
     }
@@ -479,7 +479,7 @@ static int fname_alloc(int fd, char** bufp)
             goto free_buf;
         }
         buf_size = (buf_size * 3u) / 2u;
-        char* newbuf = realloc(buf, buf_size);
+        char *newbuf = realloc(buf, buf_size);
         if (NULL == newbuf) {
             errnum = errno;
             goto free_buf;
@@ -490,7 +490,7 @@ static int fname_alloc(int fd, char** bufp)
     /* Save on excess memory, also give debugging allocators more
      * information.
      */
-    char* newbuf = realloc(buf, bytes_wrote + 1);
+    char *newbuf = realloc(buf, bytes_wrote + 1);
     if (NULL == newbuf) {
         errnum = errno;
         goto free_buf;
@@ -511,7 +511,7 @@ free_buf:
 #define PROC_SELF_FD "/proc/self/fd/"
 #define INT_STR_SIZE 10
 
-static int fname(int fd, char* buf, size_t* sizep)
+static int fname(int fd, char *buf, size_t *sizep)
 {
     {
         struct stat statistics;
@@ -530,7 +530,7 @@ static int fname(int fd, char* buf, size_t* sizep)
 
     memcpy(fd_path, proc_self_fd, sizeof proc_self_fd);
 
-    char* int_end = fd_path + sizeof proc_self_fd;
+    char *int_end = fd_path + sizeof proc_self_fd;
 
     size_t bytes_written = (size_t)snprintf(int_end, INT_STR_SIZE, "%i", fd);
     int_end[bytes_written] = '\0';

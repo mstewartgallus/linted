@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     /* First we check if we are run with proper security */
     uid_t const uid = getuid();
@@ -44,7 +44,7 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    char const* const program_name = argv[0];
+    char const *const program_name = argv[0];
 
     int cwd = open("./", O_DIRECTORY | O_CLOEXEC);
     if (-1 == cwd) {
@@ -61,5 +61,5 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    return linted_start(cwd, program_name, argc, (char const * const*)argv);
+    return linted_start(cwd, program_name, argc, (char const * const *)argv);
 }

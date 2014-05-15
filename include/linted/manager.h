@@ -83,34 +83,34 @@ union linted_manager_reply
     struct linted_manager_stop_reply stop;
 };
 
-linted_error linted_manager_bind(linted_manager* manager, int backlog,
-                                 char const* path, size_t path_len);
+linted_error linted_manager_bind(linted_manager *manager, int backlog,
+                                 char const *path, size_t path_len);
 
 linted_error linted_manager_accept(linted_manager manager,
-                                   linted_manager* newp);
+                                   linted_manager *newp);
 
-linted_error linted_manager_connect(linted_manager* manager, char const* path,
+linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len);
 
 linted_error linted_manager_close(linted_manager manager);
 
 linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
-                                 size_t* len);
+                                 size_t *len);
 
 linted_error linted_manager_recv_request(linted_manager manager,
-                                         union linted_manager_request* request,
-                                         size_t* size);
+                                         union linted_manager_request *request,
+                                         size_t *size);
 
 linted_error linted_manager_send_reply(linted_manager manager,
-                                       union linted_manager_reply const* reply);
+                                       union linted_manager_reply const *reply);
 
-linted_error linted_manager_send_request(linted_manager manager,
-                                         union linted_manager_request const
-                                         * request);
+linted_error
+linted_manager_send_request(linted_manager manager,
+                            union linted_manager_request const *request);
 
 linted_error linted_manager_recv_reply(linted_manager manager,
-                                       union linted_manager_reply* reply,
-                                       size_t* size);
+                                       union linted_manager_reply *reply,
+                                       size_t *size);
 
 #endif /* LINTED_MANAGER_H */

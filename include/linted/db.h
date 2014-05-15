@@ -40,11 +40,11 @@
 
 typedef int linted_db;
 
-linted_error linted_db_open(linted_db* dbp, linted_ko cwd, char const* pathname,
+linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags);
-linted_error linted_db_close(linted_db* dbp);
+linted_error linted_db_close(linted_db *dbp);
 
-linted_error linted_db_temp_file(linted_db* dbp, int* fildesp);
-linted_error linted_db_temp_send(linted_db* db, char const* name, int fildes);
+linted_error linted_db_temp_file(linted_db *dbp, int *fildesp);
+linted_error linted_db_temp_send(linted_db *db, char const *name, int fildes);
 
 #endif /* LINTED_DB_H */

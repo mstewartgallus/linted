@@ -31,8 +31,8 @@ linted_error linted_controller_pair(linted_controller controller[2],
     memset(&attr, 0, sizeof attr);
 
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize
-        = LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
+    attr.mq_msgsize =
+        LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
 }
@@ -42,14 +42,14 @@ linted_error linted_controller_close(linted_controller controller)
     return -1 == mq_close(controller) ? errno : 0;
 }
 
-void linted_controller_send(struct linted_controller_task_send* task,
+void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,
-                            struct linted_controller_message const* message)
+                            struct linted_controller_message const *message)
 {
     linted_asynch_mq_send(LINTED_UPCAST(task), task_id, controller,
                           task->message, sizeof task->message);
 
-    char* tip = task->message;
+    char *tip = task->message;
 
     struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
     memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
@@ -59,14 +59,14 @@ void linted_controller_send(struct linted_controller_task_send* task,
     memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
     tip += sizeof y_tilt.bytes;
 
-    unsigned char bitfield
-        = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u
-          | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
-          | ((uintmax_t)message->jumping) << 4u;
+    unsigned char bitfield =
+        ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u |
+        ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u |
+        ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 }
 
-void linted_controller_receive(struct linted_controller_task_receive* task,
+void linted_controller_receive(struct linted_controller_task_receive *task,
                                int task_id, linted_controller controller)
 {
     linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, controller,
@@ -74,10 +74,10 @@ void linted_controller_receive(struct linted_controller_task_receive* task,
 }
 
 linted_error
-linted_controller_decode(struct linted_controller_task_receive const* task,
-                         struct linted_controller_message* message)
+linted_controller_decode(struct linted_controller_task_receive const *task,
+                         struct linted_controller_message *message)
 {
-    char const* tip = task->message;
+    char const *tip = task->message;
 
     struct linted_rpc_int32 x_tilt;
     memcpy(x_tilt.bytes, tip, sizeof x_tilt.bytes);

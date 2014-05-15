@@ -37,8 +37,8 @@ linted_error linted_locale_missing_process_name(int fildes,
     return 0;
 }
 
-linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
-                                         char const* bad_option)
+linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
+                                         char const *bad_option)
 {
     linted_error errnum;
 
@@ -60,13 +60,13 @@ linted_error linted_locale_on_bad_option(int fildes, char const* program_name,
 }
 
 linted_error linted_locale_try_for_more_help(int fildes,
-                                             char const* program_name,
+                                             char const *program_name,
                                              struct linted_str help_option)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) !=
+        0) {
         return errnum;
     }
 

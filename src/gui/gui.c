@@ -91,12 +91,13 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[]
-    = { GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
-        GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
-        None };
+static int const attribute_list[] = {
+    GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
+    GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
+    None
+};
 
-static linted_error errnum_from_connection(xcb_connection_t* connection)
+static linted_error errnum_from_connection(xcb_connection_t *connection)
 {
     switch (xcb_connection_has_error(connection)) {
     case 0:
@@ -122,8 +123,8 @@ static linted_error errnum_from_connection(xcb_connection_t* connection)
     }
 }
 
-static linted_error get_mouse_position(xcb_connection_t* connection,
-                                       xcb_window_t window, int* x, int* y)
+static linted_error get_mouse_position(xcb_connection_t *connection,
+                                       xcb_window_t window, int *x, int *y)
 {
     linted_error errnum;
 
@@ -132,9 +133,9 @@ static linted_error get_mouse_position(xcb_connection_t* connection,
         return errnum;
     }
 
-    xcb_generic_error_t* error;
-    xcb_query_pointer_reply_t* reply
-        = xcb_query_pointer_reply(connection, cookie, &error);
+    xcb_generic_error_t *error;
+    xcb_query_pointer_reply_t *reply =
+        xcb_query_pointer_reply(connection, cookie, &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
         free(reply);
         return errnum;
@@ -149,17 +150,15 @@ static linted_error get_mouse_position(xcb_connection_t* connection,
 }
 
 static void
-on_received_updater_event(struct linted_updater_task_receive* updater_task,
-                          struct sim_model* sim_model, linted_ko controller,
-                          struct linted_controller_task_send* controller_task,
-                          struct controller_data* controller_data,
-                          struct linted_asynch_pool* pool);
+on_received_updater_event(struct linted_updater_task_receive *updater_task,
+                          struct sim_model *sim_model, linted_ko controller,
+                          struct linted_controller_task_send *controller_task,
+                          struct controller_data *controller_data,
+                          struct linted_asynch_pool *pool);
 
-static void on_sent_controller_event(struct linted_controller_task_send
-                                     * controller_task,
-                                     linted_ko controller,
-                                     struct controller_data* controller_data,
-                                     struct linted_asynch_pool* pool);
+static void on_sent_controller_event(
+    struct linted_controller_task_send *controller_task, linted_ko controller,
+    struct controller_data *controller_data, struct linted_asynch_pool *pool);
 
 static void flush_gl_errors(void);
 
@@ -170,36 +169,36 @@ static void flush_gl_errors(void);
 static linted_error get_gl_error(void);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_model const* window_model,
-                    struct controller_data* controller_data);
+                    struct window_model const *window_model,
+                    struct controller_data *controller_data);
 
 static linted_error init_graphics(linted_logger logger,
-                                  struct graphics_state* graphics_state,
-                                  struct window_model const* window_model);
-static void render_graphics(struct graphics_state const* graphics_state,
-                            struct sim_model const* sim_model,
-                            struct window_model const* window_model);
-static void destroy_graphics(struct graphics_state* graphics_state);
+                                  struct graphics_state *graphics_state,
+                                  struct window_model const *window_model);
+static void render_graphics(struct graphics_state const *graphics_state,
+                            struct sim_model const *sim_model,
+                            struct window_model const *window_model);
+static void destroy_graphics(struct graphics_state *graphics_state);
 static void resize_graphics(unsigned width, unsigned height);
 
 static double square(double x);
 
-static linted_error gui_help(int fildes, char const* program_name,
+static linted_error gui_help(int fildes, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport);
-static linted_error missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const *program_name,
                                    struct linted_str help_option);
-static linted_error invalid_fildes(int fildes, char const* program_name,
+static linted_error invalid_fildes(int fildes, char const *program_name,
                                    struct linted_str option,
                                    linted_error errnum);
-static linted_error failure(int fildes, char const* program_name,
+static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
-                            char const* str);
+                            char const *str);
 
-uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
-                          char const* const argv[const])
+uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
+                          char const *const argv[const])
 {
     linted_error errnum = 0;
 
@@ -208,14 +207,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     bool need_help = false;
     bool need_version = false;
 
-    char const* bad_option = NULL;
+    char const *bad_option = NULL;
 
-    char const* logger_name = NULL;
-    char const* controller_name = NULL;
-    char const* shutdowner_name = NULL;
-    char const* updater_name = NULL;
+    char const *logger_name = NULL;
+    char const *controller_name = NULL;
+    char const *shutdowner_name = NULL;
+    char const *updater_name = NULL;
     for (size_t ii = 1; ii < argc; ++ii) {
-        char const* argument = argv[ii];
+        char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
             need_help = true;
@@ -344,7 +343,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
-    char const* original_display = getenv("DISPLAY");
+    char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_string(STDERR_FILENO, NULL, program_name);
         linted_io_write_str(STDERR_FILENO, NULL,
@@ -355,7 +354,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 
     size_t display_string_length = strlen(original_display) + 1;
-    char* display_env_var = malloc(display_string_length);
+    char *display_env_var = malloc(display_string_length);
     if (NULL == display_env_var) {
         failure(STDERR_FILENO, program_name,
                 LINTED_STR("no DISPLAY environment variable"), errno);
@@ -375,9 +374,9 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool* pool;
+    struct linted_asynch_pool *pool;
     {
-        struct linted_asynch_pool* xx;
+        struct linted_asynch_pool *xx;
         if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
             goto shutdown;
         }
@@ -391,12 +390,12 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                                          /* Do the initial resize */
                                          .resize_pending = true };
 
-    struct controller_data controller_data = {
-        .update
-        = { .forward = false, .back = false, .right = false, .left = false },
-        .update_pending = false,
-        .update_in_progress = false
-    };
+    struct controller_data controller_data = { .update = { .forward = false,
+                                                           .back = false,
+                                                           .right = false,
+                                                           .left = false },
+                                               .update_pending = false,
+                                               .update_in_progress = false };
 
     struct sim_model sim_model = { .x_rotation = 0,
                                    .y_rotation = 0,
@@ -404,19 +403,19 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                                    .y_position = 0,
                                    .z_position = 0 };
 
-    Display* display = XOpenDisplay(display_env_var);
+    Display *display = XOpenDisplay(display_env_var);
     if (NULL == display) {
         errnum = ENOSYS;
         goto destroy_pool;
     }
 
-    xcb_connection_t* connection = XGetXCBConnection(display);
+    xcb_connection_t *connection = XGetXCBConnection(display);
     unsigned screen_number = XDefaultScreen(display);
 
-    xcb_screen_t* screen = NULL;
+    xcb_screen_t *screen = NULL;
     {
-        xcb_screen_iterator_t iter
-            = xcb_setup_roots_iterator(xcb_get_setup(connection));
+        xcb_screen_iterator_t iter =
+            xcb_setup_roots_iterator(xcb_get_setup(connection));
         for (size_t ii = 0; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
@@ -436,8 +435,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     /* Query framebuffer configurations */
     XVisualInfo visual_info;
     {
-        XVisualInfo* ptr
-            = glXChooseVisual(display, screen_number, (int*)attribute_list);
+        XVisualInfo *ptr =
+            glXChooseVisual(display, screen_number, (int *)attribute_list);
         if (NULL == ptr) {
             errnum = ENOSYS;
             goto disconnect;
@@ -481,28 +480,28 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
     xcb_atom_t wm_delete_window;
     {
-        xcb_intern_atom_cookie_t cookie
-            = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+        xcb_intern_atom_cookie_t cookie =
+            xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t* reply
-            = xcb_intern_atom_reply(connection, cookie, 0);
+        xcb_intern_atom_reply_t *reply =
+            xcb_intern_atom_reply(connection, cookie, 0);
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         xcb_atom_t wm_protocols = reply->atom;
         free(reply);
 
-        xcb_intern_atom_cookie_t cookie2
-            = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+        xcb_intern_atom_cookie_t cookie2 =
+            xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t* reply2
-            = xcb_intern_atom_reply(connection, cookie2, 0);
+        xcb_intern_atom_reply_t *reply2 =
+            xcb_intern_atom_reply(connection, cookie2, 0);
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
@@ -526,8 +525,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         goto destroy_window;
     }
 
-    GLXContext glx_context
-        = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
+    GLXContext glx_context =
+        glXCreateContext(display, &visual_info, NULL, GL_TRUE);
     if (NULL == glx_context) {
         errnum = ENOSYS;
         goto destroy_window;
@@ -563,7 +562,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             XNextEvent(display, &event);
             switch (event.type) {
             case ConfigureNotify: {
-                XConfigureEvent* configure_event = &event.xconfigure;
+                XConfigureEvent *configure_event = &event.xconfigure;
                 window_model.width = configure_event->width;
                 window_model.height = configure_event->height;
                 window_model.resize_pending = true;
@@ -571,7 +570,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             }
 
             case MotionNotify: {
-                XMotionEvent* motion_event = &event.xmotion;
+                XMotionEvent *motion_event = &event.xmotion;
                 on_tilt(motion_event->x, motion_event->y, &window_model,
                         &controller_data);
                 break;
@@ -589,8 +588,8 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 window_model.focused = true;
 
                 int x, y;
-                if ((errnum = get_mouse_position(connection, window, &x, &y))
-                    != 0) {
+                if ((errnum = get_mouse_position(connection, window, &x, &y)) !=
+                    0) {
                     goto cleanup_gl;
                 }
 
@@ -608,7 +607,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                 break;
 
             case MappingNotify: {
-                XMappingEvent* mapping_event = &event.xmapping;
+                XMappingEvent *mapping_event = &event.xmapping;
                 XRefreshKeyboardMapping(mapping_event);
             }
 
@@ -625,7 +624,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
                 on_key_event:
                     ;
-                    XKeyEvent* key_event = &event.xkey;
+                    XKeyEvent *key_event = &event.xkey;
                     switch (XLookupKeysym(key_event, 0)) {
                     default:
                         goto no_key_event;
@@ -666,7 +665,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
             }
         }
 
-        struct linted_asynch_task* completed_tasks[20];
+        struct linted_asynch_task *completed_tasks[20];
         size_t task_count;
         linted_error poll_errnum = linted_asynch_pool_poll(
             pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
@@ -675,7 +674,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         bool had_asynch_event = poll_errnum != EAGAIN;
         if (had_asynch_event) {
             for (size_t ii = 0; ii < task_count; ++ii) {
-                struct linted_asynch_task* completed_task = completed_tasks[ii];
+                struct linted_asynch_task *completed_task = completed_tasks[ii];
                 if ((errnum = completed_task->errnum) != 0) {
                     goto cleanup_gl;
                 }
@@ -784,11 +783,11 @@ shutdown : {
 }
 
 static void
-on_received_updater_event(struct linted_updater_task_receive* updater_task,
-                          struct sim_model* sim_model, linted_ko controller,
-                          struct linted_controller_task_send* controller_task,
-                          struct controller_data* controller_data,
-                          struct linted_asynch_pool* pool)
+on_received_updater_event(struct linted_updater_task_receive *updater_task,
+                          struct sim_model *sim_model, linted_ko controller,
+                          struct linted_controller_task_send *controller_task,
+                          struct controller_data *controller_data,
+                          struct linted_asynch_pool *pool)
 {
     struct linted_updater_update update;
     linted_updater_decode(updater_task, &update);
@@ -804,8 +803,8 @@ on_received_updater_event(struct linted_updater_task_receive* updater_task,
     sim_model->y_position = update.y_position * (1 / (double)2048);
     sim_model->z_position = update.z_position * (1 / (double)2048);
 
-    if (!controller_data->update_pending
-        || controller_data->update_in_progress) {
+    if (!controller_data->update_pending ||
+        controller_data->update_in_progress) {
         return;
     }
 
@@ -818,11 +817,9 @@ on_received_updater_event(struct linted_updater_task_receive* updater_task,
     controller_data->update_in_progress = true;
 }
 
-static void on_sent_controller_event(struct linted_controller_task_send
-                                     * controller_task,
-                                     linted_ko controller,
-                                     struct controller_data* controller_data,
-                                     struct linted_asynch_pool* pool)
+static void on_sent_controller_event(
+    struct linted_controller_task_send *controller_task, linted_ko controller,
+    struct controller_data *controller_data, struct linted_asynch_pool *pool)
 {
     controller_data->update_in_progress = false;
 
@@ -840,8 +837,8 @@ static void on_sent_controller_event(struct linted_controller_task_send
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_model const* window_model,
-                    struct controller_data* controller_data)
+                    struct window_model const *window_model,
+                    struct controller_data *controller_data)
 {
     int32_t x = (2 * mouse_x - (int)window_model->width) / 2;
     int32_t y = (2 * mouse_y - (int)window_model->height) / 2;
@@ -857,8 +854,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 }
 
 static linted_error init_graphics(linted_logger logger,
-                                  struct graphics_state* graphics_state,
-                                  struct window_model const* window_model)
+                                  struct graphics_state *graphics_state,
+                                  struct window_model const *window_model)
 {
     linted_error errnum = 0;
 
@@ -951,7 +948,7 @@ static linted_error init_graphics(linted_logger logger,
             glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
                           &info_log_length);
 
-            GLchar* info_log = malloc(info_log_length);
+            GLchar *info_log = malloc(info_log_length);
             if (info_log != NULL) {
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
@@ -983,7 +980,7 @@ static linted_error init_graphics(linted_logger logger,
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
-            GLchar* info_log = malloc(info_log_length);
+            GLchar *info_log = malloc(info_log_length);
             if (info_log != NULL) {
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
@@ -1005,7 +1002,7 @@ static linted_error init_graphics(linted_logger logger,
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
-        GLchar* info_log = malloc(info_log_length);
+        GLchar *info_log = malloc(info_log_length);
         if (info_log != NULL) {
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
             log_str(logger, LINTED_STR("Invalid program: "), info_log);
@@ -1025,7 +1022,7 @@ cleanup_program:
     return errnum;
 }
 
-static void destroy_graphics(struct graphics_state* graphics_state)
+static void destroy_graphics(struct graphics_state *graphics_state)
 {
     glUseProgram(0);
     glDeleteProgram(graphics_state->program);
@@ -1046,20 +1043,21 @@ static void resize_graphics(unsigned width, unsigned height)
         double far = 1000;
         double near = 1;
 
-        GLfloat projection[][4]
-            = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
-                { 0,                           0,
-                  (far + near) / (near - far), 2 * far * near / (near - far) },
-                { 0, 0, -1, 0 } };
+        GLfloat projection[][4] = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+                                    { 0,
+                                      0,
+                                      (far + near) / (near - far),
+                                      2 * far * near / (near - far) },
+                                    { 0, 0, -1, 0 } };
         glLoadMatrixf(projection[0]);
     }
 
     glMatrixMode(GL_MODELVIEW);
 }
 
-static void render_graphics(struct graphics_state const* graphics_state,
-                            struct sim_model const* sim_model,
-                            struct window_model const* window_model)
+static void render_graphics(struct graphics_state const *graphics_state,
+                            struct sim_model const *sim_model,
+                            struct window_model const *window_model)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1091,10 +1089,11 @@ static void render_graphics(struct graphics_state const* graphics_state,
 
     /* Move the camera */
     {
-        GLfloat const camera[][4]
-            = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
-                { sim_model->x_position, sim_model->y_position,
-                  sim_model->z_position, 1 } };
+        GLfloat const camera[][4] = {
+            { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
+            { sim_model->x_position, sim_model->y_position,
+              sim_model->z_position, 1 }
+        };
         glMultMatrixf(camera[0]);
     }
 
@@ -1141,15 +1140,15 @@ static double square(double x)
     return x * x;
 }
 
-static linted_error gui_help(int fildes, char const* program_name,
+static linted_error gui_help(int fildes, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+        0) {
         return errnum;
     }
 
@@ -1157,8 +1156,8 @@ static linted_error gui_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
@@ -1221,7 +1220,7 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error invalid_fildes(int fildes, char const* program_name,
+static linted_error invalid_fildes(int fildes, char const *program_name,
                                    struct linted_str option,
                                    linted_error error_display)
 {
@@ -1239,12 +1238,12 @@ static linted_error invalid_fildes(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" argument: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(" argument: "))) != 0) {
         return errnum;
     }
 
-    char const* error_string = linted_error_string_alloc(error_display);
+    char const *error_string = linted_error_string_alloc(error_display);
     errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
@@ -1259,7 +1258,7 @@ static linted_error invalid_fildes(int fildes, char const* program_name,
     return 0;
 }
 
-static linted_error missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const *program_name,
                                    struct linted_str option)
 {
     linted_error errnum;
@@ -1268,8 +1267,8 @@ static linted_error missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(": missing "))) != 0) {
         return errnum;
     }
 
@@ -1277,15 +1276,15 @@ static linted_error missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) !=
+        0) {
         return errnum;
     }
 
     return 0;
 }
 
-static linted_error failure(int fildes, char const* program_name,
+static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error error)
 {
     linted_error errnum;
@@ -1306,7 +1305,7 @@ static linted_error failure(int fildes, char const* program_name,
         return errnum;
     }
 
-    char const* error_string = linted_error_string_alloc(error);
+    char const *error_string = linted_error_string_alloc(error);
     errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 
@@ -1322,11 +1321,11 @@ static linted_error failure(int fildes, char const* program_name,
 }
 
 static linted_error log_str(linted_logger logger, struct linted_str start,
-                            char const* error)
+                            char const *error)
 {
     size_t error_size = strlen(error);
 
-    char* full_string = malloc(error_size + start.size);
+    char *full_string = malloc(error_size + start.size);
     if (NULL == full_string) {
         /* Silently drop log */
         return errno;
@@ -1335,8 +1334,8 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
     memcpy(full_string, start.bytes, start.size);
     memcpy(full_string + start.size, error, error_size);
 
-    linted_error errnum
-        = linted_logger_log(logger, full_string, start.size + error_size);
+    linted_error errnum =
+        linted_logger_log(logger, full_string, start.size + error_size);
 
     free(full_string);
 

@@ -29,11 +29,11 @@
 linted_error linted_locale_missing_process_name(linted_ko ko,
                                                 struct linted_str package_name);
 
-linted_error linted_locale_on_bad_option(linted_ko ko, char const* program_name,
-                                         char const* bad_option);
+linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
+                                         char const *bad_option);
 
 linted_error linted_locale_try_for_more_help(linted_ko ko,
-                                             char const* program_name,
+                                             char const *program_name,
                                              struct linted_str help_option);
 
 linted_error linted_locale_version(linted_ko ko,

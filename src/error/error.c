@@ -25,10 +25,10 @@
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
 
-char const* linted_error_string_alloc(linted_error errnum)
+char const *linted_error_string_alloc(linted_error errnum)
 {
     size_t size = 40;
-    char* string = NULL;
+    char *string = NULL;
 
     linted_error strerror_errnum;
     do {
@@ -41,7 +41,7 @@ char const* linted_error_string_alloc(linted_error errnum)
 
         size = (multiplicand * size) / 2;
 
-        char* const new_string = realloc(string, size);
+        char *const new_string = realloc(string, size);
         if (NULL == new_string) {
             goto out_of_memory;
         }
@@ -62,9 +62,9 @@ out_of_memory : {
     return no_memory_string;
 }
 
-void linted_error_string_free(char const* error_string)
+void linted_error_string_free(char const *error_string)
 {
     if (error_string != no_memory_string) {
-        free((void*)error_string);
+        free((void *)error_string);
     }
 }

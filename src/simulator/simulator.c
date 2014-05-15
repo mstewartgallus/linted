@@ -83,29 +83,29 @@ struct simulator_state
     bool write_in_progress : 1;
 };
 
-static void on_read_timer_ticks(struct linted_asynch_pool* pool,
+static void on_read_timer_ticks(struct linted_asynch_pool *pool,
                                 linted_ko updater,
-                                struct linted_updater_task_send* updater_task,
-                                struct linted_asynch_task_read* timer_task,
-                                struct action_state const* action_state,
-                                struct simulator_state* simulator_state);
+                                struct linted_updater_task_send *updater_task,
+                                struct linted_asynch_task_read *timer_task,
+                                struct action_state const *action_state,
+                                struct simulator_state *simulator_state);
 
-static linted_error on_controller_receive(struct linted_asynch_pool* pool,
-                                          struct linted_controller_task_receive
-                                          * controller_task,
-                                          struct action_state* action_state);
+static linted_error
+on_controller_receive(struct linted_asynch_pool *pool,
+                      struct linted_controller_task_receive *controller_task,
+                      struct action_state *action_state);
 
-static void on_sent_update_event(struct linted_updater_task_send* updater_task,
+static void on_sent_update_event(struct linted_updater_task_send *updater_task,
                                  linted_ko updater,
-                                 struct simulator_state* simulator_state,
-                                 struct linted_asynch_pool* pool);
+                                 struct simulator_state *simulator_state,
+                                 struct linted_asynch_pool *pool);
 
-static void simulate_forces(linted_updater_int_fast* position,
-                            linted_updater_int_fast* velocity,
+static void simulate_forces(linted_updater_int_fast *position,
+                            linted_updater_int_fast *velocity,
                             linted_updater_int_fast thrust);
-static void simulate_rotation(linted_updater_uint_fast* rotation,
+static void simulate_rotation(linted_updater_uint_fast *rotation,
                               linted_updater_int_fast tilt);
-static void simulate_clamped_rotation(linted_updater_uint_fast* rotation,
+static void simulate_clamped_rotation(linted_updater_uint_fast *rotation,
                                       linted_updater_int_fast tilt);
 static linted_updater_uint_fast absolute(linted_updater_int_fast x);
 static linted_updater_int_fast saturate(int_fast64_t x);
@@ -115,28 +115,28 @@ static linted_updater_int_fast min_int32(linted_updater_int_fast x,
                                          linted_updater_int_fast y);
 static linted_updater_int_fast sign(linted_updater_int_fast x);
 
-static linted_error simulator_help(linted_ko ko, char const* program_name,
+static linted_error simulator_help(linted_ko ko, char const *program_name,
                                    struct linted_str package_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
-static linted_error missing_option(linted_ko ko, char const* program_name,
+static linted_error missing_option(linted_ko ko, char const *program_name,
                                    struct linted_str help_option);
 
-uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
-                          char const* const argv[const])
+uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
+                          char const *const argv[const])
 {
     linted_ko_close(cwd);
 
     bool need_help = false;
     bool need_version = false;
-    char const* bad_option = NULL;
+    char const *bad_option = NULL;
 
-    char const* logger_name = NULL;
-    char const* controller_name = NULL;
-    char const* shutdowner_name = NULL;
-    char const* updater_name = NULL;
+    char const *logger_name = NULL;
+    char const *controller_name = NULL;
+    char const *shutdowner_name = NULL;
+    char const *updater_name = NULL;
     for (size_t ii = 1; ii < argc; ++ii) {
-        char const* argument = argv[ii];
+        char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
             need_help = true;
@@ -292,20 +292,21 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
-    struct simulator_state simulator_state
-        = { .update_pending = true, /* Initialize the gui at start */
-            .write_in_progress = false,
-            .x_position = 0,
-            .y_position = 0,
-            .z_position = 3 * 1024,
-            .x_velocity = 0,
-            .y_velocity = 0,
-            .z_velocity = 0,
-            .x_rotation = UINT32_MAX / 2,
-            .y_rotation = 0 };
+    struct simulator_state simulator_state = {
+        .update_pending = true, /* Initialize the gui at start */
+        .write_in_progress = false,
+        .x_position = 0,
+        .y_position = 0,
+        .z_position = 3 * 1024,
+        .x_velocity = 0,
+        .y_velocity = 0,
+        .z_velocity = 0,
+        .x_rotation = UINT32_MAX / 2,
+        .y_rotation = 0
+    };
 
-    linted_ko timer
-        = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    linted_ko timer =
+        timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (-1 == timer) {
         errnum = errno;
         goto exit;
@@ -329,9 +330,9 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
         }
     }
 
-    struct linted_asynch_pool* pool;
+    struct linted_asynch_pool *pool;
     {
-        struct linted_asynch_pool* xx;
+        struct linted_asynch_pool *xx;
         if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
             goto close_timer;
         }
@@ -345,7 +346,7 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     struct linted_updater_task_send updater_task;
 
     linted_asynch_read(&timer_task, ON_READ_TIMER_TICKS, timer,
-                       (char*)&timer_ticks, sizeof timer_ticks);
+                       (char *)&timer_ticks, sizeof timer_ticks);
 
     linted_shutdowner_receive(&shutdowner_task, ON_RECEIVE_SHUTDOWNER_EVENT,
                               shutdowner);
@@ -360,14 +361,14 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
                               LINTED_UPCAST(LINTED_UPCAST(&controller_task)));
 
     for (;;) {
-        struct linted_asynch_task* completed_tasks[20];
+        struct linted_asynch_task *completed_tasks[20];
         size_t task_count;
         linted_asynch_pool_wait(pool, completed_tasks,
                                 LINTED_ARRAY_SIZE(completed_tasks),
                                 &task_count);
 
         for (size_t ii = 0; ii < task_count; ++ii) {
-            struct linted_asynch_task* completed_task = completed_tasks[ii];
+            struct linted_asynch_task *completed_task = completed_tasks[ii];
             if ((errnum = completed_task->errnum) != 0) {
                 goto destroy_pool;
             }
@@ -422,12 +423,12 @@ exit:
     return errnum;
 }
 
-static void on_read_timer_ticks(struct linted_asynch_pool* pool,
+static void on_read_timer_ticks(struct linted_asynch_pool *pool,
                                 linted_ko updater,
-                                struct linted_updater_task_send* updater_task,
-                                struct linted_asynch_task_read* timer_task,
-                                struct action_state const* action_state,
-                                struct simulator_state* simulator_state)
+                                struct linted_updater_task_send *updater_task,
+                                struct linted_asynch_task_read *timer_task,
+                                struct action_state const *action_state,
+                                struct simulator_state *simulator_state)
 {
     uint64_t timer_ticks;
     memcpy(&timer_ticks, timer_task->buf, sizeof timer_ticks);
@@ -454,17 +455,18 @@ static void on_read_timer_ticks(struct linted_asynch_pool* pool,
         simulator_state->update_pending = true;
     }
 
-    if (!simulator_state->update_pending
-        || simulator_state->write_in_progress) {
+    if (!simulator_state->update_pending ||
+        simulator_state->write_in_progress) {
         return;
     }
 
-    struct linted_updater_update update
-        = { .x_position = simulator_state->x_position,
-            .y_position = simulator_state->y_position,
-            .z_position = simulator_state->z_position,
-            .x_rotation = simulator_state->x_rotation,
-            .y_rotation = simulator_state->y_rotation };
+    struct linted_updater_update update = {
+        .x_position = simulator_state->x_position,
+        .y_position = simulator_state->y_position,
+        .z_position = simulator_state->z_position,
+        .x_rotation = simulator_state->x_rotation,
+        .y_rotation = simulator_state->y_rotation
+    };
 
     linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(updater_task)));
@@ -473,10 +475,10 @@ static void on_read_timer_ticks(struct linted_asynch_pool* pool,
     simulator_state->write_in_progress = true;
 }
 
-static linted_error on_controller_receive(struct linted_asynch_pool* pool,
-                                          struct linted_controller_task_receive
-                                          * controller_task,
-                                          struct action_state* action_state)
+static linted_error
+on_controller_receive(struct linted_asynch_pool *pool,
+                      struct linted_controller_task_receive *controller_task,
+                      struct action_state *action_state)
 {
     struct linted_controller_message message;
     linted_error errnum;
@@ -499,10 +501,10 @@ static linted_error on_controller_receive(struct linted_asynch_pool* pool,
     return 0;
 }
 
-static void on_sent_update_event(struct linted_updater_task_send* updater_task,
+static void on_sent_update_event(struct linted_updater_task_send *updater_task,
                                  linted_ko updater,
-                                 struct simulator_state* simulator_state,
-                                 struct linted_asynch_pool* pool)
+                                 struct simulator_state *simulator_state,
+                                 struct linted_asynch_pool *pool)
 {
     simulator_state->write_in_progress = false;
 
@@ -510,12 +512,13 @@ static void on_sent_update_event(struct linted_updater_task_send* updater_task,
         return;
     }
 
-    struct linted_updater_update update
-        = { .x_position = simulator_state->x_position,
-            .y_position = simulator_state->y_position,
-            .z_position = simulator_state->z_position,
-            .x_rotation = simulator_state->x_rotation,
-            .y_rotation = simulator_state->y_rotation };
+    struct linted_updater_update update = {
+        .x_position = simulator_state->x_position,
+        .y_position = simulator_state->y_position,
+        .z_position = simulator_state->z_position,
+        .x_rotation = simulator_state->x_rotation,
+        .y_rotation = simulator_state->y_rotation
+    };
 
     linted_updater_send(updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(updater_task)));
@@ -524,30 +527,30 @@ static void on_sent_update_event(struct linted_updater_task_send* updater_task,
     simulator_state->write_in_progress = true;
 }
 
-static void simulate_forces(linted_updater_int_fast* position,
-                            linted_updater_int_fast* velocity,
+static void simulate_forces(linted_updater_int_fast *position,
+                            linted_updater_int_fast *velocity,
                             linted_updater_int_fast thrust)
 {
     linted_updater_int_fast old_position = *position;
     linted_updater_int_fast old_velocity = *velocity;
 
-    linted_updater_int_fast guess_velocity
-        = saturate(((int_fast64_t)thrust) + old_velocity);
+    linted_updater_int_fast guess_velocity =
+        saturate(((int_fast64_t)thrust) + old_velocity);
 
-    linted_updater_int_fast friction
-        = min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */)
-          * -sign(guess_velocity);
+    linted_updater_int_fast friction =
+        min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */) *
+        -sign(guess_velocity);
 
-    linted_updater_int_fast new_velocity
-        = saturate(((int_fast64_t)guess_velocity) + friction);
-    linted_updater_int_fast new_position
-        = saturate(((int_fast64_t)old_position) + new_velocity);
+    linted_updater_int_fast new_velocity =
+        saturate(((int_fast64_t)guess_velocity) + friction);
+    linted_updater_int_fast new_position =
+        saturate(((int_fast64_t)old_position) + new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
 }
 
-static void simulate_rotation(linted_updater_uint_fast* rotation,
+static void simulate_rotation(linted_updater_uint_fast *rotation,
                               linted_updater_int_fast tilt)
 {
     linted_updater_uint_fast step = linted_uint32_to_int32(
@@ -555,7 +558,7 @@ static void simulate_rotation(linted_updater_uint_fast* rotation,
     *rotation = (*rotation + step) % UINT32_MAX;
 }
 
-static void simulate_clamped_rotation(linted_updater_uint_fast* rotation,
+static void simulate_clamped_rotation(linted_updater_uint_fast *rotation,
                                       linted_updater_int_fast tilt)
 {
     linted_updater_int_fast tilt_sign = sign(tilt);
@@ -613,15 +616,15 @@ static linted_updater_uint_fast absolute(linted_updater_int_fast x)
                                        : imaxabs(x);
 }
 
-static linted_error simulator_help(int fildes, char const* program_name,
+static linted_error simulator_help(int fildes, char const *program_name,
                                    struct linted_str package_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+        0) {
         return errnum;
     }
 
@@ -629,8 +632,8 @@ static linted_error simulator_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
@@ -693,7 +696,7 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error missing_option(int fildes, char const* program_name,
+static linted_error missing_option(int fildes, char const *program_name,
                                    struct linted_str option)
 {
     linted_error errnum;
@@ -702,8 +705,8 @@ static linted_error missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": missing ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(": missing "))) != 0) {
         return errnum;
     }
 
@@ -711,8 +714,8 @@ static linted_error missing_option(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) !=
+        0) {
         return errnum;
     }
 

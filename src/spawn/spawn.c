@@ -70,12 +70,12 @@ struct spawn_error
     linted_error errnum;
 };
 
-static void exit_with_error(volatile struct spawn_error* spawn_error,
+static void exit_with_error(volatile struct spawn_error *spawn_error,
                             linted_error errnum);
 
-linted_error linted_spawn_attr_init(struct linted_spawn_attr** attrp)
+linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
-    struct linted_spawn_attr* attr = malloc(sizeof *attr);
+    struct linted_spawn_attr *attr = malloc(sizeof *attr);
     if (NULL == attr) {
         return errno;
     }
@@ -86,22 +86,22 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr** attrp)
     return 0;
 }
 
-void linted_spawn_attr_setpgroup(struct linted_spawn_attr* attr, pid_t pgroup)
+void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
     attr->setpgroup = true;
     attr->pgroup = pgroup;
 }
 
-void linted_spawn_attr_destroy(struct linted_spawn_attr* attr)
+void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
     free(attr);
 }
 
-linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
-                                            ** file_actionsp)
+linted_error
+linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 {
-    struct linted_spawn_file_actions* file_actions
-        = malloc(sizeof *file_actions);
+    struct linted_spawn_file_actions *file_actions =
+        malloc(sizeof *file_actions);
     if (NULL == file_actions) {
         return errno;
     }
@@ -112,13 +112,13 @@ linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
     return 0;
 }
 
-linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
-                                               ** file_actionsp,
-                                               int oldfildes, int newfildes)
+linted_error linted_spawn_file_actions_adddup2(
+    struct linted_spawn_file_actions **file_actionsp, int oldfildes,
+    int newfildes)
 {
-    struct linted_spawn_file_actions* file_actions;
-    struct linted_spawn_file_actions* new_file_actions;
-    union file_action* new_action;
+    struct linted_spawn_file_actions *file_actions;
+    struct linted_spawn_file_actions *new_file_actions;
+    union file_action *new_action;
     size_t old_count;
     size_t new_count;
 
@@ -126,9 +126,9 @@ linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
 
     old_count = file_actions->action_count;
     new_count = old_count + 1;
-    new_file_actions
-        = realloc(file_actions, sizeof *file_actions
-                                + new_count * sizeof file_actions->actions[0]);
+    new_file_actions =
+        realloc(file_actions, sizeof *file_actions +
+                                  new_count * sizeof file_actions->actions[0]);
     if (NULL == new_file_actions) {
         return errno;
     }
@@ -146,16 +146,16 @@ linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
     return 0;
 }
 
-void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
-                                       * file_actions)
+void linted_spawn_file_actions_destroy(
+    struct linted_spawn_file_actions *file_actions)
 {
     free(file_actions);
 }
 
-linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
-                          struct linted_spawn_file_actions const* file_actions,
-                          struct linted_spawn_attr const* attr,
-                          char* const argv[], char* const envp[])
+linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
+                          struct linted_spawn_file_actions const *file_actions,
+                          struct linted_spawn_attr const *attr,
+                          char *const argv[], char *const envp[])
 {
     bool is_relative_path = path[0] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
@@ -170,12 +170,12 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     long page_size = sysconf(_SC_PAGESIZE);
 
     /* Align size to the page length  */
-    size_t spawn_error_length = ((sizeof(struct spawn_error) + page_size - 1)
-                                 / page_size) * page_size;
+    size_t spawn_error_length =
+        ((sizeof(struct spawn_error) + page_size - 1) / page_size) * page_size;
 
-    volatile struct spawn_error* spawn_error
-        = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    volatile struct spawn_error *spawn_error =
+        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         return errno;
     }
@@ -203,8 +203,8 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
             {
                 linted_error errnum;
                 do {
-                    int wait_status
-                        = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
+                    int wait_status =
+                        waitid(P_PID, child, &info, WEXITED | WSTOPPED);
                     errnum = -1 == wait_status ? errno : 0;
                 } while (EINTR == errnum);
                 if (errnum != 0) {
@@ -275,7 +275,7 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
         }
 
     unmap_spawn_error:
-        if (-1 == munmap((void*)spawn_error, spawn_error_length)) {
+        if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
             if (0 == error_status) {
                 error_status = errno;
             }
@@ -330,15 +330,15 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
 
     if (file_actions != NULL) {
         for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
-            union file_action const* action = &file_actions->actions[ii];
+            union file_action const *action = &file_actions->actions[ii];
             switch (action->type) {
             case FILE_ACTION_ADDDUP2: {
                 int newfildes = action->adddup2.newfildes;
 
                 if (is_relative_path && !at_fdcwd) {
                     if (dirfd_copy == newfildes) {
-                        dirfd_copy
-                            = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
+                        dirfd_copy =
+                            fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
                         if (-1 == dirfd_copy) {
                             exit_with_error(spawn_error, errno);
                         }
@@ -390,8 +390,8 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     }
 
     if (is_relative_path && !at_fdcwd) {
-        char* new_path
-            = malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
+        char *new_path =
+            malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
         if (NULL == new_path) {
             exit_with_error(spawn_error, errno);
         }
@@ -405,7 +405,7 @@ linted_error linted_spawn(pid_t* childp, int dirfd, char const* path,
     return 0;
 }
 
-static void exit_with_error(volatile struct spawn_error* spawn_error,
+static void exit_with_error(volatile struct spawn_error *spawn_error,
                             linted_error errnum)
 {
     spawn_error->errnum = errnum;

@@ -29,7 +29,7 @@
  * Abstracts over chunked input and output.
  */
 
-linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
+linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
                                 size_t count);
 
 /**
@@ -77,16 +77,16 @@ linted_error linted_io_read_all(linted_ko ko, size_t* bytes_wrote, void* buf,
  *
  * @error EISDIR ko is a directory.
  */
-linted_error linted_io_write_all(linted_ko ko, size_t* bytes_wrote,
-                                 void const* buf, size_t count);
+linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote,
+                                 void const *buf, size_t count);
 
-linted_error linted_io_write_str(linted_ko ko, size_t* bytes_wrote,
+linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
                                  struct linted_str str);
 
-linted_error linted_io_write_string(linted_ko ko, size_t* bytes_wrote_out,
-                                    char const* s);
+linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
+                                    char const *s);
 
-linted_error linted_io_write_format(linted_ko ko, size_t* bytes_wrote_out,
-                                    char const* s, ...);
+linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
+                                    char const *s, ...);
 
 #endif /* LINTED_IO_H */

@@ -42,7 +42,7 @@ linted_error linted_shutdowner_close(linted_shutdowner move);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 
-void linted_shutdowner_receive(struct linted_shutdowner_task* task, int task_id,
+void linted_shutdowner_receive(struct linted_shutdowner_task *task, int task_id,
                                linted_shutdowner shutdowner);
 
 #endif /* LINTED_SHUTDOWNER_H */

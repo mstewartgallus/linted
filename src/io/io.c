@@ -34,15 +34,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-linted_error linted_io_read_all(int fd, size_t* bytes_read_out, void* buf,
+linted_error linted_io_read_all(int fd, size_t *bytes_read_out, void *buf,
                                 size_t count)
 {
     linted_error error_status = 0;
     size_t total_bytes_read = 0;
 
     do {
-        ssize_t bytes_read
-            = read(fd, (char*)buf + total_bytes_read, count - total_bytes_read);
+        ssize_t bytes_read =
+            read(fd, (char *)buf + total_bytes_read, count - total_bytes_read);
 
         if (0 == bytes_read) {
             /* Hang up */
@@ -69,14 +69,14 @@ output_bytes_read:
     return error_status;
 }
 
-linted_error linted_io_write_all(int fd, size_t* bytes_wrote_out,
-                                 void const* buf, size_t count)
+linted_error linted_io_write_all(int fd, size_t *bytes_wrote_out,
+                                 void const *buf, size_t count)
 {
     linted_error error_status = 0;
     size_t total_bytes_wrote = 0;
 
     do {
-        ssize_t bytes_wrote = write(fd, (char const*)buf + total_bytes_wrote,
+        ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
                                     count - total_bytes_wrote);
         linted_error write_status = -1 == bytes_wrote ? errno : 0;
         if (EINTR == write_status) {
@@ -98,20 +98,20 @@ output_bytes_wrote:
     return error_status;
 }
 
-linted_error linted_io_write_str(int fd, size_t* bytes_wrote,
+linted_error linted_io_write_str(int fd, size_t *bytes_wrote,
                                  struct linted_str str)
 {
     return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
 }
 
-linted_error linted_io_write_string(int fd, size_t* bytes_wrote_out,
-                                    char const* s)
+linted_error linted_io_write_string(int fd, size_t *bytes_wrote_out,
+                                    char const *s)
 {
     return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
 }
 
-linted_error linted_io_write_format(int fd, size_t* bytes_wrote_out,
-                                    char const* format_str, ...)
+linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
+                                    char const *format_str, ...)
 {
     linted_error error_status = 0;
 
@@ -130,7 +130,7 @@ linted_error linted_io_write_format(int fd, size_t* bytes_wrote_out,
     {
         size_t string_size = bytes_should_write + 1;
 
-        char* string = malloc(string_size);
+        char *string = malloc(string_size);
         if (NULL == string) {
             error_status = errno;
             goto free_va_lists;
@@ -142,8 +142,8 @@ linted_error linted_io_write_format(int fd, size_t* bytes_wrote_out,
         }
 
         {
-            linted_error errnum
-                = linted_io_write_string(fd, bytes_wrote_out, string);
+            linted_error errnum =
+                linted_io_write_string(fd, bytes_wrote_out, string);
             if (errnum != 0) {
                 error_status = errnum;
                 goto free_string;

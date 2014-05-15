@@ -29,39 +29,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint_fast8_t run_status(char const* program_name, size_t argc,
-                               char const* const argv[const]);
-static uint_fast8_t run_stop(char const* program_name, size_t argc,
-                             char const* const argv[const]);
+static uint_fast8_t run_status(char const *program_name, size_t argc,
+                               char const *const argv[const]);
+static uint_fast8_t run_stop(char const *program_name, size_t argc,
+                             char const *const argv[const]);
 
-static linted_error ctl_help(int fildes, char const* program_name,
+static linted_error ctl_help(int fildes, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport);
-static linted_error status_help(int fildes, char const* program_name,
+static linted_error status_help(int fildes, char const *program_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
-static linted_error stop_help(int fildes, char const* program_name,
+static linted_error stop_help(int fildes, char const *program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport);
-static linted_error failure(int fildes, char const* program_name,
+static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error errnum);
 
-uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
-                          char const* const argv[const])
+uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
+                          char const *const argv[const])
 {
     linted_ko_close(cwd);
 
     bool need_help = false;
     bool need_version = false;
 
-    char const* bad_option = NULL;
-    char const* command = NULL;
+    char const *bad_option = NULL;
+    char const *command = NULL;
     size_t last_index = 1;
     for (; last_index < argc; ++last_index) {
-        char const* argument = argv[last_index];
+        char const *argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
             if (0 == strcmp(argument, "--help")) {
@@ -121,16 +121,16 @@ uint_fast8_t linted_start(int cwd, char const* const program_name, size_t argc,
     }
 }
 
-static uint_fast8_t run_status(char const* program_name, size_t argc,
-                               char const* const argv[const])
+static uint_fast8_t run_status(char const *program_name, size_t argc,
+                               char const *const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;
-    char const* bad_option = NULL;
-    char const* bad_argument = NULL;
+    char const *bad_option = NULL;
+    char const *bad_argument = NULL;
     size_t last_index = 1;
     for (; last_index < argc; ++last_index) {
-        char const* argument = argv[last_index];
+        char const *argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
             if (0 == strcmp(argument, "--help")) {
@@ -174,7 +174,7 @@ static uint_fast8_t run_status(char const* program_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    char const* path = getenv("LINTED_SOCKET");
+    char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
@@ -225,8 +225,8 @@ static uint_fast8_t run_status(char const* program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum
-            = linted_manager_recv_reply(linted, &reply, &bytes_read);
+        linted_error errnum =
+            linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errnum);
@@ -259,16 +259,16 @@ static uint_fast8_t run_status(char const* program_name, size_t argc,
     return EXIT_SUCCESS;
 }
 
-static uint_fast8_t run_stop(char const* program_name, size_t argc,
-                             char const* const argv[const])
+static uint_fast8_t run_stop(char const *program_name, size_t argc,
+                             char const *const argv[const])
 {
     bool need_version = false;
     bool need_add_help = false;
-    char const* bad_option = NULL;
-    char const* bad_argument = NULL;
+    char const *bad_option = NULL;
+    char const *bad_argument = NULL;
     size_t last_index = 1;
     for (; last_index < argc; ++last_index) {
-        char const* argument = argv[last_index];
+        char const *argument = argv[last_index];
 
         if (0 == strncmp(argument, "--", strlen("--"))) {
             if (0 == strcmp(argument, "--help")) {
@@ -312,7 +312,7 @@ static uint_fast8_t run_stop(char const* program_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    char const* path = getenv("LINTED_SOCKET");
+    char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing LINTED_SOCKET\n", program_name);
@@ -363,8 +363,8 @@ static uint_fast8_t run_stop(char const* program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum
-            = linted_manager_recv_reply(linted, &reply, &bytes_read);
+        linted_error errnum =
+            linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errno);
@@ -390,15 +390,15 @@ static uint_fast8_t run_stop(char const* program_name, size_t argc,
     return EXIT_SUCCESS;
 }
 
-static linted_error ctl_help(int fildes, char const* program_name,
+static linted_error ctl_help(int fildes, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+        0) {
         return errnum;
     }
 
@@ -406,8 +406,8 @@ static linted_error ctl_help(int fildes, char const* program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
@@ -476,15 +476,15 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error status_help(int fildes, char const* program_name,
+static linted_error status_help(int fildes, char const *program_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+        0) {
         return errnum;
     }
 
@@ -553,15 +553,15 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error stop_help(int fildes, char const* program_name,
+static linted_error stop_help(int fildes, char const *program_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: ")))
-        != 0) {
+    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+        0) {
         return errnum;
     }
 
@@ -630,7 +630,7 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error failure(int fildes, char const* program_name,
+static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error error)
 {
     linted_error errnum;
@@ -651,7 +651,7 @@ static linted_error failure(int fildes, char const* program_name,
         return errnum;
     }
 
-    char const* error_string = linted_error_string_alloc(error);
+    char const *error_string = linted_error_string_alloc(error);
     errnum = linted_io_write_string(fildes, NULL, error_string);
     linted_error_string_free(error_string);
 

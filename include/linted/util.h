@@ -33,12 +33,12 @@
  * @todo Factor this out and clean this up.
  */
 
-#define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type*)0)->member)
+#define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type *)0)->member)
 
 #define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
 #define LINTED_UPCAST(X) (&(X)->parent)
-#define LINTED_DOWNCAST(T, X) ((T*)(((char*)(X)) - offsetof(T, parent)))
+#define LINTED_DOWNCAST(T, X) ((T *)(((char *)(X)) - offsetof(T, parent)))
 
 /**
  * A useful utility macro for exiting a task upon failing to
@@ -105,7 +105,7 @@ static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
     return positive;
 }
 
-linted_error linted_util_sanitize_environment(int const* kept_fds,
+linted_error linted_util_sanitize_environment(int const *kept_fds,
                                               size_t kept_fds_size);
 
 #endif /* LINTED_UTIL_H */

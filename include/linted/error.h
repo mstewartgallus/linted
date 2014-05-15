@@ -37,7 +37,7 @@ typedef HRESULT linted_error;
 #error no known most primitive platform error type
 #endif
 
-char const* linted_error_string_alloc(linted_error errnum);
-void linted_error_string_free(char const* error_string);
+char const *linted_error_string_alloc(linted_error errnum);
+void linted_error_string_free(char const *error_string);
 
 #endif /* LINTED_ERROR_H */

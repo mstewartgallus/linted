@@ -35,9 +35,9 @@ struct linted_ko_vtable;
 
 typedef struct linted_ko
 {
-    struct linted_ko_vtable const* vtable;
+    struct linted_ko_vtable const *vtable;
     char contents[];
-}* linted_ko;
+} *linted_ko;
 
 struct linted_ko_vtable
 {
@@ -54,12 +54,12 @@ struct linted_ko_vtable
 
 typedef unsigned linted_ko_flags;
 
-linted_error linted_ko_strtofd(char const* ptr, linted_ko* ko);
+linted_error linted_ko_strtofd(char const *ptr, linted_ko *ko);
 
-linted_error linted_ko_dummy(linted_ko* kop);
+linted_error linted_ko_dummy(linted_ko *kop);
 
-linted_error linted_ko_open(linted_ko* kop, linted_ko dirko,
-                            char const* pathname, linted_ko_flags flags);
+linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
+                            char const *pathname, linted_ko_flags flags);
 
 /**
  * The linted_ko_close function closes a kernel object.
