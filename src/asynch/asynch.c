@@ -423,6 +423,18 @@ static void *io_manager_routine(void *arg)
 
             linted_ko ko = task_ko(task);
 
+            /*
+             * This must be deleted first to avoid a race where the
+             * file descriptor is closed.
+             */
+            if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
+                linted_error errnum = errno;
+                assert(errnum != EBADF);
+                assert(errnum != EINVAL);
+                assert(errnum != ENOENT);
+                assert(false);
+            }
+
             uint32_t task_flags = task_notifier_flags(task);
             if ((event_flags & task_flags) != 0) {
                 linted_queue_send(&pool->worker_command_queue,
@@ -433,14 +445,6 @@ static void *io_manager_routine(void *arg)
                            &size);
                 linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
             } else {
-                assert(false);
-            }
-
-            if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
-                linted_error errnum = errno;
-                assert(errnum != EBADF);
-                assert(errnum != EINVAL);
-                assert(errnum != ENOENT);
                 assert(false);
             }
         }
