@@ -71,6 +71,7 @@ struct linted_asynch_task_read
     struct linted_asynch_task parent;
     char *buf;
     size_t size;
+    size_t current_position;
     size_t bytes_read;
     linted_ko ko;
 };

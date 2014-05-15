@@ -315,6 +315,7 @@ void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
     task->ko = ko;
     task->buf = buf;
     task->size = size;
+    task->current_position = 0;
     task->bytes_read = 0;
 }
 
@@ -613,60 +614,43 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
 {
     struct linted_asynch_task_read *task_read =
         LINTED_DOWNCAST(struct linted_asynch_task_read, task);
-    size_t bytes_read = 0;
-    size_t bytes_left = task_read->size;
-    linted_error errnum;
+    size_t bytes_read = task_read->current_position;
+    size_t bytes_left = task_read->size - bytes_read;
+
+    linted_error errnum = 0;
     for (;;) {
-        {
-            struct pollfd fd = { .fd = task_read->ko, .events = POLLIN };
+        ssize_t result =
+            read(task_read->ko, task_read->buf + bytes_read, bytes_left);
+        if (-1 == result) {
+            errnum = errno;
 
-            int poll_status = poll(&fd, 1, -1);
-            errnum = -1 == poll_status ? errno : 0;
-        }
+            if (EINTR == errnum) {
+                continue;
+            }
 
-        if (EINTR == errnum) {
-            continue;
-        }
-
-        if (errnum != 0) {
             break;
         }
 
+        size_t bytes_read_delta = result;
+        if (0 == bytes_read_delta) {
+            break;
+        }
 
-        {
-            ssize_t result =
-                read(task_read->ko, task_read->buf + bytes_read, bytes_left);
-            if (-1 == result) {
-                errnum = errno;
-
-                if (EINTR == errnum) {
-                    continue;
-                }
-
-                if (EAGAIN == errnum) {
-                    continue;
-                }
-
-                break;
-            }
-
-            size_t bytes_read_delta = result;
-            if (0 == bytes_read_delta) {
-                break;
-            }
-
-            bytes_read += bytes_read_delta;
-            bytes_left -= bytes_read_delta;
-            if (0 == bytes_left) {
-                break;
-            }
+        bytes_read += bytes_read_delta;
+        bytes_left -= bytes_read_delta;
+        if (0 == bytes_left) {
+            break;
         }
     }
 
-    task->errnum = errnum;
-    task_read->bytes_read = bytes_read;
-
-    linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    if (EAGAIN == errnum) {
+        send_io_command(pool, task);
+    } else {
+        task->errnum = errnum;
+        task_read->bytes_read = bytes_read;
+        task_read->current_position = 0;
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
 }
 
 static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
