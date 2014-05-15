@@ -615,22 +615,37 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
     size_t bytes_read = 0;
     size_t bytes_left = task_read->size;
     linted_error errnum;
-    do {
+    for (;;) {
         {
             struct pollfd fd = { .fd = task_read->ko, .events = POLLIN };
 
             int poll_status = poll(&fd, 1, -1);
             errnum = -1 == poll_status ? errno : 0;
-            if (errnum != 0) {
-                continue;
-            }
         }
 
-        for (;;) {
+        if (EINTR == errnum) {
+            continue;
+        }
+
+        if (errnum != 0) {
+            break;
+        }
+
+
+        {
             ssize_t result =
                 read(task_read->ko, task_read->buf + bytes_read, bytes_left);
             if (-1 == result) {
                 errnum = errno;
+
+                if (EINTR == errnum) {
+                    continue;
+                }
+
+                if (EAGAIN == errnum) {
+                    continue;
+                }
+
                 break;
             }
 
@@ -645,7 +660,7 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
                 break;
             }
         }
-    } while (EAGAIN == errnum || EINTR == errnum);
+    }
 
     task->errnum = errnum;
     task_read->bytes_read = bytes_read;
