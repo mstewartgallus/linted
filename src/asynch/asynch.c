@@ -478,7 +478,7 @@ static void *io_manager_routine(void *arg)
                 linted_ko ko = task_ko(task);
 
                 struct epoll_event event = {
-                    .events = task_notifier_flags(task) | EPOLLET,
+                    .events = task_notifier_flags(task) | EPOLLONESHOT | EPOLLET,
                     .data = { .ptr = task }
                 };
                 if (-1 == epoll_ctl(notifier, EPOLL_CTL_ADD, ko, &event)) {
