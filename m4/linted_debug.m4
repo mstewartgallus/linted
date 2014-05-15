@@ -19,8 +19,6 @@ dnl
 AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
-        [-g]dnl
-        [-fno-omit-frame-pointer]dnl
         [-ftrapv]dnl
         [-fsanitize=address-all]dnl
 ])

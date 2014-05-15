@@ -43,6 +43,7 @@ AM_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
   $(linted_CFLAGS_OPTIMIZE)\
   $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_MINOR_DEBUG)\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_WARNINGS)
 
