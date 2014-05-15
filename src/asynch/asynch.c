@@ -467,7 +467,7 @@ static void *io_manager_routine(void *arg)
 
 static uint32_t task_notifier_flags(struct linted_asynch_task * task)
 {
-    switch (task->task_action) {
+    switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL: {
         struct linted_asynch_task_poll *task_poll =
             LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
@@ -503,7 +503,7 @@ static uint32_t task_notifier_flags(struct linted_asynch_task * task)
 
 static linted_ko task_ko(struct linted_asynch_task * task)
 {
-    switch (task->task_action) {
+    switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL:
         return LINTED_DOWNCAST(struct linted_asynch_task_poll, task)->ko;
 
@@ -591,16 +591,17 @@ static void asynch_task_poll(struct linted_asynch_pool* pool,
         LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
     linted_error errnum;
 
-    struct pollfd fd = { .fd = task_poll->ko, .events = task_poll->events };
-    do {
-        int poll_status = poll(&fd, 1, 0);
-        errnum = -1 == poll_status ? errno : 0;
-    } while (EINTR == errnum);
+    struct pollfd fd = { .fd = task_poll->ko, .events = task_poll->events, .revents = 0 };
 
-    task_poll->revents = fd.revents;
+    int poll_status = poll(&fd, 1, 0);
+    errnum = -1 == poll_status ? errno : 0;
+
+    short revents = fd.revents;
+
+    task_poll->revents = revents;
     task->errnum = errnum;
 
-    if (0 == fd.revents) {
+    if (0 == errnum && 0 == revents) {
         send_io_command(pool, task);
     } else {
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));

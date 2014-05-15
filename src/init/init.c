@@ -699,7 +699,12 @@ static linted_error run_game(char const *process_name,
                 }
 
                 switch (completed_task->task_action) {
-                case NEW_CONNECTIONS:
+                case NEW_CONNECTIONS: {
+                    struct linted_asynch_task_poll *task_poll = LINTED_DOWNCAST(
+                        struct linted_asynch_task_poll, completed_task);
+
+                    assert(0 == (task_poll->revents & POLLNVAL));
+
                     if ((errnum = on_new_connections_readable(
                              pool, new_connections, config, services,
                              &connection_count, connections)) != 0) {
@@ -707,6 +712,7 @@ static linted_error run_game(char const *process_name,
                     }
                     linted_asynch_pool_submit(pool, completed_task);
                     break;
+                }
 
                 case LOGGER: {
                     size_t log_size = LINTED_UPCAST(&logger_task)->bytes_read;
@@ -784,6 +790,8 @@ static linted_error run_game(char const *process_name,
 
                     struct linted_asynch_task_poll *task_poll = LINTED_DOWNCAST(
                         struct linted_asynch_task_poll, completed_task);
+
+                    assert(0 == (task_poll->revents & POLLNVAL));
 
                     size_t jj = completed_task->task_action - CONNECTION;
 
