@@ -27,7 +27,6 @@ linted_LDADD=\
   src/locale/liblocale.la\
   src/spawn/libspawn.la\
   src/util/libutil.la\
-  src/waiter/libwaiter.la\
   \
   src/controller/libcontroller.la\
   src/db/libdb.la\

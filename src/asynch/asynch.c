@@ -19,7 +19,7 @@
 
 #include "linted/asynch.h"
 
-#include "linted/linked_queue.h"
+#include "linted/queue.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -40,7 +40,7 @@ struct linted_asynch_pool
     /**
      * A one writer to many readers queue.
      */
-    struct linted_linked_queue command_queue;
+    struct linted_queue command_queue;
 
     /**
      * A one reader to many writers queue. Should be able to retrieve
@@ -48,7 +48,7 @@ struct linted_asynch_pool
      * submitted commands there is no need to worry about it growing
      * too large.
      */
-    struct linted_linked_queue event_queue;
+    struct linted_queue event_queue;
 
     size_t worker_count;
     pthread_t workers[];
@@ -71,11 +71,11 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     if (NULL == pool) {
         return errno;
     }
-    if ((errnum = linted_linked_queue_create(&pool->command_queue)) != 0) {
+    if ((errnum = linted_queue_create(&pool->command_queue)) != 0) {
         goto free_pool;
     }
 
-    if ((errnum = linted_linked_queue_create(&pool->event_queue)) != 0) {
+    if ((errnum = linted_queue_create(&pool->event_queue)) != 0) {
         goto destroy_command_queue;
     }
 
@@ -101,10 +101,10 @@ destroy_threads:
         pthread_join(pool->workers[ii], NULL);
     }
 
-    linted_linked_queue_destroy(&pool->event_queue);
+    linted_queue_destroy(&pool->event_queue);
 
 destroy_command_queue:
-    linted_linked_queue_destroy(&pool->command_queue);
+    linted_queue_destroy(&pool->command_queue);
 
 free_pool:
     free(pool);
@@ -126,8 +126,8 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
         pthread_join(pool->workers[ii], NULL);
     }
 
-    linted_linked_queue_destroy(&pool->command_queue);
-    linted_linked_queue_destroy(&pool->event_queue);
+    linted_queue_destroy(&pool->command_queue);
+    linted_queue_destroy(&pool->event_queue);
 
     free(pool);
 
@@ -137,13 +137,12 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-    linted_linked_queue_send(&pool->command_queue, LINTED_UPCAST(task));
+    linted_queue_send(&pool->command_queue, LINTED_UPCAST(task));
 }
 
-linted_error
-linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task **completed_tasks,
-                        size_t size, size_t *task_countp)
+linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_task **completions,
+                                     size_t size, size_t *task_countp)
 {
     linted_error errnum;
     size_t task_count = 0;
@@ -154,24 +153,24 @@ linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 
     /* Wait for one event */
     {
-        struct linted_linked_queue_node *node;
-        linted_linked_queue_recv(&pool->event_queue, &node);
+        struct linted_queue_node *node;
+        linted_queue_recv(&pool->event_queue, &node);
 
         /* The node is the first member of the task */
-        completed_tasks[task_count] =
+        completions[task_count] =
             LINTED_DOWNCAST(struct linted_asynch_task, node);
         ++task_count;
     }
 
     /* Then poll for more */
     for (; task_count < size; ++task_count) {
-        struct linted_linked_queue_node *node;
-        errnum = linted_linked_queue_try_recv(&pool->event_queue, &node);
+        struct linted_queue_node *node;
+        errnum = linted_queue_try_recv(&pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
         }
 
-        completed_tasks[task_count] =
+        completions[task_count] =
             LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
@@ -180,10 +179,9 @@ linted_asynch_pool_wait(struct linted_asynch_pool *pool,
     return 0;
 }
 
-linted_error
-linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task **completed_tasks,
-                        size_t size, size_t *task_countp)
+linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_task **completions,
+                                     size_t size, size_t *task_countp)
 {
     linted_error errnum;
     size_t task_count = 0;
@@ -193,14 +191,14 @@ linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     }
 
     for (; task_count < size; ++task_count) {
-        struct linted_linked_queue_node *node;
-        errnum = linted_linked_queue_try_recv(&pool->event_queue, &node);
+        struct linted_queue_node *node;
+        errnum = linted_queue_try_recv(&pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
         }
 
         /* The node is the first member of the task */
-        completed_tasks[task_count] =
+        completions[task_count] =
             LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
@@ -277,7 +275,7 @@ void linted_asynch_accept(struct linted_asynch_task_accept *task,
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action)
 {
-    linted_linked_queue_node(LINTED_UPCAST(task));
+    linted_queue_node(LINTED_UPCAST(task));
 
     task->type = type;
     task->errnum = 0;
@@ -296,8 +294,8 @@ static void *worker_routine(void *arg)
     for (;;) {
         struct linted_asynch_task *task;
         {
-            struct linted_linked_queue_node *node;
-            linted_linked_queue_recv(&pool->command_queue, &node);
+            struct linted_queue_node *node;
+            linted_queue_recv(&pool->command_queue, &node);
             task = LINTED_DOWNCAST(struct linted_asynch_task, node);
         }
 
@@ -471,7 +469,7 @@ static void *worker_routine(void *arg)
             assert(false);
         }
 
-        linted_linked_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
     return NULL;
 }

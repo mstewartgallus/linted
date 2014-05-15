@@ -17,7 +17,7 @@
 #define LINTED_ASYNCH_H
 
 #include "linted/error.h"
-#include "linted/linked_queue.h"
+#include "linted/queue.h"
 #include "linted/ko.h"
 
 #include <stddef.h>
@@ -52,7 +52,7 @@ enum {
 
 struct linted_asynch_task
 {
-    struct linted_linked_queue_node parent;
+    struct linted_queue_node parent;
     linted_error errnum;
     unsigned type;
     unsigned task_action;
@@ -116,15 +116,13 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
 
-linted_error
-linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task **completed_tasks,
-                        size_t size, size_t *task_countp);
+linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_task **completions,
+                                     size_t size, size_t *task_countp);
 
-linted_error
-linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task **completed_tasks,
-                        size_t size, size_t *task_countp);
+linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_task **completions,
+                                     size_t size, size_t *task_countp);
 
 void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
                         linted_ko ko, short events);

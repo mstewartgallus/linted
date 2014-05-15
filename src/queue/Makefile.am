@@ -15,5 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/liblinked_queue.la
-%C%_liblinked_queue_la_SOURCES=%D%/linked_queue.c include/linted/linked_queue.h
+noinst_LTLIBRARIES+=%D%/libqueue.la
+%C%_libqueue_la_SOURCES=%D%/queue.c include/linted/queue.h

@@ -19,4 +19,4 @@ noinst_LTLIBRARIES+=%D%/libcontroller.la
 %C%_libcontroller_la_SOURCES=\
   %D%/controller.c\
   include/linted/controller.h
-%C%_libcontroller_la_LIBADD=src/io/libio.la src/mq/libmq.la -lrt
+%C%_libcontroller_la_LIBADD=src/asynch/libasynch.la src/mq/libmq.la -lrt

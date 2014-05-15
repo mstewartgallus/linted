@@ -18,7 +18,6 @@
 #include "linted/io.h"
 
 #include "linted/error.h"
-#include "linted/linked_queue.h"
 #include "linted/ko.h"
 #include "linted/util.h"
 

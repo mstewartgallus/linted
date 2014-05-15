@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_LINKED_QUEUE_H
-#define LINTED_LINKED_QUEUE_H
+#ifndef LINTED_QUEUE_H
+#define LINTED_QUEUE_H
 
 #include "linted/error.h"
 
@@ -27,48 +27,47 @@
  * Mediates one-by-one communication between threads.
  */
 
-struct linted_linked_queue_node;
+struct linted_queue_node;
 
-struct linted_linked_queue
+struct linted_queue
 {
-    struct linted_linked_queue_node *tip;
+    struct linted_queue_node *tip;
     pthread_mutex_t lock;
     pthread_cond_t gains_member;
 };
 
-struct linted_linked_queue_node
+struct linted_queue_node
 {
-    struct linted_linked_queue_node *prev;
-    struct linted_linked_queue_node *next;
+    struct linted_queue_node *prev;
+    struct linted_queue_node *next;
 };
 
-void linted_linked_queue_node(struct linted_linked_queue_node *node);
+void linted_queue_node(struct linted_queue_node *node);
 
-linted_error linted_linked_queue_create(struct linted_linked_queue *queue);
+linted_error linted_queue_create(struct linted_queue *queue);
 
 /**
  * @warning It is the responsibility of the caller to fetch and
  * destroy all nodes in the queue.
  */
-void linted_linked_queue_destroy(struct linted_linked_queue *queue);
+void linted_queue_destroy(struct linted_queue *queue);
 
 /**
  * asynchronous cancellation safe
  */
-void linted_linked_queue_send(struct linted_linked_queue *queue,
-                              struct linted_linked_queue_node *node);
+void linted_queue_send(struct linted_queue *queue,
+                       struct linted_queue_node *node);
 
 /**
  * asynchronous cancellation safe
  */
-void linted_linked_queue_recv(struct linted_linked_queue *queue,
-                              struct linted_linked_queue_node **node);
+void linted_queue_recv(struct linted_queue *queue,
+                       struct linted_queue_node **node);
 
 /**
  * asynchronous cancellation safe
  */
-linted_error
-linted_linked_queue_try_recv(struct linted_linked_queue *queue,
-                             struct linted_linked_queue_node **node);
+linted_error linted_queue_try_recv(struct linted_queue *queue,
+                                   struct linted_queue_node **node);
 
-#endif /* LINTED_LINKED_QUEUE_H */
+#endif /* LINTED_QUEUE_H */
