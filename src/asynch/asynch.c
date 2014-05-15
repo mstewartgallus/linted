@@ -40,7 +40,7 @@ struct linted_asynch_pool
     /**
      * A one writer to many readers queue.
      */
-    struct linted_queue command_queue;
+    struct linted_queue worker_command_queue;
 
     /**
      * A one reader to many writers queue. Should be able to retrieve
@@ -64,6 +64,7 @@ static void asynch_task_read(struct linted_asynch_task *task);
 static void asynch_task_mq_receive(struct linted_asynch_task *task);
 static void asynch_task_mq_send(struct linted_asynch_task *task);
 static void asynch_task_waitid(struct linted_asynch_task *task);
+static void asynch_task_accept(struct linted_asynch_task *task);
 
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                               unsigned max_tasks)
@@ -77,12 +78,12 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     if (NULL == pool) {
         return errno;
     }
-    if ((errnum = linted_queue_create(&pool->command_queue)) != 0) {
+    if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
         goto free_pool;
     }
 
     if ((errnum = linted_queue_create(&pool->event_queue)) != 0) {
-        goto destroy_command_queue;
+        goto destroy_worker_command_queue;
     }
 
     pool->worker_count = max_tasks;
@@ -109,8 +110,8 @@ destroy_threads:
 
     linted_queue_destroy(&pool->event_queue);
 
-destroy_command_queue:
-    linted_queue_destroy(&pool->command_queue);
+destroy_worker_command_queue:
+    linted_queue_destroy(&pool->worker_command_queue);
 
 free_pool:
     free(pool);
@@ -132,7 +133,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
         pthread_join(pool->workers[ii], NULL);
     }
 
-    linted_queue_destroy(&pool->command_queue);
+    linted_queue_destroy(&pool->worker_command_queue);
     linted_queue_destroy(&pool->event_queue);
 
     free(pool);
@@ -143,7 +144,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-    linted_queue_send(&pool->command_queue, LINTED_UPCAST(task));
+    linted_queue_send(&pool->worker_command_queue, LINTED_UPCAST(task));
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
@@ -301,7 +302,7 @@ static void *worker_routine(void *arg)
         struct linted_asynch_task *task;
         {
             struct linted_queue_node *node;
-            linted_queue_recv(&pool->command_queue, &node);
+            linted_queue_recv(&pool->worker_command_queue, &node);
             task = LINTED_DOWNCAST(struct linted_asynch_task, node);
         }
 
@@ -398,7 +399,7 @@ static void asynch_task_read(struct linted_asynch_task *task)
     task_read->bytes_read = bytes_read;
 }
 
-static void asynch_mq_receive(struct linted_asynch_task *task)
+static void asynch_task_mq_receive(struct linted_asynch_task *task)
 {
     struct linted_asynch_task_mq_receive *task_receive =
         LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
