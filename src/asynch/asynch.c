@@ -643,7 +643,7 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
         }
     }
 
-    if (EAGAIN == errnum) {
+    if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
         send_io_command(pool, task);
     } else {
         task->errnum = errnum;
@@ -748,7 +748,7 @@ static void asynch_task_accept(struct linted_asynch_pool* pool,
         errnum = -1 == returned_ko ? errno : 0;
     } while (EINTR == errnum);
 
-    if (EAGAIN == errnum) {
+    if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
         send_io_command(pool, task);
     } else {
         task->errnum = errnum;
