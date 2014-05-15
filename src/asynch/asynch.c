@@ -839,29 +839,34 @@ static void asynch_task_accept(struct linted_asynch_pool *pool,
 {
     struct linted_asynch_task_accept *task_accept =
         LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
+
+    linted_ko new_ko = -1;
     linted_error errnum;
-    linted_ko returned_ko = -1;
-    do {
-        {
-            struct pollfd fd = { .fd = task_accept->ko, .events = POLLIN };
 
-            int poll_status = poll(&fd, 1, -1);
-            errnum = -1 == poll_status ? errno : 0;
-            if (errnum != 0) {
-                continue;
-            }
-        }
+retry_accept:
 
-        returned_ko =
-            accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
-        errnum = -1 == returned_ko ? errno : 0;
-    } while (EINTR == errnum);
+    new_ko = accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    errnum = -1 == new_ko ? errno : 0;
+
+    /* Retry on network error */
+    switch (errnum) {
+    case EINTR:
+    case ENETDOWN:
+    case EPROTO:
+    case ENOPROTOOPT:
+    case EHOSTDOWN:
+    case ENONET:
+    case EHOSTUNREACH:
+    case EOPNOTSUPP:
+    case ENETUNREACH:
+        goto retry_accept;
+    }
 
     if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
         send_io_command(pool, task);
     } else {
         task->errnum = errnum;
-        task_accept->returned_ko = returned_ko;
+        task_accept->returned_ko = new_ko;
 
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
