@@ -421,13 +421,28 @@ static void *io_manager_routine(void *arg)
                 assert(false);
             }
 
-            epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL);
+            if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
+                linted_error errnum = errno;
+                assert(errnum != EBADF);
+                assert(errnum != EINVAL);
+                assert(errnum != ENOENT);
+                assert(false);
+            }
         }
 
         if (has_commands_ready) {
             for (;;) {
                 uint64_t tick;
                 if (-1 == read(pool->on_io_manager_event, &tick, sizeof tick)) {
+                    linted_error errnum = errno;
+
+                    assert(errnum != EBADF);
+                    assert(errnum != EFAULT);
+                    assert(errnum != EINVAL);
+                    assert(errnum != EISDIR);
+
+                    assert(EAGAIN == errnum || EWOULDBLOCK == errnum);
+
                     break;
                 }
             }
@@ -453,6 +468,11 @@ static void *io_manager_routine(void *arg)
                 if (-1 == epoll_ctl(notifier, EPOLL_CTL_ADD, ko, &event)) {
                     errnum = errno;
                     assert(errnum != ENOENT);
+
+                    /* All nonblocking file types should support
+                     * epoll.
+                     */
+                    assert(errnum != EPERM);
 
                     goto send_error;
                 }
@@ -581,7 +601,30 @@ static void send_io_command(struct linted_asynch_pool* pool,
     linted_queue_send(&pool->io_command_queue, LINTED_UPCAST(task));
 
     uint64_t tick = 1;
-    write(pool->on_io_manager_event, &tick, sizeof tick);
+    linted_error errnum = 0;
+
+retry_write:
+    if (-1 == write(pool->on_io_manager_event, &tick, sizeof tick)) {
+        errnum = errno;
+    }
+
+    /*
+     * We use if else, instead of switch case because some systems
+     * make EWOULDBLOCK and EAGAIN the same.
+     */
+    if  (EWOULDBLOCK == errnum || EAGAIN == errnum) {
+        /* Currently we busy wait although we could also use
+         * poll. This is such an unlikely case that I think busy
+         * waiting is fine here.
+         */
+        sched_yield();
+        goto retry_write;
+    }
+
+    assert(errnum != EBADF);
+    assert(errnum != EFAULT);
+    assert(errnum != EINVAL);
+    assert(0 == errnum);
 }
 
 
