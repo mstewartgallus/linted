@@ -159,10 +159,13 @@ void linted_manager_recv_request(struct linted_manager_task_recv_request* task,
                        (char*)&task->request, sizeof task->request);
 }
 
-linted_error linted_manager_send_reply(linted_manager manager,
-                                       union linted_manager_reply const *reply)
+void linted_manager_send_reply(struct linted_manager_task_send_reply* task,
+                               int task_action, linted_manager manager,
+                               union linted_manager_reply const *reply)
 {
-    return linted_io_write_all(manager, NULL, reply, sizeof *reply);
+    task->reply = *reply;
+    linted_asynch_write(LINTED_UPCAST(task), task_action, manager,
+                        (char const*)&task->reply, sizeof task->reply);
 }
 
 linted_error
