@@ -967,63 +967,6 @@ static linted_error on_new_connection(linted_manager new_socket,
 {
     linted_error errnum = 0;
 
-    union linted_manager_reply reply;
-    {
-        bool hungup;
-        linted_error read_errnum = on_connection_readable(
-            new_socket, config, services, &hungup, &reply);
-        switch (read_errnum) {
-        case 0:
-            if (hungup) {
-                /* Ignore the misbehaving other end */
-                return 0;
-            }
-            break;
-
-        case EAGAIN:
-            goto queue_socket;
-
-        case EPIPE:
-        case EPROTO:
-            /* Ignore the misbehaving other end */
-            return 0;
-
-        default:
-            errnum = read_errnum;
-            goto close_new_socket;
-        }
-    }
-
-    {
-        linted_error write_errnum =
-            on_connection_writeable(new_socket, &reply);
-        switch (write_errnum) {
-        case 0:
-            break;
-
-        case EAGAIN:
-            goto queue_socket;
-
-        case EPROTO:
-            /* Ignore the misbehaving other end */
-            return 0;
-
-        default:
-            errnum = write_errnum;
-            goto close_new_socket;
-        }
-    }
-
-    /* Connection completed, do the next connection */
-    {
-        linted_error close_errnum = linted_ko_close(new_socket);
-        if (close_errnum != 0) {
-            return close_errnum;
-        }
-    }
-    return 0;
-
-queue_socket:
     if (*connection_count >= MAX_MANAGE_CONNECTIONS) {
         /* I'm sorry sir but we are full today. */
         goto close_new_socket;
@@ -1056,8 +999,8 @@ close_new_socket : {
         if (0 == errnum) {
             errnum = close_errnum;
         }
-        return errnum;
     }
+    return errnum;
 }
 
 static linted_error on_connection_readable(int fd,
