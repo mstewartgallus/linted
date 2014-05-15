@@ -152,22 +152,11 @@ linted_error linted_manager_path(linted_manager manager,
     return 0;
 }
 
-linted_error linted_manager_recv_request(linted_manager manager,
-                                         union linted_manager_request *request,
-                                         size_t *size)
+void linted_manager_recv_request(struct linted_manager_task_recv_request* task,
+                                 int task_action, linted_manager manager)
 {
-    linted_error errnum =
-        linted_io_read_all(manager, size, request, sizeof *request);
-    if (errnum != 0) {
-        return errnum;
-    }
-
-    /* Sent malformed input */
-    if (*size != sizeof *request) {
-        return EPROTO;
-    }
-
-    return 0;
+    linted_asynch_read(LINTED_UPCAST(task), task_action, manager,
+                       (char*)&task->request, sizeof task->request);
 }
 
 linted_error linted_manager_send_reply(linted_manager manager,
