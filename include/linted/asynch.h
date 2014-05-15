@@ -44,6 +44,7 @@ struct linted_asynch_pool;
 enum {
     LINTED_ASYNCH_TASK_POLL,
     LINTED_ASYNCH_TASK_READ,
+    LINTED_ASYNCH_TASK_WRITE,
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
     LINTED_ASYNCH_TASK_MQ_SEND,
     LINTED_ASYNCH_TASK_WAITID,
@@ -73,6 +74,16 @@ struct linted_asynch_task_read
     size_t size;
     size_t current_position;
     size_t bytes_read;
+    linted_ko ko;
+};
+
+struct linted_asynch_task_write
+{
+    struct linted_asynch_task parent;
+    char const *buf;
+    size_t size;
+    size_t current_position;
+    size_t bytes_wrote;
     linted_ko ko;
 };
 
@@ -130,6 +141,9 @@ void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
 
 void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
                         linted_ko ko, char *buf, size_t size);
+
+void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
+                         linted_ko ko, char const *buf, size_t size);
 
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
                               int task_action, linted_ko ko, char *buf,

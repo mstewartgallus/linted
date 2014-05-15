@@ -81,6 +81,8 @@ static void asynch_task_poll(struct linted_asynch_pool* pool,
                              struct linted_asynch_task *task);
 static void asynch_task_read(struct linted_asynch_pool* pool,
                              struct linted_asynch_task *task);
+static void asynch_task_write(struct linted_asynch_pool* pool,
+                              struct linted_asynch_task *task);
 static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
                                    struct linted_asynch_task *task);
 static void asynch_task_mq_send(struct linted_asynch_pool* pool,
@@ -319,6 +321,18 @@ void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
     task->bytes_read = 0;
 }
 
+void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
+                         linted_ko ko, char const *buf, size_t size)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+    task->current_position = 0;
+    task->bytes_wrote = 0;
+}
+
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
                               int task_action, linted_ko ko, char *buf,
                               size_t size)
@@ -514,6 +528,7 @@ static uint32_t task_notifier_flags(struct linted_asynch_task * task)
     case LINTED_ASYNCH_TASK_ACCEPT:
         return EPOLLIN;
 
+    case LINTED_ASYNCH_TASK_WRITE:
     case LINTED_ASYNCH_TASK_MQ_SEND:
         return EPOLLOUT;
 
@@ -530,6 +545,9 @@ static linted_ko task_ko(struct linted_asynch_task * task)
 
     case LINTED_ASYNCH_TASK_READ:
         return LINTED_DOWNCAST(struct linted_asynch_task_read, task)->ko;
+
+    case LINTED_ASYNCH_TASK_WRITE:
+        return LINTED_DOWNCAST(struct linted_asynch_task_write, task)->ko;
 
     case LINTED_ASYNCH_TASK_MQ_RECEIVE:
         return LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task)->ko;
@@ -570,6 +588,10 @@ static void *worker_routine(void *arg)
 
         case LINTED_ASYNCH_TASK_READ:
             asynch_task_read(pool, task);
+            break;
+
+        case LINTED_ASYNCH_TASK_WRITE:
+            asynch_task_write(pool, task);
             break;
 
         case LINTED_ASYNCH_TASK_MQ_RECEIVE:
@@ -692,6 +714,48 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
         task->errnum = errnum;
         task_read->bytes_read = bytes_read;
         task_read->current_position = 0;
+
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
+}
+
+static void asynch_task_write(struct linted_asynch_pool* pool,
+                             struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_write *task_write =
+        LINTED_DOWNCAST(struct linted_asynch_task_write, task);
+    size_t bytes_wrote = task_write->current_position;
+    size_t bytes_left = task_write->size - bytes_wrote;
+
+    linted_error errnum = 0;
+    for (;;) {
+        ssize_t result =
+            write(task_write->ko, task_write->buf + bytes_wrote, bytes_left);
+        if (-1 == result) {
+            errnum = errno;
+
+            if (EINTR == errnum) {
+                continue;
+            }
+
+            break;
+        }
+
+        size_t bytes_wrote_delta = result;
+
+        bytes_wrote += bytes_wrote_delta;
+        bytes_left -= bytes_wrote_delta;
+        if (0 == bytes_left) {
+            break;
+        }
+    }
+
+    if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
+        send_io_command(pool, task);
+    } else {
+        task->errnum = errnum;
+        task_write->bytes_wrote = bytes_wrote;
+        task_write->current_position = 0;
 
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
