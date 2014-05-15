@@ -20,6 +20,7 @@ noinst_LTLIBRARIES+=%D%/libmanager.la
   %D%/manager.c\
   include/linted/manager.h
 %C%_libmanager_la_LIBADD=\
+  src/asynch/libasynch.la\
   src/io/libio.la\
   src/ko/libko.la\
   src/mq/libmq.la\

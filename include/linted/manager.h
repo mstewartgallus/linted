@@ -16,6 +16,7 @@
 #ifndef LINTED_MANAGER_H
 #define LINTED_MANAGER_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 
 #include <stdbool.h>
@@ -83,11 +84,15 @@ union linted_manager_reply
     struct linted_manager_stop_reply stop;
 };
 
+struct linted_manager_task_accept {
+    struct linted_asynch_task_accept parent;
+};
+
 linted_error linted_manager_bind(linted_manager *manager, int backlog,
                                  char const *path, size_t path_len);
 
-linted_error linted_manager_accept(linted_manager manager,
-                                   linted_manager *newp);
+void linted_manager_accept(struct linted_manager_task_accept* task,
+                           int task_action, linted_manager manager);
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len);

@@ -153,10 +153,12 @@ static linted_error shutdowner_pair(int fildes[2])
     return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
 }
 
-static linted_error on_new_connections_readable(
-    struct linted_asynch_pool *pool, linted_manager new_connections,
-    union service_config const *config, union service const *services,
-    size_t *connection_count, struct connection *connections);
+static linted_error on_new_connection(linted_manager new_socket,
+                                      struct linted_asynch_pool *pool,
+                                      union service_config const *config,
+                                      union service const *services,
+                                      size_t *connection_count,
+                                      struct connection *connections);
 static linted_error on_connection_readable(int fd,
                                            union service_config const *config,
                                            union service const *services,
@@ -666,7 +668,7 @@ static linted_error run_game(char const *process_name,
         struct linted_asynch_task_waitid gui_waiter_task;
         struct linted_asynch_task_waitid sim_waiter_task;
         struct linted_logger_task logger_task;
-        struct linted_asynch_task_poll new_connections_task;
+        struct linted_manager_task_accept new_connections_accept_task;
 
         linted_asynch_waitid(&gui_waiter_task, GUI_WAITER, P_PID,
                              gui_service->pid, WEXITED);
@@ -676,14 +678,15 @@ static linted_error run_game(char const *process_name,
 
         linted_logger_receive(&logger_task, LOGGER, logger_read, logger_buffer);
 
-        linted_asynch_poll(&new_connections_task, NEW_CONNECTIONS,
-                           new_connections, POLLIN);
+        linted_manager_accept(&new_connections_accept_task,
+                              NEW_CONNECTIONS, new_connections);
 
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&gui_waiter_task));
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&sim_waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(&new_connections_task));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(LINTED_UPCAST(&new_connections_accept_task)));
 
         for (;;) {
             struct linted_asynch_task *completed_tasks[20];
@@ -700,17 +703,17 @@ static linted_error run_game(char const *process_name,
 
                 switch (completed_task->task_action) {
                 case NEW_CONNECTIONS: {
-                    struct linted_asynch_task_poll *task_poll = LINTED_DOWNCAST(
-                        struct linted_asynch_task_poll, completed_task);
+                    struct linted_asynch_task_accept *task_accept = LINTED_DOWNCAST(
+                        struct linted_asynch_task_accept, completed_task);
+                    linted_manager returned_ko = task_accept->returned_ko;
+                    linted_asynch_pool_submit(pool, completed_task);
 
-                    assert(0 == (task_poll->revents & POLLNVAL));
-
-                    if ((errnum = on_new_connections_readable(
-                             pool, new_connections, config, services,
-                             &connection_count, connections)) != 0) {
+                    if ((errnum = on_new_connection(returned_ko,
+                                                    pool, config, services,
+                                                    &connection_count,
+                                                    connections)) != 0) {
                         goto close_connections;
                     }
-                    linted_asynch_pool_submit(pool, completed_task);
                     break;
                 }
 
@@ -955,118 +958,106 @@ exit_services:
     return errnum;
 }
 
-static linted_error on_new_connections_readable(
-    struct linted_asynch_pool *pool, linted_manager new_connections,
-    union service_config const *config, union service const *services,
-    size_t *connection_count, struct connection *connections)
+static linted_error on_new_connection(linted_manager new_socket,
+                                      struct linted_asynch_pool *pool,
+                                      union service_config const *config,
+                                      union service const *services,
+                                      size_t *connection_count,
+                                      struct connection *connections)
 {
-    linted_error errnum;
+    linted_error errnum = 0;
 
-    for (;;) {
-        linted_manager new_socket;
-        if ((errnum = linted_manager_accept(new_connections, &new_socket)) !=
-            0) {
-            if (EAGAIN == errnum) {
-                break;
-            }
-
-            return errnum;
-        }
-
-        union linted_manager_reply reply;
-        {
-            bool hungup;
-            linted_error read_errnum = on_connection_readable(
-                new_socket, config, services, &hungup, &reply);
-            switch (read_errnum) {
-            case 0:
-                if (hungup) {
-                    /* Ignore the misbehaving other end */
-                    continue;
-                }
-                break;
-
-            case EAGAIN:
-                goto queue_socket;
-
-            case EPIPE:
-            case EPROTO:
+    union linted_manager_reply reply;
+    {
+        bool hungup;
+        linted_error read_errnum = on_connection_readable(
+            new_socket, config, services, &hungup, &reply);
+        switch (read_errnum) {
+        case 0:
+            if (hungup) {
                 /* Ignore the misbehaving other end */
-                continue;
-
-            default:
-                errnum = read_errnum;
-                goto close_new_socket;
+                return 0;
             }
-        }
+            break;
 
-        {
-            linted_error write_errnum =
-                on_connection_writeable(new_socket, &reply);
-            switch (write_errnum) {
-            case 0:
-                break;
+        case EAGAIN:
+            goto queue_socket;
 
-            case EAGAIN:
-                goto queue_socket;
+        case EPIPE:
+        case EPROTO:
+            /* Ignore the misbehaving other end */
+            return 0;
 
-            case EPROTO:
-                /* Ignore the misbehaving other end */
-                continue;
-
-            default:
-                errnum = write_errnum;
-                goto close_new_socket;
-            }
-        }
-
-        /* Connection completed, do the next connection */
-        {
-            linted_error close_errnum = linted_ko_close(new_socket);
-            if (close_errnum != 0) {
-                return close_errnum;
-            }
-        }
-        continue;
-
-    queue_socket:
-        if (*connection_count >= MAX_MANAGE_CONNECTIONS) {
-            /* I'm sorry sir but we are full today. */
+        default:
+            errnum = read_errnum;
             goto close_new_socket;
         }
+    }
 
-        struct connection *connection;
+    {
+        linted_error write_errnum =
+            on_connection_writeable(new_socket, &reply);
+        switch (write_errnum) {
+        case 0:
+            break;
 
-        size_t ii = 0;
-        for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
-            connection = &connections[ii];
-            if (-1 == connection->fd) {
-                goto got_space;
-            }
+        case EAGAIN:
+            goto queue_socket;
+
+        case EPROTO:
+            /* Ignore the misbehaving other end */
+            return 0;
+
+        default:
+            errnum = write_errnum;
+            goto close_new_socket;
         }
-        /* Impossible, listen has limited this */
-        assert(false);
-    got_space:
-        connection->fd = new_socket;
-        connection->has_reply_ready = false;
+    }
 
-        linted_asynch_poll(&connection->task, CONNECTION + ii, new_socket,
-                           POLLIN);
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(&connection->task));
+    /* Connection completed, do the next connection */
+    {
+        linted_error close_errnum = linted_ko_close(new_socket);
+        if (close_errnum != 0) {
+            return close_errnum;
+        }
+    }
+    return 0;
 
-        ++*connection_count;
-        continue;
+queue_socket:
+    if (*connection_count >= MAX_MANAGE_CONNECTIONS) {
+        /* I'm sorry sir but we are full today. */
+        goto close_new_socket;
+    }
 
-    close_new_socket : {
+    struct connection *connection;
+
+    size_t ii = 0;
+    for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
+        connection = &connections[ii];
+        if (-1 == connection->fd) {
+            goto got_space;
+        }
+    }
+    /* Impossible, listen has limited this */
+    assert(false);
+got_space:
+    connection->fd = new_socket;
+    connection->has_reply_ready = false;
+
+    linted_asynch_poll(&connection->task, CONNECTION + ii, new_socket,
+                       POLLIN);
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(&connection->task));
+
+    ++*connection_count;
+    return 0;
+
+close_new_socket : {
         linted_error close_errnum = linted_ko_close(new_socket);
         if (0 == errnum) {
             errnum = close_errnum;
         }
         return errnum;
     }
-    }
-
-    return 0;
 }
 
 static linted_error on_connection_readable(int fd,

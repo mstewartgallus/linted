@@ -80,19 +80,10 @@ close_sock : {
 }
 }
 
-linted_error linted_manager_accept(linted_manager manager, linted_manager *newp)
+void linted_manager_accept(struct linted_manager_task_accept* task,
+                           int task_action, linted_manager manager)
 {
-    int fildes = accept4(manager, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
-    if (-1 == fildes) {
-        linted_error error = errno;
-        if (EWOULDBLOCK == error) {
-            return EAGAIN;
-        }
-        return error;
-    }
-
-    *newp = fildes;
-    return 0;
+    linted_asynch_accept(LINTED_UPCAST(task), task_action, manager);
 }
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
