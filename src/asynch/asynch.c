@@ -599,12 +599,12 @@ static void asynch_task_poll(struct linted_asynch_pool* pool,
 
     short revents = fd.revents;
 
-    task_poll->revents = revents;
-    task->errnum = errnum;
-
     if (0 == errnum && 0 == revents) {
         send_io_command(pool, task);
     } else {
+        task_poll->revents = revents;
+        task->errnum = errnum;
+
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
 }
@@ -649,6 +649,7 @@ static void asynch_task_read(struct linted_asynch_pool* pool,
         task->errnum = errnum;
         task_read->bytes_read = bytes_read;
         task_read->current_position = 0;
+
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
 }
@@ -659,18 +660,8 @@ static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
     struct linted_asynch_task_mq_receive *task_receive =
         LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
     size_t bytes_read = 0;
-    linted_error errnum;
+    linted_error errnum = 0;
     do {
-        {
-            struct pollfd fd = { .fd = task_receive->ko, .events = POLLIN };
-
-            int poll_status = poll(&fd, 1, -1);
-            errnum = -1 == poll_status ? errno : 0;
-            if (errnum != 0) {
-                continue;
-            }
-        }
-
         ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
                                     task_receive->size, NULL);
         if (-1 == result) {
@@ -679,12 +670,16 @@ static void asynch_task_mq_receive(struct linted_asynch_pool* pool,
         }
 
         bytes_read = result;
-    } while (EAGAIN == errnum || EINTR == errnum);
+    } while (EINTR == errnum);
 
-    task->errnum = errnum;
-    task_receive->bytes_read = bytes_read;
+    if (EAGAIN == errnum) {
+        send_io_command(pool, task);
+    } else {
+        task->errnum = errnum;
+        task_receive->bytes_read = bytes_read;
 
-    linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
 }
 
 static void asynch_task_mq_send(struct linted_asynch_pool* pool,
@@ -693,30 +688,24 @@ static void asynch_task_mq_send(struct linted_asynch_pool* pool,
     struct linted_asynch_task_mq_send *task_send =
         LINTED_DOWNCAST(struct linted_asynch_task_mq_send, task);
     size_t bytes_wrote = 0;
-    linted_error errnum;
+    linted_error errnum = 0;
     do {
-        {
-            struct pollfd fd = { .fd = task_send->ko, .events = POLLOUT };
-
-            int poll_status = poll(&fd, 1, -1);
-            errnum = -1 == poll_status ? errno : 0;
-            if (errnum != 0) {
-                continue;
-            }
-        }
-
         if (-1 == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
             errnum = errno;
             continue;
         }
 
         bytes_wrote = task_send->size;
-    } while (EAGAIN == errnum || EINTR == errnum);
+    } while (EINTR == errnum);
 
-    task->errnum = errnum;
-    task_send->bytes_wrote = bytes_wrote;
+    if (EAGAIN == errnum) {
+        send_io_command(pool, task);
+    } else {
+        task->errnum = errnum;
+        task_send->bytes_wrote = bytes_wrote;
 
-    linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
 }
 
 static void asynch_task_waitid(struct linted_asynch_pool* pool,
@@ -757,10 +746,14 @@ static void asynch_task_accept(struct linted_asynch_pool* pool,
         returned_ko =
             accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
         errnum = -1 == returned_ko ? errno : 0;
-    } while (EAGAIN == errnum || EINTR == errnum);
+    } while (EINTR == errnum);
 
-    task->errnum = errnum;
-    task_accept->returned_ko = returned_ko;
+    if (EAGAIN == errnum) {
+        send_io_command(pool, task);
+    } else {
+        task->errnum = errnum;
+        task_accept->returned_ko = returned_ko;
 
-    linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
 }
