@@ -670,6 +670,14 @@ static linted_error run_game(char const *process_name,
         struct linted_logger_task logger_task;
         struct linted_manager_task_accept new_connections_accept_task;
 
+        if ((errnum = linted_asynch_pool_bind_ko(pool, logger_read)) != 0) {
+            goto close_connections;
+        }
+
+        if ((errnum = linted_asynch_pool_bind_ko(pool, new_connections)) != 0) {
+            goto close_connections;
+        }
+
         linted_asynch_waitid(&gui_waiter_task, GUI_WAITER, P_PID,
                              gui_service->pid, WEXITED);
 
@@ -918,6 +926,10 @@ static linted_error on_new_connection(linted_manager new_socket,
 
     if (*connection_count >= MAX_MANAGE_CONNECTIONS) {
         /* I'm sorry sir but we are full today. */
+        goto close_new_socket;
+    }
+
+    if ((errnum = linted_asynch_pool_bind_ko(pool, new_socket)) != 0) {
         goto close_new_socket;
     }
 

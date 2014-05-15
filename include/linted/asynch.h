@@ -136,6 +136,9 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completions,
                                      size_t size, size_t *task_countp);
 
+linted_error linted_asynch_pool_bind_ko(struct linted_asynch_pool *pool,
+                                        linted_ko ko);
+
 void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
                         linted_ko ko, short events);
 

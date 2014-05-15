@@ -300,6 +300,19 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     return 0;
 }
 
+linted_error linted_asynch_pool_bind_ko(struct linted_asynch_pool *pool,
+                                        linted_ko ko)
+{
+    struct epoll_event event = {
+        .events = EPOLLONESHOT | EPOLLET,
+        .data = { .ptr = NULL }
+    };
+    if (-1 == epoll_ctl(pool->notifier, EPOLL_CTL_ADD, ko, &event)) {
+        return errno;
+    }
+    return 0;
+}
+
 void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
                         linted_ko ko, short events)
 {
@@ -423,18 +436,6 @@ static void *io_manager_routine(void *arg)
 
             linted_ko ko = task_ko(task);
 
-            /*
-             * This must be deleted first to avoid a race where the
-             * file descriptor is closed.
-             */
-            if (-1 == epoll_ctl(notifier, EPOLL_CTL_DEL, ko, NULL)) {
-                linted_error errnum = errno;
-                assert(errnum != EBADF);
-                assert(errnum != EINVAL);
-                assert(errnum != ENOENT);
-                assert(false);
-            }
-
             uint32_t task_flags = task_notifier_flags(task);
             if ((event_flags & task_flags) != 0) {
                 linted_queue_send(&pool->worker_command_queue,
@@ -485,7 +486,7 @@ static void *io_manager_routine(void *arg)
                     .events = task_notifier_flags(task) | EPOLLONESHOT | EPOLLET,
                     .data = { .ptr = task }
                 };
-                if (-1 == epoll_ctl(notifier, EPOLL_CTL_ADD, ko, &event)) {
+                if (-1 == epoll_ctl(notifier, EPOLL_CTL_MOD, ko, &event)) {
                     errnum = errno;
                     assert(errnum != ENOENT);
 

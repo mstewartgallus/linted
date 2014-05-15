@@ -31,6 +31,7 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/timerfd.h>
@@ -344,6 +345,22 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     struct linted_shutdowner_task shutdowner_task;
     struct linted_controller_task_receive controller_task;
     struct linted_updater_task_send updater_task;
+
+    if ((errnum = linted_asynch_pool_bind_ko(pool, timer)) != 0) {
+        goto close_timer;
+    }
+
+    if ((errnum = linted_asynch_pool_bind_ko(pool, shutdowner)) != 0) {
+        goto close_timer;
+    }
+
+    if ((errnum = linted_asynch_pool_bind_ko(pool, controller)) != 0) {
+        goto close_timer;
+    }
+
+    if ((errnum = linted_asynch_pool_bind_ko(pool, updater)) != 0) {
+        goto close_timer;
+    }
 
     linted_asynch_read(&timer_task, ON_READ_TIMER_TICKS, timer,
                        (char *)&timer_ticks, sizeof timer_ticks);
