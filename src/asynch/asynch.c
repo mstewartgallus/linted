@@ -59,6 +59,12 @@ static void asynch_task(struct linted_asynch_task *task, unsigned type,
 
 static void *worker_routine(void *arg);
 
+static void asynch_task_poll(struct linted_asynch_task *task);
+static void asynch_task_read(struct linted_asynch_task *task);
+static void asynch_task_mq_receive(struct linted_asynch_task *task);
+static void asynch_task_mq_send(struct linted_asynch_task *task);
+static void asynch_task_waitid(struct linted_asynch_task *task);
+
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                               unsigned max_tasks)
 {
@@ -300,170 +306,29 @@ static void *worker_routine(void *arg)
         }
 
         switch (task->type) {
-        case LINTED_ASYNCH_TASK_POLL: {
-            struct linted_asynch_task_poll *task_poll =
-                LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
-            linted_error errnum;
-
-            struct pollfd fd = { .fd = task_poll->ko,
-                                 .events = task_poll->events };
-            do {
-                int poll_status = poll(&fd, 1, -1);
-                errnum = -1 == poll_status ? errno : 0;
-            } while (EINTR == errnum);
-
-            task_poll->revents = fd.revents;
-            task->errnum = errnum;
+        case LINTED_ASYNCH_TASK_POLL:
+            asynch_task_poll(task);
             break;
-        }
 
-        case LINTED_ASYNCH_TASK_READ: {
-            struct linted_asynch_task_read *task_read =
-                LINTED_DOWNCAST(struct linted_asynch_task_read, task);
-            size_t bytes_read = 0;
-            size_t bytes_left = task_read->size;
-            linted_error errnum;
-            do {
-                {
-                    struct pollfd fd = { .fd = task_read->ko,
-                                         .events = POLLIN };
-
-                    int poll_status = poll(&fd, 1, -1);
-                    errnum = -1 == poll_status ? errno : 0;
-                    if (errnum != 0) {
-                        continue;
-                    }
-                }
-
-                for (;;) {
-                    ssize_t result = read(
-                        task_read->ko, task_read->buf + bytes_read, bytes_left);
-                    if (-1 == result) {
-                        errnum = errno;
-                        break;
-                    }
-
-                    size_t bytes_read_delta = result;
-                    if (0 == bytes_read_delta) {
-                        break;
-                    }
-
-                    bytes_read += bytes_read_delta;
-                    bytes_left -= bytes_read_delta;
-                    if (0 == bytes_left) {
-                        break;
-                    }
-                }
-            } while (EAGAIN == errnum || EINTR == errnum);
-
-            task->errnum = errnum;
-            task_read->bytes_read = bytes_read;
+        case LINTED_ASYNCH_TASK_READ:
+            asynch_task_read(task);
             break;
-        }
 
-        case LINTED_ASYNCH_TASK_MQ_RECEIVE: {
-            struct linted_asynch_task_mq_receive *task_receive =
-                LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
-            size_t bytes_read = 0;
-            linted_error errnum;
-            do {
-                {
-                    struct pollfd fd = { .fd = task_receive->ko,
-                                         .events = POLLIN };
-
-                    int poll_status = poll(&fd, 1, -1);
-                    errnum = -1 == poll_status ? errno : 0;
-                    if (errnum != 0) {
-                        continue;
-                    }
-                }
-
-                ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
-                                            task_receive->size, NULL);
-                if (-1 == result) {
-                    errnum = errno;
-                    continue;
-                }
-
-                bytes_read = result;
-            } while (EAGAIN == errnum || EINTR == errnum);
-
-            task->errnum = errnum;
-            task_receive->bytes_read = bytes_read;
+        case LINTED_ASYNCH_TASK_MQ_RECEIVE:
+            asynch_task_mq_receive(task);
             break;
-        }
 
-        case LINTED_ASYNCH_TASK_MQ_SEND: {
-            struct linted_asynch_task_mq_send *task_send =
-                LINTED_DOWNCAST(struct linted_asynch_task_mq_send, task);
-            size_t bytes_wrote = 0;
-            linted_error errnum;
-            do {
-                {
-                    struct pollfd fd = { .fd = task_send->ko,
-                                         .events = POLLOUT };
-
-                    int poll_status = poll(&fd, 1, -1);
-                    errnum = -1 == poll_status ? errno : 0;
-                    if (errnum != 0) {
-                        continue;
-                    }
-                }
-
-                if (-1 == mq_send(task_send->ko, task_send->buf,
-                                  task_send->size, 0)) {
-                    errnum = errno;
-                    continue;
-                }
-
-                bytes_wrote = task_send->size;
-            } while (EAGAIN == errnum || EINTR == errnum);
-
-            task->errnum = errnum;
-            task_send->bytes_wrote = bytes_wrote;
+        case LINTED_ASYNCH_TASK_MQ_SEND:
+            asynch_task_mq_send(task);
             break;
-        }
 
-        case LINTED_ASYNCH_TASK_WAITID: {
-            struct linted_asynch_task_waitid *task_wait =
-                LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
-            linted_error errnum;
-            do {
-                int wait_status = waitid(task_wait->idtype, task_wait->id,
-                                         &task_wait->info, task_wait->options);
-                errnum = -1 == wait_status ? errno : 0;
-            } while (EINTR == errnum);
-
-            task->errnum = errnum;
+        case LINTED_ASYNCH_TASK_WAITID:
+            asynch_task_waitid(task);
             break;
-        }
 
-        case LINTED_ASYNCH_TASK_ACCEPT: {
-            struct linted_asynch_task_accept *task_accept =
-                LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
-            linted_error errnum;
-            linted_ko returned_ko = -1;
-            do {
-                {
-                    struct pollfd fd = { .fd = task_accept->ko,
-                                         .events = POLLIN };
-
-                    int poll_status = poll(&fd, 1, -1);
-                    errnum = -1 == poll_status ? errno : 0;
-                    if (errnum != 0) {
-                        continue;
-                    }
-                }
-
-                returned_ko = accept4(task_accept->ko, NULL, 0,
-                                      SOCK_NONBLOCK | SOCK_CLOEXEC);
-                errnum = -1 == returned_ko ? errno : 0;
-            } while (EAGAIN == errnum || EINTR == errnum);
-
-            task->errnum = errnum;
-            task_accept->returned_ko = returned_ko;
+        case LINTED_ASYNCH_TASK_ACCEPT:
+            asynch_task_accept(task);
             break;
-        }
 
         default:
             assert(false);
@@ -472,4 +337,163 @@ static void *worker_routine(void *arg)
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
     return NULL;
+}
+
+static void asynch_task_poll(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_poll *task_poll =
+        LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
+    linted_error errnum;
+
+    struct pollfd fd = { .fd = task_poll->ko, .events = task_poll->events };
+    do {
+        int poll_status = poll(&fd, 1, -1);
+        errnum = -1 == poll_status ? errno : 0;
+    } while (EINTR == errnum);
+
+    task_poll->revents = fd.revents;
+    task->errnum = errnum;
+}
+
+static void asynch_task_read(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_read *task_read =
+        LINTED_DOWNCAST(struct linted_asynch_task_read, task);
+    size_t bytes_read = 0;
+    size_t bytes_left = task_read->size;
+    linted_error errnum;
+    do {
+        {
+            struct pollfd fd = { .fd = task_read->ko, .events = POLLIN };
+
+            int poll_status = poll(&fd, 1, -1);
+            errnum = -1 == poll_status ? errno : 0;
+            if (errnum != 0) {
+                continue;
+            }
+        }
+
+        for (;;) {
+            ssize_t result =
+                read(task_read->ko, task_read->buf + bytes_read, bytes_left);
+            if (-1 == result) {
+                errnum = errno;
+                break;
+            }
+
+            size_t bytes_read_delta = result;
+            if (0 == bytes_read_delta) {
+                break;
+            }
+
+            bytes_read += bytes_read_delta;
+            bytes_left -= bytes_read_delta;
+            if (0 == bytes_left) {
+                break;
+            }
+        }
+    } while (EAGAIN == errnum || EINTR == errnum);
+
+    task->errnum = errnum;
+    task_read->bytes_read = bytes_read;
+}
+
+static void asynch_mq_receive(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_mq_receive *task_receive =
+        LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
+    size_t bytes_read = 0;
+    linted_error errnum;
+    do {
+        {
+            struct pollfd fd = { .fd = task_receive->ko, .events = POLLIN };
+
+            int poll_status = poll(&fd, 1, -1);
+            errnum = -1 == poll_status ? errno : 0;
+            if (errnum != 0) {
+                continue;
+            }
+        }
+
+        ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
+                                    task_receive->size, NULL);
+        if (-1 == result) {
+            errnum = errno;
+            continue;
+        }
+
+        bytes_read = result;
+    } while (EAGAIN == errnum || EINTR == errnum);
+
+    task->errnum = errnum;
+    task_receive->bytes_read = bytes_read;
+}
+
+static void asynch_task_mq_send(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_mq_send *task_send =
+        LINTED_DOWNCAST(struct linted_asynch_task_mq_send, task);
+    size_t bytes_wrote = 0;
+    linted_error errnum;
+    do {
+        {
+            struct pollfd fd = { .fd = task_send->ko, .events = POLLOUT };
+
+            int poll_status = poll(&fd, 1, -1);
+            errnum = -1 == poll_status ? errno : 0;
+            if (errnum != 0) {
+                continue;
+            }
+        }
+
+        if (-1 == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
+            errnum = errno;
+            continue;
+        }
+
+        bytes_wrote = task_send->size;
+    } while (EAGAIN == errnum || EINTR == errnum);
+
+    task->errnum = errnum;
+    task_send->bytes_wrote = bytes_wrote;
+}
+
+static void asynch_task_waitid(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_waitid *task_wait =
+        LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
+    linted_error errnum;
+    do {
+        int wait_status = waitid(task_wait->idtype, task_wait->id,
+                                 &task_wait->info, task_wait->options);
+        errnum = -1 == wait_status ? errno : 0;
+    } while (EINTR == errnum);
+
+    task->errnum = errnum;
+}
+
+static void asynch_task_accept(struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_accept *task_accept =
+        LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
+    linted_error errnum;
+    linted_ko returned_ko = -1;
+    do {
+        {
+            struct pollfd fd = { .fd = task_accept->ko, .events = POLLIN };
+
+            int poll_status = poll(&fd, 1, -1);
+            errnum = -1 == poll_status ? errno : 0;
+            if (errnum != 0) {
+                continue;
+            }
+        }
+
+        returned_ko =
+            accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        errnum = -1 == returned_ko ? errno : 0;
+    } while (EAGAIN == errnum || EINTR == errnum);
+
+    task->errnum = errnum;
+    task_accept->returned_ko = returned_ko;
 }
