@@ -572,11 +572,6 @@ static linted_ko task_ko(struct linted_asynch_task *task)
 
 static void *worker_routine(void *arg)
 {
-    /*
-     * Set the thread to be asynchronously killable at any time.
-     */
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     struct linted_asynch_pool *pool = arg;
 
     for (;;) {

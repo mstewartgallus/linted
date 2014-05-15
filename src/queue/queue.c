@@ -62,12 +62,8 @@ void linted_queue_destroy(struct linted_queue *queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
-    int old_cancel_state;
-
     assert(NULL == node->next);
     assert(NULL == node->prev);
-
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
@@ -85,17 +81,12 @@ void linted_queue_send(struct linted_queue *queue,
     pthread_cond_broadcast(&queue->gains_member);
 
     pthread_cleanup_pop(true);
-
-    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
     struct linted_queue_node *head;
-    int old_cancel_state;
-
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
@@ -122,8 +113,6 @@ void linted_queue_recv(struct linted_queue *queue,
     linted_queue_node(head);
 
     *nodep = head;
-
-    pthread_setcanceltype(old_cancel_state, NULL);
 }
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
@@ -132,8 +121,6 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
     linted_error errnum = 0;
     int old_cancel_state;
     struct linted_queue_node *head;
-
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &old_cancel_state);
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
@@ -161,7 +148,6 @@ pop_cleanup:
         *nodep = head;
     }
 
-    pthread_setcanceltype(old_cancel_state, NULL);
     return errnum;
 }
 
