@@ -54,8 +54,8 @@
 #define UPDATER_OPTION "--updater"
 
 enum {
-    ON_RECEIVED_UPDATER_EVENT,
-    ON_SENT_CONTROLLER_EVENT,
+    ON_RECEIVED_FROM_UPDATER,
+    ON_SENT_TO_CONTROLLER,
     MAX_TASKS
 };
 
@@ -101,14 +101,20 @@ static int const attribute_list[][2] = {
     { None, 0 /* A waste of an int. Oh well. */ }
 };
 
-static void
-on_received_updater_event(struct linted_updater_task_receive *updater_task,
-                          struct sim_model *sim_model, linted_ko controller,
-                          struct linted_controller_task_send *controller_task,
-                          struct controller_data *controller_data,
-                          struct linted_asynch_pool *pool);
+static linted_error on_gui_event(XEvent *event, xcb_connection_t *connection,
+                                 xcb_window_t window,
+                                 struct window_model *window_model,
+                                 struct controller_data *controller_data,
+                                 bool *time_to_quitp);
 
-static void on_sent_controller_event(
+static void
+on_received_from_updater(struct linted_updater_task_receive *updater_task,
+                         struct sim_model *sim_model, linted_ko controller,
+                         struct linted_controller_task_send *controller_task,
+                         struct controller_data *controller_data,
+                         struct linted_asynch_pool *pool);
+
+static void on_sent_to_controller(
     struct linted_controller_task_send *controller_task, linted_ko controller,
     struct controller_data *controller_data, struct linted_asynch_pool *pool);
 
@@ -511,7 +517,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         goto destroy_glx_context;
     }
 
-    linted_updater_receive(&updater_task, ON_RECEIVED_UPDATER_EVENT, updater);
+    linted_updater_receive(&updater_task, ON_RECEIVED_FROM_UPDATER, updater);
 
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
@@ -525,108 +531,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         if (had_gui_event) {
             XEvent event;
             XNextEvent(display, &event);
-            switch (event.type) {
-            case ConfigureNotify: {
-                XConfigureEvent *configure_event = &event.xconfigure;
-                window_model.width = configure_event->width;
-                window_model.height = configure_event->height;
-                window_model.resize_pending = true;
-                break;
-            }
 
-            case MotionNotify: {
-                XMotionEvent *motion_event = &event.xmotion;
-                on_tilt(motion_event->x, motion_event->y, &window_model,
-                        &controller_data);
-                break;
-            }
-
-            case UnmapNotify:
-                window_model.viewable = false;
-                break;
-
-            case MapNotify:
-                window_model.viewable = true;
-                break;
-
-            case EnterNotify: {
-                window_model.focused = true;
-
-                int x, y;
-                if ((errnum = get_mouse_position(connection, window, &x, &y)) !=
-                    0) {
-                    goto cleanup_gl;
-                }
-
-                on_tilt(x, y, &window_model, &controller_data);
-                break;
-            }
-
-            case LeaveNotify:
-                window_model.focused = false;
-
-                controller_data.update.x_tilt = 0;
-                controller_data.update.y_tilt = 0;
-
-                controller_data.update_pending = true;
-                break;
-
-            case MappingNotify: {
-                XMappingEvent *mapping_event = &event.xmapping;
-                XRefreshKeyboardMapping(mapping_event);
-            }
-
-                {
-                    bool is_key_down;
-
-                case KeyPress:
-                    is_key_down = true;
-                    goto on_key_event;
-
-                case KeyRelease:
-                    is_key_down = false;
-                    goto on_key_event;
-
-                on_key_event:
-                    ;
-                    XKeyEvent *key_event = &event.xkey;
-                    switch (XLookupKeysym(key_event, 0)) {
-                    default:
-                        goto no_key_event;
-
-                    case XK_space:
-                        controller_data.update.jumping = is_key_down;
-                        break;
-
-                    case XK_Control_L:
-                        controller_data.update.left = is_key_down;
-                        break;
-
-                    case XK_Alt_L:
-                        controller_data.update.right = is_key_down;
-                        break;
-
-                    case XK_z:
-                        controller_data.update.forward = is_key_down;
-                        break;
-
-                    case XK_Shift_L:
-                        controller_data.update.back = is_key_down;
-                        break;
-                    }
-
-                    controller_data.update_pending = true;
-
-                no_key_event:
-                    break;
-                }
-
-            case ClientMessage:
+            bool time_to_quit;
+            if ((errnum =
+                     on_gui_event(&event, connection, window, &window_model,
+                                  &controller_data, &time_to_quit)) != 0) {
                 goto cleanup_gl;
-
-            default:
-                /* Unknown event type, ignore it */
-                break;
+            }
+            if (time_to_quit) {
+                goto cleanup_gl;
             }
         }
 
@@ -648,15 +561,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                 default:
                     assert(false);
 
-                case ON_RECEIVED_UPDATER_EVENT:
-                    on_received_updater_event(&updater_task, &sim_model,
-                                              controller, &controller_task,
-                                              &controller_data, pool);
+                case ON_RECEIVED_FROM_UPDATER:
+                    on_received_from_updater(&updater_task, &sim_model,
+                                             controller, &controller_task,
+                                             &controller_data, pool);
                     break;
 
-                case ON_SENT_CONTROLLER_EVENT:
-                    on_sent_controller_event(&controller_task, controller,
-                                             &controller_data, pool);
+                case ON_SENT_TO_CONTROLLER:
+                    on_sent_to_controller(&controller_task, controller,
+                                          &controller_data, pool);
                     break;
                 }
             }
@@ -747,12 +660,129 @@ shutdown : {
     return errnum;
 }
 
+static linted_error on_gui_event(XEvent *event, xcb_connection_t *connection,
+                                 xcb_window_t window,
+                                 struct window_model *window_model,
+                                 struct controller_data *controller_data,
+                                 bool *time_to_quitp)
+{
+    linted_error errnum;
+    bool time_to_quit = false;
+
+    switch (event->type) {
+    case ConfigureNotify: {
+        XConfigureEvent const *configure_event = &event->xconfigure;
+        window_model->width = configure_event->width;
+        window_model->height = configure_event->height;
+        window_model->resize_pending = true;
+        break;
+    }
+
+    case MotionNotify: {
+        XMotionEvent const *motion_event = &event->xmotion;
+        on_tilt(motion_event->x, motion_event->y, window_model,
+                controller_data);
+        break;
+    }
+
+    case UnmapNotify:
+        window_model->viewable = false;
+        break;
+
+    case MapNotify:
+        window_model->viewable = true;
+        break;
+
+    case EnterNotify: {
+        window_model->focused = true;
+
+        int x, y;
+        if ((errnum = get_mouse_position(connection, window, &x, &y)) != 0) {
+            return errnum;
+        }
+
+        on_tilt(x, y, window_model, controller_data);
+        break;
+    }
+
+    case LeaveNotify:
+        window_model->focused = false;
+
+        controller_data->update.x_tilt = 0;
+        controller_data->update.y_tilt = 0;
+
+        controller_data->update_pending = true;
+        break;
+
+    case MappingNotify: {
+        XMappingEvent *mapping_event = &event->xmapping;
+        XRefreshKeyboardMapping(mapping_event);
+    }
+
+        {
+            bool is_key_down;
+
+        case KeyPress:
+            is_key_down = true;
+            goto on_key_event;
+
+        case KeyRelease:
+            is_key_down = false;
+            goto on_key_event;
+
+        on_key_event:
+            ;
+            XKeyEvent *key_event = &event->xkey;
+            switch (XLookupKeysym(key_event, 0)) {
+            default:
+                goto no_key_event;
+
+            case XK_space:
+                controller_data->update.jumping = is_key_down;
+                break;
+
+            case XK_Control_L:
+                controller_data->update.left = is_key_down;
+                break;
+
+            case XK_Alt_L:
+                controller_data->update.right = is_key_down;
+                break;
+
+            case XK_z:
+                controller_data->update.forward = is_key_down;
+                break;
+
+            case XK_Shift_L:
+                controller_data->update.back = is_key_down;
+                break;
+            }
+
+            controller_data->update_pending = true;
+
+        no_key_event:
+            break;
+        }
+
+    case ClientMessage:
+        time_to_quit = true;
+        break;
+
+    default:
+        /* Unknown event type, ignore it */
+        break;
+    }
+
+    *time_to_quitp = time_to_quit;
+    return 0;
+}
+
 static void
-on_received_updater_event(struct linted_updater_task_receive *updater_task,
-                          struct sim_model *sim_model, linted_ko controller,
-                          struct linted_controller_task_send *controller_task,
-                          struct controller_data *controller_data,
-                          struct linted_asynch_pool *pool)
+on_received_from_updater(struct linted_updater_task_receive *updater_task,
+                         struct sim_model *sim_model, linted_ko controller,
+                         struct linted_controller_task_send *controller_task,
+                         struct controller_data *controller_data,
+                         struct linted_asynch_pool *pool)
 {
     struct linted_updater_update update;
     linted_updater_decode(updater_task, &update);
@@ -773,8 +803,8 @@ on_received_updater_event(struct linted_updater_task_receive *updater_task,
         return;
     }
 
-    linted_controller_send(controller_task, ON_SENT_CONTROLLER_EVENT,
-                           controller, &controller_data->update);
+    linted_controller_send(controller_task, ON_SENT_TO_CONTROLLER, controller,
+                           &controller_data->update);
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(controller_task)));
 
@@ -782,7 +812,7 @@ on_received_updater_event(struct linted_updater_task_receive *updater_task,
     controller_data->update_in_progress = true;
 }
 
-static void on_sent_controller_event(
+static void on_sent_to_controller(
     struct linted_controller_task_send *controller_task, linted_ko controller,
     struct controller_data *controller_data, struct linted_asynch_pool *pool)
 {
@@ -792,8 +822,8 @@ static void on_sent_controller_event(
         return;
     }
 
-    linted_controller_send(controller_task, ON_SENT_CONTROLLER_EVENT,
-                           controller, &controller_data->update);
+    linted_controller_send(controller_task, ON_SENT_TO_CONTROLLER, controller,
+                           &controller_data->update);
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(controller_task)));
 
