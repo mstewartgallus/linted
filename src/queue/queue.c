@@ -65,11 +65,11 @@ void linted_queue_send(struct linted_queue *queue,
     assert(NULL == node->next);
     assert(NULL == node->prev);
 
+    struct linted_queue_node *tip = queue->tip;
+
     /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
-
-    struct linted_queue_node *tip = queue->tip;
 
     /* The nodes previous to the tip are the tail */
     struct linted_queue_node *tail = tip->prev;
@@ -88,10 +88,10 @@ void linted_queue_recv(struct linted_queue *queue,
 {
     struct linted_queue_node *head;
 
+    struct linted_queue_node *tip = queue->tip;
+
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
-
-    struct linted_queue_node *tip = queue->tip;
 
     /* The nodes next to the tip are the head */
     for (;;) {
@@ -121,10 +121,10 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
     linted_error errnum = 0;
     struct linted_queue_node *head;
 
+    struct linted_queue_node *tip = queue->tip;
+
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
-
-    struct linted_queue_node *tip = queue->tip;
 
     /* The nodes next to the tip are the head */
     head = tip->next;
