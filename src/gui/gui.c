@@ -91,63 +91,15 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[] = {
-    GLX_RGBA,      True, GLX_RED_SIZE,     5,    GLX_GREEN_SIZE, 5,
-    GLX_BLUE_SIZE, 3,    GLX_DOUBLEBUFFER, True, GLX_DEPTH_SIZE, 16,
-    None
+static int const attribute_list[][2] = {
+    { GLX_RGBA, True },
+    { GLX_RED_SIZE, 5 },
+    { GLX_GREEN_SIZE, 5 },
+    { GLX_BLUE_SIZE, 3 },
+    { GLX_DOUBLEBUFFER, True },
+    { GLX_DEPTH_SIZE, 16 },
+    { None, 0 /* A waste of an int. Oh well. */ }
 };
-
-static linted_error errnum_from_connection(xcb_connection_t *connection)
-{
-    switch (xcb_connection_has_error(connection)) {
-    case 0:
-        return 0;
-
-    case XCB_CONN_ERROR:
-        return EPROTO;
-
-    case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
-        return ENOSYS;
-
-    case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-        return ENOMEM;
-
-    case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
-        return EINVAL;
-
-    case XCB_CONN_CLOSED_PARSE_ERR:
-        return EINVAL;
-
-    default:
-        assert(false);
-    }
-}
-
-static linted_error get_mouse_position(xcb_connection_t *connection,
-                                       xcb_window_t window, int *x, int *y)
-{
-    linted_error errnum;
-
-    xcb_query_pointer_cookie_t cookie = xcb_query_pointer(connection, window);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
-        return errnum;
-    }
-
-    xcb_generic_error_t *error;
-    xcb_query_pointer_reply_t *reply =
-        xcb_query_pointer_reply(connection, cookie, &error);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
-        free(reply);
-        return errnum;
-    }
-
-    *x = reply->win_x;
-    *y = reply->win_y;
-
-    free(reply);
-
-    return 0;
-}
 
 static void
 on_received_updater_event(struct linted_updater_task_receive *updater_task,
@@ -160,13 +112,10 @@ static void on_sent_controller_event(
     struct linted_controller_task_send *controller_task, linted_ko controller,
     struct controller_data *controller_data, struct linted_asynch_pool *pool);
 
-static void flush_gl_errors(void);
+static linted_error errnum_from_connection(xcb_connection_t *connection);
 
-/**
- * @todo get_gl_error's use of glGetError is incorrect. Multiple error
- *       flags may be set and returned by a single function.
- */
-static linted_error get_gl_error(void);
+static linted_error get_mouse_position(xcb_connection_t *connection,
+                                       xcb_window_t window, int *x, int *y);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
@@ -180,6 +129,14 @@ static void render_graphics(struct graphics_state const *graphics_state,
                             struct window_model const *window_model);
 static void destroy_graphics(struct graphics_state *graphics_state);
 static void resize_graphics(unsigned width, unsigned height);
+
+static void flush_gl_errors(void);
+
+/**
+ * @todo get_gl_error's use of glGetError is incorrect. Multiple error
+ *       flags may be set and returned by a single function.
+ */
+static linted_error get_gl_error(void);
 
 static double square(double x);
 
@@ -435,8 +392,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     /* Query framebuffer configurations */
     XVisualInfo visual_info;
     {
-        XVisualInfo *ptr =
-            glXChooseVisual(display, screen_number, (int *)attribute_list);
+        XVisualInfo *ptr = glXChooseVisual(display, screen_number,
+                                           (int *)&attribute_list[0][0]);
         if (NULL == ptr) {
             errnum = ENOSYS;
             goto disconnect;
@@ -1141,6 +1098,58 @@ static linted_error get_gl_error(void)
     default:
         return ENOSYS;
     }
+}
+
+static linted_error errnum_from_connection(xcb_connection_t *connection)
+{
+    switch (xcb_connection_has_error(connection)) {
+    case 0:
+        return 0;
+
+    case XCB_CONN_ERROR:
+        return EPROTO;
+
+    case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
+        return ENOSYS;
+
+    case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
+        return ENOMEM;
+
+    case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
+        return EINVAL;
+
+    case XCB_CONN_CLOSED_PARSE_ERR:
+        return EINVAL;
+
+    default:
+        assert(false);
+    }
+}
+
+static linted_error get_mouse_position(xcb_connection_t *connection,
+                                       xcb_window_t window, int *x, int *y)
+{
+    linted_error errnum;
+
+    xcb_query_pointer_cookie_t cookie = xcb_query_pointer(connection, window);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        return errnum;
+    }
+
+    xcb_generic_error_t *error;
+    xcb_query_pointer_reply_t *reply =
+        xcb_query_pointer_reply(connection, cookie, &error);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        free(reply);
+        return errnum;
+    }
+
+    *x = reply->win_x;
+    *y = reply->win_y;
+
+    free(reply);
+
+    return 0;
 }
 
 static double square(double x)

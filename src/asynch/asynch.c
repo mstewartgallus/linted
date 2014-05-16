@@ -269,10 +269,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 linted_error linted_asynch_pool_bind_ko(struct linted_asynch_pool *pool,
                                         linted_ko ko)
 {
-    struct epoll_event event = {
-        .events = EPOLLONESHOT | EPOLLET,
-        .data = { .ptr = NULL }
-    };
+    struct epoll_event event = { .events = EPOLLONESHOT | EPOLLET,
+                                 .data = { .ptr = NULL } };
     if (-1 == epoll_ctl(pool->notifier, EPOLL_CTL_ADD, ko, &event)) {
         return errno;
     }
@@ -535,10 +533,9 @@ static void send_io_command(struct linted_asynch_pool *pool,
 {
     linted_ko ko = task_ko(task);
 
-    struct epoll_event event = {
-        .events = task_notifier_flags(task) | EPOLLONESHOT | EPOLLET,
-        .data = { .ptr = task }
-    };
+    struct epoll_event event = { .events = task_notifier_flags(task) |
+                                           EPOLLONESHOT | EPOLLET,
+                                 .data = { .ptr = task } };
     if (-1 == epoll_ctl(pool->notifier, EPOLL_CTL_MOD, ko, &event)) {
         linted_error errnum = errno;
 
