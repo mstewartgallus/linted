@@ -34,13 +34,11 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 
 #define BACKLOG 20
