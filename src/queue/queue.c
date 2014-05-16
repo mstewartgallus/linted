@@ -119,7 +119,6 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **nodep)
 {
     linted_error errnum = 0;
-    int old_cancel_state;
     struct linted_queue_node *head;
 
     pthread_mutex_lock(&queue->lock);
