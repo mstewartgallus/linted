@@ -32,7 +32,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <poll.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -54,8 +53,8 @@
 #define UPDATER_OPTION "--updater"
 
 enum {
-    ON_RECEIVED_FROM_UPDATER,
-    ON_SENT_TO_CONTROLLER,
+    ON_RECEIVE_UPDATER_EVENT,
+    ON_SENT_CONTROLLER_EVENT,
     MAX_TASKS
 };
 
@@ -101,22 +100,35 @@ static int const attribute_list[][2] = {
     { None, 0 /* A waste of an int. Oh well. */ }
 };
 
-static linted_error on_gui_event(XEvent *event, xcb_connection_t *connection,
-                                 xcb_window_t window,
-                                 struct window_model *window_model,
-                                 struct controller_data *controller_data,
-                                 bool *time_to_quitp);
+struct on_gui_event_args
+{
+    xcb_connection_t *connection;
+    struct window_model *window_model;
+    struct controller_data *controller_data;
+    xcb_window_t window;
+    bool *time_to_quit;
+};
+static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args);
 
-static void
-on_received_from_updater(struct linted_updater_task_receive *updater_task,
-                         struct sim_model *sim_model, linted_ko controller,
-                         struct linted_controller_task_send *controller_task,
-                         struct controller_data *controller_data,
-                         struct linted_asynch_pool *pool);
+struct on_receive_updater_event_args
+{
+    struct sim_model *sim_model;
+    struct linted_controller_task_send *controller_task;
+    struct controller_data *controller_data;
+    struct linted_asynch_pool *pool;
+    linted_ko controller;
+};
+static void on_receive_updater_event(struct linted_updater_task_receive *task,
+                                     struct on_receive_updater_event_args args);
 
-static void on_sent_to_controller(
-    struct linted_controller_task_send *controller_task, linted_ko controller,
-    struct controller_data *controller_data, struct linted_asynch_pool *pool);
+struct on_sent_controller_event_args
+{
+    struct controller_data *controller_data;
+    struct linted_asynch_pool *pool;
+    linted_ko controller;
+};
+static void on_sent_controller_event(struct linted_controller_task_send *task,
+                                     struct on_sent_controller_event_args args);
 
 static linted_error errnum_from_connection(xcb_connection_t *connection);
 
@@ -517,7 +529,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         goto destroy_glx_context;
     }
 
-    linted_updater_receive(&updater_task, ON_RECEIVED_FROM_UPDATER, updater);
+    linted_updater_receive(&updater_task, ON_RECEIVE_UPDATER_EVENT, updater);
 
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(&updater_task)));
@@ -533,9 +545,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             XNextEvent(display, &event);
 
             bool time_to_quit;
-            if ((errnum =
-                     on_gui_event(&event, connection, window, &window_model,
-                                  &controller_data, &time_to_quit)) != 0) {
+            struct on_gui_event_args args = { .connection = connection,
+                                              .window = window,
+                                              .window_model = &window_model,
+                                              .controller_data =
+                                                  &controller_data,
+                                              .time_to_quit = &time_to_quit };
+            if ((errnum = on_gui_event(&event, args)) != 0) {
                 goto cleanup_gl;
             }
             if (time_to_quit) {
@@ -561,16 +577,27 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                 default:
                     assert(false);
 
-                case ON_RECEIVED_FROM_UPDATER:
-                    on_received_from_updater(&updater_task, &sim_model,
-                                             controller, &controller_task,
-                                             &controller_data, pool);
+                case ON_RECEIVE_UPDATER_EVENT: {
+                    struct on_receive_updater_event_args args = {
+                        .sim_model = &sim_model,
+                        .controller = controller,
+                        .controller_task = &controller_task,
+                        .controller_data = &controller_data,
+                        .pool = pool
+                    };
+                    on_receive_updater_event(&updater_task, args);
                     break;
+                }
 
-                case ON_SENT_TO_CONTROLLER:
-                    on_sent_to_controller(&controller_task, controller,
-                                          &controller_data, pool);
+                case ON_SENT_CONTROLLER_EVENT: {
+                    struct on_sent_controller_event_args args = {
+                        .controller_data = &controller_data,
+                        .pool = pool,
+                        .controller = controller
+                    };
+                    on_sent_controller_event(&controller_task, args);
                     break;
+                }
                 }
             }
         }
@@ -660,12 +687,14 @@ shutdown : {
     return errnum;
 }
 
-static linted_error on_gui_event(XEvent *event, xcb_connection_t *connection,
-                                 xcb_window_t window,
-                                 struct window_model *window_model,
-                                 struct controller_data *controller_data,
-                                 bool *time_to_quitp)
+static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 {
+    xcb_connection_t *connection = args.connection;
+    xcb_window_t window = args.window;
+    struct window_model *window_model = args.window_model;
+    struct controller_data *controller_data = args.controller_data;
+    bool *time_to_quitp = args.time_to_quit;
+
     linted_error errnum;
     bool time_to_quit = false;
 
@@ -777,17 +806,19 @@ static linted_error on_gui_event(XEvent *event, xcb_connection_t *connection,
     return 0;
 }
 
-static void
-on_received_from_updater(struct linted_updater_task_receive *updater_task,
-                         struct sim_model *sim_model, linted_ko controller,
-                         struct linted_controller_task_send *controller_task,
-                         struct controller_data *controller_data,
-                         struct linted_asynch_pool *pool)
+static void on_receive_updater_event(struct linted_updater_task_receive *task,
+                                     struct on_receive_updater_event_args args)
 {
-    struct linted_updater_update update;
-    linted_updater_decode(updater_task, &update);
+    struct sim_model *sim_model = args.sim_model;
+    linted_ko controller = args.controller;
+    struct linted_controller_task_send *controller_task = args.controller_task;
+    struct controller_data *controller_data = args.controller_data;
+    struct linted_asynch_pool *pool = args.pool;
 
-    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(updater_task)));
+    struct linted_updater_update update;
+    linted_updater_decode(task, &update);
+
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(task)));
 
     float pi = acosf(-1.0f);
 
@@ -803,8 +834,8 @@ on_received_from_updater(struct linted_updater_task_receive *updater_task,
         return;
     }
 
-    linted_controller_send(controller_task, ON_SENT_TO_CONTROLLER, controller,
-                           &controller_data->update);
+    linted_controller_send(controller_task, ON_SENT_CONTROLLER_EVENT,
+                           controller, &controller_data->update);
     linted_asynch_pool_submit(pool,
                               LINTED_UPCAST(LINTED_UPCAST(controller_task)));
 
@@ -812,20 +843,22 @@ on_received_from_updater(struct linted_updater_task_receive *updater_task,
     controller_data->update_in_progress = true;
 }
 
-static void on_sent_to_controller(
-    struct linted_controller_task_send *controller_task, linted_ko controller,
-    struct controller_data *controller_data, struct linted_asynch_pool *pool)
+static void on_sent_controller_event(struct linted_controller_task_send *task,
+                                     struct on_sent_controller_event_args args)
 {
+    linted_ko controller = args.controller;
+    struct controller_data *controller_data = args.controller_data;
+    struct linted_asynch_pool *pool = args.pool;
+
     controller_data->update_in_progress = false;
 
     if (!controller_data->update_pending) {
         return;
     }
 
-    linted_controller_send(controller_task, ON_SENT_TO_CONTROLLER, controller,
+    linted_controller_send(task, ON_SENT_CONTROLLER_EVENT, controller,
                            &controller_data->update);
-    linted_asynch_pool_submit(pool,
-                              LINTED_UPCAST(LINTED_UPCAST(controller_task)));
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(task)));
 
     controller_data->update_pending = false;
     controller_data->update_in_progress = true;
