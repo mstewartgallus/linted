@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/eventfd.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -39,8 +38,6 @@
 
 struct linted_asynch_pool
 {
-    struct linted_queue io_command_queue;
-
     /**
      * A one writer to many readers queue.
      */
@@ -57,7 +54,6 @@ struct linted_asynch_pool
     size_t worker_count;
 
     linted_ko notifier;
-    linted_ko on_io_manager_event;
 
     pthread_t io_manager;
     pthread_t workers[];
@@ -114,40 +110,18 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
         goto destroy_worker_command_queue;
     }
 
-    if ((errnum = linted_queue_create(&pool->io_command_queue)) != 0) {
-        goto destroy_event_queue;
-    }
-
     linted_ko notifier = epoll_create1(EPOLL_CLOEXEC);
     if (-1 == notifier) {
         errnum = errno;
-        goto destroy_io_command_queue;
-    }
-
-    linted_ko on_io_manager_event =
-        eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK | EFD_CLOEXEC);
-    if (-1 == on_io_manager_event) {
-        errnum = errno;
-        goto close_notifier;
-    }
-
-    {
-        struct epoll_event event = { .events = EPOLLIN,
-                                     .data = { .ptr = NULL } };
-        if (-1 ==
-            epoll_ctl(notifier, EPOLL_CTL_ADD, on_io_manager_event, &event)) {
-            errnum = errno;
-            goto close_notifier;
-        }
+        goto destroy_event_queue;
     }
 
     pool->notifier = notifier;
-    pool->on_io_manager_event = on_io_manager_event;
     pool->worker_count = max_tasks;
 
     if ((errnum = pthread_create(&pool->io_manager, NULL, io_manager_routine,
                                  pool)) != 0) {
-        goto close_on_io_manager_event;
+        goto close_notifier;
     }
 
     for (; created_threads < max_tasks; ++created_threads) {
@@ -173,14 +147,8 @@ destroy_threads:
     pthread_cancel(pool->io_manager);
     pthread_join(pool->io_manager, NULL);
 
-close_on_io_manager_event:
-    linted_ko_close(on_io_manager_event);
-
 close_notifier:
     linted_ko_close(notifier);
-
-destroy_io_command_queue:
-    linted_queue_destroy(&pool->io_command_queue);
 
 destroy_event_queue:
     linted_queue_destroy(&pool->event_queue);
@@ -212,9 +180,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
     pthread_join(pool->io_manager, NULL);
 
     linted_ko_close(pool->notifier);
-    linted_ko_close(pool->on_io_manager_event);
 
-    linted_queue_destroy(&pool->io_command_queue);
     linted_queue_destroy(&pool->worker_command_queue);
     linted_queue_destroy(&pool->event_queue);
 
@@ -407,7 +373,6 @@ static void *io_manager_routine(void *arg)
     linted_ko notifier = pool->notifier;
 
     for (;;) {
-        bool has_commands_ready = false;
         struct epoll_event events[20];
         int event_count;
         {
@@ -430,7 +395,9 @@ static void *io_manager_routine(void *arg)
             uint32_t event_flags = event->events;
             struct linted_asynch_task *task = event->data.ptr;
             if (NULL == task) {
-                has_commands_ready = true;
+                /* I believe this happens if we get an error event
+                 * on the file. Just ignore this.
+                 */
                 continue;
             }
 
@@ -447,61 +414,6 @@ static void *io_manager_routine(void *arg)
                 linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
             } else {
                 assert(false);
-            }
-        }
-
-        if (has_commands_ready) {
-            for (;;) {
-                uint64_t tick;
-                if (-1 == read(pool->on_io_manager_event, &tick, sizeof tick)) {
-                    linted_error errnum = errno;
-
-                    assert(errnum != EBADF);
-                    assert(errnum != EFAULT);
-                    assert(errnum != EINVAL);
-                    assert(errnum != EISDIR);
-
-                    assert(EAGAIN == errnum || EWOULDBLOCK == errnum);
-
-                    break;
-                }
-            }
-
-            for (;;) {
-                linted_error errnum;
-
-                struct linted_asynch_task *task;
-                {
-                    struct linted_queue_node *node;
-                    if (EAGAIN ==
-                        linted_queue_try_recv(&pool->io_command_queue, &node)) {
-                        break;
-                    }
-                    task = LINTED_DOWNCAST(struct linted_asynch_task, node);
-                }
-
-                linted_ko ko = task_ko(task);
-
-                struct epoll_event event = {
-                    .events = task_notifier_flags(task) | EPOLLONESHOT | EPOLLET,
-                    .data = { .ptr = task }
-                };
-                if (-1 == epoll_ctl(notifier, EPOLL_CTL_MOD, ko, &event)) {
-                    errnum = errno;
-                    assert(errnum != ENOENT);
-
-                    /* All nonblocking file types should support
-                     * epoll.
-                     */
-                    assert(errnum != EPERM);
-
-                    goto send_error;
-                }
-                continue;
-
-            send_error:
-                task->errnum = errnum;
-                linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
             }
         }
     }
@@ -621,33 +533,25 @@ static void *worker_routine(void *arg)
 static void send_io_command(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task)
 {
-    linted_queue_send(&pool->io_command_queue, LINTED_UPCAST(task));
+    linted_ko ko = task_ko(task);
 
-    uint64_t tick = 1;
-    linted_error errnum = 0;
+    struct epoll_event event = {
+        .events = task_notifier_flags(task) | EPOLLONESHOT | EPOLLET,
+        .data = { .ptr = task }
+    };
+    if (-1 == epoll_ctl(pool->notifier, EPOLL_CTL_MOD, ko, &event)) {
+        linted_error errnum = errno;
 
-retry_write:
-    if (-1 == write(pool->on_io_manager_event, &tick, sizeof tick)) {
-        errnum = errno;
-    }
+        assert(errnum != ENOENT);
 
-    /*
-     * We use if else, instead of switch case because some systems
-     * make EWOULDBLOCK and EAGAIN the same.
-     */
-    if (EWOULDBLOCK == errnum || EAGAIN == errnum) {
-        /* Currently we busy wait although we could also use
-         * poll. This is such an unlikely case that I think busy
-         * waiting is fine here.
+        /* All nonblocking file types should support
+         * epoll.
          */
-        sched_yield();
-        goto retry_write;
-    }
+        assert(errnum != EPERM);
 
-    assert(errnum != EBADF);
-    assert(errnum != EFAULT);
-    assert(errnum != EINVAL);
-    assert(0 == errnum);
+        task->errnum = errnum;
+        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+    }
 }
 
 static void asynch_task_poll(struct linted_asynch_pool *pool,
