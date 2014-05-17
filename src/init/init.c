@@ -808,6 +808,7 @@ static linted_error run_game(char const *process_name,
 
                 default: {
                     assert(CONNECTION <= completed_task->task_action);
+                    assert(completed_task->task_action < CONNECTION + MAX_MANAGE_CONNECTIONS);
 
                     size_t jj = completed_task->task_action - CONNECTION;
                     struct connection *connection = &connections[jj];
@@ -818,6 +819,7 @@ static linted_error run_game(char const *process_name,
                                  connection, &connection_count)) != 0) {
                             goto close_connections;
                         }
+                        break;
                     }
 
                     if (!connection->has_reply_ready) {
