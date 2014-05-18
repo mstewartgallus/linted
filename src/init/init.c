@@ -173,6 +173,8 @@ static linted_error on_connection_recv_request(
 static linted_error remove_connection(struct connection *connection,
                                       size_t *connection_count);
 
+static linted_error check_db(linted_ko cwd);
+
 static linted_error run_game(char const *process_name,
                              union service_config const *config,
                              int logger_dummy, int updater_dummy,
@@ -238,61 +240,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     linted_error errnum;
 
-    linted_db my_db;
-    {
-        /**
-         * @todo Place the database according to the XDG base
-         *       directory specification.
-         */
-        int xx;
-        if ((errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT)) !=
-            0) {
-            errno = errnum;
-            perror("linted_db_open");
+    if ((errnum = check_db(cwd)) != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: database: %s\n",
+                                   program_name,
+                                   linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
-        }
-        my_db = xx;
-    }
-
-    {
-        int tmp;
-        {
-            int xx;
-            if ((errnum = linted_db_temp_file(&my_db, &xx)) != 0) {
-                errno = errnum;
-                perror("linted_db_temp_file");
-                return EXIT_FAILURE;
-            }
-            tmp = xx;
-        }
-
-        {
-            static char const hello[] = "Hello anybody!";
-            char const *data = hello;
-            size_t data_size = sizeof hello - 1;
-
-            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size)) !=
-                0) {
-                perror("linted_io_write");
-                return EXIT_FAILURE;
-            }
-        }
-
-        if ((errnum = linted_db_temp_send(&my_db, "hello", tmp)) != 0) {
-            perror("linted_db_send");
-            return EXIT_FAILURE;
-        }
-
-        if ((errnum = linted_ko_close(tmp)) != 0) {
-            perror("linted_ko_close");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if ((errnum = linted_db_close(&my_db)) != 0) {
-        errno = errnum;
-        perror("linted_db_close");
-        return EXIT_FAILURE;
     }
 
     char const *original_display = getenv("DISPLAY");
@@ -1067,6 +1020,67 @@ static linted_error remove_connection(struct connection *connection,
     --*connection_count;
 
     return linted_ko_close(fd);
+}
+
+static linted_error check_db(linted_ko cwd)
+{
+    linted_error errnum;
+    linted_db my_db;
+    {
+        /**
+         * @todo Place the database according to the XDG base
+         *       directory specification.
+         */
+        linted_db xx;
+        if ((errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT)) !=
+            0) {
+            return errnum;
+        }
+        my_db = xx;
+    }
+
+    {
+        linted_ko tmp;
+        {
+            linted_ko xx;
+            if ((errnum = linted_db_temp_file(&my_db, &xx)) != 0) {
+                goto close_db;
+            }
+            tmp = xx;
+        }
+
+        {
+            static char const hello[] = "Hello anybody!";
+            char const *data = hello;
+            size_t data_size = sizeof hello - 1;
+
+            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size)) !=
+                0) {
+                goto close_tmp;
+            }
+        }
+
+        if ((errnum = linted_db_temp_send(&my_db, "hello", tmp)) != 0) {
+            goto close_tmp;
+        }
+
+    close_tmp:
+        {
+            linted_error close_errnum = linted_ko_close(tmp);
+            if (0 == errnum) {
+                errnum = close_errnum;
+            }
+        }
+    }
+
+close_db:
+    {
+        linted_error close_errnum = linted_db_close(&my_db);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
+    }
+    return errnum;
 }
 
 static linted_error linted_help(int fildes, char const *program_name,
