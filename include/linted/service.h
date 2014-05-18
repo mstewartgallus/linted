@@ -35,6 +35,6 @@ enum linted_service {
 };
 
 linted_error linted_service_for_name(enum linted_service *service,
-                                     char const * name);
+                                     char const *name);
 
 #endif /* LINTED_SERVICE_H */

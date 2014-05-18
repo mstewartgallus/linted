@@ -241,11 +241,10 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_error errnum;
 
     if ((errnum = check_db(cwd)) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: database: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
-            return EXIT_FAILURE;
+                               program_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
     }
 
     char const *original_display = getenv("DISPLAY");
@@ -1064,22 +1063,20 @@ static linted_error check_db(linted_ko cwd)
             goto close_tmp;
         }
 
-    close_tmp:
-        {
-            linted_error close_errnum = linted_ko_close(tmp);
-            if (0 == errnum) {
-                errnum = close_errnum;
-            }
-        }
-    }
-
-close_db:
-    {
-        linted_error close_errnum = linted_db_close(&my_db);
+    close_tmp : {
+        linted_error close_errnum = linted_ko_close(tmp);
         if (0 == errnum) {
             errnum = close_errnum;
         }
     }
+    }
+
+close_db : {
+    linted_error close_errnum = linted_db_close(&my_db);
+    if (0 == errnum) {
+        errnum = close_errnum;
+    }
+}
     return errnum;
 }
 

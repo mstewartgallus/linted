@@ -196,8 +196,8 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     }
 
     if (NULL == service_name) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing SERVICE\n", program_name);
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing SERVICE\n",
+                               program_name);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -206,8 +206,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     linted_error errnum;
     enum linted_service service;
     if ((errnum = linted_service_for_name(&service, service_name)) != 0) {
-        failure(STDERR_FILENO, program_name,
-                LINTED_STR("SERVICE"), errnum);
+        failure(STDERR_FILENO, program_name, LINTED_STR("SERVICE"), errnum);
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -246,7 +245,8 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read)) != 0) {
+        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read)) !=
+            0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
@@ -494,9 +494,8 @@ static linted_error status_help(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) !=
-        0) {
+    if ((errnum = linted_io_write_str(
+             fildes, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) != 0) {
         return errnum;
     }
 
@@ -573,9 +572,8 @@ static linted_error stop_help(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) !=
-        0) {
+    if ((errnum = linted_io_write_str(
+             fildes, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) != 0) {
         return errnum;
     }
 

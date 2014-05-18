@@ -21,23 +21,22 @@
 #include <stddef.h>
 #include <string.h>
 
-struct pair {
-    char const * name;
+struct pair
+{
+    char const *name;
     enum linted_service service;
 };
 
-struct pair const pairs[] = {
-    {"init", LINTED_SERVICE_INIT},
-    {"gui", LINTED_SERVICE_GUI},
-    {"simulator", LINTED_SERVICE_SIMULATOR},
-    {"logger", LINTED_SERVICE_LOGGER},
-    {"controller", LINTED_SERVICE_CONTROLLER},
-    {"updater", LINTED_SERVICE_UPDATER},
-    {"shutdowner", LINTED_SERVICE_SHUTDOWNER}
-};
+struct pair const pairs[] = { { "init", LINTED_SERVICE_INIT },
+                              { "gui", LINTED_SERVICE_GUI },
+                              { "simulator", LINTED_SERVICE_SIMULATOR },
+                              { "logger", LINTED_SERVICE_LOGGER },
+                              { "controller", LINTED_SERVICE_CONTROLLER },
+                              { "updater", LINTED_SERVICE_UPDATER },
+                              { "shutdowner", LINTED_SERVICE_SHUTDOWNER } };
 
 linted_error linted_service_for_name(enum linted_service *servicep,
-                                     char const * name)
+                                     char const *name)
 {
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pairs); ++ii) {
         if (0 == strcmp(name, pairs[ii].name)) {
