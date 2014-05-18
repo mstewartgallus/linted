@@ -1023,7 +1023,21 @@ static linted_error remove_connection(struct connection *connection,
 
 static linted_error check_db(linted_ko cwd)
 {
+    enum {
+        TMP_WRITE_FINISHED
+    };
+
     linted_error errnum;
+
+    struct linted_asynch_pool *pool;
+    {
+        struct linted_asynch_pool *xx;
+        if ((errnum = linted_asynch_pool_create(&xx, 1)) != 0) {
+            return errnum;
+        }
+        pool = xx;
+    }
+
     linted_db my_db;
     {
         /**
@@ -1033,7 +1047,7 @@ static linted_error check_db(linted_ko cwd)
         linted_db xx;
         if ((errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT)) !=
             0) {
-            return errnum;
+            goto destroy_pool;
         }
         my_db = xx;
     }
@@ -1048,17 +1062,38 @@ static linted_error check_db(linted_ko cwd)
             tmp = xx;
         }
 
-        {
-            static char const hello[] = "Hello anybody!";
-            char const *data = hello;
-            size_t data_size = sizeof hello - 1;
+        static char const hello[] = "Hello anybody!";
+        char const *data = hello;
+        size_t data_size = sizeof hello - 1;
 
-            if ((errnum = linted_io_write_all(tmp, NULL, data, data_size)) !=
-                0) {
+        struct linted_asynch_task_write write_task;
+
+        linted_asynch_write(&write_task, TMP_WRITE_FINISHED,
+                            tmp, data, data_size);
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
+
+        struct linted_asynch_task *completed_tasks[20];
+        size_t task_count;
+        linted_asynch_pool_wait(pool, completed_tasks,
+                                LINTED_ARRAY_SIZE(completed_tasks),
+                                &task_count);
+
+        for (size_t ii = 0; ii < task_count; ++ii) {
+            struct linted_asynch_task *completed_task = completed_tasks[ii];
+            if ((errnum = completed_task->errnum) != 0) {
                 goto close_tmp;
+            }
+
+            switch (completed_task->task_action) {
+            case TMP_WRITE_FINISHED:
+                goto done_writing;
+
+            default:
+                assert(false);
             }
         }
 
+    done_writing:
         if ((errnum = linted_db_temp_send(&my_db, "hello", tmp)) != 0) {
             goto close_tmp;
         }
@@ -1076,7 +1111,16 @@ close_db : {
     if (0 == errnum) {
         errnum = close_errnum;
     }
-}
+    }
+
+destroy_pool:
+    {
+        linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+        if (0 == errnum) {
+            errnum = destroy_errnum;
+        }
+    }
+
     return errnum;
 }
 
