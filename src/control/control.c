@@ -208,7 +208,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         memset(&request, 0, sizeof request);
 
         request.type = LINTED_MANAGER_STATUS;
-        request.status.service = LINTED_MANAGER_SERVICE_GUI;
+        request.status.service = LINTED_SERVICE_GUI;
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the status request for the gui\n",
@@ -346,7 +346,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
         memset(&request, 0, sizeof request);
 
         request.type = LINTED_MANAGER_STOP;
-        request.stop.service = LINTED_MANAGER_SERVICE_GUI;
+        request.stop.service = LINTED_SERVICE_GUI;
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the stop request for the gui\n",

@@ -18,6 +18,7 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/service.h"
 
 #include <stdbool.h>
 #include <signal.h>
@@ -39,20 +40,10 @@ enum linted_manager_type {
     LINTED_MANAGER_STOP
 };
 
-enum linted_manager_service {
-    LINTED_MANAGER_SERVICE_INIT,
-    LINTED_MANAGER_SERVICE_GUI,
-    LINTED_MANAGER_SERVICE_SIMULATOR,
-    LINTED_MANAGER_SERVICE_LOGGER,
-    LINTED_MANAGER_SERVICE_CONTROLLER,
-    LINTED_MANAGER_SERVICE_UPDATER,
-    LINTED_MANAGER_SERVICE_SHUTDOWNER
-};
-
 struct linted_manager_status_request
 {
     enum linted_manager_type type;
-    enum linted_manager_service service;
+    enum linted_service service;
 };
 
 struct linted_manager_status_reply
@@ -63,7 +54,7 @@ struct linted_manager_status_reply
 struct linted_manager_stop_request
 {
     enum linted_manager_type type;
-    enum linted_manager_service service;
+    enum linted_service service;
 };
 
 struct linted_manager_stop_reply

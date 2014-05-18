@@ -54,6 +54,14 @@
 #define STR(X) #X
 #define XSTR(X) STR(X)
 
+enum {
+    GUI_WAITER,
+    SIMULATOR_WAITER,
+    LOGGER,
+    NEW_CONNECTIONS,
+    CONNECTION
+};
+
 enum service_type {
     SERVICE_INIT,
     SERVICE_PROCESS,
@@ -68,7 +76,7 @@ enum service_end {
 struct dup_pair
 {
     enum service_end service_end;
-    enum linted_manager_service service;
+    enum linted_service service;
     int newfildes;
 };
 
@@ -132,7 +140,7 @@ struct connection
 {
     struct linted_manager_task_recv_request recv_request_task;
     struct linted_manager_task_send_reply send_reply_task;
-    linted_ko fd;
+    linted_ko ko;
     bool has_reply_ready;
 };
 
@@ -385,95 +393,84 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         sprintf(controller_option, "--controller=%i", controller_dummy);
 
         union service_config const configuration[] =
-            {[LINTED_MANAGER_SERVICE_INIT] = { .type = SERVICE_INIT },
-             [LINTED_MANAGER_SERVICE_SIMULATOR] = { .process = {
-                                                        .type = SERVICE_PROCESS,
-                                                        .working_directory =
-                                                            cwd,
-                                                        .path = simulator_path,
-                                                        .arguments = (char const *
-                                                                      const[]) {
-                                                            simulator_path,
-                                                            logger_option,
-                                                            updater_option,
-                                                            shutdowner_option,
-                                                            controller_option,
-                                                            NULL
-                                                        },
-                                                        .environment =
-                                                            (char const *
-                                                             const[]) { NULL },
-                                                        .dup_pairs = DUP_PAIRS((
-                                                            struct
-                                                            dup_pair const[]) {
-                                                            { WRITE,
-                                                              LINTED_MANAGER_SERVICE_LOGGER,
-                                                              logger_dummy },
-                                                            { WRITE,
-                                                              LINTED_MANAGER_SERVICE_UPDATER,
-                                                              updater_dummy },
-                                                            { READ,
-                                                              LINTED_MANAGER_SERVICE_SHUTDOWNER,
-                                                              shutdowner_dummy },
-                                                            { READ,
-                                                              LINTED_MANAGER_SERVICE_CONTROLLER,
-                                                              controller_dummy }
-                                                        })
-                                                    } },
-             [LINTED_MANAGER_SERVICE_GUI] = { .process = {
-                                                  .type = SERVICE_PROCESS,
-                                                  .working_directory = cwd,
-                                                  .path = gui_path,
-                                                  .arguments =
-                                                      (char const * const[]) {
-                                                          gui_path,
+            {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
+             [LINTED_SERVICE_SIMULATOR] = { .process = {
+                                                .type = SERVICE_PROCESS,
+                                                .working_directory = cwd,
+                                                .path = simulator_path,
+                                                .arguments =
+                                                    (char const * const[]) {
+                                                        simulator_path,
+                                                        logger_option,
+                                                        updater_option,
+                                                        shutdowner_option,
+                                                        controller_option,
+                                                        NULL
+                                                    },
+                                                .environment =
+                                                    (char const *
+                                                     const[]) { NULL },
+                                                .dup_pairs = DUP_PAIRS((
+                                                    struct dup_pair const[]) {
+                                                    { WRITE,
+                                                      LINTED_SERVICE_LOGGER,
+                                                      logger_dummy },
+                                                    { WRITE,
+                                                      LINTED_SERVICE_UPDATER,
+                                                      updater_dummy },
+                                                    { READ,
+                                                      LINTED_SERVICE_SHUTDOWNER,
+                                                      shutdowner_dummy },
+                                                    { READ,
+                                                      LINTED_SERVICE_CONTROLLER,
+                                                      controller_dummy }
+                                                })
+                                            } },
+             [LINTED_SERVICE_GUI] = { .process = {
+                                          .type = SERVICE_PROCESS,
+                                          .working_directory = cwd,
+                                          .path = gui_path,
+                                          .arguments =
+                                              (char const *
+                                               const[]) { gui_path,
                                                           logger_option,
                                                           updater_option,
                                                           shutdowner_option,
                                                           controller_option,
-                                                          NULL
-                                                      },
-                                                  .environment =
-                                                      (char const * const[]) {
-                                                          display, NULL
-                                                      },
-                                                  .dup_pairs = DUP_PAIRS((
-                                                      struct dup_pair const[]) {
-                                                      { WRITE,
-                                                        LINTED_MANAGER_SERVICE_LOGGER,
-                                                        logger_dummy },
-                                                      { READ,
-                                                        LINTED_MANAGER_SERVICE_UPDATER,
-                                                        updater_dummy },
-                                                      { WRITE,
-                                                        LINTED_MANAGER_SERVICE_SHUTDOWNER,
-                                                        shutdowner_dummy },
-                                                      { WRITE,
-                                                        LINTED_MANAGER_SERVICE_CONTROLLER,
-                                                        controller_dummy }
-                                                  })
-                                              } },
-             [LINTED_MANAGER_SERVICE_LOGGER] = { .file_pair = {
-                                                     .type = SERVICE_FILE_PAIR,
-                                                     .generator =
-                                                         linted_logger_pair
-                                                 } },
-             [LINTED_MANAGER_SERVICE_UPDATER] = { .file_pair = {
-                                                      .type = SERVICE_FILE_PAIR,
-                                                      .generator = updater_pair
-                                                  } },
-             [LINTED_MANAGER_SERVICE_CONTROLLER] = { .file_pair = {
-                                                         .type =
+                                                          NULL },
+                                          .environment =
+                                              (char const * const[]) { display,
+                                                                       NULL },
+                                          .dup_pairs = DUP_PAIRS((
+                                              struct dup_pair const[]) {
+                                              { WRITE, LINTED_SERVICE_LOGGER,
+                                                logger_dummy },
+                                              { READ, LINTED_SERVICE_UPDATER,
+                                                updater_dummy },
+                                              { WRITE,
+                                                LINTED_SERVICE_SHUTDOWNER,
+                                                shutdowner_dummy },
+                                              { WRITE,
+                                                LINTED_SERVICE_CONTROLLER,
+                                                controller_dummy }
+                                          })
+                                      } },
+             [LINTED_SERVICE_LOGGER] = { .file_pair = {
+                                             .type = SERVICE_FILE_PAIR,
+                                             .generator = linted_logger_pair
+                                         } },
+             [LINTED_SERVICE_UPDATER] = { .file_pair = { .type =
                                                              SERVICE_FILE_PAIR,
                                                          .generator =
-                                                             controller_pair
-                                                     } },
-             [LINTED_MANAGER_SERVICE_SHUTDOWNER] = { .file_pair = {
-                                                         .type =
-                                                             SERVICE_FILE_PAIR,
-                                                         .generator =
-                                                             shutdowner_pair
-                                                     } } };
+                                                             updater_pair } },
+             [LINTED_SERVICE_CONTROLLER] = { .file_pair = {
+                                                 .type = SERVICE_FILE_PAIR,
+                                                 .generator = controller_pair
+                                             } },
+             [LINTED_SERVICE_SHUTDOWNER] = { .file_pair = {
+                                                 .type = SERVICE_FILE_PAIR,
+                                                 .generator = shutdowner_pair
+                                             } } };
         game_status =
             run_game(program_name, configuration, logger_dummy, updater_dummy,
                      shutdowner_dummy, controller_dummy);
@@ -500,14 +497,6 @@ done:
     return (-1 == succesfully_executing) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-enum {
-    GUI_WAITER,
-    SIMULATOR_WAITER,
-    LOGGER,
-    NEW_CONNECTIONS,
-    CONNECTION
-};
-
 static linted_error run_game(char const *process_name,
                              union service_config const *config,
                              int logger_dummy, int updater_dummy,
@@ -529,20 +518,17 @@ static linted_error run_game(char const *process_name,
     }
 
     union service services[] =
-        {[LINTED_MANAGER_SERVICE_INIT] = { .init = { .pid = getpid() } },
-         [LINTED_MANAGER_SERVICE_GUI] = { .process = { .pid = -1 } },
-         [LINTED_MANAGER_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
-         [LINTED_MANAGER_SERVICE_LOGGER] = { .file_pair = { .read_end = -1,
-                                                            .write_end = -1 } },
-         [LINTED_MANAGER_SERVICE_UPDATER] = { .file_pair = { .read_end = -1,
-                                                             .write_end =
-                                                                 -1 } },
-         [LINTED_MANAGER_SERVICE_CONTROLLER] = { .file_pair = { .read_end = -1,
-                                                                .write_end =
-                                                                    -1 } },
-         [LINTED_MANAGER_SERVICE_SHUTDOWNER] = { .file_pair = { .read_end = -1,
-                                                                .write_end =
-                                                                    -1 } } };
+        {[LINTED_SERVICE_INIT] = { .init = { .pid = getpid() } },
+         [LINTED_SERVICE_GUI] = { .process = { .pid = -1 } },
+         [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
+         [LINTED_SERVICE_LOGGER] = { .file_pair = { .read_end = -1,
+                                                    .write_end = -1 } },
+         [LINTED_SERVICE_UPDATER] = { .file_pair = { .read_end = -1,
+                                                     .write_end = -1 } },
+         [LINTED_SERVICE_CONTROLLER] = { .file_pair = { .read_end = -1,
+                                                        .write_end = -1 } },
+         [LINTED_SERVICE_SHUTDOWNER] = { .file_pair = { .read_end = -1,
+                                                        .write_end = -1 } } };
 
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
@@ -562,7 +548,7 @@ static linted_error run_game(char const *process_name,
     }
 
     linted_logger logger_read =
-        services[LINTED_MANAGER_SERVICE_LOGGER].file_pair.read_end;
+        services[LINTED_SERVICE_LOGGER].file_pair.read_end;
 
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
@@ -655,13 +641,13 @@ static linted_error run_game(char const *process_name,
         struct connection connections[MAX_MANAGE_CONNECTIONS];
 
         for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
-            connections[ii].fd = -1;
+            connections[ii].ko = -1;
         }
 
         struct service_process *gui_service =
-            &services[LINTED_MANAGER_SERVICE_GUI].process;
+            &services[LINTED_SERVICE_GUI].process;
         struct service_process *sim_service =
-            &services[LINTED_MANAGER_SERVICE_SIMULATOR].process;
+            &services[LINTED_SERVICE_SIMULATOR].process;
 
         struct linted_asynch_task_waitid gui_waiter_task;
         struct linted_asynch_task_waitid sim_waiter_task;
@@ -808,7 +794,8 @@ static linted_error run_game(char const *process_name,
 
                 default: {
                     assert(CONNECTION <= completed_task->task_action);
-                    assert(completed_task->task_action < CONNECTION + MAX_MANAGE_CONNECTIONS);
+                    assert(completed_task->task_action <
+                           CONNECTION + MAX_MANAGE_CONNECTIONS);
 
                     size_t jj = completed_task->task_action - CONNECTION;
                     struct connection *connection = &connections[jj];
@@ -843,7 +830,7 @@ static linted_error run_game(char const *process_name,
     close_connections:
         for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connections); ++ii) {
             struct connection *const connection = &connections[ii];
-            int const fd = connection->fd;
+            int const fd = connection->ko;
             if (fd != -1) {
                 linted_error close_errnum = linted_ko_close(fd);
                 if (0 == errnum) {
@@ -938,14 +925,14 @@ static linted_error on_new_connection(linted_manager new_socket,
     size_t ii = 0;
     for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
         connection = &connections[ii];
-        if (-1 == connection->fd) {
+        if (-1 == connection->ko) {
             goto got_space;
         }
     }
     /* Impossible, listen has limited this */
     assert(false);
 got_space:
-    connection->fd = new_socket;
+    connection->ko = new_socket;
     connection->has_reply_ready = false;
 
     linted_manager_recv_request(&connection->recv_request_task, CONNECTION + ii,
@@ -975,7 +962,7 @@ static linted_error on_connection_recv_request(
     struct linted_manager_task_recv_request *task_recv =
         &connection->recv_request_task;
 
-    int fd = connection->fd;
+    int fd = connection->ko;
 
     union linted_manager_request *request = &task_recv->request;
     union linted_manager_reply reply;
@@ -1074,9 +1061,9 @@ remove_connection:
 static linted_error remove_connection(struct connection *connection,
                                       size_t *connection_count)
 {
-    int fd = connection->fd;
+    int fd = connection->ko;
 
-    connection->fd = -1;
+    connection->ko = -1;
     --*connection_count;
 
     return linted_ko_close(fd);
