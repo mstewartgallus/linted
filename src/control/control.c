@@ -126,6 +126,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
 {
     bool need_version = false;
     bool need_add_help = false;
+    char const *service_name = NULL;
     char const *bad_option = NULL;
     char const *bad_argument = NULL;
     size_t last_index = 1;
@@ -141,8 +142,12 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
                 bad_option = argument;
             }
         } else {
-            bad_argument = argument;
-            break;
+            if (service_name != NULL) {
+                bad_argument = argument;
+                break;
+            } else {
+                service_name = argument;
+            }
         }
     }
 
@@ -190,12 +195,29 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         return EXIT_FAILURE;
     }
 
+    if (NULL == service_name) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing SERVICE\n", program_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    linted_error errnum;
+    enum linted_service service;
+    if ((errnum = linted_service_for_name(&service, service_name)) != 0) {
+        failure(STDERR_FILENO, program_name,
+                LINTED_STR("SERVICE"), errnum);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                                        LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
     linted_manager linted;
 
     {
         linted_manager manager;
-        linted_error errnum = linted_manager_connect(&manager, path, path_len);
-        if (errnum != 0) {
+        if ((errnum = linted_manager_connect(&manager, path, path_len)) != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not create socket"), errnum);
             return EXIT_FAILURE;
@@ -211,11 +233,10 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         request.status.service = LINTED_SERVICE_GUI;
 
         linted_io_write_format(STDOUT_FILENO, NULL,
-                               "%s: sending the status request for the gui\n",
-                               program_name);
+                               "%s: sending the status request for %s\n",
+                               program_name, service_name);
 
-        linted_error errnum = linted_manager_send_request(linted, &request);
-        if (errnum != 0) {
+        if ((errnum = linted_manager_send_request(linted, &request)) != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not send request"), errnum);
             return EXIT_FAILURE;
@@ -225,9 +246,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum =
-            linted_manager_recv_reply(linted, &reply, &bytes_read);
-        if (errnum != 0) {
+        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read)) != 0) {
             failure(STDERR_FILENO, program_name,
                     LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
@@ -248,11 +267,11 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         }
 
         if (reply.status.is_up) {
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s: gui is up\n",
-                                   program_name);
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n",
+                                   program_name, service_name);
         } else {
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s: the gui is down\n",
-                                   program_name);
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is down\n",
+                                   program_name, service_name);
         }
     }
 
@@ -431,16 +450,8 @@ Run the manager program.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-  status              request the status of the gui service\n"))) != 0) {
+  status              request the status of the gui service\n\
+  stop                stop the gui service\n"))) != 0) {
         return errnum;
     }
 
@@ -483,7 +494,8 @@ static linted_error status_help(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) !=
         0) {
         return errnum;
     }
@@ -493,7 +505,7 @@ static linted_error status_help(int fildes, char const *program_name,
     }
 
     if ((errnum = linted_io_write_str(
-             fildes, NULL, LINTED_STR(" status [OPTIONS]\n"))) != 0) {
+             fildes, NULL, LINTED_STR(" status [OPTIONS] SERVICE\n"))) != 0) {
         return errnum;
     }
 
@@ -517,7 +529,8 @@ Report the status.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
+  SOCKET              the socket to connect to\n\
+  SERVICE             the service to get the status of\n"))) != 0) {
         return errnum;
     }
 
@@ -560,7 +573,8 @@ static linted_error stop_help(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+    if ((errnum = linted_io_write_str(fildes, NULL,
+                                      LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) !=
         0) {
         return errnum;
     }
@@ -594,7 +608,7 @@ Stop a service.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-  LINTED_SOCKET       the socket of the linted game\n"))) != 0) {
+  SOCKET              the socket to connect to\n"))) != 0) {
         return errnum;
     }
 

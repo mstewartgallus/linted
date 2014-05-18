@@ -16,6 +16,8 @@
 #ifndef LINTED_SERVICE_H
 #define LINTED_SERVICE_H
 
+#include "linted/error.h"
+
 /**
  * @file
  *
@@ -31,5 +33,8 @@ enum linted_service {
     LINTED_SERVICE_UPDATER,
     LINTED_SERVICE_SHUTDOWNER
 };
+
+linted_error linted_service_for_name(enum linted_service *service,
+                                     char const * name);
 
 #endif /* LINTED_SERVICE_H */

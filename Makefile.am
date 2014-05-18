@@ -136,7 +136,6 @@ EXTRA_DIST+=\
   include/linted/check.h\
   include/linted/error.h\
   include/linted/rpc.h\
-  include/linted/service.h\
   include/linted/str.h
 
 include src/gui/Makefile.am
@@ -153,6 +152,7 @@ include src/locale/Makefile.am
 include src/mq/Makefile.am
 include src/queue/Makefile.am
 include src/sandbox/Makefile.am
+include src/service/Makefile.am
 include src/start/Makefile.am
 include src/spawn/Makefile.am
 include src/util/Makefile.am
