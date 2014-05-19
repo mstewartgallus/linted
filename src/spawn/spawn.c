@@ -198,7 +198,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
             goto unmap_spawn_error;
         }
 
-
         if (attr != NULL) {
             if (attr->setpgroup) {
                 if (-1 == setpgid(child, attr->pgroup)) {
@@ -206,6 +205,56 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
 
                     assert (errnum != EINVAL);
                     assert (EACCES == errnum || EPERM == errnum || ESRCH == errnum);
+                }
+
+                /**
+                 * @todo return the fds used to kill child process
+                 * groups back.
+                 */
+                int kill_fd_read;
+                int kill_fd_write;
+                {
+                    int kill_fds[2];
+                    if (-1 == pipe2(kill_fds, O_CLOEXEC)) {
+                        error_status = errno;
+                        goto unmap_spawn_error;
+                    }
+                    kill_fd_read = kill_fds[0];
+                    kill_fd_write = kill_fds[1];
+                }
+
+                if (-1 == fcntl(kill_fd_read, F_SETSIG, (long)SIGKILL)) {
+                    error_status = errno;
+                    goto unmap_spawn_error;
+                }
+
+                struct f_owner_ex ex = {
+                    .type = F_OWNER_PGRP,
+                    .pid = 0 == attr->pgroup ? child : attr->pgroup
+                };
+                if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
+                    error_status = errno;
+                    goto unmap_spawn_error;
+                }
+
+                if (-1 == fcntl(kill_fd_read, F_SETFL, (long)O_ASYNC)) {
+                    error_status = errno;
+                    goto unmap_spawn_error;
+                }
+
+                /*
+                 * Duplicate the read fd so that it is closed after the write
+                 * fd.
+                 */
+                int kill_fd_read_copy = fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
+                if (-1 == kill_fd_read_copy) {
+                    error_status = errno;
+                    goto unmap_spawn_error;
+                }
+
+                if (-1 == linted_ko_close(kill_fd_read)) {
+                    error_status = errno;
+                    goto unmap_spawn_error;
                 }
             }
         }
