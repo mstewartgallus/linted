@@ -41,6 +41,10 @@
 #include <sys/prctl.h>
 #include <sys/types.h>
 
+#ifndef PR_SET_CHILD_SUBREAPER
+#define PR_SET_CHILD_SUBREAPER	36
+#endif
+
 #define BACKLOG 20
 
 #define MAX_MANAGE_CONNECTIONS 10
@@ -55,8 +59,7 @@
 #define XSTR(X) STR(X)
 
 enum {
-    GUI_WAITER,
-    SIMULATOR_WAITER,
+    WAITER,
     LOGGER,
     NEW_CONNECTIONS,
     CONNECTION
@@ -292,6 +295,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not drop ability to raise privileges: %s\n",
+                               program_name, linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)) {
+        assert(errno != EINVAL);
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not set child subreaper: %s\n",
                                program_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
@@ -601,8 +613,7 @@ static linted_error run_game(char const *process_name,
         struct service_process *sim_service =
             &services[LINTED_SERVICE_SIMULATOR].process;
 
-        struct linted_asynch_task_waitid gui_waiter_task;
-        struct linted_asynch_task_waitid sim_waiter_task;
+        struct linted_asynch_task_waitid waiter_task;
         struct linted_logger_task logger_task;
         struct linted_manager_task_accept new_connections_accept_task;
 
@@ -614,19 +625,14 @@ static linted_error run_game(char const *process_name,
             goto close_connections;
         }
 
-        linted_asynch_waitid(&gui_waiter_task, GUI_WAITER, P_PID,
-                             gui_service->pid, WEXITED);
-
-        linted_asynch_waitid(&sim_waiter_task, SIMULATOR_WAITER, P_PID,
-                             sim_service->pid, WEXITED);
+        linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
 
         linted_logger_receive(&logger_task, LOGGER, logger_read, logger_buffer);
 
         linted_manager_accept(&new_connections_accept_task, NEW_CONNECTIONS,
                               new_connections);
 
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(&gui_waiter_task));
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(&sim_waiter_task));
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
         linted_asynch_pool_submit(
@@ -678,25 +684,34 @@ static linted_error run_game(char const *process_name,
                     break;
                 }
 
-                case GUI_WAITER: {
+                case WAITER: {
                     if ((errnum = completed_task->errnum) != 0) {
                         goto close_connections;
                     }
 
-                    gui_service->pid = -1;
+                    siginfo_t exit_info = waiter_task.info;
+                    linted_asynch_pool_submit(pool, completed_task);
 
-                    siginfo_t *exit_info = &gui_waiter_task.info;
+                    pid_t pid = exit_info.si_pid;
 
-                    switch (exit_info->si_code) {
+                    if (pid == gui_service->pid) {
+                        gui_service->pid = -1;
+                    }
+
+                    if (pid == sim_service->pid) {
+                        sim_service->pid = -1;
+                    }
+
+                    switch (exit_info.si_code) {
                     case CLD_DUMPED:
                     case CLD_KILLED:
-                        raise(exit_info->si_status);
+                        raise(exit_info.si_status);
                         errnum = errno;
                         goto close_connections;
 
                     case CLD_EXITED:
-                        if (exit_info->si_status != 0) {
-                            errnum = exit_info->si_status;
+                        if (exit_info.si_status != 0) {
+                            errnum = exit_info.si_status;
                             goto close_connections;
                         }
                         break;
@@ -705,40 +720,7 @@ static linted_error run_game(char const *process_name,
                         assert(false);
                     }
 
-                    if (-1 == sim_service->pid) {
-                        goto close_connections;
-                    }
-                    break;
-                }
-
-                case SIMULATOR_WAITER: {
-                    if ((errnum = completed_task->errnum) != 0) {
-                        goto close_connections;
-                    }
-
-                    sim_service->pid = -1;
-
-                    siginfo_t *exit_info = &sim_waiter_task.info;
-
-                    switch (exit_info->si_code) {
-                    case CLD_DUMPED:
-                    case CLD_KILLED:
-                        raise(exit_info->si_status);
-                        errnum = errno;
-                        goto close_connections;
-
-                    case CLD_EXITED:
-                        if (exit_info->si_status != 0) {
-                            errnum = exit_info->si_status;
-                            goto close_connections;
-                        }
-                        break;
-
-                    default:
-                        assert(false);
-                    }
-
-                    if (-1 == gui_service->pid) {
+                    if (-1 == sim_service->pid && -1 == gui_service->pid) {
                         goto close_connections;
                     }
                     break;
