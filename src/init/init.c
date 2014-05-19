@@ -522,9 +522,14 @@ static linted_error run_game(char const *process_name,
         struct service_process *service = &services[ii].process;
         struct service_config_process const *proc_config = &config[ii].process;
         struct linted_spawn_file_actions *file_actions;
+        struct linted_spawn_attr *attr;
 
         if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
             goto exit_services;
+        }
+
+        if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
+            goto destroy_file_actions;
         }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
@@ -551,22 +556,27 @@ static linted_error run_game(char const *process_name,
 
             if ((errnum = linted_spawn_file_actions_adddup2(
                      &file_actions, oldfildes, dup_pair->newfildes)) != 0) {
-                goto destroy_file_actions;
+                goto destroy_attr;
             }
         }
+
+        linted_spawn_attr_setpgroup(attr, 0);
 
         {
             pid_t process;
             if ((errnum = linted_spawn(&process, proc_config->working_directory,
-                                       proc_config->path, file_actions, NULL,
+                                       proc_config->path, file_actions, attr,
                                        (char **)proc_config->arguments,
                                        (char **)proc_config->environment)) !=
                 0) {
-                goto destroy_file_actions;
+                goto destroy_attr;
             }
 
             service->pid = process;
         }
+
+    destroy_attr:
+        linted_spawn_attr_destroy(attr);
 
     destroy_file_actions:
         linted_spawn_file_actions_destroy(file_actions);

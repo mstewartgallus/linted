@@ -198,6 +198,18 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
             goto unmap_spawn_error;
         }
 
+
+        if (attr != NULL) {
+            if (attr->setpgroup) {
+                if (-1 == setpgid(child, attr->pgroup)) {
+                    linted_error errnum = errno;
+
+                    assert (errnum != EINVAL);
+                    assert (EACCES == errnum || EPERM == errnum || ESRCH == errnum);
+                }
+            }
+        }
+
         {
             siginfo_t info;
             {
