@@ -288,6 +288,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
                 }
             }
 
+            case CLD_DUMPED:
             case CLD_KILLED: {
 #if defined __linux__
                 linted_error signo = info.si_status;
@@ -315,10 +316,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
 #error The exit status of an aborted execve is very OS specific
 #endif
             }
-
-            case CLD_DUMPED:
-                error_status = ENOSYS;
-                goto unmap_spawn_error;
 
             case CLD_STOPPED:
                 if (-1 == kill(child, SIGCONT)) {
