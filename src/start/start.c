@@ -22,8 +22,10 @@
 #include "linted/locale.h"
 #include "linted/ko.h"
 
+#include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[])
@@ -58,6 +60,18 @@ It is insecure to run a game as root!\n"));
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not change to the root directory: %s\n",
                                program_name, linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /* Start sandboxing a bit */
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+        linted_error errnum = errno;
+
+        assert(errnum != EINVAL);
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not drop ability to raise privileges through execve: %s\n",
+                               program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
 

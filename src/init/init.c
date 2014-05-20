@@ -289,16 +289,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         }
     }
 
-    /* Sandbox */
-    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        assert(errno != EINVAL);
-
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not drop ability to raise privileges: %s\n",
-                               program_name, linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
     if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)) {
         assert(errno != EINVAL);
 
