@@ -49,11 +49,14 @@ static linted_error stop_help(int fildes, char const *program_name,
 static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error errnum);
 
+struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME  "-control",
+    .open_current_working_directory = false
+};
+
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko_close(cwd);
-
     bool need_help = false;
     bool need_version = false;
 

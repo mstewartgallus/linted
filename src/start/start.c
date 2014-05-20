@@ -42,18 +42,23 @@ It is insecure to run a game as root!\n"));
 
     if (argc < 1) {
         linted_locale_missing_process_name(STDERR_FILENO,
-                                           LINTED_STR(PACKAGE_TARNAME));
+                                           linted_start_config.canonical_process_name);
         return EXIT_FAILURE;
     }
 
     char const *const program_name = argv[0];
 
-    int cwd = open("./", O_DIRECTORY | O_CLOEXEC);
-    if (-1 == cwd) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+    int cwd;
+    if (linted_start_config.open_current_working_directory) {
+        cwd = open("./", O_DIRECTORY | O_CLOEXEC);
+        if (-1 == cwd) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
-                               program_name, linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
+                                   program_name, linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+    } else {
+        cwd = -1;
     }
 
     if (-1 == chdir("/")) {

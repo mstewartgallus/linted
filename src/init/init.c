@@ -188,6 +188,11 @@ static linted_error linted_help(int fildes, char const *program_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
+struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME  "-init",
+    .open_current_working_directory = true
+};
+
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {

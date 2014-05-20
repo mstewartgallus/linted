@@ -21,11 +21,11 @@
 #include "linted/ko.h"
 
 linted_error linted_locale_missing_process_name(int fildes,
-                                                struct linted_str package_name)
+                                                char const * package_name)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_string(fildes, NULL, package_name)) != 0) {
         return errnum;
     }
 
