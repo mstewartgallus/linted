@@ -133,8 +133,6 @@ cbmc-lint: scripts/cbmcwrapper
 linted_CLANG_FORMATFLAGS=-i
 
 EXTRA_DIST+=\
-  include/linted/check.h\
-  include/linted/error.h\
   include/linted/rpc.h\
   include/linted/str.h
 

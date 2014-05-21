@@ -78,7 +78,6 @@ def output():
 
 #include "assets.h"
 
-#include "linted/check.h"
 #include "linted/util.h"
 
 static linted_assets_point const vertices[] = $vertices;
