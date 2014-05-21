@@ -80,10 +80,10 @@ doxygen:
 # verify these compiler specific changes
 
 .PHONY: frama-c-models
-frama-c-models:
-	$(MKDIR_P) frama-c-models
+json-c-models:
+	$(MKDIR_P) json-c-models
 	CONFIG=$$($(builddir)/config.status --config) &&\
-	cd frama-c-models &&\
+	cd json-c-models &&\
 	  (\
 	     echo $${CONFIG} &&\
 	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
@@ -92,12 +92,13 @@ frama-c-models:
 	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(abs_srcdir)/scripts/json-cc
 
+LINTED_FRAMA_C_BINARY=simulator
 .PHONY: frama-c-lint
 frama-c-lint:
-	BINARY=simulator &&\
-	(for II in $$($(srcdir)/scripts/flags frama-c-models/$${BINARY}); do\
+	BINARY=$(LINTED_FRAMA_C_BINARY) &&\
+	(for II in $$($(srcdir)/scripts/flags json-c-models/$${BINARY}); do\
 	  echo -cpp-extra-args="$${II}";\
-	done && $(srcdir)/scripts/files frama-c-models/$${BINARY}) | xargs\
+	done && $(srcdir)/scripts/files json-c-models/$${BINARY}) | xargs\
 	  $(FRAMA_C)\
 	   -quiet\
 	   -journal-disable\
