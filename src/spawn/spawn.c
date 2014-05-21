@@ -203,8 +203,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
                 if (-1 == setpgid(child, attr->pgroup)) {
                     linted_error errnum = errno;
 
-                    assert (errnum != EINVAL);
-                    assert (EACCES == errnum || EPERM == errnum || ESRCH == errnum);
+                    assert(errnum != EINVAL);
+                    assert(EACCES == errnum || EPERM == errnum ||
+                           ESRCH == errnum);
                 }
 
                 /**
@@ -228,10 +229,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
                     goto unmap_spawn_error;
                 }
 
-                struct f_owner_ex ex = {
-                    .type = F_OWNER_PGRP,
-                    .pid = 0 == attr->pgroup ? child : attr->pgroup
-                };
+                struct f_owner_ex ex = { .type = F_OWNER_PGRP,
+                                         .pid = 0 == attr->pgroup
+                                                    ? child
+                                                    : attr->pgroup };
                 if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
                     error_status = errno;
                     goto unmap_spawn_error;
@@ -246,7 +247,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
                  * Duplicate the read fd so that it is closed after the write
                  * fd.
                  */
-                int kill_fd_read_copy = fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
+                int kill_fd_read_copy =
+                    fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
                 if (-1 == kill_fd_read_copy) {
                     error_status = errno;
                     goto unmap_spawn_error;

@@ -41,8 +41,8 @@ It is insecure to run a game as root!\n"));
     }
 
     if (argc < 1) {
-        linted_locale_missing_process_name(STDERR_FILENO,
-                                           linted_start_config.canonical_process_name);
+        linted_locale_missing_process_name(
+            STDERR_FILENO, linted_start_config.canonical_process_name);
         return EXIT_FAILURE;
     }
 
@@ -54,7 +54,8 @@ It is insecure to run a game as root!\n"));
         if (-1 == cwd) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
-                                   program_name, linted_error_string_alloc(errno));
+                                   program_name,
+                                   linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
     } else {

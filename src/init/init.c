@@ -42,7 +42,7 @@
 #include <sys/types.h>
 
 #ifndef PR_SET_CHILD_SUBREAPER
-#define PR_SET_CHILD_SUBREAPER	36
+#define PR_SET_CHILD_SUBREAPER 36
 #endif
 
 #define BACKLOG 20
@@ -189,7 +189,7 @@ static linted_error linted_help(int fildes, char const *program_name,
                                 struct linted_str package_bugreport);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME  "-init",
+    .canonical_process_name = PACKAGE_NAME "-init",
     .open_current_working_directory = true
 };
 
@@ -1055,8 +1055,8 @@ static linted_error check_db(linted_ko cwd)
 
         struct linted_asynch_task_write write_task;
 
-        linted_asynch_write(&write_task, TMP_WRITE_FINISHED,
-                            tmp, data, data_size);
+        linted_asynch_write(&write_task, TMP_WRITE_FINISHED, tmp, data,
+                            data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 
         struct linted_asynch_task *completed_tasks[20];
@@ -1098,15 +1098,14 @@ close_db : {
     if (0 == errnum) {
         errnum = close_errnum;
     }
-    }
+}
 
-destroy_pool:
-    {
-        linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-        if (0 == errnum) {
-            errnum = destroy_errnum;
-        }
+destroy_pool : {
+    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+    if (0 == errnum) {
+        errnum = destroy_errnum;
     }
+}
 
     return errnum;
 }

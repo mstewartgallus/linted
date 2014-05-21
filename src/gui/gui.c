@@ -173,7 +173,7 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME  "-gui",
+    .canonical_process_name = PACKAGE_NAME "-gui",
     .open_current_working_directory = false
 };
 

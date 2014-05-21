@@ -21,7 +21,7 @@
 #include "linted/ko.h"
 
 linted_error linted_locale_missing_process_name(int fildes,
-                                                char const * package_name)
+                                                char const *package_name)
 {
     linted_error errnum;
 

@@ -50,7 +50,7 @@ static linted_error failure(int fildes, char const *program_name,
                             struct linted_str message, linted_error errnum);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME  "-control",
+    .canonical_process_name = PACKAGE_NAME "-control",
     .open_current_working_directory = false
 };
 

@@ -27,7 +27,7 @@
  */
 
 linted_error linted_locale_missing_process_name(linted_ko ko,
-                                                char const * package_name);
+                                                char const *package_name);
 
 linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
                                          char const *bad_option);
