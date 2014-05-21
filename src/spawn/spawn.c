@@ -470,7 +470,11 @@ static size_t align_to_page_size(size_t size)
     assert(page_size > 0);
 
     /* Round up to a multiple of page size */
-    return (size / page_size + 1u) * page_size;
+    size_t remainder = size % page_size;
+    if (0 == remainder)
+        return size;
+
+    return size - remainder + page_size;
 }
 
 static void exit_with_error(volatile struct spawn_error *spawn_error,
