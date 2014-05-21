@@ -674,14 +674,14 @@ shutdown : {
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
     switch (completed_task->task_action) {
-    default:
-        assert(false);
-
     case ON_RECEIVE_UPDATER_EVENT:
         return on_receive_updater_event(completed_task);
 
     case ON_SENT_CONTROLLER_EVENT:
         return on_sent_controller_event(completed_task);
+
+    default:
+        assert(false);
     }
 }
 

@@ -23,9 +23,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct linted_start_envpair {
+    char const * name;
+    char const ** value;
+};
+
 struct linted_start_config
 {
     char const *canonical_process_name;
+    struct linted_start_envpair const * const envpairs;
     bool open_current_working_directory : 1;
 };
 
