@@ -70,6 +70,7 @@ struct spawn_error
     linted_error errnum;
 };
 
+static size_t align_to_page_size(size_t size);
 static void exit_with_error(volatile struct spawn_error *spawn_error,
                             linted_error errnum);
 
@@ -167,11 +168,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
      * So adddup2 works use memory mapping instead of a pipe to
      * communicate an error.
      */
-    long page_size = sysconf(_SC_PAGESIZE);
-
-    /* Align size to the page length  */
-    size_t spawn_error_length =
-        ((sizeof(struct spawn_error) + page_size - 1) / page_size) * page_size;
+    size_t spawn_error_length = align_to_page_size(sizeof(struct spawn_error));
 
     volatile struct spawn_error *spawn_error =
         mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
@@ -463,6 +460,17 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
 
     exit_with_error(spawn_error, errno);
     return 0;
+}
+
+static size_t align_to_page_size(size_t size)
+{
+    size_t page_size = sysconf(_SC_PAGESIZE);
+
+    /* This should always be true */
+    assert(page_size > 0);
+
+    /* Round up to a multiple of page size */
+    return (size / page_size + 1u) * page_size;
 }
 
 static void exit_with_error(volatile struct spawn_error *spawn_error,

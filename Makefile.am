@@ -106,7 +106,6 @@ frama-c-lint:
 	   -warn-unsigned-downcast\
 	   -warn-unsigned-overflow\
 	   -warn-decimal-float all\
-	   -cpp-extra-args="-I$$($(FRAMA_C) -print-path)/libc"\
 	   -cpp-extra-args='-C'
 
 .PHONY: cbmc-models
