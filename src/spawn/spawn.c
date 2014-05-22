@@ -70,7 +70,6 @@ struct spawn_error
     linted_error errnum;
 };
 
-
 static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[]);
 static size_t align_to_page_size(size_t size);

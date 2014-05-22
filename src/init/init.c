@@ -147,7 +147,8 @@ struct connection
     bool has_reply_ready;
 };
 
-struct connection_pool {
+struct connection_pool
+{
     struct connection connections[MAX_MANAGE_CONNECTIONS];
     size_t count;
 };
@@ -170,14 +171,15 @@ static linted_error on_new_connection(linted_manager new_socket,
 
 static linted_error on_connection_recv_request(
     struct linted_asynch_pool *pool, struct connection *connection,
-    struct connection_pool *connection_pool,
-    union service_config const *config, union service const *services);
-static linted_error remove_connection(struct connection *connection,
-                                      struct connection_pool *connection_pool);
+    struct connection_pool *connection_pool, union service_config const *config,
+    union service const *services);
 
 static linted_error check_db(linted_ko cwd);
 
-static void connection_pool_init(struct connection_pool *pool);
+static linted_error connection_pool_create(struct connection_pool **poolp);
+static linted_error connection_pool_destroy(struct connection_pool *pool);
+static linted_error connection_remove(struct connection *connection,
+                                      struct connection_pool *connection_pool);
 
 static linted_error linted_help(int fildes, char const *program_name,
                                 struct linted_str package_name,
@@ -455,7 +457,8 @@ done:
 static linted_error run_game(char const *process_name,
                              union service_config const *config,
                              linted_ko logger_dummy, linted_ko updater_dummy,
-                             linted_ko shutdowner_dummy, linted_ko controller_dummy)
+                             linted_ko shutdowner_dummy,
+                             linted_ko controller_dummy)
 {
     linted_error errnum = 0;
 
@@ -598,13 +601,15 @@ static linted_error run_game(char const *process_name,
 
     char *logger_buffer = malloc(LINTED_LOGGER_LOG_MAX);
     if (NULL == logger_buffer) {
-        goto close_connections;
+        goto close_new_connections;
     }
 
     {
-        struct connection_pool connection_pool;
+        struct connection_pool *connection_pool;
 
-        connection_pool_init(&connection_pool);
+        if ((errnum = connection_pool_create(&connection_pool)) != 0) {
+            goto free_logger_buffer;
+        }
 
         struct service_process *gui_service =
             &services[LINTED_SERVICE_GUI].process;
@@ -659,7 +664,7 @@ static linted_error run_game(char const *process_name,
 
                     if ((errnum = on_new_connection(returned_ko, pool, config,
                                                     services,
-                                                    &connection_pool)) != 0) {
+                                                    connection_pool)) != 0) {
                         goto close_connections;
                     }
                     break;
@@ -730,11 +735,13 @@ static linted_error run_game(char const *process_name,
                            CONNECTION + MAX_MANAGE_CONNECTIONS);
 
                     size_t jj = completed_task->task_action - CONNECTION;
-                    struct connection *connection = &connection_pool.connections[jj];
+                    struct connection *connection =
+                        &connection_pool->connections[jj];
 
                     if ((errnum = completed_task->errnum) != 0) {
                         /* The other end did something bad */
-                        if ((errnum = remove_connection(connection, &connection_pool)) != 0) {
+                        if ((errnum = connection_remove(
+                                 connection, connection_pool)) != 0) {
                             goto close_connections;
                         }
                         break;
@@ -742,13 +749,13 @@ static linted_error run_game(char const *process_name,
 
                     if (!connection->has_reply_ready) {
                         if ((errnum = on_connection_recv_request(
-                                 pool, connection, &connection_pool,
-                                 config, services)) != 0) {
+                                 pool, connection, connection_pool, config,
+                                 services)) != 0) {
                             goto close_connections;
                         }
                     } else {
-                        if ((errnum = remove_connection(
-                                 connection, &connection_pool)) != 0) {
+                        if ((errnum = connection_remove(
+                                 connection, connection_pool)) != 0) {
                             goto close_connections;
                         }
                     }
@@ -758,19 +765,15 @@ static linted_error run_game(char const *process_name,
             }
         }
 
-    close_connections:
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connection_pool.connections); ++ii) {
-            struct connection *const connection = &connection_pool.connections[ii];
-            linted_ko const ko = connection->ko;
-            if (ko != -1) {
-                linted_error close_errnum = linted_ko_close(ko);
-                if (0 == errnum) {
-                    errnum = close_errnum;
-                }
-            }
+    close_connections : {
+        linted_error close_errnum = connection_pool_destroy(connection_pool);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
     }
+    }
 
+free_logger_buffer:
     free(logger_buffer);
 
 close_new_connections : {
@@ -899,8 +902,8 @@ close_new_socket : {
 
 static linted_error on_connection_recv_request(
     struct linted_asynch_pool *pool, struct connection *connection,
-    struct connection_pool *connection_pool,
-    union service_config const *config, union service const *services)
+    struct connection_pool *connection_pool, union service_config const *config,
+    union service const *services)
 {
     linted_error errnum;
 
@@ -940,7 +943,7 @@ static linted_error on_connection_recv_request(
                     break;
 
                 default:
-                    goto remove_connection;
+                    goto connection_remove;
                 }
                 break;
             }
@@ -978,7 +981,7 @@ static linted_error on_connection_recv_request(
                     break;
 
                 default:
-                    goto remove_connection;
+                    goto connection_remove;
                 }
             }
 
@@ -998,20 +1001,9 @@ static linted_error on_connection_recv_request(
 
     return 0;
 
-remove_connection:
-    remove_connection(connection, connection_pool);
+connection_remove:
+    connection_remove(connection, connection_pool);
     return errnum;
-}
-
-static linted_error remove_connection(struct connection *connection,
-                                      struct connection_pool *connection_pool)
-{
-    int fd = connection->ko;
-
-    connection->ko = -1;
-    --connection_pool->count;
-
-    return linted_ko_close(fd);
 }
 
 static linted_error check_db(linted_ko cwd)
@@ -1116,13 +1108,49 @@ destroy_pool : {
     return errnum;
 }
 
-static void connection_pool_init(struct connection_pool *pool)
+static linted_error connection_pool_create(struct connection_pool **poolp)
 {
+    struct connection_pool *pool = malloc(sizeof *pool);
+    if (NULL == pool) {
+        return errno;
+    }
+
     pool->count = 0;
 
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         pool->connections[ii].ko = -1;
     }
+
+    *poolp = pool;
+    return 0;
+}
+
+static linted_error connection_pool_destroy(struct connection_pool *pool)
+{
+    linted_error errnum = 0;
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+        struct connection *const connection = &pool->connections[ii];
+        linted_ko const ko = connection->ko;
+        if (ko != -1) {
+            linted_error close_errnum = linted_ko_close(ko);
+            if (0 == errnum) {
+                errnum = close_errnum;
+            }
+        }
+    }
+    free(pool);
+    return errnum;
+}
+
+static linted_error connection_remove(struct connection *connection,
+                                      struct connection_pool *pool)
+{
+    int fd = connection->ko;
+
+    connection->ko = -1;
+    --pool->count;
+
+    return linted_ko_close(fd);
 }
 
 static linted_error linted_help(int fildes, char const *program_name,
