@@ -132,31 +132,4 @@ cbmc-lint: scripts/cbmcwrapper
 
 linted_CLANG_FORMATFLAGS=-i
 
-EXTRA_DIST+=\
-  include/linted/rpc.h\
-  include/linted/str.h
-
-include src/gui/Makefile.am
-include src/init/Makefile.am
-include src/control/Makefile.am
-include src/simulator/Makefile.am
-
-include src/asynch/Makefile.am
-include src/db/Makefile.am
-include src/error/Makefile.am
-include src/io/Makefile.am
-include src/ko/Makefile.am
-include src/locale/Makefile.am
-include src/mq/Makefile.am
-include src/queue/Makefile.am
-include src/sandbox/Makefile.am
-include src/service/Makefile.am
-include src/start/Makefile.am
-include src/spawn/Makefile.am
-include src/util/Makefile.am
-
-include src/controller/Makefile.am
-include src/logger/Makefile.am
-include src/manager/Makefile.am
-include src/shutdowner/Makefile.am
-include src/updater/Makefile.am
+include src/Makefile.am
