@@ -70,6 +70,9 @@ struct spawn_error
     linted_error errnum;
 };
 
+
+static int execveat(int dirfd, const char *filename, char *const argv[],
+                    char *const envp[]);
 static size_t align_to_page_size(size_t size);
 static void exit_with_error(volatile struct spawn_error *spawn_error,
                             linted_error errnum);
@@ -153,12 +156,12 @@ void linted_spawn_file_actions_destroy(
     free(file_actions);
 }
 
-linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
+linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char *const argv[], char *const envp[])
 {
-    bool is_relative_path = path[0] != '/';
+    bool is_relative_path = filename[0] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     if (is_relative_path && !at_fdcwd && dirfd < 0) {
         return EBADF;
@@ -446,20 +449,37 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *path,
         exit_with_error(spawn_error, errno);
     }
 
-    if (is_relative_path && !at_fdcwd) {
-        char *new_path =
-            malloc(strlen("/proc/self/fd/") + 10 + strlen(path) + 1);
-        if (NULL == new_path) {
-            exit_with_error(spawn_error, errno);
-        }
-        sprintf(new_path, "/proc/self/fd/%i/%s", dirfd_copy, path);
-        path = new_path;
-    }
-
-    execve(path, argv, envp);
+    execveat(dirfd_copy, filename, argv, envp);
 
     exit_with_error(spawn_error, errno);
     return 0;
+}
+
+static int execveat(int dirfd, const char *filename, char *const argv[],
+                    char *const envp[])
+{
+    bool is_relative_path = filename[0] != '/';
+    bool at_fdcwd = AT_FDCWD == dirfd;
+    char *new_path = NULL;
+
+    if (is_relative_path && !at_fdcwd) {
+        new_path = malloc(strlen("/proc/self/fd/") + 10 + strlen(filename) + 1);
+        if (NULL == new_path) {
+            return -1;
+        }
+        sprintf(new_path, "/proc/self/fd/%i/%s", dirfd, filename);
+        filename = new_path;
+    }
+
+    execve(filename, argv, envp);
+
+    {
+        int errnum = errno;
+        free(new_path);
+        errno = errnum;
+    }
+
+    return -1;
 }
 
 static size_t align_to_page_size(size_t size)
