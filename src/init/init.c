@@ -152,20 +152,15 @@ struct connection_pool {
     size_t count;
 };
 
-static linted_error updater_pair(int fildes[2])
-{
-    return linted_updater_pair(fildes, O_NONBLOCK, O_NONBLOCK);
-}
+static linted_error run_game(char const *process_name,
+                             union service_config const *config,
+                             linted_ko logger_dummy, linted_ko updater_dummy,
+                             linted_ko shutdowner_dummy,
+                             linted_ko controller_dummy);
 
-static linted_error controller_pair(int fildes[2])
-{
-    return linted_controller_pair(fildes, O_NONBLOCK, O_NONBLOCK);
-}
-
-static linted_error shutdowner_pair(int fildes[2])
-{
-    return linted_shutdowner_pair(fildes, O_NONBLOCK, 0);
-}
+static linted_error updater_pair(linted_ko ko[2]);
+static linted_error controller_pair(linted_ko ko[2]);
+static linted_error shutdowner_pair(linted_ko ko[2]);
 
 static linted_error on_new_connection(linted_manager new_socket,
                                       struct linted_asynch_pool *pool,
@@ -181,11 +176,6 @@ static linted_error remove_connection(struct connection *connection,
                                       struct connection_pool *connection_pool);
 
 static linted_error check_db(linted_ko cwd);
-
-static linted_error run_game(char const *process_name,
-                             union service_config const *config,
-                             int logger_dummy, int updater_dummy,
-                             int shutdowner_dummy, int controller_dummy);
 
 static linted_error linted_help(int fildes, char const *program_name,
                                 struct linted_str package_name,
@@ -462,8 +452,8 @@ done:
 
 static linted_error run_game(char const *process_name,
                              union service_config const *config,
-                             int logger_dummy, int updater_dummy,
-                             int shutdowner_dummy, int controller_dummy)
+                             linted_ko logger_dummy, linted_ko updater_dummy,
+                             linted_ko shutdowner_dummy, linted_ko controller_dummy)
 {
     linted_error errnum = 0;
 
@@ -842,6 +832,21 @@ exit_services:
     }
 
     return errnum;
+}
+
+static linted_error updater_pair(linted_ko ko[2])
+{
+    return linted_updater_pair(ko, O_NONBLOCK, O_NONBLOCK);
+}
+
+static linted_error controller_pair(linted_ko ko[2])
+{
+    return linted_controller_pair(ko, O_NONBLOCK, O_NONBLOCK);
+}
+
+static linted_error shutdowner_pair(linted_ko ko[2])
+{
+    return linted_shutdowner_pair(ko, O_NONBLOCK, 0);
 }
 
 static linted_error on_new_connection(linted_manager new_socket,
