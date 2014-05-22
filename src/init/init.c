@@ -177,6 +177,8 @@ static linted_error remove_connection(struct connection *connection,
 
 static linted_error check_db(linted_ko cwd);
 
+static void connection_pool_init(struct connection_pool *pool);
+
 static linted_error linted_help(int fildes, char const *program_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
@@ -602,10 +604,7 @@ static linted_error run_game(char const *process_name,
     {
         struct connection_pool connection_pool;
 
-        connection_pool.count = 0;
-        for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(connection_pool.connections); ++ii) {
-            connection_pool.connections[ii].ko = -1;
-        }
+        connection_pool_init(&connection_pool);
 
         struct service_process *gui_service =
             &services[LINTED_SERVICE_GUI].process;
@@ -1115,6 +1114,15 @@ destroy_pool : {
 }
 
     return errnum;
+}
+
+static void connection_pool_init(struct connection_pool *pool)
+{
+    pool->count = 0;
+
+    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+        pool->connections[ii].ko = -1;
+    }
 }
 
 static linted_error linted_help(int fildes, char const *program_name,
