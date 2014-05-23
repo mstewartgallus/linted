@@ -77,8 +77,6 @@ static void run_task(struct linted_asynch_pool *pool,
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
-static void run_task_open(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
 static void run_task_poll(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
 static void run_task_read(struct linted_asynch_pool *pool,
@@ -285,17 +283,6 @@ linted_error linted_asynch_pool_bind_ko(struct linted_asynch_pool *pool,
         return errno;
     }
     return 0;
-}
-
-void linted_asynch_open(struct linted_asynch_task_open *task, int task_action,
-                        linted_ko dirko, char const *pathname,
-                        linted_ko_flags flags)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_OPEN, task_action);
-
-    task->dirko = dirko;
-    task->pathname = pathname;
-    task->flags = flags;
 }
 
 void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
@@ -505,10 +492,6 @@ static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {
     switch (task->type) {
-    case LINTED_ASYNCH_TASK_OPEN:
-        run_task_open(pool, task);
-        break;
-
     case LINTED_ASYNCH_TASK_POLL:
         run_task_poll(pool, task);
         break;
@@ -578,72 +561,6 @@ static void send_io_command(struct linted_asynch_pool *pool,
         assert(errnum != EPERM);
 
         task->errnum = errnum;
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
-    }
-}
-
-static void run_task_open(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
-{
-    linted_error errnum;
-    int fildes = -1;
-
-    struct linted_asynch_task_open *task_open =
-        LINTED_DOWNCAST(struct linted_asynch_task_open, task);
-
-    linted_ko dirko = task_open->dirko;
-    char const * pathname = task_open->pathname;
-    linted_ko_flags flags = task_open->flags;
-
-    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) !=
-        0u) {
-        errnum = EINVAL;
-        goto send_task;
-    }
-
-    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0u;
-    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
-    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
-
-    if (ko_rdonly && ko_wronly) {
-        errnum = EINVAL;
-        goto send_task;
-    }
-
-    if (ko_rdwr && ko_rdonly) {
-        errnum = EINVAL;
-        goto send_task;
-    }
-
-    if (ko_rdwr && ko_wronly) {
-        errnum = EINVAL;
-        goto send_task;
-    }
-
-    int oflags = O_CLOEXEC;
-
-    if (ko_rdonly) {
-        oflags |= O_RDONLY;
-    }
-
-    if (ko_wronly) {
-        oflags |= O_WRONLY;
-    }
-
-    if (ko_rdwr) {
-        oflags |= O_RDWR;
-    }
-
-    do {
-        fildes = openat(dirko, pathname, oflags);
-        errnum = -1 == fildes ? errno : 0;
-    } while (EINTR == errnum);
-
-send_task:
-    task_open->ko = fildes;
-    task->errnum = errnum;
-
-    if (pool != NULL) {
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
 }

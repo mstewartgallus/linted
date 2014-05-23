@@ -42,7 +42,6 @@
 struct linted_asynch_pool;
 
 enum {
-    LINTED_ASYNCH_TASK_OPEN,
     LINTED_ASYNCH_TASK_POLL,
     LINTED_ASYNCH_TASK_READ,
     LINTED_ASYNCH_TASK_WRITE,
@@ -58,15 +57,6 @@ struct linted_asynch_task
     linted_error errnum;
     unsigned type;
     unsigned task_action;
-};
-
-struct linted_asynch_task_open
-{
-    struct linted_asynch_task parent;
-    linted_ko ko;
-    linted_ko dirko;
-    char const *pathname;
-    linted_ko_flags flags;
 };
 
 struct linted_asynch_task_poll
@@ -148,10 +138,6 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 
 linted_error linted_asynch_pool_bind_ko(struct linted_asynch_pool *pool,
                                         linted_ko ko);
-
-void linted_asynch_open(struct linted_asynch_task_open *task, int task_action,
-                        linted_ko dirko, char const *pathname,
-                        linted_ko_flags flags);
 
 void linted_asynch_poll(struct linted_asynch_task_poll *task,
                         int task_action, linted_ko ko, short events);

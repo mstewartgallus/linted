@@ -71,14 +71,68 @@ linted_error linted_ko_strtofd(char const *str, int *fd)
 
 linted_error linted_ko_dummy(linted_ko *kop)
 {
-    int fildes = openat(-1, "/dev/null", O_RDONLY | O_CLOEXEC);
-    if (-1 == fildes) {
-        return errno;
+    return linted_ko_open(kop, -1, "/dev/null", LINTED_KO_RDONLY);
+}
+
+linted_error linted_ko_open(linted_ko *kop,
+                            linted_ko dirko, char const *pathname,
+                            linted_ko_flags flags)
+{
+    linted_error errnum;
+
+    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) !=
+        0u) {
+        return EINVAL;
+    }
+
+    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0u;
+    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
+    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
+
+    if (ko_rdonly && ko_wronly) {
+        return EINVAL;
+    }
+
+    if (ko_rdwr && ko_rdonly) {
+        return EINVAL;
+    }
+
+    if (ko_rdwr && ko_wronly) {
+        return EINVAL;
+    }
+
+    /*
+     * Always, be safe for execs and use O_NONBLOCK because asynch
+     * functions handle that anyways and open may block otherwise.
+     */
+    int oflags = O_CLOEXEC | O_NONBLOCK;
+
+    if (ko_rdonly) {
+        oflags |= O_RDONLY;
+    }
+
+    if (ko_wronly) {
+        oflags |= O_WRONLY;
+    }
+
+    if (ko_rdwr) {
+        oflags |= O_RDWR;
+    }
+
+    int fildes;
+    do {
+        fildes = openat(dirko, pathname, oflags);
+        errnum = -1 == fildes ? errno : 0;
+    } while (EINTR == errnum);
+    if (errnum != 0) {
+        return errnum;
     }
 
     *kop = fildes;
+
     return 0;
 }
+
 
 linted_error linted_ko_close(linted_ko ko)
 {
