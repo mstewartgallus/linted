@@ -34,8 +34,7 @@ struct linted_shutdowner_task
     char dummy[1];
 };
 
-linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
-                                    int wflags);
+linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int flags);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 

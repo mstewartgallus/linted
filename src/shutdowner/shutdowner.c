@@ -30,15 +30,18 @@ struct message
     char dummy;
 };
 
-linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
-                                    int wflags)
+linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int flags)
 {
+    if (flags != 0) {
+        return EINVAL;
+    }
+
     struct linted_mq_attr attr;
 
     attr.maxmsg = 1;
     attr.msgsize = 1;
 
-    return linted_mq_pair(shutdowner, &attr, rflags, wflags);
+    return linted_mq_pair(shutdowner, &attr, 0);
 }
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)

@@ -73,8 +73,7 @@ struct linted_updater_task_receive
                  LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
-linted_error linted_updater_pair(linted_updater updater[2], int rflags,
-                                 int wflags);
+linted_error linted_updater_pair(linted_updater updater[2], int flags);
 
 void linted_updater_send(struct linted_updater_task_send *task, int task_id,
                          linted_updater updater,

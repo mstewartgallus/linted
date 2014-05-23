@@ -25,8 +25,12 @@
 #include <string.h>
 
 linted_error linted_controller_pair(linted_controller controller[2],
-                                    int readflags, int writeflags)
+                                    int flags)
 {
+    if (flags != 0) {
+        return EINVAL;
+    }
+
     struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
@@ -34,7 +38,7 @@ linted_error linted_controller_pair(linted_controller controller[2],
     attr.msgsize =
         LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
 
-    return linted_mq_pair(controller, &attr, readflags, writeflags);
+    return linted_mq_pair(controller, &attr, 0);
 }
 
 void linted_controller_send(struct linted_controller_task_send *task,

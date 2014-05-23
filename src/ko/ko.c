@@ -75,7 +75,7 @@ linted_error linted_ko_dummy(linted_ko *kop)
 }
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, linted_ko_flags flags)
+                            char const *pathname, int flags)
 {
     linted_error errnum;
 

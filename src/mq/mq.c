@@ -33,7 +33,7 @@
  */
 
 linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
-                            int rflags, int wflags)
+                            int flags)
 {
     struct mq_attr mq_attr;
     char random_mq_name[sizeof TEMPLATE_NAME];
@@ -80,14 +80,14 @@ linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
         }
 
         write_end =
-            mq_open(random_mq_name, wflags | O_WRONLY | O_CREAT | O_EXCL,
+            mq_open(random_mq_name, O_WRONLY | O_CREAT | O_EXCL | O_NONBLOCK,
                     S_IRUSR, &mq_attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
         goto exit_with_error;
     }
 
-    read_end = mq_open(random_mq_name, rflags | O_RDONLY);
+    read_end = mq_open(random_mq_name, O_RDONLY | O_NONBLOCK);
     if (-1 == read_end) {
         goto exit_with_error_and_close_write_end;
     }

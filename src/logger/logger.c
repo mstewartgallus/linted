@@ -29,7 +29,7 @@ linted_error linted_logger_pair(linted_logger logger[2])
     attr.maxmsg = 10;
     attr.msgsize = LINTED_LOGGER_LOG_MAX;
 
-    return linted_mq_pair(logger, &attr, 0, 0);
+    return linted_mq_pair(logger, &attr, 0);
 }
 
 /**

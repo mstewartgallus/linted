@@ -23,9 +23,12 @@
 #include <stddef.h>
 #include <string.h>
 
-linted_error linted_updater_pair(linted_updater updater[2], int rflags,
-                                 int wflags)
+linted_error linted_updater_pair(linted_updater updater[2], int flags)
 {
+    if (flags != 0) {
+        return EINVAL;
+    }
+
     struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
@@ -33,7 +36,7 @@ linted_error linted_updater_pair(linted_updater updater[2], int rflags,
     attr.msgsize =
         LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
-    return linted_mq_pair(updater, &attr, rflags, wflags);
+    return linted_mq_pair(updater, &attr, 0);
 }
 
 void linted_updater_send(struct linted_updater_task_send *task, int task_id,

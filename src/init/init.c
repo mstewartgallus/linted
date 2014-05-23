@@ -34,7 +34,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -839,17 +838,17 @@ exit_services:
 
 static linted_error updater_pair(linted_ko ko[2])
 {
-    return linted_updater_pair(ko, O_NONBLOCK, O_NONBLOCK);
+    return linted_updater_pair(ko, 0);
 }
 
 static linted_error controller_pair(linted_ko ko[2])
 {
-    return linted_controller_pair(ko, O_NONBLOCK, O_NONBLOCK);
+    return linted_controller_pair(ko, 0);
 }
 
 static linted_error shutdowner_pair(linted_ko ko[2])
 {
-    return linted_shutdowner_pair(ko, O_NONBLOCK, 0);
+    return linted_shutdowner_pair(ko, 0);
 }
 
 static linted_error on_new_connection(linted_manager new_socket,

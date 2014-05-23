@@ -48,20 +48,18 @@ struct linted_ko_vtable
 #error no known most primitive platform kernel object type
 #endif
 
-#define LINTED_KO_RDONLY 1u
-#define LINTED_KO_WRONLY (1u << 2u)
-#define LINTED_KO_RDWR (1u << 3u)
+#define LINTED_KO_RDONLY 1
+#define LINTED_KO_WRONLY (1 << 2)
+#define LINTED_KO_RDWR (1 << 3)
 
-#define LINTED_KO_SYNC (1u << 4u)
-
-typedef unsigned linted_ko_flags;
+#define LINTED_KO_SYNC (1 << 4)
 
 linted_error linted_ko_strtofd(char const *ptr, linted_ko *ko);
 
 linted_error linted_ko_dummy(linted_ko *kop);
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, linted_ko_flags flags);
+                            char const *pathname, int flags);
 
 /**
  * The linted_ko_close function closes a kernel object.
