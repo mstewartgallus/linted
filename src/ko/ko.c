@@ -80,53 +80,6 @@ linted_error linted_ko_dummy(linted_ko *kop)
     return 0;
 }
 
-linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, linted_ko_flags flags)
-{
-    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) !=
-        0u) {
-        return EINVAL;
-    }
-
-    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0u;
-    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
-    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
-
-    if (ko_rdonly && ko_wronly) {
-        return EINVAL;
-    }
-
-    if (ko_rdwr && ko_rdonly) {
-        return EINVAL;
-    }
-
-    if (ko_rdwr && ko_wronly) {
-        return EINVAL;
-    }
-
-    int oflags = O_CLOEXEC;
-
-    if (ko_rdonly) {
-        oflags |= O_RDONLY;
-    }
-
-    if (ko_wronly) {
-        oflags |= O_WRONLY;
-    }
-
-    if (ko_rdwr) {
-        oflags |= O_RDWR;
-    }
-
-    int fildes = openat(dirko, pathname, oflags);
-    if (-1 == fildes) {
-        return errno;
-    }
-
-    *kop = fildes;
-    return 0;
-}
-
 linted_error linted_ko_close(linted_ko ko)
 {
     /*
