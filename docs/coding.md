@@ -11,11 +11,6 @@ for code quality are not arbitrary and must be always followed.
 
 Code quality:
 
-- Understand but do not slavishly follow the CERT C coding standards
-  (as of 2014-02-15 available at
-  https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard
-  ).
-
 - Do not leak data through structure padding.
 
   When one copies data from structures using mq_send, write or any
@@ -24,6 +19,11 @@ Code quality:
   (as of 2014-02-15 available at
   https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leakage+in+structure+padding
   ).
+
+* Do not leak capabilities such as file descriptors to new processes
+
+  This is a security risk and could allow unprivileged processes to
+  escape sandboxing.
 
 - Maintain compatibility with all supported targets
 
@@ -74,8 +74,14 @@ Code quality:
     example, a conforming implementation could randomly generate EIO
     not when an actual input output error occurs but when some
     recoverable condition happens. This project accepts the small loss
-    of portability that occurs by checking for errors. Such a
-    corrupted task can only abort.
+    of portability that occurs by checking for errors.
+
+* Do not needlessly block threads
+  
+- Understand but do not slavishly follow the CERT C coding standards
+  (as of 2014-02-15 available at
+  https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard
+  ).
 
 Coding style:
 
@@ -93,7 +99,16 @@ Coding style:
 
 - We have `LINTED_LAZY_DEV` for error cases that the developer is too
   lazy to properly handle at the moment. These should never appear in
-  release builds.
+  release versions.
+
+- To make it easy to "not leak capabilities such as file descriptors
+  to new processes" we set capabilities to not be inherited by
+  default. For example, most files should be opened with the
+  `O_CLOEXEC` flag.
+
+- To make it easy to "not needlessly block threads" we use nonblocking
+  functionality by default. For example, most files should be opened
+  with the `O_NONBLOCK` flag.
 
 - Use the Linux kernel coding style but with an indent level of 4 and
   no tabs.
