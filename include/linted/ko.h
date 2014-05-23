@@ -52,6 +52,8 @@ struct linted_ko_vtable
 #define LINTED_KO_WRONLY (1u << 2u)
 #define LINTED_KO_RDWR (1u << 3u)
 
+#define LINTED_KO_SYNC (1u << 4u)
+
 typedef unsigned linted_ko_flags;
 
 linted_error linted_ko_strtofd(char const *ptr, linted_ko *ko);

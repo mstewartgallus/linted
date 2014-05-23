@@ -89,6 +89,8 @@ linted_error linted_ko_open(linted_ko *kop,
     bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
     bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
 
+    bool ko_sync = (flags & LINTED_KO_SYNC) != 0u;
+
     if (ko_rdonly && ko_wronly) {
         return EINVAL;
     }
@@ -117,6 +119,10 @@ linted_error linted_ko_open(linted_ko *kop,
 
     if (ko_rdwr) {
         oflags |= O_RDWR;
+    }
+
+    if (ko_sync) {
+        oflags |= O_SYNC;
     }
 
     int fildes;

@@ -170,8 +170,10 @@ try_to_open_lock_again:
     }
 
     /* Sole user of the database now */
-    int version_file = openat(the_db, "version", O_RDONLY | O_CLOEXEC);
-    if (version_file != -1) {
+    int version_file;
+    switch (errnum = linted_ko_open(&version_file, the_db, "version",
+                                    LINTED_KO_RDONLY)) {
+    case 0: {
         /* Opening a created database */
         off_t version_file_size;
         {
@@ -220,13 +222,12 @@ try_to_open_lock_again:
         if (0 == errnum) {
             errnum = close_errnum;
         }
-    }
-    } else {
-        linted_error open_errnum = errno;
-        if (open_errnum != ENOENT) {
-            errnum = open_errnum;
-            goto unlock_semaphore;
         }
+        break;
+    }
+
+    case ENOENT: {
+        errnum = 0;
 
         /* Creating the initial database */
         if (!db_creat) {
@@ -265,6 +266,8 @@ try_to_open_lock_again:
             errnum = errno;
             goto unlock_semaphore;
         }
+        break;
+    }
     }
 
 unlock_semaphore:
@@ -365,9 +368,11 @@ static linted_error lock_db(linted_db *dbp)
 {
     linted_error errnum;
 
-    int lock_file = openat(*dbp, GLOBAL_LOCK, O_RDWR | O_SYNC | O_CLOEXEC);
-    if (-1 == lock_file) {
-        return errno;
+    int lock_file;
+
+    if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
+                                 LINTED_KO_RDWR)) != 0) {
+        return errnum;
     }
 
     size_t page_size = sysconf(_SC_PAGESIZE);
@@ -402,9 +407,10 @@ static linted_error unlock_db(linted_db *dbp)
 {
     linted_error errnum;
 
-    int lock_file = openat(*dbp, GLOBAL_LOCK, O_RDWR | O_SYNC | O_CLOEXEC);
-    if (-1 == lock_file) {
-        return errno;
+    int lock_file;
+    if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
+                                 LINTED_KO_RDWR)) != 0) {
+        return errnum;
     }
 
     size_t page_size = sysconf(_SC_PAGESIZE);
