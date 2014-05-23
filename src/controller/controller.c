@@ -27,19 +27,14 @@
 linted_error linted_controller_pair(linted_controller controller[2],
                                     int readflags, int writeflags)
 {
-    struct mq_attr attr;
+    struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 1;
-    attr.mq_msgsize =
+    attr.maxmsg = 1;
+    attr.msgsize =
         LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
 
     return linted_mq_pair(controller, &attr, readflags, writeflags);
-}
-
-linted_error linted_controller_close(linted_controller controller)
-{
-    return -1 == mq_close(controller) ? errno : 0;
 }
 
 void linted_controller_send(struct linted_controller_task_send *task,

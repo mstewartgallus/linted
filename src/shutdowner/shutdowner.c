@@ -33,11 +33,10 @@ struct message
 linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
                                     int wflags)
 {
-    struct mq_attr attr;
-    memset(&attr, 0, sizeof attr);
+    struct linted_mq_attr attr;
 
-    attr.mq_maxmsg = 1;
-    attr.mq_msgsize = 1;
+    attr.maxmsg = 1;
+    attr.msgsize = 1;
 
     return linted_mq_pair(shutdowner, &attr, rflags, wflags);
 }
@@ -45,7 +44,12 @@ linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int rflags,
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)
 {
     char dummy = 0;
-    return -1 == mq_send(shutdowner, &dummy, sizeof dummy, 0) ? errno : 0;
+    struct linted_asynch_task_mq_send send_task;
+
+    linted_asynch_mq_send(&send_task, 0, shutdowner, &dummy, 1);
+    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
+
+    return LINTED_UPCAST(&send_task)->errnum;
 }
 
 void linted_shutdowner_receive(struct linted_shutdowner_task *task, int task_id,
@@ -53,9 +57,4 @@ void linted_shutdowner_receive(struct linted_shutdowner_task *task, int task_id,
 {
     linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, shutdowner,
                              &task->dummy[0], 1);
-}
-
-linted_error linted_shutdowner_close(linted_shutdowner shutdowner)
-{
-    return -1 == mq_close(shutdowner) ? errno : 0;
 }

@@ -19,4 +19,4 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 %C%_libupdater_la_SOURCES=\
   %D%/updater.c\
   include/linted/updater.h
-%C%_libupdater_la_LIBADD=src/asynch/libasynch.la src/mq/libmq.la -lrt
+%C%_libupdater_la_LIBADD=src/asynch/libasynch.la src/mq/libmq.la

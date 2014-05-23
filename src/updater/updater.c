@@ -26,11 +26,11 @@
 linted_error linted_updater_pair(linted_updater updater[2], int rflags,
                                  int wflags)
 {
-    struct mq_attr attr;
+    struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 1;
-    attr.mq_msgsize =
+    attr.maxmsg = 1;
+    attr.msgsize =
         LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
     return linted_mq_pair(updater, &attr, rflags, wflags);
@@ -102,9 +102,4 @@ void linted_updater_decode(struct linted_updater_task_receive const *task,
     struct linted_rpc_uint32 y_rotation;
     memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
     update->y_rotation = linted_rpc_unpack_uint32(y_rotation);
-}
-
-linted_error linted_updater_close(linted_updater const updater)
-{
-    return -1 == mq_close(updater) ? errno : 0;
 }

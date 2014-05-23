@@ -18,8 +18,8 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/mq.h"
 
-#include <mqueue.h>
 #include <stddef.h>
 
 /**
@@ -33,7 +33,7 @@
 /**
  * A handle to access the logger. Is safe to share between processes.
  */
-typedef mqd_t linted_logger;
+typedef linted_mq linted_logger;
 
 struct linted_logger_task
 {

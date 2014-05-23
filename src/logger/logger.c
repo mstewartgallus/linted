@@ -23,24 +23,27 @@
 
 linted_error linted_logger_pair(linted_logger logger[2])
 {
-    struct mq_attr attr;
+    struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = LINTED_LOGGER_LOG_MAX;
+    attr.maxmsg = 10;
+    attr.msgsize = LINTED_LOGGER_LOG_MAX;
 
     return linted_mq_pair(logger, &attr, 0, 0);
 }
 
-linted_error linted_logger_close(linted_logger logger)
-{
-    return mq_close(logger);
-}
-
+/**
+ * @todo Make asynchronous
+ */
 linted_error linted_logger_log(linted_logger logger, char const *msg_ptr,
                                size_t msg_len)
 {
-    return -1 == mq_send(logger, msg_ptr, msg_len, 0) ? errno : 0;
+    struct linted_asynch_task_mq_send send_task;
+
+    linted_asynch_mq_send(&send_task, 0, logger, msg_ptr, msg_len);
+    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
+
+    return LINTED_UPCAST(&send_task)->errnum;
 }
 
 void linted_logger_receive(struct linted_logger_task *task, unsigned task_id,

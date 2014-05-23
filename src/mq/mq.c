@@ -28,12 +28,22 @@
 #define TEMPLATE_PREFIX "/anonymous-mq-"
 #define TEMPLATE_NAME TEMPLATE_PREFIX "XXXXXXXXXX"
 
-linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags,
-                            int wflags)
+/**
+ * Implemented using POSIX message queues.
+ */
+
+linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
+                            int rflags, int wflags)
 {
+    struct mq_attr mq_attr;
     char random_mq_name[sizeof TEMPLATE_NAME];
     mqd_t write_end;
     mqd_t read_end;
+
+    mq_attr.mq_flags = 0;
+    mq_attr.mq_curmsgs = 0;
+    mq_attr.mq_maxmsg = attr->maxmsg;
+    mq_attr.mq_msgsize = attr->msgsize;
 
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
@@ -71,7 +81,7 @@ linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags,
 
         write_end =
             mq_open(random_mq_name, wflags | O_WRONLY | O_CREAT | O_EXCL,
-                    S_IRUSR, attr);
+                    S_IRUSR, &mq_attr);
     } while (-1 == write_end && EEXIST == errno);
     if (-1 == write_end) {
         goto exit_with_error;

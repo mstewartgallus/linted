@@ -17,9 +17,8 @@
 #define LINTED_SHUTDOWNER_H
 
 #include "linted/asynch.h"
+#include "linted/mq.h"
 #include "linted/error.h"
-
-#include <mqueue.h>
 
 /**
  * @file
@@ -27,7 +26,7 @@
  * Exposes a protocol for shutting down a service.
  */
 
-typedef mqd_t linted_shutdowner;
+typedef linted_mq linted_shutdowner;
 
 struct linted_shutdowner_task
 {
@@ -37,8 +36,6 @@ struct linted_shutdowner_task
 
 linted_error linted_shutdowner_pair(linted_shutdowner queues[2], int rflags,
                                     int wflags);
-
-linted_error linted_shutdowner_close(linted_shutdowner move);
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner queue);
 

@@ -32,6 +32,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <fcntl.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>

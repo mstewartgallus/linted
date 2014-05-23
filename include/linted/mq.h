@@ -16,13 +16,23 @@
 #ifndef LINTED_MQ_H
 #define LINTED_MQ_H
 
-#include <mqueue.h>
+#include "linted/error.h"
+#include "linted/ko.h"
+
+#include <stddef.h>
 
 /**
  * @file
  *
- * Utility functions for POSIX message queues.
+ * Implements message queues.
  */
+
+typedef linted_ko linted_mq;
+
+struct linted_mq_attr {
+    size_t maxmsg;
+    size_t msgsize;
+};
 
 /**
  * The linted_mq_pair call creates an unnamed pair of message queues
@@ -51,7 +61,7 @@
  *
  * @error ENOSPC Insufficient space.
  */
-linted_error linted_mq_pair(mqd_t mqdes[2], struct mq_attr *attr, int rflags,
-                            int wflags);
+linted_error linted_mq_pair(linted_ko ko[2], struct linted_mq_attr *attr,
+                            int rflags, int wflags);
 
 #endif /* LINTED_MQ_H */

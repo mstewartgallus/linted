@@ -18,9 +18,9 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/mq.h"
 #include "linted/rpc.h"
 
-#include <mqueue.h>
 #include <stdint.h>
 
 /**
@@ -38,7 +38,7 @@
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
-typedef mqd_t linted_updater;
+typedef linted_mq linted_updater;
 
 typedef uint_fast32_t linted_updater_uint_fast;
 typedef int_fast32_t linted_updater_int_fast;
@@ -85,7 +85,5 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
                            struct linted_updater_update *update);
-
-linted_error linted_updater_close(linted_updater updater);
 
 #endif /* LINTED_UPDATER_H */

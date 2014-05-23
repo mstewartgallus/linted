@@ -18,10 +18,10 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/mq.h"
 #include "linted/rpc.h"
 #include "linted/util.h"
 
-#include <mqueue.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -31,10 +31,7 @@
  * Communicates user input to another process.
  */
 
-/**
- * A handle to access the controller. Is safe to share between processes.
- */
-typedef mqd_t linted_controller;
+typedef linted_mq linted_controller;
 
 struct linted_controller_message
 {
@@ -65,7 +62,6 @@ struct linted_controller_task_receive
 
 linted_error linted_controller_pair(linted_controller controller[2],
                                     int readflags, int writeflags);
-linted_error linted_controller_close(linted_controller controller);
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,

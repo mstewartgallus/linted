@@ -28,6 +28,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
