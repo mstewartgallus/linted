@@ -11,6 +11,13 @@
  *
  * Linted -- TODO
  *
+ * @bug Blocking open calls are not handled correctly.
+ * - Quoting directly from the Linux man-pages project:
+ *
+ *    EINTR While blocked waiting to complete an open of a slow device
+ *          (e.g., a FIFO; see fifo(7)), the call was interrupted by
+ *          a signal handler; see signal(7).
+ *
  * @todo Don't do cargo cult security.
  * - This is pretty much impossible.
  * - I'm just a young hacker playing around with technologies like
