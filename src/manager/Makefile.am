@@ -23,6 +23,5 @@ noinst_LTLIBRARIES+=%D%/libmanager.la
   src/asynch/libasynch.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/mq/libmq.la\
   \
   -lrt

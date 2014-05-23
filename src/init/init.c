@@ -778,7 +778,7 @@ free_logger_buffer:
     free(logger_buffer);
 
 close_new_connections : {
-    linted_error close_errnum = linted_manager_close(new_connections);
+    linted_error close_errnum = linted_ko_close(new_connections);
     if (0 == errnum) {
         errnum = close_errnum;
     }

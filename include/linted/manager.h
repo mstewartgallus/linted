@@ -18,10 +18,10 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/ko.h"
 #include "linted/service.h"
 
 #include <stdbool.h>
-#include <signal.h>
 #include <sys/un.h>
 
 /**
@@ -33,7 +33,7 @@
 #define LINTED_MANAGER_PATH_MAX                                                \
     (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
-typedef int linted_manager;
+typedef linted_ko linted_manager;
 
 enum linted_manager_type {
     LINTED_MANAGER_STATUS,
@@ -100,8 +100,6 @@ void linted_manager_accept(struct linted_manager_task_accept *task,
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len);
-
-linted_error linted_manager_close(linted_manager manager);
 
 linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
