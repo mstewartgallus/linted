@@ -106,6 +106,18 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
     int oflags = O_CLOEXEC;
 
+    if (ko_rdonly) {
+        oflags |= O_RDONLY;
+    }
+
+    if (ko_wronly) {
+        oflags |= O_WRONLY;
+    }
+
+    if (ko_rdwr) {
+        oflags |= O_RDWR;
+    }
+
     int fildes = openat(dirko, pathname, oflags);
     if (-1 == fildes) {
         return errno;
