@@ -222,8 +222,7 @@ try_to_open_lock_again:
         if (0 == errnum) {
             errnum = close_errnum;
         }
-        }
-        break;
+    } break;
     }
 
     case ENOENT: {

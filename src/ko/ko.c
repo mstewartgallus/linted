@@ -74,9 +74,8 @@ linted_error linted_ko_dummy(linted_ko *kop)
     return linted_ko_open(kop, -1, "/dev/null", LINTED_KO_RDONLY);
 }
 
-linted_error linted_ko_open(linted_ko *kop,
-                            linted_ko dirko, char const *pathname,
-                            linted_ko_flags flags)
+linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
+                            char const *pathname, linted_ko_flags flags)
 {
     linted_error errnum;
 
@@ -138,7 +137,6 @@ linted_error linted_ko_open(linted_ko *kop,
 
     return 0;
 }
-
 
 linted_error linted_ko_close(linted_ko ko)
 {

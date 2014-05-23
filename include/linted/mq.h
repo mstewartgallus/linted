@@ -29,7 +29,8 @@
 
 typedef linted_ko linted_mq;
 
-struct linted_mq_attr {
+struct linted_mq_attr
+{
     size_t maxmsg;
     size_t msgsize;
 };
