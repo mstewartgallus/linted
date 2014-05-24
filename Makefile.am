@@ -105,7 +105,7 @@ frama-c-lint:
 	   -warn-signed-downcast\
 	   -warn-unsigned-downcast\
 	   -warn-unsigned-overflow\
-	   -warn-decimal-float all\
+	   -warn-decimal-float none\
 	   -cpp-extra-args='-C'
 
 .PHONY: cbmc-models

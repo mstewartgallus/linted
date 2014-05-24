@@ -15,7 +15,7 @@
 import argparse
 import json
 
-if __name__ == '__main__':
+def go():
     parser = argparse.ArgumentParser(
         description = 'Unpack file contents and give them to the command')
     parser.add_argument(
@@ -42,4 +42,14 @@ if __name__ == '__main__':
 
     recurse(json.loads(inputdata))
 
-    print(' '.join(['\'' + ii + '\'' for ii in c_files]))
+    print(' '.join(['\'' + ii + '\'' for ii in unique(c_files)]))
+
+def unique(l):
+    newl = []
+    for x in l:
+        if x not in newl:
+            newl.append(x)
+    return newl
+
+if __name__ == '__main__':
+    go()
