@@ -79,7 +79,7 @@ doxygen:
 # We have to undefine certain flags because unfortunately we can't
 # verify these compiler specific changes
 
-.PHONY: frama-c-models
+.PHONY: json-c-models
 json-c-models:
 	$(MKDIR_P) json-c-models
 	CONFIG=$$($(builddir)/config.status --config) &&\
