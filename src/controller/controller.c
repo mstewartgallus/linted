@@ -24,8 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
-linted_error linted_controller_pair(linted_controller controller[2],
-                                    int flags)
+linted_error linted_controller_pair(linted_controller controller[2], int flags)
 {
     if (flags != 0) {
         return EINVAL;

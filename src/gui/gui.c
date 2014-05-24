@@ -700,7 +700,7 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 
     linted_error errnum;
     bool time_to_quit = false;
-
+    bool is_key_down;
     switch (event->type) {
     case ConfigureNotify: {
         XConfigureEvent const *configure_event = &event->xconfigure;
@@ -751,57 +751,75 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
         XRefreshKeyboardMapping(mapping_event);
     }
 
-        {
-            bool is_key_down;
+    case KeyPress:
+        is_key_down = true;
+        goto on_key_event;
 
-        case KeyPress:
-            is_key_down = true;
-            goto on_key_event;
-
-        case KeyRelease:
-            is_key_down = false;
-            goto on_key_event;
-
-        on_key_event:
-            ;
-            XKeyEvent *key_event = &event->xkey;
-            switch (XLookupKeysym(key_event, 0)) {
-            default:
-                goto no_key_event;
-
-            case XK_space:
-                controller_data->update.jumping = is_key_down;
-                break;
-
-            case XK_Control_L:
-                controller_data->update.left = is_key_down;
-                break;
-
-            case XK_Alt_L:
-                controller_data->update.right = is_key_down;
-                break;
-
-            case XK_z:
-                controller_data->update.forward = is_key_down;
-                break;
-
-            case XK_Shift_L:
-                controller_data->update.back = is_key_down;
-                break;
-            }
-
-            controller_data->update_pending = true;
-
-        no_key_event:
-            break;
-        }
+    case KeyRelease:
+        is_key_down = false;
+        goto on_key_event;
 
     case ClientMessage:
-        time_to_quit = true;
-        break;
+        goto quit_application;
 
     default:
         /* Unknown event type, ignore it */
+        break;
+
+    on_key_event : {
+        XKeyEvent *key_event = &event->xkey;
+        switch (XLookupKeysym(key_event, 0)) {
+        case XK_q:
+            goto quit_application;
+
+        case XK_space:
+            goto jump;
+
+        case XK_Control_L:
+            goto move_left;
+
+        case XK_Alt_L:
+            goto move_right;
+
+        case XK_z:
+            goto move_forward;
+
+        case XK_Shift_L:
+            goto move_backward;
+
+        default:
+            break;
+        }
+        break;
+    }
+
+    jump:
+        controller_data->update.jumping = is_key_down;
+        controller_data->update_pending = true;
+        break;
+
+    move_left:
+        controller_data->update.left = is_key_down;
+        controller_data->update_pending = true;
+        break;
+
+    move_right:
+        controller_data->update.right = is_key_down;
+        controller_data->update_pending = true;
+        break;
+
+    move_forward:
+        controller_data->update.forward = is_key_down;
+        controller_data->update_pending = true;
+        break;
+
+    move_backward:
+        controller_data->update.back = is_key_down;
+        controller_data->update_pending = true;
+        break;
+
+    quit_application:
+        time_to_quit = true;
         break;
     }
 
