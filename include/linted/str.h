@@ -16,6 +16,9 @@
 #ifndef LINTED_STR_H
 #define LINTED_STR_H
 
+#include "linted/error.h"
+
+#include <stddef.h>
 #include <stdint.h>
 
 /**
@@ -36,5 +39,13 @@ struct linted_str {
                     char const x[sizeof Str - 1];                       \
             }) { .x = Str }.x                                           \
                                 }
+linted_error linted_str_append(char ** bufp, size_t *capp, size_t *sizep,
+                               char const * str, size_t strsize);
+
+linted_error linted_str_append_str(char ** bufp, size_t *capp, size_t *sizep,
+                                   struct linted_str str);
+
+linted_error linted_str_append_format(char ** bufp, size_t *capp, size_t *sizep,
+                                      char const * formatstr, ...);
 
 #endif                          /* LINTED_STR_H */
