@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -347,6 +348,9 @@ static linted_error lock_db(linted_db *dbp, pid_t * lock)
     }
 
     if (0 == child) {
+        /* Don't leak the process in case of an unexpected parent death */
+        prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0);
+
         int lock_file;
         if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
                                      LINTED_KO_RDWR)) != 0) {
@@ -364,10 +368,11 @@ static linted_error lock_db(linted_db *dbp, pid_t * lock)
         }
 
         /* Got the lock! */
-        raise(SIGSTOP);
 
         /* The lock is killed and never dies by itself */
-        assert(false);
+        for (;;) {
+            raise(SIGSTOP);
+        }
     }
 
     siginfo_t info;
