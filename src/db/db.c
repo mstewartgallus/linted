@@ -49,6 +49,9 @@ static linted_error prepend(char **result, char const *base, char const *end);
 static linted_error fname_alloc(int fd, char **buf);
 static linted_error fname(int fd, char *buf, size_t *sizep);
 
+/**
+ * @todo Use locks that have reliable behaviour upon system crashes.
+ */
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
 {
@@ -101,7 +104,10 @@ try_to_open_lock_again:
          */
         int temp_file =
             openat(the_db, GLOBAL_LOCK_TEMPORARY,
-                   O_RDWR | O_SYNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+                   O_RDWR
+                   | O_NONBLOCK
+                   | O_CREAT | O_EXCL,
+                   S_IRUSR | S_IWUSR);
         if (-1 == temp_file) {
             linted_error open_errnum = errno;
             if (EEXIST == open_errnum) {
@@ -316,7 +322,10 @@ try_again:
     }
 
     int temp_field =
-        openat(*dbp, temp_path, O_RDWR | O_SYNC | O_CLOEXEC | O_CREAT | O_EXCL,
+        openat(*dbp, temp_path,
+               O_RDWR | O_SYNC
+               | O_CLOEXEC | O_NONBLOCK
+               | O_CREAT | O_EXCL,
                S_IRUSR | S_IWUSR);
     if (-1 == temp_field) {
         linted_error open_errnum = errno;
