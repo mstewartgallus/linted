@@ -17,3 +17,5 @@
 
 noinst_LTLIBRARIES+=%D%/libio.la
 %C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
+%C%_libio_la_LIBADD=\
+  src/asynch/libasynch.la

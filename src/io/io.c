@@ -17,6 +17,7 @@
 
 #include "linted/io.h"
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/util.h"
@@ -34,67 +35,29 @@
 #include <unistd.h>
 
 linted_error linted_io_read_all(int fd, size_t *bytes_read_out, void *buf,
-                                size_t count)
+                                size_t size)
 {
-    linted_error error_status = 0;
-    size_t total_bytes_read = 0;
+    struct linted_asynch_task_read read_task;
+    linted_asynch_read(&read_task, 0, fd, buf, size);
+    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&read_task));
 
-    do {
-        ssize_t bytes_read =
-            read(fd, (char *)buf + total_bytes_read, count - total_bytes_read);
-
-        if (0 == bytes_read) {
-            /* Hang up */
-            goto output_bytes_read;
-        }
-
-        linted_error read_status = -1 == bytes_read ? errno : 0;
-        if (EINTR == read_status) {
-            continue;
-        }
-
-        if (read_status != 0) {
-            error_status = EWOULDBLOCK == read_status ? EAGAIN : read_status;
-            goto output_bytes_read;
-        }
-
-        total_bytes_read += bytes_read;
-    } while (total_bytes_read != count);
-
-output_bytes_read:
     if (bytes_read_out != NULL) {
-        *bytes_read_out = total_bytes_read;
+        *bytes_read_out = read_task.bytes_read;
     }
-    return error_status;
+    return LINTED_UPCAST(&read_task)->errnum;
 }
 
 linted_error linted_io_write_all(int fd, size_t *bytes_wrote_out,
-                                 void const *buf, size_t count)
+                                 void const *buf, size_t size)
 {
-    linted_error error_status = 0;
-    size_t total_bytes_wrote = 0;
+    struct linted_asynch_task_write write_task;
+    linted_asynch_write(&write_task, 0, fd, buf, size);
+    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&write_task));
 
-    do {
-        ssize_t bytes_wrote = write(fd, (char const *)buf + total_bytes_wrote,
-                                    count - total_bytes_wrote);
-        linted_error write_status = -1 == bytes_wrote ? errno : 0;
-        if (EINTR == write_status) {
-            continue;
-        }
-
-        if (write_status != 0) {
-            error_status = EWOULDBLOCK == write_status ? EAGAIN : write_status;
-            goto output_bytes_wrote;
-        }
-
-        total_bytes_wrote += bytes_wrote;
-    } while (total_bytes_wrote != count);
-
-output_bytes_wrote:
     if (bytes_wrote_out != NULL) {
-        *bytes_wrote_out = total_bytes_wrote;
+        *bytes_wrote_out = write_task.bytes_wrote;
     }
-    return error_status;
+    return LINTED_UPCAST(&write_task)->errnum;
 }
 
 linted_error linted_io_write_str(int fd, size_t *bytes_wrote,
