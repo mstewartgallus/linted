@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
 #include "config.h"
 
 #include "linted/db.h"
@@ -21,8 +22,10 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 
+#include <assert.h>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,29 +34,29 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define CURRENT_VERSION "0.0.0"
 
 #define GLOBAL_LOCK "global.lock"
-#define GLOBAL_LOCK_TEMPORARY "global.lock.tmp"
 
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
 
-static linted_error lock_db(linted_db *dbp);
-static linted_error unlock_db(linted_db *dbp);
+static linted_error lock_db(linted_db *dbp, pid_t * lock);
+static void unlock_db(linted_db *dbp, pid_t lock);
+
+static void exit_with_error(volatile linted_error *spawn_error,
+                            linted_error errnum);
+
+static size_t align_to_page_size(size_t size);
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
 static linted_error fname_alloc(int fd, char **buf);
 static linted_error fname(int fd, char *buf, size_t *sizep);
 
-/**
- * @todo Use locks that have reliable behaviour upon system crashes.
- *       This can be accomplished using symlinks to temporary storage
- *       such as /dev/shm or /tmp.
- */
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
 {
@@ -92,7 +95,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
 try_to_open_lock_again:
     ;
-    linted_error lock_errnum = lock_db(&the_db);
+    pid_t lock;
+    linted_error lock_errnum = lock_db(&the_db, &lock);
     if (lock_errnum != 0) {
         if (lock_errnum != ENOENT) {
             errnum = lock_errnum;
@@ -100,76 +104,23 @@ try_to_open_lock_again:
         }
 
         /* Lock does not exist try to create it */
-        /*
-         * Note that using a constant temporary filename is not
-         * incorrect just slow.
-         */
-        int temp_file =
-            openat(the_db, GLOBAL_LOCK_TEMPORARY,
-                   O_RDWR
-                   | O_NONBLOCK
-                   | O_CREAT | O_EXCL,
-                   S_IRUSR | S_IWUSR);
-        if (-1 == temp_file) {
-            linted_error open_errnum = errno;
-            if (EEXIST == open_errnum) {
+        int lock_file = openat(the_db, GLOBAL_LOCK,
+                              O_RDWR
+                              | O_CLOEXEC | O_NONBLOCK
+                              | O_CREAT | O_EXCL,
+                              S_IRUSR | S_IWUSR);
+        if (-1 == lock_file) {
+            errnum = errno;
+
+            if (EEXIST == errnum) {
+                /* File already exists try to lock it */
                 goto try_to_open_lock_again;
-            } else {
-                errnum = open_errnum;
-                goto close_db;
             }
+            goto close_db;
         }
 
-        if (-1 == ftruncate(temp_file, sizeof(sem_t))) {
+        if (-1 == linted_ko_close(lock_file)) {
             errnum = errno;
-            linted_ko_close(temp_file);
-            goto unlink_temp;
-        }
-
-        size_t page_size = sysconf(_SC_PAGESIZE);
-        size_t map_size =
-            ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
-
-        sem_t *semaphore = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
-                                MAP_SHARED, temp_file, 0);
-        if (MAP_FAILED == semaphore) {
-            errnum = errno;
-            linted_ko_close(temp_file);
-            goto unlink_temp;
-        }
-
-        if ((errnum = linted_ko_close(temp_file)) != 0) {
-            munmap(semaphore, map_size);
-            goto unlink_temp;
-        }
-
-        if (-1 == sem_init(semaphore, true, 1)) {
-            errnum = errno;
-            goto unlink_temp;
-        }
-
-        if (-1 == munmap(semaphore, map_size)) {
-            errnum = errno;
-            goto unlink_temp;
-        }
-
-        if (-1 ==
-            linkat(the_db, GLOBAL_LOCK_TEMPORARY, the_db, GLOBAL_LOCK, 0)) {
-            errnum = errno;
-        }
-
-    unlink_temp:
-        if (-1 == unlinkat(the_db, GLOBAL_LOCK_TEMPORARY, 0)) {
-            if (0 == errnum) {
-                errnum = errno;
-            }
-        }
-
-        if (EEXIST == errnum) {
-            goto try_to_open_lock_again;
-        }
-
-        if (errnum != 0) {
             goto close_db;
         }
 
@@ -234,12 +185,10 @@ try_to_open_lock_again:
     }
 
     case ENOENT: {
-        errnum = 0;
-
         /* Creating the initial database */
         if (!db_creat) {
             errnum = EINVAL;
-            goto unlock_semaphore;
+            goto unlock_db;
         }
 
         int version_file_write = openat(
@@ -247,7 +196,7 @@ try_to_open_lock_again:
             S_IRUSR | S_IWUSR);
         if (-1 == version_file_write) {
             errnum = errno;
-            goto unlock_semaphore;
+            goto unlock_db;
         }
 
         errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
@@ -261,24 +210,24 @@ try_to_open_lock_again:
         }
 
         if (errnum != 0) {
-            goto unlock_semaphore;
+            goto unlock_db;
         }
 
         if (-1 == mkdirat(the_db, TEMP_DIR, S_IRWXU)) {
             errnum = errno;
-            goto unlock_semaphore;
+            goto unlock_db;
         }
 
         if (-1 == mkdirat(the_db, FIELD_DIR, S_IRWXU)) {
             errnum = errno;
-            goto unlock_semaphore;
+            goto unlock_db;
         }
         break;
     }
     }
 
-unlock_semaphore:
-    unlock_db(&the_db);
+unlock_db:
+    unlock_db(&the_db, lock);
 
     if (errnum != 0) {
         goto close_db;
@@ -374,77 +323,170 @@ free_temp_path:
     return errnum;
 }
 
-static linted_error lock_db(linted_db *dbp)
+static linted_error lock_db(linted_db *dbp, pid_t * lock)
 {
-    linted_error errnum;
+    linted_error errnum = 0;
 
-    int lock_file;
+    size_t spawn_error_length = align_to_page_size(sizeof(linted_error));
 
-    if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
-                                 LINTED_KO_RDWR)) != 0) {
-        return errnum;
+    volatile linted_error *spawn_error =
+        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (MAP_FAILED == spawn_error) {
+        return errno;
     }
 
-    size_t page_size = sysconf(_SC_PAGESIZE);
-    size_t map_size = ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
-
-    sem_t *semaphore =
-        mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, lock_file, 0);
-    if (MAP_FAILED == semaphore) {
-        errnum = errno;
-        linted_ko_close(lock_file);
-        return errnum;
+    /*
+     * We have to fork because locks are associated with (pid, inode)
+     * pairs. Now any other thread that tries to lock the db will
+     * simply wait for this process to exit.
+     */
+    pid_t child = fork();
+    if (-1 == child) {
+        return errno;
     }
 
-    if ((errnum = linted_ko_close(lock_file)) != 0) {
-        munmap(semaphore, map_size);
-        return errnum;
+    if (0 == child) {
+        int lock_file;
+        if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
+                                     LINTED_KO_RDWR)) != 0) {
+            exit_with_error(spawn_error, errno);
+        }
+
+        struct flock flock = {
+            .l_type = F_WRLCK,
+            .l_whence = SEEK_SET,
+            .l_start = 0,
+            .l_len = 0
+        };
+        if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
+            exit_with_error(spawn_error, errno);
+        }
+
+        /* Got the lock! */
+        raise(SIGSTOP);
+
+        /* The lock is killed and never dies by itself */
+        assert(false);
     }
 
-    /* Lock */
-    linted_error wait_errnum;
+    siginfo_t info;
     do {
-        int wait_status = sem_wait(semaphore);
-        wait_errnum = -1 == wait_status ? errno : 0;
-    } while (EINTR == wait_errnum);
+        int wait_status = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
+        errnum = -1 == wait_status ? errno : 0;
+    } while (EINTR == errnum);
+    if (errnum != 0) {
+        goto unmap_spawn_error;
+    }
 
-    munmap(semaphore, map_size);
+    switch (info.si_code) {
+    case CLD_EXITED: {
+        linted_error exit_status = info.si_status;
+        switch (exit_status) {
+        case 0:
+            errnum = EINVAL;
+            goto unmap_spawn_error;
 
-    return 0;
+        default:
+            errnum = ENOSYS;
+            goto unmap_spawn_error;
+        }
+    }
+
+    case CLD_DUMPED:
+    case CLD_KILLED: {
+#if defined __linux__
+        linted_error signo = info.si_status;
+        switch (signo) {
+        case SIGKILL:
+            errnum = ENOMEM;
+            break;
+
+        case SIGSEGV:
+            /* Corrupted elf file */
+            errnum = ENOEXEC;
+            break;
+
+        case SIGTERM:
+            /* Exited with error and passed an error code */
+            errnum = *spawn_error;
+            break;
+
+        default:
+            errnum = ENOSYS;
+            break;
+        }
+        goto unmap_spawn_error;
+#else
+#error The exit status of an aborted execve is very OS specific
+#endif
+    }
+
+    case CLD_STOPPED:
+        /*
+         * Don't continue the process. Let it be stopped and holding
+         * the lock
+         */
+        break;
+
+    default:
+        assert(false);
+    }
+
+unmap_spawn_error:
+    if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
+        if (0 == errnum) {
+            errnum = errno;
+        }
+    }
+
+    *lock = child;
+
+    return errnum;
 }
 
-static linted_error unlock_db(linted_db *dbp)
+static void unlock_db(linted_db *dbp, pid_t lock)
 {
     linted_error errnum;
 
-    int lock_file;
-    if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
-                                 LINTED_KO_RDWR)) != 0) {
-        return errnum;
-    }
-
-    size_t page_size = sysconf(_SC_PAGESIZE);
-    size_t map_size = ((sizeof(sem_t) + page_size - 1) / page_size) * page_size;
-
-    sem_t *semaphore =
-        mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, lock_file, 0);
-    if (MAP_FAILED == semaphore) {
+    if (-1 == kill(lock, SIGKILL)) {
         errnum = errno;
-        linted_ko_close(lock_file);
-        return errnum;
+        assert(errnum != EINVAL);
+        assert(errnum != EPERM);
+        assert(errnum != ESRCH);
+        assert(false);
     }
 
-    if ((errnum = linted_ko_close(lock_file)) != 0) {
-        munmap(semaphore, map_size);
-        return errnum;
-    }
+    do {
+        int wait_status = waitid(P_PID, lock, NULL, WEXITED | WSTOPPED);
+        errnum = -1 == wait_status ? errno : 0;
+    } while (EINTR == errnum);
 
-    /* Unlock */
-    sem_post(semaphore);
+    assert(errnum != EINVAL);
+    assert(errnum != ECHILD);
+    assert(0 == errnum);
+}
 
-    munmap(semaphore, map_size);
+static size_t align_to_page_size(size_t size)
+{
+    size_t page_size = sysconf(_SC_PAGESIZE);
 
-    return 0;
+    /* This should always be true */
+    assert(page_size > 0);
+
+    /* Round up to a multiple of page size */
+    size_t remainder = size % page_size;
+    if (0 == remainder)
+        return size;
+
+    return size - remainder + page_size;
+}
+
+static void exit_with_error(volatile linted_error *spawn_error,
+                            linted_error errnum)
+{
+    *spawn_error = errnum;
+    raise(SIGTERM);
 }
 
 static linted_error prepend(char **result, char const *base,
