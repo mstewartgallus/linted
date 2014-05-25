@@ -51,6 +51,8 @@ static linted_error fname(int fd, char *buf, size_t *sizep);
 
 /**
  * @todo Use locks that have reliable behaviour upon system crashes.
+ *       This can be accomplished using symlinks to temporary storage
+ *       such as /dev/shm or /tmp.
  */
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
