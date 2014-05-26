@@ -44,11 +44,7 @@ struct linted_mq_attr
  *
  * @param attr The attributes for the created message queue.
  *
- * @param rflags Can be O_NONBLOCK to open the read end in nonblocking
- *               mode.
- *
- * @param wflags Can be O_NONBLOCK to open the write end in
- *               nonblocking mode.
+ * @param flags Must be zero.
  *
  * @returns Zero on success or an error code on error.
  *
