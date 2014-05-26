@@ -36,8 +36,7 @@ struct linted_mq_attr
 };
 
 /**
- * The linted_mq_pair call creates an unnamed pair of message queues
- * with the specified attributes attr and flags rflags and wflags.
+ * The linted_mq_pair call creates an unnamed pair of message queues.
  *
  * @param mqdes Returns two message queue descriptors. mqdes[0] refers
  *              to the read end. mqdes[1] refers to the write end.
@@ -58,7 +57,7 @@ struct linted_mq_attr
  *
  * @error ENOSPC Insufficient space.
  */
-linted_error linted_mq_pair(linted_ko ko[2], struct linted_mq_attr *attr,
+linted_error linted_mq_pair(linted_mq mq[2], struct linted_mq_attr *attr,
                             int flags);
 
 #endif /* LINTED_MQ_H */
