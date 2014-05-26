@@ -25,8 +25,7 @@
  * Safely store and read shared (concurrently accessed) persistent
  * data.
  *
- * @todo Add garbage collection. Have better temporaries for the
- *       version file.
+ * @todo Add garbage collection.
  *
  * @todo Use a better random number generator.
  */
