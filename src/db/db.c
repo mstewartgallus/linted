@@ -462,8 +462,10 @@ static void unlock_db(linted_db *dbp, pid_t lock)
         assert(false);
     }
 
+    /* Unfortunately, one cannot pass NULL into the info parameter here */
+    siginfo_t info;
     do {
-        int wait_status = waitid(P_PID, lock, NULL, WEXITED | WSTOPPED);
+        int wait_status = waitid(P_PID, lock, &info, WEXITED | WSTOPPED);
         errnum = -1 == wait_status ? errno : 0;
     } while (EINTR == errnum);
 
