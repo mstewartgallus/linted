@@ -15,10 +15,6 @@
 import subprocess
 import sys
 
-# TODO: Add the following checkers
-
-# cppcheck
-
 def go():
     clang = sys.argv[1]
     cppcheck = sys.argv[2]
@@ -27,7 +23,15 @@ def go():
 
     if '-c' in options:
         if clang != "":
-            subprocess.check_call([clang, '-Qunused-arguments', '-Wno-unknown-warning-option', '--analyze'] + options)
+            clang_args = [clang,
+                          '-Qunused-arguments',
+                          '-Wno-unknown-warning-option',
+                          '--analyze']
+            for checker in checkers:
+                clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
+            clang_args.extend(options)
+
+            subprocess.check_call(clang_args)
 
     subprocess.check_call(cc.split() + options)
 
@@ -45,6 +49,43 @@ def cppcheck_filter(options):
             cppcheck_options.append(option)
 
     return cppcheck_options
+
+checkers = [
+    'core.CallAndMessage',
+    'core.DivideZero',
+    'core.DynamicTypePropagation',
+    'core.NonNullParamChecker',
+    'core.NullDereference',
+    'core.StackAddressEscape',
+    'core.UndefinedBinaryOperatorResult',
+    'core.VLASize',
+    'core.builtin.BuiltinFunctions',
+    'core.builtin.NoReturnFunctions',
+    'core.uninitialized.ArraySubscript',
+    'core.uninitialized.Assign',
+    'core.uninitialized.Branch',
+    'core.uninitialized.CapturedBlockVariable',
+    'core.uninitialized.UndefReturn',
+
+    'deadcode.DeadStores',
+
+    'security.FloatLoopCounter',
+    'security.insecureAPI.UncheckedReturn',
+
+    'security.insecureAPI.getpw',
+    'security.insecureAPI.gets',
+    'security.insecureAPI.mkstemp',
+    'security.insecureAPI.mktemp',
+    'security.insecureAPI.rand',
+    'security.insecureAPI.strcpy',
+    'security.insecureAPI.vfork',
+
+    'unix.API',
+    'unix.Malloc',
+    'unix.MallocSizeof',
+    'unix.MismatchedDeallocator',
+    'unix.cstring.BadSizeArg',
+    'unix.cstring.NullArg']
 
 if __name__ == '__main__':
     go()
