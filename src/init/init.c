@@ -900,6 +900,7 @@ static linted_error on_connection_recv_request(
 
     linted_ko ko = connection->ko;
 
+    int task_action = LINTED_UPCAST(LINTED_UPCAST(task_recv))->task_action;
     union linted_manager_request *request = &task_recv->request;
     union linted_manager_reply reply;
 
@@ -981,8 +982,9 @@ static linted_error on_connection_recv_request(
     }
     connection->has_reply_ready = true;
 
-    size_t ii = connection_pool->connections - connection;
-    linted_manager_send_reply(&connection->send_reply_task, CONNECTION + ii, ko,
+    linted_manager_send_reply(&connection->send_reply_task,
+                              task_action,
+                              ko,
                               &reply);
     linted_asynch_pool_submit(
         pool, LINTED_UPCAST(LINTED_UPCAST(&connection->send_reply_task)));
