@@ -532,14 +532,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     struct gui_updater_task updater_task;
     struct gui_controller_task controller_task;
 
-    if ((errnum = linted_asynch_pool_bind_ko(pool, updater)) != 0) {
-        goto destroy_glx_context;
-    }
-
-    if ((errnum = linted_asynch_pool_bind_ko(pool, controller)) != 0) {
-        goto destroy_glx_context;
-    }
-
     linted_updater_receive(LINTED_UPCAST(&updater_task),
                            ON_RECEIVE_UPDATER_EVENT, updater);
     updater_task.sim_model = &sim_model;

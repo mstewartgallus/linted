@@ -375,22 +375,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     struct sim_controller_task controller_task;
     struct sim_updater_task updater_task;
 
-    if ((errnum = linted_asynch_pool_bind_ko(pool, timer)) != 0) {
-        goto close_timer;
-    }
-
-    if ((errnum = linted_asynch_pool_bind_ko(pool, shutdowner)) != 0) {
-        goto close_timer;
-    }
-
-    if ((errnum = linted_asynch_pool_bind_ko(pool, controller)) != 0) {
-        goto close_timer;
-    }
-
-    if ((errnum = linted_asynch_pool_bind_ko(pool, updater)) != 0) {
-        goto close_timer;
-    }
-
     linted_asynch_read(LINTED_UPCAST(&timer_task), ON_READ_TIMER_TICKS, timer,
                        (char *)&timer_task.timer_ticks,
                        sizeof timer_task.timer_ticks);
