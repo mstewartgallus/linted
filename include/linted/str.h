@@ -49,6 +49,9 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 linted_error linted_str_append_str(char **bufp, size_t *capp, size_t *sizep,
                                    struct linted_str str);
 
+linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
+                                       char const * str);
+
 linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
                                       char const *formatstr, ...);
 

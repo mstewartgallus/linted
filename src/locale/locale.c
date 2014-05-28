@@ -20,21 +20,35 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 
+#include <stdlib.h>
+
 linted_error linted_locale_missing_process_name(int fildes,
                                                 char const *package_name)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, package_name)) != 0) {
-        return errnum;
+    size_t size = 0;
+    size_t capacity = 0;
+    char * buffer = NULL;
+
+    if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+                                           package_name)) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\
 : missing process name\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    return 0;
+    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+        goto free_buffer;
+    }
+
+free_buffer:
+    free(buffer);
+    return errnum;
 }
 
 linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
@@ -42,21 +56,38 @@ linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
-: unrecognised option '"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_string(fildes, NULL, bad_option)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("'\n"))) != 0) {
-        return errnum;
+    size_t size = 0;
+    size_t capacity = 0;
+    char * buffer = NULL;
+
+    if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+                                            program_name)) != 0) {
+        goto free_buffer;
     }
 
-    return 0;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\
+: unrecognized option '"))) != 0) {
+        goto free_buffer;
+    }
+
+    if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+                                            bad_option)) != 0) {
+        goto free_buffer;
+    }
+
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("'\n"))) != 0) {
+        goto free_buffer;
+    }
+
+    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+        goto free_buffer;
+    }
+
+free_buffer:
+    free(buffer);
+    return errnum;
 }
 
 linted_error linted_locale_try_for_more_help(int fildes,
@@ -65,29 +96,43 @@ linted_error linted_locale_try_for_more_help(int fildes,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Try `"))) !=
-        0) {
-        return errnum;
+    size_t size = 0;
+    size_t capacity = 0;
+    char * buffer = NULL;
+
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("Try `"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+                                            program_name)) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" "))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR(" "))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, help_option)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        help_option)) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\
 ' for more information.\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    return 0;
+    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+        goto free_buffer;
+    }
+
+free_buffer:
+    free(buffer);
+    return errnum;
 }
 
 linted_error linted_locale_version(int fildes, struct linted_str package_string,
@@ -95,28 +140,42 @@ linted_error linted_locale_version(int fildes, struct linted_str package_string,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_string)) != 0) {
-        return errnum;
+    size_t size = 0;
+    size_t capacity = 0;
+    char * buffer = NULL;
+
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        package_string)) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\n\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\
 Copyright (C) "))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, copyright_year)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        copyright_year)) != 0) {
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
  Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    return 0;
+    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+        goto free_buffer;
+    }
+
+free_buffer:
+    free(buffer);
+    return errnum;
 }

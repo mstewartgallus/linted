@@ -20,4 +20,5 @@ noinst_LTLIBRARIES+=%D%/liblocale.la
 %C%_liblocale_la_LIBADD=\
   src/error/liberror.la\
   src/io/libio.la\
-  src/ko/libko.la
+  src/ko/libko.la\
+  src/str/libstr.la
