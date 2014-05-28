@@ -982,9 +982,7 @@ static linted_error on_connection_recv_request(
     }
     connection->has_reply_ready = true;
 
-    linted_manager_send_reply(&connection->send_reply_task,
-                              task_action,
-                              ko,
+    linted_manager_send_reply(&connection->send_reply_task, task_action, ko,
                               &reply);
     linted_asynch_pool_submit(
         pool, LINTED_UPCAST(LINTED_UPCAST(&connection->send_reply_task)));

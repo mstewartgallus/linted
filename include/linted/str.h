@@ -27,25 +27,29 @@
  * Not null terminated strings.
  */
 
-struct linted_str {
-    char const * bytes;
+struct linted_str
+{
+    char const *bytes;
     uint_least16_t size;
 };
 
-#define LINTED_STR(Str)                                                 \
-    (struct linted_str) {                                               \
-        .size = sizeof Str - 1,                                         \
-            .bytes = (struct {                                          \
-                    char const x[sizeof Str - 1];                       \
-            }) { .x = Str }.x                                           \
-                                }
-linted_error linted_str_append(char ** bufp, size_t *capp, size_t *sizep,
-                               char const * str, size_t strsize);
+#define LINTED_STR(Str)                                                        \
+    (struct linted_str)                                                        \
+    {                                                                          \
+        .size = sizeof Str - 1,                                                \
+        .bytes = (struct { char const x[sizeof Str - 1]; })                    \
+        {                                                                      \
+            .x = Str                                                           \
+        }                                                                      \
+        .x                                                                     \
+    }
+linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
+                               char const *str, size_t strsize);
 
-linted_error linted_str_append_str(char ** bufp, size_t *capp, size_t *sizep,
+linted_error linted_str_append_str(char **bufp, size_t *capp, size_t *sizep,
                                    struct linted_str str);
 
-linted_error linted_str_append_format(char ** bufp, size_t *capp, size_t *sizep,
-                                      char const * formatstr, ...);
+linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
+                                      char const *formatstr, ...);
 
-#endif                          /* LINTED_STR_H */
+#endif /* LINTED_STR_H */

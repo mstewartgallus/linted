@@ -45,7 +45,7 @@
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
 
-static linted_error lock_db(linted_db *dbp, pid_t * lock);
+static linted_error lock_db(linted_db *dbp, pid_t *lock);
 static void unlock_db(linted_db *dbp, pid_t lock);
 
 static void exit_with_error(volatile linted_error *spawn_error,
@@ -105,11 +105,10 @@ try_to_open_lock_again:
         }
 
         /* Lock does not exist try to create it */
-        int lock_file = openat(the_db, GLOBAL_LOCK,
-                              O_RDWR
-                              | O_CLOEXEC | O_NONBLOCK
-                              | O_CREAT | O_EXCL,
-                              S_IRUSR | S_IWUSR);
+        int lock_file =
+            openat(the_db, GLOBAL_LOCK,
+                   O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
+                   S_IRUSR | S_IWUSR);
         if (-1 == lock_file) {
             errnum = errno;
 
@@ -273,12 +272,9 @@ try_again:
         }
     }
 
-    int temp_field =
-        openat(*dbp, temp_path,
-               O_RDWR | O_SYNC
-               | O_CLOEXEC | O_NONBLOCK
-               | O_CREAT | O_EXCL,
-               S_IRUSR | S_IWUSR);
+    int temp_field = openat(*dbp, temp_path, O_RDWR | O_SYNC | O_CLOEXEC |
+                                                 O_NONBLOCK | O_CREAT | O_EXCL,
+                            S_IRUSR | S_IWUSR);
     if (-1 == temp_field) {
         linted_error open_errnum = errno;
         if (EEXIST == open_errnum) {
@@ -324,7 +320,7 @@ free_temp_path:
     return errnum;
 }
 
-static linted_error lock_db(linted_db *dbp, pid_t * lock)
+static linted_error lock_db(linted_db *dbp, pid_t *lock)
 {
     linted_error errnum = 0;
 
@@ -358,10 +354,7 @@ static linted_error lock_db(linted_db *dbp, pid_t * lock)
         }
 
         struct flock flock = {
-            .l_type = F_WRLCK,
-            .l_whence = SEEK_SET,
-            .l_start = 0,
-            .l_len = 0
+            .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
         };
         if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
             exit_with_error(spawn_error, errno);
