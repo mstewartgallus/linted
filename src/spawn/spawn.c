@@ -178,7 +178,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     if (MAP_FAILED == spawn_error) {
         return errno;
     }
-    spawn_error->errnum = 0;
 
     sigset_t fullset;
     sigfillset(&fullset);
