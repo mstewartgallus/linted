@@ -119,16 +119,23 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     pthread_attr_setstacksize(&worker_attributes,
                               sysconf(_SC_THREAD_STACK_MIN));
 
-    if ((errnum = pthread_attr_destroy(&worker_attributes)) != 0) {
-        goto destroy_event_queue;
-    }
-
     for (; created_threads < max_tasks; ++created_threads) {
         if ((errnum = pthread_create(&pool->workers[created_threads],
                                      &worker_attributes, worker_routine,
                                      pool)) != 0) {
-            goto destroy_threads;
+            break;
         }
+    }
+
+    {
+        linted_error destroy_errnum = pthread_attr_destroy(&worker_attributes);
+        if (0 == errnum) {
+            errnum = destroy_errnum;
+        }
+    }
+
+    if (errnum != 0) {
+        goto destroy_threads;
     }
 
     *poolp = pool;
