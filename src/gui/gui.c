@@ -106,8 +106,8 @@ struct on_gui_event_args
     xcb_connection_t *connection;
     struct window_model *window_model;
     struct controller_data *controller_data;
-    xcb_window_t window;
     bool *time_to_quit;
+    xcb_window_t window;
 };
 
 struct gui_controller_task;
