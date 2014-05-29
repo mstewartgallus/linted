@@ -344,6 +344,23 @@ void linted_asynch_accept(struct linted_asynch_task_accept *task,
     task->ko = ko;
 }
 
+static void *worker_routine(void *arg)
+{
+    struct linted_asynch_pool *pool = arg;
+
+    for (;;) {
+        struct linted_asynch_task *task;
+        {
+            struct linted_queue_node *node;
+            linted_queue_recv(&pool->worker_command_queue, &node);
+            task = LINTED_DOWNCAST(struct linted_asynch_task, node);
+        }
+
+        run_task(pool, task);
+    }
+    return NULL;
+}
+
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action)
 {
@@ -389,23 +406,6 @@ static void run_task(struct linted_asynch_pool *pool,
     default:
         assert(false);
     }
-}
-
-static void *worker_routine(void *arg)
-{
-    struct linted_asynch_pool *pool = arg;
-
-    for (;;) {
-        struct linted_asynch_task *task;
-        {
-            struct linted_queue_node *node;
-            linted_queue_recv(&pool->worker_command_queue, &node);
-            task = LINTED_DOWNCAST(struct linted_asynch_task, node);
-        }
-
-        run_task(pool, task);
-    }
-    return NULL;
 }
 
 static void run_task_poll(struct linted_asynch_pool *pool,
