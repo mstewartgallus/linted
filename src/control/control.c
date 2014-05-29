@@ -419,75 +419,94 @@ static linted_error ctl_help(int fildes, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
-        0) {
-        return errnum;
+    size_t size = 0;
+    size_t capacity = 0;
+    char * buffer = NULL;
+
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("Usage: "))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+                                            program_name)) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+ [OPTIONS]\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 Run the manager program.\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
   status              request the status of the gui service\n\
   stop                stop the gui service\n"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR("\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 Report bugs to <"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        package_bugreport)) != 0) {
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR(">\n"))) != 0) {
+        goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        package_name)) != 0) {
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
  home page: <"))) != 0) {
-        return errnum;
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        package_url)) != 0) {
+        goto free_buffer;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
+                                        LINTED_STR(">\n"))) != 0) {
+        goto free_buffer;
     }
 
-    return 0;
+    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+        goto free_buffer;
+    }
+
+free_buffer:
+    free(buffer);
+    return errnum;
 }
 
 static linted_error status_help(int fildes, char const *program_name,
