@@ -61,13 +61,13 @@ struct io_poll_data
     linted_ko ko;
 };
 
+static void asynch_task(struct linted_asynch_task *task, unsigned type,
+                        unsigned task_action);
+
 static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
-
-static void asynch_task(struct linted_asynch_task *task, unsigned type,
-                        unsigned task_action);
 
 static void run_task_poll(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
@@ -83,6 +83,8 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
 static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
+
+static linted_error check_for_poll_error(struct pollfd * pollfd);
 
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                               unsigned max_tasks)
@@ -344,6 +346,16 @@ void linted_asynch_accept(struct linted_asynch_task_accept *task,
     task->ko = ko;
 }
 
+static void asynch_task(struct linted_asynch_task *task, unsigned type,
+                        unsigned task_action)
+{
+    linted_queue_node(LINTED_UPCAST(task));
+
+    task->type = type;
+    task->errnum = 0;
+    task->task_action = task_action;
+}
+
 static void *worker_routine(void *arg)
 {
     struct linted_asynch_pool *pool = arg;
@@ -359,16 +371,6 @@ static void *worker_routine(void *arg)
         run_task(pool, task);
     }
     return NULL;
-}
-
-static void asynch_task(struct linted_asynch_task *task, unsigned type,
-                        unsigned task_action)
-{
-    linted_queue_node(LINTED_UPCAST(task));
-
-    task->type = type;
-    task->errnum = 0;
-    task->task_action = task_action;
 }
 
 static void run_task(struct linted_asynch_pool *pool,
@@ -481,6 +483,10 @@ static void run_task_read(struct linted_asynch_pool *pool,
         if (errnum != 0) {
             break;
         }
+
+        if ((errnum = check_for_poll_error(&fd)) != 0) {
+            break;
+        }
     }
 
     task->errnum = errnum;
@@ -536,6 +542,10 @@ static void run_task_write(struct linted_asynch_pool *pool,
         if (errnum != 0) {
             break;
         }
+
+        if ((errnum = check_for_poll_error(&fd)) != 0) {
+            break;
+        }
     }
 
     task->errnum = errnum;
@@ -578,6 +588,10 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
         if (errnum != 0) {
             break;
         }
+
+        if ((errnum = check_for_poll_error(&fd)) != 0) {
+            break;
+        }
     }
 
     task->errnum = errnum;
@@ -616,6 +630,10 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
             errnum = -1 == poll_status ? errno : 0;
         } while (EINTR == errnum);
         if (errnum != 0) {
+            break;
+        }
+
+        if ((errnum = check_for_poll_error(&fd)) != 0) {
             break;
         }
     }
@@ -689,6 +707,10 @@ static void run_task_accept(struct linted_asynch_pool *pool,
         if (errnum != 0) {
             break;
         }
+
+        if ((errnum = check_for_poll_error(&fd)) != 0) {
+            break;
+        }
     }
 
     task->errnum = errnum;
@@ -697,4 +719,24 @@ static void run_task_accept(struct linted_asynch_pool *pool,
     if (pool != NULL) {
         linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
     }
+}
+
+static linted_error check_for_poll_error(struct pollfd * pollfd)
+{
+    linted_error errnum = 0;
+
+    short revents = pollfd->revents;
+    if ((revents & POLLNVAL) != 0) {
+        errnum = EBADF;
+    } else if ((revents & POLLERR) != 0) {
+        errnum = EPIPE;
+    } else if ((revents & POLLERR) != 0) {
+        socklen_t optlen = sizeof errnum;
+        if (-1 == getsockopt(pollfd->fd,
+                             SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
+            errnum = errno;
+        }
+    }
+
+    return errnum;
 }
