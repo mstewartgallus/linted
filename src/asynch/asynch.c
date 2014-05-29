@@ -84,7 +84,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
 
-static linted_error check_for_poll_error(struct pollfd * pollfd);
+static linted_error check_for_poll_error(struct pollfd *pollfd);
 
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                               unsigned max_tasks)
@@ -721,7 +721,7 @@ static void run_task_accept(struct linted_asynch_pool *pool,
     }
 }
 
-static linted_error check_for_poll_error(struct pollfd * pollfd)
+static linted_error check_for_poll_error(struct pollfd *pollfd)
 {
     linted_error errnum = 0;
 
@@ -732,8 +732,8 @@ static linted_error check_for_poll_error(struct pollfd * pollfd)
         errnum = EPIPE;
     } else if ((revents & POLLERR) != 0) {
         socklen_t optlen = sizeof errnum;
-        if (-1 == getsockopt(pollfd->fd,
-                             SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
+        if (-1 ==
+            getsockopt(pollfd->fd, SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
             errnum = errno;
         }
     }

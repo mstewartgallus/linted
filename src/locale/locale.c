@@ -29,15 +29,14 @@ linted_error linted_locale_missing_process_name(int fildes,
 
     size_t size = 0;
     size_t capacity = 0;
-    char * buffer = NULL;
+    char *buffer = NULL;
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-                                           package_name)) != 0) {
+                                            package_name)) != 0) {
         goto free_buffer;
     }
 
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 : missing process name\n"))) != 0) {
         goto free_buffer;
     }
@@ -58,15 +57,14 @@ linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
 
     size_t size = 0;
     size_t capacity = 0;
-    char * buffer = NULL;
+    char *buffer = NULL;
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
                                             program_name)) != 0) {
         goto free_buffer;
     }
 
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 : unrecognized option '"))) != 0) {
         goto free_buffer;
     }
@@ -98,7 +96,7 @@ linted_error linted_locale_try_for_more_help(int fildes,
 
     size_t size = 0;
     size_t capacity = 0;
-    char * buffer = NULL;
+    char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
                                         LINTED_STR("Try `"))) != 0) {
@@ -120,8 +118,7 @@ linted_error linted_locale_try_for_more_help(int fildes,
         goto free_buffer;
     }
 
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 ' for more information.\n"))) != 0) {
         goto free_buffer;
     }
@@ -142,7 +139,7 @@ linted_error linted_locale_version(int fildes, struct linted_str package_string,
 
     size_t size = 0;
     size_t capacity = 0;
-    char * buffer = NULL;
+    char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
                                         package_string)) != 0) {
@@ -154,8 +151,7 @@ linted_error linted_locale_version(int fildes, struct linted_str package_string,
         goto free_buffer;
     }
 
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        LINTED_STR("\
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
 Copyright (C) "))) != 0) {
         goto free_buffer;
     }

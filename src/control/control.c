@@ -421,7 +421,7 @@ static linted_error ctl_help(int fildes, char const *program_name,
 
     size_t size = 0;
     size_t capacity = 0;
-    char * buffer = NULL;
+    char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
                                         LINTED_STR("Usage: "))) != 0) {
