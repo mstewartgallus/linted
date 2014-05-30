@@ -648,17 +648,24 @@ static void simulate_clamped_rotation(linted_updater_uint_fast *rotation,
                                       linted_updater_int_fast tilt)
 {
     linted_updater_int_fast tilt_sign = sign(tilt);
-    if (absolute(tilt) > DEAD_ZONE) {
+
+    linted_updater_int_fast new_rotation;
+
+    if (absolute(tilt) <= DEAD_ZONE) {
+        new_rotation = *rotation;
+    } else {
         linted_updater_int_fast step = tilt_sign * ROTATION_SPEED;
 
-        int_fast64_t new_rotation = ((int_fast64_t) * rotation) + step;
-
         if (step > 0) {
-            *rotation = min_uint64(new_rotation, UINT32_MAX / 16);
+            new_rotation = min_uint64(((int_fast64_t) *rotation) + step,
+                                      UINT32_MAX / 16);
         } else {
-            *rotation = max_int64(new_rotation, -UINT32_MAX / 8);
+            new_rotation = max_int64(((int_fast64_t) *rotation) + step,
+                                     -UINT32_MAX / 8);
         }
     }
+
+    *rotation = new_rotation;
 }
 
 static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y)
