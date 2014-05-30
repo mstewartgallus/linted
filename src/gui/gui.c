@@ -839,10 +839,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 
     linted_asynch_pool_submit(pool, task);
 
-    float pi = acosf(-1.0f);
-
-    sim_model->x_rotation = update.x_rotation * (2 * pi / UINT32_MAX);
-    sim_model->y_rotation = update.y_rotation * (2 * pi / UINT32_MAX);
+    sim_model->x_rotation = linted_updater_angle_to_float(update.x_rotation);
+    sim_model->y_rotation = linted_updater_angle_to_float(update.y_rotation);
 
     sim_model->x_position = update.x_position * (1 / (double)2048);
     sim_model->y_position = update.y_position * (1 / (double)2048);

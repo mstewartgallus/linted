@@ -61,12 +61,12 @@ void linted_updater_send(struct linted_updater_task_send *task, int task_id,
     tip += sizeof z_position.bytes;
 
     struct linted_rpc_uint32 x_rotation =
-        linted_rpc_pack_uint32(update->x_rotation);
+        linted_rpc_pack_uint32(update->x_rotation._value);
     memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
     tip += sizeof x_rotation.bytes;
 
     struct linted_rpc_uint32 y_rotation =
-        linted_rpc_pack_uint32(update->y_rotation);
+        linted_rpc_pack_uint32(update->y_rotation._value);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 }
 
@@ -99,10 +99,10 @@ void linted_updater_decode(struct linted_updater_task_receive const *task,
 
     struct linted_rpc_uint32 x_rotation;
     memcpy(x_rotation.bytes, tip, sizeof x_rotation.bytes);
-    update->x_rotation = linted_rpc_unpack_uint32(x_rotation);
+    update->x_rotation._value = linted_rpc_unpack_uint32(x_rotation);
     tip += sizeof x_rotation.bytes;
 
     struct linted_rpc_uint32 y_rotation;
     memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
-    update->y_rotation = linted_rpc_unpack_uint32(y_rotation);
+    update->y_rotation._value = linted_rpc_unpack_uint32(y_rotation);
 }

@@ -21,6 +21,7 @@
 #include "linted/mq.h"
 #include "linted/rpc.h"
 
+#include <math.h>
 #include <stdint.h>
 
 /**
@@ -43,9 +44,9 @@ typedef linted_mq linted_updater;
 typedef uint_least32_t linted_updater_uint;
 typedef int_least32_t linted_updater_int;
 
-struct linted_updater_rotation {
-    uint_fast32_t _value;
-};
+typedef struct linted_updater__angle {
+    linted_updater_uint _value;
+} linted_updater_angle;
 
 struct linted_updater_update
 {
@@ -53,8 +54,8 @@ struct linted_updater_update
     linted_updater_int y_position;
     linted_updater_int z_position;
 
-    linted_updater_uint x_rotation;
-    linted_updater_uint y_rotation;
+    linted_updater_angle x_rotation;
+    linted_updater_angle y_rotation;
 };
 
 struct linted_updater_task_send
@@ -91,8 +92,13 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 void linted_updater_decode(struct linted_updater_task_receive const *task,
                            struct linted_updater_update *update);
 
+static inline float linted_updater_angle_to_float(linted_updater_angle theta)
+{
+    return theta._value * (2 * acosf(-1.0f) / UINT32_MAX);
+}
+
 static linted_updater_int linted_updater_isatadd(linted_updater_int x,
-                                                      linted_updater_int y)
+                                                 linted_updater_int y)
 {
     return linted_updater__saturate((int_fast64_t)x + y);
 }
