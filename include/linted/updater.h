@@ -98,8 +98,8 @@ static inline float linted_updater_angle_to_float(linted_updater_angle theta)
     return theta._value * (2 * acosf(-1.0f) / UINT32_MAX);
 }
 
-static linted_updater_int linted_updater_isatadd(linted_updater_int x,
-                                                 linted_updater_int y)
+static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,
+                                                        linted_updater_int y)
 {
     return linted_updater__saturate((int_fast64_t)x + y);
 }
