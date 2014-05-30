@@ -73,6 +73,8 @@ struct linted_updater_task_receive
                  LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
+static linted_updater_int_fast linted_updater__saturate(int_fast64_t x);
+
 linted_error linted_updater_pair(linted_updater updater[2], int flags);
 
 void linted_updater_send(struct linted_updater_task_send *task, int task_id,
@@ -84,5 +86,25 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
                            struct linted_updater_update *update);
+
+static linted_updater_int_fast linted_updater_isatadd(linted_updater_int_fast x,
+                                                      linted_updater_int_fast y)
+{
+    return linted_updater__saturate((int_fast64_t)x + y);
+}
+
+static linted_updater_int_fast linted_updater__saturate(int_fast64_t x)
+{
+    if (x > LINTED_UPDATER_INT_MAX) {
+        return LINTED_UPDATER_INT_MAX;
+    }
+
+    if (x < LINTED_UPDATER_INT_MIN) {
+        return LINTED_UPDATER_INT_MIN;
+    }
+
+    return x;
+}
+
 
 #endif /* LINTED_UPDATER_H */

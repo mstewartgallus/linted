@@ -132,10 +132,9 @@ static void simulate_rotation(linted_updater_uint_fast *rotation,
 static void simulate_clamped_rotation(linted_updater_uint_fast *rotation,
                                       linted_updater_int_fast tilt);
 static linted_updater_uint_fast absolute(linted_updater_int_fast x);
-static linted_updater_int_fast saturate(int_fast64_t x);
 static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y);
 static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
-static linted_updater_int_fast min_int32(linted_updater_int_fast x,
+static linted_updater_int_fast min_int(linted_updater_int_fast x,
                                          linted_updater_int_fast y);
 static linted_updater_int_fast sign(linted_updater_int_fast x);
 
@@ -618,17 +617,20 @@ static void simulate_forces(linted_updater_int_fast *position,
     linted_updater_int_fast old_position = *position;
     linted_updater_int_fast old_velocity = *velocity;
 
-    linted_updater_int_fast guess_velocity =
-        saturate(((int_fast64_t)thrust) + old_velocity);
+    linted_updater_int_fast guess_velocity = linted_updater_isatadd(thrust,
+                                                                    old_velocity);
 
     linted_updater_int_fast friction =
-        min_int32(absolute(guess_velocity), 3 /* = μ Fₙ */) *
+        min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
         -sign(guess_velocity);
 
     linted_updater_int_fast new_velocity =
-        saturate(((int_fast64_t)guess_velocity) + friction);
+        linted_updater_isatadd(guess_velocity,
+                               friction);
+
     linted_updater_int_fast new_position =
-        saturate(((int_fast64_t)old_position) + new_velocity);
+        linted_updater_isatadd(old_position,
+                               new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
@@ -669,8 +671,8 @@ static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y)
     return x > y ? x : y;
 }
 
-static linted_updater_int_fast min_int32(linted_updater_int_fast x,
-                                         linted_updater_int_fast y)
+static linted_updater_int_fast min_int(linted_updater_int_fast x,
+                                       linted_updater_int_fast y)
 {
     return x < y ? x : y;
 }
@@ -678,19 +680,6 @@ static linted_updater_int_fast min_int32(linted_updater_int_fast x,
 static linted_updater_int_fast sign(linted_updater_int_fast x)
 {
     return x > 0 ? 1 : 0 == x ? 0 : -1;
-}
-
-static linted_updater_int_fast saturate(int_fast64_t x)
-{
-    if (x > LINTED_UPDATER_INT_MAX) {
-        return LINTED_UPDATER_INT_MAX;
-    }
-
-    if (x < LINTED_UPDATER_INT_MIN) {
-        return LINTED_UPDATER_INT_MIN;
-    }
-
-    return x;
 }
 
 static linted_updater_uint_fast absolute(linted_updater_int_fast x)
