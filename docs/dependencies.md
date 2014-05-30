@@ -31,9 +31,9 @@ Run Time Dependencies
 Build Time Dependencies
 =======================
 
-* glLoadGenerator
-  - Main Site - https://bitbucket.org/alfonse/glloadgen/
-  - Bug Database - https://bitbucket.org/alfonse/glloadgen/issues
+* glLoadGenerator-reloaded
+  - Main Site - https://bitbucket.org/Anteru/glloadgen-reloaded/
+  - Bug Database - https://bitbucket.org/Anteru/glloadgen-reloaded/issues
 * The GNU Compiler Collection
   - Main Site - https://www.gnu.org/software/gcc/
   - Bug Mailing List - http://gcc.gnu.org/ml/gcc-bugs/
