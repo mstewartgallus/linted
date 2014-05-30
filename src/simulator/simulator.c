@@ -134,8 +134,7 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
 static linted_updater_uint absolute(linted_updater_int x);
 static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y);
 static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
-static linted_updater_int min_int(linted_updater_int x,
-                                         linted_updater_int y);
+static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
 static linted_error simulator_help(linted_ko ko, char const *program_name,
@@ -327,8 +326,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         .x_velocity = 0,
         .y_velocity = 0,
         .z_velocity = 0,
-        .x_rotation = {UINT32_MAX / 2},
-        .y_rotation = {0}
+        .x_rotation = { UINT32_MAX / 2 },
+        .y_rotation = { 0 }
     };
 
     linted_ko timer =
@@ -617,20 +616,18 @@ static void simulate_forces(linted_updater_int *position,
     linted_updater_int old_position = *position;
     linted_updater_int old_velocity = *velocity;
 
-    linted_updater_int guess_velocity = linted_updater_isatadd(thrust,
-                                                                    old_velocity);
+    linted_updater_int guess_velocity =
+        linted_updater_isatadd(thrust, old_velocity);
 
     linted_updater_int friction =
         min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
         -sign(guess_velocity);
 
     linted_updater_int new_velocity =
-        linted_updater_isatadd(guess_velocity,
-                               friction);
+        linted_updater_isatadd(guess_velocity, friction);
 
     linted_updater_int new_position =
-        linted_updater_isatadd(old_position,
-                               new_velocity);
+        linted_updater_isatadd(old_position, new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
@@ -657,11 +654,11 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
         linted_updater_int step = tilt_sign * ROTATION_SPEED;
 
         if (step > 0) {
-            new_rotation._value = min_uint64(((int_fast64_t) rotation->_value) + step,
-                                             UINT32_MAX / 16);
+            new_rotation._value = min_uint64(
+                ((int_fast64_t)rotation->_value) + step, UINT32_MAX / 16);
         } else {
-            new_rotation._value = max_int64(((int_fast64_t) rotation->_value) + step,
-                                            -UINT32_MAX / 8);
+            new_rotation._value = max_int64(
+                ((int_fast64_t)rotation->_value) + step, -UINT32_MAX / 8);
         }
     }
 
@@ -678,8 +675,7 @@ static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y)
     return x > y ? x : y;
 }
 
-static linted_updater_int min_int(linted_updater_int x,
-                                       linted_updater_int y)
+static linted_updater_int min_int(linted_updater_int x, linted_updater_int y)
 {
     return x < y ? x : y;
 }

@@ -44,7 +44,8 @@ typedef linted_mq linted_updater;
 typedef uint_least32_t linted_updater_uint;
 typedef int_least32_t linted_updater_int;
 
-typedef struct linted_updater__angle {
+typedef struct linted_updater__angle
+{
     linted_updater_uint _value;
 } linted_updater_angle;
 
@@ -115,6 +116,5 @@ static linted_updater_int linted_updater__saturate(int_fast64_t x)
 
     return x;
 }
-
 
 #endif /* LINTED_UPDATER_H */
