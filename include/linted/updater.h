@@ -40,17 +40,21 @@
  */
 typedef linted_mq linted_updater;
 
-typedef uint_fast32_t linted_updater_uint_fast;
-typedef int_fast32_t linted_updater_int_fast;
+typedef uint_least32_t linted_updater_uint;
+typedef int_least32_t linted_updater_int;
+
+struct linted_updater_rotation {
+    uint_fast32_t _value;
+};
 
 struct linted_updater_update
 {
-    linted_updater_int_fast x_position;
-    linted_updater_int_fast y_position;
-    linted_updater_int_fast z_position;
+    linted_updater_int x_position;
+    linted_updater_int y_position;
+    linted_updater_int z_position;
 
-    linted_updater_uint_fast x_rotation;
-    linted_updater_uint_fast y_rotation;
+    linted_updater_uint x_rotation;
+    linted_updater_uint y_rotation;
 };
 
 struct linted_updater_task_send
@@ -73,7 +77,7 @@ struct linted_updater_task_receive
                  LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
-static linted_updater_int_fast linted_updater__saturate(int_fast64_t x);
+static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
 linted_error linted_updater_pair(linted_updater updater[2], int flags);
 
@@ -87,13 +91,13 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 void linted_updater_decode(struct linted_updater_task_receive const *task,
                            struct linted_updater_update *update);
 
-static linted_updater_int_fast linted_updater_isatadd(linted_updater_int_fast x,
-                                                      linted_updater_int_fast y)
+static linted_updater_int linted_updater_isatadd(linted_updater_int x,
+                                                      linted_updater_int y)
 {
     return linted_updater__saturate((int_fast64_t)x + y);
 }
 
-static linted_updater_int_fast linted_updater__saturate(int_fast64_t x)
+static linted_updater_int linted_updater__saturate(int_fast64_t x)
 {
     if (x > LINTED_UPDATER_INT_MAX) {
         return LINTED_UPDATER_INT_MAX;
