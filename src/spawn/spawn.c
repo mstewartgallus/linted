@@ -28,7 +28,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -459,13 +458,16 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[])
 {
+    linted_error errnum;
     bool is_relative_path = filename[0] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
-        new_path = malloc(strlen("/proc/self/fd/") + 10 + strlen(filename) + 1);
-        if (NULL == new_path) {
+        new_path = linted_mem_alloc(&errnum,
+                                     strlen("/proc/self/fd/") + 10 + strlen(filename) + 1);
+        if (errnum != 0) {
+            errno = errnum;
             return -1;
         }
         sprintf(new_path, "/proc/self/fd/%i/%s", dirfd, filename);
@@ -475,7 +477,7 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     execve(filename, argv, envp);
 
     {
-        int errnum = errno;
+        errnum = errno;
         linted_mem_free(new_path);
         errno = errnum;
     }
