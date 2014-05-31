@@ -31,12 +31,12 @@
 #if defined __linux__
 typedef int linted_ko;
 #elif defined _WIN32 || defined _WIN64
-enum linted_ko_win32_thread {
-    LINTED_KO_WIN32_THREAD
+enum linted_ko_windows_handle_type {
+    LINTED_KO_WINDOWS_HANDLE_THREAD
 };
 
 typedef struct linted__ko {
-    enum linted_ko_win32_type type;
+    enum linted_ko_windows_handle_type type;
 } linted_ko;
 
 #else

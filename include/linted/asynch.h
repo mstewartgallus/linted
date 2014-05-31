@@ -22,7 +22,10 @@
 
 #include <stddef.h>
 #include <sys/types.h>
+
+#if __linux__
 #include <sys/wait.h>
+#endif
 
 /**
  * @file
