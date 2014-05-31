@@ -55,12 +55,6 @@ struct linted_asynch_pool
     pthread_t workers[];
 };
 
-struct io_poll_data
-{
-    struct linted_queue waiters;
-    linted_ko ko;
-};
-
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
