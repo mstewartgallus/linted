@@ -24,25 +24,20 @@
  * Abstracts over the concept of a kernel object.
  */
 
-#if defined _WIN32
+#if defined _WIN32 || defined _WIN64
 #include <windows.h>
 #endif
 
-#if defined __unix__
+#if defined __linux__
 typedef int linted_ko;
-#elif defined _WIN32
-struct linted_ko_vtable;
-
-typedef struct linted_ko
-{
-    struct linted_ko_vtable const *vtable;
-    char contents[];
-} *linted_ko;
-
-struct linted_ko_vtable
-{
-    linted_error (*close)(linted_ko ko);
+#elif defined _WIN32 || defined _WIN64
+enum linted_ko_win32_thread {
+    LINTED_KO_WIN32_THREAD
 };
+
+typedef struct linted__ko {
+    enum linted_ko_win32_type type;
+} linted_ko;
 
 #else
 #error no known most primitive platform kernel object type
