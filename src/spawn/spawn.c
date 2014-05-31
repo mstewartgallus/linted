@@ -122,6 +122,7 @@ linted_error linted_spawn_file_actions_adddup2(
     struct linted_spawn_file_actions **file_actionsp, int oldfildes,
     int newfildes)
 {
+    linted_error errnum;
     struct linted_spawn_file_actions *file_actions;
     struct linted_spawn_file_actions *new_file_actions;
     union file_action *new_action;
@@ -132,11 +133,10 @@ linted_error linted_spawn_file_actions_adddup2(
 
     old_count = file_actions->action_count;
     new_count = old_count + 1;
-    new_file_actions =
-        realloc(file_actions, sizeof *file_actions +
-                                  new_count * sizeof file_actions->actions[0]);
-    if (NULL == new_file_actions) {
-        return errno;
+    new_file_actions = linted_mem_realloc(&errnum,
+        file_actions, sizeof *file_actions +  new_count * sizeof file_actions->actions[0]);
+    if (errnum != 0) {
+        return errnum;
     }
 
     new_file_actions->action_count = new_count;
