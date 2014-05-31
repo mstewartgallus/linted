@@ -14,7 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+noinst_LTLIBRARIES+=%D%/libmem.la
 
-noinst_LTLIBRARIES+=%D%/libspawn.la
-%C%_libspawn_la_SOURCES=%D%/spawn.c include/linted/spawn.h
-%C%_libspawn_la_LIBADD=src/mem/libmem.la
+%C%_libmem_la_SOURCES=%D%/mem.c include/linted/mem.h

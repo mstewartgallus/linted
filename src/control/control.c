@@ -24,7 +24,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -378,7 +377,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
         linted_error errnum = linted_manager_send_request(linted, &request);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name, LINTED_STR("can send request"),
-                    errno);
+                    errnum);
             return EXIT_FAILURE;
         }
     }
@@ -390,7 +389,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
             linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(STDERR_FILENO, program_name,
-                    LINTED_STR("can not read reply"), errno);
+                    LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
         }
 

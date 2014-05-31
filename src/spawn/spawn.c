@@ -21,6 +21,7 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -79,12 +80,13 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
-    struct linted_spawn_attr *attr = malloc(sizeof *attr);
-    if (NULL == attr) {
-        return errno;
-    }
+    linted_error errnum;
+    struct linted_spawn_attr *attr;
 
-    memset(attr, 0, sizeof *attr);
+    attr = linted_mem_alloc_zeroed(&errnum, sizeof *attr);
+    if (errnum != 0) {
+        return errnum;
+    }
 
     *attrp = attr;
     return 0;
@@ -98,19 +100,19 @@ void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
-    free(attr);
+    linted_mem_free(attr);
 }
 
 linted_error
 linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 {
-    struct linted_spawn_file_actions *file_actions =
-        malloc(sizeof *file_actions);
-    if (NULL == file_actions) {
-        return errno;
-    }
+    linted_error errnum;
+    struct linted_spawn_file_actions *file_actions;
 
-    memset(file_actions, 0, sizeof *file_actions);
+    file_actions = linted_mem_alloc_zeroed(&errnum, sizeof *file_actions);
+    if (errnum != 0) {
+        return errnum;
+    }
 
     *file_actionsp = file_actions;
     return 0;
@@ -153,7 +155,7 @@ linted_error linted_spawn_file_actions_adddup2(
 void linted_spawn_file_actions_destroy(
     struct linted_spawn_file_actions *file_actions)
 {
-    free(file_actions);
+    linted_mem_free(file_actions);
 }
 
 linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
@@ -474,7 +476,7 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
 
     {
         int errnum = errno;
-        free(new_path);
+        linted_mem_free(new_path);
         errno = errnum;
     }
 
