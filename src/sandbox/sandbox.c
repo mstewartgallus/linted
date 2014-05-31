@@ -21,6 +21,7 @@
 #include "linted/io.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <string.h>
 
 #ifdef HAVE_SYS_RESOURCE_H

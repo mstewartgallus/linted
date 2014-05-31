@@ -16,10 +16,6 @@
 #ifndef LINTED_ERROR_H
 #define LINTED_ERROR_H
 
-#if defined __linux__
-#include <errno.h>
-#endif
-
 #if defined _WIN32 || defined _WIN64
 #include <windows.h>
 #endif

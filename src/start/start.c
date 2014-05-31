@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/prctl.h>

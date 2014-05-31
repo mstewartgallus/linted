@@ -21,6 +21,7 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <string.h>
 

@@ -19,6 +19,7 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <mqueue.h>
 #include <stdlib.h>

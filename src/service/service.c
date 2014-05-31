@@ -18,6 +18,7 @@
 #include "linted/service.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <stddef.h>
 #include <string.h>
 
