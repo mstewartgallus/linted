@@ -1133,12 +1133,12 @@ static linted_error connection_pool_destroy(struct connection_pool *pool)
 static linted_error connection_remove(struct connection *connection,
                                       struct connection_pool *pool)
 {
-    int fd = connection->ko;
+    linted_ko ko = connection->ko;
 
     connection->ko = -1;
     --pool->count;
 
-    return linted_ko_close(fd);
+    return linted_ko_close(ko);
 }
 
 static linted_error linted_help(int fildes, char const *program_name,
