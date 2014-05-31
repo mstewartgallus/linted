@@ -54,7 +54,7 @@ struct linted_ko_vtable
 
 #define LINTED_KO_SYNC (1 << 4)
 
-linted_error linted_ko_strtofd(char const *ptr, linted_ko *ko);
+linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 
 linted_error linted_ko_dummy(linted_ko *kop);
 

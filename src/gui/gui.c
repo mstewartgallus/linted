@@ -272,54 +272,54 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     linted_logger logger;
     {
-        int fd;
-        if ((errnum = linted_ko_strtofd(logger_name, &fd)) != 0) {
+        linted_ko ko;
+        if ((errnum = linted_ko_from_cstring(logger_name, &ko)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(LOGGER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
-        logger = fd;
+        logger = ko;
     }
 
     linted_controller controller;
     {
-        int fd;
-        if ((errnum = linted_ko_strtofd(controller_name, &fd)) != 0) {
+        linted_ko ko;
+        if ((errnum = linted_ko_from_cstring(controller_name, &ko)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(CONTROLLER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
-        controller = fd;
+        controller = ko;
     }
 
     linted_shutdowner shutdowner;
     {
-        int fd;
-        if ((linted_ko_strtofd(shutdowner_name, &fd)) != 0) {
+        linted_ko ko;
+        if ((linted_ko_from_cstring(shutdowner_name, &ko)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(SHUTDOWNER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
-        shutdowner = fd;
+        shutdowner = ko;
     }
 
     linted_updater updater;
     {
-        int fd;
-        if ((errnum = linted_ko_strtofd(updater_name, &fd)) != 0) {
+        linted_ko ko;
+        if ((errnum = linted_ko_from_cstring(updater_name, &ko)) != 0) {
             invalid_fildes(STDERR_FILENO, program_name,
                            LINTED_STR(UPDATER_OPTION), errnum);
             linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                             LINTED_STR(HELP_OPTION));
             return EXIT_FAILURE;
         }
-        updater = fd;
+        updater = ko;
     }
 
     fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);

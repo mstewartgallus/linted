@@ -34,7 +34,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-linted_error linted_ko_strtofd(char const *str, int *fd)
+linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 {
     size_t length = strlen(str);
     unsigned position = 1u;
@@ -65,7 +65,7 @@ linted_error linted_ko_strtofd(char const *str, int *fd)
         position = next_position;
     }
 
-    *fd = total;
+    *kop = total;
     return 0;
 }
 
