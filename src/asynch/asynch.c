@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <mqueue.h>
 #include <poll.h>
+#include <pthread.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -40,7 +41,7 @@ struct linted_asynch_pool
     /**
      * A one writer to many readers queue.
      */
-    struct linted_queue worker_command_queue;
+    struct linted_queue *worker_command_queue;
 
     /**
      * A one reader to many writers queue. Should be able to retrieve
@@ -48,7 +49,7 @@ struct linted_asynch_pool
      * submitted commands there is no need to worry about it growing
      * too large.
      */
-    struct linted_queue event_queue;
+    struct linted_queue *event_queue;
 
     size_t worker_count;
 
@@ -148,10 +149,10 @@ destroy_threads:
     }
 
 destroy_event_queue:
-    linted_queue_destroy(&pool->event_queue);
+    linted_queue_destroy(pool->event_queue);
 
 destroy_worker_command_queue:
-    linted_queue_destroy(&pool->worker_command_queue);
+    linted_queue_destroy(pool->worker_command_queue);
 
 free_pool:
     free(pool);
@@ -173,8 +174,8 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
         pthread_join(pool->workers[ii], NULL);
     }
 
-    linted_queue_destroy(&pool->worker_command_queue);
-    linted_queue_destroy(&pool->event_queue);
+    linted_queue_destroy(pool->worker_command_queue);
+    linted_queue_destroy(pool->event_queue);
 
     free(pool);
 
@@ -188,7 +189,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
         run_task(NULL, task);
     } else {
         task->errnum = EINPROGRESS;
-        linted_queue_send(&pool->worker_command_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->worker_command_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -206,7 +207,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
     /* Wait for one event */
     {
         struct linted_queue_node *node;
-        linted_queue_recv(&pool->event_queue, &node);
+        linted_queue_recv(pool->event_queue, &node);
 
         /* The node is the first member of the task */
         completions[task_count] =
@@ -217,7 +218,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
     /* Then poll for more */
     for (; task_count < size; ++task_count) {
         struct linted_queue_node *node;
-        errnum = linted_queue_try_recv(&pool->event_queue, &node);
+        errnum = linted_queue_try_recv(pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
         }
@@ -244,7 +245,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 
     for (; task_count < size; ++task_count) {
         struct linted_queue_node *node;
-        errnum = linted_queue_try_recv(&pool->event_queue, &node);
+        errnum = linted_queue_try_recv(pool->event_queue, &node);
         if (EAGAIN == errnum) {
             break;
         }
@@ -358,7 +359,7 @@ static void *worker_routine(void *arg)
         struct linted_asynch_task *task;
         {
             struct linted_queue_node *node;
-            linted_queue_recv(&pool->worker_command_queue, &node);
+            linted_queue_recv(pool->worker_command_queue, &node);
             task = LINTED_DOWNCAST(struct linted_asynch_task, node);
         }
 
@@ -426,7 +427,7 @@ static void run_task_poll(struct linted_asynch_pool *pool,
     task->errnum = errnum;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -488,7 +489,7 @@ static void run_task_read(struct linted_asynch_pool *pool,
     task_read->current_position = 0;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -547,7 +548,7 @@ static void run_task_write(struct linted_asynch_pool *pool,
     task_write->current_position = 0;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -592,7 +593,7 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
     task_receive->bytes_read = bytes_read;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -636,7 +637,7 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
     task_send->bytes_wrote = bytes_wrote;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -655,7 +656,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
     task->errnum = errnum;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 
@@ -711,7 +712,7 @@ static void run_task_accept(struct linted_asynch_pool *pool,
     task_accept->returned_ko = new_ko;
 
     if (pool != NULL) {
-        linted_queue_send(&pool->event_queue, LINTED_UPCAST(task));
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
     }
 }
 

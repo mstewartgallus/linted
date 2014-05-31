@@ -21,9 +21,17 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+struct linted_queue
+{
+    struct linted_queue_node tip;
+    pthread_mutex_t lock;
+    pthread_cond_t gains_member;
+};
 
 static void unlock_routine(void *arg);
 
@@ -33,20 +41,22 @@ void linted_queue_node(struct linted_queue_node *node)
     node->next = NULL;
 }
 
-linted_error linted_queue_create(struct linted_queue *queue)
+linted_error linted_queue_create(struct linted_queue **queuep)
 {
-    struct linted_queue_node *tip = malloc(sizeof *tip);
-    if (NULL == tip) {
+    struct linted_queue *queue = malloc(sizeof *queue);
+    if (NULL == queue) {
         return errno;
     }
+
+    struct linted_queue_node *tip = &queue->tip;
 
     tip->prev = tip;
     tip->next = tip;
 
-    queue->tip = tip;
-
     pthread_mutex_init(&queue->lock, NULL);
     pthread_cond_init(&queue->gains_member, NULL);
+
+    *queuep = queue;
 
     return 0;
 }
@@ -56,7 +66,7 @@ void linted_queue_destroy(struct linted_queue *queue)
     pthread_cond_destroy(&queue->gains_member);
     pthread_mutex_destroy(&queue->lock);
 
-    free(queue->tip);
+    free(queue);
 }
 
 void linted_queue_send(struct linted_queue *queue,
@@ -65,7 +75,7 @@ void linted_queue_send(struct linted_queue *queue,
     assert(NULL == node->next);
     assert(NULL == node->prev);
 
-    struct linted_queue_node *tip = queue->tip;
+    struct linted_queue_node *tip = &queue->tip;
 
     /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
@@ -88,7 +98,7 @@ void linted_queue_recv(struct linted_queue *queue,
 {
     struct linted_queue_node *head;
 
-    struct linted_queue_node *tip = queue->tip;
+    struct linted_queue_node *tip = &queue->tip;
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
@@ -121,7 +131,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
     linted_error errnum = 0;
     struct linted_queue_node *head;
 
-    struct linted_queue_node *tip = queue->tip;
+    struct linted_queue_node *tip = &queue->tip;
 
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);

@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 
-#include <pthread.h>
 #include <stddef.h>
 
 /**
@@ -26,15 +25,7 @@
  *
  * Mediates one-by-one communication between threads.
  */
-
-struct linted_queue_node;
-
-struct linted_queue
-{
-    struct linted_queue_node *tip;
-    pthread_mutex_t lock;
-    pthread_cond_t gains_member;
-};
+struct linted_queue;
 
 struct linted_queue_node
 {
@@ -44,7 +35,7 @@ struct linted_queue_node
 
 void linted_queue_node(struct linted_queue_node *node);
 
-linted_error linted_queue_create(struct linted_queue *queue);
+linted_error linted_queue_create(struct linted_queue **queuep);
 
 /**
  * @warning It is the responsibility of the caller to fetch and
