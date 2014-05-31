@@ -20,13 +20,13 @@
 #include "linted/queue.h"
 
 #include "linted/error.h"
+#include "linted/mem.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 
 struct linted_queue
@@ -46,9 +46,10 @@ void linted_queue_node(struct linted_queue_node *node)
 
 linted_error linted_queue_create(struct linted_queue **queuep)
 {
-    struct linted_queue *queue = malloc(sizeof *queue);
-    if (NULL == queue) {
-        return errno;
+    linted_error errnum;
+    struct linted_queue *queue = linted_mem_alloc(&errnum, sizeof *queue);
+    if (errnum != 0) {
+        return errnum;
     }
 
     struct linted_queue_node *tip = &queue->tip;
@@ -69,7 +70,7 @@ void linted_queue_destroy(struct linted_queue *queue)
     pthread_cond_destroy(&queue->gains_member);
     pthread_mutex_destroy(&queue->lock);
 
-    free(queue);
+    linted_mem_free(queue);
 }
 
 void linted_queue_send(struct linted_queue *queue,
