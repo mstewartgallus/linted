@@ -31,9 +31,13 @@ def go():
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
             clang_args.extend(options)
 
-            subprocess.check_call(clang_args)
+            exit_status = subprocess.call(clang_args)
+            if exit_status != 0:
+                sys.exit(exit_status)
 
-    subprocess.check_call(cc.split() + options)
+    exit_status = subprocess.call(cc.split() + options)
+    if exit_status != 0:
+        sys.exit(exit_status)
 
     sys.exit(0)
 
