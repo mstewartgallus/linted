@@ -103,6 +103,7 @@ struct linted_asynch_task_mq_send
     linted_ko ko;
 };
 
+#if _POSIX_C_SOURCE >= 200809L
 struct linted_asynch_task_waitid
 {
     struct linted_asynch_task parent;
@@ -111,6 +112,7 @@ struct linted_asynch_task_waitid
     id_t id;
     int options;
 };
+#endif
 
 struct linted_asynch_task_accept
 {
@@ -151,9 +153,11 @@ void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
                            int task_action, linted_ko ko, char const *buf,
                            size_t size);
 
+#if _POSIX_C_SOURCE >= 200809L
 void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
                           int task_action, idtype_t idtype, id_t id,
                           int options);
+#endif
 
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
                           int task_action, linted_ko ko);

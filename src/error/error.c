@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _POSIX_C_SOURCE 200112L
+
 #include "config.h"
 
 #include "linted/error.h"
