@@ -121,14 +121,17 @@ cbmc-models:
 	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
 
+
+CBMC_FLAGS=--unwind 60 --depth 120
+
 # This is not a real verification because our programs are unbounded
 # and is only a basic double check.
 .PHONY: cbmc-lint
 cbmc-lint: scripts/cbmcwrapper
-	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/gui
-	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/simulator
-	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/linted
-	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/linted-control
+	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/gui
+	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/simulator
+	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/linted
+	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/linted-control
 
 linted_CLANG_FORMATFLAGS=-i
 
