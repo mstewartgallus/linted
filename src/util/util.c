@@ -26,7 +26,6 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -119,10 +118,11 @@ static linted_error close_fds_except(int const *kept_fds, size_t size)
         not_kept:
 
             ++fds_to_close_count;
-            int *new_fds = realloc(fds_to_close,
-                                   fds_to_close_count * sizeof fds_to_close[0]);
-            if (NULL == new_fds) {
-                error_status = errno;
+            int *new_fds = linted_mem_realloc_array(&error_status,
+                                                    fds_to_close,
+                                                    fds_to_close_count,
+                                                    sizeof fds_to_close[0]);
+            if (error_status != 0) {
                 goto free_fds_to_close;
             }
             fds_to_close = new_fds;

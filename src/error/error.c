@@ -19,10 +19,11 @@
 
 #include "linted/error.h"
 
+#include "linted/mem.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 static char const no_memory_string[] = "\
@@ -44,8 +45,10 @@ char const *linted_error_string_alloc(linted_error errnum)
 
         size = (multiplicand * size) / 2;
 
-        char *const new_string = realloc(string, size);
-        if (NULL == new_string) {
+        linted_error realloc_errnum;
+        char *const new_string = linted_mem_realloc(&realloc_errnum,
+                                                    string, size);
+        if (realloc_errnum != 0) {
             goto out_of_memory;
         }
         string = new_string;
@@ -57,17 +60,15 @@ char const *linted_error_string_alloc(linted_error errnum)
 
     return string;
 
-out_of_memory : {
-    int new_errnum = errno;
-    free(string);
-    errno = new_errnum;
-}
+out_of_memory:
+    linted_mem_free(string);
+
     return no_memory_string;
 }
 
 void linted_error_string_free(char const *error_string)
 {
     if (error_string != no_memory_string) {
-        free((void *)error_string);
+        linted_mem_free((void *)error_string);
     }
 }

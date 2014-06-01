@@ -17,3 +17,4 @@
 noinst_LTLIBRARIES+=%D%/liberror.la
 
 %C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h
+%C%_liberror_la_LIBADD=src/mem/libmem.la
