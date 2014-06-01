@@ -98,30 +98,35 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
  * This happens at startup and has to be consistent across every
  * version of the database.
  */
-
-try_to_open_lock_again:
-    ;
     pid_t lock;
-    linted_error lock_errnum = lock_db(&the_db, &lock);
-    if (lock_errnum != 0) {
+    for (;;) {
+        linted_error lock_errnum = lock_db(&the_db, &lock);
+        if (0 == lock_errnum) {
+            break;
+        }
+
         if (lock_errnum != ENOENT) {
             errnum = lock_errnum;
             goto close_db;
         }
 
         /* Lock does not exist try to create it */
-        int lock_file =
-            openat(the_db, GLOBAL_LOCK,
-                   O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
-                   S_IRUSR | S_IWUSR);
+        int lock_file = openat(the_db, GLOBAL_LOCK,
+                               O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
+                               S_IRUSR | S_IWUSR);
         if (-1 == lock_file) {
             errnum = errno;
             assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
 
-            if (EEXIST == errnum) {
-                /* File already exists try to lock it */
-                goto try_to_open_lock_again;
-            }
+        if (EEXIST == errnum) {
+            /* File already exists try to lock it */
+            continue;
+        }
+
+        if (errnum != 0) {
             goto close_db;
         }
 
@@ -130,7 +135,6 @@ try_to_open_lock_again:
         }
 
         /* File created try to lock it */
-        goto try_to_open_lock_again;
     }
 
     /* Sole user of the database now */
@@ -336,12 +340,12 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
 
     size_t spawn_error_length = align_to_page_size(sizeof(linted_error));
 
-    volatile linted_error *spawn_error =
-        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    linted_error *spawn_error = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+                                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         errnum = errno;
         assert(errnum != 0);
+        assert(errnum != EINVAL);
         return errnum;
     }
 
@@ -391,9 +395,9 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
             errnum = 0;
         }
     } while (EINTR == errnum);
-    if (errnum != 0) {
-        goto unmap_spawn_error;
-    }
+    assert(errnum != ECHILD);
+    assert(errnum != EINVAL);
+    assert(0 == errnum);
 
     switch (info.si_code) {
     case CLD_EXITED: {
@@ -451,10 +455,12 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
     }
 
 unmap_spawn_error:
-    if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
+    if (-1 == munmap(spawn_error, spawn_error_length)) {
+        linted_error munmap_errnum = errno;
+        assert(munmap_errnum != 0);
+
         if (0 == errnum) {
-            errnum = errno;
-            assert(errnum != 0);
+            errnum = munmap_errnum;
         }
     }
 
@@ -486,7 +492,6 @@ static void unlock_db(linted_db *dbp, pid_t lock)
             errnum = 0;
         }
     } while (EINTR == errnum);
-
     assert(errnum != EINVAL);
     assert(errnum != ECHILD);
     assert(0 == errnum);
@@ -510,7 +515,8 @@ static size_t align_to_page_size(size_t size)
 static void exit_with_error(volatile linted_error *spawn_error,
                             linted_error errnum)
 {
-    *spawn_error = errnum;
+    volatile linted_error *vol_spawn_error = spawn_error;
+    *vol_spawn_error = errnum;
     raise(SIGTERM);
 }
 
