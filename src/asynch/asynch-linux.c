@@ -19,6 +19,7 @@
 
 #include "linted/asynch.h"
 
+#include "linted/mem.h"
 #include "linted/queue.h"
 #include "linted/util.h"
 
@@ -29,7 +30,6 @@
 #include <pthread.h>
 #include <sched.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -89,9 +89,9 @@ int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     struct linted_asynch_pool *pool;
 
     size_t workers_size = max_tasks * sizeof pool->workers[0];
-    pool = malloc(sizeof *pool + workers_size);
-    if (NULL == pool) {
-        return errno;
+    pool = linted_mem_alloc(&errnum, sizeof *pool + workers_size);
+    if (errnum != 0) {
+        return errnum;
     }
 
     if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
@@ -155,7 +155,7 @@ destroy_worker_command_queue:
     linted_queue_destroy(pool->worker_command_queue);
 
 free_pool:
-    free(pool);
+    linted_mem_free(pool);
 
     return errnum;
 }
@@ -177,7 +177,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
     linted_queue_destroy(pool->worker_command_queue);
     linted_queue_destroy(pool->event_queue);
 
-    free(pool);
+    linted_mem_free(pool);
 
     return errnum;
 }
