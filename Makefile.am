@@ -125,10 +125,10 @@ cbmc-models:
 # and is only a basic double check.
 .PHONY: cbmc-lint
 cbmc-lint: scripts/cbmcwrapper
-	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/gui
-	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/simulator
-	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/linted
-	./scripts/cbmcwrapper --unwind 30 --depth 300 cbmc-models/lintedctl
+	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/gui
+	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/simulator
+	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/linted
+	./scripts/cbmcwrapper --unwind 30 --depth 30 cbmc-models/linted-control
 
 linted_CLANG_FORMATFLAGS=-i
 
