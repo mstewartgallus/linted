@@ -655,15 +655,11 @@ destroy_pool : {
     }
 }
 
-shutdown : {
-    linted_error shutdown_errnum;
-    do {
-        shutdown_errnum = linted_shutdowner_send_shutdown(shutdowner);
-    } while (EINTR == shutdown_errnum);
+shutdown:;
+    linted_error shutdown_errnum = linted_shutdowner_send_shutdown(shutdowner);
     if (0 == errnum) {
         errnum = shutdown_errnum;
     }
-}
 
     return errnum;
 }
