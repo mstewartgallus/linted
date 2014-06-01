@@ -21,6 +21,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -120,8 +121,7 @@ try_to_open_lock_again:
             goto close_db;
         }
 
-        if (-1 == linted_ko_close(lock_file)) {
-            errnum = errno;
+        if ((errnum = linted_ko_close(lock_file)) != 0) {
             goto close_db;
         }
 
@@ -152,9 +152,8 @@ try_to_open_lock_again:
             goto close_version_file;
         }
 
-        char *const version_text = malloc(version_file_size);
-        if (NULL == version_text) {
-            errnum = errno;
+        char *const version_text = linted_mem_alloc(&errnum, version_file_size);
+        if (errnum != 0) {
             goto close_version_file;
         }
 
@@ -175,7 +174,7 @@ try_to_open_lock_again:
         }
 
     free_version_text:
-        free(version_text);
+        linted_mem_free(version_text);
 
     close_version_file : {
         linted_error close_errnum = linted_ko_close(version_file);
@@ -285,7 +284,7 @@ try_again:
         }
     }
 
-    free(temp_path);
+    linted_mem_free(temp_path);
 
     if (errnum != 0) {
         return errnum;
@@ -313,10 +312,10 @@ linted_error linted_db_temp_send(linted_db *dbp, char const *name, int tmp)
         errnum = errno;
     }
 
-    free(field_path);
+    linted_mem_free(field_path);
 
 free_temp_path:
-    free(temp_path);
+    linted_mem_free(temp_path);
 
     return errnum;
 }
@@ -351,7 +350,7 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
         int lock_file;
         if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
                                      LINTED_KO_RDWR)) != 0) {
-            exit_with_error(spawn_error, errno);
+            exit_with_error(spawn_error, errnum);
         }
 
         struct flock flock = {
@@ -493,14 +492,15 @@ static void exit_with_error(volatile linted_error *spawn_error,
 static linted_error prepend(char **result, char const *base,
                             char const *pathname)
 {
+    linted_error errnum;
     size_t base_size = strlen(base);
     size_t pathname_size = strlen(pathname);
 
     size_t new_path_size = base_size + pathname_size + 1;
 
-    char *new_path = malloc(new_path_size);
-    if (NULL == new_path) {
-        return errno;
+    char *new_path = linted_mem_alloc(&errnum, new_path_size);
+    if (errnum != 0) {
+        return errnum;
     }
 
     new_path[new_path_size - 1] = '\0';
@@ -518,9 +518,9 @@ static int fname_alloc(int fd, char **bufp)
 
     size_t buf_size = 40;
 
-    char *buf = malloc(buf_size);
-    if (NULL == buf) {
-        return errno;
+    char *buf = linted_mem_alloc(&errnum, buf_size);
+    if (errnum != 0) {
+        return errnum;
     }
 
     for (;;) {
@@ -538,9 +538,8 @@ static int fname_alloc(int fd, char **bufp)
             goto free_buf;
         }
         buf_size = (buf_size * 3u) / 2u;
-        char *newbuf = realloc(buf, buf_size);
-        if (NULL == newbuf) {
-            errnum = errno;
+        char *newbuf = linted_mem_realloc(&errnum, buf, buf_size);
+        if (errnum != 0) {
             goto free_buf;
         }
         buf = newbuf;
@@ -549,9 +548,8 @@ static int fname_alloc(int fd, char **bufp)
     /* Save on excess memory, also give debugging allocators more
      * information.
      */
-    char *newbuf = realloc(buf, bytes_wrote + 1);
-    if (NULL == newbuf) {
-        errnum = errno;
+    char *newbuf = linted_mem_realloc(&errnum, buf, bytes_wrote + 1);
+    if (errnum != 0) {
         goto free_buf;
     }
     buf = newbuf;
@@ -562,7 +560,7 @@ static int fname_alloc(int fd, char **bufp)
     return 0;
 
 free_buf:
-    free(buf);
+    linted_mem_free(buf);
 
     return errnum;
 }
