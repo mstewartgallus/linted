@@ -79,6 +79,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
 
+static linted_error poll_one(struct pollfd *pollfd);
 static linted_error check_for_poll_error(struct pollfd *pollfd);
 
 int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
@@ -417,12 +418,7 @@ static void run_task_poll(struct linted_asynch_pool *pool,
                          .revents = 0 };
 
     do {
-        if (-1 == poll(&fd, 1, -1)) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
+        errnum = poll_one(&fd);
     } while (EINTR == errnum);
 
     short revents = fd.revents;
@@ -477,12 +473,7 @@ static void run_task_read(struct linted_asynch_pool *pool,
 
         struct pollfd fd = { .fd = task_read->ko, .events = POLLIN };
         do {
-            if (-1 == poll(&fd, 1, -1)) {
-                errnum = errno;
-                assert(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+            errnum = poll_one(&fd);
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
@@ -541,12 +532,7 @@ static void run_task_write(struct linted_asynch_pool *pool,
 
         struct pollfd fd = { .fd = task_write->ko, .events = POLLOUT };
         do {
-            if (-1 == poll(&fd, 1, -1)) {
-                errnum = errno;
-                assert(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+            errnum = poll_one(&fd);
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
@@ -592,12 +578,7 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
 
         struct pollfd fd = { .fd = task_receive->ko, .events = POLLIN };
         do {
-            if (-1 == poll(&fd, 1, -1)) {
-                errnum = errno;
-                assert(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+            errnum = poll_one(&fd);
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
@@ -641,12 +622,7 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
 
         struct pollfd fd = { .fd = task_send->ko, .events = POLLOUT };
         do {
-            if (-1 == poll(&fd, 1, -1)) {
-                errnum = errno;
-                assert(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+            errnum = poll_one(&fd);
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
@@ -730,12 +706,7 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 
         struct pollfd fd = { .fd = task_accept->ko, .events = POLLIN };
         do {
-            if (-1 == poll(&fd, 1, -1)) {
-                errnum = errno;
-                assert(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+            errnum = poll_one(&fd);
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
@@ -751,6 +722,17 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 
     if (pool != NULL) {
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+    }
+}
+
+static linted_error poll_one(struct pollfd *pollfd)
+{
+    if (-1 == poll(pollfd, 1, -1)) {
+        linted_error errnum = errno;
+        assert(errnum != 0);
+        return errnum;
+    } else {
+        return 0;
     }
 }
 
