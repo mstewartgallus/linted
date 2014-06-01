@@ -704,6 +704,7 @@ static linted_error run_game(char const *process_name,
                     case CLD_KILLED:
                         raise(exit_info.si_status);
                         errnum = errno;
+                        assert(errnum != 0);
                         goto close_connections;
 
                     case CLD_EXITED:

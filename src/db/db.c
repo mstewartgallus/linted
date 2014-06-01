@@ -78,6 +78,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     if (db_creat) {
         if (-1 == mkdirat(cwd, pathname, S_IRWXU)) {
             errnum = errno;
+            assert(errnum != 0);
             if (errnum != EEXIST) {
                 return errnum;
             }
@@ -88,7 +89,9 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
     linted_db the_db = openat(cwd, pathname, o_flags);
     if (-1 == the_db) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
 /*
@@ -113,6 +116,7 @@ try_to_open_lock_again:
                    S_IRUSR | S_IWUSR);
         if (-1 == lock_file) {
             errnum = errno;
+            assert(errnum != 0);
 
             if (EEXIST == errnum) {
                 /* File already exists try to lock it */
@@ -140,6 +144,7 @@ try_to_open_lock_again:
             struct stat stats;
             if (-1 == fstat(version_file, &stats)) {
                 errnum = errno;
+                assert(errnum != 0);
                 goto close_version_file;
             }
 
@@ -196,6 +201,7 @@ try_to_open_lock_again:
             S_IRUSR | S_IWUSR);
         if (-1 == version_file_write) {
             errnum = errno;
+            assert(errnum != 0);
             goto unlock_db;
         }
 
@@ -215,11 +221,13 @@ try_to_open_lock_again:
 
         if (-1 == mkdirat(the_db, TEMP_DIR, S_IRWXU)) {
             errnum = errno;
+            assert(errnum != 0);
             goto unlock_db;
         }
 
         if (-1 == mkdirat(the_db, FIELD_DIR, S_IRWXU)) {
             errnum = errno;
+            assert(errnum != 0);
             goto unlock_db;
         }
         break;
@@ -277,6 +285,7 @@ try_again:
                             S_IRUSR | S_IWUSR);
     if (-1 == temp_field) {
         linted_error open_errnum = errno;
+        assert(open_errnum != 0);
         if (EEXIST == open_errnum) {
             goto try_again;
         } else {
@@ -310,6 +319,7 @@ linted_error linted_db_temp_send(linted_db *dbp, char const *name, int tmp)
 
     if (-1 == renameat(*dbp, temp_path, *dbp, field_path)) {
         errnum = errno;
+        assert(errnum != 0);
     }
 
     linted_mem_free(field_path);
@@ -330,7 +340,9 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
         mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
              MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     /*
@@ -340,7 +352,9 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
      */
     pid_t child = fork();
     if (-1 == child) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     if (0 == child) {
@@ -370,8 +384,12 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
 
     siginfo_t info;
     do {
-        int wait_status = waitid(P_PID, child, &info, WEXITED | WSTOPPED);
-        errnum = -1 == wait_status ? errno : 0;
+        if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
+            errnum = errno;
+            assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
     } while (EINTR == errnum);
     if (errnum != 0) {
         goto unmap_spawn_error;
@@ -408,6 +426,7 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
         case SIGTERM:
             /* Exited with error and passed an error code */
             errnum = *spawn_error;
+            assert(errnum != 0);
             break;
 
         default:
@@ -435,6 +454,7 @@ unmap_spawn_error:
     if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
         if (0 == errnum) {
             errnum = errno;
+            assert(errnum != 0);
         }
     }
 
@@ -449,6 +469,7 @@ static void unlock_db(linted_db *dbp, pid_t lock)
 
     if (-1 == kill(lock, SIGKILL)) {
         errnum = errno;
+        assert(errnum != 0);
         assert(errnum != EINVAL);
         assert(errnum != EPERM);
         assert(errnum != ESRCH);
@@ -458,8 +479,12 @@ static void unlock_db(linted_db *dbp, pid_t lock)
     /* Unfortunately, one cannot pass NULL into the info parameter here */
     siginfo_t info;
     do {
-        int wait_status = waitid(P_PID, lock, &info, WEXITED);
-        errnum = -1 == wait_status ? errno : 0;
+        if (-1 == waitid(P_PID, lock, &info, WEXITED)) {
+            errnum = errno;
+            assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
     } while (EINTR == errnum);
 
     assert(errnum != EINVAL);
@@ -570,10 +595,14 @@ free_buf:
 
 static int fname(int fd, char *buf, size_t *sizep)
 {
+    linted_error errnum;
+
     {
         struct stat statistics;
         if (-1 == fstat(fd, &statistics)) {
-            return errno;
+            errnum = errno;
+            assert(errnum != 0);
+            return errnum;
         }
 
         if (0 == statistics.st_nlink) {
@@ -596,7 +625,9 @@ static int fname(int fd, char *buf, size_t *sizep)
 
     ssize_t bytes_wrote = readlink(fd_path, buf, size);
     if (-1 == bytes_wrote) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     *sizep = bytes_wrote;

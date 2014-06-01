@@ -598,8 +598,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  */
                 struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
                 do {
-                    int status = nanosleep(&request, &request);
-                    errnum = -1 == status ? errno : 0;
+                    if (-1 == nanosleep(&request, &request)) {
+                        errnum = errno;
+                        assert(errnum != 0);
+                    } else {
+                        errnum = 0;
+                    }
                 } while (EINTR == errnum);
                 if (errnum != 0) {
                     goto cleanup_gl;

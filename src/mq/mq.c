@@ -19,6 +19,7 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <mqueue.h>
@@ -114,6 +115,8 @@ exit_with_error_and_close_write_end : {
     errno = errnum;
 }
 
-exit_with_error:
-    return errno;
+exit_with_error:;
+    linted_error errnum = errno;
+    assert(errnum != 0);
+    return errnum;
 }

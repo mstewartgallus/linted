@@ -337,6 +337,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (-1 == timer) {
         errnum = errno;
+        assert(errnum != 0);
         goto exit;
     }
 
@@ -354,6 +355,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
         if (-1 == timerfd_settime(timer, 0, &itimer_spec, NULL)) {
             errnum = errno;
+            assert(errnum != 0);
             goto close_timer;
         }
     }
