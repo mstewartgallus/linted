@@ -163,7 +163,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     char const *controller_name = NULL;
     char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
-    for (size_t ii = 1; ii < argc; ++ii) {
+    for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {

@@ -93,7 +93,7 @@ linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
     }
 
     {
-        size_t string_size = bytes_should_write + 1;
+        size_t string_size = (unsigned)bytes_should_write + 1u;
 
         char *string = linted_mem_alloc(&errnum, string_size);
         if (errnum != 0) {

@@ -53,14 +53,6 @@ scripts/test: $(MAKEFILE) scripts/test.in
 	cat $(srcdir)/scripts/test.in > $@
 	chmod u+x $@
 
-EXTRA_DIST+=scripts/cbmcwrapper.in
-scripts/cbmcwrapper: $(MAKEFILE) scripts/cbmcwrapper.in
-	$(MKDIR_P) scripts
-	sed \
-	  -e 's|[@]CBMC[@]|$(CBMC)|g'\
-	   $(srcdir)/scripts/cbmcwrapper.in > $@
-	chmod u+x $@
-
 dist-hook:
 	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
 
@@ -122,16 +114,23 @@ cbmc-models:
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
 
 
-CBMC_FLAGS=--unwind 60 --depth 120
+LINTED_CBMC_FLAGS=\
+     --bounds-check\
+     --div-by-zero-check\
+     --nan-check\
+     --pointer-check\
+     --signed-overflow-check
+
+CBMC_FLAGS=--unwind 100 --depth 200
 
 # This is not a real verification because our programs are unbounded
 # and is only a basic double check.
 .PHONY: cbmc-lint
-cbmc-lint: scripts/cbmcwrapper
-	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/gui
-	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/simulator
-	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/linted
-	./scripts/cbmcwrapper $(CBMC_FLAGS) cbmc-models/linted-control
+cbmc-lint:
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/gui
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/simulator
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/linted
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/linted-control
 
 linted_CLANG_FORMATFLAGS=-i
 
