@@ -20,6 +20,7 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -76,7 +77,7 @@ linted_error linted_io_write_string(int fd, size_t *bytes_wrote_out,
 linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
-    linted_error error_status = 0;
+    linted_error errnum = 0;
 
     va_list ap;
     va_start(ap, format_str);
@@ -86,21 +87,20 @@ linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
 
     int bytes_should_write = vsnprintf(NULL, 0, format_str, ap);
     if (bytes_should_write < 0) {
-        error_status = errno;
+        errnum = errno;
         goto free_va_lists;
     }
 
     {
         size_t string_size = bytes_should_write + 1;
 
-        char *string = malloc(string_size);
-        if (NULL == string) {
-            error_status = errno;
+        char *string = linted_mem_alloc(&errnum, string_size);
+        if (errnum != 0) {
             goto free_va_lists;
         }
 
         if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
-            error_status = errno;
+            errnum = errno;
             goto free_string;
         }
 
@@ -108,7 +108,6 @@ linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
             linted_error errnum =
                 linted_io_write_string(fd, bytes_wrote_out, string);
             if (errnum != 0) {
-                error_status = errnum;
                 goto free_string;
             }
         }
@@ -121,5 +120,5 @@ free_va_lists:
     va_end(ap);
     va_end(ap_copy);
 
-    return error_status;
+    return errnum;
 }
