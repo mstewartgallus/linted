@@ -104,13 +104,7 @@ linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
             goto free_string;
         }
 
-        {
-            linted_error errnum =
-                linted_io_write_string(fd, bytes_wrote_out, string);
-            if (errnum != 0) {
-                goto free_string;
-            }
-        }
+        errnum = linted_io_write_string(fd, bytes_wrote_out, string);
 
     free_string:
         linted_mem_free(string);
