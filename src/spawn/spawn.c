@@ -321,6 +321,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 case SIGTERM:
                     /* Exited with error and passed an error code */
                     error_status = spawn_error->errnum;
+                    assert(error_status != 0);
                     break;
 
                 default:
