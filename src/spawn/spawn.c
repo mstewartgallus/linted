@@ -132,8 +132,9 @@ linted_error linted_spawn_file_actions_adddup2(
 
     old_count = file_actions->action_count;
     new_count = old_count + 1;
-    new_file_actions = linted_mem_realloc(&errnum,
-        file_actions, sizeof *file_actions +  new_count * sizeof file_actions->actions[0]);
+    new_file_actions = linted_mem_realloc(
+        &errnum, file_actions,
+        sizeof *file_actions + new_count * sizeof file_actions->actions[0]);
     if (errnum != 0) {
         return errnum;
     }
@@ -464,8 +465,8 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
-        new_path = linted_mem_alloc(&errnum,
-                                     strlen("/proc/self/fd/") + 10 + strlen(filename) + 1);
+        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10 +
+                                                 strlen(filename) + 1);
         if (errnum != 0) {
             errno = errnum;
             return -1;

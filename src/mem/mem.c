@@ -23,7 +23,7 @@
 
 void *linted_mem_alloc(linted_error *errnump, size_t size)
 {
-    void * memory = malloc(size);
+    void *memory = malloc(size);
     if (NULL == memory) {
         *errnump = errno;
         return NULL;
@@ -40,7 +40,7 @@ void *linted_mem_alloc_array(linted_error *errnump, size_t nmemb, size_t size)
         return NULL;
     }
 
-    void * memory = malloc(size * nmemb);
+    void *memory = malloc(size * nmemb);
     if (NULL == memory) {
         *errnump = errno;
         return NULL;
@@ -52,7 +52,7 @@ void *linted_mem_alloc_array(linted_error *errnump, size_t nmemb, size_t size)
 
 void *linted_mem_alloc_zeroed(linted_error *errnump, size_t size)
 {
-    void * memory = calloc(1, size);
+    void *memory = calloc(1, size);
     if (NULL == memory) {
         *errnump = errno;
         return NULL;
@@ -65,7 +65,7 @@ void *linted_mem_alloc_zeroed(linted_error *errnump, size_t size)
 void *linted_mem_alloc_array_zeroed(linted_error *errnump, size_t nmemb,
                                     size_t size)
 {
-    void * memory = calloc(nmemb, size);
+    void *memory = calloc(nmemb, size);
     if (NULL == memory) {
         *errnump = errno;
         return NULL;
@@ -77,7 +77,7 @@ void *linted_mem_alloc_array_zeroed(linted_error *errnump, size_t nmemb,
 
 void *linted_mem_realloc(linted_error *errnump, void *memory, size_t new_size)
 {
-    void * new_memory = realloc(memory, new_size);
+    void *new_memory = realloc(memory, new_size);
     if (NULL == new_memory) {
         *errnump = errno;
         return NULL;
@@ -95,7 +95,7 @@ void *linted_mem_realloc_array(linted_error *errnump, void *memory,
         return NULL;
     }
 
-    void * new_memory = realloc(memory, nmemb * size);
+    void *new_memory = realloc(memory, nmemb * size);
     if (NULL == new_memory) {
         *errnump = errno;
         return NULL;

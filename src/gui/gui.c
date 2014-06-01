@@ -655,7 +655,8 @@ destroy_pool : {
     }
 }
 
-shutdown:;
+shutdown:
+    ;
     linted_error shutdown_errnum = linted_shutdowner_send_shutdown(shutdowner);
     if (0 == errnum) {
         errnum = shutdown_errnum;

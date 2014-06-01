@@ -46,8 +46,8 @@ char const *linted_error_string_alloc(linted_error errnum)
         size = (multiplicand * size) / 2;
 
         linted_error realloc_errnum;
-        char *const new_string = linted_mem_realloc(&realloc_errnum,
-                                                    string, size);
+        char *const new_string =
+            linted_mem_realloc(&realloc_errnum, string, size);
         if (realloc_errnum != 0) {
             goto out_of_memory;
         }

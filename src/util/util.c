@@ -118,8 +118,7 @@ static linted_error close_fds_except(int const *kept_fds, size_t size)
         not_kept:
 
             ++fds_to_close_count;
-            int *new_fds = linted_mem_realloc_array(&error_status,
-                                                    fds_to_close,
+            int *new_fds = linted_mem_realloc_array(&error_status, fds_to_close,
                                                     fds_to_close_count,
                                                     sizeof fds_to_close[0]);
             if (error_status != 0) {
