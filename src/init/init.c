@@ -28,7 +28,7 @@
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
-#include "linted/mq.h"
+#include "linted/mem.h"
 #include "linted/shutdowner.h"
 #include "linted/start.h"
 #include "linted/spawn.h"
@@ -39,7 +39,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
@@ -269,11 +268,11 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     size_t display_value_length = strlen(original_display);
     size_t display_string_length =
         strlen("DISPLAY=") + display_value_length + 1;
-    char *display = malloc(display_string_length);
-    if (NULL == display) {
+    char *display = linted_mem_alloc(&errnum, display_string_length);
+    if (errnum != 0) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
-                               program_name, linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
@@ -602,8 +601,8 @@ static linted_error run_game(char const *process_name,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
-    char *logger_buffer = malloc(LINTED_LOGGER_LOG_MAX);
-    if (NULL == logger_buffer) {
+    char *logger_buffer = linted_mem_alloc(&errnum, LINTED_LOGGER_LOG_MAX);
+    if (errnum != 0) {
         goto close_new_connections;
     }
 
@@ -769,7 +768,7 @@ static linted_error run_game(char const *process_name,
     }
 
 free_logger_buffer:
-    free(logger_buffer);
+    linted_mem_free(logger_buffer);
 
 close_new_connections : {
     linted_error close_errnum = linted_ko_close(new_connections);
@@ -1101,9 +1100,11 @@ destroy_pool : {
 
 static linted_error connection_pool_create(struct connection_pool **poolp)
 {
-    struct connection_pool *pool = malloc(sizeof *pool);
-    if (NULL == pool) {
-        return errno;
+    linted_error errnum;
+
+    struct connection_pool *pool = linted_mem_alloc(&errnum, sizeof *pool);
+    if (errnum != 0) {
+        return errnum;
     }
 
     pool->count = 0;
@@ -1129,7 +1130,7 @@ static linted_error connection_pool_destroy(struct connection_pool *pool)
             }
         }
     }
-    free(pool);
+    linted_mem_free(pool);
     return errnum;
 }
 
