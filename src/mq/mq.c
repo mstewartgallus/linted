@@ -37,6 +37,7 @@
 linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
                             int flags)
 {
+    linted_error errnum;
     struct mq_attr mq_attr;
     char random_mq_name[sizeof TEMPLATE_NAME];
     mqd_t write_end;
@@ -84,17 +85,27 @@ linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
         write_end =
             mq_open(random_mq_name, O_WRONLY | O_CREAT | O_EXCL | O_NONBLOCK,
                     S_IRUSR, &mq_attr);
-    } while (-1 == write_end && EEXIST == errno);
-    if (-1 == write_end) {
+        if (-1 == write_end) {
+            errnum = errno;
+            assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
+    } while (EEXIST == errnum);
+    if (errnum != 0) {
         goto exit_with_error;
     }
 
     read_end = mq_open(random_mq_name, O_RDONLY | O_NONBLOCK);
     if (-1 == read_end) {
+        errnum = errno;
+        assert(errnum != 0);
         goto exit_with_error_and_close_write_end;
     }
 
     if (-1 == mq_unlink(random_mq_name)) {
+        errnum = errno;
+        assert(errnum != 0);
         goto exit_with_error_and_close_read_end;
     }
 
@@ -103,20 +114,12 @@ linted_error linted_mq_pair(linted_mq mqdes[2], struct linted_mq_attr *attr,
 
     return 0;
 
-exit_with_error_and_close_read_end : {
-    int errnum = errno;
+exit_with_error_and_close_read_end:
     mq_close(write_end);
-    errno = errnum;
-}
 
-exit_with_error_and_close_write_end : {
-    int errnum = errno;
+exit_with_error_and_close_write_end:
     mq_close(write_end);
-    errno = errnum;
-}
 
-exit_with_error:;
-    linted_error errnum = errno;
-    assert(errnum != 0);
+exit_with_error:
     return errnum;
 }
