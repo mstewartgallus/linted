@@ -130,7 +130,12 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
     int fildes;
     do {
         fildes = openat(dirko, pathname, oflags);
-        errnum = -1 == fildes ? errno : 0;
+        if (-1 == fildes) {
+            errnum = errno;
+            assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
     } while (EINTR == errnum);
     if (errnum != 0) {
         return errnum;
@@ -143,6 +148,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 linted_error linted_ko_close(linted_ko ko)
 {
+    linted_error errnum;
     /*
      * The state of a file descriptor after close gives an EINTR error
      * is unspecified by POSIX so this function avoids the problem by
@@ -155,9 +161,14 @@ linted_error linted_ko_close(linted_ko ko)
     sigset_t old_set;
     pthread_sigmask(SIG_BLOCK, &fullset, &old_set);
 
-    int close_status = close(ko);
+    if (-1 == close(ko)) {
+        errnum = errno;
+        assert(errnum != 0);
+    } else {
+        errnum = 0;
+    }
 
     pthread_sigmask(SIG_SETMASK, &old_set, NULL);
 
-    return -1 == close_status ? errno : 0;
+    return errnum;
 }

@@ -63,9 +63,12 @@ static linted_error close_fds_except(int const *kept_fds, size_t size)
 static linted_error close_fds_except(int const *kept_fds, size_t size)
 {
     linted_error error_status = 0;
+
     DIR *const fds_dir = opendir("/proc/self/fd");
     if (NULL == fds_dir) {
-        return errno;
+        error_status = errno;
+        assert(error_status != 0);
+        return error_status;
     }
 
     {
@@ -151,7 +154,7 @@ static linted_error close_fds_except(int const *kept_fds, size_t size)
 
     if (-1 == closedir(fds_dir)) {
         int errnum = errno;
-
+        assert(errnum != 0);
         assert(errnum != EBADF);
 
         if (0 == error_status) {

@@ -39,7 +39,6 @@ char const *linted_error_string_alloc(linted_error errnum)
         size_t const multiplicand = 3;
 
         if (size > SIZE_MAX / multiplicand) {
-            errno = ENOMEM;
             goto out_of_memory;
         }
 
@@ -53,8 +52,12 @@ char const *linted_error_string_alloc(linted_error errnum)
         }
         string = new_string;
 
-        int strerror_status = strerror_r(errnum, string, size);
-        strerror_errnum = -1 == strerror_status ? errno : 0;
+        if (-1 == strerror_r(errnum, string, size)) {
+            strerror_errnum = errno;
+            assert(strerror_errnum != 0);
+        } else {
+            strerror_errnum = 0;
+        }
     } while (ERANGE == strerror_errnum);
     assert(strerror_errnum != EINVAL);
 

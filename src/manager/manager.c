@@ -30,6 +30,8 @@
 linted_error linted_manager_bind(linted_manager *manager, int backlog,
                                  char const *path, size_t path_len)
 {
+    linted_error errnum = 0;
+
     if (NULL == path && path_len != 0) {
         return EINVAL;
     }
@@ -41,10 +43,14 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
     int sock =
         socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     if (-1 == shutdown(sock, SHUT_WR)) {
+        errnum = errno;
+        assert(errnum != 0);
         goto close_sock;
     }
 
@@ -63,22 +69,24 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
 
         if (-1 ==
             bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
+            errnum = errno;
+            assert(errnum != 0);
             goto close_sock;
         }
     }
 
     if (-1 == listen(sock, backlog)) {
+        errnum = errno;
+        assert(errnum != 0);
         goto close_sock;
     }
 
     *manager = sock;
     return 0;
 
-close_sock : {
-    linted_error errnum = errno;
+close_sock:
     linted_ko_close(sock);
     return errnum;
-}
 }
 
 void linted_manager_accept(struct linted_manager_task_accept *task,
@@ -90,13 +98,17 @@ void linted_manager_accept(struct linted_manager_task_accept *task,
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len)
 {
+    linted_error errnum = 0;
+
     if (path_len > LINTED_MANAGER_PATH_MAX) {
         return ENAMETOOLONG;
     }
 
     int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     {
@@ -112,6 +124,8 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
 
         if (-1 ==
             connect(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
+            errnum = errno;
+            assert(errnum != 0);
             goto close_sock;
         }
     }
@@ -119,23 +133,24 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
     *manager = sock;
     return 0;
 
-close_sock : {
-    linted_error errnum = errno;
+close_sock:
     linted_ko_close(sock);
     return errnum;
-}
 }
 
 linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
                                  size_t *len)
 {
+    linted_error errnum;
     struct sockaddr_un address;
     memset(&address, 0, sizeof address);
 
     socklen_t addr_len = sizeof address;
     if (-1 == getsockname(manager, (void *)&address, &addr_len)) {
-        return errno;
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
     }
 
     *len = addr_len - sizeof(sa_family_t);

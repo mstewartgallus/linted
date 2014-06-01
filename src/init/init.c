@@ -295,11 +295,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)) {
-        assert(errno != EINVAL);
+        errnum = errno;
+        assert(errnum != 0);
+        assert(errnum != EINVAL);
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not set child subreaper: %s\n",
-                               program_name, linted_error_string_alloc(errno));
+                               program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
 
