@@ -19,6 +19,7 @@
 
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 
 #include <stdlib.h>
 
@@ -46,7 +47,7 @@ linted_error linted_locale_missing_process_name(int fildes,
     }
 
 free_buffer:
-    free(buffer);
+    linted_mem_free(buffer);
     return errnum;
 }
 
@@ -84,7 +85,7 @@ linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
     }
 
 free_buffer:
-    free(buffer);
+    linted_mem_free(buffer);
     return errnum;
 }
 
@@ -128,7 +129,7 @@ linted_error linted_locale_try_for_more_help(int fildes,
     }
 
 free_buffer:
-    free(buffer);
+    linted_mem_free(buffer);
     return errnum;
 }
 
@@ -172,6 +173,6 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
     }
 
 free_buffer:
-    free(buffer);
+    linted_mem_free(buffer);
     return errnum;
 }

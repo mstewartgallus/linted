@@ -20,13 +20,13 @@
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/manager.h"
+#include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 
 static uint_fast8_t run_status(char const *program_name, size_t argc,
@@ -505,7 +505,7 @@ Report bugs to <"))) != 0) {
     }
 
 free_buffer:
-    free(buffer);
+    linted_mem_free(buffer);
     return errnum;
 }
 

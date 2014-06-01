@@ -143,7 +143,7 @@ static linted_error close_fds_except(int const *kept_fds, size_t size)
         }
 
     free_fds_to_close:
-        free(fds_to_close);
+        linted_mem_free(fds_to_close);
     }
 
     if (-1 == closedir(fds_dir)) {
