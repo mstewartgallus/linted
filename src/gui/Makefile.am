@@ -26,6 +26,7 @@ gui_LDADD=\
   src/io/libio.la\
   src/ko/libko.la\
   src/locale/liblocale.la\
+  src/mem/libmem.la\
   src/util/libutil.la\
   \
   src/controller/libcontroller.la\

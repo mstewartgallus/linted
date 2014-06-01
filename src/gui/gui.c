@@ -27,7 +27,7 @@
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
-#include "linted/mq.h"
+#include "linted/mem.h"
 #include "linted/shutdowner.h"
 #include "linted/start.h"
 #include "linted/updater.h"
@@ -40,7 +40,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <GL/glx.h>
 #include <xcb/xcb.h>
@@ -341,10 +340,10 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     size_t display_string_length = strlen(original_display) + 1;
-    char *display_env_var = malloc(display_string_length);
-    if (NULL == display_env_var) {
+    char *display_env_var = linted_mem_alloc(&errnum, display_string_length);
+    if (errnum != 0) {
         failure(STDERR_FILENO, program_name,
-                LINTED_STR("no DISPLAY environment variable"), errno);
+                LINTED_STR("no DISPLAY environment variable"), errnum);
         return EXIT_FAILURE;
     }
     memcpy(display_env_var, original_display, display_string_length);
@@ -479,7 +478,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             goto destroy_window;
         }
         xcb_atom_t wm_protocols = reply->atom;
-        free(reply);
+        linted_mem_free(reply);
 
         xcb_intern_atom_cookie_t cookie2 =
             xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
@@ -493,7 +492,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             goto destroy_window;
         }
         wm_delete_window = reply2->atom;
-        free(reply2);
+        linted_mem_free(reply2);
 
         xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
                             wm_protocols, 4, 32, 1, &wm_delete_window);
@@ -1012,12 +1011,12 @@ static linted_error init_graphics(linted_logger logger,
             glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
                           &info_log_length);
 
-            GLchar *info_log = malloc(info_log_length);
-            if (info_log != NULL) {
+            GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
+            if (errnum != 0) {
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
-                free(info_log);
+                linted_mem_free(info_log);
             }
             goto cleanup_program;
         }
@@ -1044,12 +1043,12 @@ static linted_error init_graphics(linted_logger logger,
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
-            GLchar *info_log = malloc(info_log_length);
-            if (info_log != NULL) {
+            GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
+            if (errnum != 0) {
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
-                free(info_log);
+                linted_mem_free(info_log);
             }
             goto cleanup_program;
         }
@@ -1066,11 +1065,11 @@ static linted_error init_graphics(linted_logger logger,
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
-        GLchar *info_log = malloc(info_log_length);
-        if (info_log != NULL) {
+        GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
+        if (errnum != 0) {
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
             log_str(logger, LINTED_STR("Invalid program: "), info_log);
-            free(info_log);
+            linted_mem_free(info_log);
         }
         goto cleanup_program;
     }
@@ -1239,14 +1238,14 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
     xcb_query_pointer_reply_t *reply =
         xcb_query_pointer_reply(connection, cookie, &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
-        free(reply);
+        linted_mem_free(reply);
         return errnum;
     }
 
     *x = reply->win_x;
     *y = reply->win_y;
 
-    free(reply);
+    linted_mem_free(reply);
 
     return 0;
 }
@@ -1439,21 +1438,21 @@ static linted_error failure(int fildes, char const *program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *error)
 {
+    linted_error errnum;
     size_t error_size = strlen(error);
 
-    char *full_string = malloc(error_size + start.size);
-    if (NULL == full_string) {
+    char *full_string = linted_mem_alloc(&errnum, error_size + start.size);
+    if (errnum != 0) {
         /* Silently drop log */
-        return errno;
+        return errnum;
     }
 
     memcpy(full_string, start.bytes, start.size);
     memcpy(full_string + start.size, error, error_size);
 
-    linted_error errnum =
-        linted_logger_log(logger, full_string, start.size + error_size);
+    errnum = linted_logger_log(logger, full_string, start.size + error_size);
 
-    free(full_string);
+    linted_mem_free(full_string);
 
     return errnum;
 }
