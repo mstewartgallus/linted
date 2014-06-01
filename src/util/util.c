@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _POSIX_C_SOURCE 200809L
+
 #include "config.h"
 
 #include "linted/util.h"
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdint.h>

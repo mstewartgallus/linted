@@ -17,3 +17,4 @@
 noinst_LTLIBRARIES+=%D%/libutil.la
 
 %C%_libutil_la_SOURCES=%D%/util.c include/linted/util.h
+%C%_libutil_la_LIBADD=src/mem/libmem.la
