@@ -34,6 +34,9 @@ AM_PROG_CC_C_O
 dnl
 AC_CANONICAL_HOST
 dnl
+AC_SYS_LARGEFILE
+AC_C_INLINE
+dnl
 AC_CHECK_HEADERS([dnl
         limits.h dnl
         fcntl.h dnl
@@ -42,6 +45,7 @@ AC_CHECK_HEADERS([dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
+        sys/socket.h dnl
         unistd.h], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
@@ -51,6 +55,11 @@ dnl
 AC_HEADER_STDBOOL
 AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
+])
+dnl
+AC_FUNC_MMAP
+AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
+ AC_MSG_ERROR([Unable to find mmap function])
 ])
 dnl
 AC_FUNC_MALLOC
@@ -73,7 +82,7 @@ AS_IF([test "x${host_vendor}" = "xw64" -o "x{host_vendor}" = "xw32"],[
   AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
    AC_MSG_ERROR([Unable to find good fork function])
   ])
-  AC_CHECK_FUNCS([memset select setenv strchr], [], [
+  AC_CHECK_FUNCS([dup2 memset munmap select setenv socket strchr], [], [
    AC_MSG_ERROR([Unable to find function ${ac_func}])
   ])
   dnl
@@ -81,7 +90,11 @@ AS_IF([test "x${host_vendor}" = "xw64" -o "x{host_vendor}" = "xw32"],[
    AC_MSG_ERROR([Unable to find global variable ${ac_func}])
   ])
   dnl
+  AC_TYPE_INT32_T
+  AC_TYPE_UINT32_T
   AC_TYPE_UINT64_T
+  dnl
+  AC_TYPE_OFF_T
   dnl
   AC_TYPE_SSIZE_T
   AC_TYPE_SIZE_T

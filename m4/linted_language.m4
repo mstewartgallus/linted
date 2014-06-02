@@ -17,9 +17,6 @@ LINTED_CHECK_CFLAGS([linted_CPPFLAGS_LANGUAGE],[
         [-std=c99]dnl
         [-pedantic-errors]dnl
         [-pthread]dnl
-        dnl
-        dnl The defines will always succeed but won't be harmful.
-        [-D_FILE_OFFSET_BITS=64]dnl
 ])
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl
