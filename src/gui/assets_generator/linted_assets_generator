@@ -15,15 +15,14 @@
 
 set -e
 
-BASE_NAME=$(dirname "$0")
-SRCDIR="$(cd ${BASE_NAME} && pwd)"
+SRCDIR="$(cd "$(dirname "$0")" && pwd)"
 
-if test -z ${BLENDER}
+if test -z "${BLENDER}"
 then
     BLENDER=blender
 fi
 
-exec ${BLENDER} \
+exec "${BLENDER}" \
     --factory-startup\
     -noaudio\
     -nojoystick\

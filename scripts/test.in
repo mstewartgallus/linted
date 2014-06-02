@@ -1,5 +1,7 @@
 #! /bin/sh
 
+set -e
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-exec "${ROOT}/../linted" --simulator="${ROOT}/../simulator" --gui="${ROOT}/../gui" $@
+exec "${ROOT}/../linted" --simulator="${ROOT}/../simulator" --gui="${ROOT}/../gui" "$@"

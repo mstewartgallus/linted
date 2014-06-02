@@ -20,16 +20,19 @@ AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
         [-ftrapv]dnl
-        [-fsanitize=address-all]dnl
+        [-fsanitize=address-full]dnl
+        [-fsanitize=undefined]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG])
 dnl
+dnl Sanitizer flags must appear in both the linker options and
+dnl compiler options to link against the appropriate runtime
+dnl libraries.
+dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
-        [-fsanitize=address-all]dnl This flag must appear in both the
-                                dnl linker options and compiler
-                                dnl options to link against the
-                                dnl appropriate runtime libraries.
+        [-fsanitize=address-full]dnl
+        [-fsanitize=undefined]dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
