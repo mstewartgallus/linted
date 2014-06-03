@@ -21,6 +21,7 @@
 #include "linted/mq.h"
 #include "linted/rpc.h"
 
+#include <assert.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -107,10 +108,41 @@ static inline linted_updater_angle linted_updater_angle_add(int sign,
     return angle;
 }
 
-static inline linted_updater_angle linted_updater_angle_from_recip(linted_updater_uint x)
+static inline linted_updater_angle linted_updater_angle_add_clamped(int sign,
+                                                                    linted_updater_angle min,
+                                                                    linted_updater_angle max,
+                                                                    linted_updater_angle theta,
+                                                                    linted_updater_angle phi)
+{
+    assert(max._value <= LINTED_UPDATER_UINT_MAX / 2u);
+    assert(LINTED_UPDATER_UINT_MAX / 2u < min._value);
+
+    linted_updater_uint result = (theta._value + sign * (int_fast64_t)phi._value) % LINTED_UPDATER_UINT_MAX;
+    switch ((sign > 0) | (theta._value > LINTED_UPDATER_UINT_MAX / 2u) << 1u) {
+    case 1u | (1u << 1u):
+        break;
+
+    case 1u | (0u << 1u):
+        result = result > max._value ? max._value : result;
+        break;
+
+    case 0u | (1u << 1u):
+        result = result > min._value ? result : min._value;
+        break;
+
+    case 0u | (0u << 1u):
+        break;
+    }
+    linted_updater_angle angle;
+    angle._value = result;
+    return angle;
+}
+
+static inline linted_updater_angle linted_updater_angle_from_frac(linted_updater_uint x,
+                                                                  linted_updater_uint y)
 {
     linted_updater_angle angle;
-    angle._value = LINTED_UPDATER_UINT_MAX / x;
+    angle._value = (LINTED_UPDATER_UINT_MAX / y) * x;
     return angle;
 }
 

@@ -644,7 +644,7 @@ static void simulate_rotation(linted_updater_angle *rotation,
     *rotation = linted_updater_angle_add(
         (absolute(tilt) > DEAD_ZONE) * sign(tilt),
         *rotation,
-        linted_updater_angle_from_recip(ROTATION_SPEED));
+        linted_updater_angle_from_frac(1, ROTATION_SPEED));
 }
 
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
@@ -657,28 +657,14 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        linted_updater_int step = tilt_sign * (LINTED_UPDATER_UINT_MAX / ROTATION_SPEED);
-
-        if (step > 0) {
-            new_rotation._value = min_uint64(
-                ((int_fast64_t)rotation->_value) + step, UINT32_MAX / 16);
-        } else {
-            new_rotation._value = max_int64(
-                ((int_fast64_t)rotation->_value) + step, -UINT32_MAX / 8);
-        }
+        new_rotation = linted_updater_angle_add_clamped(tilt_sign,
+                                                        linted_updater_angle_from_frac(15, 16),
+                                                        linted_updater_angle_from_frac(3, 16),
+                                                        *rotation,
+                                                        linted_updater_angle_from_frac(1, ROTATION_SPEED));
     }
 
     *rotation = new_rotation;
-}
-
-static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y)
-{
-    return x < y ? x : y;
-}
-
-static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y)
-{
-    return x > y ? x : y;
 }
 
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y)
