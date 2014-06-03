@@ -103,7 +103,7 @@ static inline linted_updater_angle linted_updater_angle_add(int sign,
                                                             linted_updater_angle phi)
 {
     linted_updater_angle angle;
-    angle._value = (theta._value + sign * (int_fast64_t)phi._value) % UINT32_MAX;
+    angle._value = (linted_uint32_to_int32(theta._value + sign * (int_fast64_t)phi._value) % UINT32_MAX;
     return angle;
 }
 

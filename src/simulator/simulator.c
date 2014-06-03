@@ -47,7 +47,7 @@
 #define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
 
-#define ROTATION_SPEED (LINTED_UPDATER_UINT_MAX / 512u)
+#define ROTATION_SPEED 512u
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
 enum {
@@ -641,9 +641,10 @@ static void simulate_forces(linted_updater_int *position,
 static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt)
 {
-    linted_updater_uint step = linted_uint32_to_int32(
-        (absolute(tilt) > DEAD_ZONE) * sign(tilt) * ROTATION_SPEED);
-    rotation->_value = (rotation->_value + step) % UINT32_MAX;
+    *rotation = linted_updater_angle_add(
+        (absolute(tilt) > DEAD_ZONE) * sign(tilt),
+        *rotation,
+        linted_updater_angle_from_recip(ROTATION_SPEED));
 }
 
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
@@ -656,7 +657,7 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        linted_updater_int step = tilt_sign * ROTATION_SPEED;
+        linted_updater_int step = tilt_sign * (LINTED_UPDATER_UINT_MAX / ROTATION_SPEED);
 
         if (step > 0) {
             new_rotation._value = min_uint64(
