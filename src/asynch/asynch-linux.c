@@ -743,7 +743,7 @@ static linted_error check_for_poll_error(struct pollfd *pollfd)
     short revents = pollfd->revents;
     if ((revents & POLLNVAL) != 0) {
         errnum = EBADF;
-    } else if ((revents & POLLERR) != 0) {
+    } else if ((revents & POLLHUP) != 0) {
         errnum = EPIPE;
     } else if ((revents & POLLERR) != 0) {
         socklen_t optlen = sizeof errnum;
