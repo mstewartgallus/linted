@@ -543,6 +543,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_asynch_pool_submit(
         pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
 
+    /* TODO: Detect SIGTERM and exit normally */
     for (;;) {
         /* Handle GUI events first before rendering */
         /* We have to use the Xlib event queue because of broken Mesa

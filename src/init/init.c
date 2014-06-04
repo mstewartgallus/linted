@@ -61,6 +61,7 @@
 #define XSTR(X) STR(X)
 
 enum {
+    ON_RECEIVE_SHUTDOWNER,
     WAITER,
     LOGGER,
     NEW_CONNECTIONS,
@@ -153,6 +154,12 @@ struct connection_pool
 {
     struct connection connections[MAX_MANAGE_CONNECTIONS];
     size_t count;
+};
+
+struct shutdown_task
+{
+    struct linted_shutdowner_task parent;
+    bool running_main_loop : 1;
 };
 
 static linted_error run_game(char const *process_name,
@@ -364,7 +371,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                                         simulator_path,
                                                         logger_option,
                                                         updater_option,
-                                                        shutdowner_option,
                                                         controller_option,
                                                         NULL
                                                     },
@@ -379,9 +385,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                                     { WRITE,
                                                       LINTED_SERVICE_UPDATER,
                                                       updater_dummy },
-                                                    { READ,
-                                                      LINTED_SERVICE_SHUTDOWNER,
-                                                      shutdowner_dummy },
                                                     { READ,
                                                       LINTED_SERVICE_CONTROLLER,
                                                       controller_dummy }
@@ -512,6 +515,9 @@ static linted_error run_game(char const *process_name,
     linted_logger logger_read =
         services[LINTED_SERVICE_LOGGER].file_pair.read_end;
 
+    linted_shutdowner shutdowner_read =
+        services[LINTED_SERVICE_SHUTDOWNER].file_pair.read_end;
+
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
             continue;
@@ -620,9 +626,14 @@ static linted_error run_game(char const *process_name,
         struct service_process *sim_service =
             &services[LINTED_SERVICE_SIMULATOR].process;
 
+        struct shutdown_task shutdowner_task;
         struct linted_asynch_task_waitid waiter_task;
         struct linted_logger_task logger_task;
         struct linted_manager_task_accept new_connections_accept_task;
+
+        linted_shutdowner_receive(LINTED_UPCAST(&shutdowner_task),
+                                  ON_RECEIVE_SHUTDOWNER, shutdowner_read);
+        shutdowner_task.running_main_loop = true;
 
         linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
 
@@ -630,7 +641,8 @@ static linted_error run_game(char const *process_name,
 
         linted_manager_accept(&new_connections_accept_task, NEW_CONNECTIONS,
                               new_connections);
-
+        linted_asynch_pool_submit(
+            pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&shutdowner_task))));
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
@@ -647,6 +659,9 @@ static linted_error run_game(char const *process_name,
             for (size_t ii = 0; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
                 switch (completed_task->task_action) {
+                case ON_RECEIVE_SHUTDOWNER:
+                    goto close_connections;
+
                 case NEW_CONNECTIONS: {
                     if ((errnum = completed_task->errnum) != 0) {
                         goto close_connections;
@@ -790,7 +805,7 @@ exit_services:
             pid_t pid = service->pid;
 
             if (pid != -1) {
-                linted_error kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
+                linted_error kill_errnum = -1 == kill(pid, SIGTERM) ? errno : 0;
                 /* kill_errnum == ESRCH is fine */
                 assert(kill_errnum != EINVAL);
                 assert(kill_errnum != EPERM);

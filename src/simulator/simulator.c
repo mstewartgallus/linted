@@ -24,7 +24,6 @@
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/logger.h"
-#include "linted/shutdowner.h"
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -44,14 +43,12 @@
 
 #define LOGGER_OPTION "--logger"
 #define CONTROLLER_OPTION "--controller"
-#define SHUTDOWNER_OPTION "--shutdowner"
 #define UPDATER_OPTION "--updater"
 
 #define ROTATION_SPEED 512u
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
 enum {
-    ON_RECEIVE_SHUTDOWNER,
     ON_READ_TIMER,
     ON_RECEIVE_CONTROLLER_EVENT,
     ON_SENT_UPDATER_EVENT,
@@ -86,12 +83,6 @@ struct simulator_state
     bool write_in_progress : 1;
 };
 
-struct sim_shutdown_task
-{
-    struct linted_shutdowner_task parent;
-    bool running_main_loop : 1;
-};
-
 struct sim_updater_task;
 
 struct sim_tick_task
@@ -122,7 +113,6 @@ struct sim_updater_task
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
-static linted_error on_receive_shutdowner(struct linted_asynch_task *task);
 static linted_error on_read_timer(struct linted_asynch_task *completed_task);
 static linted_error on_controller_receive(struct linted_asynch_task *task);
 static linted_error on_sent_update(struct linted_asynch_task *completed_task);
@@ -159,7 +149,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     char const *logger_name = NULL;
     char const *controller_name = NULL;
-    char const *shutdowner_name = NULL;
     char const *updater_name = NULL;
     for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
@@ -174,9 +163,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         } else if (0 == strncmp(argument, CONTROLLER_OPTION "=",
                                 strlen(CONTROLLER_OPTION "="))) {
             controller_name = argument + strlen(CONTROLLER_OPTION "=");
-        } else if (0 == strncmp(argument, SHUTDOWNER_OPTION "=",
-                                strlen(SHUTDOWNER_OPTION "="))) {
-            shutdowner_name = argument + strlen(SHUTDOWNER_OPTION "=");
         } else if (0 == strncmp(argument, UPDATER_OPTION "=",
                                 strlen(UPDATER_OPTION "="))) {
             updater_name = argument + strlen(UPDATER_OPTION "=");
@@ -219,14 +205,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    if (NULL == shutdowner_name) {
-        missing_option(STDERR_FILENO, program_name,
-                       LINTED_STR(SHUTDOWNER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
     if (NULL == updater_name) {
         missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
         linted_locale_try_for_more_help(STDERR_FILENO, program_name,
@@ -264,20 +242,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         controller = ko;
     }
 
-    linted_shutdowner shutdowner;
-    {
-        linted_ko ko;
-        if ((errnum = linted_ko_from_cstring(shutdowner_name, &ko)) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name, SHUTDOWNER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                            LINTED_STR(HELP_OPTION));
-            return EXIT_FAILURE;
-        }
-        shutdowner = ko;
-    }
-
     linted_updater updater;
     {
         linted_ko ko;
@@ -294,12 +258,11 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
-    fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
     {
         int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
-                           controller,    updater,      shutdowner };
+                           controller, updater};
 
         if ((errnum = linted_util_sanitize_environment(
                  kept_fds, LINTED_ARRAY_SIZE(kept_fds))) != 0) {
@@ -368,7 +331,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     struct sim_tick_task timer_task;
-    struct sim_shutdown_task shutdowner_task;
     struct sim_controller_task controller_task;
     struct sim_updater_task updater_task;
 
@@ -381,10 +343,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     timer_task.simulator_state = &simulator_state;
     timer_task.updater = updater;
 
-    linted_shutdowner_receive(LINTED_UPCAST(&shutdowner_task),
-                              ON_RECEIVE_SHUTDOWNER, shutdowner);
-    shutdowner_task.running_main_loop = true;
-
     linted_controller_receive(LINTED_UPCAST(&controller_task),
                               ON_RECEIVE_CONTROLLER_EVENT, controller);
     controller_task.pool = pool;
@@ -392,11 +350,10 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&timer_task)));
     linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&shutdowner_task))));
-    linted_asynch_pool_submit(
         pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&controller_task))));
 
-    do {
+    /* TODO: Detect SIGTERM and exit normally */
+    for (;;) {
         struct linted_asynch_task *completed_tasks[20];
         size_t task_count;
         linted_asynch_pool_wait(pool, completed_tasks,
@@ -408,7 +365,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                 goto destroy_pool;
             }
         }
-    } while (shutdowner_task.running_main_loop);
+    }
 
 destroy_pool : {
     linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
@@ -436,9 +393,6 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
     default:
         assert(false);
 
-    case ON_RECEIVE_SHUTDOWNER:
-        return on_receive_shutdowner(completed_task);
-
     case ON_READ_TIMER:
         return on_read_timer(completed_task);
 
@@ -448,22 +402,6 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
     case ON_SENT_UPDATER_EVENT:
         return on_sent_update(completed_task);
     }
-}
-
-static linted_error on_receive_shutdowner(struct linted_asynch_task *task)
-{
-    linted_error errnum;
-
-    if ((errnum = task->errnum) != 0) {
-        return errnum;
-    }
-
-    struct sim_shutdown_task *shutdown_task =
-        LINTED_DOWNCAST(struct sim_shutdown_task, task);
-
-    shutdown_task->running_main_loop = false;
-
-    return 0;
 }
 
 static linted_error on_read_timer(struct linted_asynch_task *completed_task)
@@ -725,8 +663,7 @@ Run the simulator.\n"))) != 0) {
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
   --logger            the logger file descriptor\n\
   --controller        the controller file descriptor\n\
-  --updater           the updater file descriptor\n\
-  --shutdowner        the shutdowner file descriptor\n"))) != 0) {
+  --updater           the updater file descriptor\n"))) != 0) {
         return errnum;
     }
 
