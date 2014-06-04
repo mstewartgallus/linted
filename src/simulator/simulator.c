@@ -41,10 +41,6 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
-#define LOGGER_OPTION "--logger"
-#define CONTROLLER_OPTION "--controller"
-#define UPDATER_OPTION "--updater"
-
 #define ROTATION_SPEED 512u
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
@@ -132,12 +128,14 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
                                    struct linted_str package_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
-static linted_error missing_option(linted_ko ko, char const *program_name,
-                                   struct linted_str help_option);
+
+static linted_ko kos[3];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
-    .open_current_working_directory = false
+    .open_current_working_directory = false,
+    .kos_size = LINTED_ARRAY_SIZE(kos),
+    .kos = kos
 };
 
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
@@ -147,9 +145,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     bool need_version = false;
     char const *bad_option = NULL;
 
-    char const *logger_name = NULL;
-    char const *controller_name = NULL;
-    char const *updater_name = NULL;
     for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
@@ -157,15 +152,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             need_help = true;
         } else if (0 == strcmp(VERSION_OPTION, argument)) {
             need_version = true;
-        } else if (0 == strncmp(argument, LOGGER_OPTION "=",
-                                strlen(LOGGER_OPTION "="))) {
-            logger_name = argument + strlen(LOGGER_OPTION "=");
-        } else if (0 == strncmp(argument, CONTROLLER_OPTION "=",
-                                strlen(CONTROLLER_OPTION "="))) {
-            controller_name = argument + strlen(CONTROLLER_OPTION "=");
-        } else if (0 == strncmp(argument, UPDATER_OPTION "=",
-                                strlen(UPDATER_OPTION "="))) {
-            updater_name = argument + strlen(UPDATER_OPTION "=");
         } else {
             bad_option = argument;
         }
@@ -190,88 +176,22 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    if (NULL == controller_name) {
-        missing_option(STDERR_FILENO, program_name,
-                       LINTED_STR(CONTROLLER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    if (NULL == logger_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(LOGGER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    if (NULL == updater_name) {
-        missing_option(STDERR_FILENO, program_name, LINTED_STR(UPDATER_OPTION));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
     linted_error errnum;
 
-    linted_logger logger;
-    {
-        linted_ko ko;
-        if ((errnum = linted_ko_from_cstring(logger_name, &ko)) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name, LOGGER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                            LINTED_STR(HELP_OPTION));
-            return EXIT_FAILURE;
-        }
-        logger = ko;
-    }
-
-    linted_controller controller;
-    {
-        linted_ko ko;
-        if ((errnum = linted_ko_from_cstring(controller_name, &ko)) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name, CONTROLLER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                            LINTED_STR(HELP_OPTION));
-            return EXIT_FAILURE;
-        }
-        controller = ko;
-    }
-
-    linted_updater updater;
-    {
-        linted_ko ko;
-        if ((errnum = linted_ko_from_cstring(updater_name, &ko)) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "%s: %s argument: %s\n",
-                                   program_name, UPDATER_OPTION,
-                                   linted_error_string_alloc(errnum));
-            linted_locale_try_for_more_help(STDERR_FILENO, program_name,
-                                            LINTED_STR(HELP_OPTION));
-            return EXIT_FAILURE;
-        }
-        updater = ko;
-    }
+    linted_logger logger = kos[0];
+    linted_controller controller = kos[1];
+    linted_updater updater = kos[2];
 
     fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
     fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
     fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
 
-    {
-        int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, logger,
-                           controller, updater};
-
-        if ((errnum = linted_util_sanitize_environment(
-                 kept_fds, LINTED_ARRAY_SIZE(kept_fds))) != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
+    if ((errnum = linted_util_sanitize_environment()) != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
-            return EXIT_FAILURE;
-        }
+                               program_name,
+                               linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
     }
 
     {
@@ -693,32 +613,6 @@ Report bugs to <"))) != 0) {
         return errnum;
     }
     if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
-}
-
-static linted_error missing_option(int fildes, char const *program_name,
-                                   struct linted_str option)
-{
-    linted_error errnum;
-
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL,
-                                      LINTED_STR(": missing "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, option)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(" option\n"))) !=
-        0) {
         return errnum;
     }
 

@@ -26,6 +26,8 @@
 struct linted_start_config
 {
     char const *canonical_process_name;
+    size_t kos_size;
+    linted_ko *kos;
     bool open_current_working_directory : 1;
 };
 

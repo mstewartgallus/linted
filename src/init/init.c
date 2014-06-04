@@ -163,10 +163,7 @@ struct shutdown_task
 };
 
 static linted_error run_game(char const *process_name,
-                             union service_config const *config,
-                             linted_ko logger_dummy, linted_ko updater_dummy,
-                             linted_ko shutdowner_dummy,
-                             linted_ko controller_dummy);
+                             union service_config const *config);
 
 static linted_error updater_pair(linted_ko ko[2]);
 static linted_error controller_pair(linted_ko ko[2]);
@@ -197,7 +194,8 @@ static linted_error linted_help(int fildes, char const *program_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
-    .open_current_working_directory = true
+    .open_current_working_directory = true,
+    .kos_size = 0
 };
 
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
@@ -287,18 +285,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
            display_value_length);
     display[display_string_length - 1] = 0;
 
-    {
-        int kept_fds[] = { STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, cwd };
-
-        errnum = linted_util_sanitize_environment(kept_fds,
-                                                  LINTED_ARRAY_SIZE(kept_fds));
-        if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
+    errnum = linted_util_sanitize_environment();
+    if (errnum != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
-            return EXIT_FAILURE;
-        }
+                               program_name,
+                               linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
     }
 
     if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)) {
@@ -326,119 +319,66 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     int succesfully_executing = 0;
 
     linted_error game_status;
-    {
-        int logger_dummy;
-        int updater_dummy;
-        int shutdowner_dummy;
-        int controller_dummy;
+    union service_config const configuration[] =
+        {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
+         [LINTED_SERVICE_SIMULATOR] = { .process = {
+                 .type = SERVICE_PROCESS,
+                 .working_directory = cwd,
+                 .path = simulator_path,
+                 .arguments = (char const * const[]) {simulator_path, NULL},
+                 .environment = (char const * const[]) { NULL },
+                 .dup_pairs = DUP_PAIRS((
+                                            struct dup_pair const[]) {
+                                            { WRITE,
+                                                    LINTED_SERVICE_LOGGER,
+                                                    3 },
+                                            { READ,
+                                                    LINTED_SERVICE_CONTROLLER,
+                                                    4 },
+                                             { WRITE,
+                                                    LINTED_SERVICE_UPDATER,
+                                                    5 }
+                                        })
+             } },
+         [LINTED_SERVICE_GUI] = { .process = {
+                 .type = SERVICE_PROCESS,
+                 .working_directory = cwd,
+                 .path = gui_path,
+                 .arguments = (char const * const[]) { gui_path, NULL },
+                 .environment = (char const * const[]) { display, NULL },
+                 .dup_pairs = DUP_PAIRS((
+                                            struct dup_pair const[]) {
+                                            { WRITE, LINTED_SERVICE_LOGGER,
+                                                    3 },
+                                            { WRITE,
+                                                    LINTED_SERVICE_CONTROLLER,
+                                                    4 },
+                                            { WRITE,
+                                                    LINTED_SERVICE_SHUTDOWNER,
+                                                    5 },
+                                            { READ, LINTED_SERVICE_UPDATER,
+                                                    6 }
+                                       })
+             } },
+         [LINTED_SERVICE_LOGGER] = { .file_pair = {
+                 .type = SERVICE_FILE_PAIR,
+                 .generator = linted_logger_pair
+             } },
+         [LINTED_SERVICE_UPDATER] = { .file_pair = { .type =
+                                                     SERVICE_FILE_PAIR,
+                                                     .generator =
+                                                     updater_pair } },
+         [LINTED_SERVICE_CONTROLLER] = { .file_pair = {
+                 .type = SERVICE_FILE_PAIR,
+                 .generator = controller_pair
+             } },
+         [LINTED_SERVICE_SHUTDOWNER] = { .file_pair = {
+                 .type = SERVICE_FILE_PAIR,
+                 .generator = shutdowner_pair
+             } } };
+    game_status =
+        run_game(program_name, configuration);
 
-        if ((game_status = linted_ko_dummy(&logger_dummy)) != 0) {
-            goto done;
-        }
-
-        if ((game_status = linted_ko_dummy(&updater_dummy)) != 0) {
-            goto done;
-        }
-
-        if ((game_status = linted_ko_dummy(&shutdowner_dummy)) != 0) {
-            goto done;
-        }
-
-        if ((game_status = linted_ko_dummy(&controller_dummy)) != 0) {
-            goto done;
-        }
-
-        char logger_option[] = "--logger=XXXXXXXXXXX";
-        sprintf(logger_option, "--logger=%i", logger_dummy);
-
-        char updater_option[] = "--updater=XXXXXXXXXXX";
-        sprintf(updater_option, "--updater=%i", updater_dummy);
-
-        char shutdowner_option[] = "--shutdowner=XXXXXXXXXXX";
-        sprintf(shutdowner_option, "--shutdowner=%i", shutdowner_dummy);
-
-        char controller_option[] = "--controller=XXXXXXXXXXX";
-        sprintf(controller_option, "--controller=%i", controller_dummy);
-
-        union service_config const configuration[] =
-            {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
-             [LINTED_SERVICE_SIMULATOR] = { .process = {
-                                                .type = SERVICE_PROCESS,
-                                                .working_directory = cwd,
-                                                .path = simulator_path,
-                                                .arguments =
-                                                    (char const * const[]) {
-                                                        simulator_path,
-                                                        logger_option,
-                                                        updater_option,
-                                                        controller_option,
-                                                        NULL
-                                                    },
-                                                .environment =
-                                                    (char const *
-                                                     const[]) { NULL },
-                                                .dup_pairs = DUP_PAIRS((
-                                                    struct dup_pair const[]) {
-                                                    { WRITE,
-                                                      LINTED_SERVICE_LOGGER,
-                                                      logger_dummy },
-                                                    { WRITE,
-                                                      LINTED_SERVICE_UPDATER,
-                                                      updater_dummy },
-                                                    { READ,
-                                                      LINTED_SERVICE_CONTROLLER,
-                                                      controller_dummy }
-                                                })
-                                            } },
-             [LINTED_SERVICE_GUI] = { .process = {
-                                          .type = SERVICE_PROCESS,
-                                          .working_directory = cwd,
-                                          .path = gui_path,
-                                          .arguments =
-                                              (char const *
-                                               const[]) { gui_path,
-                                                          logger_option,
-                                                          updater_option,
-                                                          shutdowner_option,
-                                                          controller_option,
-                                                          NULL },
-                                          .environment =
-                                              (char const * const[]) { display,
-                                                                       NULL },
-                                          .dup_pairs = DUP_PAIRS((
-                                              struct dup_pair const[]) {
-                                              { WRITE, LINTED_SERVICE_LOGGER,
-                                                logger_dummy },
-                                              { READ, LINTED_SERVICE_UPDATER,
-                                                updater_dummy },
-                                              { WRITE,
-                                                LINTED_SERVICE_SHUTDOWNER,
-                                                shutdowner_dummy },
-                                              { WRITE,
-                                                LINTED_SERVICE_CONTROLLER,
-                                                controller_dummy }
-                                          })
-                                      } },
-             [LINTED_SERVICE_LOGGER] = { .file_pair = {
-                                             .type = SERVICE_FILE_PAIR,
-                                             .generator = linted_logger_pair
-                                         } },
-             [LINTED_SERVICE_UPDATER] = { .file_pair = { .type =
-                                                             SERVICE_FILE_PAIR,
-                                                         .generator =
-                                                             updater_pair } },
-             [LINTED_SERVICE_CONTROLLER] = { .file_pair = {
-                                                 .type = SERVICE_FILE_PAIR,
-                                                 .generator = controller_pair
-                                             } },
-             [LINTED_SERVICE_SHUTDOWNER] = { .file_pair = {
-                                                 .type = SERVICE_FILE_PAIR,
-                                                 .generator = shutdowner_pair
-                                             } } };
-        game_status =
-            run_game(program_name, configuration, logger_dummy, updater_dummy,
-                     shutdowner_dummy, controller_dummy);
-    }
 done:
     ;
     if (game_status != 0) {
@@ -462,10 +402,7 @@ done:
 }
 
 static linted_error run_game(char const *process_name,
-                             union service_config const *config,
-                             linted_ko logger_dummy, linted_ko updater_dummy,
-                             linted_ko shutdowner_dummy,
-                             linted_ko controller_dummy)
+                             union service_config const *config)
 {
     linted_error errnum = 0;
 

@@ -25,11 +25,19 @@
 #include "linted/ko.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+
+#if defined __linux__
+#define FDS_DIR "/proc/self/fd"
+#else
+#error no open files directory known for this platform
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -51,7 +59,169 @@ It is insecure to run a game as root!\n"));
 
     char const *const program_name = argv[0];
 
-    int cwd;
+    size_t kos_size = linted_start_config.kos_size;
+    linted_ko *kos = linted_start_config.kos;
+
+    DIR *const fds_dir = opendir(FDS_DIR);
+    if (NULL == fds_dir) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                               program_name,
+                               FDS_DIR,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /**
+     * @todo give an error if too many files are passed
+     */
+    size_t kos_found = 0;
+    for (; kos_found < kos_size;) {
+        /*
+         * Use readdir because this function isn't thread safe
+         * anyways and readdir_r has a very broken interface.
+         */
+        errno = 0;
+        struct dirent *const result = readdir(fds_dir);
+        {
+            int errnum = errno;
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                                       program_name,
+                                       FDS_DIR,
+                                       linted_error_string_alloc(errnum));
+               return EXIT_FAILURE;
+            }
+        }
+
+        if (NULL == result) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: too little argument files\n",
+                                   program_name);
+            return EXIT_FAILURE;
+        }
+
+        char const *const d_name = result->d_name;
+        if (0 == strcmp(d_name, ".")) {
+            continue;
+        }
+
+        if (0 == strcmp(d_name, "..")) {
+            continue;
+        }
+
+        int const fd = atoi(d_name);
+
+        /*
+         * This is Linux specific code so we can rely on dirfd to
+         * not return ENOTSUP here.
+         */
+
+        if (fd == dirfd(fds_dir)) {
+            continue;
+        }
+
+        if (STDIN_FILENO == fd) {
+            continue;
+        }
+
+        if (STDOUT_FILENO == fd) {
+            continue;
+        }
+
+        if (STDERR_FILENO == fd) {
+            continue;
+        }
+
+        fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+
+        kos[kos_found] = fd;
+        ++kos_found;
+    }
+
+    for (;;) {
+        errno = 0;
+        struct dirent *const result = readdir(fds_dir);
+        {
+            int errnum = errno;
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                                       program_name,
+                                       FDS_DIR,
+                                       linted_error_string_alloc(errnum));
+               return EXIT_FAILURE;
+            }
+        }
+
+        if (NULL == result) {
+            break;
+        }
+
+        char const *const d_name = result->d_name;
+        if (0 == strcmp(d_name, ".")) {
+            continue;
+        }
+
+        if (0 == strcmp(d_name, "..")) {
+            continue;
+        }
+
+        int const fd = atoi(d_name);
+
+        /*
+         * This is Linux specific code so we can rely on dirfd to
+         * not return ENOTSUP here.
+         */
+
+        if (fd == dirfd(fds_dir)) {
+            continue;
+        }
+
+        if (STDIN_FILENO == fd) {
+            continue;
+        }
+
+        if (STDOUT_FILENO == fd) {
+            continue;
+        }
+
+        if (STDERR_FILENO == fd) {
+            continue;
+        }
+
+        /* Don't check for errors, an error just means someone leaked
+         * a handle to /dev/full.
+         */
+        linted_ko_close(fd);
+    }
+
+    if (-1 == closedir(fds_dir)) {
+        int errnum = errno;
+        assert(errnum != 0);
+        assert(errnum != EBADF);
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                               program_name,
+                               FDS_DIR,
+                               linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
+    }
+
+    /* Sort the fds from smallest to largest */
+    for (size_t ii = 0; ii < kos_size; ++ii) {
+        for (size_t jj = ii + 1; jj < kos_size; ++jj) {
+            if (kos[ii] > kos[jj]) {
+                linted_ko temp = kos[ii];
+                kos[ii] = kos[jj];
+                kos[jj] = temp;
+            }
+        }
+    }
+
+    linted_ko cwd;
     if (linted_start_config.open_current_working_directory) {
         cwd = open("./", O_DIRECTORY | O_CLOEXEC);
         if (-1 == cwd) {
