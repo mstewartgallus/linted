@@ -135,8 +135,6 @@ static void simulate_rotation(linted_updater_angle *rotation,
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
                                       linted_updater_int tilt);
 static linted_updater_uint absolute(linted_updater_int x);
-static uint_fast64_t min_uint64(uint_fast64_t x, uint_fast64_t y);
-static int_fast64_t max_int64(int_fast64_t x, int_fast64_t y);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
