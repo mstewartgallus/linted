@@ -182,10 +182,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_controller controller = kos[1];
     linted_updater updater = kos[2];
 
-    fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
-    fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
-    fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
-
     if ((errnum = linted_util_sanitize_environment()) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",

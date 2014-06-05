@@ -83,7 +83,6 @@ struct dup_pair
 {
     enum service_end service_end;
     enum linted_service service;
-    int newfildes;
 };
 
 struct dup_pairs
@@ -327,17 +326,10 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  .path = simulator_path,
                  .arguments = (char const * const[]) {simulator_path, NULL},
                  .environment = (char const * const[]) { NULL },
-                 .dup_pairs = DUP_PAIRS((
-                                            struct dup_pair const[]) {
-                                            { WRITE,
-                                                    LINTED_SERVICE_LOGGER,
-                                                    3 },
-                                            { READ,
-                                                    LINTED_SERVICE_CONTROLLER,
-                                                    4 },
-                                             { WRITE,
-                                                    LINTED_SERVICE_UPDATER,
-                                                    5 }
+                 .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+                                            { WRITE, LINTED_SERVICE_LOGGER },
+                                            { READ, LINTED_SERVICE_CONTROLLER },
+                                            { WRITE, LINTED_SERVICE_UPDATER }
                                         })
              } },
          [LINTED_SERVICE_GUI] = { .process = {
@@ -346,28 +338,19 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  .path = gui_path,
                  .arguments = (char const * const[]) { gui_path, NULL },
                  .environment = (char const * const[]) { display, NULL },
-                 .dup_pairs = DUP_PAIRS((
-                                            struct dup_pair const[]) {
-                                            { WRITE, LINTED_SERVICE_LOGGER,
-                                                    3 },
-                                            { WRITE,
-                                                    LINTED_SERVICE_CONTROLLER,
-                                                    4 },
-                                            { WRITE,
-                                                    LINTED_SERVICE_SHUTDOWNER,
-                                                    5 },
-                                            { READ, LINTED_SERVICE_UPDATER,
-                                                    6 }
+                 .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+                                            { WRITE, LINTED_SERVICE_LOGGER },
+                                            { WRITE, LINTED_SERVICE_CONTROLLER},
+                                            { WRITE, LINTED_SERVICE_SHUTDOWNER},
+                                            { READ, LINTED_SERVICE_UPDATER}
                                        })
              } },
          [LINTED_SERVICE_LOGGER] = { .file_pair = {
                  .type = SERVICE_FILE_PAIR,
                  .generator = linted_logger_pair
              } },
-         [LINTED_SERVICE_UPDATER] = { .file_pair = { .type =
-                                                     SERVICE_FILE_PAIR,
-                                                     .generator =
-                                                     updater_pair } },
+         [LINTED_SERVICE_UPDATER] = { .file_pair = { .type = SERVICE_FILE_PAIR,
+                                                     .generator = updater_pair } },
          [LINTED_SERVICE_CONTROLLER] = { .file_pair = {
                  .type = SERVICE_FILE_PAIR,
                  .generator = controller_pair
@@ -376,11 +359,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  .type = SERVICE_FILE_PAIR,
                  .generator = shutdowner_pair
              } } };
-    game_status =
-        run_game(program_name, configuration);
+    game_status = run_game(program_name, configuration);
 
-done:
-    ;
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
@@ -496,7 +476,7 @@ static linted_error run_game(char const *process_name,
             }
 
             if ((errnum = linted_spawn_file_actions_adddup2(
-                     &file_actions, oldfildes, dup_pair->newfildes)) != 0) {
+                     &file_actions, oldfildes, 3 + jj)) != 0) {
                 goto destroy_attr;
             }
         }

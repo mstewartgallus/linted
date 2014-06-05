@@ -225,11 +225,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_shutdowner shutdowner = kos[2];
     linted_updater updater = kos[3];
 
-    fcntl(logger, F_SETFD, fcntl(logger, F_GETFD) | FD_CLOEXEC);
-    fcntl(updater, F_SETFD, fcntl(updater, F_GETFD) | FD_CLOEXEC);
-    fcntl(shutdowner, F_SETFD, fcntl(shutdowner, F_GETFD) | FD_CLOEXEC);
-    fcntl(controller, F_SETFD, fcntl(controller, F_GETFD) | FD_CLOEXEC);
-
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_string(STDERR_FILENO, NULL, program_name);
