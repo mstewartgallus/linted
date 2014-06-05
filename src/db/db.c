@@ -94,10 +94,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         return errnum;
     }
 
-/*
- * This happens at startup and has to be consistent across every
- * version of the database.
- */
+    /*
+     * This happens at startup and has to be consistent across every
+     * version of the database.
+     */
     pid_t lock;
     for (;;) {
         linted_error lock_errnum = lock_db(&the_db, &lock);
@@ -111,9 +111,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         }
 
         /* Lock does not exist try to create it */
-        int lock_file = openat(the_db, GLOBAL_LOCK,
-                               O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
-                               S_IRUSR | S_IWUSR);
+        int lock_file =
+            openat(the_db, GLOBAL_LOCK,
+                   O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
+                   S_IRUSR | S_IWUSR);
         if (-1 == lock_file) {
             errnum = errno;
             assert(errnum != 0);
@@ -340,8 +341,9 @@ static linted_error lock_db(linted_db *dbp, pid_t *lock)
 
     size_t spawn_error_length = align_to_page_size(sizeof(linted_error));
 
-    linted_error *spawn_error = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-                                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    linted_error *spawn_error =
+        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         errnum = errno;
         assert(errnum != 0);

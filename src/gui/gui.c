@@ -246,8 +246,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
         failure(STDERR_FILENO, program_name,
-                LINTED_STR("cannot sanitize the program environment"),
-                errnum);
+                LINTED_STR("cannot sanitize the program environment"), errnum);
         return EXIT_FAILURE;
     }
 

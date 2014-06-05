@@ -185,8 +185,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     if ((errnum = linted_util_sanitize_environment()) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
-                               program_name,
-                               linted_error_string_alloc(errnum));
+                               program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
 
@@ -494,8 +493,7 @@ static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt)
 {
     *rotation = linted_updater_angle_add(
-        (absolute(tilt) > DEAD_ZONE) * sign(tilt),
-        *rotation,
+        (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation,
         linted_updater_angle_from_frac(1, ROTATION_SPEED));
 }
 
@@ -509,11 +507,10 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        new_rotation = linted_updater_angle_add_clamped(tilt_sign,
-                                                        linted_updater_angle_from_frac(15, 16),
-                                                        linted_updater_angle_from_frac(3, 16),
-                                                        *rotation,
-                                                        linted_updater_angle_from_frac(1, ROTATION_SPEED));
+        new_rotation = linted_updater_angle_add_clamped(
+            tilt_sign, linted_updater_angle_from_frac(15, 16),
+            linted_updater_angle_from_frac(3, 16), *rotation,
+            linted_updater_angle_from_frac(1, ROTATION_SPEED));
     }
 
     *rotation = new_rotation;

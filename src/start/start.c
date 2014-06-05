@@ -66,8 +66,7 @@ It is insecure to run a game as root!\n"));
     if (NULL == fds_dir) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: %s: %s\n",
-                               program_name,
-                               FDS_DIR,
+                               program_name, FDS_DIR,
                                linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
@@ -88,10 +87,9 @@ It is insecure to run a game as root!\n"));
             if (errnum != 0) {
                 linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: %s: %s\n",
-                                       program_name,
-                                       FDS_DIR,
+                                       program_name, FDS_DIR,
                                        linted_error_string_alloc(errnum));
-               return EXIT_FAILURE;
+                return EXIT_FAILURE;
             }
         }
 
@@ -148,10 +146,9 @@ It is insecure to run a game as root!\n"));
             if (errnum != 0) {
                 linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: %s: %s\n",
-                                       program_name,
-                                       FDS_DIR,
+                                       program_name, FDS_DIR,
                                        linted_error_string_alloc(errnum));
-               return EXIT_FAILURE;
+                return EXIT_FAILURE;
             }
         }
 
@@ -204,8 +201,7 @@ It is insecure to run a game as root!\n"));
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: %s: %s\n",
-                               program_name,
-                               FDS_DIR,
+                               program_name, FDS_DIR,
                                linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
