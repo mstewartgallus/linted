@@ -57,7 +57,7 @@ struct linted_mq_attr
  *
  * @error ENOSPC Insufficient space.
  */
-linted_error linted_mq_pair(linted_mq mq[2], struct linted_mq_attr *attr,
-                            int flags);
+linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
+                              int flags);
 
 #endif /* LINTED_MQ_H */

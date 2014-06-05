@@ -31,7 +31,7 @@ struct message
     char dummy;
 };
 
-linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int flags)
+linted_error linted_shutdowner_create(linted_shutdowner *shutdownerp, int flags)
 {
     if (flags != 0) {
         return EINVAL;
@@ -42,7 +42,7 @@ linted_error linted_shutdowner_pair(linted_shutdowner shutdowner[2], int flags)
     attr.maxmsg = 1;
     attr.msgsize = 1;
 
-    return linted_mq_pair(shutdowner, &attr, 0);
+    return linted_mq_create(shutdownerp, &attr, 0);
 }
 
 linted_error linted_shutdowner_send_shutdown(linted_shutdowner shutdowner)

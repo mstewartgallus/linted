@@ -40,7 +40,7 @@ struct linted_logger_task
     struct linted_asynch_task_mq_receive parent;
 };
 
-linted_error linted_logger_pair(linted_logger logger[2]);
+linted_error linted_logger_create(linted_logger *loggerp);
 
 linted_error linted_logger_close(linted_logger logger);
 

@@ -57,6 +57,8 @@ linted_error linted_ko_dummy(linted_ko *kop);
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, int flags);
 
+linted_error linted_ko_reopen(linted_ko *kop, int flags);
+
 /**
  * The linted_ko_close function closes a kernel object.
  *
