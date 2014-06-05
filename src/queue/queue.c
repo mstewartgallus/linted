@@ -67,8 +67,13 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 
 void linted_queue_destroy(struct linted_queue *queue)
 {
-    pthread_cond_destroy(&queue->gains_member);
-    pthread_mutex_destroy(&queue->lock);
+    linted_error errnum;
+
+    errnum = pthread_cond_destroy(&queue->gains_member);
+    assert(errnum != EBUSY);
+
+    errnum = pthread_mutex_destroy(&queue->lock);
+    assert(errnum != EBUSY);
 
     linted_mem_free(queue);
 }
