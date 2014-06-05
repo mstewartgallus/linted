@@ -13,32 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
-
 #include "config.h"
 
 #include "linted/util.h"
 
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-
-#include <assert.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 extern char **environ;
 
-static linted_error close_fds_except(int const *kept_fds, size_t size);
-
 linted_error linted_util_sanitize_environment(void)
 {
+#ifndef __linux__
+/* This error is important because some platforms have the environment
+ * variable hidden in other places as well. For example, Windows has a
+ * local cache of the environment variables AND an Operating System
+ * list of environment variables.
+ */
+#error sanitizing environment variables has not been implemented for this platform
+#endif
+
     /* Sanitize the environment */
     for (char **env = environ; *env != NULL; ++env) {
         memset(*env, '\0', strlen(*env));

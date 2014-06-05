@@ -71,7 +71,7 @@ fatal failure in file %s, function %s, and line %i: " format_string,           \
  */
 #define LINTED_IMPOSSIBILITY(format_string, ...)                               \
     do {                                                                       \
-        linted_ko_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 impossible error in file %s, function %s, and line %i: " format_string,        \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \
