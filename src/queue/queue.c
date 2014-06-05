@@ -57,7 +57,19 @@ linted_error linted_queue_create(struct linted_queue **queuep)
     tip->prev = tip;
     tip->next = tip;
 
-    pthread_mutex_init(&queue->lock, NULL);
+    {
+        pthread_mutexattr_t attr;
+        pthread_mutexattr_init(&attr);
+
+#if !defined NDBEBUG && defined PTHREAD_MUTEX_ERRORCHECK_NP
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+#endif
+
+        pthread_mutex_init(&queue->lock, &attr);
+
+        pthread_mutexattr_destroy(&attr);
+    }
+
     pthread_cond_init(&queue->gains_member, NULL);
 
     *queuep = queue;
@@ -105,11 +117,14 @@ void linted_queue_send(struct linted_queue *queue,
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
+    linted_error errnum;
     struct linted_queue_node *head;
 
     struct linted_queue_node *tip = &queue->tip;
 
-    pthread_mutex_lock(&queue->lock);
+    errnum = pthread_mutex_lock(&queue->lock);
+    assert(errnum != EDEADLK);
+
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
     /* The nodes next to the tip are the head */
@@ -142,7 +157,9 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
     struct linted_queue_node *tip = &queue->tip;
 
-    pthread_mutex_lock(&queue->lock);
+    errnum = pthread_mutex_lock(&queue->lock);
+    assert(errnum != EDEADLK);
+
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
     /* The nodes next to the tip are the head */
@@ -169,8 +186,10 @@ pop_cleanup:
     return errnum;
 }
 
-static void unlock_routine(void *arg)
+static void unlock_routine(void *mutex)
 {
-    pthread_mutex_t *mutex = arg;
-    pthread_mutex_unlock(mutex);
+    linted_error errnum;
+
+    errnum = pthread_mutex_unlock(mutex);
+    assert(errnum != EPERM);
 }
