@@ -129,7 +129,7 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
 
-static linted_ko kos[3];
+static linted_ko kos[3 + 3];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
@@ -144,6 +144,14 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     bool need_help = false;
     bool need_version = false;
     char const *bad_option = NULL;
+
+    linted_ko stdin = kos[0];
+    linted_ko stdout = kos[1];
+    linted_ko stderr = kos[2];
+
+    linted_logger logger = kos[3];
+    linted_controller controller = kos[4];
+    linted_updater updater = kos[5];
 
     for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
@@ -177,10 +185,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     linted_error errnum;
-
-    linted_logger logger = kos[0];
-    linted_controller controller = kos[1];
-    linted_updater updater = kos[2];
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\

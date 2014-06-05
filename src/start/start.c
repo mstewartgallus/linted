@@ -120,18 +120,6 @@ It is insecure to run a game as root!\n"));
             continue;
         }
 
-        if (STDIN_FILENO == fd) {
-            continue;
-        }
-
-        if (STDOUT_FILENO == fd) {
-            continue;
-        }
-
-        if (STDERR_FILENO == fd) {
-            continue;
-        }
-
         fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
 
         kos[kos_found] = fd;
@@ -173,18 +161,6 @@ It is insecure to run a game as root!\n"));
          */
 
         if (fd == dirfd(fds_dir)) {
-            continue;
-        }
-
-        if (STDIN_FILENO == fd) {
-            continue;
-        }
-
-        if (STDOUT_FILENO == fd) {
-            continue;
-        }
-
-        if (STDERR_FILENO == fd) {
             continue;
         }
 

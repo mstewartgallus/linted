@@ -170,7 +170,7 @@ static linted_error failure(int fildes, char const *program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-static linted_ko kos[4];
+static linted_ko kos[3 + 4];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-gui",
@@ -183,6 +183,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
     linted_error errnum = 0;
+
+    linted_ko stdin = kos[0];
+    linted_ko stdout = kos[1];
+    linted_ko stderr = kos[2];
+
+    linted_logger logger = kos[3];
+    linted_controller controller = kos[4];
+    linted_shutdowner shutdowner = kos[5];
+    linted_updater updater = kos[6];
 
     bool need_help = false;
     bool need_version = false;
@@ -219,11 +228,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
-
-    linted_logger logger = kos[0];
-    linted_controller controller = kos[1];
-    linted_shutdowner shutdowner = kos[2];
-    linted_updater updater = kos[3];
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
