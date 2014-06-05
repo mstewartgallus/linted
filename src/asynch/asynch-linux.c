@@ -28,7 +28,6 @@
 #include <mqueue.h>
 #include <poll.h>
 #include <pthread.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>

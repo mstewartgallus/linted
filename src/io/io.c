@@ -24,17 +24,11 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 linted_error linted_io_read_all(int fd, size_t *bytes_read_out, void *buf,
                                 size_t size)

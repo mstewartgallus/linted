@@ -29,8 +29,14 @@ struct pair
 };
 
 struct pair const pairs[] = { { "init", LINTED_SERVICE_INIT },
+
                               { "gui", LINTED_SERVICE_GUI },
                               { "simulator", LINTED_SERVICE_SIMULATOR },
+
+                              { "stdin", LINTED_SERVICE_STDIN},
+                              { "stdout", LINTED_SERVICE_STDOUT},
+                              { "stderr", LINTED_SERVICE_STDERR},
+
                               { "logger", LINTED_SERVICE_LOGGER },
                               { "controller", LINTED_SERVICE_CONTROLLER },
                               { "updater", LINTED_SERVICE_UPDATER },

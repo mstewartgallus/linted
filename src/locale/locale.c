@@ -21,8 +21,6 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 
-#include <stdlib.h>
-
 linted_error linted_locale_missing_process_name(int fildes,
                                                 char const *package_name)
 {
