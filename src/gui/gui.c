@@ -821,8 +821,6 @@ static linted_error init_graphics(linted_logger logger,
         return ENOSYS;
     }
 
-    glDisable(GL_DITHER);
-
     glEnable(GL_VERTEX_ARRAY);
     glEnable(GL_NORMAL_ARRAY);
     glEnable(GL_DEPTH_TEST);
