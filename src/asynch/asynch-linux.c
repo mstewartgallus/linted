@@ -749,6 +749,7 @@ static linted_error check_for_poll_error(struct pollfd *pollfd)
         if (-1 ==
             getsockopt(pollfd->fd, SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
             errnum = errno;
+            assert(errnum != 0);
         }
     }
 
