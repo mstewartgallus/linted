@@ -899,8 +899,9 @@ static linted_error init_graphics(linted_logger logger,
             glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
                           &info_log_length);
 
-            GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
-            if (errnum != 0) {
+            linted_error mem_errnum;
+            GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+            if (0 == mem_errnum) {
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
@@ -931,8 +932,9 @@ static linted_error init_graphics(linted_logger logger,
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
-            GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
-            if (errnum != 0) {
+            linted_error mem_errnum;
+            GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+            if (0 == mem_errnum) {
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
@@ -953,8 +955,9 @@ static linted_error init_graphics(linted_logger logger,
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
-        GLchar *info_log = linted_mem_alloc(&errnum, info_log_length);
-        if (errnum != 0) {
+        linted_error mem_errnum;
+        GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+        if (0 == mem_errnum) {
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
             log_str(logger, LINTED_STR("Invalid program: "), info_log);
             linted_mem_free(info_log);
