@@ -38,8 +38,7 @@ struct linted_mq_attr
 /**
  * The linted_mq_pair call creates an unnamed pair of message queues.
  *
- * @param mqdes Returns two message queue descriptors. mqdes[0] refers
- *              to the read end. mqdes[1] refers to the write end.
+ * @param mqp Returns a message queue.
  *
  * @param attr The attributes for the created message queue.
  *
