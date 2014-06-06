@@ -38,7 +38,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
 #include <GL/glx.h>
 #include <xcb/xcb.h>
@@ -182,10 +181,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
     linted_error errnum = 0;
-
-    linted_ko stdin = kos[0];
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
 
     linted_logger logger = kos[3];
     linted_controller controller = kos[4];

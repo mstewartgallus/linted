@@ -38,7 +38,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
@@ -209,7 +208,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
 
-    linted_ko stdin = kos[0];
     linted_ko stdout = kos[1];
     linted_ko stderr = kos[2];
 

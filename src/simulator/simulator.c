@@ -144,10 +144,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     bool need_version = false;
     char const *bad_option = NULL;
 
-    linted_ko stdin = kos[0];
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
-
     linted_logger logger = kos[3];
     linted_controller controller = kos[4];
     linted_updater updater = kos[5];

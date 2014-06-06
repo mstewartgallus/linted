@@ -35,11 +35,18 @@ def go():
                              '--quiet',
                              '--platform=unix64',
                              '--enable=all',
+
+                             # GCC already does resource leak
+                             # detection and besides Cppcheck doesn't
+                             # properly handle tricky errno handling
+                             # code.
+                             '--suppress=resourceLeak',
+
                              '--template=gcc',
                              '-D__linux__']
             cppcheck_args.extend(cppcheck_filter(options))
 
-            exit_status = subprocess.call(cppcheck_args)
+            exit_status = subprocess.call(clang_args)
             if exit_status != 0:
                 sys.exit(exit_status)
 

@@ -142,13 +142,12 @@ linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
                                  size_t *len)
 {
-    linted_error errnum;
     struct sockaddr_un address;
     memset(&address, 0, sizeof address);
 
     socklen_t addr_len = sizeof address;
     if (-1 == getsockname(manager, (void *)&address, &addr_len)) {
-        errnum = errno;
+        linted_error errnum = errno;
         assert(errnum != 0);
         return errnum;
     }
