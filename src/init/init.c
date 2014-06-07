@@ -448,7 +448,7 @@ static linted_error run_game(char const *process_name,
          [LINTED_SERVICE_CONTROLLER] = { .file = { .ko = -1 } },
          [LINTED_SERVICE_SHUTDOWNER] = { .file = { .ko = -1 } } };
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
         if (service_config->type != SERVICE_FILE) {
             continue;
@@ -469,7 +469,7 @@ static linted_error run_game(char const *process_name,
     linted_shutdowner shutdowner_read =
         services[LINTED_SERVICE_SHUTDOWNER].file.ko;
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
             continue;
         }
@@ -611,7 +611,7 @@ static linted_error run_game(char const *process_name,
                                     LINTED_ARRAY_SIZE(completed_tasks),
                                     &task_count);
 
-            for (size_t ii = 0; ii < task_count; ++ii) {
+            for (size_t ii = 0u; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
                 switch (completed_task->task_action) {
                 case ON_RECEIVE_SHUTDOWNER:
@@ -750,7 +750,7 @@ close_new_connections : {
 }
 
 exit_services:
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
 
         switch (service_config->type) {
@@ -843,7 +843,7 @@ static linted_error on_new_connection(linted_manager new_socket,
 
     struct connection *connection;
 
-    size_t ii = 0;
+    size_t ii = 0u;
     for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
         connection = &connection_pool->connections[ii];
         if (-1 == connection->ko) {
@@ -1036,7 +1036,7 @@ static linted_error check_db(linted_ko cwd)
                                 LINTED_ARRAY_SIZE(completed_tasks),
                                 &task_count);
 
-        for (size_t ii = 0; ii < task_count; ++ii) {
+        for (size_t ii = 0u; ii < task_count; ++ii) {
             struct linted_asynch_task *completed_task = completed_tasks[ii];
             if ((errnum = completed_task->errnum) != 0) {
                 goto close_tmp;
@@ -1092,7 +1092,7 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 
     pool->count = 0;
 
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         pool->connections[ii].ko = -1;
     }
 
@@ -1103,7 +1103,7 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 static linted_error connection_pool_destroy(struct connection_pool *pool)
 {
     linted_error errnum = 0;
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         struct connection *const connection = &pool->connections[ii];
         linted_ko const ko = connection->ko;
         if (ko != -1) {

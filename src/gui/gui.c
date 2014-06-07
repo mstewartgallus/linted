@@ -290,7 +290,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     {
         xcb_screen_iterator_t iter =
             xcb_setup_roots_iterator(xcb_get_setup(connection));
-        for (size_t ii = 0; ii < screen_number; ++ii) {
+        for (size_t ii = 0u; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
             }
@@ -465,7 +465,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
         bool had_asynch_event = poll_errnum != EAGAIN;
         if (had_asynch_event) {
-            for (size_t ii = 0; ii < task_count; ++ii) {
+            for (size_t ii = 0u; ii < task_count; ++ii) {
                 if ((errnum = dispatch(completed_tasks[ii])) != 0) {
                     goto cleanup_gl;
                 }

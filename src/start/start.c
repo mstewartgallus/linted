@@ -183,7 +183,7 @@ It is insecure to run a game as root!\n"));
     }
 
     /* Sort the fds from smallest to largest */
-    for (size_t ii = 0; ii < kos_size; ++ii) {
+    for (size_t ii = 0u; ii < kos_size; ++ii) {
         for (size_t jj = ii + 1; jj < kos_size; ++jj) {
             if (kos[ii] > kos[jj]) {
                 linted_ko temp = kos[ii];

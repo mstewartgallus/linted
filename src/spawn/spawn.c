@@ -407,7 +407,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     }
 
     if (file_actions != NULL) {
-        for (size_t ii = 0; ii < file_actions->action_count; ++ii) {
+        for (size_t ii = 0u; ii < file_actions->action_count; ++ii) {
             union file_action const *action = &file_actions->actions[ii];
             switch (action->type) {
             case FILE_ACTION_ADDDUP2: {

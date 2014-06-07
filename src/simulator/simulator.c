@@ -274,7 +274,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                 LINTED_ARRAY_SIZE(completed_tasks),
                                 &task_count);
 
-        for (size_t ii = 0; ii < task_count; ++ii) {
+        for (size_t ii = 0u; ii < task_count; ++ii) {
             if ((errnum = dispatch(completed_tasks[ii])) != 0) {
                 goto destroy_pool;
             }
@@ -340,7 +340,7 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
     linted_asynch_pool_submit(pool, completed_task);
 
-    for (size_t ii = 0; ii < timer_ticks; ++ii) {
+    for (size_t ii = 0u; ii < timer_ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
                         8 * (linted_updater_int)action_state->x);

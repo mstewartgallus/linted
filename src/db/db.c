@@ -272,7 +272,7 @@ linted_error linted_db_temp_file(linted_db *dbp, int *fildesp)
         temp_path + strlen(temp_path) + sizeof "field-" - sizeof field_name;
 
 try_again:
-    for (size_t ii = 0; ii < 6; ++ii) {
+    for (size_t ii = 0u; ii < 6; ++ii) {
         for (;;) {
             char value = ((int)(unsigned char)rand()) - 255 / 2 - 1;
             if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z') ||

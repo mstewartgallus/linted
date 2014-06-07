@@ -42,7 +42,7 @@ struct pair const pairs[] = { { "init", LINTED_SERVICE_INIT },
 linted_error linted_service_for_name(enum linted_service *servicep,
                                      char const *name)
 {
-    for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(pairs); ++ii) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pairs); ++ii) {
         if (0 == strcmp(name, pairs[ii].name)) {
             *servicep = pairs[ii].service;
             return 0;
