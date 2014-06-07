@@ -109,9 +109,14 @@ def parse(arguments: list):
             makeflags.append(arguments[ii])
         elif argument.startswith('-M') or argument == '-E' or argument == '-C':
             makeflags.append(argument)
-        elif argument.startswith('-'):
+        elif (argument.startswith('-D')
+              or argument.startswith('-U')
+              or argument.startswith('-I')
+              or argument.startswith('-i')
+              or argument.startswith('-I')):
             flags.append(argument)
-        else:
+        elif not argument.startswith('-') and (argument.endswith('.c')
+                                               or argument.endswith('.o')):
             files.append(argument)
 
         ii += 1
