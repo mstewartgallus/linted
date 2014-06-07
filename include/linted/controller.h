@@ -60,7 +60,8 @@ struct linted_controller_task_receive
                  LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
 };
 
-linted_error linted_controller_create(linted_controller *controllerp, int flags);
+linted_error linted_controller_create(linted_controller *controllerp,
+                                      int flags);
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,

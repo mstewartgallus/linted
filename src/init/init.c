@@ -323,36 +323,59 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     union service_config const configuration[] =
         {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
          [LINTED_SERVICE_SIMULATOR] = { .process = {
-                 .type = SERVICE_PROCESS,
-                 .working_directory = cwd,
-                 .path = simulator_path,
-                 .arguments = (char const * const[]) {simulator_path, NULL},
-                 .environment = (char const * const[]) { NULL },
-                 .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
-                         { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_LOGGER },
-                         { LINTED_KO_RDONLY, LINTED_SERVICE_CONTROLLER },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_UPDATER }
-                     })
-             } },
+                                            .type = SERVICE_PROCESS,
+                                            .working_directory = cwd,
+                                            .path = simulator_path,
+                                            .arguments =
+                                                (char const * const[]) {
+                                                    simulator_path, NULL
+                                                },
+                                            .environment =
+                                                (char const * const[]) { NULL },
+                                            .dup_pairs = DUP_PAIRS((
+                                                struct dup_pair const[]) {
+                                                { LINTED_KO_RDONLY,
+                                                  LINTED_SERVICE_STDIN },
+                                                { LINTED_KO_WRONLY,
+                                                  LINTED_SERVICE_STDOUT },
+                                                { LINTED_KO_WRONLY,
+                                                  LINTED_SERVICE_STDERR },
+                                                { LINTED_KO_WRONLY,
+                                                  LINTED_SERVICE_LOGGER },
+                                                { LINTED_KO_RDONLY,
+                                                  LINTED_SERVICE_CONTROLLER },
+                                                { LINTED_KO_WRONLY,
+                                                  LINTED_SERVICE_UPDATER }
+                                            })
+                                        } },
          [LINTED_SERVICE_GUI] = { .process = {
-                 .type = SERVICE_PROCESS,
-                 .working_directory = cwd,
-                 .path = gui_path,
-                 .arguments = (char const * const[]) { gui_path, NULL },
-                 .environment = (char const * const[]) { display, NULL },
-                 .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
-                         { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_LOGGER },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_CONTROLLER },
-                         { LINTED_KO_WRONLY, LINTED_SERVICE_SHUTDOWNER },
-                         { LINTED_KO_RDONLY, LINTED_SERVICE_UPDATER }
-                     })
-             } },
+                                      .type = SERVICE_PROCESS,
+                                      .working_directory = cwd,
+                                      .path = gui_path,
+                                      .arguments =
+                                          (char const * const[]) { gui_path,
+                                                                   NULL },
+                                      .environment =
+                                          (char const * const[]) { display,
+                                                                   NULL },
+                                      .dup_pairs =
+                                          DUP_PAIRS((struct dup_pair const[]) {
+                                              { LINTED_KO_RDONLY,
+                                                LINTED_SERVICE_STDIN },
+                                              { LINTED_KO_WRONLY,
+                                                LINTED_SERVICE_STDOUT },
+                                              { LINTED_KO_WRONLY,
+                                                LINTED_SERVICE_STDERR },
+                                              { LINTED_KO_WRONLY,
+                                                LINTED_SERVICE_LOGGER },
+                                              { LINTED_KO_WRONLY,
+                                                LINTED_SERVICE_CONTROLLER },
+                                              { LINTED_KO_WRONLY,
+                                                LINTED_SERVICE_SHUTDOWNER },
+                                              { LINTED_KO_RDONLY,
+                                                LINTED_SERVICE_UPDATER }
+                                          })
+                                  } },
          [LINTED_SERVICE_STDIN] = { .file = { .type = SERVICE_FILE,
                                               .generator = find_stdin } },
          [LINTED_SERVICE_STDOUT] = { .file = { .type = SERVICE_FILE,
@@ -360,30 +383,31 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
          [LINTED_SERVICE_STDERR] = { .file = { .type = SERVICE_FILE,
                                                .generator = find_stderr } },
          [LINTED_SERVICE_LOGGER] = { .file = { .type = SERVICE_FILE,
-                                               .generator = linted_logger_create } },
+                                               .generator =
+                                                   linted_logger_create } },
          [LINTED_SERVICE_UPDATER] = { .file = { .type = SERVICE_FILE,
                                                 .generator = updater_create } },
          [LINTED_SERVICE_CONTROLLER] = { .file = { .type = SERVICE_FILE,
-                                                   .generator = controller_create } },
+                                                   .generator =
+                                                       controller_create } },
          [LINTED_SERVICE_SHUTDOWNER] = { .file = { .type = SERVICE_FILE,
-                                                   .generator = shutdowner_create
-             } } };
+                                                   .generator =
+                                                       shutdowner_create } } };
     game_status = run_game(program_name, configuration);
 
     if (game_status != 0) {
         succesfully_executing = -1;
         char const *error_string = linted_error_string_alloc(game_status);
-        linted_io_write_format(stderr, NULL,
-                               "could not run the game: %s\n", error_string);
+        linted_io_write_format(stderr, NULL, "could not run the game: %s\n",
+                               error_string);
         linted_error_string_free(error_string);
     }
 
     if ((errnum = linted_ko_close(stderr)) != 0) {
         succesfully_executing = -1;
         char const *const error_string = linted_error_string_alloc(errnum);
-        linted_io_write_format(stderr, NULL,
-                               "could not close standard error: %s\n",
-                               error_string);
+        linted_io_write_format(
+            stderr, NULL, "could not close standard error: %s\n", error_string);
         linted_error_string_free(error_string);
     }
 
@@ -415,11 +439,9 @@ static linted_error run_game(char const *process_name,
     union service services[] =
         {[LINTED_SERVICE_INIT] = { .init = { .pid = getpid() } },
          [LINTED_SERVICE_GUI] = { .process = { .pid = -1 } },
-
          [LINTED_SERVICE_STDIN] = { .file = { .ko = stdin } },
          [LINTED_SERVICE_STDOUT] = { .file = { .ko = stdout } },
          [LINTED_SERVICE_STDERR] = { .file = { .ko = stderr } },
-
          [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
          [LINTED_SERVICE_LOGGER] = { .file = { .ko = -1 } },
          [LINTED_SERVICE_UPDATER] = { .file = { .ko = -1 } },
@@ -444,7 +466,8 @@ static linted_error run_game(char const *process_name,
 
     linted_logger logger_read = services[LINTED_SERVICE_LOGGER].file.ko;
 
-    linted_shutdowner shutdowner_read = services[LINTED_SERVICE_SHUTDOWNER].file.ko;
+    linted_shutdowner shutdowner_read =
+        services[LINTED_SERVICE_SHUTDOWNER].file.ko;
 
     for (size_t ii = 0; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
@@ -465,9 +488,8 @@ static linted_error run_game(char const *process_name,
         }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
-        linted_ko * proc_kos = linted_mem_alloc_array(&errnum,
-                                                      sizeof proc_kos[0],
-                                                      dup_pairs_size);
+        linted_ko *proc_kos =
+            linted_mem_alloc_array(&errnum, sizeof proc_kos[0], dup_pairs_size);
         if (errnum != 0) {
             goto destroy_attr;
         }
@@ -537,8 +559,7 @@ static linted_error run_game(char const *process_name,
             goto close_new_connections;
         }
 
-        linted_io_write_str(stdout, NULL,
-                            LINTED_STR("management socket: "));
+        linted_io_write_str(stdout, NULL, LINTED_STR("management socket: "));
         linted_io_write_all(stdout, NULL, buf, len);
         linted_io_write_str(stdout, NULL, LINTED_STR("\n"));
     }
@@ -624,8 +645,7 @@ static linted_error run_game(char const *process_name,
 
                     linted_io_write_string(stderr, NULL, process_name);
                     linted_io_write_str(stderr, NULL, LINTED_STR(": "));
-                    linted_io_write_all(stderr, NULL, logger_buffer,
-                                        log_size);
+                    linted_io_write_all(stderr, NULL, logger_buffer, log_size);
                     linted_io_write_str(stderr, NULL, LINTED_STR("\n"));
 
                     linted_asynch_pool_submit(pool, completed_task);
@@ -752,7 +772,7 @@ exit_services:
         case SERVICE_FILE: {
             struct service_file *file = &services[ii].file;
             int ko = file->ko;
-            if (ko!= -1) {
+            if (ko != -1) {
                 linted_error close_errnum = linted_ko_close(ko);
                 if (0 == errnum) {
                     errnum = close_errnum;
