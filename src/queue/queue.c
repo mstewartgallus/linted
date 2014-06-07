@@ -93,12 +93,12 @@ void linted_queue_destroy(struct linted_queue *queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
+    /* Guard against double insertions */
     assert(NULL == node->next);
     assert(NULL == node->prev);
 
     struct linted_queue_node *tip = &queue->tip;
 
-    /* Guard against double insertions */
     pthread_mutex_lock(&queue->lock);
     pthread_cleanup_push(unlock_routine, &queue->lock);
 
