@@ -200,6 +200,9 @@ struct linted_start_config const linted_start_config = {
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
+    linted_ko stdout = kos[1];
+    linted_ko stderr = kos[2];
+
     bool need_help = false;
     bool need_version = false;
 
@@ -207,9 +210,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
 
     for (size_t ii = 1; ii < argc; ++ii) {
         char const *argument = argv[ii];

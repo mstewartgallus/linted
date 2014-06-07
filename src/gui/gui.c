@@ -182,6 +182,9 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 {
     linted_error errnum = 0;
 
+    linted_ko stdout = kos[1];
+    linted_ko stderr = kos[2];
+
     linted_logger logger = kos[3];
     linted_controller controller = kos[4];
     linted_shutdowner shutdowner = kos[5];
@@ -205,30 +208,30 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (need_help) {
-        gui_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        gui_help(stdout, program_name, LINTED_STR(PACKAGE_NAME),
                  LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(stderr, program_name, bad_option);
+        linted_locale_try_for_more_help(stderr, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+        linted_locale_version(stdout, LINTED_STR(PACKAGE_STRING),
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_string(STDERR_FILENO, NULL, program_name);
-        linted_io_write_str(STDERR_FILENO, NULL,
+        linted_io_write_string(stderr, NULL, program_name);
+        linted_io_write_str(stderr, NULL,
                             LINTED_STR(": no DISPLAY environment variable\n"));
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_try_for_more_help(stderr, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -236,14 +239,14 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     size_t display_string_length = strlen(original_display) + 1;
     char *display_env_var = linted_mem_alloc(&errnum, display_string_length);
     if (errnum != 0) {
-        failure(STDERR_FILENO, program_name,
+        failure(stderr, program_name,
                 LINTED_STR("no DISPLAY environment variable"), errnum);
         return EXIT_FAILURE;
     }
     memcpy(display_env_var, original_display, display_string_length);
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
-        failure(STDERR_FILENO, program_name,
+        failure(stderr, program_name,
                 LINTED_STR("cannot sanitize the program environment"), errnum);
         return EXIT_FAILURE;
     }

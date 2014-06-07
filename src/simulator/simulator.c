@@ -140,13 +140,16 @@ struct linted_start_config const linted_start_config = {
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    bool need_help = false;
-    bool need_version = false;
-    char const *bad_option = NULL;
+    linted_ko stdout = kos[1];
+    linted_ko stderr = kos[2];
 
     linted_logger logger = kos[3];
     linted_controller controller = kos[4];
     linted_updater updater = kos[5];
+
+    bool need_help = false;
+    bool need_version = false;
+    char const *bad_option = NULL;
 
     for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
@@ -161,20 +164,20 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (need_help) {
-        simulator_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        simulator_help(stdout, program_name, LINTED_STR(PACKAGE_NAME),
                        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(stderr, program_name, bad_option);
+        linted_locale_try_for_more_help(stderr, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+        linted_locale_version(stdout, LINTED_STR(PACKAGE_STRING),
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
@@ -182,7 +185,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_error errnum;
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(stderr, NULL, "\
 %s: can not sanitize the environment: %s",
                                program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
