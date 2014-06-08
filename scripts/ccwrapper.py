@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import subprocess
 import sys
 
@@ -31,6 +32,20 @@ def go():
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
             clang_args.extend(options)
 
+            defines = None
+            with open(os.devnull) as null:
+                defines = subprocess.check_output(cc.split() + ['-dM', '-E', '-'],
+                                                  stdin=null)
+
+            defines = defines.decode('utf-8').split('\n')
+
+            defineflags = []
+            for define in defines:
+                if '' == define:
+                    continue
+                l = define.split(' ', 2)
+                defineflags.append('-D' + l[1] + '=' + l[2])
+
             cppcheck_args = [cppcheck,
                              '--quiet',
                              '--platform=unix64',
@@ -42,8 +57,7 @@ def go():
                              # code.
                              '--suppress=resourceLeak',
 
-                             '--template=gcc',
-                             '-D__linux__']
+                             '--template=gcc'] + defineflags
             cppcheck_args.extend(cppcheck_filter(options))
 
             exit_status = subprocess.call(clang_args)
