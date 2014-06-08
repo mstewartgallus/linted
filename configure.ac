@@ -45,21 +45,13 @@ AC_CHECK_HEADERS([dnl
         stdint.h dnl
         stdlib.h dnl
         string.h dnl
-        sys/socket.h dnl
         unistd.h], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_CHECK_HEADERS([sys/resource.h])
-dnl
 AC_HEADER_STDBOOL
 AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
-])
-dnl
-AC_FUNC_MMAP
-AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
- AC_MSG_ERROR([Unable to find mmap function])
 ])
 dnl
 AC_FUNC_MALLOC
@@ -74,6 +66,18 @@ dnl
 AS_IF([test "x${host_vendor}" = "xw64" -o "x{host_vendor}" = "xw32"],[
   dnl Special case Microsoft Windows and assume POSIX elsewhere
 ], [
+  AC_CHECK_HEADERS([dnl
+       sys/socket.h], [], [
+    AC_MSG_ERROR([Unable to find header ${ac_header}])
+  ], [])
+  dnl
+  AC_CHECK_HEADERS([sys/resource.h])
+  dnl
+  AC_FUNC_MMAP
+  AS_IF([test "x${ac_cv_func_mmap_fixed_mapped}" = "xno"],[
+    AC_MSG_ERROR([Unable to good mmap function])
+  ])
+  dnl
   AC_FUNC_STRERROR_R
   AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
    AC_MSG_ERROR([Unable to find strerror_r function])
