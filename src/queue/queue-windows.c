@@ -90,7 +90,7 @@ void linted_queue_send(struct linted_queue *queue,
     node->next = tip;
     tip->prev = node;
 
-    WakeAllConditionVariabl(&queue->gains_member);
+    WakeConditionVariable(&queue->gains_member);
 
     LeaveCriticalSection(&queue->lock);
 }

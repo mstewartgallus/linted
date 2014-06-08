@@ -109,7 +109,7 @@ void linted_queue_send(struct linted_queue *queue,
     node->next = tip;
     tip->prev = node;
 
-    pthread_cond_broadcast(&queue->gains_member);
+    pthread_cond_signal(&queue->gains_member);
 
     pthread_cleanup_pop(true);
 }
