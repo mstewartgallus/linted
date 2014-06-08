@@ -24,22 +24,10 @@
  * Abstracts over the concept of a kernel object.
  */
 
-#if defined _WIN32 || defined _WIN64
-#include <windows.h>
-#endif
-
 #if defined __linux__
 typedef int linted_ko;
 #elif defined _WIN32 || defined _WIN64
-enum linted_ko_windows_handle_type {
-    LINTED_KO_WINDOWS_HANDLE_THREAD
-};
-
-typedef struct linted__ko
-{
-    enum linted_ko_windows_handle_type type;
-} linted_ko;
-
+typedef void * linted_ko;
 #else
 #error no known most primitive platform kernel object type
 #endif

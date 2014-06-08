@@ -17,4 +17,5 @@
 
 noinst_LTLIBRARIES+=%D%/libqueue.la
 %C%_libqueue_la_SOURCES=%D%/queue.c include/linted/queue.h
+EXTRA_%C%_libqueue_la_SOURCES=%D%/queue-linux.c %D%/queue-windows.c
 %C%_libqueue_la_LIBADD=src/mem/libmem.la

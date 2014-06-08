@@ -15,6 +15,8 @@
  */
 #if defined __linux__
 #include "asynch-linux.c"
+#elif defined _WIN32 || defined _WIN64
+#include "asynch-windows.c"
 #else
 #error no asynchronous IO implementation for this platform
 #endif
