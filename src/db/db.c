@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/db.h"
@@ -21,6 +22,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/lock.h"
 #include "linted/mem.h"
 
 #include <assert.h>
@@ -31,12 +33,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
+
+#ifdef HAVE_WINDOWS_H
+#define snprintf sprintf_s
+#endif
 
 #define CURRENT_VERSION "0.0.0"
 
@@ -44,14 +47,6 @@
 
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
-
-static linted_error lock_db(linted_db *dbp, pid_t *lock);
-static void unlock_db(linted_db *dbp, pid_t lock);
-
-static void exit_with_error(volatile linted_error *spawn_error,
-                            linted_error errnum);
-
-static size_t align_to_page_size(size_t size);
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
@@ -96,44 +91,24 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
      * This happens at startup and has to be consistent across every
      * version of the database.
      */
-    pid_t lock;
-    for (;;) {
-        linted_error lock_errnum = lock_db(&the_db, &lock);
-        if (0 == lock_errnum) {
-            break;
-        }
+    linted_ko lock_file;
 
-        if (lock_errnum != ENOENT) {
-            errnum = lock_errnum;
-            goto close_db;
-        }
+    if ((errnum = linted_lock_file_create(&lock_file, the_db, GLOBAL_LOCK, 0)) != 0) {
+        goto close_db;
+    }
 
-        /* Lock does not exist try to create it */
-        int lock_file =
-            openat(the_db, GLOBAL_LOCK,
-                   O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT | O_EXCL,
-                   S_IRUSR | S_IWUSR);
-        if (-1 == lock_file) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
+    linted_lock lock;
+    errnum = linted_lock_acquire(&lock, lock_file);
 
-        if (EEXIST == errnum) {
-            /* File already exists try to lock it */
-            continue;
+    {
+        linted_error close_errnum = linted_ko_close(lock_file);
+        if (0 == errnum) {
+            errnum = close_errnum;
         }
+    }
 
-        if (errnum != 0) {
-            goto close_db;
-        }
-
-        if ((errnum = linted_ko_close(lock_file)) != 0) {
-            goto close_db;
-        }
-
-        /* File created try to lock it */
+    if (errnum != 0) {
+        goto close_db;
     }
 
     /* Sole user of the database now */
@@ -238,7 +213,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     }
 
 unlock_db:
-    unlock_db(&the_db, lock);
+    linted_lock_release(lock);
 
     if (errnum != 0) {
         goto close_db;
@@ -331,193 +306,6 @@ free_temp_path:
     linted_mem_free(temp_path);
 
     return errnum;
-}
-
-static linted_error lock_db(linted_db *dbp, pid_t *lock)
-{
-    linted_error errnum = 0;
-
-    size_t spawn_error_length = align_to_page_size(sizeof(linted_error));
-
-    linted_error *spawn_error =
-        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (MAP_FAILED == spawn_error) {
-        errnum = errno;
-        assert(errnum != 0);
-        assert(errnum != EINVAL);
-        return errnum;
-    }
-
-    /*
-     * We have to fork because locks are associated with (pid, inode)
-     * pairs. Now any other thread that tries to lock the db will
-     * simply wait for this process to exit.
-     */
-    pid_t child = fork();
-    if (-1 == child) {
-        errnum = errno;
-        assert(errnum != 0);
-        return errnum;
-    }
-
-    if (0 == child) {
-        /* Don't leak the process in case of an unexpected parent death */
-        prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0);
-
-        int lock_file;
-        if ((errnum = linted_ko_open(&lock_file, *dbp, GLOBAL_LOCK,
-                                     LINTED_KO_RDWR)) != 0) {
-            exit_with_error(spawn_error, errnum);
-        }
-
-        struct flock flock = {
-            .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-        };
-        if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
-            exit_with_error(spawn_error, errno);
-        }
-
-        /* Got the lock! */
-
-        /* The lock is killed and never dies by itself */
-        for (;;) {
-            raise(SIGSTOP);
-        }
-    }
-
-    siginfo_t info;
-    do {
-        if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-    } while (EINTR == errnum);
-    assert(errnum != ECHILD);
-    assert(errnum != EINVAL);
-    assert(0 == errnum);
-
-    switch (info.si_code) {
-    case CLD_EXITED: {
-        linted_error exit_status = info.si_status;
-        switch (exit_status) {
-        case 0:
-            errnum = EINVAL;
-            goto unmap_spawn_error;
-
-        default:
-            errnum = ENOSYS;
-            goto unmap_spawn_error;
-        }
-    }
-
-    case CLD_DUMPED:
-    case CLD_KILLED: {
-#if defined __linux__
-        linted_error signo = info.si_status;
-        switch (signo) {
-        case SIGKILL:
-            errnum = ENOMEM;
-            break;
-
-        case SIGSEGV:
-            /* Corrupted elf file */
-            errnum = ENOEXEC;
-            break;
-
-        case SIGTERM:
-            /* Exited with error and passed an error code */
-            errnum = *spawn_error;
-            assert(errnum != 0);
-            break;
-
-        default:
-            errnum = ENOSYS;
-            break;
-        }
-        goto unmap_spawn_error;
-#else
-#error The exit status of an aborted execve is very OS specific
-#endif
-    }
-
-    case CLD_STOPPED:
-        /*
-         * Don't continue the process. Let it be stopped and holding
-         * the lock
-         */
-        break;
-
-    default:
-        assert(false);
-    }
-
-unmap_spawn_error:
-    if (-1 == munmap(spawn_error, spawn_error_length)) {
-        linted_error munmap_errnum = errno;
-        assert(munmap_errnum != 0);
-
-        if (0 == errnum) {
-            errnum = munmap_errnum;
-        }
-    }
-
-    *lock = child;
-
-    return errnum;
-}
-
-static void unlock_db(linted_db *dbp, pid_t lock)
-{
-    linted_error errnum;
-
-    if (-1 == kill(lock, SIGKILL)) {
-        errnum = errno;
-        assert(errnum != 0);
-        assert(errnum != EINVAL);
-        assert(errnum != EPERM);
-        assert(errnum != ESRCH);
-        assert(false);
-    }
-
-    /* Unfortunately, one cannot pass NULL into the info parameter here */
-    siginfo_t info;
-    do {
-        if (-1 == waitid(P_PID, lock, &info, WEXITED)) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-    } while (EINTR == errnum);
-    assert(errnum != EINVAL);
-    assert(errnum != ECHILD);
-    assert(0 == errnum);
-}
-
-static size_t align_to_page_size(size_t size)
-{
-    size_t page_size = sysconf(_SC_PAGESIZE);
-
-    /* This should always be true */
-    assert(page_size > 0);
-
-    /* Round up to a multiple of page size */
-    size_t remainder = size % page_size;
-    if (0 == remainder)
-        return size;
-
-    return size - remainder + page_size;
-}
-
-static void exit_with_error(volatile linted_error *spawn_error,
-                            linted_error errnum)
-{
-    volatile linted_error *vol_spawn_error = spawn_error;
-    *vol_spawn_error = errnum;
-    raise(SIGTERM);
 }
 
 static linted_error prepend(char **result, char const *base,

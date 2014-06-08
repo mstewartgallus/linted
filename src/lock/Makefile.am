@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libdb.la
-%C%_libdb_la_SOURCES=%D%/db.c include/linted/db.h
+noinst_LTLIBRARIES+=%D%/liblock.la
+%C%_liblock_la_SOURCES=%D%/lock.c include/linted/lock.h
 %C%_libdb_la_LIBADD=\
-  src/error/liberror.la\
-  src/io/libio.la\
-  src/ko/libko.la\
-  src/lock/liblock.la\
-  src/mem/libmem.la
+  src/ko/libko.la
