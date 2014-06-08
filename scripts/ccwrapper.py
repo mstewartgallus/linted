@@ -61,12 +61,7 @@ def go():
             cppcheck_args.extend(cppcheck_filter(options))
 
             exit_status = subprocess.call(clang_args)
-            if exit_status != 0:
-                sys.exit(exit_status)
-
             exit_status = subprocess.call(cppcheck_args)
-            if exit_status != 0:
-                sys.exit(exit_status)
 
     exit_status = subprocess.call(cc.split() + options)
     if exit_status != 0:

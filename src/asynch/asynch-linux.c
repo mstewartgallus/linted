@@ -15,8 +15,6 @@
  */
 #define _GNU_SOURCE
 
-#include "config.h"
-
 #include "linted/asynch.h"
 
 #include "linted/mem.h"

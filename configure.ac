@@ -63,9 +63,11 @@ AS_IF([test "x${ac_cv_func_realloc}" = "xno"],[
  AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
 ])
 dnl
-AS_IF([test "x${host_vendor}" = "xw64" -o "x{host_vendor}" = "xw32"],[
-  dnl Special case Microsoft Windows and assume POSIX elsewhere
+AC_CHECK_HEADERS([windows.h])
+AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
+  dnl Using winelib to build or building on a Windows system.
 ], [
+  dnl Building for a typical POSIX system.
   AC_CHECK_HEADERS([dnl
        sys/socket.h], [], [
     AC_MSG_ERROR([Unable to find header ${ac_header}])

@@ -25,7 +25,7 @@
  *
  * @todo Integrate more documentation with Doxygen.
  *
- * @todo Port to --host=i686-w64-mingw32.
+ * @todo Port to --host=i686-w64-mingw32 and CC=winegcc CFLAGS='-mno-cygwin -maccumulate-outgoing-args -std=gnu99'
  * - As part of this process environment sanitization code will need
  *   to be reworked. Windows maintains two copies of environment
  *   variables: one copy in process space and the other copy in kernel

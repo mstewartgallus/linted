@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined __linux__
-#include "asynch-linux.c"
-#elif defined _WIN32 || defined _WIN64
+#include "config.h"
+
+#if defined HAVE_WINDOWS_H
 #include "asynch-windows.c"
+#elif defined __linux__
+#include "asynch-linux.c"
 #else
 #error no asynchronous IO implementation for this platform
 #endif

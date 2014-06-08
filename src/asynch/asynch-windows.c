@@ -16,8 +16,6 @@
 #define UNICODE
 #define _UNICODE
 
-#include "config.h"
-
 #include "linted/asynch.h"
 
 #include "linted/mem.h"
@@ -26,6 +24,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <process.h>
 #include <stdbool.h>
 #include <string.h>
 #include <windows.h>
@@ -333,10 +332,10 @@ static void run_task_write(struct linted_asynch_pool *pool,
 
     linted_error errnum = 0;
     if (!WriteFile(task_write->ko,
-                  task_write->buf,
-                  task_write->size,
-                  &bytes_write,
-                  NULL)) {
+                   task_write->buf,
+                   task_write->size,
+                   &bytes_write,
+                   NULL)) {
         DWORD error = GetLastError();
         errnum = HRESULT_FROM_WIN32(error);
     }

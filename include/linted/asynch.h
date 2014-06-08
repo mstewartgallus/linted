@@ -23,7 +23,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#if __linux__
+#if _POSIX_C_SOURCE >= 200809L
 #include <sys/wait.h>
 #endif
 

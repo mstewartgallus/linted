@@ -24,10 +24,10 @@
  * Abstracts over the concept of a kernel object.
  */
 
-#if defined __linux__
-typedef int linted_ko;
-#elif defined _WIN32 || defined _WIN64
+#if defined HAVE_WINDOWS_H
 typedef void * linted_ko;
+#elif defined __linux__
+typedef int linted_ko;
 #else
 #error no known most primitive platform kernel object type
 #endif
