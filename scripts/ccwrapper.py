@@ -17,14 +17,14 @@ import subprocess
 import sys
 
 def go():
-    clang = sys.argv[1]
+    clang = sys.argv[1].split()
     cppcheck = sys.argv[2]
-    cc = sys.argv[3]
+    cc = sys.argv[3].split()
     options = sys.argv[4:]
 
     if '-c' in options:
         if clang != "":
-            clang_args = [clang,
+            clang_args = clang + [
                           '-Qunused-arguments',
                           '-Wno-unknown-warning-option',
                           '--analyze']
@@ -34,7 +34,7 @@ def go():
 
             defines = None
             with open(os.devnull) as null:
-                defines = subprocess.check_output(cc.split() + ['-dM', '-E', '-'],
+                defines = subprocess.check_output(cc + ['-dM', '-E', '-'],
                                                   stdin=null)
 
             defines = defines.decode('utf-8').split('\n')
@@ -63,7 +63,7 @@ def go():
             exit_status = subprocess.call(clang_args)
             exit_status = subprocess.call(cppcheck_args)
 
-    exit_status = subprocess.call(cc.split() + options)
+    exit_status = subprocess.call(cc + options)
     if exit_status != 0:
         sys.exit(exit_status)
 

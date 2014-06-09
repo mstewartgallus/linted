@@ -148,5 +148,5 @@ dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 dnl
-[CC="${srcdir}/scripts/ccwrapper.py '${CLANG}' '${CPPCHECK}' '${CC}'"]
+[CC="${srcdir}/scripts/ccwrapper.py '${CLANG} -target ${host}' '${CPPCHECK}' '${CC}'"]
 AC_OUTPUT

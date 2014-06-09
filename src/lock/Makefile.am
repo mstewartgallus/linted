@@ -17,5 +17,5 @@
 
 noinst_LTLIBRARIES+=%D%/liblock.la
 %C%_liblock_la_SOURCES=%D%/lock.c include/linted/lock.h
-%C%_libdb_la_LIBADD=\
+%C%_liblock_la_LIBADD=\
   src/ko/libko.la
