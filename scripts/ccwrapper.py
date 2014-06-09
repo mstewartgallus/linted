@@ -23,6 +23,7 @@ def go():
     options = sys.argv[4:]
 
     if '-c' in options:
+        filtered_options = options_filter(options)
         if clang != "":
             clang_args = clang + [
                           '-Qunused-arguments',
@@ -30,7 +31,7 @@ def go():
                           '--analyze']
             for checker in checkers:
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
-            clang_args.extend(options)
+            clang_args.extend(filtered_options)
 
             defines = None
             with open(os.devnull) as null:
@@ -58,7 +59,7 @@ def go():
                              '--suppress=resourceLeak',
 
                              '--template=gcc'] + defineflags
-            cppcheck_args.extend(cppcheck_filter(options))
+            cppcheck_args.extend(filtered_options)
 
             exit_status = subprocess.call(clang_args)
             exit_status = subprocess.call(cppcheck_args)
@@ -69,7 +70,7 @@ def go():
 
     sys.exit(0)
 
-def cppcheck_filter(options):
+def options_filter(options):
     cppcheck_options = []
     for option in options:
         if ((not option.startswith('-') and option.endswith('.c'))
