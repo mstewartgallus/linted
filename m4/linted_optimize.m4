@@ -36,11 +36,6 @@ dnl
 ])
 dnl
 [linted_CFLAGS_OPTIMIZE="${linted_CFLAGS_OPTIMIZE} ${linted_CPPFLAGS_OPTIMIZE}"]
-dnl
-dnl Link time optimization needs to be supported by the linker as well.
-LINTED_CHECK_LDFLAGS([linted_CFLAGS_OPTIMIZE_LTO],[[-flto]])
-[linted_CFLAGS_OPTIMIZE="${linted_CFLAGS_OPTIMIZE} ${linted_CFLAGS_OPTIMIZE_LTO}"]
-dnl
 AC_SUBST([linted_CFLAGS_OPTIMIZE])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl
