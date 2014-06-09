@@ -17,15 +17,17 @@ import subprocess
 import sys
 
 def go():
-    clang = sys.argv[1].split()
-    cppcheck = sys.argv[2]
-    cc = sys.argv[3].split()
-    options = sys.argv[4:]
+    host = sys.argv[1]
+    clang = sys.argv[2].split()
+    cppcheck = sys.argv[3]
+    cc = sys.argv[4].split()
+    options = sys.argv[5:]
 
     if '-c' in options:
         filtered_options = options_filter(options)
         if clang != "":
             clang_args = clang + [
+                          '-target', host,
                           '-o-',
                           '-Qunused-arguments',
                           '-Wno-unknown-warning-option',
