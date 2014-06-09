@@ -21,6 +21,14 @@
  *
  * <ul>
  *
+ * <li> Honestly reassess one's own competence.
+ *
+ * Don't do security theater and don't do cargo cult security. Use
+ * simple, understandable and secure methods of making one's code
+ * correct. If you can't prove it's secure it's not.
+ *
+ * </li>
+ *
  * <li> Do not leak private data to other actors.
  *
  * For example, when one copies data from structures using mq_send,

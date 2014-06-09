@@ -11,20 +11,6 @@
  *
  * Linted -- TODO
  *
- * @todo Don't do cargo cult security.
- * - This is pretty much impossible.
- * - I'm just a young hacker playing around with technologies like
- *   sandboxing. I have no real knowledge of security. I hope this
- *   project is useful as a personal learning experience though.
- *
- * @todo Don't do security theater.
- * - Security theater is when people do big and impressive things with
- *   sandboxing but then leave a tiny door in the back open because
- *   it's convenient
- * - See "Don't do cargo cult security" for why this is impossible.
- *
- * @todo Integrate more documentation with Doxygen.
- *
  * @todo Port to --host=i686-w64-mingw32 and CC=winegcc CFLAGS='-mno-cygwin -maccumulate-outgoing-args -std=gnu99'
  * - As part of this process environment sanitization code will need
  *   to be reworked. Windows maintains two copies of environment
