@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _WIN32_WINNT 0x0600
+
 #define UNICODE
 #define _UNICODE
 
@@ -66,7 +68,6 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 
 void linted_queue_destroy(struct linted_queue *queue)
 {
-    DeleteConditionVariable(&queue->gains_member);
     DeleteCriticalSection(&queue->lock);
 
     linted_mem_free(queue);
