@@ -26,6 +26,7 @@ def go():
         filtered_options = options_filter(options)
         if clang != "":
             clang_args = clang + [
+                          '-o-',
                           '-Qunused-arguments',
                           '-Wno-unknown-warning-option',
                           '--analyze']
@@ -61,7 +62,7 @@ def go():
                              '--template=gcc'] + defineflags
             cppcheck_args.extend(filtered_options)
 
-            exit_status = subprocess.call(clang_args)
+            exit_status = subprocess.check_output(clang_args)
             exit_status = subprocess.call(cppcheck_args)
 
     exit_status = subprocess.call(cc + options)
