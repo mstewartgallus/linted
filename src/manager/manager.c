@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/error.h"
