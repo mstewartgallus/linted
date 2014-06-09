@@ -87,7 +87,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
     for (; created_threads < max_tasks; ++created_threads) {
         linted_ko thread = (linted_ko)_beginthread(worker_routine, 0, pool);
-        if ((linted_ko)-1 == thread) {
+        if ((linted_ko) - 1 == thread) {
             errnum = errno;
             goto destroy_threads;
         }
@@ -98,13 +98,13 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     return 0;
 
 destroy_threads:
-    /* for (size_t ii = 0u; ii < created_threads; ++ii) { */
-    /*     pthread_cancel(pool->workers[ii]); */
-    /* } */
+/* for (size_t ii = 0u; ii < created_threads; ++ii) { */
+/*     pthread_cancel(pool->workers[ii]); */
+/* } */
 
-    /* for (size_t ii = 0u; ii < created_threads; ++ii) { */
-    /*     pthread_join(pool->workers[ii], NULL); */
-    /* } */
+/* for (size_t ii = 0u; ii < created_threads; ++ii) { */
+/*     pthread_join(pool->workers[ii], NULL); */
+/* } */
 
 destroy_event_queue:
     linted_queue_destroy(pool->event_queue);
@@ -305,10 +305,7 @@ static void run_task_read(struct linted_asynch_pool *pool,
     DWORD bytes_read = 0u;
 
     linted_error errnum = 0;
-    if (!ReadFile(task_read->ko,
-                  task_read->buf,
-                  task_read->size,
-                  &bytes_read,
+    if (!ReadFile(task_read->ko, task_read->buf, task_read->size, &bytes_read,
                   NULL)) {
         DWORD error = GetLastError();
         errnum = HRESULT_FROM_WIN32(error);
@@ -331,11 +328,8 @@ static void run_task_write(struct linted_asynch_pool *pool,
     DWORD bytes_write = 0u;
 
     linted_error errnum = 0;
-    if (!WriteFile(task_write->ko,
-                   task_write->buf,
-                   task_write->size,
-                   &bytes_write,
-                   NULL)) {
+    if (!WriteFile(task_write->ko, task_write->buf, task_write->size,
+                   &bytes_write, NULL)) {
         DWORD error = GetLastError();
         errnum = HRESULT_FROM_WIN32(error);
     }

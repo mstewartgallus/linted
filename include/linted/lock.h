@@ -28,7 +28,7 @@
  */
 
 #if defined HAVE_WINDOWS_H
-typedef void * linted_lock;
+typedef void *linted_lock;
 #elif defined __linux__
 typedef pid_t linted_lock;
 #else

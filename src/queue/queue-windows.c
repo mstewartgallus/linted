@@ -112,8 +112,7 @@ void linted_queue_recv(struct linted_queue *queue,
             break;
         }
 
-        if (!SleepConditionVariableCS(&queue->gains_member,
-                                      &queue->lock,
+        if (!SleepConditionVariableCS(&queue->gains_member, &queue->lock,
                                       INFINITE)) {
             assert(false);
         }
