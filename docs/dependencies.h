@@ -45,14 +45,14 @@
  *   - Bug Database - http://gcc.gnu.org/bugzilla/
  * - The GNU Binary Utilities
  *   - Main Site - https://www.gnu.org/software/binutils/
- *   - Bug Mailing List - <bug-binutils@gnu.org>
+ *   - Bug Mailing List - <a href="mailto://bug-binutils@gnu.org">&lt;bug-binutils@gnu.org&gt;</a>
  * - Autoconf
  *   - Main Site - https://www.gnu.org/software/autoconf
- *   - Bug Mailing List - <bug-autoconf@gnu.org>
+ *   - Bug Mailing List - <a href="mailto://bug-autoconf@gnu.org">&lt;bug-autoconf@gnu.org&gt;</a>
  * - Automake
  *   - Main Site - https://www.gnu.org/software/automake
- *   - Bug Mailing List - <bug-automake@gnu.org>
+ *   - Bug Mailing List - <a href="mailto://bug-automake@gnu.org">&lt;bug-automake@gnu.org&gt;</a>
  * - GNU Make
  *   - Main Site - https://www.gnu.org/software/make
- *   - Bug Mailing List - <bug-make@gnu.org>
+ *   - Bug Mailing List - <a href="mailto://bug-make@gnu.org">&lt;bug-make@gnu.org&gt;</a>
  */
