@@ -717,8 +717,7 @@ exit_services:
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
 
-        switch (service_config->type) {
-        case SERVICE_PROCESS: {
+        if (SERVICE_PROCESS == service_config->type) {
             struct service_process *service = &services[ii].process;
             pid_t pid = service->pid;
 
@@ -730,10 +729,16 @@ exit_services:
 
                 service->pid = -1;
             }
-            break;
         }
+    }
 
-        case SERVICE_FILE: {
+    /**
+     * @bug standard error is closed early
+     */
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        union service_config const *service_config = &config[ii];
+
+        if (SERVICE_FILE == service_config->type) {
             struct service_file *file = &services[ii].file;
             int ko = file->ko;
             if (ko != -1) {
@@ -742,10 +747,6 @@ exit_services:
                     errnum = close_errnum;
                 }
             }
-            break;
-        }
-        default:
-            break;
         }
     }
 
