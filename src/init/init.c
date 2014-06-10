@@ -983,7 +983,7 @@ static linted_error check_db(linted_ko cwd)
 
         static char const hello[] = "Hello anybody!";
         char const *data = hello;
-        size_t data_size = sizeof hello - 1;
+        size_t data_size = sizeof hello - 1u;
 
         struct linted_asynch_task_write write_task;
 
@@ -1051,7 +1051,7 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
         return errnum;
     }
 
-    pool->count = 0;
+    pool->count = 0u;
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         pool->connections[ii].ko = -1;
