@@ -33,10 +33,10 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
                                 size_t count);
 
 /**
- * The linted_io_write_all function repeatedly writes to fd until of
+ * The linted_io_write_all function repeatedly writes to ko until of
  * buf is written or an error occurs (except for EINTR).
  *
- * For example, a bit could be written and then fd could be closed and
+ * For example, a bit could be written and then ko could be closed and
  * an error would be returned but some bytes would still have been
  * written.
  *

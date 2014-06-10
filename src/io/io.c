@@ -30,11 +30,11 @@
 #include <stdio.h>
 #include <string.h>
 
-linted_error linted_io_read_all(int fd, size_t *bytes_read_out, void *buf,
+linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
                                 size_t size)
 {
     struct linted_asynch_task_read read_task;
-    linted_asynch_read(&read_task, 0, fd, buf, size);
+    linted_asynch_read(&read_task, 0, ko, buf, size);
     linted_asynch_pool_submit(NULL, LINTED_UPCAST(&read_task));
 
     if (bytes_read_out != NULL) {
@@ -43,11 +43,11 @@ linted_error linted_io_read_all(int fd, size_t *bytes_read_out, void *buf,
     return LINTED_UPCAST(&read_task)->errnum;
 }
 
-linted_error linted_io_write_all(int fd, size_t *bytes_wrote_out,
+linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
                                  void const *buf, size_t size)
 {
     struct linted_asynch_task_write write_task;
-    linted_asynch_write(&write_task, 0, fd, buf, size);
+    linted_asynch_write(&write_task, 0, ko, buf, size);
     linted_asynch_pool_submit(NULL, LINTED_UPCAST(&write_task));
 
     if (bytes_wrote_out != NULL) {
@@ -56,19 +56,19 @@ linted_error linted_io_write_all(int fd, size_t *bytes_wrote_out,
     return LINTED_UPCAST(&write_task)->errnum;
 }
 
-linted_error linted_io_write_str(int fd, size_t *bytes_wrote,
+linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
                                  struct linted_str str)
 {
-    return linted_io_write_all(fd, bytes_wrote, str.bytes, str.size);
+    return linted_io_write_all(ko, bytes_wrote, str.bytes, str.size);
 }
 
-linted_error linted_io_write_string(int fd, size_t *bytes_wrote_out,
+linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *s)
 {
-    return linted_io_write_all(fd, bytes_wrote_out, s, strlen(s));
+    return linted_io_write_all(ko, bytes_wrote_out, s, strlen(s));
 }
 
-linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
+linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
     linted_error errnum = 0;
@@ -100,7 +100,7 @@ linted_error linted_io_write_format(int fd, size_t *bytes_wrote_out,
             goto free_string;
         }
 
-        errnum = linted_io_write_string(fd, bytes_wrote_out, string);
+        errnum = linted_io_write_string(ko, bytes_wrote_out, string);
 
     free_string:
         linted_mem_free(string);
