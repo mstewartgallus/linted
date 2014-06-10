@@ -33,7 +33,7 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
 {
     linted_error errnum = 0;
 
-    if (NULL == path && path_len != 0) {
+    if (NULL == path && path_len != 0u) {
         return EINVAL;
     }
 

@@ -482,8 +482,8 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
-        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10 +
-                                                 strlen(filename) + 1);
+        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10u +
+                                                 strlen(filename) + 1u);
         if (errnum != 0) {
             errno = errnum;
             return -1;
@@ -508,11 +508,11 @@ static size_t align_to_page_size(size_t size)
     size_t page_size = sysconf(_SC_PAGESIZE);
 
     /* This should always be true */
-    assert(page_size > 0);
+    assert(page_size > 0u);
 
     /* Round up to a multiple of page size */
     size_t remainder = size % page_size;
-    if (0 == remainder)
+    if (0u == remainder)
         return size;
 
     return size - remainder + page_size;
@@ -526,7 +526,7 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
     /* Stop the SIG_IGN handler from catching SIGTERM */
     {
         struct sigaction action;
-        memset(&action, 0, sizeof 0);
+        memset(&action, 0, sizeof action);
         action.sa_handler = SIG_DFL;
 
         sigaction(SIGTERM, &action, NULL);

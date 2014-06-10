@@ -17,6 +17,7 @@
 #define LINTED_SPAWN_H
 
 #include "linted/error.h"
+#include "linted/ko.h"
 
 #include <sys/types.h>
 
