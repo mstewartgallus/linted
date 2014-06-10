@@ -29,7 +29,6 @@
 #include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mem.h"
-#include "linted/shutdowner.h"
 #include "linted/start.h"
 #include "linted/spawn.h"
 #include "linted/updater.h"
@@ -60,7 +59,6 @@
 #define XSTR(X) STR(X)
 
 enum {
-    ON_RECEIVE_SHUTDOWNER,
     WAITER,
     LOGGER,
     NEW_CONNECTIONS,
@@ -148,12 +146,6 @@ struct connection_pool
     size_t count;
 };
 
-struct shutdown_task
-{
-    struct linted_shutdowner_task parent;
-    bool running_main_loop : 1;
-};
-
 static linted_error run_game(char const *process_name,
                              union service_config const *config);
 
@@ -163,7 +155,6 @@ static linted_error find_stderr(linted_ko *kop);
 
 static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
-static linted_error shutdowner_create(linted_ko *kop);
 
 static linted_error on_new_connection(linted_manager new_socket,
                                       struct linted_asynch_pool *pool,
@@ -370,8 +361,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                                 LINTED_SERVICE_LOGGER },
                                               { LINTED_KO_WRONLY,
                                                 LINTED_SERVICE_CONTROLLER },
-                                              { LINTED_KO_WRONLY,
-                                                LINTED_SERVICE_SHUTDOWNER },
                                               { LINTED_KO_RDONLY,
                                                 LINTED_SERVICE_UPDATER }
                                           })
@@ -388,11 +377,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
          [LINTED_SERVICE_UPDATER] = { .file = { .type = SERVICE_FILE,
                                                 .generator = updater_create } },
          [LINTED_SERVICE_CONTROLLER] = { .file = { .type = SERVICE_FILE,
-                                                   .generator =
-                                                       controller_create } },
-         [LINTED_SERVICE_SHUTDOWNER] = { .file = { .type = SERVICE_FILE,
-                                                   .generator =
-                                                       shutdowner_create } } };
+                                                   .generator = controller_create } } };
     game_status = run_game(program_name, configuration);
 
     if (game_status != 0) {
@@ -400,14 +385,6 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         char const *error_string = linted_error_string_alloc(game_status);
         linted_io_write_format(stderr, NULL, "could not run the game: %s\n",
                                error_string);
-        linted_error_string_free(error_string);
-    }
-
-    if ((errnum = linted_ko_close(stderr)) != 0) {
-        succesfully_executing = -1;
-        char const *const error_string = linted_error_string_alloc(errnum);
-        linted_io_write_format(
-            stderr, NULL, "could not close standard error: %s\n", error_string);
         linted_error_string_free(error_string);
     }
 
@@ -445,8 +422,7 @@ static linted_error run_game(char const *process_name,
          [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
          [LINTED_SERVICE_LOGGER] = { .file = { .ko = -1 } },
          [LINTED_SERVICE_UPDATER] = { .file = { .ko = -1 } },
-         [LINTED_SERVICE_CONTROLLER] = { .file = { .ko = -1 } },
-         [LINTED_SERVICE_SHUTDOWNER] = { .file = { .ko = -1 } } };
+         [LINTED_SERVICE_CONTROLLER] = { .file = { .ko = -1 } } };
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
@@ -465,9 +441,6 @@ static linted_error run_game(char const *process_name,
     }
 
     linted_logger logger_read = services[LINTED_SERVICE_LOGGER].file.ko;
-
-    linted_shutdowner shutdowner_read =
-        services[LINTED_SERVICE_SHUTDOWNER].file.ko;
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
@@ -581,14 +554,9 @@ static linted_error run_game(char const *process_name,
         struct service_process *sim_service =
             &services[LINTED_SERVICE_SIMULATOR].process;
 
-        struct shutdown_task shutdowner_task;
         struct linted_asynch_task_waitid waiter_task;
         struct linted_logger_task logger_task;
         struct linted_manager_task_accept new_connections_accept_task;
-
-        linted_shutdowner_receive(LINTED_UPCAST(&shutdowner_task),
-                                  ON_RECEIVE_SHUTDOWNER, shutdowner_read);
-        shutdowner_task.running_main_loop = true;
 
         linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
 
@@ -596,8 +564,7 @@ static linted_error run_game(char const *process_name,
 
         linted_manager_accept(&new_connections_accept_task, NEW_CONNECTIONS,
                               new_connections);
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
-                                            LINTED_UPCAST(&shutdowner_task))));
+
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
@@ -614,9 +581,6 @@ static linted_error run_game(char const *process_name,
             for (size_t ii = 0u; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
                 switch (completed_task->task_action) {
-                case ON_RECEIVE_SHUTDOWNER:
-                    goto close_connections;
-
                 case NEW_CONNECTIONS: {
                     if ((errnum = completed_task->errnum) != 0) {
                         goto close_connections;
@@ -689,7 +653,7 @@ static linted_error run_game(char const *process_name,
                         assert(false);
                     }
 
-                    if (-1 == sim_service->pid && -1 == gui_service->pid) {
+                    if (-1 == gui_service->pid) {
                         goto close_connections;
                     }
                     break;
@@ -821,11 +785,6 @@ static linted_error updater_create(linted_ko *kop)
 static linted_error controller_create(linted_ko *kop)
 {
     return linted_controller_create(kop, 0);
-}
-
-static linted_error shutdowner_create(linted_ko *kop)
-{
-    return linted_shutdowner_create(kop, 0);
 }
 
 static linted_error on_new_connection(linted_manager new_socket,

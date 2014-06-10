@@ -43,5 +43,4 @@ include %C%/util/Makefile.am
 include %C%/controller/Makefile.am
 include %C%/logger/Makefile.am
 include %C%/manager/Makefile.am
-include %C%/shutdowner/Makefile.am
 include %C%/updater/Makefile.am

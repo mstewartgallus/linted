@@ -33,8 +33,7 @@ enum linted_service {
     LINTED_SERVICE_SIMULATOR,
     LINTED_SERVICE_LOGGER,
     LINTED_SERVICE_CONTROLLER,
-    LINTED_SERVICE_UPDATER,
-    LINTED_SERVICE_SHUTDOWNER
+    LINTED_SERVICE_UPDATER
 };
 
 linted_error linted_service_for_name(enum linted_service *service,

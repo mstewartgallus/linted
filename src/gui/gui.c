@@ -28,7 +28,6 @@
 #include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/mem.h"
-#include "linted/shutdowner.h"
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -168,7 +167,7 @@ static linted_error failure(int fildes, char const *program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-static linted_ko kos[3 + 4];
+static linted_ko kos[3 + 3];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-gui",
@@ -187,8 +186,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     linted_logger logger = kos[3];
     linted_controller controller = kos[4];
-    linted_shutdowner shutdowner = kos[5];
-    linted_updater updater = kos[6];
+    linted_updater updater = kos[5];
 
     bool need_help = false;
     bool need_version = false;
@@ -552,12 +550,6 @@ destroy_pool : {
 }
 
 shutdown:
-    ;
-    linted_error shutdown_errnum = linted_shutdowner_send_shutdown(shutdowner);
-    if (0 == errnum) {
-        errnum = shutdown_errnum;
-    }
-
     return errnum;
 }
 

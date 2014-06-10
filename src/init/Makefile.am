@@ -33,7 +33,6 @@ linted_LDADD=\
   src/db/libdb.la\
   src/logger/liblogger.la\
   src/manager/libmanager.la\
-  src/shutdowner/libshutdowner.la\
   src/updater/libupdater.la
 
 BUILT_SOURCES+=%D%/binaries.h

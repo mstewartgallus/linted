@@ -31,7 +31,6 @@ gui_LDADD=\
   \
   src/controller/libcontroller.la\
   src/logger/liblogger.la\
-  src/shutdowner/libshutdowner.la\
   src/updater/libupdater.la\
   \
   -lm\
