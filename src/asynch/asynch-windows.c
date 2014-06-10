@@ -54,7 +54,7 @@ struct linted_asynch_pool
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
-static void __cdecl worker_routine(void *arg);
+static DWORD WINAPI worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
@@ -68,7 +68,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
 {
     linted_error errnum;
-    size_t created_threads = 0;
+    size_t worker_count = 0;
     struct linted_asynch_pool *pool;
 
     size_t workers_size = max_tasks * sizeof pool->workers[0];
@@ -87,10 +87,16 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
     pool->worker_count = max_tasks;
 
-    for (; created_threads < max_tasks; ++created_threads) {
-        linted_ko thread = (linted_ko)_beginthread(worker_routine, 0, pool);
-        if ((linted_ko) - 1 == thread) {
-            errnum = errno;
+    for (; worker_count < max_tasks; ++worker_count) {
+        linted_ko thread = CreateThread(NULL,
+                                        0,
+                                        worker_routine,
+                                        pool,
+                                        0,
+                                        NULL);
+        if (NULL == thread) {
+            DWORD error = GetLastError();
+            errnum = HRESULT_FROM_WIN32(error);
             goto destroy_threads;
         }
     }
@@ -100,15 +106,14 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     return 0;
 
 destroy_threads:
-/* for (size_t ii = 0u; ii < created_threads; ++ii) { */
-/*     pthread_cancel(pool->workers[ii]); */
-/* } */
+    for (size_t ii = 0u; ii < worker_count; ++ii) {
+        TerminateThread(pool->workers[ii], 0);
+    }
 
-/* for (size_t ii = 0u; ii < created_threads; ++ii) { */
-/*     pthread_join(pool->workers[ii], NULL); */
-/* } */
+    for (size_t ii = 0u; ii < worker_count; ++ii) {
+        CloseHandle(pool->workers[ii]);
+    }
 
-destroy_event_queue:
     linted_queue_destroy(pool->event_queue);
 
 destroy_worker_command_queue:
@@ -120,19 +125,23 @@ free_pool:
     return errnum;
 }
 
+/**
+ * @bug The queue isn't safe to terminate. Use an OS queue or list
+ *      that isn't corruptible.
+ */
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
     linted_error errnum = 0;
 
     size_t worker_count = pool->worker_count;
 
-    /* for (size_t ii = 0u; ii < worker_count; ++ii) { */
-    /*     pthread_cancel(pool->workers[ii]); */
-    /* } */
+    for (size_t ii = 0u; ii < worker_count; ++ii) {
+        TerminateThread(pool->workers[ii], 0);
+    }
 
-    /* for (size_t ii = 0u; ii < worker_count; ++ii) { */
-    /*     pthread_join(pool->workers[ii], NULL); */
-    /* } */
+    for (size_t ii = 0u; ii < worker_count; ++ii) {
+        CloseHandle(pool->workers[ii]);
+    }
 
     linted_queue_destroy(pool->worker_command_queue);
     linted_queue_destroy(pool->event_queue);
@@ -265,7 +274,7 @@ static void asynch_task(struct linted_asynch_task *task, unsigned type,
     task->task_action = task_action;
 }
 
-static void __cdecl worker_routine(void *arg)
+static DWORD WINAPI worker_routine(void *arg)
 {
     struct linted_asynch_pool *pool = arg;
 
