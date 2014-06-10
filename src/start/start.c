@@ -121,6 +121,7 @@ It is insecure to run a game as root!\n"));
         }
 
         fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 
         kos[kos_found] = fd;
         ++kos_found;
