@@ -179,7 +179,7 @@ static linted_error linted_help(linted_ko ko, char const *program_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-linted_ko kos[3];
+linted_ko kos[3u];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
@@ -191,8 +191,8 @@ struct linted_start_config const linted_start_config = {
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
     bool need_help = false;
     bool need_version = false;
@@ -276,7 +276,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display,
            display_value_length);
-    display[display_string_length - 1] = 0;
+    display[display_string_length - 1u] = '\0';
 
     errnum = linted_util_sanitize_environment();
     if (errnum != 0) {
@@ -396,9 +396,9 @@ static linted_error run_game(char const *process_name,
 {
     linted_error errnum = 0;
 
-    linted_ko stdin = kos[0];
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdin = kos[0u];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
     enum {
         MAX_TASKS = CONNECTION + MAX_MANAGE_CONNECTIONS
@@ -462,7 +462,7 @@ static linted_error run_game(char const *process_name,
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
         linted_ko *proc_kos =
-            linted_mem_alloc_array(&errnum, sizeof proc_kos[0], dup_pairs_size);
+            linted_mem_alloc_array(&errnum, sizeof proc_kos[0u], dup_pairs_size);
         if (errnum != 0) {
             goto destroy_attr;
         }
@@ -572,7 +572,7 @@ static linted_error run_game(char const *process_name,
             pool, LINTED_UPCAST(LINTED_UPCAST(&new_connections_accept_task)));
 
         for (;;) {
-            struct linted_asynch_task *completed_tasks[20];
+            struct linted_asynch_task *completed_tasks[20u];
             size_t task_count;
             linted_asynch_pool_wait(pool, completed_tasks,
                                     LINTED_ARRAY_SIZE(completed_tasks),
@@ -762,19 +762,19 @@ exit_services:
 
 static linted_error find_stdin(linted_ko *kop)
 {
-    *kop = kos[0];
+    *kop = kos[0u];
     return 0;
 }
 
 static linted_error find_stdout(linted_ko *kop)
 {
-    *kop = kos[1];
+    *kop = kos[1u];
     return 0;
 }
 
 static linted_error find_stderr(linted_ko *kop)
 {
-    *kop = kos[2];
+    *kop = kos[2u];
     return 0;
 }
 
@@ -990,7 +990,7 @@ static linted_error check_db(linted_ko cwd)
                             data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 
-        struct linted_asynch_task *completed_tasks[20];
+        struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
         linted_asynch_pool_wait(pool, completed_tasks,
                                 LINTED_ARRAY_SIZE(completed_tasks),

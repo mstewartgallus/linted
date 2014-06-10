@@ -134,7 +134,7 @@ linted_error linted_spawn_file_actions_adddup2(
     new_count = old_count + 1;
     new_file_actions = linted_mem_realloc(
         &errnum, file_actions,
-        sizeof *file_actions + new_count * sizeof file_actions->actions[0]);
+        sizeof *file_actions + new_count * sizeof file_actions->actions[0u]);
     if (errnum != 0) {
         return errnum;
     }
@@ -163,7 +163,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_attr const *attr,
                           char *const argv[], char *const envp[])
 {
-    bool is_relative_path = filename[0] != '/';
+    bool is_relative_path = filename[0u] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     if (is_relative_path && !at_fdcwd && dirfd < 0) {
         return EBADF;
@@ -220,14 +220,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 int kill_fd_read;
                 int kill_fd_write;
                 {
-                    int kill_fds[2];
+                    int kill_fds[2u];
                     if (-1 == pipe2(kill_fds, O_CLOEXEC)) {
                         error_status = errno;
                         assert(error_status != 0);
                         goto unmap_spawn_error;
                     }
-                    kill_fd_read = kill_fds[0];
-                    kill_fd_write = kill_fds[1];
+                    kill_fd_read = kill_fds[0u];
+                    kill_fd_write = kill_fds[1u];
                 }
 
                 if (-1 == fcntl(kill_fd_read, F_SETSIG, (long)SIGKILL)) {
@@ -439,12 +439,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     int stop_fd_read;
     int stop_fd_write;
     {
-        int stop_fds[2];
+        int stop_fds[2u];
         if (-1 == pipe2(stop_fds, O_CLOEXEC)) {
             exit_with_error(spawn_error, errno);
         }
-        stop_fd_read = stop_fds[0];
-        stop_fd_write = stop_fds[1];
+        stop_fd_read = stop_fds[0u];
+        stop_fd_write = stop_fds[1u];
     }
 
     if (-1 == fcntl(stop_fd_read, F_SETSIG, (long)SIGSTOP)) {
@@ -477,7 +477,7 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[])
 {
     linted_error errnum;
-    bool is_relative_path = filename[0] != '/';
+    bool is_relative_path = filename[0u] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     char *new_path = NULL;
 

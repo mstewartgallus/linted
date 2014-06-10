@@ -324,7 +324,7 @@ static linted_error prepend(char **result, char const *base,
         return errnum;
     }
 
-    new_path[new_path_size - 1] = '\0';
+    new_path[new_path_size - 1u] = '\0';
     memcpy(new_path, base, base_size);
     memcpy(new_path + base_size, pathname, pathname_size);
 
@@ -406,9 +406,9 @@ static int fname(int fd, char *buf, size_t *sizep)
         }
     }
 
-    static char const proc_self_fd[sizeof PROC_SELF_FD - 1] = PROC_SELF_FD;
+    static char const proc_self_fd[sizeof PROC_SELF_FD - 1u] = PROC_SELF_FD;
 
-    char fd_path[sizeof proc_self_fd + INT_STR_SIZE + 1];
+    char fd_path[sizeof proc_self_fd + INT_STR_SIZE + 1u];
 
     memcpy(fd_path, proc_self_fd, sizeof proc_self_fd);
 

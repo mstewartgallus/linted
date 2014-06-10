@@ -85,7 +85,7 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[][2] = {
+static int const attribute_list[][2u] = {
     { GLX_RGBA, True },
     { GLX_RED_SIZE, 5 },
     { GLX_GREEN_SIZE, 5 },
@@ -167,7 +167,7 @@ static linted_error failure(linted_ko ko, char const *program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-static linted_ko kos[3 + 3];
+static linted_ko kos[3u + 3u];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-gui",
@@ -181,19 +181,19 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 {
     linted_error errnum = 0;
 
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
-    linted_logger logger = kos[3];
-    linted_controller controller = kos[4];
-    linted_updater updater = kos[5];
+    linted_logger logger = kos[3u];
+    linted_controller controller = kos[4u];
+    linted_updater updater = kos[5u];
 
     bool need_help = false;
     bool need_version = false;
 
     char const *bad_option = NULL;
 
-    for (size_t ii = 1; ii < argc; ++ii) {
+    for (size_t ii = 1u; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
@@ -311,7 +311,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     XVisualInfo visual_info;
     {
         XVisualInfo *ptr = glXChooseVisual(display, screen_number,
-                                           (int *)&attribute_list[0][0]);
+                                           (int *)&attribute_list[0u][0u]);
         if (NULL == ptr) {
             errnum = ENOSYS;
             goto disconnect;
@@ -458,7 +458,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             }
         }
 
-        struct linted_asynch_task *completed_tasks[20];
+        struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
         linted_error poll_errnum = linted_asynch_pool_poll(
             pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
@@ -860,7 +860,7 @@ static linted_error init_graphics(linted_logger logger,
 
     glClearColor(red, green, blue, 1);
 
-    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0]),
+    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0u]),
                     GL_FLOAT, 0, linted_assets_triangle_vertices);
 
     glNormalPointer(GL_FLOAT, 0, linted_assets_triangle_normals);
@@ -992,13 +992,13 @@ static void resize_graphics(unsigned width, unsigned height)
         double far = 1000;
         double near = 1;
 
-        GLfloat projection[][4] = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+        GLfloat projection[][4u] = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
                                     { 0,
                                       0,
                                       (far + near) / (near - far),
                                       2 * far * near / (near - far) },
                                     { 0, 0, -1, 0 } };
-        glLoadMatrixf(projection[0]);
+        glLoadMatrixf(projection[0u]);
     }
 
     glMatrixMode(GL_MODELVIEW);
@@ -1019,31 +1019,31 @@ static void render_graphics(struct graphics_state const *graphics_state,
     {
         GLfloat cos_y = cosf(sim_model->y_rotation);
         GLfloat sin_y = sinf(sim_model->y_rotation);
-        GLfloat const rotation[][4] = { { 1, 0, 0, 0 },
+        GLfloat const rotation[][4u] = { { 1, 0, 0, 0 },
                                         { 0, cos_y, -sin_y, 0 },
                                         { 0, sin_y, cos_y, 0 },
                                         { 0, 0, 0, 1 } };
-        glMultMatrixf(rotation[0]);
+        glMultMatrixf(rotation[0u]);
     }
 
     {
         GLfloat cos_x = cosf(sim_model->x_rotation);
         GLfloat sin_x = sinf(sim_model->x_rotation);
-        GLfloat const rotation[][4] = { { cos_x, 0, sin_x, 0 },
+        GLfloat const rotation[][4u] = { { cos_x, 0, sin_x, 0 },
                                         { 0, 1, 0, 0 },
                                         { -sin_x, 0, cos_x, 0 },
                                         { 0, 0, 0, 1 } };
-        glMultMatrixf(rotation[0]);
+        glMultMatrixf(rotation[0u]);
     }
 
     /* Move the camera */
     {
-        GLfloat const camera[][4] = {
+        GLfloat const camera[][4u] = {
             { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
             { sim_model->x_position, sim_model->y_position,
               sim_model->z_position, 1 }
         };
-        glMultMatrixf(camera[0]);
+        glMultMatrixf(camera[0u]);
     }
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,

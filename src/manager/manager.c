@@ -63,8 +63,8 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
 
         if (path != NULL) {
             memcpy(address.sun_path, path, path_len);
-            if ('@' == address.sun_path[0]) {
-                address.sun_path[0] = '\0';
+            if ('@' == address.sun_path[0u]) {
+                address.sun_path[0u] = '\0';
             }
         }
 
@@ -119,8 +119,8 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
 
-        if ('@' == address.sun_path[0]) {
-            address.sun_path[0] = '\0';
+        if ('@' == address.sun_path[0u]) {
+            address.sun_path[0u] = '\0';
         }
 
         if (-1 ==
@@ -156,8 +156,8 @@ linted_error linted_manager_path(linted_manager manager,
     *len = addr_len - sizeof(sa_family_t);
     memcpy(buf, address.sun_path, *len);
 
-    if ('\0' == buf[0]) {
-        buf[0] = '@';
+    if ('\0' == buf[0u]) {
+        buf[0u] = '@';
     }
 
     return 0;

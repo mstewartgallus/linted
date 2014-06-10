@@ -86,9 +86,9 @@ linted_assets_point const * const linted_assets_triangle_vertices = vertices;
 static linted_assets_point const normals[] = $normals;
 linted_assets_point const * const linted_assets_triangle_normals = normals;
 
-static GLubyte const indices_data[][3] = $indices;
+static GLubyte const indices_data[][3u] = $indices;
 
-GLubyte const * const linted_assets_triangle_indices = &indices_data[0][0];
+GLubyte const * const linted_assets_triangle_indices = &indices_data[0u][0u];
 size_t const linted_assets_triangle_indices_size = LINTED_ARRAY_SIZE(indices_data);
 
 GLchar const * const linted_assets_fragment_shader = $fragment_shader;

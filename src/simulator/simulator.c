@@ -128,7 +128,7 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
 
-static linted_ko kos[3 + 3];
+static linted_ko kos[3u + 3u];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
@@ -140,12 +140,12 @@ struct linted_start_config const linted_start_config = {
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
-    linted_logger logger = kos[3];
-    linted_controller controller = kos[4];
-    linted_updater updater = kos[5];
+    linted_logger logger = kos[3u];
+    linted_controller controller = kos[4u];
+    linted_updater updater = kos[5u];
 
     bool need_help = false;
     bool need_version = false;
@@ -271,7 +271,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     /* TODO: Detect SIGTERM and exit normally */
     for (;;) {
-        struct linted_asynch_task *completed_tasks[20];
+        struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
         linted_asynch_pool_wait(pool, completed_tasks,
                                 LINTED_ARRAY_SIZE(completed_tasks),

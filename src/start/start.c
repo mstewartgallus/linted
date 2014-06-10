@@ -57,7 +57,7 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    char const *const program_name = argv[0];
+    char const *const program_name = argv[0u];
 
     size_t kos_size = linted_start_config.kos_size;
     linted_ko *kos = linted_start_config.kos;

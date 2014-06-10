@@ -18,7 +18,7 @@
 
 #include "gl_core.h"
 
-typedef GLfloat linted_assets_point[3];
+typedef GLfloat linted_assets_point[3u];
 
 extern linted_assets_point const *const linted_assets_triangle_vertices;
 extern linted_assets_point const *const linted_assets_triangle_normals;

@@ -146,7 +146,7 @@ linted_error linted_ko_reopen(linted_ko *kop, int flags)
 {
     linted_ko ko = *kop;
 
-    char pathname[sizeof "/proc/self/fd/" + 10];
+    char pathname[sizeof "/proc/self/fd/" + 10u];
     sprintf(pathname, "/proc/self/fd/%i", ko);
     return linted_ko_open(kop, -1, pathname, flags);
 }

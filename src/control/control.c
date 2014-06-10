@@ -49,7 +49,7 @@ static linted_error stop_help(linted_ko ko, char const *program_name,
 static linted_error failure(linted_ko ko, char const *program_name,
                             struct linted_str message, linted_error errnum);
 
-linted_ko kos[3];
+linted_ko kos[3u];
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-control",
@@ -61,15 +61,15 @@ struct linted_start_config const linted_start_config = {
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
     bool need_help = false;
     bool need_version = false;
 
     char const *bad_option = NULL;
     char const *command = NULL;
-    size_t last_index = 1;
+    size_t last_index = 1u;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 
@@ -116,11 +116,11 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (0 == strcmp("status", command)) {
-        return run_status(program_name, argc - last_index + 1,
-                          argv + last_index - 1);
+        return run_status(program_name, argc - last_index + 1u,
+                          argv + last_index - 1u);
     } else if (0 == strcmp("stop", command)) {
-        return run_stop(program_name, argc - last_index + 1,
-                        argv + last_index - 1);
+        return run_stop(program_name, argc - last_index + 1u,
+                        argv + last_index - 1u);
     } else {
         linted_io_write_format(stderr, NULL, "%s: unrecognized command '%s'\n",
                                program_name, command);
@@ -133,15 +133,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 static uint_fast8_t run_status(char const *program_name, size_t argc,
                                char const *const argv[const])
 {
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
     bool need_version = false;
     bool need_add_help = false;
     char const *service_name = NULL;
     char const *bad_option = NULL;
     char const *bad_argument = NULL;
-    size_t last_index = 1;
+    size_t last_index = 1u;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 
@@ -292,14 +292,14 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
 static uint_fast8_t run_stop(char const *program_name, size_t argc,
                              char const *const argv[const])
 {
-    linted_ko stdout = kos[1];
-    linted_ko stderr = kos[2];
+    linted_ko stdout = kos[1u];
+    linted_ko stderr = kos[2u];
 
     bool need_version = false;
     bool need_add_help = false;
     char const *bad_option = NULL;
     char const *bad_argument = NULL;
-    size_t last_index = 1;
+    size_t last_index = 1u;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 

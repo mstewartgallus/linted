@@ -71,7 +71,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     size_t worker_count = 0;
     struct linted_asynch_pool *pool;
 
-    size_t workers_size = max_tasks * sizeof pool->workers[0];
+    size_t workers_size = max_tasks * sizeof pool->workers[0u];
     pool = linted_mem_alloc(&errnum, sizeof *pool + workers_size);
     if (errnum != 0) {
         return errnum;
