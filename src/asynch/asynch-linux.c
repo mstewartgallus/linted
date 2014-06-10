@@ -79,10 +79,10 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 static linted_error poll_one(struct pollfd *pollfd);
 static linted_error check_for_poll_error(struct pollfd *pollfd);
 
-int linted_asynch_pool_create(struct linted_asynch_pool **poolp,
-                              unsigned max_tasks)
+linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
+                                       unsigned max_tasks)
 {
-    int errnum;
+    linted_error errnum;
     size_t created_threads = 0;
     struct linted_asynch_pool *pool;
 
