@@ -542,8 +542,7 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
-        0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
         return errnum;
     }
 
@@ -551,8 +550,8 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(ko, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"))) !=
+        0) {
         return errnum;
     }
 

@@ -88,12 +88,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     pool->worker_count = max_tasks;
 
     for (; worker_count < max_tasks; ++worker_count) {
-        linted_ko thread = CreateThread(NULL,
-                                        0,
-                                        worker_routine,
-                                        pool,
-                                        0,
-                                        NULL);
+        linted_ko thread = CreateThread(NULL, 0, worker_routine, pool, 0, NULL);
         if (NULL == thread) {
             DWORD error = GetLastError();
             errnum = HRESULT_FROM_WIN32(error);

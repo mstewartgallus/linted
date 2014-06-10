@@ -131,7 +131,8 @@ free_buffer:
     return errnum;
 }
 
-linted_error linted_locale_version(linted_ko ko, struct linted_str package_string,
+linted_error linted_locale_version(linted_ko ko,
+                                   struct linted_str package_string,
                                    struct linted_str copyright_year)
 {
     linted_error errnum;

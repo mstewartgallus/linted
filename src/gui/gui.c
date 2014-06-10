@@ -993,11 +993,11 @@ static void resize_graphics(unsigned width, unsigned height)
         double near = 1;
 
         GLfloat projection[][4u] = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
-                                    { 0,
-                                      0,
-                                      (far + near) / (near - far),
-                                      2 * far * near / (near - far) },
-                                    { 0, 0, -1, 0 } };
+                                     { 0,
+                                       0,
+                                       (far + near) / (near - far),
+                                       2 * far * near / (near - far) },
+                                     { 0, 0, -1, 0 } };
         glLoadMatrixf(projection[0u]);
     }
 
@@ -1020,9 +1020,9 @@ static void render_graphics(struct graphics_state const *graphics_state,
         GLfloat cos_y = cosf(sim_model->y_rotation);
         GLfloat sin_y = sinf(sim_model->y_rotation);
         GLfloat const rotation[][4u] = { { 1, 0, 0, 0 },
-                                        { 0, cos_y, -sin_y, 0 },
-                                        { 0, sin_y, cos_y, 0 },
-                                        { 0, 0, 0, 1 } };
+                                         { 0, cos_y, -sin_y, 0 },
+                                         { 0, sin_y, cos_y, 0 },
+                                         { 0, 0, 0, 1 } };
         glMultMatrixf(rotation[0u]);
     }
 
@@ -1030,9 +1030,9 @@ static void render_graphics(struct graphics_state const *graphics_state,
         GLfloat cos_x = cosf(sim_model->x_rotation);
         GLfloat sin_x = sinf(sim_model->x_rotation);
         GLfloat const rotation[][4u] = { { cos_x, 0, sin_x, 0 },
-                                        { 0, 1, 0, 0 },
-                                        { -sin_x, 0, cos_x, 0 },
-                                        { 0, 0, 0, 1 } };
+                                         { 0, 1, 0, 0 },
+                                         { -sin_x, 0, cos_x, 0 },
+                                         { 0, 0, 0, 1 } };
         glMultMatrixf(rotation[0u]);
     }
 
@@ -1148,8 +1148,7 @@ static linted_error gui_help(linted_ko ko, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
-        0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
         return errnum;
     }
 
@@ -1157,8 +1156,8 @@ static linted_error gui_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(ko, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"))) !=
+        0) {
         return errnum;
     }
 

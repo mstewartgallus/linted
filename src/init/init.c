@@ -377,7 +377,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
          [LINTED_SERVICE_UPDATER] = { .file = { .type = SERVICE_FILE,
                                                 .generator = updater_create } },
          [LINTED_SERVICE_CONTROLLER] = { .file = { .type = SERVICE_FILE,
-                                                   .generator = controller_create } } };
+                                                   .generator =
+                                                       controller_create } } };
     game_status = run_game(program_name, configuration);
 
     if (game_status != 0) {
@@ -461,8 +462,8 @@ static linted_error run_game(char const *process_name,
         }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
-        linted_ko *proc_kos =
-            linted_mem_alloc_array(&errnum, sizeof proc_kos[0u], dup_pairs_size);
+        linted_ko *proc_kos = linted_mem_alloc_array(
+            &errnum, sizeof proc_kos[0u], dup_pairs_size);
         if (errnum != 0) {
             goto destroy_attr;
         }
@@ -1095,8 +1096,7 @@ static linted_error linted_help(linted_ko ko, char const *program_name,
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
-        0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
         return errnum;
     }
 
@@ -1104,8 +1104,8 @@ static linted_error linted_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(ko, NULL,
-                                      LINTED_STR(" [OPTIONS]\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"))) !=
+        0) {
         return errnum;
     }
 
