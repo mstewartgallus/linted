@@ -207,8 +207,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         .x_velocity = 0,
         .y_velocity = 0,
         .z_velocity = 0,
-        .x_rotation = { UINT32_MAX / 2 },
-        .y_rotation = { 0 }
+        .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
+        .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u)
     };
 
     linted_ko timer =
@@ -494,9 +494,12 @@ static void simulate_forces(linted_updater_int *position,
 static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt)
 {
+
+    linted_updater_angle increment = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+
     *rotation = linted_updater_angle_add(
         (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation,
-        linted_updater_angle_from_frac(1, ROTATION_SPEED));
+        increment);
 }
 
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
@@ -509,10 +512,13 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        new_rotation = linted_updater_angle_add_clamped(
-            tilt_sign, linted_updater_angle_from_frac(15, 16),
-            linted_updater_angle_from_frac(3, 16), *rotation,
-            linted_updater_angle_from_frac(1, ROTATION_SPEED));
+        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15, 16);
+        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3, 16);
+        linted_updater_angle increment = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+
+        new_rotation = linted_updater_angle_add_clamped(tilt_sign, minimum,
+                                                        maximum, *rotation,
+                                                        increment);
     }
 
     *rotation = new_rotation;

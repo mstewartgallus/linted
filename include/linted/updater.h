@@ -37,6 +37,8 @@
 #define LINTED_UPDATER_INT_MAX INT32_MAX
 #define LINTED_UPDATER_INT_MIN INT32_MIN
 
+#define LINTED_UPDATER_ANGLE(X, Y) {._value = (LINTED_UPDATER_UINT_MAX / (Y)) * (X)}
+
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
@@ -136,14 +138,6 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
     }
     linted_updater_angle angle;
     angle._value = result;
-    return angle;
-}
-
-static inline linted_updater_angle
-linted_updater_angle_from_frac(linted_updater_uint x, linted_updater_uint y)
-{
-    linted_updater_angle angle;
-    angle._value = (LINTED_UPDATER_UINT_MAX / y) * x;
     return angle;
 }
 
