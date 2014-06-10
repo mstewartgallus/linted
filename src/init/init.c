@@ -174,7 +174,7 @@ static linted_error connection_pool_destroy(struct connection_pool *pool);
 static linted_error connection_remove(struct connection *connection,
                                       struct connection_pool *connection_pool);
 
-static linted_error linted_help(int fildes, char const *program_name,
+static linted_error linted_help(linted_ko ko, char const *program_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
@@ -1088,78 +1088,78 @@ static linted_error connection_remove(struct connection *connection,
     return linted_ko_close(ko);
 }
 
-static linted_error linted_help(int fildes, char const *program_name,
+static linted_error linted_help(linted_ko ko, char const *program_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
         0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
+    if ((errnum = linted_io_write_str(ko, NULL,
                                       LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Play the game.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 

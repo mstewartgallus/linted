@@ -21,7 +21,7 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 
-linted_error linted_locale_missing_process_name(int fildes,
+linted_error linted_locale_missing_process_name(linted_ko ko,
                                                 char const *package_name)
 {
     linted_error errnum;
@@ -40,7 +40,7 @@ linted_error linted_locale_missing_process_name(int fildes,
         goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+    if ((errnum = linted_io_write_all(ko, NULL, buffer, size)) != 0) {
         goto free_buffer;
     }
 
@@ -49,7 +49,7 @@ free_buffer:
     return errnum;
 }
 
-linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
+linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
                                          char const *bad_option)
 {
     linted_error errnum;
@@ -78,7 +78,7 @@ linted_error linted_locale_on_bad_option(int fildes, char const *program_name,
         goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+    if ((errnum = linted_io_write_all(ko, NULL, buffer, size)) != 0) {
         goto free_buffer;
     }
 
@@ -87,7 +87,7 @@ free_buffer:
     return errnum;
 }
 
-linted_error linted_locale_try_for_more_help(int fildes,
+linted_error linted_locale_try_for_more_help(linted_ko ko,
                                              char const *program_name,
                                              struct linted_str help_option)
 {
@@ -122,7 +122,7 @@ linted_error linted_locale_try_for_more_help(int fildes,
         goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+    if ((errnum = linted_io_write_all(ko, NULL, buffer, size)) != 0) {
         goto free_buffer;
     }
 
@@ -131,7 +131,7 @@ free_buffer:
     return errnum;
 }
 
-linted_error linted_locale_version(int fildes, struct linted_str package_string,
+linted_error linted_locale_version(linted_ko ko, struct linted_str package_string,
                                    struct linted_str copyright_year)
 {
     linted_error errnum;
@@ -166,7 +166,7 @@ There is NO WARRANTY, to the extent permitted by law.\n"))) != 0) {
         goto free_buffer;
     }
 
-    if ((errnum = linted_io_write_all(fildes, NULL, buffer, size)) != 0) {
+    if ((errnum = linted_io_write_all(ko, NULL, buffer, size)) != 0) {
         goto free_buffer;
     }
 

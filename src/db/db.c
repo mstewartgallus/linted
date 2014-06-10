@@ -233,7 +233,7 @@ linted_error linted_db_close(linted_db *dbp)
     return linted_ko_close(*dbp);
 }
 
-linted_error linted_db_temp_file(linted_db *dbp, int *fildesp)
+linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop)
 {
     linted_error errnum = 0;
 
@@ -278,11 +278,12 @@ try_again:
         return errnum;
     }
 
-    *fildesp = temp_field;
+    *kop = temp_field;
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db *dbp, char const *name, int tmp)
+linted_error linted_db_temp_send(linted_db *dbp, char const *name,
+                                 linted_ko tmp)
 {
     linted_error errnum;
 

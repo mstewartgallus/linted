@@ -43,7 +43,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags);
 linted_error linted_db_close(linted_db *dbp);
 
-linted_error linted_db_temp_file(linted_db *dbp, int *fildesp);
-linted_error linted_db_temp_send(linted_db *db, char const *name, int fildes);
+linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop);
+linted_error linted_db_temp_send(linted_db *db, char const *name, linted_ko ko);
 
 #endif /* LINTED_DB_H */

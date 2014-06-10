@@ -158,11 +158,11 @@ static linted_error get_gl_error(void);
 
 static double square(double x);
 
-static linted_error gui_help(int fildes, char const *program_name,
+static linted_error gui_help(linted_ko ko, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport);
-static linted_error failure(int fildes, char const *program_name,
+static linted_error failure(linted_ko ko, char const *program_name,
                             struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
@@ -1141,47 +1141,47 @@ static double square(double x)
     return x * x;
 }
 
-static linted_error gui_help(int fildes, char const *program_name,
+static linted_error gui_help(linted_ko ko, char const *program_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("Usage: "))) !=
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
         0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL,
+    if ((errnum = linted_io_write_str(ko, NULL,
                                       LINTED_STR(" [OPTIONS]\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Run the gui program.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --logger            the logger file descriptor\n\
   --controller        the controller file descriptor\n\
   --updater           the updater file descriptor\n\
@@ -1189,68 +1189,68 @@ Run the gui program.\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_bugreport)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, package_name)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
  home page: <"))) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, package_url)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
         return errnum;
     }
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(">\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
         return errnum;
     }
 
     return 0;
 }
 
-static linted_error failure(int fildes, char const *program_name,
+static linted_error failure(linted_ko ko, char const *program_name,
                             struct linted_str message, linted_error error)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_string(fildes, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, message)) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, message)) != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR(": "))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "))) != 0) {
         return errnum;
     }
 
     char const *error_string = linted_error_string_alloc(error);
-    errnum = linted_io_write_string(fildes, NULL, error_string);
+    errnum = linted_io_write_string(ko, NULL, error_string);
     linted_error_string_free(error_string);
 
     if (errnum != 0) {
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(fildes, NULL, LINTED_STR("\n"))) != 0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
         return errnum;
     }
 
