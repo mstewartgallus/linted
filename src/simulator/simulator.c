@@ -346,15 +346,15 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
-                        8 * (linted_updater_int)action_state->x);
+                        LINTED_UPDATER_INT_MAX * action_state->x);
 
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        8 * (linted_updater_int)action_state->z);
+                        LINTED_UPDATER_INT_MAX * action_state->z);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,
-                        -8 * (linted_updater_int)action_state->jumping);
+                        LINTED_UPDATER_INT_MIN * action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
         simulate_clamped_rotation(&simulator_state->y_rotation,
@@ -475,7 +475,7 @@ static void simulate_forces(linted_updater_int *position,
     linted_updater_int old_velocity = *velocity;
 
     linted_updater_int guess_velocity =
-        linted_updater_isatadd(thrust, old_velocity);
+        linted_updater_isatadd(8 * (thrust / LINTED_UPDATER_INT_MAX), old_velocity);
 
     linted_updater_int friction =
         min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *

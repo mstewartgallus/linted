@@ -29,4 +29,6 @@
  * @todo Rewrite utility shell scripts in Python.
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
+ *
+ * @todo Use rotation to change thrust direction
  */
