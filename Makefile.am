@@ -41,6 +41,7 @@ AM_CPPFLAGS=\
 
 AM_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_FAST_BUILD)\
   $(linted_CFLAGS_OPTIMIZE)\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_MINOR_DEBUG)\
