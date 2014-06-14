@@ -344,13 +344,19 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
     linted_asynch_pool_submit(pool, completed_task);
 
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
+        linted_updater_angle x_rotation = simulator_state->x_rotation;
+
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "angle: %ju %li\n", x_rotation._value,
+                               linted_updater_sin(x_rotation));
+
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
-                        LINTED_UPDATER_INT_MAX * action_state->x);
+                        linted_updater_cos(x_rotation) * action_state->x);
 
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        LINTED_UPDATER_INT_MAX * action_state->z);
+                        linted_updater_sin(x_rotation) * action_state->z);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,
@@ -474,8 +480,10 @@ static void simulate_forces(linted_updater_int *position,
     linted_updater_int old_position = *position;
     linted_updater_int old_velocity = *velocity;
 
+    intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
+
     linted_updater_int guess_velocity =
-        linted_updater_isatadd(8 * (thrust / LINTED_UPDATER_INT_MAX), old_velocity);
+        linted_updater_isatadd(a, old_velocity);
 
     linted_updater_int friction =
         min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *

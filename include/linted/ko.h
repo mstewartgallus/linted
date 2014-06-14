@@ -24,7 +24,7 @@
  * Abstracts over the concept of a kernel object.
  */
 
-#if defined HAVE_WINDOWS_H
+#if defined _WIN32 || defined _WIN64
 typedef void *linted_ko;
 #elif defined __linux__
 typedef int linted_ko;
