@@ -27,7 +27,7 @@
  * Abstracts over the concept of a lock file.
  */
 
-#if defined _WIN32 || defined _WIN64
+#if defined _WIN32
 typedef void *linted_lock;
 #elif defined __linux__
 typedef pid_t linted_lock;

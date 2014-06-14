@@ -24,7 +24,7 @@
  * Abstracts over the concept of a kernel object.
  */
 
-#if defined _WIN32 || defined _WIN64
+#if defined _WIN32
 typedef void *linted_ko;
 #elif defined __linux__
 typedef int linted_ko;

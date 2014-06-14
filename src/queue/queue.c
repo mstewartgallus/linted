@@ -15,7 +15,7 @@
  */
 #if defined __linux__
 #include "queue-linux.c"
-#elif defined _WIN32 || defined _WIN64
+#elif defined _WIN32
 #include "queue-windows.c"
 #else
 #error no concurrent queue implementation for this platform

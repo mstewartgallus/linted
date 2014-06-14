@@ -16,7 +16,7 @@
 #ifndef LINTED_ERROR_H
 #define LINTED_ERROR_H
 
-#if defined _WIN32 || defined _WIN64
+#if defined _WIN32
 #include <windows.h>
 #endif
 
@@ -28,7 +28,7 @@
 
 #if defined __linux__
 typedef int linted_error;
-#elif defined __WIN32 || defined _WIN64
+#elif defined __WIN32
 typedef HRESULT linted_error;
 #else
 #error no known most primitive platform error type
