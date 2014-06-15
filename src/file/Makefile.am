@@ -15,8 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/liblock.la
-%C%_liblock_la_SOURCES=%D%/lock.c include/linted/lock.h
-%C%_liblock_la_LIBADD=\
-  src/file/libfile.la\
-  src/ko/libko.la
+noinst_LTLIBRARIES+=%D%/libfile.la
+%C%_libfile_la_SOURCES=%D%/file.c include/linted/file.h

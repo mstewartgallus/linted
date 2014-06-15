@@ -78,7 +78,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 {
     linted_error errnum;
 
-    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR) !=
+    if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR & ~LINTED_KO_SYNC) !=
         0u) {
         return EINVAL;
     }

@@ -26,6 +26,7 @@ include %C%/simulator/Makefile.am
 include %C%/asynch/Makefile.am
 include %C%/db/Makefile.am
 include %C%/error/Makefile.am
+include %C%/file/Makefile.am
 include %C%/io/Makefile.am
 include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am

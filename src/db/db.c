@@ -20,6 +20,7 @@
 #include "linted/db.h"
 
 #include "linted/error.h"
+#include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/lock.h"
@@ -175,12 +176,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto unlock_db;
         }
 
-        int version_file_write = openat(
-            the_db, "version", O_RDWR | O_SYNC | O_CLOEXEC | O_CREAT | O_EXCL,
-            S_IRUSR | S_IWUSR);
-        if (-1 == version_file_write) {
-            errnum = errno;
-            assert(errnum != 0);
+        int version_file_write;
+        if ((errnum = linted_file_create(&version_file_write, the_db, "version",
+                                         LINTED_FILE_RDWR | LINTED_FILE_SYNC,
+                                         S_IRUSR | S_IWUSR)) != 0) {
             goto unlock_db;
         }
 
@@ -259,12 +258,11 @@ try_again:
         }
     }
 
-    int temp_field = openat(*dbp, temp_path, O_RDWR | O_SYNC | O_CLOEXEC |
-                                                 O_NONBLOCK | O_CREAT | O_EXCL,
-                            S_IRUSR | S_IWUSR);
-    if (-1 == temp_field) {
-        linted_error open_errnum = errno;
-        assert(open_errnum != 0);
+    int temp_field;
+    linted_error open_errnum = linted_file_create(&temp_field, *dbp, temp_path,
+                                                  LINTED_FILE_RDWR | LINTED_FILE_SYNC | LINTED_FILE_EXCL,
+                                                  S_IRUSR | S_IWUSR);
+    if (open_errnum != 0) {
         if (EEXIST == open_errnum) {
             goto try_again;
         } else {

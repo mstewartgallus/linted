@@ -19,6 +19,8 @@
 
 #include "linted/lock.h"
 
+#include "linted/file.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -35,31 +37,20 @@ static size_t align_to_page_size(size_t size);
 linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
                                      char const *pathname, int flags)
 {
-    linted_error errnum;
-
     if ((flags & ~LINTED_LOCK_EXCL) != 0) {
         return EINVAL;
     }
 
     bool lock_excl = (flags & LINTED_LOCK_EXCL) != 0;
 
-    int o_flags = O_RDWR | O_CLOEXEC | O_NONBLOCK | O_CREAT;
+    int file_flags = LINTED_FILE_RDWR;
+
     if (lock_excl != 0) {
-        o_flags |= O_EXCL;
+        file_flags |= LINTED_FILE_EXCL;
     }
 
     /* Lock does not exist try to create it */
-    int lock_file = openat(dirko, pathname, o_flags, S_IRUSR | S_IWUSR);
-    if (-1 == lock_file) {
-        errnum = errno;
-        assert(errnum != 0);
-    } else {
-        errnum = 0;
-    }
-
-    *kop = lock_file;
-
-    return errnum;
+    return linted_file_create(kop, dirko, pathname, file_flags, S_IRUSR | S_IWUSR);
 }
 
 linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
