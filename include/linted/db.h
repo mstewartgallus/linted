@@ -37,7 +37,7 @@
 #define LINTED_DB_WRONLY (1 << 3)
 #define LINTED_DB_RDWR (1 << 4)
 
-typedef int linted_db;
+typedef linted_ko linted_db;
 
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags);

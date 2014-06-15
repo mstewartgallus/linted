@@ -51,8 +51,8 @@
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
-static linted_error fname_alloc(int fd, char **buf);
-static linted_error fname(int fd, char *buf, size_t *sizep);
+static linted_error fname_alloc(linted_ko ko, char **buf);
+static linted_error fname(linted_ko ko, char *buf, size_t *sizep);
 
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
@@ -115,7 +115,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     }
 
     /* Sole user of the database now */
-    int version_file;
+    linted_ko version_file;
     switch (errnum = linted_ko_open(&version_file, the_db, "version",
                                     LINTED_KO_RDONLY)) {
     case 0: {
@@ -177,7 +177,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto unlock_db;
         }
 
-        int version_file_write;
+        linted_ko version_file_write;
         if ((errnum = linted_file_create(&version_file_write, the_db, "version",
                                          LINTED_FILE_RDWR | LINTED_FILE_SYNC,
                                          S_IRUSR | S_IWUSR)) != 0) {
@@ -259,7 +259,7 @@ try_again:
         }
     }
 
-    int temp_field;
+    linted_ko temp_field;
     linted_error open_errnum = linted_file_create(&temp_field, *dbp, temp_path,
                                                   LINTED_FILE_RDWR | LINTED_FILE_SYNC | LINTED_FILE_EXCL,
                                                   S_IRUSR | S_IWUSR);
@@ -331,9 +331,9 @@ static linted_error prepend(char **result, char const *base,
     return 0;
 }
 
-static int fname_alloc(int fd, char **bufp)
+static linted_error fname_alloc(linted_ko fd, char **bufp)
 {
-    int errnum;
+    linted_error errnum;
     size_t bytes_wrote;
 
     size_t buf_size = 40;
@@ -388,7 +388,7 @@ free_buf:
 #define PROC_SELF_FD "/proc/self/fd/"
 #define INT_STR_SIZE 10
 
-static int fname(int fd, char *buf, size_t *sizep)
+static linted_error fname(linted_ko fd, char *buf, size_t *sizep)
 {
     linted_error errnum;
 
