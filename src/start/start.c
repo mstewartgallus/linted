@@ -120,8 +120,39 @@ It is insecure to run a game as root!\n"));
             continue;
         }
 
-        fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
-        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+        {
+            int flags = fcntl(fd, F_GETFD);
+            if (-1 == flags) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFD: %s\n",
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+            }
+
+            if (-1 == fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_SETFD: %s\n",
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+            }
+        }
+
+        {
+            int flags = fcntl(fd, F_GETFL);
+            if (-1 == flags) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFL: %s\n",
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+            }
+
+            if (-1 == fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_SETFL: %s\n",
+                                       linted_error_string_alloc(errno));
+                return EXIT_FAILURE;
+            }
+        }
 
         kos[kos_found] = fd;
         ++kos_found;
