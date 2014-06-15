@@ -35,10 +35,15 @@ typedef pid_t linted_lock;
 #error no implemented lock for this platform
 #endif
 
-#define LINTED_LOCK_EXCL 1
+#define LINTED_LOCK_RDONLY 1
+#define LINTED_LOCK_WRONLY (1 << 2)
+#define LINTED_LOCK_RDWR (1 << 3)
+
+#define LINTED_LOCK_EXCL (1 << 4)
 
 linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
-                                     char const *pathname, int flags);
+                                     char const *pathname, int flags,
+                                     mode_t mode);
 
 linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file);
 linted_error linted_lock_release(linted_lock lock);

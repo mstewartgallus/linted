@@ -95,7 +95,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     linted_ko lock_file;
 
     if ((errnum = linted_lock_file_create(&lock_file, the_db, GLOBAL_LOCK,
-                                          0)) != 0) {
+                                          LINTED_LOCK_RDWR,
+                                          S_IRUSR | S_IWUSR)) != 0) {
         goto close_db;
     }
 

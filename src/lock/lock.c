@@ -35,22 +35,37 @@ static void exit_with_error(volatile linted_error *spawn_error,
 static size_t align_to_page_size(size_t size);
 
 linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
-                                     char const *pathname, int flags)
+                                     char const *pathname, int flags,
+                                     mode_t mode)
 {
-    if ((flags & ~LINTED_LOCK_EXCL) != 0) {
+    if ((flags & ~LINTED_LOCK_RDONLY & ~LINTED_LOCK_WRONLY & ~LINTED_LOCK_RDWR & ~LINTED_LOCK_EXCL) != 0) {
         return EINVAL;
     }
 
+    bool lock_rdonly = (flags & LINTED_LOCK_RDONLY) != 0u;
+    bool lock_wronly = (flags & LINTED_LOCK_WRONLY) != 0u;
+    bool lock_rdwr = (flags & LINTED_LOCK_RDWR) != 0u;
+
     bool lock_excl = (flags & LINTED_LOCK_EXCL) != 0;
 
-    int file_flags = LINTED_FILE_RDWR;
+    int file_flags = 0;
+
+    if (lock_rdonly != 0) {
+        file_flags |= LINTED_FILE_RDONLY;
+    }
+    if (lock_wronly != 0) {
+        file_flags |= LINTED_FILE_WRONLY;
+    }
+    if (lock_rdwr != 0) {
+        file_flags |= LINTED_FILE_RDWR;
+    }
 
     if (lock_excl != 0) {
         file_flags |= LINTED_FILE_EXCL;
     }
 
     /* Lock does not exist try to create it */
-    return linted_file_create(kop, dirko, pathname, file_flags, S_IRUSR | S_IWUSR);
+    return linted_file_create(kop, dirko, pathname, file_flags, mode);
 }
 
 linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
