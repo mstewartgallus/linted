@@ -37,7 +37,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#ifdef _WIN32
+#if defined _WIN32 || defined _WIN64
 #define snprintf sprintf_s
 #endif
 

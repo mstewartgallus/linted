@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined __linux__
-#include "queue-linux.c"
-#elif defined _WIN32
+#if defined _WIN32 || defined _WIN64
 #include "queue-windows.c"
+#elif defined __linux__
+#include "queue-linux.c"
 #else
 #error no concurrent queue implementation for this platform
 #endif

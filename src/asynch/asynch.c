@@ -15,7 +15,7 @@
  */
 #include "config.h"
 
-#if defined _WIN32
+#if defined _WIN32 || defined _WIN64
 #include "asynch-windows.c"
 #elif defined __linux__
 #include "asynch-linux.c"
