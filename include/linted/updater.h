@@ -101,7 +101,7 @@ void linted_updater_decode(struct linted_updater_task_receive const *task,
 
 static inline float linted_updater_angle_to_float(linted_updater_angle theta)
 {
-    return theta._value * (2 * acosf(-1.0f) / UINT32_MAX);
+    return theta._value * (2 * 3.14159265358979323846264338327 / UINT32_MAX);
 }
 
 static inline linted_updater_angle

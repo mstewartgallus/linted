@@ -344,23 +344,17 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
     linted_asynch_pool_submit(pool, completed_task);
 
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
-        linted_updater_angle x_rotation = simulator_state->x_rotation;
-
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "angle: %ju %li\n", x_rotation._value,
-                               linted_updater_sin(x_rotation));
-
         simulate_forces(&simulator_state->x_position,
                         &simulator_state->x_velocity,
-                        linted_updater_cos(x_rotation) * action_state->x);
+                        LINTED_UPDATER_INT_MAX * action_state->x);
 
         simulate_forces(&simulator_state->z_position,
                         &simulator_state->z_velocity,
-                        linted_updater_sin(x_rotation) * action_state->z);
+                        LINTED_UPDATER_INT_MAX * action_state->z);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,
-                        LINTED_UPDATER_INT_MIN * action_state->jumping);
+                        -LINTED_UPDATER_INT_MAX * action_state->jumping);
 
         simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
         simulate_clamped_rotation(&simulator_state->y_rotation,
