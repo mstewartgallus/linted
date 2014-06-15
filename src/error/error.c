@@ -29,42 +29,46 @@
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
 
-char const *linted_error_string_alloc(linted_error errnum)
+char const *linted_error_string_alloc(linted_error errnum_to_print)
 {
-    size_t size = 40;
-    char *string = NULL;
+    linted_error errnum;
+    size_t buf_size = 40;
 
-    linted_error strerror_errnum;
-    do {
-        size_t const multiplicand = 3;
+    char *buf = linted_mem_alloc(&errnum, buf_size);
+    if (errnum != 0) {
+        return no_memory_string;
+    }
 
-        if (size > SIZE_MAX / multiplicand) {
-            goto out_of_memory;
+    for (;;) {
+        if (0 == strerror_r(errnum_to_print, buf, buf_size)) {
+            break;
         }
 
-        size = (multiplicand * size) / 2;
-
-        linted_error realloc_errnum;
-        char *const new_string =
-            linted_mem_realloc(&realloc_errnum, string, size);
-        if (realloc_errnum != 0) {
-            goto out_of_memory;
+        if (SIZE_MAX / 3 < buf_size) {
+            errnum = ENOMEM;
+            goto free_buf;
         }
-        string = new_string;
-
-        if (-1 == strerror_r(errnum, string, size)) {
-            strerror_errnum = errno;
-            assert(strerror_errnum != 0);
-        } else {
-            strerror_errnum = 0;
+        buf_size = (buf_size * 3u) / 2u;
+        char *newbuf = linted_mem_realloc(&errnum, buf, buf_size);
+        if (errnum != 0) {
+            goto free_buf;
         }
-    } while (ERANGE == strerror_errnum);
-    assert(strerror_errnum != EINVAL);
+        buf = newbuf;
+    }
 
-    return string;
+    /* Save on excess memory, also give debugging allocators more
+     * information.
+     */
+    char *newbuf = linted_mem_realloc(&errnum, buf, strlen(buf) + 1);
+    if (errnum != 0) {
+        goto free_buf;
+    }
+    buf = newbuf;
 
-out_of_memory:
-    linted_mem_free(string);
+    return buf;
+
+free_buf:
+    linted_mem_free(buf);
 
     return no_memory_string;
 }
