@@ -37,7 +37,10 @@
 #define LINTED_UPDATER_INT_MAX INT32_MAX
 #define LINTED_UPDATER_INT_MIN INT32_MIN
 
-#define LINTED_UPDATER_ANGLE(X, Y) {._value = (LINTED_UPDATER_UINT_MAX / (Y)) * (X)}
+#define LINTED_UPDATER_ANGLE(X, Y)                                             \
+    {                                                                          \
+        ._value = (LINTED_UPDATER_UINT_MAX / (Y)) * (X)                        \
+    }
 
 /**
  * A handle to access the updater. Is safe to share between processes.
@@ -83,7 +86,8 @@ struct linted_updater_task_receive
 };
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
-static linted_updater_int linted_updater__sin_first_quadrant(linted_updater_uint angle);
+static linted_updater_int
+linted_updater__sin_first_quadrant(linted_updater_uint angle);
 
 static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
@@ -171,18 +175,21 @@ static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
     linted_updater_uint x = angle._value;
 
     if (x > LINTED_UPDATER_UINT_MAX / 2u) {
-        return -linted_updater__sin_first_half(x - LINTED_UPDATER_UINT_MAX / 2u);
+        return -linted_updater__sin_first_half(x -
+                                               LINTED_UPDATER_UINT_MAX / 2u);
     }
     return linted_updater__sin_first_half(x);
 }
 
 static inline linted_updater_int linted_updater_cos(linted_updater_angle angle)
 {
-    linted_updater_angle x = { ._value = angle._value + LINTED_UPDATER_UINT_MAX / 4u };
+    linted_updater_angle x = { ._value = angle._value +
+                                         LINTED_UPDATER_UINT_MAX / 4u };
     return linted_updater_sin(x);
 }
 
-static inline linted_updater_int linted_updater__sin_first_half(linted_updater_uint x)
+static inline linted_updater_int
+linted_updater__sin_first_half(linted_updater_uint x)
 {
     if (x > LINTED_UPDATER_UINT_MAX / 4u) {
         x = LINTED_UPDATER_UINT_MAX / 4u - x;
@@ -192,16 +199,17 @@ static inline linted_updater_int linted_updater__sin_first_half(linted_updater_u
 }
 
 // This should always be positive
-static inline linted_updater_int linted_updater__sin_first_quadrant(linted_updater_uint angle)
+static inline linted_updater_int
+linted_updater__sin_first_quadrant(linted_updater_uint angle)
 {
     uintmax_t x = angle * 6u;
     uintmax_t max = LINTED_UPDATER_INT_MAX;
 
     /* Approximate with a Taylor series */
-    return  x
-        - (x * x * x) / (6u * max * max)
-        + (x * x * x * x * x) / (120u * max * max * max * max)
-        - (x * x * x * x * x * x * x)/ (5040u * max * max * max * max * max * max);
+    return x - (x * x * x) / (6u * max * max) +
+           (x * x * x * x * x) / (120u * max * max * max * max) -
+           (x * x * x * x * x * x * x) /
+               (5040u * max * max * max * max * max * max);
 }
 
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,

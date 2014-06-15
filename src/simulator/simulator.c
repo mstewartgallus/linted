@@ -476,8 +476,7 @@ static void simulate_forces(linted_updater_int *position,
 
     intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
 
-    linted_updater_int guess_velocity =
-        linted_updater_isatadd(a, old_velocity);
+    linted_updater_int guess_velocity = linted_updater_isatadd(a, old_velocity);
 
     linted_updater_int friction =
         min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
@@ -500,8 +499,7 @@ static void simulate_rotation(linted_updater_angle *rotation,
     linted_updater_angle increment = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
 
     *rotation = linted_updater_angle_add(
-        (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation,
-        increment);
+        (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation, increment);
 }
 
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
@@ -516,11 +514,11 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     } else {
         linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15, 16);
         linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3, 16);
-        linted_updater_angle increment = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+        linted_updater_angle increment =
+            LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
 
-        new_rotation = linted_updater_angle_add_clamped(tilt_sign, minimum,
-                                                        maximum, *rotation,
-                                                        increment);
+        new_rotation = linted_updater_angle_add_clamped(
+            tilt_sign, minimum, maximum, *rotation, increment);
     }
 
     *rotation = new_rotation;

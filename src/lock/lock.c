@@ -38,7 +38,8 @@ linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
                                      char const *pathname, int flags,
                                      mode_t mode)
 {
-    if ((flags & ~LINTED_LOCK_RDONLY & ~LINTED_LOCK_WRONLY & ~LINTED_LOCK_RDWR & ~LINTED_LOCK_EXCL) != 0) {
+    if ((flags & ~LINTED_LOCK_RDONLY & ~LINTED_LOCK_WRONLY & ~LINTED_LOCK_RDWR &
+         ~LINTED_LOCK_EXCL) != 0) {
         return EINVAL;
     }
 

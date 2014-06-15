@@ -44,9 +44,8 @@ typedef pid_t linted_lock;
 #define LINTED_LOCK_EXCL (1 << 4)
 
 linted_error linted_lock_file_create(linted_lock_file *lock_filep,
-                                     linted_ko dirko,
-                                     char const *pathname, int flags,
-                                     mode_t mode);
+                                     linted_ko dirko, char const *pathname,
+                                     int flags, mode_t mode);
 
 linted_error linted_lock_acquire(linted_lock *lockp,
                                  linted_lock_file lock_file);

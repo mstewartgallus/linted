@@ -464,11 +464,10 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
         {
             pid_t process;
-            if ((errnum = linted_spawn(&process, proc_config->dirko,
-                                       proc_config->path, file_actions, attr,
-                                       (char **)proc_config->arguments,
-                                       (char **)proc_config->environment)) !=
-                0) {
+            if ((errnum = linted_spawn(
+                     &process, proc_config->dirko, proc_config->path,
+                     file_actions, attr, (char **)proc_config->arguments,
+                     (char **)proc_config->environment)) != 0) {
                 goto destroy_attr;
             }
 
