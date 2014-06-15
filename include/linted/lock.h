@@ -27,6 +27,8 @@
  * Abstracts over the concept of a lock file.
  */
 
+typedef linted_ko linted_lock_file;
+
 #if defined _WIN32 || defined _WIN64
 typedef void *linted_lock;
 #elif defined __linux__
@@ -41,11 +43,13 @@ typedef pid_t linted_lock;
 
 #define LINTED_LOCK_EXCL (1 << 4)
 
-linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
+linted_error linted_lock_file_create(linted_lock_file *lock_filep,
+                                     linted_ko dirko,
                                      char const *pathname, int flags,
                                      mode_t mode);
 
-linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file);
+linted_error linted_lock_acquire(linted_lock *lockp,
+                                 linted_lock_file lock_file);
 linted_error linted_lock_release(linted_lock lock);
 
 #endif /* LINTED_LOCK_H */
