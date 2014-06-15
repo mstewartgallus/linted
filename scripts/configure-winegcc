@@ -1,0 +1,9 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+exec "${ROOT}/../configure" CFLAGS='-maccumulate-outgoing-args -mno-cygwin' CC=winegcc "$@"

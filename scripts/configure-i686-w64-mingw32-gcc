@@ -1,0 +1,12 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+exec "${ROOT}/../configure"\
+     --build="$("${ROOT}/../build-aux/config.guess")"\
+     --host=i686-w64-mingw32\
+     CC=i686-w64-mingw32-gcc
