@@ -260,16 +260,11 @@ try_again:
     }
 
     linted_ko temp_field;
-    linted_error open_errnum = linted_file_create(
-        &temp_field, *dbp, temp_path,
-        LINTED_FILE_RDWR | LINTED_FILE_SYNC | LINTED_FILE_EXCL,
-        S_IRUSR | S_IWUSR);
-    if (open_errnum != 0) {
-        if (EEXIST == open_errnum) {
-            goto try_again;
-        } else {
-            errnum = open_errnum;
-        }
+    errnum = linted_file_create(&temp_field, *dbp, temp_path,
+                                LINTED_FILE_RDWR | LINTED_FILE_SYNC | LINTED_FILE_EXCL,
+                                S_IRUSR | S_IWUSR);
+    if (EEXIST == errnum) {
+        goto try_again;
     }
 
     linted_mem_free(temp_path);
