@@ -116,7 +116,8 @@ def parse(arguments: list):
               or argument.startswith('-I')):
             flags.append(argument)
         elif not argument.startswith('-') and (argument.endswith('.c')
-                                               or argument.endswith('.o')):
+                                               or argument.endswith('.o')
+                                               or argument.endswith('.a')):
             files.append(argument)
 
         ii += 1
