@@ -77,7 +77,7 @@ AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   dnl
   AC_FUNC_MMAP
   AS_IF([test "x${ac_cv_func_mmap_fixed_mapped}" = "xno"],[
-    AC_MSG_ERROR([Unable to good mmap function])
+    AC_MSG_ERROR([Unable to find a good mmap function])
   ])
   dnl
   AC_FUNC_STRERROR_R
