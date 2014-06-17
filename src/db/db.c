@@ -343,7 +343,12 @@ static linted_error prepend(char **result, char const *base,
 
     size_t new_path_size = base_size + pathname_size + 1u;
 
-    char *new_path = linted_mem_alloc(&errnum, new_path_size);
+    char *new_path;
+    {
+        linted_error xx;
+        new_path = linted_mem_alloc(&xx, new_path_size);
+        errnum = xx;
+    }
     if (errnum != 0) {
         return errnum;
     }
@@ -375,8 +380,12 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
 
     for (;;) {
         bytes_wrote = buf_size;
-        if ((errnum = fname(fd, buf, &bytes_wrote)) != 0) {
-            goto free_buf;
+        {
+            size_t xx = bytes_wrote;
+            if ((errnum = fname(fd, buf, &xx)) != 0) {
+                goto free_buf;
+            }
+            bytes_wrote = xx;
         }
 
         if (bytes_wrote < buf_size) {
@@ -406,7 +415,7 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
     char *newbuf;
     {
         linted_error xx;
-        newbuf = linted_mem_realloc(&xx, buf, bytes_wrote + 1);
+        newbuf = linted_mem_realloc(&xx, buf, bytes_wrote + 1u);
         errnum = xx;
     }
     if (errnum != 0) {
