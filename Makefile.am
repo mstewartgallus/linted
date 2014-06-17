@@ -16,11 +16,18 @@
 # limitations under the License.
 ACLOCAL_AMFLAGS=-I m4
 
+TESTS=
+XFAIL_TESTS=
+
 bin_PROGRAMS=
 pkglibexec_PROGRAMS=
+check_PROGRAMS=
+
 noinst_LTLIBRARIES=
+
 BUILT_SOURCES=
 nodist_linted_SOURCES=
+
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 

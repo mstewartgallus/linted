@@ -29,6 +29,8 @@
 static char const no_memory_string[] = "\
 could not allocate memory for error string";
 
+static char const unknown_error_string[] = "unknown error";
+
 char const *linted_error_string_alloc(linted_error errnum_to_print)
 {
     linted_error errnum;
@@ -42,16 +44,29 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
     for (;;) {
         if (0 == strerror_r(errnum_to_print, buf, buf_size)) {
             break;
+        } else {
+            errnum = errno;
+            switch (errnum) {
+            case ERANGE:
+                break;
+
+            case 0:
+            case EINVAL:
+                goto unknown_error;
+
+            default:
+                assert(0);
+            }
         }
 
         if (SIZE_MAX / 3 < buf_size) {
             errnum = ENOMEM;
-            goto free_buf;
+            goto out_of_memory;
         }
         buf_size = (buf_size * 3u) / 2u;
         char *newbuf = linted_mem_realloc(&errnum, buf, buf_size);
         if (errnum != 0) {
-            goto free_buf;
+            goto out_of_memory;
         }
         buf = newbuf;
     }
@@ -61,21 +76,27 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
      */
     char *newbuf = linted_mem_realloc(&errnum, buf, strlen(buf) + 1);
     if (errnum != 0) {
-        goto free_buf;
+        goto out_of_memory;
     }
     buf = newbuf;
 
     return buf;
 
-free_buf:
+out_of_memory:
     linted_mem_free(buf);
 
     return no_memory_string;
+
+unknown_error:
+    linted_mem_free(buf);
+
+    return unknown_error_string;
 }
 
 void linted_error_string_free(char const *error_string)
 {
-    if (error_string != no_memory_string) {
+    if (error_string != no_memory_string
+        && error_string != unknown_error_string) {
         linted_mem_free((void *)error_string);
     }
 }

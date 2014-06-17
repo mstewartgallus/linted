@@ -18,3 +18,10 @@ noinst_LTLIBRARIES+=%D%/liberror.la
 
 %C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h
 %C%_liberror_la_LIBADD=src/mem/libmem.la
+
+TESTS+=%D%/test_unknown_error
+
+check_PROGRAMS+=%D%/test_unknown_error
+
+%C%_test_unknown_error_SOURCES=%D%/test_unknown_error.c
+%C%_test_unknown_error_LDADD=%D%/liberror.la
