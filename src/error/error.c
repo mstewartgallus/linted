@@ -95,8 +95,8 @@ unknown_error:
 
 void linted_error_string_free(char const *error_string)
 {
-    if (error_string != no_memory_string
-        && error_string != unknown_error_string) {
+    if (error_string != no_memory_string &&
+        error_string != unknown_error_string) {
         linted_mem_free((void *)error_string);
     }
 }

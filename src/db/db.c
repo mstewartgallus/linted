@@ -261,7 +261,8 @@ try_again:
 
     linted_ko temp_field;
     errnum = linted_file_create(&temp_field, *dbp, temp_path,
-                                LINTED_FILE_RDWR | LINTED_FILE_SYNC | LINTED_FILE_EXCL,
+                                LINTED_FILE_RDWR | LINTED_FILE_SYNC |
+                                    LINTED_FILE_EXCL,
                                 S_IRUSR | S_IWUSR);
     if (EEXIST == errnum) {
         goto try_again;
