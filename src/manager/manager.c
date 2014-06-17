@@ -147,10 +147,14 @@ linted_error linted_manager_path(linted_manager manager,
     memset(&address, 0, sizeof address);
 
     socklen_t addr_len = sizeof address;
-    if (-1 == getsockname(manager, (void *)&address, &addr_len)) {
-        linted_error errnum = errno;
-        assert(errnum != 0);
-        return errnum;
+    {
+        socklen_t xx = sizeof address;
+        if (-1 == getsockname(manager, (void *)&address, &xx)) {
+            linted_error errnum = errno;
+            assert(errnum != 0);
+            return errnum;
+        }
+        addr_len = xx;
     }
 
     *len = addr_len - sizeof(sa_family_t);

@@ -36,7 +36,12 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
     linted_error errnum;
     size_t buf_size = 40u;
 
-    char *buf = linted_mem_alloc(&errnum, buf_size);
+    char *buf;
+    {
+        linted_error xx;
+        buf = linted_mem_alloc(&xx, buf_size);
+        errnum = xx;
+    }
     if (errnum != 0) {
         return no_memory_string;
     }
@@ -60,11 +65,16 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
         }
 
         if (SIZE_MAX / 3 < buf_size) {
-            errnum = ENOMEM;
             goto out_of_memory;
         }
         buf_size = (buf_size * 3u) / 2u;
-        char *newbuf = linted_mem_realloc(&errnum, buf, buf_size);
+
+        char *newbuf;
+        {
+            linted_error xx;
+            newbuf = linted_mem_realloc(&xx, buf, buf_size);
+            errnum = xx;
+        }
         if (errnum != 0) {
             goto out_of_memory;
         }
@@ -74,7 +84,12 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
     /* Save on excess memory, also give debugging allocators more
      * information.
      */
-    char *newbuf = linted_mem_realloc(&errnum, buf, strlen(buf) + 1u);
+    char *newbuf;
+    {
+        linted_error xx;
+        newbuf = linted_mem_realloc(&xx, buf, strlen(buf) + 1u);
+        errnum = xx;
+    }
     if (errnum != 0) {
         goto out_of_memory;
     }

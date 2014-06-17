@@ -102,15 +102,24 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0);
 
         /* Make a copy so that the parent can't unlock the lock accidentally */
-        if ((errnum = linted_ko_reopen(&lock_file, LINTED_KO_RDWR)) != 0) {
-            exit_with_error(spawn_error, errnum);
+        {
+            linted_lock_file xx = lock_file;
+            if ((errnum = linted_ko_reopen(&xx, LINTED_KO_RDWR)) != 0) {
+                exit_with_error(spawn_error, errnum);
+            }
+            lock_file = xx;
         }
 
-        struct flock flock = {
-            .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-        };
-        if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
-            exit_with_error(spawn_error, errno);
+        {
+            struct flock flock = {
+                .l_type = F_WRLCK,
+                .l_whence = SEEK_SET,
+                .l_start = 0,
+                .l_len = 0
+            };
+            if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
+                exit_with_error(spawn_error, errno);
+            }
         }
 
         /* Got the lock! */
@@ -121,22 +130,29 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         }
     }
 
-    siginfo_t info;
-    do {
-        if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-    } while (EINTR == errnum);
-    assert(errnum != ECHILD);
-    assert(errnum != EINVAL);
-    assert(0 == errnum);
+    int code;
+    int status;
+    {
+        siginfo_t info;
+        do {
+            if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
+                errnum = errno;
+                assert(errnum != 0);
+            } else {
+                errnum = 0;
+            }
+        } while (EINTR == errnum);
+        assert(errnum != ECHILD);
+        assert(errnum != EINVAL);
+        assert(0 == errnum);
 
-    switch (info.si_code) {
+        status = info.si_status;
+        code = info.si_code;
+    }
+
+    switch (code) {
     case CLD_EXITED: {
-        linted_error exit_status = info.si_status;
+        linted_error exit_status = status;
         switch (exit_status) {
         case 0:
             errnum = EINVAL;
@@ -151,7 +167,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
     case CLD_DUMPED:
     case CLD_KILLED: {
 #if defined __linux__
-        linted_error signo = info.si_status;
+        linted_error signo = status;
         switch (signo) {
         case SIGKILL:
             errnum = ENOMEM;

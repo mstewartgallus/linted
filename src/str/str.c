@@ -41,7 +41,13 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
     size_t new_cap = cap;
     if (new_size > cap) {
         new_cap = new_size;
-        char *new_buf = linted_mem_realloc(&errnum, buf, new_cap);
+
+        char *new_buf;
+        {
+            linted_error xx;
+            new_buf = linted_mem_realloc(&xx, buf, new_cap);
+            errnum = xx;
+        }
         if (errnum != 0) {
             return errnum;
         }
@@ -82,8 +88,14 @@ linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
     va_list ap;
     va_start(ap, fmt);
 
-    if ((errnum = valloc_sprintf(&str, &strsize, fmt, ap)) != 0) {
-        goto free_ap;
+    {
+        char *xx;
+        size_t yy;
+        if ((errnum = valloc_sprintf(&xx, &yy, fmt, ap)) != 0) {
+            goto free_ap;
+        }
+        str = xx;
+        strsize = yy;
     }
 
     if ((errnum = linted_str_append(bufp, capp, sizep, str, strsize)) != 0) {
@@ -117,7 +129,12 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
     {
         size_t string_size = bytes_should_write + 1u;
 
-        char *string = linted_mem_alloc(&errnum, string_size);
+        char *string;
+        {
+            linted_error xx;
+            string = linted_mem_alloc(&xx, string_size);
+            errnum = xx;
+        }
         if (errnum != 0) {
             goto free_ap_copy;
         }

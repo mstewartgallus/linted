@@ -38,14 +38,11 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                               int flags)
 {
     linted_error errnum;
-    struct mq_attr mq_attr;
     char random_mq_name[sizeof TEMPLATE_NAME];
     linted_mq ko;
 
-    mq_attr.mq_flags = 0;
-    mq_attr.mq_curmsgs = 0;
-    mq_attr.mq_maxmsg = attr->maxmsg;
-    mq_attr.mq_msgsize = attr->msgsize;
+    size_t maxmsg = attr->maxmsg;
+    size_t msgsize = attr->msgsize;
 
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
@@ -81,8 +78,16 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
             }
         }
 
-        ko = mq_open(random_mq_name, O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
-                     S_IRUSR | S_IWUSR, &mq_attr);
+        {
+            struct mq_attr mq_attr;
+            mq_attr.mq_flags = 0;
+            mq_attr.mq_curmsgs = 0;
+            mq_attr.mq_maxmsg = maxmsg;
+            mq_attr.mq_msgsize = msgsize;
+
+            ko = mq_open(random_mq_name, O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
+                         S_IRUSR | S_IWUSR, &mq_attr);
+        }
         if (-1 == ko) {
             errnum = errno;
             assert(errnum != 0);

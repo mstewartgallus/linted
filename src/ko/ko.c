@@ -160,11 +160,14 @@ linted_error linted_ko_close(linted_ko ko)
      * simply blocking all signals.
      */
 
-    sigset_t fullset;
-    sigfillset(&fullset);
+    sigset_t sigset;
 
-    sigset_t old_set;
-    pthread_sigmask(SIG_BLOCK, &fullset, &old_set);
+    /* First use the signal set for the full set */
+    sigfillset(&sigset);
+
+    pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+
+    /* Then reuse the signal set for the old set */
 
     if (-1 == close(ko)) {
         errnum = errno;
@@ -173,7 +176,7 @@ linted_error linted_ko_close(linted_ko ko)
         errnum = 0;
     }
 
-    pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
 
     return errnum;
 }
