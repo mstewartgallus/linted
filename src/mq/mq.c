@@ -57,17 +57,17 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
     unsigned long generator_state = rand();
 
     do {
-        for (size_t ii = sizeof TEMPLATE_PREFIX - 1;
-             ii < sizeof TEMPLATE_NAME - 1; ++ii) {
+        for (size_t ii = sizeof TEMPLATE_PREFIX - 1u;
+             ii < sizeof TEMPLATE_NAME - 1u; ++ii) {
             for (;;) {
                 /* Use a fast linear congruential generator */
-                generator_state = 5 + 3 * generator_state;
+                generator_state = 5u + 3u * generator_state;
 
                 /* Normally using the modulus would give a bad
-         * distribution but CHAR_MAX + 1 is a power of two
+         * distribution but CHAR_MAX + 1u is a power of two
          */
                 unsigned char const possible_value =
-                    generator_state % (CHAR_MAX + 1);
+                    generator_state % (CHAR_MAX + 1u);
 
                 /* Throw out results and retry for an even
          * distribution

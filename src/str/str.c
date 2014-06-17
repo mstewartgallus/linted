@@ -115,7 +115,7 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
     }
 
     {
-        size_t string_size = bytes_should_write + 1;
+        size_t string_size = bytes_should_write + 1u;
 
         char *string = linted_mem_alloc(&errnum, string_size);
         if (errnum != 0) {

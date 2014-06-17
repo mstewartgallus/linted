@@ -83,7 +83,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
 {
     linted_error errnum;
-    size_t created_threads = 0;
+    size_t created_threads = 0u;
     struct linted_asynch_pool *pool;
 
     size_t workers_size = max_tasks * sizeof pool->workers[0u];
@@ -459,7 +459,7 @@ static void run_task_read(struct linted_asynch_pool *pool,
 
             bytes_read += bytes_read_delta;
             bytes_left -= bytes_read_delta;
-            if (0 == bytes_left) {
+            if (0u == bytes_left) {
                 break;
             }
         }
@@ -518,7 +518,7 @@ static void run_task_write(struct linted_asynch_pool *pool,
 
             bytes_wrote += bytes_wrote_delta;
             bytes_left -= bytes_wrote_delta;
-            if (0 == bytes_left) {
+            if (0u == bytes_left) {
                 break;
             }
         }
@@ -724,7 +724,7 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 
 static linted_error poll_one(struct pollfd *pollfd)
 {
-    if (-1 == poll(pollfd, 1, -1)) {
+    if (-1 == poll(pollfd, 1u, -1)) {
         linted_error errnum = errno;
         assert(errnum != 0);
         return errnum;

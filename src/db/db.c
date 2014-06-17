@@ -185,7 +185,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         }
 
         errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
-                                     sizeof CURRENT_VERSION - 1);
+                                     sizeof CURRENT_VERSION - 1u);
 
         {
             linted_error close_errnum = linted_ko_close(version_file_write);
@@ -248,7 +248,7 @@ linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop)
         temp_path + strlen(temp_path) + sizeof "field-" - sizeof field_name;
 
 try_again:
-    for (size_t ii = 0u; ii < 6; ++ii) {
+    for (size_t ii = 0u; ii < 6u; ++ii) {
         for (;;) {
             char value = ((int)(unsigned char)rand()) - 255 / 2 - 1;
             if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z') ||
@@ -332,7 +332,7 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
     linted_error errnum;
     size_t bytes_wrote;
 
-    size_t buf_size = 40;
+    size_t buf_size = 40u;
 
     char *buf = linted_mem_alloc(&errnum, buf_size);
     if (errnum != 0) {
@@ -382,7 +382,7 @@ free_buf:
 }
 
 #define PROC_SELF_FD "/proc/self/fd/"
-#define INT_STR_SIZE 10
+#define INT_STR_SIZE 10u
 
 static linted_error fname(linted_ko fd, char *buf, size_t *sizep)
 {

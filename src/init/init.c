@@ -439,7 +439,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         if (errnum != 0) {
             goto destroy_attr;
         }
-        size_t kos_opened = 0;
+        size_t kos_opened = 0u;
         for (; kos_opened < dup_pairs_size;) {
             struct dup_pair const *dup_pair =
                 &proc_config->dup_pairs.dup_pairs[kos_opened];

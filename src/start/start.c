@@ -74,7 +74,7 @@ It is insecure to run a game as root!\n"));
     /**
      * @todo give an error if too many files are passed
      */
-    size_t kos_found = 0;
+    size_t kos_found = 0u;
     for (; kos_found < kos_size;) {
         /*
          * Use readdir because this function isn't thread safe
@@ -216,7 +216,7 @@ It is insecure to run a game as root!\n"));
 
     /* Sort the fds from smallest to largest */
     for (size_t ii = 0u; ii < kos_size; ++ii) {
-        for (size_t jj = ii + 1; jj < kos_size; ++jj) {
+        for (size_t jj = ii + 1u; jj < kos_size; ++jj) {
             if (kos[ii] > kos[jj]) {
                 linted_ko temp = kos[ii];
                 kos[ii] = kos[jj];

@@ -26,8 +26,8 @@ linted_error linted_locale_missing_process_name(linted_ko ko,
 {
     linted_error errnum;
 
-    size_t size = 0;
-    size_t capacity = 0;
+    size_t size = 0u;
+    size_t capacity = 0u;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
@@ -54,8 +54,8 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
 {
     linted_error errnum;
 
-    size_t size = 0;
-    size_t capacity = 0;
+    size_t size = 0u;
+    size_t capacity = 0u;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
@@ -93,8 +93,8 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 {
     linted_error errnum;
 
-    size_t size = 0;
-    size_t capacity = 0;
+    size_t size = 0u;
+    size_t capacity = 0u;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
@@ -137,8 +137,8 @@ linted_error linted_locale_version(linted_ko ko,
 {
     linted_error errnum;
 
-    size_t size = 0;
-    size_t capacity = 0;
+    size_t size = 0u;
+    size_t capacity = 0u;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,

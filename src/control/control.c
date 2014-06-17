@@ -200,7 +200,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     }
 
     size_t path_len = strlen(path);
-    if (path_len > LINTED_MANAGER_PATH_MAX - 1) {
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
         linted_io_write_format(stderr, NULL, "%s: LINTED_SOCKET is too long\n",
                                program_name);
         return EXIT_FAILURE;
@@ -263,7 +263,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (0 == bytes_read) {
+        if (0u == bytes_read) {
             linted_io_write_format(stderr, NULL, "%s: socket hung up\n",
                                    program_name);
             return EXIT_FAILURE;
@@ -354,7 +354,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
     }
 
     size_t path_len = strlen(path);
-    if (path_len > LINTED_MANAGER_PATH_MAX - 1) {
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
         linted_io_write_format(stderr, NULL, "%s: LINTED_SOCKET is too long\n",
                                program_name);
         return EXIT_FAILURE;
@@ -403,7 +403,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (0 == bytes_read) {
+        if (0u == bytes_read) {
             linted_io_write_format(stderr, NULL, "%s: socket hung up\n",
                                    program_name);
             return EXIT_FAILURE;
@@ -428,8 +428,8 @@ static linted_error ctl_help(linted_ko ko, char const *program_name,
 {
     linted_error errnum;
 
-    size_t size = 0;
-    size_t capacity = 0;
+    size_t size = 0u;
+    size_t capacity = 0u;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,

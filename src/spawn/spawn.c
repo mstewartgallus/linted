@@ -131,7 +131,7 @@ linted_error linted_spawn_file_actions_adddup2(
     file_actions = *file_actionsp;
 
     old_count = file_actions->action_count;
-    new_count = old_count + 1;
+    new_count = old_count + 1u;
     new_file_actions = linted_mem_realloc(
         &errnum, file_actions,
         sizeof *file_actions + new_count * sizeof file_actions->actions[0u]);

@@ -337,13 +337,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     {
-        uint32_t event_max = 0;
+        uint32_t event_max = 0u;
         event_max |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
         event_max |= XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW;
         event_max |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
-        uint32_t values[] = { event_max, colormap, 0 };
+        uint32_t values[] = { event_max, colormap, 0u };
         xcb_create_window(connection, visual_info.depth, window, screen->root,
                           0, 0, window_model.width, window_model.height, 0,
                           XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,

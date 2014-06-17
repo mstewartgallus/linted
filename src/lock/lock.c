@@ -243,11 +243,11 @@ static size_t align_to_page_size(size_t size)
     size_t page_size = sysconf(_SC_PAGESIZE);
 
     /* This should always be true */
-    assert(page_size > 0);
+    assert(page_size > 0u);
 
     /* Round up to a multiple of page size */
     size_t remainder = size % page_size;
-    if (0 == remainder)
+    if (0u == remainder)
         return size;
 
     return size - remainder + page_size;
