@@ -94,14 +94,22 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
      */
     linted_ko lock_file;
 
-    if ((errnum = linted_lock_file_create(&lock_file, the_db, GLOBAL_LOCK,
-                                          LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
-        != 0) {
-        goto close_db;
+    {
+        linted_ko xx;
+        if ((errnum = linted_lock_file_create(&xx, the_db, GLOBAL_LOCK,
+                                              LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
+            != 0) {
+            goto close_db;
+        }
+        lock_file = xx;
     }
 
     linted_lock lock;
-    errnum = linted_lock_acquire(&lock, lock_file);
+    {
+        linted_lock xx;
+        errnum = linted_lock_acquire(&xx, lock_file);
+        lock = xx;
+    }
 
     {
         linted_error close_errnum = linted_ko_close(lock_file);
@@ -116,8 +124,12 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
     /* Sole user of the database now */
     linted_ko version_file;
-    switch (errnum = linted_ko_open(&version_file, the_db, "version",
-                                    LINTED_KO_RDONLY)) {
+    {
+        linted_ko xx;
+        errnum = linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
+        version_file = xx;
+    }
+    switch (errnum) {
     case 0: {
         /* Opening a created database */
         off_t version_file_size;
@@ -138,9 +150,13 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto close_version_file;
         }
 
-        char *const version_text = linted_mem_alloc(&errnum, version_file_size);
-        if (errnum != 0) {
-            goto close_version_file;
+        char *version_text;
+        {
+            linted_error xx;
+            version_text = linted_mem_alloc(&xx, version_file_size);
+            if ((errnum = xx)!= 0) {
+                goto close_version_file;
+            }
         }
 
         if ((errnum = linted_io_read_all(version_file, NULL, version_text,
@@ -178,10 +194,14 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         }
 
         linted_ko version_file_write;
-        if ((errnum = linted_file_create(&version_file_write, the_db, "version",
-                                         LINTED_FILE_RDWR | LINTED_FILE_SYNC,
-                                         S_IRUSR | S_IWUSR)) != 0) {
-            goto unlock_db;
+        {
+            linted_ko xx;
+            if ((errnum = linted_file_create(&xx, the_db, "version",
+                                             LINTED_FILE_RDWR | LINTED_FILE_SYNC,
+                                             S_IRUSR | S_IWUSR)) != 0) {
+                goto unlock_db;
+            }
+            version_file_write = xx;
         }
 
         errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
@@ -284,13 +304,21 @@ linted_error linted_db_temp_send(linted_db *dbp, char const *name,
     linted_error errnum;
 
     char *temp_path;
-    if ((errnum = fname_alloc(tmp, &temp_path)) != 0) {
-        return errnum;
+    {
+        char *xx;
+        if ((errnum = fname_alloc(tmp, &xx)) != 0) {
+            return errnum;
+        }
+        temp_path = xx;
     }
 
     char *field_path;
-    if ((errnum = prepend(&field_path, FIELD_DIR "/", name)) != 0) {
-        goto free_temp_path;
+    {
+        char *xx;
+        if ((errnum = prepend(&xx, FIELD_DIR "/", name)) != 0) {
+            goto free_temp_path;
+        }
+        field_path = xx;
     }
 
     if (-1 == renameat(*dbp, temp_path, *dbp, field_path)) {
@@ -313,7 +341,7 @@ static linted_error prepend(char **result, char const *base,
     size_t base_size = strlen(base);
     size_t pathname_size = strlen(pathname);
 
-    size_t new_path_size = base_size + pathname_size + 1;
+    size_t new_path_size = base_size + pathname_size + 1u;
 
     char *new_path = linted_mem_alloc(&errnum, new_path_size);
     if (errnum != 0) {
@@ -335,7 +363,12 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
 
     size_t buf_size = 40u;
 
-    char *buf = linted_mem_alloc(&errnum, buf_size);
+    char *buf;
+    {
+        linted_error xx;
+        buf = linted_mem_alloc(&xx, buf_size);
+        errnum = xx;
+    }
     if (errnum != 0) {
         return errnum;
     }
@@ -355,7 +388,12 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
             goto free_buf;
         }
         buf_size = (buf_size * 3u) / 2u;
-        char *newbuf = linted_mem_realloc(&errnum, buf, buf_size);
+        char *newbuf;
+        {
+            linted_error xx;
+            newbuf = linted_mem_realloc(&xx, buf, buf_size);
+            errnum = xx;
+        }
         if (errnum != 0) {
             goto free_buf;
         }
@@ -365,7 +403,12 @@ static linted_error fname_alloc(linted_ko fd, char **bufp)
     /* Save on excess memory, also give debugging allocators more
      * information.
      */
-    char *newbuf = linted_mem_realloc(&errnum, buf, bytes_wrote + 1);
+    char *newbuf;
+    {
+        linted_error xx;
+        newbuf = linted_mem_realloc(&xx, buf, bytes_wrote + 1);
+        errnum = xx;
+    }
     if (errnum != 0) {
         goto free_buf;
     }
