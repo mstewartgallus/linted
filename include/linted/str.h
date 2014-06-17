@@ -37,12 +37,9 @@ struct linted_str
     (struct linted_str)                                                        \
     {                                                                          \
         .size = sizeof Str - 1,                                                \
-        .bytes = (struct { char const x[sizeof Str - 1]; })                    \
-        {                                                                      \
-            .x = Str                                                           \
-        }                                                                      \
-        .x                                                                     \
+            .bytes = Str                                                \
     }
+
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize);
 

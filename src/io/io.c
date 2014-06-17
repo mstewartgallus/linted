@@ -89,7 +89,12 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
     {
         size_t string_size = (unsigned)bytes_should_write + 1u;
 
-        char *string = linted_mem_alloc(&errnum, string_size);
+        char *string;
+        {
+            linted_error xx;
+            string = linted_mem_alloc(&xx, string_size);
+            errnum = xx;
+        }
         if (errnum != 0) {
             goto free_va_lists;
         }
