@@ -38,8 +38,8 @@ linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
                                      char const *pathname, int flags,
                                      mode_t mode)
 {
-    if ((flags & ~LINTED_LOCK_RDONLY & ~LINTED_LOCK_WRONLY & ~LINTED_LOCK_RDWR &
-         ~LINTED_LOCK_EXCL) != 0) {
+    if ((flags & ~LINTED_LOCK_RDONLY & ~LINTED_LOCK_WRONLY & ~LINTED_LOCK_RDWR
+         & ~LINTED_LOCK_EXCL) != 0) {
         return EINVAL;
     }
 
@@ -75,9 +75,9 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
 
     size_t spawn_error_length = align_to_page_size(sizeof(linted_error));
 
-    linted_error *spawn_error =
-        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    linted_error *spawn_error
+        = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         errnum = errno;
         assert(errnum != 0);

@@ -85,15 +85,14 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[][2u] = {
-    { GLX_RGBA, True },
-    { GLX_RED_SIZE, 5 },
-    { GLX_GREEN_SIZE, 5 },
-    { GLX_BLUE_SIZE, 3 },
-    { GLX_DOUBLEBUFFER, True },
-    { GLX_DEPTH_SIZE, 16 },
-    { None, 0 /* A waste of an int. Oh well. */ }
-};
+static int const attribute_list[][2u]
+    = { { GLX_RGBA, True },
+        { GLX_RED_SIZE, 5 },
+        { GLX_GREEN_SIZE, 5 },
+        { GLX_BLUE_SIZE, 3 },
+        { GLX_DOUBLEBUFFER, True },
+        { GLX_DEPTH_SIZE, 16 },
+        { None, 0 /* A waste of an int. Oh well. */ } };
 
 struct on_gui_event_args
 {
@@ -169,12 +168,11 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
 
 static linted_ko kos[3u + 3u];
 
-struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-gui",
-    .open_current_working_directory = false,
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos
-};
+struct linted_start_config const linted_start_config
+    = { .canonical_process_name = PACKAGE_NAME "-gui",
+        .open_current_working_directory = false,
+        .kos_size = LINTED_ARRAY_SIZE(kos),
+        .kos = kos };
 
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
@@ -265,12 +263,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                          /* Do the initial resize */
                                          .resize_pending = true };
 
-    struct controller_data controller_data = { .update = { .forward = false,
-                                                           .back = false,
-                                                           .right = false,
-                                                           .left = false },
-                                               .update_pending = false,
-                                               .update_in_progress = false };
+    struct controller_data controller_data = {
+        .update
+        = { .forward = false, .back = false, .right = false, .left = false },
+        .update_pending = false,
+        .update_in_progress = false
+    };
 
     struct sim_model sim_model = { .x_rotation = 0,
                                    .y_rotation = 0,
@@ -289,8 +287,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     xcb_screen_t *screen = NULL;
     {
-        xcb_screen_iterator_t iter =
-            xcb_setup_roots_iterator(xcb_get_setup(connection));
+        xcb_screen_iterator_t iter
+            = xcb_setup_roots_iterator(xcb_get_setup(connection));
         for (size_t ii = 0u; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
@@ -355,28 +353,28 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     xcb_atom_t wm_delete_window;
     {
-        xcb_intern_atom_cookie_t cookie =
-            xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+        xcb_intern_atom_cookie_t cookie
+            = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t *reply =
-            xcb_intern_atom_reply(connection, cookie, 0);
+        xcb_intern_atom_reply_t *reply
+            = xcb_intern_atom_reply(connection, cookie, 0);
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
         xcb_atom_t wm_protocols = reply->atom;
         linted_mem_free(reply);
 
-        xcb_intern_atom_cookie_t cookie2 =
-            xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+        xcb_intern_atom_cookie_t cookie2
+            = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
 
-        xcb_intern_atom_reply_t *reply2 =
-            xcb_intern_atom_reply(connection, cookie2, 0);
+        xcb_intern_atom_reply_t *reply2
+            = xcb_intern_atom_reply(connection, cookie2, 0);
         if ((errnum = errnum_from_connection(connection)) != 0) {
             goto destroy_window;
         }
@@ -400,8 +398,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         goto destroy_window;
     }
 
-    GLXContext glx_context =
-        glXCreateContext(display, &visual_info, NULL, GL_TRUE);
+    GLXContext glx_context
+        = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
     if (NULL == glx_context) {
         errnum = ENOSYS;
         goto destroy_window;
@@ -444,12 +442,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             XNextEvent(display, &event);
 
             bool time_to_quit;
-            struct on_gui_event_args args = { .connection = connection,
-                                              .window = window,
-                                              .window_model = &window_model,
-                                              .controller_data =
-                                                  &controller_data,
-                                              .time_to_quit = &time_to_quit };
+            struct on_gui_event_args args
+                = { .connection = connection,
+                    .window = window,
+                    .window_model = &window_model,
+                    .controller_data = &controller_data,
+                    .time_to_quit = &time_to_quit };
             if ((errnum = on_gui_event(&event, args)) != 0) {
                 goto cleanup_gl;
             }
@@ -712,8 +710,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
         return errnum;
     }
 
-    struct gui_updater_task *updater_task =
-        LINTED_DOWNCAST(struct gui_updater_task, task);
+    struct gui_updater_task *updater_task
+        = LINTED_DOWNCAST(struct gui_updater_task, task);
 
     struct sim_model *sim_model = updater_task->sim_model;
     linted_ko controller = updater_task->controller;
@@ -733,8 +731,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
     sim_model->y_position = update.y_position * (1 / (double)2048);
     sim_model->z_position = update.z_position * (1 / (double)2048);
 
-    if (!controller_data->update_pending ||
-        controller_data->update_in_progress) {
+    if (!controller_data->update_pending
+        || controller_data->update_in_progress) {
         return 0;
     }
 
@@ -761,8 +759,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
         return errnum;
     }
 
-    struct gui_controller_task *controller_task =
-        LINTED_DOWNCAST(struct gui_controller_task, task);
+    struct gui_controller_task *controller_task
+        = LINTED_DOWNCAST(struct gui_controller_task, task);
 
     struct controller_data *controller_data = controller_task->controller_data;
     struct linted_asynch_pool *pool = controller_task->pool;
@@ -992,12 +990,11 @@ static void resize_graphics(unsigned width, unsigned height)
         double far = 1000;
         double near = 1;
 
-        GLfloat projection[][4u] = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
-                                     { 0,
-                                       0,
-                                       (far + near) / (near - far),
-                                       2 * far * near / (near - far) },
-                                     { 0, 0, -1, 0 } };
+        GLfloat projection[][4u]
+            = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+                { 0,                           0,
+                  (far + near) / (near - far), 2 * far * near / (near - far) },
+                { 0, 0, -1, 0 } };
         glLoadMatrixf(projection[0u]);
     }
 
@@ -1038,11 +1035,10 @@ static void render_graphics(struct graphics_state const *graphics_state,
 
     /* Move the camera */
     {
-        GLfloat const camera[][4u] = {
-            { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
-            { sim_model->x_position, sim_model->y_position,
-              sim_model->z_position, 1 }
-        };
+        GLfloat const camera[][4u]
+            = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
+                { sim_model->x_position, sim_model->y_position,
+                  sim_model->z_position, 1 } };
         glMultMatrixf(camera[0u]);
     }
 
@@ -1121,8 +1117,8 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
     }
 
     xcb_generic_error_t *error;
-    xcb_query_pointer_reply_t *reply =
-        xcb_query_pointer_reply(connection, cookie, &error);
+    xcb_query_pointer_reply_t *reply
+        = xcb_query_pointer_reply(connection, cookie, &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
         linted_mem_free(reply);
         return errnum;
@@ -1156,8 +1152,8 @@ static linted_error gui_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"))) !=
-        0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n")))
+        != 0) {
         return errnum;
     }
 

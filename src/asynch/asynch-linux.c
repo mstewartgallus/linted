@@ -116,8 +116,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
     for (; created_threads < max_tasks; ++created_threads) {
         if ((errnum = pthread_create(&pool->workers[created_threads],
-                                     &worker_attributes, worker_routine,
-                                     pool)) != 0) {
+                                     &worker_attributes, worker_routine, pool))
+            != 0) {
             break;
         }
     }
@@ -208,8 +208,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
         linted_queue_recv(pool->event_queue, &node);
 
         /* The node is the first member of the task */
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
         ++task_count;
     }
 
@@ -221,8 +221,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
             break;
         }
 
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
     *task_countp = task_count;
@@ -249,8 +249,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
         }
 
         /* The node is the first member of the task */
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
     *task_countp = task_count;
@@ -406,13 +406,12 @@ static void run_task(struct linted_asynch_pool *pool,
 static void run_task_poll(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_poll *task_poll =
-        LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
+    struct linted_asynch_task_poll *task_poll
+        = LINTED_DOWNCAST(struct linted_asynch_task_poll, task);
     linted_error errnum;
 
-    struct pollfd fd = { .fd = task_poll->ko,
-                         .events = task_poll->events,
-                         .revents = 0 };
+    struct pollfd fd
+        = { .fd = task_poll->ko, .events = task_poll->events, .revents = 0 };
 
     do {
         errnum = poll_one(&fd);
@@ -431,16 +430,16 @@ static void run_task_poll(struct linted_asynch_pool *pool,
 static void run_task_read(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_read *task_read =
-        LINTED_DOWNCAST(struct linted_asynch_task_read, task);
+    struct linted_asynch_task_read *task_read
+        = LINTED_DOWNCAST(struct linted_asynch_task_read, task);
     size_t bytes_read = task_read->current_position;
     size_t bytes_left = task_read->size - bytes_read;
 
     linted_error errnum = 0;
     for (;;) {
         for (;;) {
-            ssize_t result =
-                read(task_read->ko, task_read->buf + bytes_read, bytes_left);
+            ssize_t result
+                = read(task_read->ko, task_read->buf + bytes_read, bytes_left);
             if (-1 == result) {
                 errnum = errno;
                 assert(errnum != 0);
@@ -493,8 +492,8 @@ static void run_task_read(struct linted_asynch_pool *pool,
 static void run_task_write(struct linted_asynch_pool *pool,
                            struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_write *task_write =
-        LINTED_DOWNCAST(struct linted_asynch_task_write, task);
+    struct linted_asynch_task_write *task_write
+        = LINTED_DOWNCAST(struct linted_asynch_task_write, task);
     size_t bytes_wrote = task_write->current_position;
     size_t bytes_left = task_write->size - bytes_wrote;
 
@@ -552,8 +551,8 @@ static void run_task_write(struct linted_asynch_pool *pool,
 static void run_task_mq_receive(struct linted_asynch_pool *pool,
                                 struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_mq_receive *task_receive =
-        LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
+    struct linted_asynch_task_mq_receive *task_receive
+        = LINTED_DOWNCAST(struct linted_asynch_task_mq_receive, task);
     size_t bytes_read = 0u;
     linted_error errnum = 0;
     for (;;) {
@@ -597,14 +596,14 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
 static void run_task_mq_send(struct linted_asynch_pool *pool,
                              struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_mq_send *task_send =
-        LINTED_DOWNCAST(struct linted_asynch_task_mq_send, task);
+    struct linted_asynch_task_mq_send *task_send
+        = LINTED_DOWNCAST(struct linted_asynch_task_mq_send, task);
     size_t bytes_wrote = 0u;
     linted_error errnum = 0;
     for (;;) {
         do {
-            if (-1 ==
-                mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
+            if (-1
+                == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
                 errnum = errno;
                 assert(errnum != 0);
                 continue;
@@ -641,8 +640,8 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
 static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_waitid *task_wait =
-        LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
+    struct linted_asynch_task_waitid *task_wait
+        = LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
     linted_error errnum;
     do {
         int wait_status = waitid(task_wait->idtype, task_wait->id,
@@ -665,8 +664,8 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_accept *task_accept =
-        LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
+    struct linted_asynch_task_accept *task_accept
+        = LINTED_DOWNCAST(struct linted_asynch_task_accept, task);
 
     linted_ko new_ko = -1;
     linted_error errnum;
@@ -674,8 +673,8 @@ static void run_task_accept(struct linted_asynch_pool *pool,
     for (;;) {
     retry_accept:
 
-        new_ko =
-            accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        new_ko
+            = accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (-1 == new_ko) {
             errnum = errno;
             assert(errnum != 0);
@@ -744,8 +743,8 @@ static linted_error check_for_poll_error(struct pollfd *pollfd)
         errnum = EPIPE;
     } else if ((revents & POLLERR) != 0) {
         socklen_t optlen = sizeof errnum;
-        if (-1 ==
-            getsockopt(pollfd->fd, SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
+        if (-1
+            == getsockopt(pollfd->fd, SOL_SOCKET, SO_ERROR, &errnum, &optlen)) {
             errnum = errno;
             assert(errnum != 0);
         }

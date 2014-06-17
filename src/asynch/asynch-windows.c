@@ -173,8 +173,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
         linted_queue_recv(pool->event_queue, &node);
 
         /* The node is the first member of the task */
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
         ++task_count;
     }
 
@@ -186,8 +186,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
             break;
         }
 
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
     *task_countp = task_count;
@@ -214,8 +214,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
         }
 
         /* The node is the first member of the task */
-        completions[task_count] =
-            LINTED_DOWNCAST(struct linted_asynch_task, node);
+        completions[task_count]
+            = LINTED_DOWNCAST(struct linted_asynch_task, node);
     }
 
     *task_countp = task_count;
@@ -305,8 +305,8 @@ static void run_task(struct linted_asynch_pool *pool,
 static void run_task_read(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_read *task_read =
-        LINTED_DOWNCAST(struct linted_asynch_task_read, task);
+    struct linted_asynch_task_read *task_read
+        = LINTED_DOWNCAST(struct linted_asynch_task_read, task);
 
     DWORD bytes_read = 0u;
 
@@ -328,8 +328,8 @@ static void run_task_read(struct linted_asynch_pool *pool,
 static void run_task_write(struct linted_asynch_pool *pool,
                            struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_write *task_write =
-        LINTED_DOWNCAST(struct linted_asynch_task_write, task);
+    struct linted_asynch_task_write *task_write
+        = LINTED_DOWNCAST(struct linted_asynch_task_write, task);
 
     DWORD bytes_write = 0u;
 

@@ -95,8 +95,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     linted_ko lock_file;
 
     if ((errnum = linted_lock_file_create(&lock_file, the_db, GLOBAL_LOCK,
-                                          LINTED_LOCK_RDWR,
-                                          S_IRUSR | S_IWUSR)) != 0) {
+                                          LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
+        != 0) {
         goto close_db;
     }
 
@@ -153,8 +153,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto free_version_text;
         }
 
-        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1) !=
-            0) {
+        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1)
+            != 0) {
             errnum = EINVAL;
             goto free_version_text;
         }
@@ -244,15 +244,15 @@ linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop)
         return errnum;
     }
 
-    char *xxxxxx =
-        temp_path + strlen(temp_path) + sizeof "field-" - sizeof field_name;
+    char *xxxxxx = temp_path + strlen(temp_path) + sizeof "field-"
+                   - sizeof field_name;
 
 try_again:
     for (size_t ii = 0u; ii < 6u; ++ii) {
         for (;;) {
             char value = ((int)(unsigned char)rand()) - 255 / 2 - 1;
-            if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z') ||
-                (value > '0' && value < '9')) {
+            if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z')
+                || (value > '0' && value < '9')) {
                 xxxxxx[ii] = value;
                 break;
             }
@@ -261,8 +261,8 @@ try_again:
 
     linted_ko temp_field;
     errnum = linted_file_create(&temp_field, *dbp, temp_path,
-                                LINTED_FILE_RDWR | LINTED_FILE_SYNC |
-                                    LINTED_FILE_EXCL,
+                                LINTED_FILE_RDWR | LINTED_FILE_SYNC
+                                | LINTED_FILE_EXCL,
                                 S_IRUSR | S_IWUSR);
     if (EEXIST == errnum) {
         goto try_again;

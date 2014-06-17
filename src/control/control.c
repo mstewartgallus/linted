@@ -51,12 +51,11 @@ static linted_error failure(linted_ko ko, char const *program_name,
 
 linted_ko kos[3u];
 
-struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-control",
-    .open_current_working_directory = false,
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos
-};
+struct linted_start_config const linted_start_config
+    = { .canonical_process_name = PACKAGE_NAME "-control",
+        .open_current_working_directory = false,
+        .kos_size = LINTED_ARRAY_SIZE(kos),
+        .kos = kos };
 
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
@@ -256,8 +255,8 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read)) !=
-            0) {
+        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read))
+            != 0) {
             failure(stderr, program_name, LINTED_STR("can not read reply"),
                     errnum);
             return EXIT_FAILURE;
@@ -395,8 +394,8 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
     {
         union linted_manager_reply reply;
         size_t bytes_read;
-        linted_error errnum =
-            linted_manager_recv_reply(linted, &reply, &bytes_read);
+        linted_error errnum
+            = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
             failure(stderr, program_name, LINTED_STR("can not read reply"),
                     errnum);
@@ -500,8 +499,8 @@ Report bugs to <"))) != 0) {
  home page: <"))) != 0) {
         goto free_buffer;
     }
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        package_url)) != 0) {
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, package_url))
+        != 0) {
         goto free_buffer;
     }
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,

@@ -130,12 +130,11 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
 
 static linted_ko kos[3u + 3u];
 
-struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-simulator",
-    .open_current_working_directory = false,
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos
-};
+struct linted_start_config const linted_start_config
+    = { .canonical_process_name = PACKAGE_NAME "-simulator",
+        .open_current_working_directory = false,
+        .kos_size = LINTED_ARRAY_SIZE(kos),
+        .kos = kos };
 
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
@@ -198,21 +197,20 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
-    struct simulator_state simulator_state = {
-        .update_pending = true, /* Initialize the gui at start */
-        .write_in_progress = false,
-        .x_position = 0,
-        .y_position = 0,
-        .z_position = 3 * 1024,
-        .x_velocity = 0,
-        .y_velocity = 0,
-        .z_velocity = 0,
-        .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
-        .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u)
-    };
+    struct simulator_state simulator_state
+        = { .update_pending = true, /* Initialize the gui at start */
+            .write_in_progress = false,
+            .x_position = 0,
+            .y_position = 0,
+            .z_position = 3 * 1024,
+            .x_velocity = 0,
+            .y_velocity = 0,
+            .z_velocity = 0,
+            .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
+            .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
 
-    linted_ko timer =
-        timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    linted_ko timer
+        = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (-1 == timer) {
         errnum = errno;
         assert(errnum != 0);
@@ -329,8 +327,8 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
         return errnum;
     }
 
-    struct sim_tick_task *timer_task =
-        LINTED_DOWNCAST(struct sim_tick_task, completed_task);
+    struct sim_tick_task *timer_task
+        = LINTED_DOWNCAST(struct sim_tick_task, completed_task);
 
     struct linted_asynch_pool *pool = timer_task->pool;
     linted_ko updater = timer_task->updater;
@@ -363,18 +361,17 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
         simulator_state->update_pending = true;
     }
 
-    if (!simulator_state->update_pending ||
-        simulator_state->write_in_progress) {
+    if (!simulator_state->update_pending
+        || simulator_state->write_in_progress) {
         return 0;
     }
 
-    struct linted_updater_update update = {
-        .x_position = simulator_state->x_position,
-        .y_position = simulator_state->y_position,
-        .z_position = simulator_state->z_position,
-        .x_rotation = simulator_state->x_rotation,
-        .y_rotation = simulator_state->y_rotation
-    };
+    struct linted_updater_update update
+        = { .x_position = simulator_state->x_position,
+            .y_position = simulator_state->y_position,
+            .z_position = simulator_state->z_position,
+            .x_rotation = simulator_state->x_rotation,
+            .y_rotation = simulator_state->y_rotation };
 
     linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
                         updater, &update);
@@ -399,8 +396,8 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
         return errnum;
     }
 
-    struct sim_controller_task *controller_task =
-        LINTED_DOWNCAST(struct sim_controller_task, task);
+    struct sim_controller_task *controller_task
+        = LINTED_DOWNCAST(struct sim_controller_task, task);
 
     struct linted_asynch_pool *pool = controller_task->pool;
     struct action_state *action_state = controller_task->action_state;
@@ -432,8 +429,8 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
         return errnum;
     }
 
-    struct sim_updater_task *updater_task =
-        LINTED_DOWNCAST(struct sim_updater_task, completed_task);
+    struct sim_updater_task *updater_task
+        = LINTED_DOWNCAST(struct sim_updater_task, completed_task);
 
     struct linted_asynch_pool *pool = updater_task->pool;
     linted_ko updater = updater_task->updater;
@@ -445,13 +442,12 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
         return 0;
     }
 
-    struct linted_updater_update update = {
-        .x_position = simulator_state->x_position,
-        .y_position = simulator_state->y_position,
-        .z_position = simulator_state->z_position,
-        .x_rotation = simulator_state->x_rotation,
-        .y_rotation = simulator_state->y_rotation
-    };
+    struct linted_updater_update update
+        = { .x_position = simulator_state->x_position,
+            .y_position = simulator_state->y_position,
+            .z_position = simulator_state->z_position,
+            .x_rotation = simulator_state->x_rotation,
+            .y_rotation = simulator_state->y_rotation };
 
     linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
                         updater, &update);
@@ -478,15 +474,15 @@ static void simulate_forces(linted_updater_int *position,
 
     linted_updater_int guess_velocity = linted_updater_isatadd(a, old_velocity);
 
-    linted_updater_int friction =
-        min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
-        -sign(guess_velocity);
+    linted_updater_int friction
+        = min_int(absolute(guess_velocity), 3 /* = μ Fₙ */)
+          * -sign(guess_velocity);
 
-    linted_updater_int new_velocity =
-        linted_updater_isatadd(guess_velocity, friction);
+    linted_updater_int new_velocity
+        = linted_updater_isatadd(guess_velocity, friction);
 
-    linted_updater_int new_position =
-        linted_updater_isatadd(old_position, new_velocity);
+    linted_updater_int new_position
+        = linted_updater_isatadd(old_position, new_velocity);
 
     *position = new_position;
     *velocity = new_velocity;
@@ -514,8 +510,8 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     } else {
         linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15, 16);
         linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3, 16);
-        linted_updater_angle increment =
-            LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+        linted_updater_angle increment
+            = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
 
         new_rotation = linted_updater_angle_add_clamped(
             tilt_sign, minimum, maximum, *rotation, increment);
@@ -556,8 +552,8 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"))) !=
-        0) {
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n")))
+        != 0) {
         return errnum;
     }
 

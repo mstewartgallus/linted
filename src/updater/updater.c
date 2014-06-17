@@ -34,8 +34,8 @@ linted_error linted_updater_create(linted_updater *updaterp, int flags)
     memset(&attr, 0, sizeof attr);
 
     attr.maxmsg = 1;
-    attr.msgsize =
-        LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
+    attr.msgsize
+        = LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
     return linted_mq_create(updaterp, &attr, 0);
 }
@@ -61,13 +61,13 @@ void linted_updater_send(struct linted_updater_task_send *task, int task_id,
     memcpy(tip, z_position.bytes, sizeof z_position.bytes);
     tip += sizeof z_position.bytes;
 
-    struct linted_rpc_uint32 x_rotation =
-        linted_rpc_pack_uint32(update->x_rotation._value);
+    struct linted_rpc_uint32 x_rotation
+        = linted_rpc_pack_uint32(update->x_rotation._value);
     memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
     tip += sizeof x_rotation.bytes;
 
-    struct linted_rpc_uint32 y_rotation =
-        linted_rpc_pack_uint32(update->y_rotation._value);
+    struct linted_rpc_uint32 y_rotation
+        = linted_rpc_pack_uint32(update->y_rotation._value);
     memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
 }
 

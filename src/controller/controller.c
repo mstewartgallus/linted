@@ -35,8 +35,8 @@ linted_error linted_controller_create(linted_controller *controllerp, int flags)
     memset(&attr, 0, sizeof attr);
 
     attr.maxmsg = 1;
-    attr.msgsize =
-        LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
+    attr.msgsize
+        = LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
 
     return linted_mq_create(controllerp, &attr, 0);
 }
@@ -58,10 +58,10 @@ void linted_controller_send(struct linted_controller_task_send *task,
     memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
     tip += sizeof y_tilt.bytes;
 
-    unsigned char bitfield =
-        ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u |
-        ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u |
-        ((uintmax_t)message->jumping) << 4u;
+    unsigned char bitfield
+        = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u
+          | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
+          | ((uintmax_t)message->jumping) << 4u;
     memcpy(tip, &bitfield, sizeof bitfield);
 }
 

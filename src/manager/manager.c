@@ -41,8 +41,8 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
         return ENAMETOOLONG;
     }
 
-    int sock =
-        socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    int sock
+        = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
         errnum = errno;
         assert(errnum != 0);
@@ -68,8 +68,8 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
             }
         }
 
-        if (-1 ==
-            bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1
+            == bind(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
             errnum = errno;
             assert(errnum != 0);
             goto close_sock;
@@ -123,8 +123,8 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
             address.sun_path[0u] = '\0';
         }
 
-        if (-1 ==
-            connect(sock, (void *)&address, sizeof(sa_family_t) + path_len)) {
+        if (-1 == connect(sock, (void *)&address,
+                          sizeof(sa_family_t) + path_len)) {
             errnum = errno;
             assert(errnum != 0);
             goto close_sock;
@@ -179,9 +179,9 @@ void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
                         (char const *)&task->reply, sizeof task->reply);
 }
 
-linted_error
-linted_manager_send_request(linted_manager manager,
-                            union linted_manager_request const *request)
+linted_error linted_manager_send_request(linted_manager manager,
+                                         union linted_manager_request const
+                                         *request)
 {
     return linted_io_write_all(manager, NULL, request, sizeof *request);
 }
@@ -190,8 +190,8 @@ linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply *reply,
                                        size_t *size)
 {
-    linted_error errnum =
-        linted_io_read_all(manager, size, reply, sizeof *reply);
+    linted_error errnum
+        = linted_io_read_all(manager, size, reply, sizeof *reply);
 
     if (errnum != 0) {
         return errnum;

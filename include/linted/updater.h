@@ -68,21 +68,21 @@ struct linted_updater_update
 struct linted_updater_task_send
 {
     struct linted_asynch_task_mq_send parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
 struct linted_updater_task_receive
 {
     struct linted_asynch_task_mq_receive parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes) +
-                 LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
+    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)
+                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_uint32, bytes)];
 };
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
@@ -113,8 +113,8 @@ linted_updater_angle_add(int sign, linted_updater_angle theta,
                          linted_updater_angle phi)
 {
     linted_updater_angle angle;
-    angle._value =
-        (theta._value + sign * (int_fast64_t)phi._value) % UINT32_MAX;
+    angle._value = (theta._value + sign * (int_fast64_t)phi._value)
+                   % UINT32_MAX;
     return angle;
 }
 
@@ -125,9 +125,9 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
     assert(max._value <= LINTED_UPDATER_UINT_MAX / 2u);
     assert(LINTED_UPDATER_UINT_MAX / 2u < min._value);
 
-    linted_updater_uint result =
-        (theta._value + sign * (int_fast64_t)phi._value) %
-        LINTED_UPDATER_UINT_MAX;
+    linted_updater_uint result
+        = (theta._value + sign * (int_fast64_t)phi._value)
+          % LINTED_UPDATER_UINT_MAX;
     switch ((sign > 0) | (theta._value > LINTED_UPDATER_UINT_MAX / 2u) << 1u) {
     case 1u | (1u << 1u) :
         break;
@@ -175,16 +175,16 @@ static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
     linted_updater_uint x = angle._value;
 
     if (x > LINTED_UPDATER_UINT_MAX / 2u) {
-        return -linted_updater__sin_first_half(x -
-                                               LINTED_UPDATER_UINT_MAX / 2u);
+        return
+            -linted_updater__sin_first_half(x - LINTED_UPDATER_UINT_MAX / 2u);
     }
     return linted_updater__sin_first_half(x);
 }
 
 static inline linted_updater_int linted_updater_cos(linted_updater_angle angle)
 {
-    linted_updater_angle x = { ._value = angle._value +
-                                         LINTED_UPDATER_UINT_MAX / 4u };
+    linted_updater_angle x
+        = { ._value = angle._value + LINTED_UPDATER_UINT_MAX / 4u };
     return linted_updater_sin(x);
 }
 
@@ -206,10 +206,10 @@ linted_updater__sin_first_quadrant(linted_updater_uint angle)
     uintmax_t max = LINTED_UPDATER_INT_MAX;
 
     /* Approximate with a Taylor series */
-    return x - (x * x * x) / (6u * max * max) +
-           (x * x * x * x * x) / (120u * max * max * max * max) -
-           (x * x * x * x * x * x * x) /
-               (5040u * max * max * max * max * max * max);
+    return x - (x * x * x) / (6u * max * max)
+           + (x * x * x * x * x) / (120u * max * max * max * max)
+           - (x * x * x * x * x * x * x)
+             / (5040u * max * max * max * max * max * max);
 }
 
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,

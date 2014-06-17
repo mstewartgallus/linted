@@ -29,8 +29,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 {
     linted_error errnum;
 
-    if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY & ~LINTED_FILE_RDWR &
-         ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0u) {
+    if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY & ~LINTED_FILE_RDWR
+         & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0u) {
         return EINVAL;
     }
 

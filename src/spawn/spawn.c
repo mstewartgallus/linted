@@ -102,8 +102,8 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
     linted_mem_free(attr);
 }
 
-linted_error
-linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
+linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
+                                            **file_actionsp)
 {
     linted_error errnum;
     struct linted_spawn_file_actions *file_actions;
@@ -117,9 +117,9 @@ linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
     return 0;
 }
 
-linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **file_actionsp, int oldfildes,
-    int newfildes)
+linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
+                                               **file_actionsp,
+                                               int oldfildes, int newfildes)
 {
     linted_error errnum;
     struct linted_spawn_file_actions *file_actions;
@@ -152,8 +152,8 @@ linted_error linted_spawn_file_actions_adddup2(
     return 0;
 }
 
-void linted_spawn_file_actions_destroy(
-    struct linted_spawn_file_actions *file_actions)
+void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
+                                       *file_actions)
 {
     linted_mem_free(file_actions);
 }
@@ -175,9 +175,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
      */
     size_t spawn_error_length = align_to_page_size(sizeof(struct spawn_error));
 
-    volatile struct spawn_error *spawn_error =
-        mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    volatile struct spawn_error *spawn_error
+        = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
+               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         linted_error errnum = errno;
         assert(errnum != 0);
@@ -209,8 +209,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     assert(errnum != 0);
 
                     assert(errnum != EINVAL);
-                    assert(EACCES == errnum || EPERM == errnum ||
-                           ESRCH == errnum);
+                    assert(EACCES == errnum || EPERM == errnum || ESRCH
+                                                                  == errnum);
                 }
 
                 /**
@@ -236,10 +236,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     goto unmap_spawn_error;
                 }
 
-                struct f_owner_ex ex = { .type = F_OWNER_PGRP,
-                                         .pid = 0 == attr->pgroup
-                                                    ? child
-                                                    : attr->pgroup };
+                struct f_owner_ex ex
+                    = { .type = F_OWNER_PGRP,
+                        .pid = 0 == attr->pgroup ? child : attr->pgroup };
                 if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
                     error_status = errno;
                     assert(error_status != 0);
@@ -256,8 +255,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                  * Duplicate the read fd so that it is closed after the write
                  * fd.
                  */
-                int kill_fd_read_copy =
-                    fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
+                int kill_fd_read_copy
+                    = fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
                 if (-1 == kill_fd_read_copy) {
                     error_status = errno;
                     assert(error_status != 0);
@@ -415,8 +414,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
                 if (is_relative_path && !at_fdcwd) {
                     if (dirfd_copy == newfildes) {
-                        dirfd_copy =
-                            fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
+                        dirfd_copy
+                            = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
                         if (-1 == dirfd_copy) {
                             exit_with_error(spawn_error, errno);
                         }
@@ -482,8 +481,8 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
-        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10u +
-                                                 strlen(filename) + 1u);
+        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10u
+                                             + strlen(filename) + 1u);
         if (errnum != 0) {
             errno = errnum;
             return -1;

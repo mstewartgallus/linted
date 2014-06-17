@@ -112,8 +112,8 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
         goto free_buffer;
     }
 
-    if ((errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                        help_option)) != 0) {
+    if ((errnum = linted_str_append_str(&buffer, &capacity, &size, help_option))
+        != 0) {
         goto free_buffer;
     }
 

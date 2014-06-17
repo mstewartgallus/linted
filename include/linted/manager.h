@@ -112,9 +112,9 @@ void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
                                int task_action, linted_manager manager,
                                union linted_manager_reply const *reply);
 
-linted_error
-linted_manager_send_request(linted_manager manager,
-                            union linted_manager_request const *request);
+linted_error linted_manager_send_request(linted_manager manager,
+                                         union linted_manager_request const
+                                         *request);
 
 linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply *reply,

@@ -66,15 +66,15 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                 /* Normally using the modulus would give a bad
          * distribution but CHAR_MAX + 1u is a power of two
          */
-                unsigned char const possible_value =
-                    generator_state % (CHAR_MAX + 1u);
+                unsigned char const possible_value = generator_state
+                                                     % (CHAR_MAX + 1u);
 
                 /* Throw out results and retry for an even
          * distribution
          */
-                if ((possible_value >= 'a' && possible_value <= 'z') ||
-                    (possible_value >= 'A' && possible_value <= 'Z') ||
-                    (possible_value >= '0' && possible_value <= '9')) {
+                if ((possible_value >= 'a' && possible_value <= 'z')
+                    || (possible_value >= 'A' && possible_value <= 'Z')
+                    || (possible_value >= '0' && possible_value <= '9')) {
                     random_mq_name[ii] = possible_value;
                     break;
                 }

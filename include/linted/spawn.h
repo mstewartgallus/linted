@@ -34,13 +34,14 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp);
 void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup);
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-linted_error linted_spawn_file_actions_init(
-    struct linted_spawn_file_actions **file_actionsp);
-linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **file_actionsp, linted_ko oldko,
-    linted_ko newko);
-void linted_spawn_file_actions_destroy(
-    struct linted_spawn_file_actions *file_actions);
+linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
+                                            **file_actionsp);
+linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
+                                               **file_actionsp,
+                                               linted_ko oldko,
+                                               linted_ko newko);
+void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
+                                       *file_actions);
 
 linted_error linted_spawn(pid_t *child, linted_ko dirko, char const *path,
                           struct linted_spawn_file_actions const *file_actions,
