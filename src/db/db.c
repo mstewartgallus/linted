@@ -96,8 +96,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
     {
         linted_ko xx;
-        if ((errnum = linted_lock_file_create(&xx, the_db, GLOBAL_LOCK,
-                                              LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
+        if ((errnum = linted_lock_file_create(
+                 &xx, the_db, GLOBAL_LOCK, LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
             != 0) {
             goto close_db;
         }
@@ -154,7 +154,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         {
             linted_error xx;
             version_text = linted_mem_alloc(&xx, version_file_size);
-            if ((errnum = xx)!= 0) {
+            if ((errnum = xx) != 0) {
                 goto close_version_file;
             }
         }
@@ -196,9 +196,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         linted_ko version_file_write;
         {
             linted_ko xx;
-            if ((errnum = linted_file_create(&xx, the_db, "version",
-                                             LINTED_FILE_RDWR | LINTED_FILE_SYNC,
-                                             S_IRUSR | S_IWUSR)) != 0) {
+            if ((errnum
+                 = linted_file_create(&xx, the_db, "version",
+                                      LINTED_FILE_RDWR | LINTED_FILE_SYNC,
+                                      S_IRUSR | S_IWUSR)) != 0) {
                 goto unlock_db;
             }
             version_file_write = xx;

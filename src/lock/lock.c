@@ -111,12 +111,10 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         }
 
         {
-            struct flock flock = {
-                .l_type = F_WRLCK,
-                .l_whence = SEEK_SET,
-                .l_start = 0,
-                .l_len = 0
-            };
+            struct flock flock = { .l_type = F_WRLCK,
+                                   .l_whence = SEEK_SET,
+                                   .l_start = 0,
+                                   .l_len = 0 };
             if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
                 exit_with_error(spawn_error, errno);
             }

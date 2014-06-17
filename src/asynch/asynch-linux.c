@@ -122,14 +122,15 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
         for (; created_threads < max_tasks; ++created_threads) {
             if ((errnum = pthread_create(&pool->workers[created_threads],
-                                         &worker_attributes, worker_routine, pool))
-                != 0) {
+                                         &worker_attributes, worker_routine,
+                                         pool)) != 0) {
                 break;
             }
         }
 
         {
-            linted_error destroy_errnum = pthread_attr_destroy(&worker_attributes);
+            linted_error destroy_errnum
+                = pthread_attr_destroy(&worker_attributes);
             if (0 == errnum) {
                 errnum = destroy_errnum;
             }

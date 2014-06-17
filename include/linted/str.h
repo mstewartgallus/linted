@@ -36,8 +36,7 @@ struct linted_str
 #define LINTED_STR(Str)                                                        \
     (struct linted_str)                                                        \
     {                                                                          \
-        .size = sizeof Str - 1,                                                \
-            .bytes = Str                                                \
+        .size = sizeof Str - 1, .bytes = Str                                   \
     }
 
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,

@@ -50,7 +50,12 @@ void linted_queue_node(struct linted_queue_node *node)
 linted_error linted_queue_create(struct linted_queue **queuep)
 {
     linted_error errnum;
-    struct linted_queue *queue = linted_mem_alloc(&errnum, sizeof *queue);
+    struct linted_queue *queue;
+    {
+        linted_error xx;
+        queue = linted_mem_alloc(&xx, sizeof *queue);
+        errnum = xx;
+    }
     if (errnum != 0) {
         return errnum;
     }
