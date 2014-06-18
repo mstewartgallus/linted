@@ -249,13 +249,6 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        if ((errnum = linted_ko_close(fd)) != 0) {
-             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: linted_ko_close: %s\n",
-                                   linted_error_string_alloc(errnum));
-            return EXIT_FAILURE;
-        }
-
         if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: dup3: %s\n",
