@@ -23,6 +23,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/locale.h"
+#include "linted/mem.h"
 #include "linted/ko.h"
 
 #include <assert.h>
@@ -73,9 +74,9 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    size_t kos_found = 0u;
-    for (; kos_found < kos_size;) {
-        /*
+    size_t fds_count = 0u;
+    for (;;) {
+         /*
          * Use readdir because this function isn't thread safe
          * anyways and readdir_r has a very broken interface.
          */
@@ -91,52 +92,6 @@ It is insecure to run a game as root!\n"));
                 return EXIT_FAILURE;
             }
         }
-
-        if (NULL == result) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little argument files\n",
-                                   program_name);
-            return EXIT_FAILURE;
-        }
-
-        char const *const d_name = result->d_name;
-        if (0 == strcmp(d_name, ".")) {
-            continue;
-        }
-
-        if (0 == strcmp(d_name, "..")) {
-            continue;
-        }
-
-        int const fd = atoi(d_name);
-
-        /*
-         * This is Linux specific code so we can rely on dirfd to
-         * not return ENOTSUP here.
-         */
-
-        if (fd == dirfd(fds_dir)) {
-            continue;
-        }
-
-        kos[kos_found] = fd;
-        ++kos_found;
-    }
-
-    for (;;) {
-        errno = 0;
-        struct dirent *const result = readdir(fds_dir);
-        {
-            int errnum = errno;
-            if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                                       program_name, FDS_DIR,
-                                       linted_error_string_alloc(errnum));
-                return EXIT_FAILURE;
-            }
-        }
-
         if (NULL == result) {
             break;
         }
@@ -161,15 +116,71 @@ It is insecure to run a game as root!\n"));
             continue;
         }
 
-        /**
-         * @bug This concurrently reads from the /proc/self/fd
-         * directory and modifies it.
+        ++fds_count;
+    }
+
+    if (fds_count < kos_size) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: too little fds\n", program_name);
+        return EXIT_FAILURE;
+    }
+
+    rewinddir(fds_dir);
+
+    linted_ko * fds;
+    {
+        linted_error errnum;
+        fds = linted_mem_alloc(&errnum, fds_count);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                                       program_name, FDS_DIR,
+                                       linted_error_string_alloc(errnum));
+                return EXIT_FAILURE;
+        }
+    }
+
+    size_t kos_found = 0u;
+    for (; kos_found < fds_count;) {
+        /*
+         * Use readdir because this function isn't thread safe
+         * anyways and readdir_r has a very broken interface.
+         */
+        errno = 0;
+        struct dirent *const result = readdir(fds_dir);
+        {
+            int errnum = errno;
+            if (errnum != 0) {
+                linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: %s: %s\n",
+                                       program_name, FDS_DIR,
+                                       linted_error_string_alloc(errnum));
+                return EXIT_FAILURE;
+            }
+        }
+
+        char const *const d_name = result->d_name;
+        if (0 == strcmp(d_name, ".")) {
+            continue;
+        }
+
+        if (0 == strcmp(d_name, "..")) {
+            continue;
+        }
+
+        int const fd = atoi(d_name);
+
+        /*
+         * This is Linux specific code so we can rely on dirfd to
+         * not return ENOTSUP here.
          */
 
-        /* Don't check for errors, an error just means someone leaked
-         * a handle to /dev/full.
-         */
-        linted_ko_close(fd);
+        if (fd == dirfd(fds_dir)) {
+            continue;
+        }
+
+        fds[kos_found] = fd;
+        ++kos_found;
     }
 
     if (-1 == closedir(fds_dir)) {
@@ -185,15 +196,25 @@ It is insecure to run a game as root!\n"));
     }
 
     /* Sort the fds from smallest to largest */
-    for (size_t ii = 0u; ii < kos_size; ++ii) {
-        for (size_t jj = ii + 1u; jj < kos_size; ++jj) {
-            if (kos[ii] > kos[jj]) {
-                linted_ko temp = kos[ii];
-                kos[ii] = kos[jj];
-                kos[jj] = temp;
+    for (size_t ii = 0u; ii < kos_found; ++ii) {
+        for (size_t jj = ii + 1u; jj < kos_found; ++jj) {
+            if (fds[ii] > fds[jj]) {
+                linted_ko temp = fds[ii];
+                fds[ii] = fds[jj];
+                fds[jj] = temp;
             }
         }
     }
+
+    for (size_t ii = 0u; ii < kos_size; ++ii) {
+        kos[ii] = fds[ii];
+    }
+
+    for (size_t ii = kos_size; ii < kos_found; ++ii) {
+        /* Don't check for errors, could just be a leaked /dev/full handle */
+        linted_ko_close(fds[ii]);
+    }
+    linted_mem_free(fds);
 
     /* Sanitize the fds */
     for (size_t ii = 0u; ii < kos_size; ++ii) {
