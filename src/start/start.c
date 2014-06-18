@@ -161,6 +161,11 @@ It is insecure to run a game as root!\n"));
             continue;
         }
 
+        /**
+         * @bug This concurrently reads from the /proc/self/fd
+         * directory and modifies it.
+         */
+
         /* Don't check for errors, an error just means someone leaked
          * a handle to /dev/full.
          */
@@ -191,7 +196,7 @@ It is insecure to run a game as root!\n"));
     }
 
     /* Sanitize the fds */
-    for (size_t ii = 0; ii < kos_size; ++ii) {
+    for (size_t ii = 0u; ii < kos_size; ++ii) {
         linted_ko fd = kos[ii];
 
         int oflags = fcntl(fd, F_GETFL);
