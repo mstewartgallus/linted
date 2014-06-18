@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -28,6 +29,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
@@ -71,9 +73,6 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    /**
-     * @todo give an error if too many files are passed
-     */
     size_t kos_found = 0u;
     for (; kos_found < kos_size;) {
         /*
@@ -118,40 +117,6 @@ It is insecure to run a game as root!\n"));
 
         if (fd == dirfd(fds_dir)) {
             continue;
-        }
-
-        {
-            int flags = fcntl(fd, F_GETFD);
-            if (-1 == flags) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFD: %s\n",
-                                       linted_error_string_alloc(errno));
-                return EXIT_FAILURE;
-            }
-
-            if (-1 == fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_SETFD: %s\n",
-                                       linted_error_string_alloc(errno));
-                return EXIT_FAILURE;
-            }
-        }
-
-        {
-            int flags = fcntl(fd, F_GETFL);
-            if (-1 == flags) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFL: %s\n",
-                                       linted_error_string_alloc(errno));
-                return EXIT_FAILURE;
-            }
-
-            if (-1 == fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_SETFL: %s\n",
-                                       linted_error_string_alloc(errno));
-                return EXIT_FAILURE;
-            }
         }
 
         kos[kos_found] = fd;
@@ -222,6 +187,61 @@ It is insecure to run a game as root!\n"));
                 kos[ii] = kos[jj];
                 kos[jj] = temp;
             }
+        }
+    }
+
+    /* Sanitize the fds */
+    for (size_t ii = 0; ii < kos_size; ++ii) {
+        linted_ko fd = kos[ii];
+
+        int oflags = fcntl(fd, F_GETFL);
+        if (-1 == oflags) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFL: %s\n",
+                                   linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+
+        char pathname[sizeof "/proc/self/fd/" + 10u];
+        sprintf(pathname, "/proc/self/fd/%i", fd);
+
+        int errnum;
+        int new_fd;
+        do {
+            new_fd = openat(-1, pathname, oflags | O_NONBLOCK | O_CLOEXEC);
+            if (-1 == new_fd) {
+                errnum = errno;
+                assert(errnum != 0);
+            } else {
+                errnum = 0;
+            }
+        } while (EINTR == errnum);
+        if (errnum != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: openat: %s\n",
+                                   linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
+        }
+
+        if ((errnum = linted_ko_close(fd)) != 0) {
+             linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: linted_ko_close: %s\n",
+                                   linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
+        }
+
+        if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: dup3: %s\n",
+                                   linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
+        }
+
+        if ((errnum = linted_ko_close(new_fd)) != 0) {
+             linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: linted_ko_close: %s\n",
+                                   linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
         }
     }
 
