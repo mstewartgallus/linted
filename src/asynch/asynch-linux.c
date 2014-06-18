@@ -687,6 +687,13 @@ static void run_task_accept(struct linted_asynch_pool *pool,
             errnum = 0;
         }
 
+        /**
+         * @bug On BSD accept returns the same file description as
+         * passed into connect so this file descriptor shares NONBLOCK
+         * status with the connector. I'm not sure of a way to sever
+         * shared file descriptions on BSD.
+         */
+
         /* Retry on network error */
         switch (errnum) {
         case EINTR:
