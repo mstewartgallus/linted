@@ -42,8 +42,17 @@
 #error no open files directory known for this platform
 #endif
 
+static bool is_open(linted_ko ko);
+static linted_error find_open_kos(linted_ko **kosp, size_t * size);
+static void sort_kos(linted_ko * ko, size_t size);
+
 int main(int argc, char *argv[])
 {
+    if (!is_open(STDERR_FILENO)) {
+        /* Sadly, this is all we can do */
+        return EXIT_FAILURE;
+    }
+
     /* First we check if we are run with proper security */
     uid_t const uid = getuid();
     uid_t const euid = geteuid();
@@ -62,159 +71,43 @@ It is insecure to run a game as root!\n"));
 
     char const *const program_name = argv[0u];
 
-    size_t kos_size = linted_start_config.kos_size;
-    linted_ko *kos = linted_start_config.kos;
-
-    DIR *const fds_dir = opendir(FDS_DIR);
-    if (NULL == fds_dir) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                               program_name, FDS_DIR,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    size_t fds_count = 0u;
-    for (;;) {
-         /*
-         * Use readdir because this function isn't thread safe
-         * anyways and readdir_r has a very broken interface.
-         */
-        errno = 0;
-        struct dirent *const result = readdir(fds_dir);
-        {
-            int errnum = errno;
-            if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                                       program_name, FDS_DIR,
-                                       linted_error_string_alloc(errnum));
-                return EXIT_FAILURE;
-            }
-        }
-        if (NULL == result) {
-            break;
-        }
-
-        char const *const d_name = result->d_name;
-        if (0 == strcmp(d_name, ".")) {
-            continue;
-        }
-
-        if (0 == strcmp(d_name, "..")) {
-            continue;
-        }
-
-        int const fd = atoi(d_name);
-
-        /*
-         * This is Linux specific code so we can rely on dirfd to
-         * not return ENOTSUP here.
-         */
-
-        if (fd == dirfd(fds_dir)) {
-            continue;
-        }
-
-        ++fds_count;
-    }
-
-    if (fds_count < kos_size) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little fds\n", program_name);
-        return EXIT_FAILURE;
-    }
-
-    rewinddir(fds_dir);
-
-    linted_ko * fds;
+    linted_ko *open_kos;
+    size_t open_kos_size;
     {
         linted_error errnum;
-        fds = linted_mem_alloc(&errnum, fds_count);
-        if (errnum != 0) {
+        linted_ko *xx;
+        size_t yy;
+        if ((errnum = find_open_kos(&xx, &yy)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                                       program_name, FDS_DIR,
-                                       linted_error_string_alloc(errnum));
-                return EXIT_FAILURE;
+%s: couldn't find open files: %s\n", program_name,
+                                   linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
         }
-    }
-
-    size_t kos_found = 0u;
-    for (; kos_found < fds_count;) {
-        /*
-         * Use readdir because this function isn't thread safe
-         * anyways and readdir_r has a very broken interface.
-         */
-        errno = 0;
-        struct dirent *const result = readdir(fds_dir);
-        {
-            int errnum = errno;
-            if (errnum != 0) {
-                linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                                       program_name, FDS_DIR,
-                                       linted_error_string_alloc(errnum));
-                return EXIT_FAILURE;
-            }
-        }
-
-        char const *const d_name = result->d_name;
-        if (0 == strcmp(d_name, ".")) {
-            continue;
-        }
-
-        if (0 == strcmp(d_name, "..")) {
-            continue;
-        }
-
-        int const fd = atoi(d_name);
-
-        /*
-         * This is Linux specific code so we can rely on dirfd to
-         * not return ENOTSUP here.
-         */
-
-        if (fd == dirfd(fds_dir)) {
-            continue;
-        }
-
-        fds[kos_found] = fd;
-        ++kos_found;
-    }
-
-    if (-1 == closedir(fds_dir)) {
-        int errnum = errno;
-        assert(errnum != 0);
-        assert(errnum != EBADF);
-
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: %s: %s\n",
-                               program_name, FDS_DIR,
-                               linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
+        open_kos = xx;
+        open_kos_size = yy;
     }
 
     /* Sort the fds from smallest to largest */
-    for (size_t ii = 0u; ii < kos_found; ++ii) {
-        for (size_t jj = ii + 1u; jj < kos_found; ++jj) {
-            if (fds[ii] > fds[jj]) {
-                linted_ko temp = fds[ii];
-                fds[ii] = fds[jj];
-                fds[jj] = temp;
-            }
-        }
+    sort_kos(open_kos, open_kos_size);
+
+    size_t kos_size = linted_start_config.kos_size;
+    linted_ko *kos = linted_start_config.kos;
+
+    if (open_kos_size < kos_size) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: too little files passed in\n", program_name);
+        return EXIT_FAILURE;
     }
 
     for (size_t ii = 0u; ii < kos_size; ++ii) {
-        kos[ii] = fds[ii];
+        kos[ii] = open_kos[ii];
     }
 
-    for (size_t ii = kos_size; ii < kos_found; ++ii) {
+    for (size_t ii = kos_size; ii < open_kos_size; ++ii) {
         /* Don't check for errors, could just be a leaked /dev/full handle */
-        linted_ko_close(fds[ii]);
+        linted_ko_close(open_kos[ii]);
     }
-    linted_mem_free(fds);
+    linted_mem_free(open_kos);
 
     /* Sanitize the fds */
     for (size_t ii = 0u; ii < kos_size; ++ii) {
@@ -228,8 +121,8 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        char pathname[sizeof "/proc/self/fd/" + 10u];
-        sprintf(pathname, "/proc/self/fd/%i", fd);
+        char pathname[sizeof FDS_DIR + 10u];
+        sprintf(pathname, FDS_DIR "/%i", fd);
 
         int errnum;
         int new_fd;
@@ -298,4 +191,140 @@ It is insecure to run a game as root!\n"));
     }
 
     return linted_start(cwd, program_name, argc, (char const * const *)argv);
+}
+
+static bool is_open(linted_ko ko)
+{
+    return fcntl(ko, F_GETFD) != -1;
+}
+
+static void sort_kos(linted_ko * kos, size_t size)
+{
+    for (size_t ii = 0u; ii < size; ++ii) {
+        for (size_t jj = ii + 1u; jj < size; ++jj) {
+            linted_ko kos_ii = kos[ii];
+            linted_ko kos_jj = kos[jj];
+
+            if (kos_ii > kos_jj) {
+                kos[ii] = kos_jj;
+                kos[jj] = kos_ii;
+            }
+        }
+    }
+}
+
+static linted_error find_open_kos(linted_ko **kosp, size_t * sizep)
+{
+    linted_error errnum = 0;
+    size_t size = 0u;
+    linted_ko *fds = NULL;
+
+    /*
+     * Use readdir because this function isn't thread safe anyways and
+     * readdir_r has a very broken interface.
+     */
+    /*
+     * This is Linux specific code so we can rely on dirfd to not
+     * return ENOTSUP here.
+     */
+
+    DIR *const fds_dir = opendir(FDS_DIR);
+    if (NULL == fds_dir) {
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
+    }
+
+    for (;;) {
+        errno = 0;
+        struct dirent *const result = readdir(fds_dir);
+        {
+            errnum = errno;
+            if (errnum != 0) {
+                goto close_fds_dir;
+            }
+        }
+        if (NULL == result) {
+            break;
+        }
+
+        char const *const d_name = result->d_name;
+        if (0 == strcmp(d_name, ".")) {
+            continue;
+        }
+
+        if (0 == strcmp(d_name, "..")) {
+            continue;
+        }
+
+        int const fd = atoi(d_name);
+
+        if (fd == dirfd(fds_dir)) {
+            continue;
+        }
+
+        ++size;
+    }
+
+    rewinddir(fds_dir);
+
+    {
+        linted_error xx;
+        fds = linted_mem_alloc(&xx, size);
+        errnum = xx;
+    }
+    if (errnum != 0) {
+        goto close_fds_dir;
+    }
+
+    for (size_t ii = 0u; ii < size;) {
+        errno = 0;
+        struct dirent *const result = readdir(fds_dir);
+        {
+            errnum = errno;
+            if (errnum != 0) {
+                goto free_fds;
+            }
+        }
+
+        char const *const d_name = result->d_name;
+        if (0 == strcmp(d_name, ".")) {
+            continue;
+        }
+
+        if (0 == strcmp(d_name, "..")) {
+            continue;
+        }
+
+        int const fd = atoi(d_name);
+
+       if (fd == dirfd(fds_dir)) {
+            continue;
+        }
+
+        fds[ii] = fd;
+        ++ii;
+    }
+
+free_fds:
+    if (errnum != 0) {
+        linted_mem_free(fds);
+        fds = NULL;
+    }
+
+close_fds_dir:
+    if (-1 == closedir(fds_dir)) {
+        linted_error close_errnum = errno;
+        assert(close_errnum != 0);
+        assert(close_errnum != EBADF);
+
+        if (0 == errnum) {
+            errnum = close_errnum;
+       }
+    }
+
+    *sizep = size;
+    *kosp = fds;
+
+    return errnum;
 }
