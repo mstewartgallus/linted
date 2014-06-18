@@ -163,6 +163,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_attr const *attr,
                           char *const argv[], char *const envp[])
 {
+    linted_error errnum = 0;
     bool is_relative_path = filename[0u] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     if (is_relative_path && !at_fdcwd && dirfd < 0) {
@@ -179,38 +180,68 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
-        linted_error errnum = errno;
+        errnum = errno;
         assert(errnum != 0);
         return errnum;
     }
 
-    sigset_t fullset;
-    sigfillset(&fullset);
+    pid_t child;
+    {
+        /*
+         * To save stack space reuse the same sigset for the full set and
+         * the old set.
+         */
+        sigset_t sigset;
+        sigfillset(&sigset);
 
-    sigset_t oldset;
-    pthread_sigmask(SIG_BLOCK, &fullset, &oldset);
+        pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 
-    pid_t child = fork();
-    if (child != 0) {
-        pthread_sigmask(SIG_SETMASK, &oldset, NULL);
-
-        linted_error error_status = 0;
-
+        child = fork();
         if (-1 == child) {
-            error_status = errno;
-            assert(error_status != 0);
+            errnum = errno;
+            assert(errnum != 0);
+        }
+
+        if (0 == child) {
+            /*
+             * Get rid of signal handlers so that they can't be called before
+             * execve.
+             */
+            for (int ii = 1; ii < NSIG; ++ii) {
+                /* Uncatchable, avoid Valgrind warnings */
+                if (SIGSTOP == ii || SIGKILL == ii) {
+                    continue;
+                }
+
+                struct sigaction action;
+                sigaction(ii, NULL, &action);
+
+                if (action.sa_handler != SIG_IGN) {
+                    action.sa_handler = SIG_DFL;
+
+                    sigaction(ii, &action, NULL);
+                }
+            }
+        }
+
+        pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+
+    }
+
+    if (child != 0) {
+        if (errnum != 0) {
             goto unmap_spawn_error;
         }
 
         if (attr != NULL) {
             if (attr->setpgroup) {
                 if (-1 == setpgid(child, attr->pgroup)) {
-                    linted_error errnum = errno;
+                    errnum = errno;
                     assert(errnum != 0);
 
                     assert(errnum != EINVAL);
-                    assert(EACCES == errnum || EPERM == errnum || ESRCH
-                                                                  == errnum);
+                    assert(EACCES == errnum || EPERM == errnum || ESRCH == errnum);
+                    errnum = 0;
                 }
 
                 /**
@@ -222,8 +253,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 {
                     int kill_fds[2u];
                     if (-1 == pipe2(kill_fds, O_CLOEXEC)) {
-                        error_status = errno;
-                        assert(error_status != 0);
+                        errnum = errno;
+                        assert(errnum != 0);
                         goto unmap_spawn_error;
                     }
                     kill_fd_read = kill_fds[0u];
@@ -231,8 +262,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 }
 
                 if (-1 == fcntl(kill_fd_read, F_SETSIG, (long)SIGKILL)) {
-                    error_status = errno;
-                    assert(error_status != 0);
+                    errnum = errno;
+                    assert(errnum != 0);
                     goto unmap_spawn_error;
                 }
 
@@ -240,14 +271,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     = { .type = F_OWNER_PGRP,
                         .pid = 0 == attr->pgroup ? child : attr->pgroup };
                 if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
-                    error_status = errno;
-                    assert(error_status != 0);
+                    errnum = errno;
+                    assert(errnum != 0);
                     goto unmap_spawn_error;
                 }
 
                 if (-1 == fcntl(kill_fd_read, F_SETFL, (long)O_ASYNC)) {
-                    error_status = errno;
-                    assert(error_status != 0);
+                    errnum = errno;
+                    assert(errnum != 0);
                     goto unmap_spawn_error;
                 }
 
@@ -258,14 +289,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 int kill_fd_read_copy
                     = fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
                 if (-1 == kill_fd_read_copy) {
-                    error_status = errno;
-                    assert(error_status != 0);
+                    errnum = errno;
+                    assert(errnum != 0);
                     goto unmap_spawn_error;
                 }
 
                 if (-1 == linted_ko_close(kill_fd_read)) {
-                    error_status = errno;
-                    assert(error_status != 0);
+                    errnum = errno;
+                    assert(errnum != 0);
                     goto unmap_spawn_error;
                 }
             }
@@ -274,7 +305,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         {
             siginfo_t info;
             {
-                linted_error errnum;
                 do {
                     if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
                         errnum = errno;
@@ -284,21 +314,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     }
                 } while (EINTR == errnum);
                 if (errnum != 0) {
-                    error_status = errnum;
                     goto unmap_spawn_error;
                 }
             }
 
             switch (info.si_code) {
             case CLD_EXITED: {
-                linted_error exit_status = info.si_status;
+                int exit_status = info.si_status;
                 switch (exit_status) {
                 case 0:
-                    error_status = EINVAL;
+                    errnum = EINVAL;
                     goto unmap_spawn_error;
 
                 default:
-                    error_status = ENOSYS;
+                    errnum = ENOSYS;
                     goto unmap_spawn_error;
                 }
             }
@@ -306,25 +335,25 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             case CLD_DUMPED:
             case CLD_KILLED: {
 #if defined __linux__
-                linted_error signo = info.si_status;
+                int signo = info.si_status;
                 switch (signo) {
                 case SIGKILL:
-                    error_status = ENOMEM;
+                    errnum = ENOMEM;
                     break;
 
                 case SIGSEGV:
                     /* Corrupted elf file */
-                    error_status = ENOEXEC;
+                    errnum = ENOEXEC;
                     break;
 
                 case SIGTERM:
                     /* Exited with error and passed an error code */
-                    error_status = spawn_error->errnum;
-                    assert(error_status != 0);
+                    errnum = spawn_error->errnum;
+                    assert(errnum != 0);
                     break;
 
                 default:
-                    error_status = ENOSYS;
+                    errnum = ENOSYS;
                     break;
                 }
                 goto unmap_spawn_error;
@@ -335,7 +364,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
             case CLD_STOPPED:
                 if (-1 == kill(child, SIGCONT)) {
-                    linted_error errnum = errno;
+                    errnum = errno;
                     assert(errnum != 0);
                     assert(errnum != EINVAL);
                     assert(errnum != EPERM);
@@ -351,42 +380,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
     unmap_spawn_error:
         if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
-            if (0 == error_status) {
-                error_status = errno;
-                assert(error_status != 0);
+            if (0 == errnum) {
+                errnum = errno;
+                assert(errnum != 0);
             }
         }
 
         *childp = child;
-        return error_status;
+        return errnum;
     }
-
-    /*
-     * Get rid of signal handlers so that they can't be called before
-     * execve.
-     */
-    for (int ii = 1; ii < NSIG; ++ii) {
-        /* Uncatchable, avoid Valgrind warnings */
-        if (SIGSTOP == ii || SIGKILL == ii) {
-            continue;
-        }
-
-        struct sigaction action;
-        sigaction(ii, NULL, &action);
-
-        if (action.sa_handler != SIG_IGN) {
-            action.sa_handler = SIG_DFL;
-
-            sigaction(ii, &action, NULL);
-        }
-    }
-
-    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     if (attr != NULL) {
         if (attr->setpgroup) {
             if (-1 == setpgid(0, attr->pgroup)) {
-                linted_error errnum = errno;
+                errnum = errno;
                 assert(errnum != 0);
                 if (errnum != EACCES) {
                     exit_with_error(spawn_error, errnum);
@@ -459,8 +466,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     }
 
     /*
-     * Duplicate the read fd so that it is closed after the write
-     * fd.
+     * Duplicate the read fd so that it is closed after the write fd.
      */
     if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long)stop_fd_write)) {
         exit_with_error(spawn_error, errno);
