@@ -19,7 +19,7 @@
 
 #include <stdlib.h>
 
-int main()
+int main(void)
 {
     linted_error_string_alloc(-1);
     return EXIT_SUCCESS;
