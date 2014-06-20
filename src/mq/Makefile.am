@@ -18,4 +18,6 @@
 noinst_LTLIBRARIES+=%D%/libmq.la
 
 %C%_libmq_la_SOURCES=%D%/mq.c include/linted/mq.h
-%C%_libmq_la_LIBADD=-lrt
+%C%_libmq_la_LIBADD=\
+  src/random/librandom.la\
+  -lrt

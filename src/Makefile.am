@@ -33,6 +33,7 @@ include %C%/locale/Makefile.am
 include %C%/lock/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/mq/Makefile.am
+include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
 include %C%/sandbox/Makefile.am
 include %C%/service/Makefile.am

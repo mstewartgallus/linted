@@ -17,6 +17,7 @@
 
 #include "linted/error.h"
 #include "linted/mq.h"
+#include "linted/random.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -46,36 +47,27 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
 
     memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
 
-    /* Seed the generator with rand */
-    /**
-     * @todo Replace the use of the terrible rand function.
-     */
-    /* Use unsigned so possibly overflowing later on is defined */
-    unsigned long generator_state = rand();
-
     do {
         for (size_t ii = sizeof TEMPLATE_PREFIX - 1u;
              ii < sizeof TEMPLATE_NAME - 1u; ++ii) {
+            char random_char;
             for (;;) {
-                /* Use a fast linear congruential generator */
-                generator_state = 5u + 3u * generator_state;
-
                 /* Normally using the modulus would give a bad
-         * distribution but CHAR_MAX + 1u is a power of two
-         */
-                unsigned char const possible_value = generator_state
-                                                     % (CHAR_MAX + 1u);
+                 * distribution but CHAR_MAX + 1u is a power of two
+                 */
+                random_char = linted_random() % (CHAR_MAX + 1u);
 
                 /* Throw out results and retry for an even
-         * distribution
-         */
-                if ((possible_value >= 'a' && possible_value <= 'z')
-                    || (possible_value >= 'A' && possible_value <= 'Z')
-                    || (possible_value >= '0' && possible_value <= '9')) {
-                    random_mq_name[ii] = possible_value;
+                 * distribution
+                 */
+                if ((random_char >= 'a' && random_char <= 'z')
+                    || (random_char >= 'A' && random_char <= 'Z')
+                    || (random_char >= '0' && random_char <= '9')) {
                     break;
                 }
             }
+
+            random_mq_name[ii] = random_char;
         }
 
         {

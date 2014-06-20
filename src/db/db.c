@@ -25,10 +25,12 @@
 #include "linted/ko.h"
 #include "linted/lock.h"
 #include "linted/mem.h"
+#include "linted/random.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -270,14 +272,24 @@ linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop)
 
 try_again:
     for (size_t ii = 0u; ii < 6u; ++ii) {
+        char random_char;
         for (;;) {
-            char value = ((int)(unsigned char)rand()) - 255 / 2 - 1;
-            if ((value > 'a' && value < 'z') || (value > 'A' && value < 'Z')
-                || (value > '0' && value < '9')) {
-                xxxxxx[ii] = value;
+            /* Normally using the modulus would give a bad
+             * distribution but CHAR_MAX + 1u is a power of two
+             */
+            random_char = linted_random() % (CHAR_MAX + 1u);
+
+            /* Throw out results and retry for an even
+             * distribution
+             */
+            if ((random_char >= 'a' && random_char <= 'z')
+                || (random_char >= 'A' && random_char <= 'Z')
+                || (random_char >= '0' && random_char <= '9')) {
                 break;
             }
         }
+
+        xxxxxx[ii] = random_char;
     }
 
     linted_ko temp_field;

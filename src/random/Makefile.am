@@ -15,13 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libdb.la
-%C%_libdb_la_SOURCES=%D%/db.c include/linted/db.h
-%C%_libdb_la_LIBADD=\
-  src/error/liberror.la\
-  src/file/libfile.la\
-  src/io/libio.la\
-  src/ko/libko.la\
-  src/lock/liblock.la\
-  src/mem/libmem.la\
-  src/random/librandom.la
+noinst_LTLIBRARIES+=%D%/librandom.la
+%C%_librandom_la_SOURCES=%D%/random.c include/linted/random.h
