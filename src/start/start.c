@@ -23,8 +23,9 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/locale.h"
-#include "linted/mem.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
+#include "linted/random.h"
 
 #include <assert.h>
 #include <dirent.h>
@@ -45,9 +46,12 @@
 static bool is_open(linted_ko ko);
 static linted_error find_open_kos(linted_ko **kosp, size_t * size);
 static void sort_kos(linted_ko * ko, size_t size);
+static linted_error get_system_entropy(unsigned *entropyp);
 
 int main(int argc, char *argv[])
 {
+    linted_error errnum;
+
     if (!is_open(STDERR_FILENO)) {
         /* Sadly, this is all we can do */
         return EXIT_FAILURE;
@@ -74,7 +78,6 @@ It is insecure to run a game as root!\n"));
     linted_ko *open_kos;
     size_t open_kos_size;
     {
-        linted_error errnum;
         linted_ko *xx;
         size_t yy;
         if ((errnum = find_open_kos(&xx, &yy)) != 0) {
@@ -124,7 +127,6 @@ It is insecure to run a game as root!\n"));
         char pathname[sizeof FDS_DIR + 10u];
         sprintf(pathname, FDS_DIR "/%i", fd);
 
-        int errnum;
         int new_fd;
         do {
             new_fd = openat(-1, pathname, oflags | O_NONBLOCK | O_CLOEXEC);
@@ -180,7 +182,7 @@ It is insecure to run a game as root!\n"));
 
     /* Start sandboxing a bit */
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        linted_error errnum = errno;
+        errnum = errno;
 
         assert(errnum != EINVAL);
 
@@ -188,6 +190,17 @@ It is insecure to run a game as root!\n"));
 %s: can not drop ability to raise privileges through execve: %s\n",
                                program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
+    }
+
+    {
+        unsigned entropy;
+        if ((errnum = get_system_entropy(&entropy)) != 0) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not read a source of system entropy: %s\n",
+                                   program_name, linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
+        }
+        linted_random_seed_generator(entropy);
     }
 
     return linted_start(cwd, program_name, argc, (char const * const *)argv);
@@ -327,4 +340,40 @@ close_fds_dir:
     *kosp = fds;
 
     return errnum;
+}
+
+static linted_error get_system_entropy(unsigned *entropyp)
+{
+    /*
+     * Use /dev/random so we block when asking for entropy after
+     * startup.
+     */
+    linted_error errnum;
+    linted_ko random;
+    unsigned entropy;
+
+    {
+        linted_ko xx;
+        if ((errnum = linted_ko_open(&xx, -1, "/dev/random", LINTED_KO_RDONLY)) != 0) {
+            return errnum;
+        }
+        random = xx;
+    }
+
+    {
+        unsigned xx;
+        if ((errnum = linted_io_read_all(random, NULL,
+                                         &xx, sizeof xx)) != 0) {
+
+            return errnum;
+        }
+        entropy = xx;
+    }
+
+    if ((errnum = linted_ko_close(random)) != 0) {
+        return errnum;
+    }
+
+    *entropyp = entropy;
+    return 0;
 }
