@@ -26,7 +26,7 @@ void linted_random_seed_generator(unsigned seed)
     srandom(seed);
 }
 
-long unsigned linted_random(void)
+long unsigned linted_random_fast(void)
 {
     return random();
 }

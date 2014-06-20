@@ -26,8 +26,6 @@
  * data.
  *
  * @todo Add garbage collection.
- *
- * @todo Use a better random number generator.
  */
 
 #define LINTED_DB_CREAT 1

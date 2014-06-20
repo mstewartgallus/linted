@@ -55,7 +55,7 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                 /* Normally using the modulus would give a bad
                  * distribution but CHAR_MAX + 1u is a power of two
                  */
-                random_char = linted_random() % (CHAR_MAX + 1u);
+                random_char = linted_random_fast() % (CHAR_MAX + 1u);
 
                 /* Throw out results and retry for an even
                  * distribution

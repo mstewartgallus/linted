@@ -26,6 +26,9 @@
 
 void linted_random_seed_generator(unsigned seed);
 
-long unsigned linted_random(void);
+/**
+ * Fast but insecure random number generation.
+ */
+long unsigned linted_random_fast(void);
 
 #endif /* LINTED_RANDOM_H */
