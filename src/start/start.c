@@ -44,8 +44,8 @@
 #endif
 
 static bool is_open(linted_ko ko);
-static linted_error find_open_kos(linted_ko **kosp, size_t * size);
-static void sort_kos(linted_ko * ko, size_t size);
+static linted_error find_open_kos(linted_ko **kosp, size_t *size);
+static void sort_kos(linted_ko *ko, size_t size);
 static linted_error get_system_entropy(unsigned *entropyp);
 
 int main(int argc, char *argv[])
@@ -82,7 +82,8 @@ It is insecure to run a game as root!\n"));
         size_t yy;
         if ((errnum = find_open_kos(&xx, &yy)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: couldn't find open files: %s\n", program_name,
+%s: couldn't find open files: %s\n",
+                                   program_name,
                                    linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
@@ -98,7 +99,8 @@ It is insecure to run a game as root!\n"));
 
     if (open_kos_size < kos_size) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little files passed in\n", program_name);
+%s: too little files passed in\n",
+                               program_name);
         return EXIT_FAILURE;
     }
 
@@ -152,7 +154,7 @@ It is insecure to run a game as root!\n"));
         }
 
         if ((errnum = linted_ko_close(new_fd)) != 0) {
-             linted_io_write_format(STDERR_FILENO, NULL, "\
+            linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: linted_ko_close: %s\n",
                                    linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
@@ -197,7 +199,8 @@ It is insecure to run a game as root!\n"));
         if ((errnum = get_system_entropy(&entropy)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not read a source of system entropy: %s\n",
-                                   program_name, linted_error_string_alloc(errnum));
+                                   program_name,
+                                   linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
         linted_random_seed_generator(entropy);
@@ -211,7 +214,7 @@ static bool is_open(linted_ko ko)
     return fcntl(ko, F_GETFD) != -1;
 }
 
-static void sort_kos(linted_ko * kos, size_t size)
+static void sort_kos(linted_ko *kos, size_t size)
 {
     for (size_t ii = 0u; ii < size; ++ii) {
         for (size_t jj = ii + 1u; jj < size; ++jj) {
@@ -226,7 +229,7 @@ static void sort_kos(linted_ko * kos, size_t size)
     }
 }
 
-static linted_error find_open_kos(linted_ko **kosp, size_t * sizep)
+static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 {
     linted_error errnum = 0;
     size_t size = 0u;
@@ -311,7 +314,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t * sizep)
 
         int const fd = atoi(d_name);
 
-       if (fd == dirfd(fds_dir)) {
+        if (fd == dirfd(fds_dir)) {
             continue;
         }
 
@@ -333,7 +336,7 @@ close_fds_dir:
 
         if (0 == errnum) {
             errnum = close_errnum;
-       }
+        }
     }
 
     *sizep = size;
@@ -354,7 +357,8 @@ static linted_error get_system_entropy(unsigned *entropyp)
 
     {
         linted_ko xx;
-        if ((errnum = linted_ko_open(&xx, -1, "/dev/random", LINTED_KO_RDONLY)) != 0) {
+        if ((errnum = linted_ko_open(&xx, -1, "/dev/random", LINTED_KO_RDONLY))
+            != 0) {
             return errnum;
         }
         random = xx;
@@ -362,8 +366,7 @@ static linted_error get_system_entropy(unsigned *entropyp)
 
     {
         unsigned xx;
-        if ((errnum = linted_io_read_all(random, NULL,
-                                         &xx, sizeof xx)) != 0) {
+        if ((errnum = linted_io_read_all(random, NULL, &xx, sizeof xx)) != 0) {
 
             return errnum;
         }

@@ -225,7 +225,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
 
         pthread_sigmask(SIG_SETMASK, &sigset, NULL);
-
     }
 
     if (child != 0) {
@@ -240,7 +239,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     assert(errnum != 0);
 
                     assert(errnum != EINVAL);
-                    assert(EACCES == errnum || EPERM == errnum || ESRCH == errnum);
+                    assert(EACCES == errnum || EPERM == errnum || ESRCH
+                                                                  == errnum);
                     errnum = 0;
                 }
 
