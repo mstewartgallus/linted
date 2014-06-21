@@ -286,7 +286,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 
     {
         linted_error xx;
-        fds = linted_mem_alloc(&xx, size);
+        fds = linted_mem_alloc_array(&xx, size, sizeof fds[0]);
         errnum = xx;
     }
     if (errnum != 0) {
