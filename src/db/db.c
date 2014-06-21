@@ -40,10 +40,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#if defined _WIN32 || defined _WIN64
-#define snprintf sprintf_s
-#endif
-
 #define CURRENT_VERSION "0.0.0"
 
 #define GLOBAL_LOCK "global.lock"
