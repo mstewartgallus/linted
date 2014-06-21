@@ -65,7 +65,10 @@ linted_error linted_queue_create(struct linted_queue **queuep)
     tip->prev = tip;
     tip->next = tip;
 
-    InitializeCriticalSection(&queue->lock);
+    if (0 == InitializeCriticalSectionAndSpinCount(&queue->lock, 4000)) {
+        return GetLastError();
+    }
+
     InitializeConditionVariable(&queue->gains_member);
 
     *queuep = queue;
