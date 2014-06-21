@@ -28,11 +28,11 @@
  */
 
 struct linted_rpc_int32 {
-    char bytes[4];
+    char bytes[4u];
 };
 
 struct linted_rpc_uint32 {
-    char bytes[4];
+    char bytes[4u];
 };
 
 static inline struct linted_rpc_uint32 linted_rpc_pack_uint32(uint_fast32_t fast)
@@ -51,14 +51,14 @@ static inline struct linted_rpc_uint32 linted_rpc_pack_uint32(uint_fast32_t fast
     };
 
     struct linted_rpc_uint32 raw;
-    memcpy(raw.bytes, &bytes, sizeof raw.bytes);
+    memcpy(raw.bytes, bytes, sizeof raw.bytes);
     return raw;
 }
 
 static inline uint_fast32_t linted_rpc_unpack_uint32(struct linted_rpc_uint32 raw)
 {
     unsigned char pos_bytes[sizeof raw.bytes];
-    memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
+    memcpy(pos_bytes, raw.bytes, sizeof raw.bytes);
 
     uint_fast32_t positive = ((uintmax_t) pos_bytes[0])
         | (((uintmax_t) pos_bytes[1]) << 8u)
@@ -84,14 +84,14 @@ static inline struct linted_rpc_int32 linted_rpc_pack(int_fast32_t fast)
     };
 
     struct linted_rpc_int32 raw;
-    memcpy(raw.bytes, &bytes, sizeof raw.bytes);
+    memcpy(raw.bytes, bytes, sizeof raw.bytes);
     return raw;
 }
 
 static inline int_fast32_t linted_rpc_unpack(struct linted_rpc_int32 raw)
 {
     unsigned char pos_bytes[sizeof raw.bytes];
-    memcpy(&pos_bytes, raw.bytes, sizeof raw.bytes);
+    memcpy(pos_bytes, raw.bytes, sizeof raw.bytes);
 
     uint_fast32_t positive = ((uintmax_t) pos_bytes[0])
         | (((uintmax_t) pos_bytes[1]) << 8u)
