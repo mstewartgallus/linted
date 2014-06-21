@@ -36,6 +36,10 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
     size_t cap = *capp;
     size_t size = *sizep;
 
+    if (size > SIZE_MAX - strsize) {
+        return ENOMEM;
+    }
+
     size_t new_size = size + strsize;
 
     size_t new_cap = cap;
