@@ -201,5 +201,9 @@
  *  ).
  * </li>
  *
+ * <li> You may wish to read the EC-- rule set (as of 2014-02-24
+ *  available at http://www.leshatton.org/ISOC_subset1103.html).
+ * </li>
+ *
  * </ul>
  */
