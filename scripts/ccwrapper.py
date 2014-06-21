@@ -34,7 +34,8 @@ def go():
                                '-Qunused-arguments',
                                '-Wno-unknown-warning-option',
                                '--analyze',
-                               '-Xanalyser', '-analyzer-output=text'])
+                               '-Xclang', '-analyzer-output=text',
+                               '-o-'])
             for checker in checkers:
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
             clang_args.extend(filtered_options)
