@@ -49,15 +49,15 @@ struct linted_controller_message
 struct linted_controller_task_send
 {
     struct linted_asynch_task_mq_send parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
+    char message[LINTED_RPC_INT32_SIZE
+                 + LINTED_RPC_INT32_SIZE + 1u];
 };
 
 struct linted_controller_task_receive
 {
     struct linted_asynch_task_mq_receive parent;
-    char message[LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes)
-                 + LINTED_SIZEOF_MEMBER(struct linted_rpc_int32, bytes) + 1];
+    char message[LINTED_RPC_INT32_SIZE
+                 + LINTED_RPC_INT32_SIZE + 1u];
 };
 
 linted_error linted_controller_create(linted_controller *controllerp,

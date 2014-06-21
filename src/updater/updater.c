@@ -49,26 +49,19 @@ void linted_updater_send(struct linted_updater_task_send *task, int task_id,
 
     char *tip = task->message;
 
-    struct linted_rpc_int32 x_position = linted_rpc_pack(update->x_position);
-    memcpy(tip, x_position.bytes, sizeof x_position.bytes);
-    tip += sizeof x_position.bytes;
+    linted_rpc_pack(update->x_position, tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 y_position = linted_rpc_pack(update->y_position);
-    memcpy(tip, y_position.bytes, sizeof y_position.bytes);
-    tip += sizeof y_position.bytes;
+    linted_rpc_pack(update->y_position, tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 z_position = linted_rpc_pack(update->z_position);
-    memcpy(tip, z_position.bytes, sizeof z_position.bytes);
-    tip += sizeof z_position.bytes;
+    linted_rpc_pack(update->z_position, tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_uint32 x_rotation
-        = linted_rpc_pack_uint32(update->x_rotation._value);
-    memcpy(tip, x_rotation.bytes, sizeof x_rotation.bytes);
-    tip += sizeof x_rotation.bytes;
+    linted_rpc_pack_uint32(update->x_rotation._value, tip);
+    tip += LINTED_RPC_UINT32_SIZE;
 
-    struct linted_rpc_uint32 y_rotation
-        = linted_rpc_pack_uint32(update->y_rotation._value);
-    memcpy(tip, y_rotation.bytes, sizeof y_rotation.bytes);
+    linted_rpc_pack_uint32(update->y_rotation._value, tip);
 }
 
 void linted_updater_receive(struct linted_updater_task_receive *task,
@@ -83,27 +76,17 @@ void linted_updater_decode(struct linted_updater_task_receive const *task,
 {
     char const *tip = task->message;
 
-    struct linted_rpc_int32 x_position;
-    memcpy(x_position.bytes, tip, sizeof x_position.bytes);
-    update->x_position = linted_rpc_unpack(x_position);
-    tip += sizeof x_position.bytes;
+    update->x_position = linted_rpc_unpack(tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 y_position;
-    memcpy(y_position.bytes, tip, sizeof y_position.bytes);
-    update->y_position = linted_rpc_unpack(y_position);
-    tip += sizeof y_position.bytes;
+    update->y_position = linted_rpc_unpack(tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 z_position;
-    memcpy(z_position.bytes, tip, sizeof z_position.bytes);
-    update->z_position = linted_rpc_unpack(z_position);
-    tip += sizeof z_position.bytes;
+    update->z_position = linted_rpc_unpack(tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_uint32 x_rotation;
-    memcpy(x_rotation.bytes, tip, sizeof x_rotation.bytes);
-    update->x_rotation._value = linted_rpc_unpack_uint32(x_rotation);
-    tip += sizeof x_rotation.bytes;
+    update->x_rotation._value = linted_rpc_unpack_uint32(tip);
+    tip += LINTED_RPC_UINT32_SIZE;
 
-    struct linted_rpc_uint32 y_rotation;
-    memcpy(y_rotation.bytes, tip, sizeof y_rotation.bytes);
-    update->y_rotation._value = linted_rpc_unpack_uint32(y_rotation);
+    update->y_rotation._value = linted_rpc_unpack_uint32(tip);
 }

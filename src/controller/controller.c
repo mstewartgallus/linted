@@ -50,13 +50,11 @@ void linted_controller_send(struct linted_controller_task_send *task,
 
     char *tip = task->message;
 
-    struct linted_rpc_int32 x_tilt = linted_rpc_pack(message->x_tilt);
-    memcpy(tip, x_tilt.bytes, sizeof x_tilt.bytes);
-    tip += sizeof x_tilt.bytes;
+    linted_rpc_pack(message->x_tilt, tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 y_tilt = linted_rpc_pack(message->y_tilt);
-    memcpy(tip, y_tilt.bytes, sizeof y_tilt.bytes);
-    tip += sizeof y_tilt.bytes;
+    linted_rpc_pack(message->y_tilt, tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
     unsigned char bitfield
         = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u
@@ -78,15 +76,11 @@ linted_controller_decode(struct linted_controller_task_receive const *task,
 {
     char const *tip = task->message;
 
-    struct linted_rpc_int32 x_tilt;
-    memcpy(x_tilt.bytes, tip, sizeof x_tilt.bytes);
-    message->x_tilt = linted_rpc_unpack(x_tilt);
-    tip += sizeof x_tilt.bytes;
+    message->x_tilt = linted_rpc_unpack(tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
-    struct linted_rpc_int32 y_tilt;
-    memcpy(y_tilt.bytes, tip, sizeof y_tilt.bytes);
-    message->y_tilt = linted_rpc_unpack(y_tilt);
-    tip += sizeof y_tilt.bytes;
+    message->y_tilt = linted_rpc_unpack(tip);
+    tip += LINTED_RPC_INT32_SIZE;
 
     unsigned char bitfield;
     memcpy(&bitfield, tip, sizeof bitfield);
