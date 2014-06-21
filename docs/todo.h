@@ -11,9 +11,29 @@
  *
  * Linted -- TODO
  *
- * @todo Review and criticize the static checkers Flawfinder, RATS,
- *       Splint, cqual, and Smatch. If they don't work out write
- *       detailed reasons why.
+ * @todo Review and criticize several static analysers.
+ * - If they don't work out write detailed reasons why.
+ * - The tools:
+ *   - Flawfinder
+ *   - RATS,
+ *   - SPLINT
+ *   - Cqual
+ *   - Smatch
+ *   - MOPS
+ *   - BLAST
+ *   - BOON "Buffer Overrun detectiON"
+ *   - ggcc
+ *   - Stanse
+ *   - Sparse
+ *   - Oink
+ *   - Yasca
+ *   - RTL-check
+ *
+ * @todo Investigate security projects
+ * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project
+ * - The Open Source Quality Project at Berkeley is investigating
+ *   tools and techniques for assuring software quality (not just
+ *   security) of OSS/FS programs.
  *
  * @todo Port to --host=x86_64-w64-mingw32
  * - As part of this process environment sanitization code will need
