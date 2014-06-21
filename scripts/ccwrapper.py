@@ -25,34 +25,25 @@ def go():
 
     if '-c' in options:
         filtered_options = options_filter(options)
+        define_flags = get_predefined(cc)
+
         if clang != "":
-            clang_args = clang + [
-                          '-target', host,
-                          '-o-',
-                          '-Qunused-arguments',
-                          '-Wno-unknown-warning-option',
-                          '--analyze']
+            clang_args = []
+            clang_args.extend(clang)
+            clang_args.extend(['-target', host,
+                               '-Qunused-arguments',
+                               '-Wno-unknown-warning-option',
+                               '--analyze',
+                               '-Xanalyser', '-analyzer-output=text'])
             for checker in checkers:
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
             clang_args.extend(filtered_options)
 
-            defines = None
-            with open(os.devnull) as null:
-                defines = subprocess.check_output(cc + ['-dM', '-E', '-'],
-                                                  stdin=null)
+            subprocess.check_call(clang_args)
 
-            defines = defines.decode('utf-8').split('\n')
-
-            defineflags = []
-            for define in defines:
-                if '' == define:
-                    continue
-                l = define.split(' ', 2)
-                defineflags.append('-D' + l[1] + '=' + l[2])
-
+        if cppcheck != "":
             cppcheck_args = [cppcheck,
                              '--quiet',
-                             '--platform=unix64',
                              '--enable=all',
 
                              # GCC already does resource leak
@@ -61,17 +52,44 @@ def go():
                              # code.
                              '--suppress=resourceLeak',
 
-                             '--template=gcc'] + defineflags
+                             '--template=gcc']
+
+            if 'D__unix__=1' in define_flags:
+                cppcheck_args.append('--platform=unix64')
+
+            if 'D__WIN64=1' in define_flags:
+                cppcheck_args.append('--platform=win64')
+            elif 'D__WIN32=1' in define_flags:
+                cppcheck_args.append('--platform=win32W')
+
+            cppcheck_args.extend(define_flags)
             cppcheck_args.extend(filtered_options)
 
-            exit_status = subprocess.check_output(clang_args)
-            exit_status = subprocess.call(cppcheck_args)
+            subprocess.call(cppcheck_args)
 
     exit_status = subprocess.call(cc + options)
     if exit_status != 0:
         sys.exit(exit_status)
 
     sys.exit(0)
+
+def get_predefined(cc):
+    defines = None
+    with open(os.devnull) as null:
+        defines = subprocess.check_output(cc + ['-dM', '-E', '-'],
+                                                  stdin=null)
+
+    defines = defines.decode('utf-8').split('\n')
+
+    defineflags = []
+    for define in defines:
+        if '' == define:
+            continue
+        l = define.split(' ', 2)
+        defineflags.append('-D' + l[1] + '=' + l[2])
+
+    return defineflags
+
 
 def options_filter(options):
     cppcheck_options = []
@@ -124,4 +142,7 @@ checkers = [
     'unix.cstring.NullArg']
 
 if __name__ == '__main__':
-    go()
+    try:
+        go()
+    except KeyboardInterrupt:
+        sys.exit(1)
