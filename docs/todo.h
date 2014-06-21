@@ -11,6 +11,10 @@
  *
  * Linted -- TODO
  *
+ * @todo Review and criticize the static checkers Flawfinder, RATS,
+ *       Splint, cqual, and Smatch. If they don't work out write
+ *       detailed reasons why.
+ *
  * @todo Port to --host=x86_64-w64-mingw32
  * - As part of this process environment sanitization code will need
  *   to be reworked. Windows maintains two copies of environment
