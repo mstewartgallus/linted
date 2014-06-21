@@ -40,7 +40,9 @@ def go():
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
             clang_args.extend(filtered_options)
 
-            subprocess.check_call(clang_args)
+            exit_status = subprocess.call(clang_args)
+            if exit_status != 0:
+                sys.exit(exit_status)
 
         if cppcheck != "":
             cppcheck_args = [cppcheck,
@@ -66,7 +68,9 @@ def go():
             cppcheck_args.extend(define_flags)
             cppcheck_args.extend(filtered_options)
 
-            subprocess.call(cppcheck_args)
+            exit_status = subprocess.call(cppcheck_args)
+            if exit_status != 0:
+                sys.exit(exit_status)
 
     exit_status = subprocess.call(cc + options)
     if exit_status != 0:
