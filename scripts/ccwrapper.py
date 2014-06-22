@@ -70,7 +70,6 @@ def go():
                 cppcheck_args.append('--platform=win32W')
 
             cppcheck_args.extend(define_flags)
-            cppcheck_args.extend(['-I' + xx for xx in includes])
             cppcheck_args.extend(filtered_options)
 
             exit_status = subprocess.call(cppcheck_args)
