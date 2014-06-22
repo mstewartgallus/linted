@@ -425,9 +425,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
             struct service_file const *file = &services[dup_pair->service].file;
 
-            linted_ko ko = file->ko;
-            if ((errnum = linted_ko_reopen(&ko, dup_pair->flags)) != 0) {
-                goto destroy_proc_kos;
+            linted_ko ko;
+            {
+                linted_ko xx;
+                if ((errnum = linted_ko_reopen(&xx, file->ko,
+                                               dup_pair->flags)) != 0) {
+                    goto destroy_proc_kos;
+                }
+                ko = xx;
             }
 
             proc_kos[kos_opened] = ko;

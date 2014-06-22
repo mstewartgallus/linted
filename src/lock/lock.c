@@ -102,12 +102,13 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0);
 
         /* Make a copy so that the parent can't unlock the lock accidentally */
+        linted_lock_file dup_lock_file;
         {
-            linted_lock_file xx = lock_file;
-            if ((errnum = linted_ko_reopen(&xx, LINTED_KO_RDWR)) != 0) {
+            linted_lock_file xx;
+            if ((errnum = linted_ko_reopen(&xx, lock_file, LINTED_KO_RDWR)) != 0) {
                 exit_with_error(spawn_error, errnum);
             }
-            lock_file = xx;
+            dup_lock_file = xx;
         }
 
         {
@@ -115,7 +116,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
                                    .l_whence = SEEK_SET,
                                    .l_start = 0,
                                    .l_len = 0 };
-            if (-1 == fcntl(lock_file, F_SETLK, &flock)) {
+            if (-1 == fcntl(dup_lock_file, F_SETLK, &flock)) {
                 exit_with_error(spawn_error, errno);
             }
         }
