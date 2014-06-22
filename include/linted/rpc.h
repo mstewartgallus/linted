@@ -42,7 +42,7 @@ static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * buf)
     memcpy(buf, bytes, sizeof bytes);
 }
 
-static inline uint_fast32_t linted_rpc_unpack_uint32(char const * restrict buf)
+static inline uint_fast32_t linted_rpc_unpack_uint32(char const * buf)
 {
     unsigned char pos_bytes[LINTED_RPC_UINT32_SIZE];
     memcpy(pos_bytes, buf, sizeof pos_bytes);
