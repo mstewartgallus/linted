@@ -404,12 +404,20 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct linted_spawn_file_actions *file_actions;
         struct linted_spawn_attr *attr;
 
-        if ((errnum = linted_spawn_file_actions_init(&file_actions)) != 0) {
-            goto exit_services;
+        {
+            struct linted_spawn_file_actions *xx;
+            if ((errnum = linted_spawn_file_actions_init(&xx)) != 0) {
+                goto exit_services;
+            }
+            file_actions = xx;
         }
 
-        if ((errnum = linted_spawn_attr_init(&attr)) != 0) {
-            goto destroy_file_actions;
+        {
+            struct linted_spawn_attr *xx;
+            if ((errnum = linted_spawn_attr_init(&xx)) != 0) {
+                goto destroy_file_actions;
+            }
+            attr = xx;
         }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
@@ -493,7 +501,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         linted_io_write_str(stdout, NULL, LINTED_STR("\n"));
     }
 
-    char *logger_buffer = linted_mem_alloc(&errnum, LINTED_LOGGER_LOG_MAX);
+    char *logger_buffer;
+    {
+        linted_error xx;
+        logger_buffer = linted_mem_alloc(&xx, LINTED_LOGGER_LOG_MAX);
+        errnum = xx;
+    }
     if (errnum != 0) {
         goto close_new_connections;
     }
@@ -501,8 +514,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     {
         struct connection_pool *connection_pool;
 
-        if ((errnum = connection_pool_create(&connection_pool)) != 0) {
-            goto free_logger_buffer;
+        {
+            struct connection_pool *xx;
+            if ((errnum = connection_pool_create(&xx)) != 0) {
+                goto free_logger_buffer;
+            }
+            connection_pool = xx;
         }
 
         struct service_process *gui_service =
@@ -1020,7 +1037,12 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 {
     linted_error errnum;
 
-    struct connection_pool *pool = linted_mem_alloc(&errnum, sizeof *pool);
+    struct connection_pool *pool;
+    {
+        linted_error xx;
+        pool = linted_mem_alloc(&xx, sizeof *pool);
+        errnum = xx;
+    }
     if (errnum != 0) {
         return errnum;
     }
