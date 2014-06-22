@@ -13,6 +13,8 @@
  *
  * @section rejected Rejected Tools
  *
+ * <ul>
+ *
  * <li> Flawfinder
  *
  * - Seems to be defunct right now.
@@ -34,4 +36,6 @@
  *   an exception however.
  *
  * </li>
+ *
+ * </ul>
  */
