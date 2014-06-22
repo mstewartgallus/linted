@@ -68,21 +68,17 @@ struct linted_updater_update
 struct linted_updater_task_send
 {
     struct linted_asynch_task_mq_send parent;
-    char message[LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_UINT32_SIZE
-                 + LINTED_RPC_UINT32_SIZE];
+    char message
+        [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
+         + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
 };
 
 struct linted_updater_task_receive
 {
     struct linted_asynch_task_mq_receive parent;
-    char message[LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_INT32_SIZE
-                 + LINTED_RPC_UINT32_SIZE
-                 + LINTED_RPC_UINT32_SIZE];
+    char message
+        [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
+         + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
 };
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
