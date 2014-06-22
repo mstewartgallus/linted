@@ -26,6 +26,7 @@ def go():
     if '-c' in options:
         filtered_options = options_filter(options)
         define_flags = get_predefined(cc)
+        includes = get_includes(cc)
 
         if clang != "":
             clang_args = []
@@ -35,9 +36,12 @@ def go():
                                '-Wno-unknown-warning-option',
                                '--analyze',
                                '-Xclang', '-analyzer-output=text',
-                               '-o-'])
+                               '-o-',
+                               '-nostdinc'])
             for checker in checkers:
                 clang_args.extend(['-Xanalyzer', '-analyzer-checker=' + checker])
+            clang_args.extend(define_flags)
+            clang_args.extend(['-isystem' + xx for xx in includes])
             clang_args.extend(filtered_options)
 
             exit_status = subprocess.call(clang_args)
@@ -66,6 +70,7 @@ def go():
                 cppcheck_args.append('--platform=win32W')
 
             cppcheck_args.extend(define_flags)
+            cppcheck_args.extend(['-I' + xx for xx in includes])
             cppcheck_args.extend(filtered_options)
 
             exit_status = subprocess.call(cppcheck_args)
@@ -81,8 +86,7 @@ def go():
 def get_predefined(cc):
     defines = None
     with open(os.devnull) as null:
-        defines = subprocess.check_output(cc + ['-dM', '-E', '-'],
-                                                  stdin=null)
+        defines = subprocess.check_output(cc + ['-dM', '-E', '-'], stdin=null)
 
     defines = defines.decode('utf-8').split('\n')
 
@@ -95,6 +99,20 @@ def get_predefined(cc):
 
     return defineflags
 
+def get_includes(cc):
+    includes = None
+    with open(os.devnull) as null:
+        includes = subprocess.check_output(cc + ['-v', '-E', '-'], stdin=null,
+                                           stderr=subprocess.STDOUT)
+
+    includes = includes.decode('utf-8')
+
+    start = '#include <...> search starts here:\n'
+    end = 'End of search list.'
+    includes = includes[includes.find(start) + len(start):includes.find(end) - 1].split('\n')
+
+    includes = [xx[1:] for xx in includes]
+    return includes
 
 def options_filter(options):
     cppcheck_options = []
