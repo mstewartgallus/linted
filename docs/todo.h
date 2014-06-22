@@ -14,8 +14,6 @@
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
  * - The tools:
- *   - Flawfinder
- *   - RATS,
  *   - SPLINT
  *   - Cqual
  *   - Smatch
