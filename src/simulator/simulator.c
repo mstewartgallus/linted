@@ -271,9 +271,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     for (;;) {
         struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
-        linted_asynch_pool_wait(pool, completed_tasks,
-                                LINTED_ARRAY_SIZE(completed_tasks),
-                                &task_count);
+        {
+            size_t xx;
+            linted_asynch_pool_wait(pool, completed_tasks,
+                                    LINTED_ARRAY_SIZE(completed_tasks),
+                                    &xx);
+            task_count = xx;
+        }
 
         for (size_t ii = 0u; ii < task_count; ++ii) {
             if ((errnum = dispatch(completed_tasks[ii])) != 0) {

@@ -233,7 +233,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     size_t display_string_length = strlen(original_display) + 1;
-    char *display_env_var = linted_mem_alloc(&errnum, display_string_length);
+    char *display_env_var;
+    {
+        linted_error xx;
+        display_env_var = linted_mem_alloc(&xx, display_string_length);
+        errnum = xx;
+    }
     if (errnum != 0) {
         failure(stderr, program_name,
                 LINTED_STR("no DISPLAY environment variable"), errnum);
@@ -458,9 +463,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
         struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
-        linted_error poll_errnum = linted_asynch_pool_poll(
-            pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
-            &task_count);
+        linted_error poll_errnum;
+        {
+            size_t xx;
+            poll_errnum = linted_asynch_pool_poll(pool,
+                                                  completed_tasks,
+                                                  LINTED_ARRAY_SIZE(completed_tasks),
+                                                  &xx);
+            task_count = xx;
+        }
 
         bool had_asynch_event = poll_errnum != EAGAIN;
         if (had_asynch_event) {

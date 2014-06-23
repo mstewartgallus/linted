@@ -260,7 +260,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     size_t display_value_length = strlen(original_display);
     size_t display_string_length = strlen("DISPLAY=") + display_value_length
                                    + 1u;
-    char *display = linted_mem_alloc(&errnum, display_string_length);
+    char *display;
+    {
+        linted_error xx;
+        display = linted_mem_alloc(&xx, display_string_length);
+        errnum = xx;
+    }
     if (errnum != 0) {
         linted_io_write_format(stderr, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
@@ -421,8 +426,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
-        linted_ko *proc_kos = linted_mem_alloc_array(
-            &errnum, sizeof proc_kos[0u], dup_pairs_size);
+        linted_ko *proc_kos;
+        {
+            linted_error xx;
+            proc_kos = linted_mem_alloc_array(&xx,
+                                              sizeof proc_kos[0u], dup_pairs_size);
+            errnum = xx;
+        }
         if (errnum != 0) {
             goto destroy_attr;
         }
@@ -484,9 +494,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     linted_manager new_connections;
-    if ((errnum = linted_manager_bind(&new_connections, BACKLOG, NULL, 0))
-        != 0) {
-        goto exit_services;
+    {
+        linted_manager xx;
+        if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0))
+            != 0) {
+            goto exit_services;
+        }
+        new_connections = xx;
     }
 
     {
@@ -547,9 +561,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         for (;;) {
             struct linted_asynch_task *completed_tasks[20u];
             size_t task_count;
-            linted_asynch_pool_wait(pool, completed_tasks,
-                                    LINTED_ARRAY_SIZE(completed_tasks),
-                                    &task_count);
+            {
+                size_t xx;
+                linted_asynch_pool_wait(pool, completed_tasks,
+                                        LINTED_ARRAY_SIZE(completed_tasks),
+                                        &xx);
+                task_count = xx;
+            }
 
             for (size_t ii = 0u; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
