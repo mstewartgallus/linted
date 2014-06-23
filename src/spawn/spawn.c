@@ -267,13 +267,15 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                     goto unmap_spawn_error;
                 }
 
-                struct f_owner_ex ex
-                    = { .type = F_OWNER_PGRP,
-                        .pid = 0 == attr->pgroup ? child : attr->pgroup };
-                if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    goto unmap_spawn_error;
+                {
+                    struct f_owner_ex ex
+                        = { .type = F_OWNER_PGRP,
+                            .pid = 0 == attr->pgroup ? child : attr->pgroup };
+                    if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
+                        errnum = errno;
+                        assert(errnum != 0);
+                        goto unmap_spawn_error;
+                    }
                 }
 
                 if (-1 == fcntl(kill_fd_read, F_SETFL, (long)O_ASYNC)) {
@@ -303,8 +305,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
 
         {
-            siginfo_t info;
-            {
+             int code;
+             int status;
+             {
+                siginfo_t info;
                 do {
                     if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
                         errnum = errno;
@@ -316,12 +320,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 if (errnum != 0) {
                     goto unmap_spawn_error;
                 }
+
+                status = info.si_status;
+                code = info.si_code;
             }
 
-            switch (info.si_code) {
+            switch (code) {
             case CLD_EXITED: {
-                int exit_status = info.si_status;
-                switch (exit_status) {
+                switch (status) {
                 case 0:
                     errnum = EINVAL;
                     goto unmap_spawn_error;
@@ -335,7 +341,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             case CLD_DUMPED:
             case CLD_KILLED: {
 #if defined __linux__
-                int signo = info.si_status;
+                int signo = status;
                 switch (signo) {
                 case SIGKILL:
                     errnum = ENOMEM;
