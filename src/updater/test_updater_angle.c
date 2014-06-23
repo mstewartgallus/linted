@@ -39,19 +39,33 @@
 
 int main(void)
 {
-    linted_updater_angle zero = LINTED_UPDATER_ANGLE(0u, 1u);
+    linted_updater_angle zero = LINTED_UPDATER_ANGLE(0u, 4u);
     linted_updater_int sin_zero = linted_updater_sin(zero);
     if (sin_zero != 0) {
-        LINTED_IMPOSSIBILITY("linted_updater_sin(zero) == %" LINTED_UPDATER_Id,
+        LINTED_IMPOSSIBILITY("linted_updater_sin(zero) == %" LINTED_UPDATER_Id "\n",
                              sin_zero);
     }
 
-    /* TODO: This is wrong! */
+    linted_updater_angle quarter = LINTED_UPDATER_ANGLE(1u, 4u);
+    linted_updater_int sin_quarter = linted_updater_sin(quarter);
+    /* TODO This isn't totally correct */
+    if (sin_quarter != (LINTED_UPDATER_INT_MAX - 6)) {
+        LINTED_IMPOSSIBILITY("linted_updater_sin(quarter) == %" LINTED_UPDATER_Id "\n",
+                             sin_quarter);
+    }
+
     linted_updater_angle half = LINTED_UPDATER_ANGLE(1u, 2u);
     linted_updater_int sin_half = linted_updater_sin(half);
-    if (sin_half != LINTED_UPDATER_INT_MIN) {
-        LINTED_IMPOSSIBILITY("linted_updater_sin(half) == %" LINTED_UPDATER_Id,
+    if (sin_half != 0) {
+        LINTED_IMPOSSIBILITY("linted_updater_sin(half) == %" LINTED_UPDATER_Id "\n",
                              sin_half);
+    }
+
+    linted_updater_angle three_quarters = LINTED_UPDATER_ANGLE(3u, 4u);
+    linted_updater_int sin_three_quarters = linted_updater_sin(three_quarters);
+    if (sin_three_quarters != (LINTED_UPDATER_INT_MIN + 12)) {
+        LINTED_IMPOSSIBILITY("linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id " %i\n",
+                             sin_three_quarters);
     }
 
     return EXIT_SUCCESS;

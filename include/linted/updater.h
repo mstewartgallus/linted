@@ -22,6 +22,7 @@
 #include "linted/rpc.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -76,11 +77,11 @@ struct linted_updater_task_receive
 #define LINTED_UPDATER_INT_MAX INT32_MAX
 #define LINTED_UPDATER_INT_MIN INT32_MIN
 
-#define LINTED_UPDATER_Id "d"
+#define LINTED_UPDATER_Id PRIdLEAST32
 
-#define LINTED_UPDATER_ANGLE(X, Y)                                             \
-    {                                                                          \
-        ._value = (LINTED_UPDATER_UINT_MAX / (linted_updater_uint) (Y)) * (linted_updater_uint) (X) \
+#define LINTED_UPDATER_ANGLE(X, Y)                                      \
+    {                                                                   \
+        ._value = (((uintmax_t) LINTED_UPDATER_UINT_MAX) / (Y)) * (X)   \
     }
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
@@ -146,11 +147,14 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
     return angle;
 }
 
+/**
+ * @bug Key points such as 3/4 aren't quite correct
+ */
 static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
 {
     linted_updater_uint x = angle._value;
 
-    if (x > LINTED_UPDATER_UINT_MAX / 2u) {
+    if (x >= LINTED_UPDATER_UINT_MAX / 2u) {
         return
             -linted_updater__sin_first_half(x - LINTED_UPDATER_UINT_MAX / 2u);
     }
