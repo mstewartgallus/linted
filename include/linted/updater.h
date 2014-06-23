@@ -32,16 +32,6 @@
  * simulator.
  */
 
-#define LINTED_UPDATER_UINT_MAX UINT32_MAX
-
-#define LINTED_UPDATER_INT_MAX INT32_MAX
-#define LINTED_UPDATER_INT_MIN INT32_MIN
-
-#define LINTED_UPDATER_ANGLE(X, Y)                                             \
-    {                                                                          \
-        ._value = (LINTED_UPDATER_UINT_MAX / (Y)) * (X)                        \
-    }
-
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
@@ -80,6 +70,18 @@ struct linted_updater_task_receive
         [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
          + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
 };
+
+#define LINTED_UPDATER_UINT_MAX UINT32_MAX
+
+#define LINTED_UPDATER_INT_MAX INT32_MAX
+#define LINTED_UPDATER_INT_MIN INT32_MIN
+
+#define LINTED_UPDATER_Id "d"
+
+#define LINTED_UPDATER_ANGLE(X, Y)                                             \
+    {                                                                          \
+        ._value = (LINTED_UPDATER_UINT_MAX / (linted_updater_uint) (Y)) * (linted_updater_uint) (X) \
+    }
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
 static linted_updater_int
@@ -144,28 +146,6 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
     return angle;
 }
 
-/**
- * LINTED_UPDATER_UINT_MAX / 4u
- * / \
- *  |
- *  |
- *  |
- *  |
- *  |------------> 0u
- *
- * cos(0u) = LINTED_UPDATER_UINT_MAX
- *
- * cos(LINTED_UPDATER_UINT_MAX / 4u) = 0
- *
- *
- * |   -|-   |    |    |
- * | /  |  \ |    |    |
- * |/   |   \|    |    |
- * |----|----|----|-----
- * |    |    |\   |   /|
- * |    |    | \  |  / |
- * |    |    |   -|-   |
- */
 static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
 {
     linted_updater_uint x = angle._value;
