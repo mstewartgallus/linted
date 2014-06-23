@@ -172,7 +172,7 @@ static inline linted_updater_int
 linted_updater__sin_first_half(linted_updater_uint x)
 {
     if (x > LINTED_UPDATER_UINT_MAX / 4u) {
-        x = LINTED_UPDATER_UINT_MAX / 4u - x;
+        x = LINTED_UPDATER_UINT_MAX / 2u - x;
     }
 
     return linted_updater__sin_first_quadrant(x);

@@ -62,12 +62,22 @@ int main(void)
             "linted_updater_sin(half) == %" LINTED_UPDATER_Id "\n", sin_half);
     }
 
+    /* TODO This isn't totally correct */
     linted_updater_angle three_quarters = LINTED_UPDATER_ANGLE(3u, 4u);
     linted_updater_int sin_three_quarters = linted_updater_sin(three_quarters);
     if (sin_three_quarters != (LINTED_UPDATER_INT_MIN + 12)) {
         LINTED_IMPOSSIBILITY(
-            "linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id " %i\n",
+            "linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id "\n",
             sin_three_quarters);
+    }
+
+    /* TODO This isn't totally correct */
+    linted_updater_angle full = LINTED_UPDATER_ANGLE(1u, 1u);
+    linted_updater_int sin_full = linted_updater_sin(full);
+    if (sin_full != 6) {
+        LINTED_IMPOSSIBILITY(
+            "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n",
+            sin_full);
     }
 
     return EXIT_SUCCESS;
