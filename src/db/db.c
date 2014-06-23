@@ -243,16 +243,16 @@ unlock_db:
     return 0;
 
 close_db:
-    linted_db_close(&the_db);
+    linted_db_close(the_db);
     return errnum;
 }
 
-linted_error linted_db_close(linted_db *dbp)
+linted_error linted_db_close(linted_db db)
 {
-    return linted_ko_close(*dbp);
+    return linted_ko_close(db);
 }
 
-linted_error linted_db_temp_file(linted_db *dbp, linted_ko *kop)
+linted_error linted_db_temp_file(linted_db db, linted_ko *kop)
 {
     linted_error errnum = 0;
 
@@ -289,7 +289,7 @@ try_again:
     }
 
     linted_ko temp_field;
-    errnum = linted_file_create(&temp_field, *dbp, temp_path,
+    errnum = linted_file_create(&temp_field, db, temp_path,
                                 LINTED_FILE_RDWR | LINTED_FILE_SYNC
                                 | LINTED_FILE_EXCL,
                                 S_IRUSR | S_IWUSR);
@@ -307,7 +307,7 @@ try_again:
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db *dbp, char const *name,
+linted_error linted_db_temp_send(linted_db db, char const *name,
                                  linted_ko tmp)
 {
     linted_error errnum;
@@ -330,7 +330,7 @@ linted_error linted_db_temp_send(linted_db *dbp, char const *name,
         field_path = xx;
     }
 
-    if (-1 == renameat(*dbp, temp_path, *dbp, field_path)) {
+    if (-1 == renameat(db, temp_path, db, field_path)) {
         errnum = errno;
         assert(errnum != 0);
     }

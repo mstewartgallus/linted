@@ -984,7 +984,7 @@ static linted_error check_db(linted_ko cwd)
         linted_ko tmp;
         {
             linted_ko xx;
-            if ((errnum = linted_db_temp_file(&my_db, &xx)) != 0) {
+            if ((errnum = linted_db_temp_file(my_db, &xx)) != 0) {
                 goto close_db;
             }
             tmp = xx;
@@ -1002,9 +1002,13 @@ static linted_error check_db(linted_ko cwd)
 
         struct linted_asynch_task *completed_tasks[20u];
         size_t task_count;
-        linted_asynch_pool_wait(pool, completed_tasks,
-                                LINTED_ARRAY_SIZE(completed_tasks),
-                                &task_count);
+        {
+            size_t xx;
+            linted_asynch_pool_wait(pool, completed_tasks,
+                                    LINTED_ARRAY_SIZE(completed_tasks),
+                                    &xx);
+            task_count = xx;
+        }
 
         for (size_t ii = 0u; ii < task_count; ++ii) {
             struct linted_asynch_task *completed_task = completed_tasks[ii];
@@ -1022,7 +1026,7 @@ static linted_error check_db(linted_ko cwd)
         }
 
     done_writing:
-        if ((errnum = linted_db_temp_send(&my_db, "hello", tmp)) != 0) {
+        if ((errnum = linted_db_temp_send(my_db, "hello", tmp)) != 0) {
             goto close_tmp;
         }
 
@@ -1035,7 +1039,7 @@ static linted_error check_db(linted_ko cwd)
     }
 
 close_db : {
-    linted_error close_errnum = linted_db_close(&my_db);
+    linted_error close_errnum = linted_db_close(my_db);
     if (0 == errnum) {
         errnum = close_errnum;
     }
