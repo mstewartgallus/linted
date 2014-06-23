@@ -79,9 +79,9 @@ struct linted_updater_task_receive
 
 #define LINTED_UPDATER_Id PRIdLEAST32
 
-#define LINTED_UPDATER_ANGLE(X, Y)                                      \
-    {                                                                   \
-        ._value = (((uintmax_t) LINTED_UPDATER_UINT_MAX) / (Y)) * (X)   \
+#define LINTED_UPDATER_ANGLE(X, Y)                                             \
+    {                                                                          \
+        ._value = (((uintmax_t)LINTED_UPDATER_UINT_MAX) / (Y)) * (X)           \
     }
 
 static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);

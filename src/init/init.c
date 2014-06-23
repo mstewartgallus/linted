@@ -436,8 +436,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             linted_ko ko;
             {
                 linted_ko xx;
-                if ((errnum = linted_ko_reopen(&xx, file->ko,
-                                               dup_pair->flags)) != 0) {
+                if ((errnum = linted_ko_reopen(&xx, file->ko, dup_pair->flags))
+                    != 0) {
                     goto destroy_proc_kos;
                 }
                 ko = xx;

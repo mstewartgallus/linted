@@ -105,7 +105,8 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         linted_lock_file dup_lock_file;
         {
             linted_lock_file xx;
-            if ((errnum = linted_ko_reopen(&xx, lock_file, LINTED_KO_RDWR)) != 0) {
+            if ((errnum = linted_ko_reopen(&xx, lock_file, LINTED_KO_RDWR))
+                != 0) {
                 exit_with_error(spawn_error, errnum);
             }
             dup_lock_file = xx;
