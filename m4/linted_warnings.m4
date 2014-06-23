@@ -27,7 +27,7 @@ dnl
         [-Wredundant-decls]dnl
         [-Wnested-externs]
         [-Wlogical-op]dnl
-        [-Wstrict-aliasing=1]dnl
+        [-Wstrict-aliasing=2]dnl
         [-Wstrict-overflow=5]dnl
         [-Wtrampolines]dnl We force a nonexecutable stack so for most
                        dnl targets would generate broken code if we
