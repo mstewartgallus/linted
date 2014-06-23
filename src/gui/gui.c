@@ -730,17 +730,19 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
     struct controller_data *controller_data = updater_task->controller_data;
     struct linted_asynch_pool *pool = updater_task->pool;
 
-    struct linted_updater_update update;
-    linted_updater_decode(LINTED_UPCAST(updater_task), &update);
+    {
+        struct linted_updater_update update;
+        linted_updater_decode(LINTED_UPCAST(updater_task), &update);
 
-    linted_asynch_pool_submit(pool, task);
+        linted_asynch_pool_submit(pool, task);
 
-    sim_model->x_rotation = linted_updater_angle_to_float(update.x_rotation);
-    sim_model->y_rotation = linted_updater_angle_to_float(update.y_rotation);
+        sim_model->x_rotation = linted_updater_angle_to_float(update.x_rotation);
+        sim_model->y_rotation = linted_updater_angle_to_float(update.y_rotation);
 
-    sim_model->x_position = update.x_position * (1 / (double)2048);
-    sim_model->y_position = update.y_position * (1 / (double)2048);
-    sim_model->z_position = update.z_position * (1 / (double)2048);
+        sim_model->x_position = update.x_position * (1 / (double)2048);
+        sim_model->y_position = update.y_position * (1 / (double)2048);
+        sim_model->z_position = update.z_position * (1 / (double)2048);
+    }
 
     if (!controller_data->update_pending
         || controller_data->update_in_progress) {

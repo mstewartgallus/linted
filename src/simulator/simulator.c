@@ -446,15 +446,18 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
         return 0;
     }
 
-    struct linted_updater_update update
-        = { .x_position = simulator_state->x_position,
-            .y_position = simulator_state->y_position,
-            .z_position = simulator_state->z_position,
-            .x_rotation = simulator_state->x_rotation,
-            .y_rotation = simulator_state->y_rotation };
+    {
+        struct linted_updater_update update
+            = { .x_position = simulator_state->x_position,
+                .y_position = simulator_state->y_position,
+                .z_position = simulator_state->z_position,
+                .x_rotation = simulator_state->x_rotation,
+                .y_rotation = simulator_state->y_rotation };
 
-    linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
-                        updater, &update);
+        linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
+                            updater, &update);
+    }
+
     updater_task->simulator_state = simulator_state;
     updater_task->pool = pool;
     updater_task->updater = updater;
