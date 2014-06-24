@@ -144,6 +144,12 @@ struct connection_pool
     size_t count;
 };
 
+struct new_connection_task {
+    struct linted_manager_task_accept parent;
+    struct linted_asynch_pool *pool;
+    struct connection_pool *connection_pool;
+};
+
 struct init_logger_task {
     struct linted_logger_task parent;
     struct linted_asynch_pool *pool;
@@ -159,12 +165,7 @@ static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
 
 static linted_error on_receive_log(struct linted_asynch_task *completed_task);
-
-static linted_error on_new_connection(linted_manager new_socket,
-                                      struct linted_asynch_pool *pool,
-                                      union service_config const *config,
-                                      union service const *services,
-                                      struct connection_pool *connection_pool);
+static linted_error on_new_connection(struct linted_asynch_task *completed_task);
 
 static linted_error on_connection_recv_request(
     struct linted_asynch_pool *pool, struct connection *connection,
@@ -552,7 +553,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
         struct linted_asynch_task_waitid waiter_task;
         struct init_logger_task logger_task;
-        struct linted_manager_task_accept new_connections_accept_task;
+        struct new_connection_task new_connection_task;
 
         linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
 
@@ -561,14 +562,16 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         logger_task.process_name = process_name;
         logger_task.pool = pool;
 
-        linted_manager_accept(&new_connections_accept_task, NEW_CONNECTIONS,
-                              new_connections);
+        linted_manager_accept(LINTED_UPCAST(&new_connection_task),
+                              NEW_CONNECTIONS, new_connections);
+        new_connection_task.pool = pool;
+        new_connection_task.connection_pool = connection_pool;
 
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
         linted_asynch_pool_submit(pool,
                                   LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
-        linted_asynch_pool_submit(
-            pool, LINTED_UPCAST(LINTED_UPCAST(&new_connections_accept_task)));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&new_connection_task))));
 
         for (;;) {
             struct linted_asynch_task *completed_tasks[20u];
@@ -585,19 +588,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
                 switch (completed_task->task_action) {
                 case NEW_CONNECTIONS: {
-                    if ((errnum = completed_task->errnum) != 0) {
-                        goto close_connections;
-                    }
-
-                    struct linted_asynch_task_accept *task_accept
-                        = LINTED_DOWNCAST(struct linted_asynch_task_accept,
-                                          completed_task);
-                    linted_manager returned_ko = task_accept->returned_ko;
-                    linted_asynch_pool_submit(pool, completed_task);
-
-                    if ((errnum = on_new_connection(returned_ko, pool, config,
-                                                    services, connection_pool))
-                        != 0) {
+                    if ((errnum = on_new_connection(completed_task)) != 0) {
                         goto close_connections;
                     }
                     break;
@@ -829,13 +820,25 @@ static linted_error on_receive_log(struct linted_asynch_task *completed_task)
     return 0;
 }
 
-static linted_error on_new_connection(linted_manager new_socket,
-                                      struct linted_asynch_pool *pool,
-                                      union service_config const *config,
-                                      union service const *services,
-                                      struct connection_pool *connection_pool)
+static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 {
-    linted_error errnum = 0;
+    linted_error errnum;
+
+    if ((errnum = completed_task->errnum) != 0) {
+        return errnum;
+    }
+
+    struct new_connection_task *new_connection_task
+        = LINTED_DOWNCAST(struct new_connection_task,
+                          completed_task);
+
+    struct linted_asynch_task_accept *accept_task = LINTED_UPCAST(LINTED_UPCAST(new_connection_task));
+
+    struct linted_asynch_pool *pool = new_connection_task->pool;
+    struct connection_pool *connection_pool = new_connection_task->connection_pool;
+
+    linted_manager new_socket = accept_task->returned_ko;
+    linted_asynch_pool_submit(pool, completed_task);
 
     if (connection_pool->count >= MAX_MANAGE_CONNECTIONS) {
         /* I'm sorry sir but we are full today. */
