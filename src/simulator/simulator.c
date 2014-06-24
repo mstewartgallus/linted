@@ -274,8 +274,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         {
             size_t xx;
             linted_asynch_pool_wait(pool, completed_tasks,
-                                    LINTED_ARRAY_SIZE(completed_tasks),
-                                    &xx);
+                                    LINTED_ARRAY_SIZE(completed_tasks), &xx);
             task_count = xx;
         }
 

@@ -307,8 +307,7 @@ try_again:
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db db, char const *name,
-                                 linted_ko tmp)
+linted_error linted_db_temp_send(linted_db db, char const *name, linted_ko tmp)
 {
     linted_error errnum;
 

@@ -466,10 +466,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         linted_error poll_errnum;
         {
             size_t xx;
-            poll_errnum = linted_asynch_pool_poll(pool,
-                                                  completed_tasks,
-                                                  LINTED_ARRAY_SIZE(completed_tasks),
-                                                  &xx);
+            poll_errnum = linted_asynch_pool_poll(
+                pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks), &xx);
             task_count = xx;
         }
 
@@ -736,8 +734,10 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 
         linted_asynch_pool_submit(pool, task);
 
-        sim_model->x_rotation = linted_updater_angle_to_float(update.x_rotation);
-        sim_model->y_rotation = linted_updater_angle_to_float(update.y_rotation);
+        sim_model->x_rotation
+            = linted_updater_angle_to_float(update.x_rotation);
+        sim_model->y_rotation
+            = linted_updater_angle_to_float(update.y_rotation);
 
         sim_model->x_position = update.x_position * (1 / (double)2048);
         sim_model->y_position = update.y_position * (1 / (double)2048);

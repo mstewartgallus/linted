@@ -305,9 +305,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
 
         {
-             int code;
-             int status;
-             {
+            int code;
+            int status;
+            {
                 siginfo_t info;
                 do {
                     if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {

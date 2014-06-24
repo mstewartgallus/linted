@@ -76,8 +76,7 @@ int main(void)
     linted_updater_int sin_full = linted_updater_sin(full);
     if (sin_full != 6) {
         LINTED_IMPOSSIBILITY(
-            "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n",
-            sin_full);
+            "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n", sin_full);
     }
 
     return EXIT_SUCCESS;
