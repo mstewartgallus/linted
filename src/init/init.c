@@ -159,6 +159,13 @@ struct init_logger_task
     linted_ko log_ko;
 };
 
+struct wait_service_task {
+    struct linted_asynch_task_waitid parent;
+    struct linted_asynch_pool *pool;
+    struct service_process *gui_service;
+    struct service_process *sim_service;
+};
+
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
@@ -168,8 +175,8 @@ static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
 
 static linted_error on_receive_log(struct linted_asynch_task *completed_task);
-static linted_error on_new_connection(struct linted_asynch_task
-                                      *completed_task);
+static linted_error on_new_connection(struct linted_asynch_task *task);
+static linted_error on_process_wait(struct linted_asynch_task *completed_task);
 
 static linted_error on_connection_recv_request(
     struct linted_asynch_pool *pool, struct connection *connection,
@@ -553,11 +560,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct service_process *sim_service =
             &services[LINTED_SERVICE_SIMULATOR].process;
 
-        struct linted_asynch_task_waitid waiter_task;
+        struct wait_service_task waiter_task;
         struct init_logger_task logger_task;
         struct new_connection_task new_connection_task;
 
-        linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
+        linted_asynch_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1, WEXITED);
+        waiter_task.pool = pool;
+        waiter_task.gui_service = gui_service;
+        waiter_task.sim_service = sim_service;
 
         linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read,
                               logger_buffer);
@@ -570,7 +580,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         new_connection_task.pool = pool;
         new_connection_task.connection_pool = connection_pool;
 
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
+        linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
         linted_asynch_pool_submit(
             pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
         linted_asynch_pool_submit(
@@ -591,62 +601,23 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             for (size_t ii = 0u; ii < task_count; ++ii) {
                 struct linted_asynch_task *completed_task = completed_tasks[ii];
                 switch (completed_task->task_action) {
-                case NEW_CONNECTIONS: {
+                case NEW_CONNECTIONS:
                     if ((errnum = on_new_connection(completed_task)) != 0) {
                         goto close_connections;
                     }
                     break;
-                }
 
-                case LOGGER: {
+                case LOGGER:
                     if ((errnum = on_receive_log(completed_task)) != 0) {
                         goto close_connections;
                     }
                     break;
-                }
 
-                case WAITER: {
-                    if ((errnum = completed_task->errnum) != 0) {
-                        goto close_connections;
-                    }
-
-                    siginfo_t exit_info = waiter_task.info;
-                    linted_asynch_pool_submit(pool, completed_task);
-
-                    pid_t pid = exit_info.si_pid;
-
-                    if (pid == gui_service->pid) {
-                        gui_service->pid = -1;
-                    }
-
-                    if (pid == sim_service->pid) {
-                        sim_service->pid = -1;
-                    }
-
-                    switch (exit_info.si_code) {
-                    case CLD_DUMPED:
-                    case CLD_KILLED:
-                        raise(exit_info.si_status);
-                        errnum = errno;
-                        assert(errnum != 0);
-                        goto close_connections;
-
-                    case CLD_EXITED:
-                        if (exit_info.si_status != 0) {
-                            errnum = exit_info.si_status;
-                            goto close_connections;
-                        }
-                        break;
-
-                    default:
-                        assert(false);
-                    }
-
-                    if (-1 == gui_service->pid) {
+                case WAITER:
+                    if ((errnum = on_process_wait(completed_task)) != 0) {
                         goto close_connections;
                     }
                     break;
-                }
 
                 default: {
                     assert(CONNECTION <= completed_task->task_action);
@@ -680,6 +651,10 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     }
                     break;
                 }
+                }
+
+                if (-1 == gui_service->pid) {
+                    goto close_connections;
                 }
             }
         }
@@ -884,6 +859,64 @@ close_new_socket : {
     }
 }
     return errnum;
+}
+
+static linted_error on_process_wait(struct linted_asynch_task *completed_task)
+{
+    linted_error errnum;
+
+    if ((errnum = completed_task->errnum) != 0) {
+        return errnum;
+    }
+
+    struct wait_service_task *wait_service_task =
+        LINTED_DOWNCAST(struct wait_service_task, completed_task);
+
+    struct linted_asynch_pool *pool = wait_service_task->pool;
+    struct service_process *gui_service = wait_service_task->gui_service;
+    struct service_process *sim_service = wait_service_task->sim_service;
+
+    int exit_status;
+    int exit_code;
+    pid_t pid;
+    {
+        siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
+        exit_status = exit_info->si_status;
+        exit_code = exit_info->si_code;
+        pid = exit_info->si_pid;
+    }
+
+    linted_asynch_pool_submit(pool, completed_task);
+
+    if (pid == gui_service->pid) {
+        gui_service->pid = -1;
+    }
+
+    if (pid == sim_service->pid) {
+        sim_service->pid = -1;
+    }
+
+    switch (exit_code) {
+    case CLD_DUMPED:
+    case CLD_KILLED:
+        raise(exit_status);
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
+
+    case CLD_EXITED:
+        if (exit_status != 0) {
+            errnum = exit_status;
+            assert(errnum != 0);
+            return errnum;
+        }
+        break;
+
+    default:
+        assert(false);
+    }
+
+    return 0;
 }
 
 static linted_error on_connection_recv_request(
