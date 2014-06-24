@@ -144,12 +144,21 @@ struct connection_pool
     size_t count;
 };
 
+struct init_logger_task {
+    struct linted_logger_task parent;
+    struct linted_asynch_pool *pool;
+    char const *process_name;
+    linted_ko log_ko;
+};
+
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
 
 static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
+
+static linted_error on_receive_log(struct linted_asynch_task *completed_task);
 
 static linted_error on_new_connection(linted_manager new_socket,
                                       struct linted_asynch_pool *pool,
@@ -542,19 +551,22 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             &services[LINTED_SERVICE_SIMULATOR].process;
 
         struct linted_asynch_task_waitid waiter_task;
-        struct linted_logger_task logger_task;
+        struct init_logger_task logger_task;
         struct linted_manager_task_accept new_connections_accept_task;
 
         linted_asynch_waitid(&waiter_task, WAITER, P_ALL, -1, WEXITED);
 
-        linted_logger_receive(&logger_task, LOGGER, logger_read, logger_buffer);
+        linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read, logger_buffer);
+        logger_task.log_ko = stderr;
+        logger_task.process_name = process_name;
+        logger_task.pool = pool;
 
         linted_manager_accept(&new_connections_accept_task, NEW_CONNECTIONS,
                               new_connections);
 
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&waiter_task));
         linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(LINTED_UPCAST(&logger_task)));
+                                  LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
         linted_asynch_pool_submit(
             pool, LINTED_UPCAST(LINTED_UPCAST(&new_connections_accept_task)));
 
@@ -592,18 +604,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 }
 
                 case LOGGER: {
-                    if ((errnum = completed_task->errnum) != 0) {
+                    if ((errnum = on_receive_log(completed_task)) != 0) {
                         goto close_connections;
                     }
-
-                    size_t log_size = LINTED_UPCAST(&logger_task)->bytes_read;
-
-                    linted_io_write_string(stderr, NULL, process_name);
-                    linted_io_write_str(stderr, NULL, LINTED_STR(": "));
-                    linted_io_write_all(stderr, NULL, logger_buffer, log_size);
-                    linted_io_write_str(stderr, NULL, LINTED_STR("\n"));
-
-                    linted_asynch_pool_submit(pool, completed_task);
                     break;
                 }
 
@@ -796,6 +799,34 @@ static linted_error updater_create(linted_ko *kop)
 static linted_error controller_create(linted_ko *kop)
 {
     return linted_controller_create(kop, 0);
+}
+
+static linted_error on_receive_log(struct linted_asynch_task *completed_task)
+{
+    linted_error errnum;
+
+    if ((errnum = completed_task->errnum) != 0) {
+        return errnum;
+    }
+
+    struct init_logger_task *logger_task
+        = LINTED_DOWNCAST(struct init_logger_task, completed_task);
+
+
+    struct linted_asynch_pool *pool = logger_task->pool;
+    linted_ko log_ko = logger_task->log_ko;
+    char const * process_name = logger_task->process_name;
+    size_t log_size = LINTED_UPCAST(LINTED_UPCAST(logger_task))->bytes_read;
+    char const * logger_buffer = LINTED_UPCAST(LINTED_UPCAST(logger_task))->buf;
+
+    linted_io_write_string(log_ko, NULL, process_name);
+    linted_io_write_str(log_ko, NULL, LINTED_STR(": "));
+    linted_io_write_all(log_ko, NULL, logger_buffer, log_size);
+    linted_io_write_str(log_ko, NULL, LINTED_STR("\n"));
+
+    linted_asynch_pool_submit(pool, completed_task);
+
+    return 0;
 }
 
 static linted_error on_new_connection(linted_manager new_socket,
