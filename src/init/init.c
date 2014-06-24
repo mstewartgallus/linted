@@ -161,6 +161,7 @@ static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
 
+static linted_error logger_create(linted_ko *kop);
 static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
 
@@ -357,8 +358,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
            [LINTED_SERVICE_STDERR]
                = { .file = { .type = SERVICE_FILE, .generator = find_stderr } },
            [LINTED_SERVICE_LOGGER]
-               = { .file = { .type = SERVICE_FILE,
-                             .generator = linted_logger_create } },
+               = { .file = { .type = SERVICE_FILE, .generator = logger_create } },
            [LINTED_SERVICE_UPDATER]
                = { .file
                    = { .type = SERVICE_FILE, .generator = updater_create } },
@@ -780,6 +780,11 @@ static linted_error find_stderr(linted_ko *kop)
 {
     *kop = kos[2u];
     return 0;
+}
+
+static linted_error logger_create(linted_ko *kop)
+{
+    return linted_logger_create(kop, 0);
 }
 
 static linted_error updater_create(linted_ko *kop)

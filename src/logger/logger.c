@@ -19,10 +19,15 @@
 #include "linted/mq.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <string.h>
 
-linted_error linted_logger_create(linted_logger *loggerp)
+linted_error linted_logger_create(linted_logger *loggerp, int flags)
 {
+    if (flags != 0) {
+        return EINVAL;
+    }
+
     struct linted_mq_attr attr;
     memset(&attr, 0, sizeof attr);
 
