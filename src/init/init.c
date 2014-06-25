@@ -198,6 +198,8 @@ static linted_error logger_create(linted_ko *kop);
 static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
 
+static linted_error dispatch(struct linted_asynch_task *completed_task);
+
 static linted_error on_receive_log(struct linted_asynch_task *completed_task);
 static linted_error on_new_connection(struct linted_asynch_task *task);
 static linted_error on_process_wait(struct linted_asynch_task *completed_task);
@@ -622,37 +624,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             }
 
             for (size_t ii = 0u; ii < task_count; ++ii) {
-                struct linted_asynch_task *completed_task = completed_tasks[ii];
-                switch (completed_task->task_action) {
-                case NEW_CONNECTIONS:
-                    if ((errnum = on_new_connection(completed_task)) != 0) {
-                        goto close_connections;
-                    }
-                    break;
-
-                case LOGGER:
-                    if ((errnum = on_receive_log(completed_task)) != 0) {
-                        goto close_connections;
-                    }
-                    break;
-
-                case WAITER:
-                    if ((errnum = on_process_wait(completed_task)) != 0) {
-                        goto close_connections;
-                    }
-                    break;
-
-                case READ_CONNECTION:
-                    if ((errnum = on_read_connection(completed_task)) != 0) {
-                        goto close_connections;
-                    }
-                    break;
-
-                case WRITE_CONNECTION:
-                    if ((errnum = on_write_connection(completed_task)) != 0) {
-                        goto close_connections;
-                    }
-                    break;
+                if ((errnum = dispatch(completed_tasks[ii])) != 0) {
+                    goto close_connections;
                 }
 
                 if (-1 == gui_service->pid) {
@@ -776,6 +749,29 @@ static linted_error updater_create(linted_ko *kop)
 static linted_error controller_create(linted_ko *kop)
 {
     return linted_controller_create(kop, 0);
+}
+
+static linted_error dispatch(struct linted_asynch_task *completed_task)
+{
+    switch (completed_task->task_action) {
+    case NEW_CONNECTIONS:
+        return on_new_connection(completed_task);
+
+    case LOGGER:
+        return on_receive_log(completed_task);
+
+    case WAITER:
+        return on_process_wait(completed_task);
+
+    case READ_CONNECTION:
+        return on_read_connection(completed_task);
+
+    case WRITE_CONNECTION:
+        return on_write_connection(completed_task);
+
+    default:
+        assert(false);
+    }
 }
 
 static linted_error on_receive_log(struct linted_asynch_task *completed_task)
