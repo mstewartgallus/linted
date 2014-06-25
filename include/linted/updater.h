@@ -182,14 +182,8 @@ linted_updater__sin_first_half(linted_updater_uint x)
 static inline linted_updater_int
 linted_updater__sin_first_quadrant(linted_updater_uint angle)
 {
-    uintmax_t x = angle * 6u;
-    uintmax_t max = LINTED_UPDATER_INT_MAX;
-
-    /* Approximate with a Taylor series */
-    return x - (x * x * x) / (6u * max * max)
-           + (x * x * x * x * x) / (120u * max * max * max * max)
-           - (x * x * x * x * x * x * x)
-             / (5040u * max * max * max * max * max * max);
+    /* Hack it in using the math library for now */
+    return sin((((double)angle) / UINT32_MAX) * 2 * 3.1415926535897932384626433832) * UINT32_MAX;
 }
 
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,

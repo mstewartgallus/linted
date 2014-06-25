@@ -19,10 +19,16 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 %C%_libupdater_la_SOURCES=\
   %D%/updater.c\
   include/linted/updater.h
-%C%_libupdater_la_LIBADD=src/asynch/libasynch.la src/mq/libmq.la
+%C%_libupdater_la_LIBADD=\
+  src/asynch/libasynch.la\
+  src/mq/libmq.la\
+  \
+  -lm
 
 TESTS+=%D%/test_updater_angle
 
 check_PROGRAMS+=%D%/test_updater_angle
 %C%_test_updater_angle_SOURCES=%D%/test_updater_angle.c
-%C%_test_updater_angle_LDADD=src/io/libio.la
+%C%_test_updater_angle_LDADD=\
+  src/io/libio.la\
+  src/updater/libupdater.la

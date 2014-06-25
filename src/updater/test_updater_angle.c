@@ -49,7 +49,7 @@ int main(void)
     linted_updater_angle quarter = LINTED_UPDATER_ANGLE(1u, 4u);
     linted_updater_int sin_quarter = linted_updater_sin(quarter);
     /* TODO This isn't totally correct */
-    if (sin_quarter != (LINTED_UPDATER_INT_MAX - 6)) {
+    if (sin_quarter != LINTED_UPDATER_INT_MAX) {
         LINTED_IMPOSSIBILITY(
             "linted_updater_sin(quarter) == %" LINTED_UPDATER_Id "\n",
             sin_quarter);
@@ -65,7 +65,7 @@ int main(void)
     /* TODO This isn't totally correct */
     linted_updater_angle three_quarters = LINTED_UPDATER_ANGLE(3u, 4u);
     linted_updater_int sin_three_quarters = linted_updater_sin(three_quarters);
-    if (sin_three_quarters != (LINTED_UPDATER_INT_MIN + 12)) {
+    if (sin_three_quarters != -LINTED_UPDATER_INT_MAX) {
         LINTED_IMPOSSIBILITY(
             "linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id "\n",
             sin_three_quarters);
@@ -74,7 +74,7 @@ int main(void)
     /* TODO This isn't totally correct */
     linted_updater_angle full = LINTED_UPDATER_ANGLE(1u, 1u);
     linted_updater_int sin_full = linted_updater_sin(full);
-    if (sin_full != 6) {
+    if (sin_full != 0) {
         LINTED_IMPOSSIBILITY(
             "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n", sin_full);
     }
