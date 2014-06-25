@@ -587,7 +587,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct init_logger_task logger_task;
         struct new_connection_task new_connection_task;
 
-        linted_asynch_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1, WEXITED);
+        linted_asynch_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
+                             WEXITED);
         waiter_task.pool = pool;
         waiter_task.gui_service = gui_service;
         waiter_task.sim_service = sim_service;
@@ -605,7 +606,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         new_connection_task.services = services;
         new_connection_task.config = config;
 
-        linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
+        linted_asynch_pool_submit(pool,
+                                  LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
         linted_asynch_pool_submit(
             pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
         linted_asynch_pool_submit(
@@ -809,8 +811,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         return errnum;
     }
 
-    struct wait_service_task *wait_service_task =
-        LINTED_DOWNCAST(struct wait_service_task, completed_task);
+    struct wait_service_task *wait_service_task
+        = LINTED_DOWNCAST(struct wait_service_task, completed_task);
 
     struct linted_asynch_pool *pool = wait_service_task->pool;
     struct service_process *gui_service = wait_service_task->gui_service;
@@ -911,7 +913,8 @@ got_space:
     connection->read_task.config = config;
 
     linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&connection->read_task))));
+        pool,
+        LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&connection->read_task))));
 
     ++connection_pool->count;
     return 0;
@@ -925,12 +928,13 @@ close_new_socket : {
     return errnum;
 }
 
-static linted_error on_read_connection(struct linted_asynch_task *completed_task)
+static linted_error on_read_connection(struct linted_asynch_task
+                                       *completed_task)
 {
     linted_error errnum;
 
-    struct read_conn_task *read_conn_task =
-        LINTED_DOWNCAST(struct read_conn_task, completed_task);
+    struct read_conn_task *read_conn_task
+        = LINTED_DOWNCAST(struct read_conn_task, completed_task);
 
     struct linted_asynch_pool *pool = read_conn_task->pool;
     struct connection_pool *connection_pool = read_conn_task->connection_pool;
@@ -946,7 +950,8 @@ static linted_error on_read_connection(struct linted_asynch_task *completed_task
         return 0;
     }
 
-    struct linted_manager_task_recv_request *task_recv = LINTED_UPCAST(read_conn_task);
+    struct linted_manager_task_recv_request *task_recv
+        = LINTED_UPCAST(read_conn_task);
     struct linted_asynch_task_read *task_read = LINTED_UPCAST(task_recv);
 
     linted_ko ko = task_read->ko;
@@ -1037,8 +1042,9 @@ static linted_error on_read_connection(struct linted_asynch_task *completed_task
     connection->write_task.connection_pool = connection_pool;
     connection->write_task.connection = connection;
 
-    linted_asynch_pool_submit(pool,
-                              LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&connection->write_task))));
+    linted_asynch_pool_submit(
+        pool,
+        LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&connection->write_task))));
 
     return 0;
 
@@ -1047,19 +1053,21 @@ connection_remove:
     return errnum;
 }
 
-static linted_error on_write_connection(struct linted_asynch_task *completed_task)
+static linted_error on_write_connection(struct linted_asynch_task
+                                        *completed_task)
 {
     linted_error errnum;
 
-    struct write_conn_task *write_conn_task =
-        LINTED_DOWNCAST(struct write_conn_task, completed_task);
+    struct write_conn_task *write_conn_task
+        = LINTED_DOWNCAST(struct write_conn_task, completed_task);
     struct connection_pool *connection_pool = write_conn_task->connection_pool;
     struct connection *connection = write_conn_task->connection;
 
     errnum = completed_task->errnum;
 
     {
-        linted_error remove_errnum = connection_remove(connection, connection_pool);
+        linted_error remove_errnum
+            = connection_remove(connection, connection_pool);
         if (0 == errnum) {
             errnum = remove_errnum;
         }
