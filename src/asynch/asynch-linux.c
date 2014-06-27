@@ -28,7 +28,9 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdnoreturn.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -56,7 +58,7 @@ struct linted_asynch_pool
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
-static void *worker_routine(void *arg);
+static noreturn void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
@@ -357,7 +359,7 @@ static void asynch_task(struct linted_asynch_task *task, unsigned type,
     task->task_action = task_action;
 }
 
-static void *worker_routine(void *arg)
+static noreturn void *worker_routine(void *arg)
 {
     struct linted_asynch_pool *pool = arg;
 
@@ -371,7 +373,6 @@ static void *worker_routine(void *arg)
 
         run_task(pool, task);
     }
-    return NULL;
 }
 
 static void run_task(struct linted_asynch_pool *pool,
