@@ -17,3 +17,9 @@
 noinst_LTLIBRARIES+=%D%/libmem.la
 
 %C%_libmem_la_SOURCES=%D%/mem.c include/linted/mem.h
+TESTS+=%D%/test_mem
+
+check_PROGRAMS+=%D%/test_mem
+
+%C%_test_mem_SOURCES=%D%/test_mem.c
+%C%_test_mem_LDADD=%D%/libmem.la

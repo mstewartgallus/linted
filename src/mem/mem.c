@@ -38,7 +38,7 @@ void *linted_mem_alloc(linted_error *errnump, size_t size)
 
 void *linted_mem_alloc_array(linted_error *errnump, size_t nmemb, size_t size)
 {
-    if (0u == nmemb || SIZE_MAX / size < nmemb) {
+    if (nmemb != 0u && SIZE_MAX / size < nmemb) {
         *errnump = ENOMEM;
         return NULL;
     }
@@ -101,7 +101,7 @@ void *linted_mem_realloc(linted_error *errnump, void *memory, size_t new_size)
 void *linted_mem_realloc_array(linted_error *errnump, void *memory,
                                size_t nmemb, size_t size)
 {
-    if (0u == nmemb || SIZE_MAX / size < nmemb) {
+    if (nmemb != 0u && SIZE_MAX / size < nmemb) {
         *errnump = ENOMEM;
         return NULL;
     }
