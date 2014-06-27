@@ -32,11 +32,15 @@
 
 static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * buf)
 {
+
+    uint_fast16_t low = ((uintmax_t) fast) & 0xFFFFu;
+    uint_fast16_t high = (((uintmax_t) fast) >> 16u) & 0xFFFFu;
+
     unsigned char bytes[LINTED_RPC_UINT32_SIZE] = {
-        ((uintmax_t) fast) & 0xFFu,
-        (((uintmax_t) fast) >> 8u) & 0xFFu,
-        (((uintmax_t) fast) >> 16u) & 0xFFu,
-        (((uintmax_t) fast) >> 24u) & 0xFFu
+        ((uintmax_t) low) & 0xFFu,
+        (((uintmax_t) low) >> 8u) & 0xFFu,
+        ((uintmax_t) high) & 0xFFu,
+        (((uintmax_t) high) >> 8u) & 0xFFu
     };
 
     memcpy(buf, bytes, sizeof bytes);
@@ -47,10 +51,13 @@ static inline uint_fast32_t linted_rpc_unpack_uint32(char const * buf)
     unsigned char pos_bytes[LINTED_RPC_UINT32_SIZE];
     memcpy(pos_bytes, buf, sizeof pos_bytes);
 
-    uint_fast32_t positive = ((uintmax_t) pos_bytes[0u])
-        | (((uintmax_t) pos_bytes[1u]) << 8u)
-        | (((uintmax_t) pos_bytes[2u]) << 16u)
-        | (((uintmax_t) pos_bytes[3u]) << 24u);
+    uint_fast16_t low = ((uintmax_t) pos_bytes[0u])
+        | (((uintmax_t) pos_bytes[1u]) << 8u);
+
+    uint_fast16_t high = ((uintmax_t) pos_bytes[2u])
+        | (((uintmax_t) pos_bytes[3u]) << 8u);
+
+    uint_fast32_t positive = ((uintmax_t) low) | (((uintmax_t) high) << 16u);
 
     return positive;
 }
@@ -63,11 +70,14 @@ static inline void linted_rpc_pack(int_fast32_t fast, char *buf)
      */
     uint_fast32_t positive = fast;
 
+    uint_fast16_t low = ((uintmax_t) positive) & 0xFFFFu;
+    uint_fast16_t high = (((uintmax_t) positive) >> 16u) & 0xFFFFu;
+
     unsigned char bytes[LINTED_RPC_INT32_SIZE] = {
-        ((uintmax_t) positive) & 0xFFu,
-        (((uintmax_t) positive) >> 8u) & 0xFFu,
-        (((uintmax_t) positive) >> 16u) & 0xFFu,
-        (((uintmax_t) positive) >> 24u) & 0xFFu
+        ((uintmax_t) low) & 0xFFu,
+        (((uintmax_t) low) >> 8u) & 0xFFu,
+        ((uintmax_t) high) & 0xFFu,
+        (((uintmax_t) high) >> 8u) & 0xFFu
     };
 
     memcpy(buf, bytes, sizeof bytes);
@@ -78,10 +88,13 @@ static inline int_fast32_t linted_rpc_unpack(char const *buf)
     unsigned char pos_bytes[LINTED_RPC_INT32_SIZE];
     memcpy(pos_bytes, buf, sizeof pos_bytes);
 
-    uint_fast32_t positive = ((uintmax_t) pos_bytes[0u])
-        | (((uintmax_t) pos_bytes[1u]) << 8u)
-        | (((uintmax_t) pos_bytes[2u]) << 16u)
-        | (((uintmax_t) pos_bytes[3u]) << 24u);
+    uint_fast16_t low = ((uintmax_t) pos_bytes[0u])
+        | (((uintmax_t) pos_bytes[1u]) << 8u);
+
+    uint_fast16_t high = ((uintmax_t) pos_bytes[2u])
+        | (((uintmax_t) pos_bytes[3u]) << 8u);
+
+    uint_fast32_t positive = ((uintmax_t) low) | (((uintmax_t) high) << 16u);
 
     return linted_uint32_to_int32(positive);
 }
