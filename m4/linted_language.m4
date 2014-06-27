@@ -10,18 +10,20 @@ dnl
 dnl Autodetects and sets language settings
 AC_DEFUN([LINTED_LANGUAGE],[
 dnl
-dnl -pthread appears twice because it sets preprocessor options and
-dnl linker options
+dnl A few options appear appears twice or thrice because they set
+dnl preprocessor, compiler and linker options.
 dnl
+dnl We use the C11 standard because it better specifies termination
+dnl properties of the C programming language.
 LINTED_CHECK_CFLAGS([linted_CPPFLAGS_LANGUAGE],[
-        [-std=c99]dnl
+        [-std=c11]dnl
         [-pedantic-errors]dnl
         [-pthread]dnl
 ])
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
-        [-std=c99]dnl
+        [-std=c11]dnl
         [-pedantic-errors]dnl
         [-pthread]dnl
 ])
