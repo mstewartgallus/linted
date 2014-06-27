@@ -167,6 +167,15 @@
  * For example, nearly all files should be opened with the `O_CLOEXEC`
  * flag.
  *
+ * Another example, is that for data flags that set the actions
+ * allowable on an object the value of zero should give as little
+ * privileges as possible. This is no arbitrary example. A memory
+ * overwrite vulnerability that allowed one to zero arbitrary data was
+ * usable as a way to bypass exploit mitigations by setting the
+ * permissions of a COM object to allow one to execute unsafe
+ * actions. Learn more at
+ * http://www.contextis.com/blog/windows-mitigaton-bypass/.
+ *
  * </li>
  *
  * <li> Run asynchronously or nonblockingly by default.
