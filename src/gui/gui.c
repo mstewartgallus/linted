@@ -624,8 +624,7 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
     case LeaveNotify:
         window_model->focused = false;
 
-        controller_data->update.x_tilt = 0;
-        controller_data->update.y_tilt = 0;
+        memset(&controller_data->update, 0, sizeof controller_data->update);
 
         controller_data->update_pending = true;
         break;
