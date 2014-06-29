@@ -84,10 +84,6 @@ struct linted_updater_task_receive
         ._value = (((uintmax_t)LINTED_UPDATER_UINT_MAX) / (Y)) * (X)           \
     }
 
-static linted_updater_int linted_updater__sin_first_half(linted_updater_uint x);
-static linted_updater_int
-linted_updater__sin_first_quadrant(linted_updater_uint angle);
-
 static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
 linted_error linted_updater_create(linted_updater *updaterp, int flags);
@@ -153,37 +149,8 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
 static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
 {
     linted_updater_uint x = angle._value;
-
-    if (x >= LINTED_UPDATER_UINT_MAX / 2u) {
-        return
-            -linted_updater__sin_first_half(x - LINTED_UPDATER_UINT_MAX / 2u);
-    }
-    return linted_updater__sin_first_half(x);
-}
-
-static inline linted_updater_int linted_updater_cos(linted_updater_angle angle)
-{
-    linted_updater_angle x
-        = { ._value = angle._value + LINTED_UPDATER_UINT_MAX / 4u };
-    return linted_updater_sin(x);
-}
-
-static inline linted_updater_int
-linted_updater__sin_first_half(linted_updater_uint x)
-{
-    if (x > LINTED_UPDATER_UINT_MAX / 4u) {
-        x = LINTED_UPDATER_UINT_MAX / 2u - x;
-    }
-
-    return linted_updater__sin_first_quadrant(x);
-}
-
-// This should always be positive
-static inline linted_updater_int
-linted_updater__sin_first_quadrant(linted_updater_uint angle)
-{
     /* Hack it in using the math library for now */
-    return sin((((double)angle) / UINT32_MAX) * 2 * 3.1415926535897932384626433832) * UINT32_MAX;
+    return sin(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) * INT32_MAX;
 }
 
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,
