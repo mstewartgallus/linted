@@ -153,6 +153,13 @@ static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
     return sin(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) * INT32_MAX;
 }
 
+static inline linted_updater_int linted_updater_cos(linted_updater_angle angle)
+{
+    linted_updater_uint x = angle._value;
+    /* Hack it in using the math library for now */
+    return cos(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) * INT32_MAX;
+}
+
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,
                                                         linted_updater_int y)
 {
