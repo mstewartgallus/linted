@@ -702,7 +702,8 @@ finish:
             }
             task_wait->info.si_status = WTERMSIG(status);
         } else if (WIFSTOPPED(status)) {
-            switch (WSTOPSIG(status)) {
+            int stopsig = (status >> 8) & 0xffff;
+            switch (stopsig) {
             case SIGTRAP:
             case SIGTRAP | 0x80:
             case SIGTRAP | PTRACE_EVENT_FORK << 8u:
@@ -718,7 +719,7 @@ finish:
                 task_wait->info.si_code = CLD_STOPPED;
                 break;
             }
-            task_wait->info.si_status = WSTOPSIG(status);
+            task_wait->info.si_status = stopsig;
         } else if (WIFCONTINUED(status)) {
             task_wait->info.si_code = CLD_CONTINUED;
             task_wait->info.si_status = 0;
