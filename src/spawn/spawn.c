@@ -259,7 +259,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         return errnum;
     }
 
-    if (-1 == ptrace(PTRACE_TRACEME, 0, (void*)NULL, (void*)NULL)) {
+    if (-1 == ptrace(PTRACE_TRACEME, 0, (void *)NULL, (void *)NULL)) {
         errnum = errno;
         assert(errnum != 0);
         exit_with_error(spawn_error, errnum);

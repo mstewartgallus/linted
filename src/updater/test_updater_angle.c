@@ -44,7 +44,8 @@ int main(void)
         linted_updater_int sin_zero = linted_updater_sin(zero);
         if (sin_zero != 0) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_sin(zero) == %" LINTED_UPDATER_Id "\n", sin_zero);
+                "linted_updater_sin(zero) == %" LINTED_UPDATER_Id "\n",
+                sin_zero);
         }
 
         linted_updater_angle quarter = LINTED_UPDATER_ANGLE(1u, 4u);
@@ -60,14 +61,17 @@ int main(void)
         linted_updater_int sin_half = linted_updater_sin(half);
         if (sin_half != 1) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_sin(half) == %" LINTED_UPDATER_Id "\n", sin_half);
+                "linted_updater_sin(half) == %" LINTED_UPDATER_Id "\n",
+                sin_half);
         }
 
         linted_updater_angle three_quarters = LINTED_UPDATER_ANGLE(3u, 4u);
-        linted_updater_int sin_three_quarters = linted_updater_sin(three_quarters);
+        linted_updater_int sin_three_quarters
+            = linted_updater_sin(three_quarters);
         if (sin_three_quarters != -LINTED_UPDATER_INT_MAX) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id "\n",
+                "linted_updater_sin(three_quarters) == %" LINTED_UPDATER_Id
+                "\n",
                 sin_three_quarters);
         }
 
@@ -75,7 +79,8 @@ int main(void)
         linted_updater_int sin_full = linted_updater_sin(full);
         if (sin_full != 0) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n", sin_full);
+                "linted_updater_sin(full) == %" LINTED_UPDATER_Id "\n",
+                sin_full);
         }
     }
 
@@ -84,7 +89,8 @@ int main(void)
         linted_updater_int cos_zero = linted_updater_cos(zero);
         if (cos_zero != LINTED_UPDATER_INT_MAX) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_cos(zero) == %" LINTED_UPDATER_Id "\n", cos_zero);
+                "linted_updater_cos(zero) == %" LINTED_UPDATER_Id "\n",
+                cos_zero);
         }
 
         /* TODO This isn't totally correct */
@@ -100,15 +106,18 @@ int main(void)
         linted_updater_int cos_half = linted_updater_cos(half);
         if (cos_half != -LINTED_UPDATER_INT_MAX) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_cos(half) == %" LINTED_UPDATER_Id "\n", cos_half);
+                "linted_updater_cos(half) == %" LINTED_UPDATER_Id "\n",
+                cos_half);
         }
 
         /* TODO This isn't totally correct */
         linted_updater_angle three_quarters = LINTED_UPDATER_ANGLE(3u, 4u);
-        linted_updater_int cos_three_quarters = linted_updater_cos(three_quarters);
+        linted_updater_int cos_three_quarters
+            = linted_updater_cos(three_quarters);
         if (cos_three_quarters != -7) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_cos(three_quarters) == %" LINTED_UPDATER_Id "\n",
+                "linted_updater_cos(three_quarters) == %" LINTED_UPDATER_Id
+                "\n",
                 cos_three_quarters);
         }
 
@@ -116,7 +125,8 @@ int main(void)
         linted_updater_int cos_full = linted_updater_cos(full);
         if (cos_full != LINTED_UPDATER_INT_MAX) {
             LINTED_IMPOSSIBILITY(
-                "linted_updater_cos(full) == %" LINTED_UPDATER_Id "\n", cos_full);
+                "linted_updater_cos(full) == %" LINTED_UPDATER_Id "\n",
+                cos_full);
         }
     }
 

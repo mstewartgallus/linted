@@ -346,15 +346,15 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
         linted_updater_angle x_rotation = simulator_state->x_rotation;
-        simulate_forces(&simulator_state->x_position,
-                        &simulator_state->x_velocity,
-                        -(linted_updater_cos(x_rotation) * action_state->x) / 2
-                        -(linted_updater_sin(x_rotation) * action_state->z) / 2);
+        simulate_forces(
+            &simulator_state->x_position, &simulator_state->x_velocity,
+            -(linted_updater_cos(x_rotation) * action_state->x) / 2
+            - (linted_updater_sin(x_rotation) * action_state->z) / 2);
 
-        simulate_forces(&simulator_state->z_position,
-                        &simulator_state->z_velocity,
-                        -(linted_updater_cos(x_rotation) * action_state->z) / 2
-                        + (linted_updater_sin(x_rotation) * action_state->x) / 2);
+        simulate_forces(
+            &simulator_state->z_position, &simulator_state->z_velocity,
+            -(linted_updater_cos(x_rotation) * action_state->z) / 2
+            + (linted_updater_sin(x_rotation) * action_state->x) / 2);
 
         simulate_forces(&simulator_state->y_position,
                         &simulator_state->y_velocity,

@@ -463,7 +463,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
         if (errnum != 0) {
             goto destroy_attr;
-
         }
         size_t kos_opened = 0u;
         for (; kos_opened < dup_pairs_size;) {
@@ -833,9 +832,10 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         goto process_exited;
 
     case CLD_STOPPED: {
-        linted_io_write_format(STDERR_FILENO, NULL, "stopped: %u\n", exit_status);
+        linted_io_write_format(STDERR_FILENO, NULL, "stopped: %u\n",
+                               exit_status);
         intptr_t signal = exit_status;
-        if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)signal)) {
+        if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)signal)) {
             assert(errnum != 0);
             assert(errnum != EINVAL);
             assert(errnum != EPERM);
@@ -845,8 +845,9 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         break;
     }
 
-    case CLD_TRAPPED:{
-        linted_io_write_format(STDERR_FILENO, NULL, "trapped: %i\n", exit_status);
+    case CLD_TRAPPED: {
+        linted_io_write_format(STDERR_FILENO, NULL, "trapped: %i\n",
+                               exit_status);
         switch (exit_status) {
         case SIGTRAP | PTRACE_EVENT_FORK << 8u:
         case SIGTRAP | PTRACE_EVENT_VFORK << 8u:
@@ -855,7 +856,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             pid_t child;
             {
                 unsigned long xx = 0;
-                if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void*)NULL, &xx)) {
+                if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)NULL, &xx)) {
                     errnum = errno;
                     if (ESRCH == errnum) {
                         break;
@@ -872,7 +873,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 
             linted_io_write_format(STDERR_FILENO, NULL, "child: %i\n", child);
 
-            if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)NULL)) {
+            if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
                 errnum = errno;
                 if (errnum != ESRCH) {
                     assert(errnum != 0);
@@ -885,13 +886,15 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             break;
         }
 
-                /* SIGTRAP start of traced program execution */
+        /* SIGTRAP start of traced program execution */
         case SIGTRAP:
-            linted_io_write_format(STDERR_FILENO, NULL, "SIGTRAP on start: %i\n", pid);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "SIGTRAP on start: %i\n", pid);
 
-            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE 
-                | PTRACE_O_TRACESYSGOOD;
-            if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void*)NULL, (void*)data)) {
+            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK
+                            | PTRACE_O_TRACECLONE | PTRACE_O_TRACESYSGOOD;
+            if (-1
+                == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL, (void *)data)) {
                 errnum = errno;
                 if (errnum != ESRCH) {
                     assert(errnum != 0);
@@ -901,7 +904,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
                 }
             }
 
-            if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)NULL)) {
+            if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
                 errnum = errno;
                 if (errnum != ESRCH) {
                     assert(errnum != 0);

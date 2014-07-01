@@ -25,7 +25,7 @@ int main(void)
     linted_error errnum;
     {
         linted_error xx;
-        void * mem = linted_mem_alloc_array(&xx, 0u, 0u);
+        void *mem = linted_mem_alloc_array(&xx, 0u, 0u);
         errnum = xx;
         linted_mem_free(mem);
     }
@@ -33,7 +33,7 @@ int main(void)
 
     {
         linted_error xx;
-        void * mem = linted_mem_realloc_array(&xx, NULL, 0u, 0u);
+        void *mem = linted_mem_realloc_array(&xx, NULL, 0u, 0u);
         errnum = xx;
         linted_mem_free(mem);
     }
