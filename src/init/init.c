@@ -864,7 +864,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
                 child = xx;
             }
 
-            linted_io_write_format(STDERR_FILENO, NULL, "starting to trace child: %i\n", child);
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "starting to trace child: %i\n", child);
 
             if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
                 errnum = errno;
