@@ -872,17 +872,6 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             }
 
             linted_io_write_format(STDERR_FILENO, NULL, "child: %i\n", child);
-
-            if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
-                errnum = errno;
-                if (errnum != ESRCH) {
-                    assert(errnum != 0);
-                    assert(errnum != EINVAL);
-                    assert(errnum != EPERM);
-                    assert(errnum != ESRCH);
-                    assert(false);
-                }
-            }
             break;
         }
 
@@ -923,7 +912,6 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
     }
 
     default:
-        linted_io_write_format(STDERR_FILENO, NULL, "cld: %i\n", exit_code);
         assert(false);
     }
 
