@@ -30,8 +30,6 @@
 #include <stdio.h>
 #include <stdnoreturn.h>
 #include <string.h>
-#include <sys/ptrace.h>
-#include <sys/socket.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -702,24 +700,17 @@ finish:
             }
             task_wait->info.si_status = WTERMSIG(status);
         } else if (WIFSTOPPED(status)) {
-            int stopsig = (status >> 8) & 0xffff;
-            switch (stopsig) {
-            case SIGTRAP:
-            case SIGTRAP | 0x80:
-            case SIGTRAP | PTRACE_EVENT_FORK << 8u:
-            case SIGTRAP | PTRACE_EVENT_VFORK << 8u:
-            case SIGTRAP | PTRACE_EVENT_CLONE << 8u:
-            case SIGTRAP | PTRACE_EVENT_EXEC << 8u:
-            case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8u:
-            case SIGTRAP | PTRACE_EVENT_EXIT << 8u:
+            if (SIGTRAP == WSTOPSIG(status)) {
                 task_wait->info.si_code = CLD_TRAPPED;
-                break;
-
-            default:
+            } else {
                 task_wait->info.si_code = CLD_STOPPED;
-                break;
             }
-            task_wait->info.si_status = stopsig;
+
+#if defined __linux__
+            task_wait->info.si_status = (status >> 8) & 0xffff;
+#else
+#error How to get special ptrace information from signal is unknown on this platform
+#endif
         } else if (WIFCONTINUED(status)) {
             task_wait->info.si_code = CLD_CONTINUED;
             task_wait->info.si_status = 0;
