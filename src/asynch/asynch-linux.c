@@ -649,16 +649,71 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
     struct linted_asynch_task_waitid *task_wait
         = LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
     linted_error errnum;
+    int status;
+    pid_t child;
     do {
-        int wait_status = waitid(task_wait->idtype, task_wait->id,
-                                 &task_wait->info, task_wait->options);
-        if (-1 == wait_status) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
+        pid_t id;
+        switch (task_wait->idtype) {
+        case P_PID:
+            id = task_wait->id;
+            break;
+
+        case P_ALL:
+            id = -1;
+            break;
+
+        case P_PGID:
+            id = -(pid_t)task_wait->id;
+            break;
+
+        default:
+            errnum = EINVAL;
+            goto finish;
+        }
+
+        {
+            int xx;
+            child = waitpid(id, &xx, task_wait->options);
+            if (-1 == child) {
+                errnum = errno;
+                assert(errnum != 0);
+            } else {
+                errnum = 0;
+            }
+            status = xx;
         }
     } while (EINTR == errnum);
+
+finish:
+    if (0 == errnum) {
+        task_wait->info.si_uid = 0;
+        task_wait->info.si_pid = child;
+        task_wait->info.si_signo = SIGCHLD;
+
+        if (WIFEXITED(status)) {
+            task_wait->info.si_code = CLD_EXITED;
+            task_wait->info.si_status = WEXITSTATUS(status);
+        } else if (WIFSIGNALED(status)) {
+            if (WCOREDUMP(status)) {
+                task_wait->info.si_code = CLD_DUMPED;
+            } else {
+                task_wait->info.si_code = CLD_KILLED;
+            }
+            task_wait->info.si_status = WTERMSIG(status);
+        } else if (WIFSTOPPED(status)) {
+            if ((WSTOPSIG(status) & SIGTRAP) != 0) {
+                task_wait->info.si_code = CLD_TRAPPED;
+            } else {
+                task_wait->info.si_code = CLD_STOPPED;
+            }
+            task_wait->info.si_status = WSTOPSIG(status);
+        } else if (WIFCONTINUED(status)) {
+            task_wait->info.si_code = CLD_CONTINUED;
+            task_wait->info.si_status = WTERMSIG(status);
+        } else {
+            assert(false);
+        }
+    }
 
     task->errnum = errnum;
 

@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -243,144 +244,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                                                                   == errnum);
                     errnum = 0;
                 }
-
-                /**
-                 * @todo return the fds used to kill child process
-                 * groups back.
-                 */
-                int kill_fd_read;
-                int kill_fd_write;
-                {
-                    int kill_fds[2u];
-                    if (-1 == pipe2(kill_fds, O_CLOEXEC)) {
-                        errnum = errno;
-                        assert(errnum != 0);
-                        goto unmap_spawn_error;
-                    }
-                    kill_fd_read = kill_fds[0u];
-                    kill_fd_write = kill_fds[1u];
-                }
-
-                if (-1 == fcntl(kill_fd_read, F_SETSIG, (long)SIGKILL)) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    goto unmap_spawn_error;
-                }
-
-                {
-                    struct f_owner_ex ex
-                        = { .type = F_OWNER_PGRP,
-                            .pid = 0 == attr->pgroup ? child : attr->pgroup };
-                    if (-1 == fcntl(kill_fd_read, F_SETOWN_EX, &ex)) {
-                        errnum = errno;
-                        assert(errnum != 0);
-                        goto unmap_spawn_error;
-                    }
-                }
-
-                if (-1 == fcntl(kill_fd_read, F_SETFL, (long)O_ASYNC)) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    goto unmap_spawn_error;
-                }
-
-                /*
-                 * Duplicate the read fd so that it is closed after the write
-                 * fd.
-                 */
-                int kill_fd_read_copy
-                    = fcntl(kill_fd_read, F_DUPFD_CLOEXEC, (long)kill_fd_write);
-                if (-1 == kill_fd_read_copy) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    goto unmap_spawn_error;
-                }
-
-                if (-1 == linted_ko_close(kill_fd_read)) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    goto unmap_spawn_error;
-                }
-            }
-        }
-
-        {
-            int code;
-            int status;
-            {
-                siginfo_t info;
-                do {
-                    if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
-                        errnum = errno;
-                        assert(errnum != 0);
-                    } else {
-                        errnum = 0;
-                    }
-                } while (EINTR == errnum);
-                if (errnum != 0) {
-                    goto unmap_spawn_error;
-                }
-
-                status = info.si_status;
-                code = info.si_code;
-            }
-
-            switch (code) {
-            case CLD_EXITED: {
-                switch (status) {
-                case 0:
-                    errnum = EINVAL;
-                    goto unmap_spawn_error;
-
-                default:
-                    errnum = ENOSYS;
-                    goto unmap_spawn_error;
-                }
-            }
-
-            case CLD_DUMPED:
-            case CLD_KILLED: {
-#if defined __linux__
-                int signo = status;
-                switch (signo) {
-                case SIGKILL:
-                    errnum = ENOMEM;
-                    break;
-
-                case SIGSEGV:
-                    /* Corrupted elf file */
-                    errnum = ENOEXEC;
-                    break;
-
-                case SIGTERM:
-                    /* Exited with error and passed an error code */
-                    errnum = spawn_error->errnum;
-                    assert(errnum != 0);
-                    break;
-
-                default:
-                    errnum = ENOSYS;
-                    break;
-                }
-                goto unmap_spawn_error;
-#else
-#error The exit status of an aborted execve is very OS specific
-#endif
-            }
-
-            case CLD_STOPPED:
-                if (-1 == kill(child, SIGCONT)) {
-                    errnum = errno;
-                    assert(errnum != 0);
-                    assert(errnum != EINVAL);
-                    assert(errnum != EPERM);
-                    assert(errnum != ESRCH);
-                    assert(false);
-                }
-                break;
-
-            default:
-                assert(false);
             }
         }
 
@@ -394,6 +257,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
         *childp = child;
         return errnum;
+    }
+
+    if (-1 == ptrace(PTRACE_TRACEME, 0, (void*)NULL, (void*)NULL)) {
+        errnum = errno;
+        assert(errnum != 0);
+        exit_with_error(spawn_error, errnum);
     }
 
     if (attr != NULL) {
@@ -445,37 +314,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 exit_with_error(spawn_error, EINVAL);
             }
         }
-    }
-
-    /* Bizarre hack to achieve error reporting on a bad execve */
-    int stop_fd_read;
-    int stop_fd_write;
-    {
-        int stop_fds[2u];
-        if (-1 == pipe2(stop_fds, O_CLOEXEC)) {
-            exit_with_error(spawn_error, errno);
-        }
-        stop_fd_read = stop_fds[0u];
-        stop_fd_write = stop_fds[1u];
-    }
-
-    if (-1 == fcntl(stop_fd_read, F_SETSIG, (long)SIGSTOP)) {
-        exit_with_error(spawn_error, errno);
-    }
-
-    if (-1 == fcntl(stop_fd_read, F_SETOWN, (long)getpid())) {
-        exit_with_error(spawn_error, errno);
-    }
-
-    if (-1 == fcntl(stop_fd_read, F_SETFL, (long)O_ASYNC)) {
-        exit_with_error(spawn_error, errno);
-    }
-
-    /*
-     * Duplicate the read fd so that it is closed after the write fd.
-     */
-    if (-1 == fcntl(stop_fd_read, F_DUPFD_CLOEXEC, (long)stop_fd_write)) {
-        exit_with_error(spawn_error, errno);
     }
 
     execveat(dirfd_copy, filename, argv, envp);

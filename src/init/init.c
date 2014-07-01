@@ -38,12 +38,8 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/types.h>
-
-#ifndef PR_SET_CHILD_SUBREAPER
-#define PR_SET_CHILD_SUBREAPER 36
-#endif
 
 #define BACKLOG 20u
 
@@ -329,17 +325,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0)) {
-        errnum = errno;
-        assert(errnum != 0);
-        assert(errnum != EINVAL);
-
-        linted_io_write_format(stderr, NULL, "\
-%s: can not set child subreaper: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
-    }
-
     {
         /* Set signals to a safe default */
         sigset_t sigblocked_set;
@@ -478,6 +463,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
         if (errnum != 0) {
             goto destroy_attr;
+
         }
         size_t kos_opened = 0u;
         for (; kos_opened < dup_pairs_size;) {
@@ -504,8 +490,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 goto destroy_proc_kos;
             }
         }
-
-        linted_spawn_attr_setpgroup(attr, 0);
 
         {
             pid_t process;
@@ -588,7 +572,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct new_connection_task new_connection_task;
 
         linted_asynch_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
-                             WEXITED);
+                             __WALL);
         waiter_task.pool = pool;
         waiter_task.gui_service = gui_service;
         waiter_task.sim_service = sim_service;
@@ -830,14 +814,6 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 
     linted_asynch_pool_submit(pool, completed_task);
 
-    if (pid == gui_service->pid) {
-        gui_service->pid = -1;
-    }
-
-    if (pid == sim_service->pid) {
-        sim_service->pid = -1;
-    }
-
     switch (exit_code) {
     case CLD_DUMPED:
     case CLD_KILLED:
@@ -852,10 +828,107 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             assert(errnum != 0);
             return errnum;
         }
+        goto process_exited;
+
+    case CLD_STOPPED: {
+        intptr_t signal = exit_status;
+        if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)signal)) {
+            assert(errnum != 0);
+            assert(errnum != EINVAL);
+            assert(errnum != EPERM);
+            assert(errnum != ESRCH);
+            assert(false);
+        }
         break;
+    }
+
+    case CLD_TRAPPED:{
+        int ptrace_event = (exit_status & ~SIGTRAP) >> 8u;
+        switch (ptrace_event) {
+        case PTRACE_EVENT_CLONE:
+        case PTRACE_EVENT_FORK:
+        case PTRACE_EVENT_VFORK: {
+            linted_io_write_format(STDERR_FILENO, NULL, "clone\n");
+            pid_t child;
+            {
+                unsigned long xx = 0;
+                if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void*)NULL, &xx)) {
+                    errnum = errno;
+                    if (ESRCH == errnum) {
+                        break;
+                    }
+
+                    assert(errnum != 0);
+                    assert(errnum != EINVAL);
+                    assert(errnum != EPERM);
+                    assert(errnum != ESRCH);
+                    assert(false);
+                }
+                child = xx;
+            }
+
+            linted_io_write_format(STDERR_FILENO, NULL, "child: %i\n", child);
+
+            if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)NULL)) {
+                errnum = errno;
+                if (errnum != ESRCH) {
+                    assert(errnum != 0);
+                    assert(errnum != EINVAL);
+                    assert(errnum != EPERM);
+                    assert(errnum != ESRCH);
+                    assert(false);
+                }
+            }
+            break;
+        }
+
+            /* SIGTRAP start of traced program execution */
+        case 0:
+            linted_io_write_format(STDERR_FILENO, NULL, "SIGTRAP on start: %i\n", pid);
+
+            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE;
+            if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void*)NULL, (void*)data)) {
+                errnum = errno;
+                if (errnum != ESRCH) {
+                    assert(errnum != 0);
+                    assert(errnum != EINVAL);
+                    assert(errnum != EPERM);
+                    assert(false);
+                }
+            }
+
+            if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)NULL)) {
+                errnum = errno;
+                if (errnum != ESRCH) {
+                    assert(errnum != 0);
+                    assert(errnum != EINVAL);
+                    assert(errnum != EPERM);
+                    assert(errnum != ESRCH);
+                    assert(false);
+                }
+            }
+            break;
+
+        default:
+            assert(false);
+        }
+        break;
+    }
 
     default:
+        linted_io_write_format(STDERR_FILENO, NULL, "cld: %i\n", exit_code);
         assert(false);
+    }
+
+    return 0;
+
+process_exited:
+    if (pid == gui_service->pid) {
+        gui_service->pid = -1;
+    }
+
+    if (pid == sim_service->pid) {
+        sim_service->pid = -1;
     }
 
     return 0;
