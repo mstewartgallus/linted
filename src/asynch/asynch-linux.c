@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdnoreturn.h>
 #include <string.h>
+#include <sys/ptrace.h>
 #include <sys/socket.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -701,15 +702,26 @@ finish:
             }
             task_wait->info.si_status = WTERMSIG(status);
         } else if (WIFSTOPPED(status)) {
-            if ((WSTOPSIG(status) & SIGTRAP) != 0) {
+            switch (WSTOPSIG(status)) {
+            case SIGTRAP:
+            case SIGTRAP | 0x80:
+            case SIGTRAP | PTRACE_EVENT_FORK << 8u:
+            case SIGTRAP | PTRACE_EVENT_VFORK << 8u:
+            case SIGTRAP | PTRACE_EVENT_CLONE << 8u:
+            case SIGTRAP | PTRACE_EVENT_EXEC << 8u:
+            case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8u:
+            case SIGTRAP | PTRACE_EVENT_EXIT << 8u:
                 task_wait->info.si_code = CLD_TRAPPED;
-            } else {
+                break;
+
+            default:
                 task_wait->info.si_code = CLD_STOPPED;
+                break;
             }
             task_wait->info.si_status = WSTOPSIG(status);
         } else if (WIFCONTINUED(status)) {
             task_wait->info.si_code = CLD_CONTINUED;
-            task_wait->info.si_status = WTERMSIG(status);
+            task_wait->info.si_status = 0;
         } else {
             assert(false);
         }

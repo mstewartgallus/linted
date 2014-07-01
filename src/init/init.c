@@ -817,10 +817,12 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
     switch (exit_code) {
     case CLD_DUMPED:
     case CLD_KILLED:
-        raise(exit_status);
-        errnum = errno;
-        assert(errnum != 0);
-        return errnum;
+        linted_io_write_format(STDERR_FILENO, NULL, "killed: %i\n", pid);
+        /* raise(exit_status); */
+        /* errnum = errno; */
+        /* assert(errnum != 0); */
+        /* return errnum; */
+        break;
 
     case CLD_EXITED:
         if (exit_status != 0) {
@@ -831,6 +833,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         goto process_exited;
 
     case CLD_STOPPED: {
+        linted_io_write_format(STDERR_FILENO, NULL, "stopped: %u\n", exit_status);
         intptr_t signal = exit_status;
         if (-1 == ptrace(PTRACE_CONT, pid, (void*)NULL, (void*)signal)) {
             assert(errnum != 0);
@@ -843,6 +846,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
     }
 
     case CLD_TRAPPED:{
+        linted_io_write_format(STDERR_FILENO, NULL, "trapped: %i\n", exit_status);
         int ptrace_event = (exit_status & ~SIGTRAP) >> 8u;
         switch (ptrace_event) {
         case PTRACE_EVENT_CLONE:
@@ -886,7 +890,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         case 0:
             linted_io_write_format(STDERR_FILENO, NULL, "SIGTRAP on start: %i\n", pid);
 
-            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE;
+            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE 
+                | PTRACE_O_TRACESYSGOOD;
             if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void*)NULL, (void*)data)) {
                 errnum = errno;
                 if (errnum != ESRCH) {
