@@ -649,7 +649,7 @@ exit_services:
         pid_t pid = service->pid;
 
         if (pid != -1) {
-            linted_error kill_errnum = -1 == kill(pid, SIGTERM) ? errno : 0;
+            linted_error kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
             /* kill_errnum == ESRCH is fine */
             assert(kill_errnum != EINVAL);
             assert(kill_errnum != EPERM);
