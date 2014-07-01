@@ -847,11 +847,10 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 
     case CLD_TRAPPED:{
         linted_io_write_format(STDERR_FILENO, NULL, "trapped: %i\n", exit_status);
-        int ptrace_event = (exit_status & ~SIGTRAP) >> 8u;
-        switch (ptrace_event) {
-        case PTRACE_EVENT_CLONE:
-        case PTRACE_EVENT_FORK:
-        case PTRACE_EVENT_VFORK: {
+        switch (exit_status) {
+        case SIGTRAP | PTRACE_EVENT_FORK << 8u:
+        case SIGTRAP | PTRACE_EVENT_VFORK << 8u:
+        case SIGTRAP | PTRACE_EVENT_CLONE << 8u: {
             linted_io_write_format(STDERR_FILENO, NULL, "clone\n");
             pid_t child;
             {
@@ -886,8 +885,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             break;
         }
 
-            /* SIGTRAP start of traced program execution */
-        case 0:
+                /* SIGTRAP start of traced program execution */
+        case SIGTRAP:
             linted_io_write_format(STDERR_FILENO, NULL, "SIGTRAP on start: %i\n", pid);
 
             intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE 
