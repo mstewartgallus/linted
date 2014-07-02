@@ -128,7 +128,7 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
 
-static linted_ko kos[3u + 3u];
+static linted_ko kos[3u];
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-simulator",
@@ -139,12 +139,9 @@ struct linted_start_config const linted_start_config
 uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko stdout = kos[1u];
-    linted_ko stderr = kos[2u];
-
-    linted_logger logger = kos[3u];
-    linted_controller controller = kos[4u];
-    linted_updater updater = kos[5u];
+    linted_logger logger = kos[0u];
+    linted_controller controller = kos[1u];
+    linted_updater updater = kos[2u];
 
     bool need_help = false;
     bool need_version = false;
@@ -163,20 +160,20 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (need_help) {
-        simulator_help(stdout, program_name, LINTED_STR(PACKAGE_NAME),
+        simulator_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
                        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(stderr, program_name, bad_option);
-        linted_locale_try_for_more_help(stderr, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_locale_version(stdout, LINTED_STR(PACKAGE_STRING),
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
@@ -184,7 +181,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     linted_error errnum;
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
-        linted_io_write_format(stderr, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
                                program_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;

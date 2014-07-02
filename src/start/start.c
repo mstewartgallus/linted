@@ -52,8 +52,17 @@ int main(int argc, char *argv[])
 {
     linted_error errnum;
 
+    /* Check whether basics are open */
     if (!is_open(STDERR_FILENO)) {
         /* Sadly, this is all we can do */
+        return EXIT_FAILURE;
+    }
+
+    if (!is_open(STDOUT_FILENO)) {
+        return EXIT_FAILURE;
+    }
+
+    if (!is_open(STDIN_FILENO)) {
         return EXIT_FAILURE;
     }
 
@@ -274,9 +283,12 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
         }
 
         int const fd = atoi(d_name);
-
         if (fd == dirfd(fds_dir)) {
             continue;
+        }
+
+        if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
+           continue;
         }
 
         ++size;
@@ -316,6 +328,10 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 
         if (fd == dirfd(fds_dir)) {
             continue;
+        }
+
+        if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
+           continue;
         }
 
         fds[ii] = fd;

@@ -214,20 +214,15 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-linted_ko kos[3u];
-
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-init",
         .open_current_working_directory = true,
-        .kos_size = LINTED_ARRAY_SIZE(kos),
-        .kos = kos };
+        .kos_size = 0u,
+        .kos = NULL };
 
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_ko stdout = kos[1u];
-    linted_ko stderr = kos[2u];
-
     bool need_help = false;
     bool need_version = false;
 
@@ -260,20 +255,20 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     if (need_help) {
-        linted_help(stdout, process_name, LINTED_STR(PACKAGE_NAME),
+        linted_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
                     LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(stderr, process_name, bad_option);
-        linted_locale_try_for_more_help(stderr, process_name,
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_locale_version(stdout, LINTED_STR(PACKAGE_STRING),
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
@@ -281,7 +276,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     linted_error errnum;
 
     if ((errnum = check_db(cwd)) != 0) {
-        linted_io_write_format(stderr, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: database: %s\n",
                                process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
@@ -289,10 +284,10 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_format(stderr, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing DISPLAY environment variable\n",
                                process_name);
-        linted_locale_try_for_more_help(stderr, process_name,
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -307,7 +302,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         errnum = xx;
     }
     if (errnum != 0) {
-        linted_io_write_format(stderr, NULL,
+        linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't allocate DISPLAY string: %s\n",
                                process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
@@ -319,7 +314,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     errnum = linted_util_sanitize_environment();
     if (errnum != 0) {
-        linted_io_write_format(stderr, NULL, "\
+        linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s\n",
                                process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
@@ -535,9 +530,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             goto close_new_connections;
         }
 
-        linted_io_write_str(stdout, NULL, LINTED_STR("management socket: "));
-        linted_io_write_all(stdout, NULL, buf, len);
-        linted_io_write_str(stdout, NULL, LINTED_STR("\n"));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("management socket: "));
+        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
     char *logger_buffer;
@@ -578,7 +573,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
         linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read,
                               logger_buffer);
-        logger_task.log_ko = stderr;
+        logger_task.log_ko = STDERR_FILENO;
         logger_task.process_name = process_name;
         logger_task.pool = pool;
 
@@ -688,14 +683,14 @@ exit_services:
 
     if (errnum != 0) {
         char const *error_string = linted_error_string_alloc(errnum);
-        linted_io_write_format(stderr, NULL, "could not run the game: %s\n",
+        linted_io_write_format(STDERR_FILENO, NULL, "could not run the game: %s\n",
                                error_string);
         linted_error_string_free(error_string);
 
         return EXIT_FAILURE;
     }
 
-    if (linted_ko_close(stderr) != 0) {
+    if (linted_ko_close(STDERR_FILENO) != 0) {
         /* Sadly, this is all we can do */
         return EXIT_FAILURE;
     }
@@ -705,19 +700,19 @@ exit_services:
 
 static linted_error find_stdin(linted_ko *kop)
 {
-    *kop = kos[0u];
+    *kop = STDIN_FILENO;
     return 0;
 }
 
 static linted_error find_stdout(linted_ko *kop)
 {
-    *kop = kos[1u];
+    *kop = STDOUT_FILENO;
     return 0;
 }
 
 static linted_error find_stderr(linted_ko *kop)
 {
-    *kop = kos[2u];
+    *kop = STDERR_FILENO;
     return 0;
 }
 

@@ -166,7 +166,7 @@ static linted_error failure(linted_ko ko, char const *program_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-static linted_ko kos[3u + 3u];
+static linted_ko kos[3u];
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-gui",
@@ -179,12 +179,9 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 {
     linted_error errnum = 0;
 
-    linted_ko stdout = kos[1u];
-    linted_ko stderr = kos[2u];
-
-    linted_logger logger = kos[3u];
-    linted_controller controller = kos[4u];
-    linted_updater updater = kos[5u];
+    linted_logger logger = kos[0u];
+    linted_controller controller = kos[1u];
+    linted_updater updater = kos[2u];
 
     bool need_help = false;
     bool need_version = false;
@@ -204,30 +201,30 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (need_help) {
-        gui_help(stdout, program_name, LINTED_STR(PACKAGE_NAME),
+        gui_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
                  LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(stderr, program_name, bad_option);
-        linted_locale_try_for_more_help(stderr, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
     if (need_version) {
-        linted_locale_version(stdout, LINTED_STR(PACKAGE_STRING),
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
                               LINTED_STR(COPYRIGHT_YEAR));
         return EXIT_SUCCESS;
     }
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
-        linted_io_write_string(stderr, NULL, program_name);
-        linted_io_write_str(stderr, NULL,
+        linted_io_write_string(STDERR_FILENO, NULL, program_name);
+        linted_io_write_str(STDERR_FILENO, NULL,
                             LINTED_STR(": no DISPLAY environment variable\n"));
-        linted_locale_try_for_more_help(stderr, program_name,
+        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -240,14 +237,14 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         errnum = xx;
     }
     if (errnum != 0) {
-        failure(stderr, program_name,
+        failure(STDERR_FILENO, program_name,
                 LINTED_STR("no DISPLAY environment variable"), errnum);
         return EXIT_FAILURE;
     }
     memcpy(display_env_var, original_display, display_string_length);
 
     if ((errnum = linted_util_sanitize_environment()) != 0) {
-        failure(stderr, program_name,
+        failure(STDERR_FILENO, program_name,
                 LINTED_STR("cannot sanitize the program environment"), errnum);
         return EXIT_FAILURE;
     }
