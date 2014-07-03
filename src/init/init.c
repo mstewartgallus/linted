@@ -530,7 +530,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             goto close_new_connections;
         }
 
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("management socket: "));
+        linted_io_write_str(STDOUT_FILENO, NULL,
+                            LINTED_STR("management socket: "));
         linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
@@ -683,8 +684,8 @@ exit_services:
 
     if (errnum != 0) {
         char const *error_string = linted_error_string_alloc(errnum);
-        linted_io_write_format(STDERR_FILENO, NULL, "could not run the game: %s\n",
-                               error_string);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "could not run the game: %s\n", error_string);
         linted_error_string_free(error_string);
 
         return EXIT_FAILURE;

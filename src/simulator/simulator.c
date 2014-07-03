@@ -113,7 +113,7 @@ static linted_error on_controller_receive(struct linted_asynch_task *task);
 static linted_error on_sent_update(struct linted_asynch_task *completed_task);
 
 static void simulate_tick(struct simulator_state *simulator_state,
-                          struct action_state const* action_state);
+                          struct action_state const *action_state);
 static void simulate_forces(linted_updater_int *position,
                             linted_updater_int *velocity,
                             linted_updater_int thrust);
@@ -345,7 +345,7 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
         simulate_tick(simulator_state, action_state);
-   }
+    }
 
     if (!simulator_state->update_pending
         || simulator_state->write_in_progress) {
@@ -456,7 +456,7 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 }
 
 static void simulate_tick(struct simulator_state *simulator_state,
-                          struct action_state const* action_state)
+                          struct action_state const *action_state)
 {
 
     linted_updater_angle x_rotation = simulator_state->x_rotation;

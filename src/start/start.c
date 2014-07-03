@@ -288,7 +288,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
         }
 
         if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
-           continue;
+            continue;
         }
 
         ++size;
@@ -331,7 +331,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
         }
 
         if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
-           continue;
+            continue;
         }
 
         fds[ii] = fd;
