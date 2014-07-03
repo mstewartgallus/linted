@@ -112,6 +112,8 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task);
 static linted_error on_controller_receive(struct linted_asynch_task *task);
 static linted_error on_sent_update(struct linted_asynch_task *completed_task);
 
+static void simulate_tick(struct simulator_state *simulator_state,
+                          struct action_state const* action_state);
 static void simulate_forces(linted_updater_int *position,
                             linted_updater_int *velocity,
                             linted_updater_int thrust);
@@ -305,9 +307,6 @@ exit:
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
     switch (completed_task->task_action) {
-    default:
-        assert(false);
-
     case ON_READ_TIMER:
         return on_read_timer(completed_task);
 
@@ -316,6 +315,9 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
 
     case ON_SENT_UPDATER_EVENT:
         return on_sent_update(completed_task);
+
+    default:
+        assert(false);
     }
 }
 
@@ -342,42 +344,26 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
     linted_asynch_pool_submit(pool, completed_task);
 
     for (size_t ii = 0u; ii < timer_ticks; ++ii) {
-        linted_updater_angle x_rotation = simulator_state->x_rotation;
-        simulate_forces(
-            &simulator_state->x_position, &simulator_state->x_velocity,
-            -(linted_updater_cos(x_rotation) * action_state->x) / 2
-            - (linted_updater_sin(x_rotation) * action_state->z) / 2);
-
-        simulate_forces(
-            &simulator_state->z_position, &simulator_state->z_velocity,
-            -(linted_updater_cos(x_rotation) * action_state->z) / 2
-            + (linted_updater_sin(x_rotation) * action_state->x) / 2);
-
-        simulate_forces(&simulator_state->y_position,
-                        &simulator_state->y_velocity,
-                        -LINTED_UPDATER_INT_MAX * action_state->jumping);
-
-        simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
-        simulate_clamped_rotation(&simulator_state->y_rotation,
-                                  action_state->y_tilt);
-
-        simulator_state->update_pending = true;
-    }
+        simulate_tick(simulator_state, action_state);
+   }
 
     if (!simulator_state->update_pending
         || simulator_state->write_in_progress) {
         return 0;
     }
 
-    struct linted_updater_update update
-        = { .x_position = simulator_state->x_position,
-            .y_position = simulator_state->y_position,
-            .z_position = simulator_state->z_position,
-            .x_rotation = simulator_state->x_rotation,
-            .y_rotation = simulator_state->y_rotation };
+    {
+        struct linted_updater_update update
+            = { .x_position = simulator_state->x_position,
+                .y_position = simulator_state->y_position,
+                .z_position = simulator_state->z_position,
+                .x_rotation = simulator_state->x_rotation,
+                .y_rotation = simulator_state->y_rotation };
 
-    linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
-                        updater, &update);
+        linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
+                            updater, &update);
+    }
+
     updater_task->simulator_state = simulator_state;
     updater_task->pool = pool;
     updater_task->updater = updater;
@@ -469,6 +455,29 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
     return 0;
 }
 
+static void simulate_tick(struct simulator_state *simulator_state,
+                          struct action_state const* action_state)
+{
+
+    linted_updater_angle x_rotation = simulator_state->x_rotation;
+    simulate_forces(&simulator_state->x_position, &simulator_state->x_velocity,
+                    -(linted_updater_cos(x_rotation) * action_state->x) / 2
+                    - (linted_updater_sin(x_rotation) * action_state->z) / 2);
+
+    simulate_forces(&simulator_state->z_position, &simulator_state->z_velocity,
+                    -(linted_updater_cos(x_rotation) * action_state->z) / 2
+                    + (linted_updater_sin(x_rotation) * action_state->x) / 2);
+
+    simulate_forces(&simulator_state->y_position, &simulator_state->y_velocity,
+                    -LINTED_UPDATER_INT_MAX * action_state->jumping);
+
+    simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
+    simulate_clamped_rotation(&simulator_state->y_rotation,
+                              action_state->y_tilt);
+
+    simulator_state->update_pending = true;
+}
+
 static void simulate_forces(linted_updater_int *position,
                             linted_updater_int *velocity,
                             linted_updater_int thrust)
@@ -514,10 +523,10 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15, 16);
-        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3, 16);
+        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15u, 16u);
+        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3u, 16u);
         linted_updater_angle increment
-            = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+            = LINTED_UPDATER_ANGLE(1u, ROTATION_SPEED);
 
         new_rotation = linted_updater_angle_add_clamped(
             tilt_sign, minimum, maximum, *rotation, increment);
