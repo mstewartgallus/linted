@@ -284,8 +284,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     return 0;
 }
 
-void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_action,
-                        linted_ko ko, short events)
+void linted_asynch_poll(struct linted_asynch_task_poll *task,
+                        unsigned task_action, linted_ko ko, short events)
 {
     asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_POLL, task_action);
 
@@ -293,8 +293,9 @@ void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_acti
     task->events = events;
 }
 
-void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
-                        linted_ko ko, char *buf, size_t size)
+void linted_asynch_read(struct linted_asynch_task_read *task,
+                        unsigned task_action, linted_ko ko, char *buf,
+                        size_t size)
 {
     asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_READ, task_action);
 
@@ -305,8 +306,9 @@ void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_acti
     task->bytes_read = 0u;
 }
 
-void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
-                         linted_ko ko, char const *buf, size_t size)
+void linted_asynch_write(struct linted_asynch_task_write *task,
+                         unsigned task_action, linted_ko ko, char const *buf,
+                         size_t size)
 {
     asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_WRITE, task_action);
 
@@ -321,8 +323,7 @@ void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
                               unsigned task_action, linted_ko ko, char *buf,
                               size_t size)
 {
-    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_MQ_RECEIVE,
-                task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_MQ_RECEIVE, task_action);
 
     task->ko = ko;
     task->buf = buf;
@@ -365,8 +366,7 @@ void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
                                unsigned task_action, int flags,
                                struct timespec const *request)
 {
-    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_SLEEP_UNTIL,
-                task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_SLEEP_UNTIL, task_action);
 
     task->flags = flags;
     task->request = *request;

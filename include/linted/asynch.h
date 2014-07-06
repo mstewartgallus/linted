@@ -142,14 +142,16 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completions,
                                      size_t size, size_t *task_countp);
 
-void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_action,
-                        linted_ko ko, short events);
+void linted_asynch_poll(struct linted_asynch_task_poll *task,
+                        unsigned task_action, linted_ko ko, short events);
 
-void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
-                        linted_ko ko, char *buf, size_t size);
+void linted_asynch_read(struct linted_asynch_task_read *task,
+                        unsigned task_action, linted_ko ko, char *buf,
+                        size_t size);
 
-void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
-                         linted_ko ko, char const *buf, size_t size);
+void linted_asynch_write(struct linted_asynch_task_write *task,
+                         unsigned task_action, linted_ko ko, char const *buf,
+                         size_t size);
 
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
                               unsigned task_action, linted_ko ko, char *buf,

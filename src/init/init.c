@@ -1179,10 +1179,10 @@ static linted_error check_db(linted_ko cwd)
 
     {
         linted_ko tmp;
-        char * path;
+        char *path;
         {
             linted_ko xx;
-            char * yy;
+            char *yy;
             if ((errnum = linted_db_temp_file(my_db, &xx, &yy)) != 0) {
                 goto close_db;
             }
