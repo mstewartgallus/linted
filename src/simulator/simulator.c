@@ -60,15 +60,15 @@ struct action_state
     bool jumping : 1;
 };
 
+
+struct differentiable {
+    linted_updater_int value;
+    linted_updater_int derivative;
+};
+
 struct simulator_state
 {
-    linted_updater_int x_position;
-    linted_updater_int y_position;
-    linted_updater_int z_position;
-
-    linted_updater_int x_velocity;
-    linted_updater_int y_velocity;
-    linted_updater_int z_velocity;
+    struct differentiable position[3u];
 
     linted_updater_angle x_rotation;
     linted_updater_angle y_rotation;
@@ -112,9 +112,6 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task);
 
 static void simulate_tick(struct simulator_state *simulator_state,
                           struct action_state const *action_state);
-static void simulate_forces(linted_updater_int *position,
-                            linted_updater_int *velocity,
-                            linted_updater_int thrust);
 static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt);
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
@@ -194,17 +191,17 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
-    struct simulator_state simulator_state
-        = { .update_pending = true, /* Initialize the gui at start */
-            .write_in_progress = false,
-            .x_position = 0,
-            .y_position = 0,
-            .z_position = 3 * 1024,
-            .x_velocity = 0,
-            .y_velocity = 0,
-            .z_velocity = 0,
-            .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
-            .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
+    struct simulator_state simulator_state = { .update_pending = true, /* Initialize the gui at start */
+                                               .write_in_progress = false,
+
+                                               .position = {
+            { .value = 0, .derivative = 0 },
+            { .value = 0, .derivative = 0 },
+            { .value = 3 * 1024, .derivative = 0 }
+        },
+
+                                               .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
+                                               .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
 
     struct linted_asynch_pool *pool;
     {
@@ -328,9 +325,9 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
     {
         struct linted_updater_update update
-            = { .x_position = simulator_state->x_position,
-                .y_position = simulator_state->y_position,
-                .z_position = simulator_state->z_position,
+            = { .x_position = simulator_state->position[0u].value,
+                .y_position = simulator_state->position[1u].value,
+                .z_position = simulator_state->position[2u].value,
                 .x_rotation = simulator_state->x_rotation,
                 .y_rotation = simulator_state->y_rotation };
 
@@ -407,9 +404,9 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 
     {
         struct linted_updater_update update
-            = { .x_position = simulator_state->x_position,
-                .y_position = simulator_state->y_position,
-                .z_position = simulator_state->z_position,
+            = { .x_position = simulator_state->position[0u].value,
+                .y_position = simulator_state->position[1u].value,
+                .z_position = simulator_state->position[2u].value,
                 .x_rotation = simulator_state->x_rotation,
                 .y_rotation = simulator_state->y_rotation };
 
@@ -434,47 +431,45 @@ static void simulate_tick(struct simulator_state *simulator_state,
 {
 
     linted_updater_angle x_rotation = simulator_state->x_rotation;
-    simulate_forces(&simulator_state->x_position, &simulator_state->x_velocity,
-                    -(linted_updater_cos(x_rotation) * action_state->x) / 2
-                    - (linted_updater_sin(x_rotation) * action_state->z) / 2);
 
-    simulate_forces(&simulator_state->z_position, &simulator_state->z_velocity,
-                    -(linted_updater_cos(x_rotation) * action_state->z) / 2
-                    + (linted_updater_sin(x_rotation) * action_state->x) / 2);
+    linted_updater_int const thrusts[3u] = {
+        -(linted_updater_cos(x_rotation) * action_state->x) / 2
+        - (linted_updater_sin(x_rotation) * action_state->z) / 2,
 
-    simulate_forces(&simulator_state->y_position, &simulator_state->y_velocity,
-                    -LINTED_UPDATER_INT_MAX * action_state->jumping);
+        -LINTED_UPDATER_INT_MAX * action_state->jumping,
+
+        -(linted_updater_cos(x_rotation) * action_state->z) / 2
+        + (linted_updater_sin(x_rotation) * action_state->x) / 2
+    };
+
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(simulator_state->position); ++ii) {
+        linted_updater_int position = simulator_state->position[ii].value;
+        linted_updater_int velocity = simulator_state->position[ii].derivative;
+        linted_updater_int thrust = thrusts[ii];
+
+        intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
+
+        linted_updater_int guess_velocity = linted_updater_isatadd(a, velocity);
+
+        linted_updater_int friction
+            = min_int(absolute(guess_velocity), 3 /* = μ Fₙ */)
+            * -sign(guess_velocity);
+
+        linted_updater_int new_velocity
+            = linted_updater_isatadd(guess_velocity, friction);
+
+        linted_updater_int new_position
+            = linted_updater_isatadd(position, new_velocity);
+
+        simulator_state->position[ii].value = new_position;
+        simulator_state->position[ii].derivative = new_velocity;
+    }
 
     simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
     simulate_clamped_rotation(&simulator_state->y_rotation,
                               action_state->y_tilt);
 
     simulator_state->update_pending = true;
-}
-
-static void simulate_forces(linted_updater_int *position,
-                            linted_updater_int *velocity,
-                            linted_updater_int thrust)
-{
-    linted_updater_int old_position = *position;
-    linted_updater_int old_velocity = *velocity;
-
-    intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
-
-    linted_updater_int guess_velocity = linted_updater_isatadd(a, old_velocity);
-
-    linted_updater_int friction
-        = min_int(absolute(guess_velocity), 3 /* = μ Fₙ */)
-          * -sign(guess_velocity);
-
-    linted_updater_int new_velocity
-        = linted_updater_isatadd(guess_velocity, friction);
-
-    linted_updater_int new_position
-        = linted_updater_isatadd(old_position, new_velocity);
-
-    *position = new_position;
-    *velocity = new_velocity;
 }
 
 static void simulate_rotation(linted_updater_angle *rotation,
