@@ -162,12 +162,12 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto free_version_text;
         }
 
-        if (version_file_size != sizeof CURRENT_VERSION - 1) {
+        if (version_file_size != sizeof CURRENT_VERSION - 1u) {
             errnum = EINVAL;
             goto free_version_text;
         }
 
-        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1)
+        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1u)
             != 0) {
             errnum = EINVAL;
             goto free_version_text;
