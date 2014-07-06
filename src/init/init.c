@@ -1179,12 +1179,15 @@ static linted_error check_db(linted_ko cwd)
 
     {
         linted_ko tmp;
+        char * path;
         {
             linted_ko xx;
-            if ((errnum = linted_db_temp_file(my_db, &xx)) != 0) {
+            char * yy;
+            if ((errnum = linted_db_temp_file(my_db, &xx, &yy)) != 0) {
                 goto close_db;
             }
             tmp = xx;
+            path = yy;
         }
 
         static char const hello[] = "Hello anybody!";
@@ -1222,16 +1225,19 @@ static linted_error check_db(linted_ko cwd)
         }
 
     done_writing:
-        if ((errnum = linted_db_temp_send(my_db, "hello", tmp)) != 0) {
+        if ((errnum = linted_db_temp_send(my_db, path, "hello")) != 0) {
             goto close_tmp;
         }
 
-    close_tmp : {
-        linted_error close_errnum = linted_ko_close(tmp);
-        if (0 == errnum) {
-            errnum = close_errnum;
+    close_tmp:
+        linted_mem_free(path);
+
+        {
+            linted_error close_errnum = linted_ko_close(tmp);
+            if (0 == errnum) {
+                errnum = close_errnum;
+            }
         }
-    }
     }
 
 close_db : {

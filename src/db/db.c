@@ -49,9 +49,6 @@
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
-static linted_error fname_alloc(linted_ko ko, char **buf);
-static linted_error fname(linted_ko ko, char *buf, size_t *sizep);
-
 linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
                             int flags)
 {
@@ -253,7 +250,7 @@ linted_error linted_db_close(linted_db db)
     return linted_ko_close(db);
 }
 
-linted_error linted_db_temp_file(linted_db db, linted_ko *kop)
+linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp)
 {
     linted_error errnum = 0;
 
@@ -298,47 +295,36 @@ try_again:
         goto try_again;
     }
 
-    linted_mem_free(temp_path);
-
     if (errnum != 0) {
+        linted_mem_free(temp_path);
         return errnum;
     }
 
+    *pathp = temp_path;
     *kop = temp_field;
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db db, char const *name, linted_ko tmp)
+linted_error linted_db_temp_send(linted_db db, char const *path,
+                                 char const *name)
 {
     linted_error errnum;
-
-    char *temp_path;
-    {
-        char *xx;
-        if ((errnum = fname_alloc(tmp, &xx)) != 0) {
-            return errnum;
-        }
-        temp_path = xx;
-    }
 
     char *field_path;
     {
         char *xx;
         if ((errnum = prepend(&xx, FIELD_DIR "/", name)) != 0) {
-            goto free_temp_path;
+            return errnum;
         }
         field_path = xx;
     }
 
-    if (-1 == renameat(db, temp_path, db, field_path)) {
+    if (-1 == renameat(db, path, db, field_path)) {
         errnum = errno;
         assert(errnum != 0);
     }
 
     linted_mem_free(field_path);
-
-free_temp_path:
-    linted_mem_free(temp_path);
 
     return errnum;
 }
@@ -367,122 +353,5 @@ static linted_error prepend(char **result, char const *base,
     memcpy(new_path + base_size, pathname, pathname_size);
 
     *result = new_path;
-    return 0;
-}
-
-static linted_error fname_alloc(linted_ko fd, char **bufp)
-{
-    linted_error errnum;
-    size_t bytes_wrote;
-
-    size_t buf_size = 40u;
-
-    char *buf;
-    {
-        linted_error xx;
-        buf = linted_mem_alloc(&xx, buf_size);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return errnum;
-    }
-
-    for (;;) {
-        bytes_wrote = buf_size;
-        {
-            size_t xx = bytes_wrote;
-            if ((errnum = fname(fd, buf, &xx)) != 0) {
-                goto free_buf;
-            }
-            bytes_wrote = xx;
-        }
-
-        if (bytes_wrote < buf_size) {
-            break;
-        }
-
-        if (SIZE_MAX / 3 < buf_size) {
-            errnum = ENOMEM;
-            goto free_buf;
-        }
-        buf_size = (buf_size * 3u) / 2u;
-        char *newbuf;
-        {
-            linted_error xx;
-            newbuf = linted_mem_realloc(&xx, buf, buf_size);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            goto free_buf;
-        }
-        buf = newbuf;
-    }
-
-    /* Save on excess memory, also give debugging allocators more
-     * information.
-     */
-    char *newbuf;
-    {
-        linted_error xx;
-        newbuf = linted_mem_realloc(&xx, buf, bytes_wrote + 1u);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        goto free_buf;
-    }
-    buf = newbuf;
-
-    buf[bytes_wrote] = '\0';
-
-    *bufp = buf;
-    return 0;
-
-free_buf:
-    linted_mem_free(buf);
-
-    return errnum;
-}
-
-#define PROC_SELF_FD "/proc/self/fd/"
-#define INT_STR_SIZE 10u
-
-static linted_error fname(linted_ko fd, char *buf, size_t *sizep)
-{
-    linted_error errnum;
-
-    {
-        struct stat statistics;
-        if (-1 == fstat(fd, &statistics)) {
-            errnum = errno;
-            assert(errnum != 0);
-            return errnum;
-        }
-
-        if (0 == statistics.st_nlink) {
-            return ENOENT;
-        }
-    }
-
-    static char const proc_self_fd[sizeof PROC_SELF_FD - 1u] = PROC_SELF_FD;
-
-    char fd_path[sizeof proc_self_fd + INT_STR_SIZE + 1u];
-
-    memcpy(fd_path, proc_self_fd, sizeof proc_self_fd);
-
-    char *int_end = fd_path + sizeof proc_self_fd;
-
-    size_t bytes_written = (size_t)snprintf(int_end, INT_STR_SIZE, "%i", fd);
-    int_end[bytes_written] = '\0';
-
-    size_t size = *sizep;
-
-    ssize_t bytes_wrote = readlink(fd_path, buf, size);
-    if (-1 == bytes_wrote) {
-        errnum = errno;
-        assert(errnum != 0);
-        return errnum;
-    }
-
-    *sizep = bytes_wrote;
     return 0;
 }
