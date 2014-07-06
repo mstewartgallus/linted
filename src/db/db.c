@@ -181,7 +181,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         if (0 == errnum) {
             errnum = close_errnum;
         }
-    } break;
+        break;
+    }
     }
 
     case ENOENT: {

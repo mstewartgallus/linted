@@ -818,9 +818,8 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
     linted_error errnum;
     struct timespec time_remaining = task_sleep->request;
     do {
-        if (-1
-            == clock_nanosleep(CLOCK_MONOTONIC, task_sleep->flags,
-                               &time_remaining, &time_remaining)) {
+        if (-1 == clock_nanosleep(CLOCK_MONOTONIC, task_sleep->flags,
+                                  &time_remaining, &time_remaining)) {
             errnum = errno;
             assert(errnum != 0);
         } else {
