@@ -16,7 +16,6 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/mq.h"
 #include "linted/rpc.h"
@@ -58,7 +57,7 @@ struct linted_updater_update
 
 struct linted_updater_task_send
 {
-    struct linted_asynch_task_mq_send parent;
+    struct linted_mq_task_send parent;
     char message
         [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
          + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
@@ -66,7 +65,7 @@ struct linted_updater_task_send
 
 struct linted_updater_task_receive
 {
-    struct linted_asynch_task_mq_receive parent;
+    struct linted_mq_task_receive parent;
     char message
         [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
          + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];

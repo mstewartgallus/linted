@@ -33,8 +33,8 @@
 linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
                                 size_t size)
 {
-    struct linted_asynch_task_read read_task;
-    linted_asynch_read(&read_task, 0, ko, buf, size);
+    struct linted_ko_task_read read_task;
+    linted_ko_task_read(&read_task, 0, ko, buf, size);
     linted_asynch_pool_submit(NULL, LINTED_UPCAST(&read_task));
 
     if (bytes_read_out != NULL) {
@@ -46,8 +46,8 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
                                  void const *buf, size_t size)
 {
-    struct linted_asynch_task_write write_task;
-    linted_asynch_write(&write_task, 0, ko, buf, size);
+    struct linted_ko_task_write write_task;
+    linted_ko_task_write(&write_task, 0, ko, buf, size);
     linted_asynch_pool_submit(NULL, LINTED_UPCAST(&write_task));
 
     if (bytes_wrote_out != NULL) {

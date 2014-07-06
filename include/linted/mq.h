@@ -35,6 +35,24 @@ struct linted_mq_attr
     size_t msgsize;
 };
 
+struct linted_mq_task_receive
+{
+    struct linted_asynch_task parent;
+    char *buf;
+    size_t size;
+    size_t bytes_read;
+    linted_ko ko;
+};
+
+struct linted_mq_task_send
+{
+    struct linted_asynch_task parent;
+    char const *buf;
+    size_t size;
+    size_t bytes_wrote;
+    linted_ko ko;
+};
+
 /**
  * The linted_mq_pair call creates an unnamed pair of message queues.
  *
@@ -58,5 +76,13 @@ struct linted_mq_attr
  */
 linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                               int flags);
+
+void linted_mq_task_receive(struct linted_mq_task_receive *task,
+                              unsigned task_action, linted_ko ko, char *buf,
+                              size_t size);
+
+void linted_mq_task_send(struct linted_mq_task_send *task,
+                         unsigned task_action, linted_ko ko, char const *buf,
+                         size_t size);
 
 #endif /* LINTED_MQ_H */

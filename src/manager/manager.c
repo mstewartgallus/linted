@@ -93,7 +93,7 @@ close_sock:
 void linted_manager_accept(struct linted_manager_task_accept *task,
                            unsigned task_action, linted_manager manager)
 {
-    linted_asynch_accept(LINTED_UPCAST(task), task_action, manager);
+    linted_ko_task_accept(LINTED_UPCAST(task), task_action, manager);
 }
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
@@ -170,8 +170,8 @@ linted_error linted_manager_path(linted_manager manager,
 void linted_manager_recv_request(struct linted_manager_task_recv_request *task,
                                  unsigned task_action, linted_manager manager)
 {
-    linted_asynch_read(LINTED_UPCAST(task), task_action, manager,
-                       (char *)&task->request, sizeof task->request);
+    linted_ko_task_read(LINTED_UPCAST(task), task_action, manager,
+                        (char *)&task->request, sizeof task->request);
 }
 
 void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
@@ -179,8 +179,8 @@ void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
                                union linted_manager_reply const *reply)
 {
     task->reply = *reply;
-    linted_asynch_write(LINTED_UPCAST(task), task_action, manager,
-                        (char const *)&task->reply, sizeof task->reply);
+    linted_ko_task_write(LINTED_UPCAST(task), task_action, manager,
+                         (char const *)&task->reply, sizeof task->reply);
 }
 
 linted_error linted_manager_send_request(linted_manager manager,

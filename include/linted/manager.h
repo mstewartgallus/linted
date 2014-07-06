@@ -77,18 +77,18 @@ union linted_manager_reply
 
 struct linted_manager_task_accept
 {
-    struct linted_asynch_task_accept parent;
+    struct linted_ko_task_accept parent;
 };
 
 struct linted_manager_task_recv_request
 {
-    struct linted_asynch_task_read parent;
+    struct linted_ko_task_read parent;
     union linted_manager_request request;
 };
 
 struct linted_manager_task_send_reply
 {
-    struct linted_asynch_task_write parent;
+    struct linted_ko_task_write parent;
     union linted_manager_reply reply;
 };
 

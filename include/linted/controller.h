@@ -16,7 +16,6 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/mq.h"
 #include "linted/rpc.h"
@@ -48,13 +47,13 @@ struct linted_controller_message
 
 struct linted_controller_task_send
 {
-    struct linted_asynch_task_mq_send parent;
+    struct linted_mq_task_send parent;
     char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1u];
 };
 
 struct linted_controller_task_receive
 {
-    struct linted_asynch_task_mq_receive parent;
+    struct linted_mq_task_receive parent;
     char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1u];
 };
 

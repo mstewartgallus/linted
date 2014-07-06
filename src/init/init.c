@@ -566,8 +566,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct init_logger_task logger_task;
         struct new_connection_task new_connection_task;
 
-        linted_asynch_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
-                             __WALL);
+        linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
+                                  __WALL);
         waiter_task.pool = pool;
         waiter_task.gui_service = gui_service;
         waiter_task.sim_service = sim_service;
@@ -942,7 +942,7 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
     struct new_connection_task *new_connection_task
         = LINTED_DOWNCAST(struct new_connection_task, completed_task);
 
-    struct linted_asynch_task_accept *accept_task
+    struct linted_ko_task_accept *accept_task
         = LINTED_UPCAST(LINTED_UPCAST(new_connection_task));
 
     struct linted_asynch_pool *pool = new_connection_task->pool;
@@ -1022,7 +1022,7 @@ static linted_error on_read_connection(struct linted_asynch_task
 
     struct linted_manager_task_recv_request *task_recv
         = LINTED_UPCAST(read_conn_task);
-    struct linted_asynch_task_read *task_read = LINTED_UPCAST(task_recv);
+    struct linted_ko_task_read *task_read = LINTED_UPCAST(task_recv);
 
     linted_ko ko = task_read->ko;
 
@@ -1194,9 +1194,9 @@ static linted_error check_db(linted_ko cwd)
         char const *data = hello;
         size_t data_size = sizeof hello - 1u;
 
-        struct linted_asynch_task_write write_task;
+        struct linted_ko_task_write write_task;
 
-        linted_asynch_write(&write_task, TMP_WRITE_FINISHED, tmp, data,
+        linted_ko_task_write(&write_task, TMP_WRITE_FINISHED, tmp, data,
                             data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 

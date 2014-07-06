@@ -223,8 +223,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
 
-        linted_asynch_sleep_until(LINTED_UPCAST(&timer_task), ON_READ_TIMER,
-                                  TIMER_ABSTIME, &now);
+        linted_asynch_task_sleep_until(LINTED_UPCAST(&timer_task), ON_READ_TIMER,
+                                       TIMER_ABSTIME, &now);
     }
     timer_task.pool = pool;
     timer_task.updater_task = &updater_task;

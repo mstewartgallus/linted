@@ -43,9 +43,9 @@ linted_error linted_logger_create(linted_logger *loggerp, int flags)
 linted_error linted_logger_log(linted_logger logger, char const *msg_ptr,
                                size_t msg_len)
 {
-    struct linted_asynch_task_mq_send send_task;
+    struct linted_mq_task_send send_task;
 
-    linted_asynch_mq_send(&send_task, 0, logger, msg_ptr, msg_len);
+    linted_mq_task_send(&send_task, 0, logger, msg_ptr, msg_len);
     linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
 
     return LINTED_UPCAST(&send_task)->errnum;
@@ -55,6 +55,6 @@ void linted_logger_receive(struct linted_logger_task *task, unsigned task_id,
                            linted_logger logger,
                            char msg_ptr[static LINTED_LOGGER_LOG_MAX])
 {
-    linted_asynch_mq_receive(LINTED_UPCAST(task), task_id, logger, msg_ptr,
-                             LINTED_LOGGER_LOG_MAX);
+    linted_mq_task_receive(LINTED_UPCAST(task), task_id, logger, msg_ptr,
+                           LINTED_LOGGER_LOG_MAX);
 }

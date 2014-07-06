@@ -16,7 +16,6 @@
 #ifndef LINTED_LOGGER_H
 #define LINTED_LOGGER_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/mq.h"
 
@@ -37,7 +36,7 @@ typedef linted_mq linted_logger;
 
 struct linted_logger_task
 {
-    struct linted_asynch_task_mq_receive parent;
+    struct linted_mq_task_receive parent;
 };
 
 linted_error linted_logger_create(linted_logger *loggerp, int flags);

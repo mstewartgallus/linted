@@ -178,3 +178,46 @@ linted_error linted_ko_close(linted_ko ko)
 
     return errnum;
 }
+
+void linted_ko_task_poll(struct linted_ko_task_poll *task,
+                         unsigned task_action, linted_ko ko, short events)
+{
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
+
+    task->ko = ko;
+    task->events = events;
+}
+
+void linted_ko_task_read(struct linted_ko_task_read *task,
+                         unsigned task_action, linted_ko ko, char *buf,
+                         size_t size)
+{
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+    task->current_position = 0u;
+    task->bytes_read = 0u;
+}
+
+void linted_ko_task_write(struct linted_ko_task_write *task,
+                          unsigned task_action, linted_ko ko, char const *buf,
+                          size_t size)
+{
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
+
+    task->ko = ko;
+    task->buf = buf;
+    task->size = size;
+    task->current_position = 0u;
+    task->bytes_wrote = 0u;
+}
+
+void linted_ko_task_accept(struct linted_ko_task_accept *task,
+                           unsigned task_action, linted_ko ko)
+{
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
+
+    task->ko = ko;
+}

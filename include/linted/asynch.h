@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 #include "linted/queue.h"
-#include "linted/ko.h"
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -44,6 +43,17 @@
  *       set and a lock).
  */
 
+enum {
+    LINTED_ASYNCH_TASK_POLL,
+    LINTED_ASYNCH_TASK_READ,
+    LINTED_ASYNCH_TASK_WRITE,
+    LINTED_ASYNCH_TASK_MQ_RECEIVE,
+    LINTED_ASYNCH_TASK_MQ_SEND,
+    LINTED_ASYNCH_TASK_WAITID,
+    LINTED_ASYNCH_TASK_ACCEPT,
+    LINTED_ASYNCH_TASK_SLEEP_UNTIL
+};
+
 struct linted_asynch_pool;
 
 struct linted_asynch_task
@@ -52,52 +62,6 @@ struct linted_asynch_task
     linted_error errnum;
     unsigned type;
     unsigned task_action;
-};
-
-struct linted_asynch_task_poll
-{
-    struct linted_asynch_task parent;
-    linted_ko ko;
-    short events;
-    short revents;
-};
-
-struct linted_asynch_task_read
-{
-    struct linted_asynch_task parent;
-    char *buf;
-    size_t size;
-    size_t current_position;
-    size_t bytes_read;
-    linted_ko ko;
-};
-
-struct linted_asynch_task_write
-{
-    struct linted_asynch_task parent;
-    char const *buf;
-    size_t size;
-    size_t current_position;
-    size_t bytes_wrote;
-    linted_ko ko;
-};
-
-struct linted_asynch_task_mq_receive
-{
-    struct linted_asynch_task parent;
-    char *buf;
-    size_t size;
-    size_t bytes_read;
-    linted_ko ko;
-};
-
-struct linted_asynch_task_mq_send
-{
-    struct linted_asynch_task parent;
-    char const *buf;
-    size_t size;
-    size_t bytes_wrote;
-    linted_ko ko;
 };
 
 #if _POSIX_C_SOURCE >= 200809L
@@ -110,13 +74,6 @@ struct linted_asynch_task_waitid
     int options;
 };
 #endif
-
-struct linted_asynch_task_accept
-{
-    struct linted_asynch_task parent;
-    linted_ko ko;
-    linted_ko returned_ko;
-};
 
 #if _POSIX_C_SOURCE >= 199309L
 struct linted_asynch_task_sleep_until
@@ -142,38 +99,20 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completions,
                                      size_t size, size_t *task_countp);
 
-void linted_asynch_poll(struct linted_asynch_task_poll *task,
-                        unsigned task_action, linted_ko ko, short events);
+void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
+                        unsigned task_action);
 
-void linted_asynch_read(struct linted_asynch_task_read *task,
-                        unsigned task_action, linted_ko ko, char *buf,
-                        size_t size);
-
-void linted_asynch_write(struct linted_asynch_task_write *task,
-                         unsigned task_action, linted_ko ko, char const *buf,
-                         size_t size);
-
-void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
-                              unsigned task_action, linted_ko ko, char *buf,
-                              size_t size);
-
-void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
-                           unsigned task_action, linted_ko ko, char const *buf,
-                           size_t size);
 
 #if _POSIX_C_SOURCE >= 200809L
-void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
-                          unsigned task_action, idtype_t idtype, id_t id,
-                          int options);
+void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
+                               unsigned task_action, idtype_t idtype, id_t id,
+                               int options);
 #endif
 
-void linted_asynch_accept(struct linted_asynch_task_accept *task,
-                          unsigned task_action, linted_ko ko);
-
 #if _POSIX_C_SOURCE >= 199309L
-void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
-                               unsigned task_action, int flags,
-                               struct timespec const *request);
+void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
+                                    unsigned task_action, int flags,
+                                    struct timespec const *request);
 #endif
 
 #endif /* LINTED_ASYNCH_H */
