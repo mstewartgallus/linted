@@ -22,4 +22,6 @@ TESTS+=%D%/test_mem
 check_PROGRAMS+=%D%/test_mem
 
 %C%_test_mem_SOURCES=%D%/test_mem.c
-%C%_test_mem_LDADD=%D%/libmem.la
+%C%_test_mem_LDADD=\
+ src/io/libio.la\
+ %D%/libmem.la

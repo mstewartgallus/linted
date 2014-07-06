@@ -16,8 +16,8 @@
 #include "config.h"
 
 #include "linted/mem.h"
+#include "linted/util.h"
 
-#include <assert.h>
 #include <stdlib.h>
 
 int main(void)
@@ -29,7 +29,9 @@ int main(void)
         errnum = xx;
         linted_mem_free(mem);
     }
-    assert(0 == errnum);
+    if (errnum != 0) {
+        LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
+    }
 
     {
         linted_error xx;
@@ -37,7 +39,9 @@ int main(void)
         errnum = xx;
         linted_mem_free(mem);
     }
-    assert(0 == errnum);
+    if (errnum != 0) {
+        LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
+    }
 
     return EXIT_SUCCESS;
 }
