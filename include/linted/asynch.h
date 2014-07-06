@@ -23,6 +23,10 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#if _POSIX_C_SOURCE >= 199309L
+#include <time.h>
+#endif
+
 #if _POSIX_C_SOURCE >= 200809L
 #include <sys/wait.h>
 #endif
@@ -49,7 +53,8 @@ enum {
     LINTED_ASYNCH_TASK_MQ_RECEIVE,
     LINTED_ASYNCH_TASK_MQ_SEND,
     LINTED_ASYNCH_TASK_WAITID,
-    LINTED_ASYNCH_TASK_ACCEPT
+    LINTED_ASYNCH_TASK_ACCEPT,
+    LINTED_ASYNCH_TASK_SLEEP_UNTIL
 };
 
 struct linted_asynch_task
@@ -124,6 +129,15 @@ struct linted_asynch_task_accept
     linted_ko returned_ko;
 };
 
+#if _POSIX_C_SOURCE >= 199309L
+struct linted_asynch_task_sleep_until
+{
+    struct linted_asynch_task parent;
+    int flags;
+    struct timespec request;
+};
+#endif
+
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
@@ -164,5 +178,11 @@ void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
 
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
                           int task_action, linted_ko ko);
+
+#if _POSIX_C_SOURCE >= 199309L
+void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
+                               int task_action, int flags,
+                               struct timespec const *request);
+#endif
 
 #endif /* LINTED_ASYNCH_H */

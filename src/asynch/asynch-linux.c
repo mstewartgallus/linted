@@ -76,6 +76,8 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
 static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
+static void run_task_sleep_until(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
@@ -348,6 +350,17 @@ void linted_asynch_accept(struct linted_asynch_task_accept *task,
     task->ko = ko;
 }
 
+void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
+                               int task_action, int flags,
+                               struct timespec const *request)
+{
+    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL,
+                task_action);
+
+    task->flags = flags;
+    task->request = *request;
+}
+
 static void asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action)
 {
@@ -404,6 +417,10 @@ static void run_task(struct linted_asynch_pool *pool,
 
     case LINTED_ASYNCH_TASK_ACCEPT:
         run_task_accept(pool, task);
+        break;
+
+    case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
+        run_task_sleep_until(pool, task);
         break;
 
     default:
@@ -787,6 +804,31 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 
     task->errnum = errnum;
     task_accept->returned_ko = new_ko;
+
+    if (pool != NULL) {
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+    }
+}
+
+static void run_task_sleep_until(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task)
+{
+    struct linted_asynch_task_sleep_until *task_sleep
+        = LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);
+    linted_error errnum;
+    struct timespec time_remaining = task_sleep->request;
+    do {
+        if (-1
+            == clock_nanosleep(CLOCK_MONOTONIC, task_sleep->flags,
+                               &time_remaining, &time_remaining)) {
+            errnum = errno;
+            assert(errnum != 0);
+        } else {
+            errnum = 0;
+        }
+    } while (EINTR == errnum);
+
+    task->errnum = errnum;
 
     if (pool != NULL) {
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));

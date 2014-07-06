@@ -34,7 +34,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/timerfd.h>
 #include <time.h>
 
 #define HELP_OPTION "--help"
@@ -82,8 +81,7 @@ struct sim_updater_task;
 
 struct sim_tick_task
 {
-    struct linted_asynch_task_read parent;
-    uint64_t timer_ticks;
+    struct linted_asynch_task_sleep_until parent;
     struct linted_asynch_pool *pool;
     struct sim_updater_task *updater_task;
     struct action_state const *action_state;
@@ -208,38 +206,11 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
             .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
 
-    linted_ko timer
-        = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-    if (-1 == timer) {
-        errnum = errno;
-        assert(errnum != 0);
-        goto exit;
-    }
-
-    {
-        struct itimerspec itimer_spec;
-        memset(&itimer_spec, 0, sizeof itimer_spec);
-
-        long const second = 1000000000;
-
-        /* Strangely, it_value has to be nozero */
-        itimer_spec.it_value.tv_nsec = 1;
-
-        itimer_spec.it_interval.tv_sec = 0;
-        itimer_spec.it_interval.tv_nsec = second / 60;
-
-        if (-1 == timerfd_settime(timer, 0, &itimer_spec, NULL)) {
-            errnum = errno;
-            assert(errnum != 0);
-            goto close_timer;
-        }
-    }
-
     struct linted_asynch_pool *pool;
     {
         struct linted_asynch_pool *xx;
         if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
-            goto close_timer;
+            goto exit;
         }
         pool = xx;
     }
@@ -248,9 +219,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     struct sim_controller_task controller_task;
     struct sim_updater_task updater_task;
 
-    linted_asynch_read(LINTED_UPCAST(&timer_task), ON_READ_TIMER, timer,
-                       (char *)&timer_task.timer_ticks,
-                       sizeof timer_task.timer_ticks);
+    {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+
+        linted_asynch_sleep_until(LINTED_UPCAST(&timer_task), ON_READ_TIMER,
+                                  TIMER_ABSTIME, &now);
+    }
     timer_task.pool = pool;
     timer_task.updater_task = &updater_task;
     timer_task.action_state = &action_state;
@@ -288,15 +263,6 @@ destroy_pool : {
     linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;
-    }
-}
-
-close_timer : {
-    linted_error close_errnum = linted_ko_close(timer);
-    assert(close_errnum != EBADF);
-
-    if (0 == errnum) {
-        errnum = close_errnum;
     }
 }
 
@@ -338,14 +304,22 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
     struct action_state const *action_state = timer_task->action_state;
     struct simulator_state *simulator_state = timer_task->simulator_state;
 
-    uint64_t timer_ticks;
-    memcpy(&timer_ticks, &timer_task->timer_ticks, sizeof timer_ticks);
+    time_t requested_sec = LINTED_UPCAST(timer_task)->request.tv_sec;
+    long requested_nsec = LINTED_UPCAST(timer_task)->request.tv_nsec;
+
+    long const second = 1000000000;
+    requested_nsec += second / 60;
+    if (requested_nsec >= second) {
+        requested_nsec -= second;
+        requested_sec += 1;
+    }
+
+    LINTED_UPCAST(timer_task)->request.tv_sec = requested_sec;
+    LINTED_UPCAST(timer_task)->request.tv_nsec = requested_nsec;
 
     linted_asynch_pool_submit(pool, completed_task);
 
-    for (size_t ii = 0u; ii < timer_ticks; ++ii) {
-        simulate_tick(simulator_state, action_state);
-    }
+    simulate_tick(simulator_state, action_state);
 
     if (!simulator_state->update_pending
         || simulator_state->write_in_progress) {

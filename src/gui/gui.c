@@ -38,7 +38,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <time.h>
 #include <GL/glx.h>
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
@@ -491,17 +490,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  * This is an ugly hack and waiting on the X11 file
                  * descriptor should be implemented eventually.
                  */
-                struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
-                do {
-                    if (-1 == clock_nanosleep(CLOCK_MONOTONIC,
-                                              0,
-                                              &request, &request)) {
-                        errnum = errno;
-                        assert(errnum != 0);
-                    } else {
-                        errnum = 0;
-                    }
-                } while (EINTR == errnum);
+                struct linted_asynch_task_sleep_until sleeper_task;
+                {
+                    struct timespec request = {.tv_sec = 0, .tv_nsec = 10};
+                    linted_asynch_sleep_until(&sleeper_task, 0, 0, &request);
+                }
+                linted_asynch_pool_submit(NULL, LINTED_UPCAST(&sleeper_task));
+                errnum = LINTED_UPCAST(&sleeper_task)->errnum;
                 if (errnum != 0) {
                     assert(errnum != EINVAL);
                     assert(errnum != EFAULT);
