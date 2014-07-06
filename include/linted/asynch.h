@@ -46,17 +46,6 @@
 
 struct linted_asynch_pool;
 
-enum {
-    LINTED_ASYNCH_TASK_POLL,
-    LINTED_ASYNCH_TASK_READ,
-    LINTED_ASYNCH_TASK_WRITE,
-    LINTED_ASYNCH_TASK_MQ_RECEIVE,
-    LINTED_ASYNCH_TASK_MQ_SEND,
-    LINTED_ASYNCH_TASK_WAITID,
-    LINTED_ASYNCH_TASK_ACCEPT,
-    LINTED_ASYNCH_TASK_SLEEP_UNTIL
-};
-
 struct linted_asynch_task
 {
     struct linted_queue_node parent;

@@ -34,6 +34,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+enum {
+    ASYNCH_TASK_POLL,
+    ASYNCH_TASK_READ,
+    ASYNCH_TASK_WRITE,
+    ASYNCH_TASK_MQ_RECEIVE,
+    ASYNCH_TASK_MQ_SEND,
+    ASYNCH_TASK_WAITID,
+    ASYNCH_TASK_ACCEPT,
+    ASYNCH_TASK_SLEEP_UNTIL
+};
+
 struct linted_asynch_pool
 {
     /**
@@ -276,7 +287,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_action,
                         linted_ko ko, short events)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_POLL, task_action);
 
     task->ko = ko;
     task->events = events;
@@ -285,7 +296,7 @@ void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_acti
 void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
                         linted_ko ko, char *buf, size_t size)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_READ, task_action);
 
     task->ko = ko;
     task->buf = buf;
@@ -297,7 +308,7 @@ void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_acti
 void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
                          linted_ko ko, char const *buf, size_t size)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_WRITE, task_action);
 
     task->ko = ko;
     task->buf = buf;
@@ -310,7 +321,7 @@ void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
                               unsigned task_action, linted_ko ko, char *buf,
                               size_t size)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_MQ_RECEIVE,
                 task_action);
 
     task->ko = ko;
@@ -323,7 +334,7 @@ void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
                            unsigned task_action, linted_ko ko, char const *buf,
                            size_t size)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_MQ_SEND, task_action);
 
     task->ko = ko;
     task->buf = buf;
@@ -335,7 +346,7 @@ void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
                           unsigned task_action, idtype_t idtype, id_t id,
                           int options)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_WAITID, task_action);
 
     task->idtype = idtype;
     task->id = id;
@@ -345,7 +356,7 @@ void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
                           unsigned task_action, linted_ko ko)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_ACCEPT, task_action);
 
     task->ko = ko;
 }
@@ -354,7 +365,7 @@ void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
                                unsigned task_action, int flags,
                                struct timespec const *request)
 {
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL,
+    asynch_task(LINTED_UPCAST(task), ASYNCH_TASK_SLEEP_UNTIL,
                 task_action);
 
     task->flags = flags;
@@ -391,35 +402,35 @@ static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {
     switch (task->type) {
-    case LINTED_ASYNCH_TASK_POLL:
+    case ASYNCH_TASK_POLL:
         run_task_poll(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_READ:
+    case ASYNCH_TASK_READ:
         run_task_read(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_WRITE:
+    case ASYNCH_TASK_WRITE:
         run_task_write(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_MQ_RECEIVE:
+    case ASYNCH_TASK_MQ_RECEIVE:
         run_task_mq_receive(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_MQ_SEND:
+    case ASYNCH_TASK_MQ_SEND:
         run_task_mq_send(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_WAITID:
+    case ASYNCH_TASK_WAITID:
         run_task_waitid(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_ACCEPT:
+    case ASYNCH_TASK_ACCEPT:
         run_task_accept(pool, task);
         break;
 
-    case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
+    case ASYNCH_TASK_SLEEP_UNTIL:
         run_task_sleep_until(pool, task);
         break;
 
