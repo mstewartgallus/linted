@@ -153,35 +153,35 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completions,
                                      size_t size, size_t *task_countp);
 
-void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
+void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_action,
                         linted_ko ko, short events);
 
-void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
+void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
                         linted_ko ko, char *buf, size_t size);
 
-void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
+void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
                          linted_ko ko, char const *buf, size_t size);
 
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
-                              int task_action, linted_ko ko, char *buf,
+                              unsigned task_action, linted_ko ko, char *buf,
                               size_t size);
 
 void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
-                           int task_action, linted_ko ko, char const *buf,
+                           unsigned task_action, linted_ko ko, char const *buf,
                            size_t size);
 
 #if _POSIX_C_SOURCE >= 200809L
 void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
-                          int task_action, idtype_t idtype, id_t id,
+                          unsigned task_action, idtype_t idtype, id_t id,
                           int options);
 #endif
 
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
-                          int task_action, linted_ko ko);
+                          unsigned task_action, linted_ko ko);
 
 #if _POSIX_C_SOURCE >= 199309L
 void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
-                               int task_action, int flags,
+                               unsigned task_action, int flags,
                                struct timespec const *request);
 #endif
 

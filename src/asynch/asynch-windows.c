@@ -228,7 +228,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     return 0;
 }
 
-void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
+void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
                         linted_ko ko, char *buf, size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
@@ -240,7 +240,7 @@ void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
     task->bytes_read = 0u;
 }
 
-void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
+void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
                          linted_ko ko, char const *buf, size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
@@ -253,7 +253,7 @@ void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
 }
 
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
-                          int task_action, linted_ko ko)
+                          unsigned task_action, linted_ko ko)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
 

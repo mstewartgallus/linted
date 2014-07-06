@@ -273,7 +273,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     return 0;
 }
 
-void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
+void linted_asynch_poll(struct linted_asynch_task_poll *task, unsigned task_action,
                         linted_ko ko, short events)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL, task_action);
@@ -282,7 +282,7 @@ void linted_asynch_poll(struct linted_asynch_task_poll *task, int task_action,
     task->events = events;
 }
 
-void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
+void linted_asynch_read(struct linted_asynch_task_read *task, unsigned task_action,
                         linted_ko ko, char *buf, size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
@@ -294,7 +294,7 @@ void linted_asynch_read(struct linted_asynch_task_read *task, int task_action,
     task->bytes_read = 0u;
 }
 
-void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
+void linted_asynch_write(struct linted_asynch_task_write *task, unsigned task_action,
                          linted_ko ko, char const *buf, size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
@@ -307,7 +307,7 @@ void linted_asynch_write(struct linted_asynch_task_write *task, int task_action,
 }
 
 void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
-                              int task_action, linted_ko ko, char *buf,
+                              unsigned task_action, linted_ko ko, char *buf,
                               size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
@@ -320,7 +320,7 @@ void linted_asynch_mq_receive(struct linted_asynch_task_mq_receive *task,
 }
 
 void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
-                           int task_action, linted_ko ko, char const *buf,
+                           unsigned task_action, linted_ko ko, char const *buf,
                            size_t size)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
@@ -332,7 +332,7 @@ void linted_asynch_mq_send(struct linted_asynch_task_mq_send *task,
 }
 
 void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
-                          int task_action, idtype_t idtype, id_t id,
+                          unsigned task_action, idtype_t idtype, id_t id,
                           int options)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
@@ -343,7 +343,7 @@ void linted_asynch_waitid(struct linted_asynch_task_waitid *task,
 }
 
 void linted_asynch_accept(struct linted_asynch_task_accept *task,
-                          int task_action, linted_ko ko)
+                          unsigned task_action, linted_ko ko)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
 
@@ -351,7 +351,7 @@ void linted_asynch_accept(struct linted_asynch_task_accept *task,
 }
 
 void linted_asynch_sleep_until(struct linted_asynch_task_sleep_until *task,
-                               int task_action, int flags,
+                               unsigned task_action, int flags,
                                struct timespec const *request)
 {
     asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL,

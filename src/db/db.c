@@ -74,13 +74,13 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         }
     }
 
-    int o_flags = O_DIRECTORY | O_CLOEXEC;
-
-    linted_db the_db = openat(cwd, pathname, o_flags);
-    if (-1 == the_db) {
-        errnum = errno;
-        assert(errnum != 0);
-        return errnum;
+    linted_db the_db;
+    {
+        linted_db xx;
+        if ((errnum = linted_ko_open(&xx, cwd, pathname, 0)) != 0) {
+            return errnum;
+        }
+        the_db = xx;
     }
 
     /*

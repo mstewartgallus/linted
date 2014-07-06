@@ -96,7 +96,7 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
                                  char const *path, size_t path_len);
 
 void linted_manager_accept(struct linted_manager_task_accept *task,
-                           int task_action, linted_manager manager);
+                           unsigned task_action, linted_manager manager);
 
 linted_error linted_manager_connect(linted_manager *manager, char const *path,
                                     size_t path_len);
@@ -106,10 +106,10 @@ linted_error linted_manager_path(linted_manager manager,
                                  size_t *len);
 
 void linted_manager_recv_request(struct linted_manager_task_recv_request *task,
-                                 int task_action, linted_manager manager);
+                                 unsigned task_action, linted_manager manager);
 
 void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
-                               int task_action, linted_manager manager,
+                               unsigned task_action, linted_manager manager,
                                union linted_manager_reply const *reply);
 
 linted_error linted_manager_send_request(linted_manager manager,
