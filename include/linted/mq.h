@@ -78,11 +78,10 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                               int flags);
 
 void linted_mq_task_receive(struct linted_mq_task_receive *task,
-                              unsigned task_action, linted_ko ko, char *buf,
-                              size_t size);
+                            unsigned task_action, linted_ko ko, char *buf,
+                            size_t size);
 
-void linted_mq_task_send(struct linted_mq_task_send *task,
-                         unsigned task_action, linted_ko ko, char const *buf,
-                         size_t size);
+void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
+                         linted_ko ko, char const *buf, size_t size);
 
 #endif /* LINTED_MQ_H */

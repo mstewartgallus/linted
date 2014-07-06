@@ -566,8 +566,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         struct init_logger_task logger_task;
         struct new_connection_task new_connection_task;
 
-        linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
-                                  __WALL);
+        linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
+                                  -1, __WALL);
         waiter_task.pool = pool;
         waiter_task.gui_service = gui_service;
         waiter_task.sim_service = sim_service;
@@ -1197,7 +1197,7 @@ static linted_error check_db(linted_ko cwd)
         struct linted_ko_task_write write_task;
 
         linted_ko_task_write(&write_task, TMP_WRITE_FINISHED, tmp, data,
-                            data_size);
+                             data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 
         struct linted_asynch_task *completed_tasks[20u];

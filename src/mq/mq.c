@@ -112,7 +112,8 @@ void linted_mq_task_receive(struct linted_mq_task_receive *task,
                             unsigned task_action, linted_ko ko, char *buf,
                             size_t size)
 {
-    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE, task_action);
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
+                       task_action);
 
     task->ko = ko;
     task->buf = buf;
@@ -120,11 +121,11 @@ void linted_mq_task_receive(struct linted_mq_task_receive *task,
     task->bytes_read = 0u;
 }
 
-void linted_mq_task_send(struct linted_mq_task_send *task,
-                         unsigned task_action, linted_ko ko, char const *buf,
-                         size_t size)
+void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
+                         linted_ko ko, char const *buf, size_t size)
 {
-    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND, task_action);
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND,
+                       task_action);
 
     task->ko = ko;
     task->buf = buf;

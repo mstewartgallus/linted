@@ -45,8 +45,8 @@ void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,
                             struct linted_controller_message const *message)
 {
-    linted_mq_task_send(LINTED_UPCAST(task), task_id, controller,
-                        task->message, sizeof task->message);
+    linted_mq_task_send(LINTED_UPCAST(task), task_id, controller, task->message,
+                        sizeof task->message);
 
     char *tip = task->message;
 

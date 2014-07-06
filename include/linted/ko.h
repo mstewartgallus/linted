@@ -96,13 +96,11 @@ linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin, int flags);
  */
 linted_error linted_ko_close(linted_ko ko);
 
+void linted_ko_task_poll(struct linted_ko_task_poll *task, unsigned task_action,
+                         linted_ko ko, short events);
 
-void linted_ko_task_poll(struct linted_ko_task_poll *task,
-                         unsigned task_action, linted_ko ko, short events);
-
-void linted_ko_task_read(struct linted_ko_task_read *task,
-                         unsigned task_action, linted_ko ko, char *buf,
-                         size_t size);
+void linted_ko_task_read(struct linted_ko_task_read *task, unsigned task_action,
+                         linted_ko ko, char *buf, size_t size);
 
 void linted_ko_task_write(struct linted_ko_task_write *task,
                           unsigned task_action, linted_ko ko, char const *buf,

@@ -283,10 +283,11 @@ void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
 }
 
 void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
-                          unsigned task_action, idtype_t idtype, id_t id,
-                          int options)
+                               unsigned task_action, idtype_t idtype, id_t id,
+                               int options)
 {
-    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID, task_action);
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID,
+                       task_action);
 
     task->idtype = idtype;
     task->id = id;
@@ -297,7 +298,8 @@ void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
                                     unsigned task_action, int flags,
                                     struct timespec const *request)
 {
-    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL, task_action);
+    linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL,
+                       task_action);
 
     task->flags = flags;
     task->request = *request;

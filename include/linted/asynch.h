@@ -102,7 +102,6 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
 
-
 #if _POSIX_C_SOURCE >= 200809L
 void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
                                unsigned task_action, idtype_t idtype, id_t id,
