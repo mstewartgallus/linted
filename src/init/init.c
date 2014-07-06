@@ -480,7 +480,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             ++kos_opened;
 
             if ((errnum = linted_spawn_file_actions_adddup2(
-                     &file_actions, ko, kos_opened - 1)) != 0) {
+                     &file_actions, ko, kos_opened - 1u)) != 0) {
                 goto destroy_proc_kos;
             }
         }

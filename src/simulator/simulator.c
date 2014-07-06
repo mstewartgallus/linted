@@ -189,7 +189,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     {
         static char const message[] = "starting simulator";
-        linted_logger_log(logger, message, sizeof message - 1);
+        linted_logger_log(logger, message, sizeof message - 1u);
     }
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
