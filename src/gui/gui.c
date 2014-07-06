@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200112L
 
 #include "config.h"
 
@@ -38,6 +38,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <time.h>
 #include <GL/glx.h>
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
@@ -492,7 +493,9 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                  */
                 struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
                 do {
-                    if (-1 == nanosleep(&request, &request)) {
+                    if (-1 == clock_nanosleep(CLOCK_MONOTONIC,
+                                              0,
+                                              &request, &request)) {
                         errnum = errno;
                         assert(errnum != 0);
                     } else {
@@ -500,6 +503,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                     }
                 } while (EINTR == errnum);
                 if (errnum != 0) {
+                    assert(errnum != EINVAL);
+                    assert(errnum != EFAULT);
                     goto cleanup_gl;
                 }
             }
