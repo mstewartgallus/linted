@@ -103,29 +103,9 @@ It is insecure to run a game as root!\n"));
     /* Sort the fds from smallest to largest */
     sort_kos(open_kos, open_kos_size);
 
-    size_t kos_size = linted_start_config.kos_size;
-    linted_ko *kos = linted_start_config.kos;
-
-    if (open_kos_size <= kos_size) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little files passed in\n",
-                               program_name);
-        return EXIT_FAILURE;
-    }
-
-    for (size_t ii = 0u; ii < kos_size; ++ii) {
-        kos[ii] = open_kos[ii];
-    }
-
-    for (size_t ii = kos_size; ii < open_kos_size; ++ii) {
-        /* Don't check for errors, could just be a leaked /dev/full handle */
-        linted_ko_close(open_kos[ii]);
-    }
-    linted_mem_free(open_kos);
-
     /* Sanitize the fds */
-    for (size_t ii = 0u; ii < kos_size; ++ii) {
-        linted_ko fd = kos[ii];
+    for (size_t ii = 0u; ii < open_kos_size; ++ii) {
+        linted_ko fd = open_kos[ii];
 
         int oflags = fcntl(fd, F_GETFL);
         if (-1 == oflags) {
@@ -145,17 +125,15 @@ It is insecure to run a game as root!\n"));
             if (-1 == new_fd) {
                 errnum = errno;
                 assert(errnum != 0);
-            } else {
+           } else {
                 errnum = 0;
             }
         } while (EINTR == errnum);
         if (errnum != 0) {
-            linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: openat: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
-            return EXIT_FAILURE;
-        }
+            linted_ko_close(fd);
+            open_kos[ii] = -1;
+            continue;
+       }
 
         if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
@@ -173,6 +151,37 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
     }
+
+    size_t bad_files = 0u;
+    for (size_t ii = 0u; ii < open_kos_size; ++ii) {
+        while (-1 == open_kos[ii]) {
+            ++bad_files;
+            for (size_t jj = ii + 1u; jj < open_kos_size; ++jj) {
+                open_kos[jj - 1u] = open_kos[jj];
+            }
+        }
+    }
+    open_kos_size -= bad_files;
+
+    size_t kos_size = linted_start_config.kos_size;
+    linted_ko *kos = linted_start_config.kos;
+
+    if (open_kos_size < kos_size + 3u) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: too little files passed in\n",
+                               program_name);
+        return EXIT_FAILURE;
+    }
+
+    for (size_t ii = 0u; ii < kos_size; ++ii) {
+        kos[ii] = open_kos[ii + 3u];
+    }
+
+    for (size_t ii = 3u + kos_size; ii < open_kos_size; ++ii) {
+        /* Don't check for errors, could just be a leaked /dev/full handle */
+        linted_ko_close(open_kos[ii]);
+    }
+    linted_mem_free(open_kos);
 
     linted_ko cwd;
     if (linted_start_config.open_current_working_directory) {
@@ -291,10 +300,6 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
             continue;
         }
 
-        if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
-            continue;
-        }
-
         ++size;
     }
 
@@ -331,10 +336,6 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
         int const fd = atoi(d_name);
 
         if (fd == dirfd(fds_dir)) {
-            continue;
-        }
-
-        if (STDIN_FILENO == fd || STDOUT_FILENO == fd || STDERR_FILENO == fd) {
             continue;
         }
 
