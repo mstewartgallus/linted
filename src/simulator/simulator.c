@@ -194,8 +194,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     struct simulator_state simulator_state
         = { .update_pending = true, /* Initialize the gui at start */
             .write_in_progress = false,
-            .position = { { .value = 0, .old = 0 },
-                          { .value = 0, .old = 0 },
+            .position = { { .value = 0, .old = 0 }, { .value = 0, .old = 0 },
                           { .value = 3 * 1024, .old = 3 * 1024 } },
             .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
             .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
@@ -440,12 +439,13 @@ static void simulate_tick(struct simulator_state *simulator_state,
          ++ii) {
         linted_updater_int position = simulator_state->position[ii].value;
         linted_updater_int old_position = simulator_state->position[ii].old;
-        linted_updater_int old_velocity =  position - old_position;
+        linted_updater_int old_velocity = position - old_position;
         linted_updater_int thrust = thrusts[ii];
 
         intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
 
-        linted_updater_int guess_velocity = linted_updater_isatadd(a, old_velocity);
+        linted_updater_int guess_velocity
+            = linted_updater_isatadd(a, old_velocity);
 
         linted_updater_int friction
             = min_int(absolute(guess_velocity), 3 /* = μ Fₙ */)

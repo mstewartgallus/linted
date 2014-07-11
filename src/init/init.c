@@ -312,13 +312,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
            display_value_length);
     display[display_string_length - 1u] = '\0';
 
-/*     errnum = linted_util_sanitize_environment(); */
-/*     if (errnum != 0) { */
-/*         linted_io_write_format(STDERR_FILENO, NULL, "\ */
-/* %s: can not sanitize the environment: %s\n", */
-/*                                process_name, linted_error_string_alloc(errnum)); */
-/*         return EXIT_FAILURE; */
-/*     } */
+    /*     errnum = linted_util_sanitize_environment(); */
+    /*     if (errnum != 0) { */
+    /*         linted_io_write_format(STDERR_FILENO, NULL, "\ */
+    /* %s: can not sanitize the environment: %s\n", */
+    /*                                process_name,
+     * linted_error_string_alloc(errnum)); */
+    /*         return EXIT_FAILURE; */
+    /*     } */
 
     {
         /* Set signals to a safe default */
@@ -331,7 +332,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    extern char **environ;
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
            [LINTED_SERVICE_SIMULATOR]
@@ -356,7 +356,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                        .dirko = cwd,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
-                       .environment = (char const*const*) environ, // (char const * const[]) { display, NULL },
+                       .environment = (char const * const[]) { display, NULL },
                        .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },

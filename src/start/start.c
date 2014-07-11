@@ -125,7 +125,7 @@ It is insecure to run a game as root!\n"));
             if (-1 == new_fd) {
                 errnum = errno;
                 assert(errnum != 0);
-           } else {
+            } else {
                 errnum = 0;
             }
         } while (EINTR == errnum);
@@ -133,7 +133,7 @@ It is insecure to run a game as root!\n"));
             linted_ko_close(fd);
             open_kos[ii] = -1;
             continue;
-       }
+        }
 
         if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
