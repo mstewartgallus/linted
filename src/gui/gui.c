@@ -64,10 +64,7 @@ struct controller_data
 struct graphics_state
 {
     GLuint program;
-    GLint projection_matrix;
-    GLint x_rotation_matrix;
-    GLint y_rotation_matrix;
-    GLint camera_matrix;
+    GLint model_view_projection_matrix;
 };
 
 struct window_model
@@ -157,6 +154,9 @@ static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
 static void flush_gl_errors(void);
+static void matrix_multiply(GLfloat const a[static restrict 4u][4u],
+                            GLfloat const b[static restrict 4u][4u],
+                            GLfloat result[static restrict 4u][4u]);
 
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
@@ -974,29 +974,9 @@ static linted_error init_graphics(linted_logger logger,
         goto cleanup_program;
     }
 
-    GLint projection_matrix
-        = glGetUniformLocation(program, "projection_matrix");
-    if (-1 == projection_matrix) {
-        errnum = EINVAL;
-        goto cleanup_program;
-    }
-
-    GLint x_rotation_matrix
-        = glGetUniformLocation(program, "x_rotation_matrix");
-    if (-1 == x_rotation_matrix) {
-        errnum = EINVAL;
-        goto cleanup_program;
-    }
-
-    GLint y_rotation_matrix
-        = glGetUniformLocation(program, "y_rotation_matrix");
-    if (-1 == y_rotation_matrix) {
-        errnum = EINVAL;
-        goto cleanup_program;
-    }
-
-    GLint camera_matrix = glGetUniformLocation(program, "camera_matrix");
-    if (-1 == camera_matrix) {
+    GLint model_view_projection_matrix
+        = glGetUniformLocation(program, "model_view_projection_matrix");
+    if (-1 == model_view_projection_matrix) {
         errnum = EINVAL;
         goto cleanup_program;
     }
@@ -1024,10 +1004,7 @@ static linted_error init_graphics(linted_logger logger,
                           GL_FLOAT, false, 0, linted_assets_triangle_normals);
 
     graphics_state->program = program;
-    graphics_state->projection_matrix = projection_matrix;
-    graphics_state->x_rotation_matrix = x_rotation_matrix;
-    graphics_state->y_rotation_matrix = y_rotation_matrix;
-    graphics_state->camera_matrix = camera_matrix;
+    graphics_state->model_view_projection_matrix = model_view_projection_matrix;
 
     glUseProgram(program);
 
@@ -1050,22 +1027,6 @@ static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height)
 {
     glViewport(0, 0, width, height);
-
-    GLfloat aspect = width / (GLfloat)height;
-    double fov = acosf(-1.0f) / 4;
-
-    double d = 1 / tan(fov / 2);
-    double far = 1000;
-    double near = 1;
-
-    GLfloat projection[][4u] = {
-        { d / aspect, 0, 0, 0 },
-        { 0, d, 0, 0 },
-        { 0, 0, (far + near) / (near - far), 2 * far * near / (near - far) },
-        { 0, 0, -1, 0 }
-    };
-    glUniformMatrix4fv(graphics_state->projection_matrix, 1, false,
-                       projection[0u]);
 }
 
 static void render_graphics(struct graphics_state const *graphics_state,
@@ -1078,37 +1039,51 @@ static void render_graphics(struct graphics_state const *graphics_state,
      * sums of the columns (row major order).
      */
 
-    /* Rotate the camera */
     {
+        /* Rotate the camera */
         GLfloat cos_y = cosf(sim_model->y_rotation);
         GLfloat sin_y = sinf(sim_model->y_rotation);
-        GLfloat const rotation[][4u] = { { 1, 0, 0, 0 },
-                                         { 0, cos_y, -sin_y, 0 },
-                                         { 0, sin_y, cos_y, 0 },
-                                         { 0, 0, 0, 1 } };
-        glUniformMatrix4fv(graphics_state->y_rotation_matrix, 1, false,
-                           rotation[0u]);
-    }
+        GLfloat const y_rotation[][4u] = { { 1, 0, 0, 0 },
+                                           { 0, cos_y, -sin_y, 0 },
+                                           { 0, sin_y, cos_y, 0 },
+                                           { 0, 0, 0, 1 } };
 
-    {
         GLfloat cos_x = cosf(sim_model->x_rotation);
         GLfloat sin_x = sinf(sim_model->x_rotation);
-        GLfloat const rotation[][4u] = { { cos_x, 0, sin_x, 0 },
-                                         { 0, 1, 0, 0 },
-                                         { -sin_x, 0, cos_x, 0 },
-                                         { 0, 0, 0, 1 } };
-        glUniformMatrix4fv(graphics_state->x_rotation_matrix, 1, false,
-                           rotation[0u]);
-    }
+        GLfloat const x_rotation[][4u] = { { cos_x, 0, sin_x, 0 },
+                                           { 0, 1, 0, 0 },
+                                           { -sin_x, 0, cos_x, 0 },
+                                           { 0, 0, 0, 1 } };
 
-    /* Move the camera */
-    {
+        /* Translate the camera */
         GLfloat const camera[][4u]
             = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
                 { sim_model->x_position, sim_model->y_position,
                   sim_model->z_position, 1 } };
 
-        glUniformMatrix4fv(graphics_state->camera_matrix, 1, false, camera[0u]);
+        GLfloat aspect = window_model->width / (GLfloat)window_model->height;
+        double fov = acosf(-1.0f) / 4;
+
+        double d = 1 / tan(fov / 2);
+        double far = 1000;
+        double near = 1;
+
+        GLfloat const projection[][4u]
+            = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+                { 0,                           0,
+                  (far + near) / (near - far), 2 * far * near / (near - far) },
+                { 0, 0, -1, 0 } };
+
+        GLfloat rotations[4u][4u];
+        GLfloat model_view[4u][4u];
+        GLfloat model_view_projection[4u][4u];
+
+        matrix_multiply(x_rotation, y_rotation, rotations);
+        matrix_multiply(camera, rotations, model_view);
+        matrix_multiply(model_view, projection, model_view_projection);
+
+        glUniformMatrix4fv(graphics_state->model_view_projection_matrix, 1u,
+                           false, model_view_projection[0u]);
     }
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
@@ -1145,6 +1120,47 @@ static linted_error get_gl_error(void)
     default:
         return ENOSYS;
     }
+}
+
+static void matrix_multiply(GLfloat const a[static restrict 4u][4u],
+                            GLfloat const b[static restrict 4u][4u],
+                            GLfloat result[static restrict 4u][4u])
+{
+    result[0u][0u] = a[0u][0u] * b[0u][0u] + a[0u][1u] * b[1u][0u]
+                     + a[0u][2u] * b[2u][0u] + a[0u][3u] * b[3u][0u];
+    result[1u][0u] = a[1u][0u] * b[0u][0u] + a[1u][1u] * b[1u][0u]
+                     + a[1u][2u] * b[2u][0u] + a[1u][3u] * b[3u][0u];
+    result[2u][0u] = a[2u][0u] * b[0u][0u] + a[2u][1u] * b[1u][0u]
+                     + a[2u][2u] * b[2u][0u] + a[2u][3u] * b[3u][0u];
+    result[3u][0u] = a[3u][0u] * b[0u][0u] + a[3u][1u] * b[1u][0u]
+                     + a[3u][2u] * b[2u][0u] + a[3u][3u] * b[3u][0u];
+
+    result[0u][1u] = a[0u][0u] * b[0u][1u] + a[0u][1u] * b[1u][1u]
+                     + a[0u][2u] * b[2u][1u] + a[0u][3u] * b[3u][1u];
+    result[1u][1u] = a[1u][0u] * b[0u][1u] + a[1u][1u] * b[1u][1u]
+                     + a[1u][2u] * b[2u][1u] + a[1u][3u] * b[3u][1u];
+    result[2u][1u] = a[2u][0u] * b[0u][1u] + a[2u][1u] * b[1u][1u]
+                     + a[2u][2u] * b[2u][1u] + a[2u][3u] * b[3u][1u];
+    result[3u][1u] = a[3u][0u] * b[0u][1u] + a[3u][1u] * b[1u][1u]
+                     + a[3u][2u] * b[2u][1u] + a[3u][3u] * b[3u][1u];
+
+    result[0u][2u] = a[0u][0u] * b[0u][2u] + a[0u][1u] * b[1u][2u]
+                     + a[0u][2u] * b[2u][2u] + a[0u][3u] * b[3u][2u];
+    result[1u][2u] = a[1u][0u] * b[0u][2u] + a[1u][1u] * b[1u][2u]
+                     + a[1u][2u] * b[2u][2u] + a[1u][3u] * b[3u][2u];
+    result[2u][2u] = a[2u][0u] * b[0u][2u] + a[2u][1u] * b[1u][2u]
+                     + a[2u][2u] * b[2u][2u] + a[2u][3u] * b[3u][2u];
+    result[3u][2u] = a[3u][0u] * b[0u][2u] + a[3u][1u] * b[1u][2u]
+                     + a[3u][2u] * b[2u][2u] + a[3u][3u] * b[3u][2u];
+
+    result[0u][3u] = a[0u][0u] * b[0u][3u] + a[0u][1u] * b[1u][3u]
+                     + a[0u][2u] * b[2u][3u] + a[0u][3u] * b[3u][3u];
+    result[1u][3u] = a[1u][0u] * b[0u][3u] + a[1u][1u] * b[1u][3u]
+                     + a[1u][2u] * b[2u][3u] + a[1u][3u] * b[3u][3u];
+    result[2u][3u] = a[2u][0u] * b[0u][3u] + a[2u][1u] * b[1u][3u]
+                     + a[2u][2u] * b[2u][3u] + a[2u][3u] * b[3u][3u];
+    result[3u][3u] = a[3u][0u] * b[0u][3u] + a[3u][1u] * b[1u][3u]
+                     + a[3u][2u] * b[2u][3u] + a[3u][3u] * b[3u][3u];
 }
 
 static linted_error errnum_from_connection(xcb_connection_t *connection)

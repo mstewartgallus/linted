@@ -21,14 +21,11 @@ precision highp float;
 attribute vec3 vertex;
 attribute vec3 normal;
 
-uniform mat4 projection_matrix;
-uniform mat4 x_rotation_matrix;
-uniform mat4 y_rotation_matrix;
-uniform mat4 camera_matrix;
+uniform mat4 model_view_projection_matrix;
 
 void main()
 {
     linted_varying_vertex = vertex;
     linted_varying_normal = normal;
-    gl_Position = projection_matrix * ((y_rotation_matrix * x_rotation_matrix) * camera_matrix) * vec4(vertex, 1);
+    gl_Position = model_view_projection_matrix * vec4(vertex, 1);
 }
