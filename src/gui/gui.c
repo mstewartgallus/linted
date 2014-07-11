@@ -18,7 +18,6 @@
 #include "config.h"
 
 #include "assets.h"
-#include "gl_core.h"
 
 #include "linted/asynch.h"
 #include "linted/error.h"
@@ -38,11 +37,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <GL/glx.h>
+#include <unistd.h>
+
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
-#include <unistd.h>
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -63,6 +64,10 @@ struct controller_data
 struct graphics_state
 {
     GLuint program;
+    GLint projection_matrix;
+    GLint x_rotation_matrix;
+    GLint y_rotation_matrix;
+    GLint camera_matrix;
 };
 
 struct window_model
@@ -85,14 +90,20 @@ struct sim_model
     float z_position;
 };
 
-static int const attribute_list[][2u]
-    = { { GLX_RGBA, True },
-        { GLX_RED_SIZE, 5 },
-        { GLX_GREEN_SIZE, 5 },
-        { GLX_BLUE_SIZE, 3 },
-        { GLX_DOUBLEBUFFER, True },
-        { GLX_DEPTH_SIZE, 16 },
-        { None, 0 /* A waste of an int. Oh well. */ } };
+EGLint const attribute_list[][2u] = {
+    {EGL_RED_SIZE, 5},
+    {EGL_GREEN_SIZE, 6},
+    {EGL_BLUE_SIZE, 5},
+    {EGL_ALPHA_SIZE, EGL_DONT_CARE},
+    {EGL_DEPTH_SIZE, 16},
+    {EGL_STENCIL_SIZE, EGL_DONT_CARE},
+    {EGL_NONE, EGL_NONE /* A waste of an int. Oh well. */ }
+};
+
+EGLint const context_attributes[][2u] = {
+    {EGL_CONTEXT_CLIENT_VERSION, 2},
+    {EGL_NONE, EGL_NONE}
+};
 
 struct on_gui_event_args
 {
@@ -141,11 +152,12 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 static linted_error init_graphics(linted_logger logger,
                                   struct graphics_state *graphics_state,
                                   struct window_model const *window_model);
+static void destroy_graphics(struct graphics_state *graphics_state);
 static void render_graphics(struct graphics_state const *graphics_state,
                             struct sim_model const *sim_model,
                             struct window_model const *window_model);
-static void destroy_graphics(struct graphics_state *graphics_state);
-static void resize_graphics(unsigned width, unsigned height);
+static void resize_graphics(struct graphics_state * graphics_state,
+                            unsigned width, unsigned height);
 
 static void flush_gl_errors(void);
 
@@ -243,11 +255,11 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
     memcpy(display_env_var, original_display, display_string_length);
 
-    if ((errnum = linted_util_sanitize_environment()) != 0) {
-        failure(STDERR_FILENO, program_name,
-                LINTED_STR("cannot sanitize the program environment"), errnum);
-        return EXIT_FAILURE;
-    }
+    /* if ((errnum = linted_util_sanitize_environment()) != 0) { */
+    /*     failure(STDERR_FILENO, program_name, */
+    /*             LINTED_STR("cannot sanitize the program environment"), errnum); */
+    /*     return EXIT_FAILURE; */
+    /* } */
 
     struct linted_asynch_pool *pool;
     {
@@ -307,33 +319,9 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         screen = iter.data;
     }
 
-    /* Query framebuffer configurations */
-    XVisualInfo visual_info;
-    {
-        XVisualInfo *ptr = glXChooseVisual(display, screen_number,
-                                           (int *)&attribute_list[0u][0u]);
-        if (NULL == ptr) {
-            errnum = ENOSYS;
-            goto disconnect;
-        }
-        visual_info = *ptr;
-        XFree(ptr);
-    }
-
-    xcb_colormap_t colormap = xcb_generate_id(connection);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
-        goto disconnect;
-    }
-
-    xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, colormap,
-                        screen->root, visual_info.visualid);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
-        goto destroy_colormap;
-    }
-
     xcb_window_t window = xcb_generate_id(connection);
     if ((errnum = errnum_from_connection(connection)) != 0) {
-        goto destroy_colormap;
+        goto disconnect;
     }
 
     {
@@ -343,14 +331,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         event_max |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
-        uint32_t values[] = { event_max, colormap, 0u };
-        xcb_create_window(connection, visual_info.depth, window, screen->root,
+        uint32_t values[] = { event_max, 0u };
+        xcb_create_window(connection, XCB_COPY_FROM_PARENT, window,
+                          screen->root,
                           0, 0, window_model.width, window_model.height, 0,
-                          XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_info.visualid,
-                          XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
+                          XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+                          XCB_CW_EVENT_MASK, values);
     }
     if ((errnum = errnum_from_connection(connection)) != 0) {
-        goto destroy_colormap;
+        goto disconnect;
     }
 
     xcb_atom_t wm_delete_window;
@@ -400,16 +389,56 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         goto destroy_window;
     }
 
-    GLXContext glx_context
-        = glXCreateContext(display, &visual_info, NULL, GL_TRUE);
-    if (NULL == glx_context) {
+
+    EGLDisplay egl_display = eglGetDisplay((EGLNativeDisplayType)display);
+    if (EGL_NO_DISPLAY == egl_display) {
         errnum = ENOSYS;
         goto destroy_window;
     }
 
-    if (!glXMakeContextCurrent(display, window, window, glx_context)) {
+    if (!eglInitialize(egl_display, NULL, NULL)) {
         errnum = ENOSYS;
-        goto destroy_glx_context;
+        goto destroy_window;
+    }
+
+    EGLint num_configs;
+    {
+        EGLint xx;
+        if (!eglGetConfigs(egl_display, NULL, 0, &xx)) {
+            errnum = ENOSYS;
+            goto destroy_window;
+        }
+        num_configs = xx;
+    }
+
+    EGLConfig config;
+    {
+        EGLConfig xx;
+        EGLint yy = num_configs;
+        if (!eglChooseConfig(egl_display, attribute_list[0u], &xx, 1u, &yy)) {
+            errnum = ENOSYS;
+            goto destroy_window;
+        }
+        config = xx;
+    }
+
+    EGLSurface surface = eglCreateWindowSurface(egl_display, config, window,
+                                                NULL);
+    if (EGL_NO_SURFACE == surface) {
+        errnum = ENOSYS;
+        goto destroy_window;
+    }
+
+    EGLContext context = eglCreateContext(egl_display, config, EGL_NO_CONTEXT,
+                                          context_attributes[0u]);
+    if (EGL_NO_CONTEXT == context) {
+        errnum = ENOSYS;
+        goto destroy_window;
+    }
+
+    if (!eglMakeCurrent(egl_display, surface, surface, context)) {
+        errnum = ENOSYS;
+        goto destroy_window;
     }
 
     struct graphics_state graphics_state;
@@ -480,11 +509,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         /* Only render or resize if we have time to waste */
         if (!had_gui_event && !had_asynch_event) {
             if (window_model.resize_pending) {
-                resize_graphics(window_model.width, window_model.height);
+                resize_graphics(&graphics_state,
+                                window_model.width, window_model.height);
                 window_model.resize_pending = false;
             } else if (window_model.viewable) {
                 render_graphics(&graphics_state, &sim_model, &window_model);
-                glXSwapBuffers(display, window);
+                eglSwapBuffers(egl_display, surface);
             } else {
                 /*
                  * This is an ugly hack and waiting on the X11 file
@@ -511,20 +541,11 @@ cleanup_gl:
     destroy_graphics(&graphics_state);
 
 destroy_glx_context:
-    glXMakeContextCurrent(display, None, None, NULL);
-    glXDestroyContext(display, glx_context);
+    /* glXMakeContextCurrent(display, None, None, NULL); */
+    /* glXDestroyContext(display, glx_context); */
 
 destroy_window:
     xcb_destroy_window(connection, window);
-    {
-        linted_error conn_errnum = errnum_from_connection(connection);
-        if (0 == errnum) {
-            errnum = conn_errnum;
-        }
-    }
-
-destroy_colormap:
-    xcb_free_colormap(connection, colormap);
     {
         linted_error conn_errnum = errnum_from_connection(connection);
         if (0 == errnum) {
@@ -815,12 +836,6 @@ static linted_error init_graphics(linted_logger logger,
 {
     linted_error errnum = 0;
 
-    if (linted_gl_ogl_LOAD_FAILED == linted_gl_ogl_LoadFunctions()) {
-        return ENOSYS;
-    }
-
-    glEnable(GL_VERTEX_ARRAY);
-    glEnable(GL_NORMAL_ARRAY);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
@@ -868,11 +883,6 @@ static linted_error init_graphics(linted_logger logger,
 
     glClearColor(red, green, blue, 1);
 
-    glVertexPointer(LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0u]),
-                    GL_FLOAT, 0, linted_assets_triangle_vertices);
-
-    glNormalPointer(GL_FLOAT, 0, linted_assets_triangle_normals);
-
     flush_gl_errors();
     GLuint program = glCreateProgram();
     if (0 == program) {
@@ -889,7 +899,8 @@ static linted_error init_graphics(linted_logger logger,
         glAttachShader(program, fragment_shader);
         glDeleteShader(fragment_shader);
 
-        glShaderSource(fragment_shader, 1, &linted_assets_fragment_shader,
+        glShaderSource(fragment_shader, 1u,
+                       (GLchar const **)&linted_assets_fragment_shader,
                        NULL);
         glCompileShader(fragment_shader);
 
@@ -924,7 +935,8 @@ static linted_error init_graphics(linted_logger logger,
         glAttachShader(program, vertex_shader);
         glDeleteShader(vertex_shader);
 
-        glShaderSource(vertex_shader, 1, &linted_assets_vertex_shader, NULL);
+        glShaderSource(vertex_shader, 1u,
+                       (GLchar const **)&linted_assets_vertex_shader, NULL);
         glCompileShader(vertex_shader);
 
         GLint is_valid;
@@ -967,9 +979,66 @@ static linted_error init_graphics(linted_logger logger,
         }
         goto cleanup_program;
     }
-    glUseProgram(program);
+
+    GLint projection_matrix = glGetUniformLocation(program,
+                                                   "projection_matrix");
+    if (-1 == projection_matrix) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    GLint x_rotation_matrix = glGetUniformLocation(program,
+                                                   "x_rotation_matrix");
+    if (-1 == x_rotation_matrix) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    GLint y_rotation_matrix = glGetUniformLocation(program,
+                                                   "y_rotation_matrix");
+    if (-1 == y_rotation_matrix) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    GLint camera_matrix = glGetUniformLocation(program,
+                                               "camera_matrix");
+    if (-1 == camera_matrix) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    GLint vertex = glGetAttribLocation(program, "vertex");
+    if (-1 == vertex) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    GLint normal = glGetAttribLocation(program, "normal");
+    if (-1 == normal) {
+        errnum = EINVAL;
+        goto cleanup_program;
+    }
+
+    glEnableVertexAttribArray(vertex);
+    glEnableVertexAttribArray(normal);
+
+    glVertexAttribPointer(vertex,
+                          LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0u]),
+                          GL_FLOAT, false,
+                          0, linted_assets_triangle_vertices);
+    glVertexAttribPointer(normal,
+                          LINTED_ARRAY_SIZE(linted_assets_triangle_normals[0u]),
+                          GL_FLOAT, false,
+                          0, linted_assets_triangle_normals);
 
     graphics_state->program = program;
+    graphics_state->projection_matrix = projection_matrix;
+    graphics_state->x_rotation_matrix = x_rotation_matrix;
+    graphics_state->y_rotation_matrix = y_rotation_matrix;
+    graphics_state->camera_matrix = camera_matrix;
+
+    glUseProgram(program);
 
     return 0;
 
@@ -986,29 +1055,25 @@ static void destroy_graphics(struct graphics_state *graphics_state)
     memset(graphics_state, 0, sizeof *graphics_state);
 }
 
-static void resize_graphics(unsigned width, unsigned height)
+static void resize_graphics(struct graphics_state * graphics_state,
+                            unsigned width, unsigned height)
 {
     glViewport(0, 0, width, height);
 
-    glMatrixMode(GL_PROJECTION);
+    GLfloat aspect = width / (GLfloat)height;
+    double fov = acosf(-1.0f) / 4;
 
-    {
-        GLfloat aspect = width / (GLfloat)height;
-        double fov = acosf(-1.0f) / 4;
+    double d = 1 / tan(fov / 2);
+    double far = 1000;
+    double near = 1;
 
-        double d = 1 / tan(fov / 2);
-        double far = 1000;
-        double near = 1;
-
-        GLfloat projection[][4u]
-            = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
-                { 0,                           0,
-                  (far + near) / (near - far), 2 * far * near / (near - far) },
-                { 0, 0, -1, 0 } };
-        glLoadMatrixf(projection[0u]);
-    }
-
-    glMatrixMode(GL_MODELVIEW);
+    GLfloat projection[][4u]
+        = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
+            { 0,                           0,
+              (far + near) / (near - far), 2 * far * near / (near - far) },
+            { 0, 0, -1, 0 } };
+    glUniformMatrix4fv(graphics_state->projection_matrix, 1, false,
+                       projection[0u]);
 }
 
 static void render_graphics(struct graphics_state const *graphics_state,
@@ -1017,10 +1082,9 @@ static void render_graphics(struct graphics_state const *graphics_state,
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    /*  X, Y, Z, W coords of the resultant vector are the
-   *  sums of the columns (row major order).
-   */
-    glLoadIdentity();
+    /* X, Y, Z, W coords of the resultant vector are the
+     * sums of the columns (row major order).
+     */
 
     /* Rotate the camera */
     {
@@ -1030,7 +1094,8 @@ static void render_graphics(struct graphics_state const *graphics_state,
                                          { 0, cos_y, -sin_y, 0 },
                                          { 0, sin_y, cos_y, 0 },
                                          { 0, 0, 0, 1 } };
-        glMultMatrixf(rotation[0u]);
+        glUniformMatrix4fv(graphics_state->y_rotation_matrix, 1, false,
+                           rotation[0u]);
     }
 
     {
@@ -1040,7 +1105,8 @@ static void render_graphics(struct graphics_state const *graphics_state,
                                          { 0, 1, 0, 0 },
                                          { -sin_x, 0, cos_x, 0 },
                                          { 0, 0, 0, 1 } };
-        glMultMatrixf(rotation[0u]);
+        glUniformMatrix4fv(graphics_state->x_rotation_matrix, 1, false,
+                           rotation[0u]);
     }
 
     /* Move the camera */
@@ -1049,7 +1115,9 @@ static void render_graphics(struct graphics_state const *graphics_state,
             = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
                 { sim_model->x_position, sim_model->y_position,
                   sim_model->z_position, 1 } };
-        glMultMatrixf(camera[0u]);
+
+        glUniformMatrix4fv(graphics_state->camera_matrix, 1, false,
+                           camera[0u]);
     }
 
     glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
@@ -1077,10 +1145,8 @@ static linted_error get_gl_error(void)
     case GL_INVALID_ENUM:
     case GL_INVALID_VALUE:
     case GL_INVALID_OPERATION:
+    case GL_INVALID_FRAMEBUFFER_OPERATION:
         return EINVAL;
-
-    case GL_STACK_OVERFLOW:
-    case GL_STACK_UNDERFLOW:
 
     case GL_OUT_OF_MEMORY:
         return ENOMEM;

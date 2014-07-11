@@ -13,14 +13,22 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 130
+#version 100
 #pragma linted include("shaders/varying.glsl")
 
 precision highp float;
 
+attribute vec3 vertex;
+attribute vec3 normal;
+
+uniform mat4 projection_matrix;
+uniform mat4 x_rotation_matrix;
+uniform mat4 y_rotation_matrix;
+uniform mat4 camera_matrix;
+
 void main()
 {
-    linted_varying_vertex = gl_Vertex.xyz;
-    linted_varying_normal = gl_Normal.xyz;
-    gl_Position = ftransform();
+    linted_varying_vertex = vertex;
+    linted_varying_normal = normal;
+    gl_Position = projection_matrix * ((y_rotation_matrix * x_rotation_matrix) * camera_matrix) * vec4(vertex, 1);
 }

@@ -16,7 +16,8 @@
 #ifndef LINTED_LINTED_ASSETS_H
 #define LINTED_LINTED_ASSETS_H
 
-#include "gl_core.h"
+#include <stddef.h>
+#include <GLES2/gl2.h>
 
 typedef GLfloat linted_assets_point[3u];
 

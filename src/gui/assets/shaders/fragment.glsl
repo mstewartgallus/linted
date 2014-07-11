@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 130
+#version 100
 #pragma linted include("shaders/varying.glsl")
 
 precision highp float;

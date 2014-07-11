@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=gui
 
 gui_SOURCES=%D%/gui.c %D%/assets.c
-nodist_gui_SOURCES=%D%/gl_core.c
 gui_LDADD=\
   src/start/libstart.la\
   \
@@ -37,14 +36,13 @@ gui_LDADD=\
   $(X11_LIBS)\
   $(XCB_LIBS)\
   $(X11_XCB_LIBS)\
-  $(GL_LIBS)
+  $(GLES_LIBS)\
+  $(EGL_LIBS)
 gui_LDFLAGS=$(AM_LDFLAGS)
 
 gui_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GL_FLAGS)\
-  -I$(builddir)/%D%/ -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
-
-BUILT_SOURCES+=%D%/gl_core.c %D%/gl_core.h
+  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GLES_FLAGS) $(EGL_FLAGS)\
+  -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 
 EXTRA_DIST+=\
   %D%/assets.h\
@@ -71,16 +69,3 @@ MOSTLYCLEANFILES+=%D%/assets.c
 	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
 	  $(srcdir)/%D%/assets/assets.py\
 	  --output=$@
-
-MOSTLYCLEANFILES+=%D%/gl_core.c
-%D%/gl_core.c:
-	cd $(builddir)/%D%/ && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
-	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core
-
-MOSTLYCLEANFILES+=%D%/gl_core.h
-%D%/gl_core.h:
-	$(MKDIR_P) $(builddir)/%D%/
-	cd $(builddir)/%D% && \
-	  $(LUA) $(abs_srcdir)/libs/glloadgen-reloaded/LoadGen.lua\
-	  -style=pointer_c -spec=gl -version=2.1 -profile=core -prefix=linted_gl_ core

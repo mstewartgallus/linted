@@ -137,8 +137,12 @@ PKG_CHECK_MODULES(X11_XCB, x11-xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB-X11 interop library])
 ])
 dnl
-PKG_CHECK_MODULES(GL, gl, [], [
- AC_MSG_ERROR([Unable to find an OpenGL library])
+PKG_CHECK_MODULES(GLES, glesv2, [], [
+ AC_MSG_ERROR([Unable to find an OpenGL ES library])
+])
+dnl
+PKG_CHECK_MODULES(EGL, egl, [], [
+ AC_MSG_ERROR([Unable to find an EGL library])
 ])
 dnl
 AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
