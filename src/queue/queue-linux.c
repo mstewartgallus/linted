@@ -102,9 +102,11 @@ void linted_queue_send(struct linted_queue *queue,
     assert(NULL == node->prev);
 
     struct linted_queue_node *tip = &queue->tip;
+    pthread_mutex_t *lock = &queue->lock;
+    pthread_cond_t *gains_member = &queue->gains_member;
 
-    pthread_mutex_lock(&queue->lock);
-    pthread_cleanup_push(unlock_routine, &queue->lock);
+    pthread_mutex_lock(lock);
+    pthread_cleanup_push(unlock_routine, lock);
 
     /* The nodes previous to the tip are the tail */
     struct linted_queue_node *tail = tip->prev;
@@ -113,7 +115,7 @@ void linted_queue_send(struct linted_queue *queue,
     node->next = tip;
     tip->prev = node;
 
-    pthread_cond_signal(&queue->gains_member);
+    pthread_cond_signal(gains_member);
 
     pthread_cleanup_pop(true);
 }
@@ -125,11 +127,13 @@ void linted_queue_recv(struct linted_queue *queue,
     struct linted_queue_node *head;
 
     struct linted_queue_node *tip = &queue->tip;
+    pthread_mutex_t *lock = &queue->lock;
+    pthread_cond_t *gains_member = &queue->gains_member;
 
-    errnum = pthread_mutex_lock(&queue->lock);
+    errnum = pthread_mutex_lock(lock);
     assert(errnum != EDEADLK);
 
-    pthread_cleanup_push(unlock_routine, &queue->lock);
+    pthread_cleanup_push(unlock_routine, lock);
 
     /* The nodes next to the tip are the head */
     for (;;) {
@@ -138,7 +142,7 @@ void linted_queue_recv(struct linted_queue *queue,
             break;
         }
 
-        pthread_cond_wait(&queue->gains_member, &queue->lock);
+        pthread_cond_wait(gains_member, lock);
     }
 
     struct linted_queue_node *next = head->next;
@@ -160,11 +164,13 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
     struct linted_queue_node *head;
 
     struct linted_queue_node *tip = &queue->tip;
+    pthread_mutex_t *lock = &queue->lock;
+    pthread_cond_t *gains_member = &queue->gains_member;
 
-    errnum = pthread_mutex_lock(&queue->lock);
+    errnum = pthread_mutex_lock(lock);
     assert(errnum != EDEADLK);
 
-    pthread_cleanup_push(unlock_routine, &queue->lock);
+    pthread_cleanup_push(unlock_routine, lock);
 
     /* The nodes next to the tip are the head */
     head = tip->next;
