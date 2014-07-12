@@ -135,6 +135,8 @@ static linted_error dispatch(struct linted_asynch_task *completed_task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
+static linted_error egl_error(void);
+
 static linted_error errnum_from_connection(xcb_connection_t *connection);
 
 static linted_error get_mouse_position(xcb_connection_t *connection,
@@ -388,12 +390,12 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     EGLDisplay egl_display = eglGetDisplay((EGLNativeDisplayType)display);
     if (EGL_NO_DISPLAY == egl_display) {
-        errnum = ENOSYS;
+        errnum = egl_error();
         goto destroy_window;
     }
 
     if (!eglInitialize(egl_display, NULL, NULL)) {
-        errnum = ENOSYS;
+        errnum = egl_error();
         goto destroy_window;
     }
 
@@ -401,8 +403,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     {
         EGLint xx;
         if (!eglGetConfigs(egl_display, NULL, 0, &xx)) {
-            errnum = ENOSYS;
-            goto destroy_window;
+            errnum = egl_error();
+            goto destroy_egl_display;
         }
         num_configs = xx;
     }
@@ -412,8 +414,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         EGLConfig xx;
         EGLint yy = num_configs;
         if (!eglChooseConfig(egl_display, attribute_list[0u], &xx, 1u, &yy)) {
-            errnum = ENOSYS;
-            goto destroy_window;
+            errnum = egl_error();
+            goto destroy_egl_display;
         }
         egl_config = xx;
     }
@@ -421,27 +423,28 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config,
                                                     window, NULL);
     if (EGL_NO_SURFACE == egl_surface) {
-        errnum = ENOSYS;
-        goto destroy_window;
+        errnum = egl_error();
+        goto destroy_egl_display;
     }
 
     EGLContext egl_context = eglCreateContext(egl_display, egl_config,
                                               EGL_NO_CONTEXT,
                                               egl_context_attributes[0u]);
     if (EGL_NO_CONTEXT == egl_context) {
-        errnum = ENOSYS;
-        goto destroy_window;
+        errnum = egl_error();
+        goto destroy_egl_surface;
     }
 
     if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
-        errnum = ENOSYS;
-        goto destroy_window;
+        errnum = egl_error();
+        goto destroy_egl_context;
     }
 
     struct graphics_state graphics_state;
 
     if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
-        goto destroy_glx_context;
+        errnum = egl_error();
+        goto use_no_egl_context;
     }
 
     struct gui_updater_task updater_task;
@@ -537,14 +540,41 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 cleanup_gl:
     destroy_graphics(&graphics_state);
 
-destroy_glx_context:
-    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
+use_no_egl_context:
+    if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
 
-    eglTerminate(display);
+destroy_egl_context:
+    if (!eglDestroyContext(egl_display, egl_context)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
 
-    eglReleaseThread();
+
+destroy_egl_surface:
+    if (!eglDestroySurface(egl_display, egl_surface)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
+
+
+destroy_egl_display:
+    if (!eglTerminate(egl_display)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
+
+    if (!eglReleaseThread()) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
 
 destroy_window:
     xcb_destroy_window(connection, window);
@@ -1170,6 +1200,38 @@ static void matrix_multiply(GLfloat const a[static restrict 4u][4u],
                      + a[2u][2u] * b[2u][3u] + a[2u][3u] * b[3u][3u];
     result[3u][3u] = a[3u][0u] * b[0u][3u] + a[3u][1u] * b[1u][3u]
                      + a[3u][2u] * b[2u][3u] + a[3u][3u] * b[3u][3u];
+}
+
+static linted_error egl_error(void)
+{
+    switch (eglGetError()) {
+    case EGL_SUCCESS:
+        return 0;
+
+    case EGL_NOT_INITIALIZED:
+        return ENOSYS;
+
+    case EGL_BAD_ACCESS:
+        return EAGAIN;
+
+    case EGL_BAD_ALLOC:
+        return ENOMEM;
+
+    case EGL_BAD_ATTRIBUTE:
+    case EGL_BAD_CONTEXT:
+    case EGL_BAD_CONFIG:
+    case EGL_BAD_CURRENT_SURFACE:
+    case EGL_BAD_DISPLAY:
+    case EGL_BAD_SURFACE:
+    case EGL_BAD_MATCH:
+    case EGL_BAD_PARAMETER:
+    case EGL_BAD_NATIVE_PIXMAP:
+    case EGL_BAD_NATIVE_WINDOW:
+        return EINVAL;
+
+    case EGL_CONTEXT_LOST:
+        return ENOSYS;
+    }
 }
 
 static linted_error errnum_from_connection(xcb_connection_t *connection)
