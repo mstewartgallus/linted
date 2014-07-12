@@ -96,8 +96,9 @@ EGLint const attribute_list[][2u]
         { EGL_STENCIL_SIZE, EGL_DONT_CARE },
         { EGL_NONE, EGL_NONE /* A waste of an int. Oh well. */ } };
 
-EGLint const context_attributes[][2u]
-    = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
+EGLint const egl_context_attributes[][2u] = {
+    { EGL_CONTEXT_CLIENT_VERSION, 2 },
+    { EGL_NONE, EGL_NONE } };
 
 struct on_gui_event_args
 {
@@ -406,7 +407,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         num_configs = xx;
     }
 
-    EGLConfig config;
+    EGLConfig egl_config;
     {
         EGLConfig xx;
         EGLint yy = num_configs;
@@ -414,24 +415,25 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             errnum = ENOSYS;
             goto destroy_window;
         }
-        config = xx;
+        egl_config = xx;
     }
 
-    EGLSurface surface
-        = eglCreateWindowSurface(egl_display, config, window, NULL);
-    if (EGL_NO_SURFACE == surface) {
+    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config,
+                                                    window, NULL);
+    if (EGL_NO_SURFACE == egl_surface) {
         errnum = ENOSYS;
         goto destroy_window;
     }
 
-    EGLContext context = eglCreateContext(egl_display, config, EGL_NO_CONTEXT,
-                                          context_attributes[0u]);
-    if (EGL_NO_CONTEXT == context) {
+    EGLContext egl_context = eglCreateContext(egl_display, egl_config,
+                                              EGL_NO_CONTEXT,
+                                              egl_context_attributes[0u]);
+    if (EGL_NO_CONTEXT == egl_context) {
         errnum = ENOSYS;
         goto destroy_window;
     }
 
-    if (!eglMakeCurrent(egl_display, surface, surface, context)) {
+    if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
         errnum = ENOSYS;
         goto destroy_window;
     }
@@ -509,7 +511,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                 window_model.resize_pending = false;
             } else if (window_model.viewable) {
                 render_graphics(&graphics_state, &sim_model, &window_model);
-                eglSwapBuffers(egl_display, surface);
+                eglSwapBuffers(egl_display, egl_surface);
             } else {
                 /*
                  * This is an ugly hack and waiting on the X11 file
@@ -536,8 +538,13 @@ cleanup_gl:
     destroy_graphics(&graphics_state);
 
 destroy_glx_context:
-/* glXMakeContextCurrent(display, None, None, NULL); */
-/* glXDestroyContext(display, glx_context); */
+    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(egl_display, egl_context);
+    eglDestroySurface(egl_display, egl_surface);
+
+    eglTerminate(display);
+
+    eglReleaseThread();
 
 destroy_window:
     xcb_destroy_window(connection, window);
