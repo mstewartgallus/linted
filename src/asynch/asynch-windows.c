@@ -20,7 +20,9 @@
 
 #include "linted/asynch.h"
 
+#include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/mq.h"
 #include "linted/queue.h"
 #include "linted/util.h"
 
@@ -52,9 +54,6 @@ struct linted_asynch_pool
     linted_ko workers[];
 };
 
-static void asynch_task(struct linted_asynch_task *task, unsigned type,
-                        unsigned task_action);
-
 static noreturn DWORD WINAPI worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
@@ -73,9 +72,13 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     struct linted_asynch_pool *pool;
 
     size_t workers_size = max_tasks * sizeof pool->workers[0u];
-    pool = linted_mem_alloc(&errnum, sizeof *pool + workers_size);
-    if (errnum != 0) {
-        return errnum;
+    {
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size))
+            != 0) {
+            return errnum;
+        }
+        pool = xx;
     }
 
     if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
@@ -228,41 +231,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
     return 0;
 }
 
-void linted_asynch_read(struct linted_asynch_task_read *task,
-                        unsigned task_action, linted_ko ko, char *buf,
-                        size_t size)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ, task_action);
-
-    task->ko = ko;
-    task->buf = buf;
-    task->size = size;
-    task->current_position = 0u;
-    task->bytes_read = 0u;
-}
-
-void linted_asynch_write(struct linted_asynch_task_write *task,
-                         unsigned task_action, linted_ko ko, char const *buf,
-                         size_t size)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE, task_action);
-
-    task->ko = ko;
-    task->buf = buf;
-    task->size = size;
-    task->current_position = 0u;
-    task->bytes_wrote = 0u;
-}
-
-void linted_asynch_accept(struct linted_asynch_task_accept *task,
-                          unsigned task_action, linted_ko ko)
-{
-    asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT, task_action);
-
-    task->ko = ko;
-}
-
-static void asynch_task(struct linted_asynch_task *task, unsigned type,
+void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action)
 {
     linted_queue_node(LINTED_UPCAST(task));
@@ -308,8 +277,8 @@ static void run_task(struct linted_asynch_pool *pool,
 static void run_task_read(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_read *task_read
-        = LINTED_DOWNCAST(struct linted_asynch_task_read, task);
+    struct linted_ko_task_read *task_read
+        = LINTED_DOWNCAST(struct linted_ko_task_read, task);
 
     DWORD bytes_read = 0u;
 
@@ -331,8 +300,8 @@ static void run_task_read(struct linted_asynch_pool *pool,
 static void run_task_write(struct linted_asynch_pool *pool,
                            struct linted_asynch_task *task)
 {
-    struct linted_asynch_task_write *task_write
-        = LINTED_DOWNCAST(struct linted_asynch_task_write, task);
+    struct linted_ko_task_write *task_write
+        = LINTED_DOWNCAST(struct linted_ko_task_write, task);
 
     DWORD bytes_write = 0u;
 
