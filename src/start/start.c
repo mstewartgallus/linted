@@ -136,6 +136,15 @@ It is insecure to run a game as root!\n"));
         }
 
         if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
+            errnum = errno;
+
+            /* Running under Valgrind */
+            if (EBADF == errnum) {
+                linted_ko_close(new_fd);
+                open_kos[ii] = -1;
+                continue;
+            }
+
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: dup3: %s\n",
                                    program_name,

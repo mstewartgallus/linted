@@ -1079,8 +1079,10 @@ static void render_graphics(struct graphics_state const *graphics_state,
         GLfloat model_view_projection[4u][4u];
 
         matrix_multiply(x_rotation, y_rotation, rotations);
-        matrix_multiply(camera, rotations, model_view);
-        matrix_multiply(model_view, projection, model_view_projection);
+        matrix_multiply((const GLfloat (*)[4u])camera,
+                        (const GLfloat (*)[4u])rotations, model_view);
+        matrix_multiply((const GLfloat (*)[4u])model_view, projection,
+                        model_view_projection);
 
         glUniformMatrix4fv(graphics_state->model_view_projection_matrix, 1u,
                            false, model_view_projection[0u]);

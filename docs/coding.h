@@ -101,6 +101,14 @@
  *
  * </li>
  *
+ * <li> Do not use undefined behaviour
+ *
+ * For example, the code memset(&p, 0, sizeof p); where p is a pointer
+ * is undefined behaviour as the null pointer may not be represented
+ * as zeros in memory.
+ *
+ * </li>
+ *
  * </ul>
  *
  * @section quality Code Quality
