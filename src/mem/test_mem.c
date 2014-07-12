@@ -24,20 +24,18 @@ int main(void)
 {
     linted_error errnum;
     {
-        linted_error xx;
-        void *mem = linted_mem_alloc_array(&xx, 0u, 0u);
-        errnum = xx;
-        linted_mem_free(mem);
+        void *xx;
+        errnum = linted_mem_alloc_array(&xx, 0u, 0u);
+        linted_mem_free(xx);
     }
     if (errnum != 0) {
         LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
     }
 
     {
-        linted_error xx;
-        void *mem = linted_mem_realloc_array(&xx, NULL, 0u, 0u);
-        errnum = xx;
-        linted_mem_free(mem);
+        void *xx;
+        errnum = linted_mem_realloc_array(&xx, NULL, 0u, 0u);
+        linted_mem_free(xx);
     }
     if (errnum != 0) {
         LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);

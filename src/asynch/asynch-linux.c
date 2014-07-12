@@ -91,12 +91,12 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
     size_t workers_size = max_tasks * sizeof pool->workers[0u];
 
     {
-        linted_error xx;
-        pool = linted_mem_alloc(&xx, sizeof *pool + workers_size);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return errnum;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size))
+            != 0) {
+            return errnum;
+        }
+        pool = xx;
     }
 
     if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {

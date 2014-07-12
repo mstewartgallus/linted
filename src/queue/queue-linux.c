@@ -49,12 +49,11 @@ linted_error linted_queue_create(struct linted_queue **queuep)
     linted_error errnum;
     struct linted_queue *queue;
     {
-        linted_error xx;
-        queue = linted_mem_alloc(&xx, sizeof *queue);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return errnum;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0) {
+            return errnum;
+        }
+        queue = xx;
     }
 
     struct linted_queue_node *tip = &queue->tip;

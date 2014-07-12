@@ -147,11 +147,11 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
         char *version_text;
         {
-            linted_error xx;
-            version_text = linted_mem_alloc(&xx, version_file_size);
-            if ((errnum = xx) != 0) {
+            void *xx;
+            if ((errnum = linted_mem_alloc(&xx, version_file_size)) != 0) {
                 goto close_version_file;
             }
+            version_text = xx;
         }
 
         if ((errnum = linted_io_read_all(version_file, NULL, version_text,
@@ -340,12 +340,11 @@ static linted_error prepend(char **result, char const *base,
 
     char *new_path;
     {
-        linted_error xx;
-        new_path = linted_mem_alloc(&xx, new_path_size);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return errnum;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, new_path_size)) != 0) {
+            return errnum;
+        }
+        new_path = xx;
     }
 
     new_path[new_path_size - 1u] = '\0';

@@ -38,12 +38,11 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
 
     char *buf;
     {
-        linted_error xx;
-        buf = linted_mem_alloc(&xx, buf_size);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return no_memory_string;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, buf_size)) != 0) {
+            return no_memory_string;
+        }
+        buf = xx;
     }
 
     for (;;) {
@@ -71,12 +70,11 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
 
         char *newbuf;
         {
-            linted_error xx;
-            newbuf = linted_mem_realloc(&xx, buf, buf_size);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            goto out_of_memory;
+            void *xx;
+            if ((errnum = linted_mem_realloc(&xx, buf, buf_size)) != 0) {
+                goto out_of_memory;
+            }
+            newbuf = xx;
         }
         buf = newbuf;
     }
@@ -86,12 +84,11 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
      */
     char *newbuf;
     {
-        linted_error xx;
-        newbuf = linted_mem_realloc(&xx, buf, strlen(buf) + 1u);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        goto out_of_memory;
+        void *xx;
+        if ((errnum = linted_mem_realloc(&xx, buf, strlen(buf) + 1u)) != 0) {
+            goto out_of_memory;
+        }
+        newbuf = xx;
     }
     buf = newbuf;
 

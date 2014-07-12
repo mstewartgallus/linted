@@ -25,16 +25,16 @@
  *
  * Allocates memory.
  */
-void *linted_mem_alloc(linted_error *errnump, size_t size);
-void *linted_mem_alloc_array(linted_error *errnump, size_t nmemb, size_t size);
+linted_error linted_mem_alloc(void **memp, size_t size);
+linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size);
 
-void *linted_mem_alloc_zeroed(linted_error *errnump, size_t size);
-void *linted_mem_alloc_array_zeroed(linted_error *errnump, size_t nmemb,
-                                    size_t size);
+linted_error linted_mem_alloc_zeroed(void **memp, size_t size);
+linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
+                                           size_t size);
 
-void *linted_mem_realloc(linted_error *errnump, void *memory, size_t new_size);
-void *linted_mem_realloc_array(linted_error *errnump, void *memory,
-                               size_t nmemb, size_t size);
+linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size);
+linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
+                                      size_t size);
 
 void linted_mem_free(void *memory);
 

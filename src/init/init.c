@@ -297,15 +297,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                                    + 1u;
     char *display;
     {
-        linted_error xx;
-        display = linted_mem_alloc(&xx, display_string_length);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: can't allocate DISPLAY string: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, display_string_length)) != 0) {
+            linted_io_write_format(
+                STDERR_FILENO, NULL, "%s: can't allocate DISPLAY string: %s\n",
+                process_name, linted_error_string_alloc(errnum));
+            return EXIT_FAILURE;
+        }
+        display = xx;
     }
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display,
@@ -451,13 +450,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         size_t dup_pairs_size = proc_config->dup_pairs.size;
         linted_ko *proc_kos;
         {
-            linted_error xx;
-            proc_kos = linted_mem_alloc_array(&xx, sizeof proc_kos[0u],
-                                              dup_pairs_size);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            goto destroy_attr;
+            void *xx;
+            if ((errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0u],
+                                                 dup_pairs_size)) != 0) {
+                goto destroy_attr;
+            }
+            proc_kos = xx;
         }
         size_t kos_opened = 0u;
         for (; kos_opened < dup_pairs_size;) {
@@ -538,12 +536,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     char *logger_buffer;
     {
-        linted_error xx;
-        logger_buffer = linted_mem_alloc(&xx, LINTED_LOGGER_LOG_MAX);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        goto close_new_connections;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, LINTED_LOGGER_LOG_MAX)) != 0) {
+            goto close_new_connections;
+        }
+        logger_buffer = xx;
     }
 
     {
@@ -1263,12 +1260,11 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 
     struct connection_pool *pool;
     {
-        linted_error xx;
-        pool = linted_mem_alloc(&xx, sizeof *pool);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        return errnum;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, sizeof *pool)) != 0) {
+            return errnum;
+        }
+        pool = xx;
     }
 
     pool->count = 0u;

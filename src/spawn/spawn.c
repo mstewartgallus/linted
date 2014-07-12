@@ -83,9 +83,12 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
     linted_error errnum;
     struct linted_spawn_attr *attr;
 
-    attr = linted_mem_alloc_zeroed(&errnum, sizeof *attr);
-    if (errnum != 0) {
-        return errnum;
+    {
+        void *xx;
+        if ((errnum = linted_mem_alloc_zeroed(&xx, sizeof *attr)) != 0) {
+            return errnum;
+        }
+        attr = xx;
     }
 
     *attrp = attr;
@@ -109,9 +112,13 @@ linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
     linted_error errnum;
     struct linted_spawn_file_actions *file_actions;
 
-    file_actions = linted_mem_alloc_zeroed(&errnum, sizeof *file_actions);
-    if (errnum != 0) {
-        return errnum;
+    {
+        void *xx;
+        if ((errnum = linted_mem_alloc_zeroed(&xx, sizeof *file_actions))
+            != 0) {
+            return errnum;
+        }
+        file_actions = xx;
     }
 
     *file_actionsp = file_actions;
@@ -133,11 +140,15 @@ linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
 
     old_count = file_actions->action_count;
     new_count = old_count + 1u;
-    new_file_actions = linted_mem_realloc(
-        &errnum, file_actions,
-        sizeof *file_actions + new_count * sizeof file_actions->actions[0u]);
-    if (errnum != 0) {
-        return errnum;
+    {
+        void *xx;
+        if ((errnum = linted_mem_realloc(
+                 &xx, file_actions,
+                 sizeof *file_actions
+                 + new_count * sizeof file_actions->actions[0u])) != 0) {
+            return errnum;
+        }
+        new_file_actions = xx;
     }
 
     new_file_actions->action_count = new_count;
@@ -331,11 +342,15 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
-        new_path = linted_mem_alloc(&errnum, strlen("/proc/self/fd/") + 10u
-                                             + strlen(filename) + 1u);
-        if (errnum != 0) {
-            errno = errnum;
-            return -1;
+        {
+            void *xx;
+            if ((errnum = linted_mem_alloc(&xx, strlen("/proc/self/fd/") + 10u
+                                                + strlen(filename) + 1u))
+                != 0) {
+                errno = errnum;
+                return -1;
+            }
+            new_path = xx;
         }
         sprintf(new_path, "/proc/self/fd/%i/%s", dirfd, filename);
         filename = new_path;

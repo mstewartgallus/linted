@@ -91,12 +91,11 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 
         char *string;
         {
-            linted_error xx;
-            string = linted_mem_alloc(&xx, string_size);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            goto free_va_lists;
+            void *xx;
+            if ((errnum = linted_mem_alloc(&xx, string_size)) != 0) {
+                goto free_va_lists;
+            }
+            string = xx;
         }
 
         if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {

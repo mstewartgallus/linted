@@ -48,12 +48,11 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 
         char *new_buf;
         {
-            linted_error xx;
-            new_buf = linted_mem_realloc(&xx, buf, new_cap);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            return errnum;
+            void *xx;
+            if ((errnum = linted_mem_realloc(&xx, buf, new_cap)) != 0) {
+                return errnum;
+            }
+            new_buf = xx;
         }
         buf = new_buf;
     }
@@ -135,12 +134,11 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
 
         char *string;
         {
-            linted_error xx;
-            string = linted_mem_alloc(&xx, string_size);
-            errnum = xx;
-        }
-        if (errnum != 0) {
-            goto free_ap_copy;
+            void *xx;
+            if ((errnum = linted_mem_alloc(&xx, string_size)) != 0) {
+                goto free_ap_copy;
+            }
+            string = xx;
         }
 
         if (vsnprintf(string, string_size, fmt, ap_copy) < 0) {

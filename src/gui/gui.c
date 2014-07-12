@@ -240,17 +240,16 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    size_t display_string_length = strlen(original_display) + 1;
+    size_t display_string_length = strlen(original_display) + 1u;
     char *display_env_var;
     {
-        linted_error xx;
-        display_env_var = linted_mem_alloc(&xx, display_string_length);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        failure(STDERR_FILENO, program_name,
-                LINTED_STR("no DISPLAY environment variable"), errnum);
-        return EXIT_FAILURE;
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, display_string_length)) != 0) {
+            failure(STDERR_FILENO, program_name,
+                    LINTED_STR("no DISPLAY environment variable"), errnum);
+            return EXIT_FAILURE;
+        }
+        display_env_var = xx;
     }
     memcpy(display_env_var, original_display, display_string_length);
 
@@ -941,9 +940,10 @@ static linted_error init_graphics(linted_logger logger,
             glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
                           &info_log_length);
 
-            linted_error mem_errnum;
-            GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+            void *xx;
+            linted_error mem_errnum = linted_mem_alloc(&xx, info_log_length);
             if (0 == mem_errnum) {
+                GLchar *info_log = xx;
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
@@ -975,9 +975,10 @@ static linted_error init_graphics(linted_logger logger,
             GLint info_log_length;
             glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &info_log_length);
 
-            linted_error mem_errnum;
-            GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+            void *xx;
+            linted_error mem_errnum = linted_mem_alloc(&xx, info_log_length);
             if (0 == mem_errnum) {
+                GLchar *info_log = xx;
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
                 log_str(logger, LINTED_STR("Invalid shader: "), info_log);
@@ -998,9 +999,10 @@ static linted_error init_graphics(linted_logger logger,
         GLint info_log_length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
 
-        linted_error mem_errnum;
-        GLchar *info_log = linted_mem_alloc(&mem_errnum, info_log_length);
+        void *xx;
+        linted_error mem_errnum = linted_mem_alloc(&xx, info_log_length);
         if (0 == mem_errnum) {
+            GLchar *info_log = xx;
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
             log_str(logger, LINTED_STR("Invalid program: "), info_log);
             linted_mem_free(info_log);
@@ -1409,10 +1411,14 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
     linted_error errnum;
     size_t error_size = strlen(error);
 
-    char *full_string = linted_mem_alloc(&errnum, error_size + start.size);
-    if (errnum != 0) {
-        /* Silently drop log */
-        return errnum;
+    char *full_string;
+    {
+        void *xx;
+        if ((errnum = linted_mem_alloc(&xx, error_size + start.size)) != 0) {
+            /* Silently drop log */
+            return errnum;
+        }
+        full_string = xx;
     }
 
     memcpy(full_string, start.bytes, start.size);

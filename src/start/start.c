@@ -312,12 +312,11 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
     rewinddir(fds_dir);
 
     {
-        linted_error xx;
-        fds = linted_mem_alloc_array(&xx, size, sizeof fds[0]);
-        errnum = xx;
-    }
-    if (errnum != 0) {
-        goto close_fds_dir;
+        void *xx;
+        if ((errnum = linted_mem_alloc_array(&xx, size, sizeof fds[0])) != 0) {
+            goto close_fds_dir;
+        }
+        fds = xx;
     }
 
     for (size_t ii = 0u; ii < size;) {
