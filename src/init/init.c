@@ -312,14 +312,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
            display_value_length);
     display[display_string_length - 1u] = '\0';
 
-    /*     errnum = linted_util_sanitize_environment(); */
-    /*     if (errnum != 0) { */
-    /*         linted_io_write_format(STDERR_FILENO, NULL, "\ */
-    /* %s: can not sanitize the environment: %s\n", */
-    /*                                process_name,
-     * linted_error_string_alloc(errnum)); */
-    /*         return EXIT_FAILURE; */
-    /*     } */
+    errnum = linted_util_sanitize_environment();
+    if (errnum != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+    %s: can not sanitize the environment: %s\n",
+                               process_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
+    }
 
     {
         /* Set signals to a safe default */

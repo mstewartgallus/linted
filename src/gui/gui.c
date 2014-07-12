@@ -96,9 +96,8 @@ EGLint const attribute_list[][2u]
         { EGL_STENCIL_SIZE, EGL_DONT_CARE },
         { EGL_NONE, EGL_NONE /* A waste of an int. Oh well. */ } };
 
-EGLint const egl_context_attributes[][2u] = {
-    { EGL_CONTEXT_CLIENT_VERSION, 2 },
-    { EGL_NONE, EGL_NONE } };
+EGLint const egl_context_attributes[][2u]
+    = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
 
 struct on_gui_event_args
 {
@@ -420,16 +419,15 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         egl_config = xx;
     }
 
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config,
-                                                    window, NULL);
+    EGLSurface egl_surface
+        = eglCreateWindowSurface(egl_display, egl_config, window, NULL);
     if (EGL_NO_SURFACE == egl_surface) {
         errnum = egl_error();
         goto destroy_egl_display;
     }
 
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config,
-                                              EGL_NO_CONTEXT,
-                                              egl_context_attributes[0u]);
+    EGLContext egl_context = eglCreateContext(
+        egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes[0u]);
     if (EGL_NO_CONTEXT == egl_context) {
         errnum = egl_error();
         goto destroy_egl_surface;
@@ -541,7 +539,8 @@ cleanup_gl:
     destroy_graphics(&graphics_state);
 
 use_no_egl_context:
-    if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+    if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                        EGL_NO_CONTEXT)) {
         if (0 == errnum) {
             errnum = egl_error();
         }
@@ -554,14 +553,12 @@ destroy_egl_context:
         }
     }
 
-
 destroy_egl_surface:
     if (!eglDestroySurface(egl_display, egl_surface)) {
         if (0 == errnum) {
             errnum = egl_error();
         }
     }
-
 
 destroy_egl_display:
     if (!eglTerminate(egl_display)) {
@@ -1116,9 +1113,9 @@ static void render_graphics(struct graphics_state const *graphics_state,
         GLfloat model_view_projection[4u][4u];
 
         matrix_multiply(x_rotation, y_rotation, rotations);
-        matrix_multiply((const GLfloat (*)[4u])camera,
-                        (const GLfloat (*)[4u])rotations, model_view);
-        matrix_multiply((const GLfloat (*)[4u])model_view, projection,
+        matrix_multiply((const GLfloat(*)[4u])camera,
+                        (const GLfloat(*)[4u])rotations, model_view);
+        matrix_multiply((const GLfloat(*)[4u])model_view, projection,
                         model_view_projection);
 
         glUniformMatrix4fv(graphics_state->model_view_projection_matrix, 1u,

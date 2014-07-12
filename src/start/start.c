@@ -107,6 +107,12 @@ It is insecure to run a game as root!\n"));
     for (size_t ii = 0u; ii < open_kos_size; ++ii) {
         linted_ko fd = open_kos[ii];
 
+        /* Running under Valgrind */
+        if (!is_open(fd)) {
+            open_kos[ii] = -1;
+            continue;
+        }
+
         int oflags = fcntl(fd, F_GETFL);
         if (-1 == oflags) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
@@ -136,19 +142,10 @@ It is insecure to run a game as root!\n"));
         }
 
         if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
-            errnum = errno;
-
-            /* Running under Valgrind */
-            if (EBADF == errnum) {
-                linted_ko_close(new_fd);
-                open_kos[ii] = -1;
-                continue;
-            }
-
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: dup3: %s\n",
-                                   program_name,
-                                   linted_error_string_alloc(errnum));
+%s: dup3(%i, %i): %s\n",
+                                   program_name, new_fd, fd,
+                                   linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
 
