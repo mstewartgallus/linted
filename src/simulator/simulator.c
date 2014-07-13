@@ -257,6 +257,11 @@ destroy_pool : {
     if (0 == errnum) {
         errnum = destroy_errnum;
     }
+    /* Insure that the tasks are in proper scope until they are
+     * terminated */
+    (void)timer_task;
+    (void)controller_task;
+    (void)updater_task;
 }
 
 exit:

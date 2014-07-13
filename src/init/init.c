@@ -543,82 +543,76 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         logger_buffer = xx;
     }
 
+    struct connection_pool *connection_pool;
+
     {
-        struct connection_pool *connection_pool;
+        struct connection_pool *xx;
+        if ((errnum = connection_pool_create(&xx)) != 0) {
+            goto free_logger_buffer;
+        }
+        connection_pool = xx;
+    }
 
+    struct service_process *gui_service = &services[LINTED_SERVICE_GUI].process;
+    struct service_process *sim_service =
+        &services[LINTED_SERVICE_SIMULATOR].process;
+
+    struct wait_service_task waiter_task;
+    struct init_logger_task logger_task;
+    struct new_connection_task new_connection_task;
+
+    linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
+                              __WALL);
+    waiter_task.pool = pool;
+    waiter_task.gui_service = gui_service;
+    waiter_task.sim_service = sim_service;
+
+    linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read,
+                          logger_buffer);
+    logger_task.log_ko = STDERR_FILENO;
+    logger_task.process_name = process_name;
+    logger_task.pool = pool;
+
+    linted_manager_accept(LINTED_UPCAST(&new_connection_task), NEW_CONNECTIONS,
+                          new_connections);
+    new_connection_task.pool = pool;
+    new_connection_task.connection_pool = connection_pool;
+    new_connection_task.services = services;
+    new_connection_task.config = config;
+
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
+    linted_asynch_pool_submit(
+        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
+                                        LINTED_UPCAST(&new_connection_task))));
+
+    for (;;) {
+        struct linted_asynch_task *completed_tasks[20u];
+        size_t task_count;
         {
-            struct connection_pool *xx;
-            if ((errnum = connection_pool_create(&xx)) != 0) {
-                goto free_logger_buffer;
-            }
-            connection_pool = xx;
+            size_t xx;
+            linted_asynch_pool_wait(pool, completed_tasks,
+                                    LINTED_ARRAY_SIZE(completed_tasks), &xx);
+            task_count = xx;
         }
 
-        struct service_process *gui_service =
-            &services[LINTED_SERVICE_GUI].process;
-        struct service_process *sim_service =
-            &services[LINTED_SERVICE_SIMULATOR].process;
-
-        struct wait_service_task waiter_task;
-        struct init_logger_task logger_task;
-        struct new_connection_task new_connection_task;
-
-        linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-                                  -1, __WALL);
-        waiter_task.pool = pool;
-        waiter_task.gui_service = gui_service;
-        waiter_task.sim_service = sim_service;
-
-        linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read,
-                              logger_buffer);
-        logger_task.log_ko = STDERR_FILENO;
-        logger_task.process_name = process_name;
-        logger_task.pool = pool;
-
-        linted_manager_accept(LINTED_UPCAST(&new_connection_task),
-                              NEW_CONNECTIONS, new_connections);
-        new_connection_task.pool = pool;
-        new_connection_task.connection_pool = connection_pool;
-        new_connection_task.services = services;
-        new_connection_task.config = config;
-
-        linted_asynch_pool_submit(pool,
-                                  LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
-        linted_asynch_pool_submit(
-            pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
-        linted_asynch_pool_submit(
-            pool,
-            LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&new_connection_task))));
-
-        for (;;) {
-            struct linted_asynch_task *completed_tasks[20u];
-            size_t task_count;
-            {
-                size_t xx;
-                linted_asynch_pool_wait(pool, completed_tasks,
-                                        LINTED_ARRAY_SIZE(completed_tasks),
-                                        &xx);
-                task_count = xx;
+        for (size_t ii = 0u; ii < task_count; ++ii) {
+            if ((errnum = dispatch(completed_tasks[ii])) != 0) {
+                goto close_connections;
             }
 
-            for (size_t ii = 0u; ii < task_count; ++ii) {
-                if ((errnum = dispatch(completed_tasks[ii])) != 0) {
-                    goto close_connections;
-                }
-
-                if (-1 == gui_service->pid) {
-                    goto close_connections;
-                }
+            if (-1 == gui_service->pid) {
+                goto close_connections;
             }
-        }
-
-    close_connections : {
-        linted_error close_errnum = connection_pool_destroy(connection_pool);
-        if (0 == errnum) {
-            errnum = close_errnum;
         }
     }
+
+close_connections : {
+    linted_error close_errnum = connection_pool_destroy(connection_pool);
+    if (0 == errnum) {
+        errnum = close_errnum;
     }
+}
 
 free_logger_buffer:
     linted_mem_free(logger_buffer);
@@ -677,6 +671,11 @@ exit_services:
         if (0 == errnum) {
             errnum = destroy_errnum;
         }
+        /* Insure that the tasks are in proper scope until they are
+         * terminated */
+        (void)waiter_task;
+        (void)logger_task;
+        (void)new_connection_task;
     }
 
     if (errnum != 0) {

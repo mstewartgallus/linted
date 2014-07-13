@@ -440,21 +440,24 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     do {
-        EGLContext egl_context = eglCreateContext(
-            egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes[0u]);
+        EGLContext egl_context
+            = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT,
+                               egl_context_attributes[0u]);
         if (EGL_NO_CONTEXT == egl_context) {
             errnum = egl_error();
             goto destroy_egl_surface;
         }
 
-        if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
+        if (!eglMakeCurrent(egl_display, egl_surface, egl_surface,
+                            egl_context)) {
             errnum = egl_error();
             goto destroy_egl_context;
         }
 
         struct graphics_state graphics_state;
 
-        if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
+        if ((errnum = init_graphics(logger, &graphics_state, &window_model))
+            != 0) {
             errnum = egl_error();
             goto use_no_egl_context;
         }
@@ -491,7 +494,8 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
             {
                 size_t xx;
                 poll_errnum = linted_asynch_pool_poll(
-                    pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks), &xx);
+                    pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks),
+                    &xx);
                 task_count = xx;
             }
 
@@ -520,11 +524,13 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                      */
                     struct linted_asynch_task_sleep_until sleeper_task;
                     {
-                        struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
+                        struct timespec request
+                            = { .tv_sec = 0, .tv_nsec = 10 };
                         linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
                                                        &request);
                     }
-                    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&sleeper_task));
+                    linted_asynch_pool_submit(NULL,
+                                              LINTED_UPCAST(&sleeper_task));
                     errnum = LINTED_UPCAST(&sleeper_task)->errnum;
                     if (errnum != 0) {
                         assert(errnum != EINVAL);
