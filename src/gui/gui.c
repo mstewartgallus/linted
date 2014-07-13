@@ -288,6 +288,20 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
                                    .y_position = 0,
                                    .z_position = 0 };
 
+    struct gui_updater_task updater_task;
+    struct gui_controller_task controller_task;
+
+    linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
+                           updater);
+    updater_task.sim_model = &sim_model;
+    updater_task.controller_task = &controller_task;
+    updater_task.controller_data = &controller_data;
+    updater_task.pool = pool;
+    updater_task.controller = controller;
+
+    linted_asynch_pool_submit(
+        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
+
     Display *display = XOpenDisplay(display_env_var);
     if (NULL == display) {
         errnum = ENOSYS;
@@ -425,132 +439,120 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
         goto destroy_egl_display;
     }
 
-    EGLContext egl_context = eglCreateContext(
-        egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes[0u]);
-    if (EGL_NO_CONTEXT == egl_context) {
-        errnum = egl_error();
-        goto destroy_egl_surface;
-    }
-
-    if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
-        errnum = egl_error();
-        goto destroy_egl_context;
-    }
-
-    struct graphics_state graphics_state;
-
-    if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
-        errnum = egl_error();
-        goto use_no_egl_context;
-    }
-
-    struct gui_updater_task updater_task;
-    struct gui_controller_task controller_task;
-
-    linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
-                           updater);
-    updater_task.sim_model = &sim_model;
-    updater_task.controller_task = &controller_task;
-    updater_task.controller_data = &controller_data;
-    updater_task.pool = pool;
-    updater_task.controller = controller;
-
-    linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
-
-    /* TODO: Detect SIGTERM and exit normally */
-    for (;;) {
-        /* Handle GUI events first before rendering */
-        /* We have to use the Xlib event queue because of broken Mesa
-         * libraries which abuse it.
-         */
-        bool had_gui_event = XPending(display) > 0;
-        if (had_gui_event) {
-            XEvent event;
-            XNextEvent(display, &event);
-
-            bool time_to_quit;
-            struct on_gui_event_args args
-                = { .connection = connection,
-                    .window = window,
-                    .window_model = &window_model,
-                    .controller_data = &controller_data,
-                    .time_to_quit = &time_to_quit };
-            if ((errnum = on_gui_event(&event, args)) != 0) {
-                goto cleanup_gl;
-            }
-            if (time_to_quit) {
-                goto cleanup_gl;
-            }
+    do {
+        EGLContext egl_context = eglCreateContext(
+            egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes[0u]);
+        if (EGL_NO_CONTEXT == egl_context) {
+            errnum = egl_error();
+            goto destroy_egl_surface;
         }
 
-        struct linted_asynch_task *completed_tasks[20u];
-        size_t task_count;
-        linted_error poll_errnum;
-        {
-            size_t xx;
-            poll_errnum = linted_asynch_pool_poll(
-                pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks), &xx);
-            task_count = xx;
+        if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
+            errnum = egl_error();
+            goto destroy_egl_context;
         }
 
-        bool had_asynch_event = poll_errnum != EAGAIN;
-        if (had_asynch_event) {
-            for (size_t ii = 0u; ii < task_count; ++ii) {
-                if ((errnum = dispatch(completed_tasks[ii])) != 0) {
+        struct graphics_state graphics_state;
+
+        if ((errnum = init_graphics(logger, &graphics_state, &window_model)) != 0) {
+            errnum = egl_error();
+            goto use_no_egl_context;
+        }
+
+        /* TODO: Detect SIGTERM and exit normally */
+        for (;;) {
+            /* Handle GUI events first before rendering */
+            /* We have to use the Xlib event queue because of broken Mesa
+             * libraries which abuse it.
+             */
+            bool had_gui_event = XPending(display) > 0;
+            if (had_gui_event) {
+                XEvent event;
+                XNextEvent(display, &event);
+
+                bool time_to_quit;
+                struct on_gui_event_args args
+                    = { .connection = connection,
+                        .window = window,
+                        .window_model = &window_model,
+                        .controller_data = &controller_data,
+                        .time_to_quit = &time_to_quit };
+                if ((errnum = on_gui_event(&event, args)) != 0) {
+                    goto cleanup_gl;
+                }
+                if (time_to_quit) {
                     goto cleanup_gl;
                 }
             }
-        }
 
-        /* Only render or resize if we have time to waste */
-        if (!had_gui_event && !had_asynch_event) {
-            if (window_model.resize_pending) {
-                resize_graphics(&graphics_state, window_model.width,
-                                window_model.height);
-                window_model.resize_pending = false;
-            } else if (window_model.viewable) {
-                render_graphics(&graphics_state, &sim_model, &window_model);
-                eglSwapBuffers(egl_display, egl_surface);
-            } else {
-                /*
-                 * This is an ugly hack and waiting on the X11 file
-                 * descriptor should be implemented eventually.
-                 */
-                struct linted_asynch_task_sleep_until sleeper_task;
-                {
-                    struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
-                    linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
-                                                   &request);
+            struct linted_asynch_task *completed_tasks[20u];
+            size_t task_count;
+            linted_error poll_errnum;
+            {
+                size_t xx;
+                poll_errnum = linted_asynch_pool_poll(
+                    pool, completed_tasks, LINTED_ARRAY_SIZE(completed_tasks), &xx);
+                task_count = xx;
+            }
+
+            bool had_asynch_event = poll_errnum != EAGAIN;
+            if (had_asynch_event) {
+                for (size_t ii = 0u; ii < task_count; ++ii) {
+                    if ((errnum = dispatch(completed_tasks[ii])) != 0) {
+                        goto cleanup_gl;
+                    }
                 }
-                linted_asynch_pool_submit(NULL, LINTED_UPCAST(&sleeper_task));
-                errnum = LINTED_UPCAST(&sleeper_task)->errnum;
-                if (errnum != 0) {
-                    assert(errnum != EINVAL);
-                    assert(errnum != EFAULT);
-                    goto cleanup_gl;
+            }
+
+            /* Only render or resize if we have time to waste */
+            if (!had_gui_event && !had_asynch_event) {
+                if (window_model.resize_pending) {
+                    resize_graphics(&graphics_state, window_model.width,
+                                    window_model.height);
+                    window_model.resize_pending = false;
+                } else if (window_model.viewable) {
+                    render_graphics(&graphics_state, &sim_model, &window_model);
+                    eglSwapBuffers(egl_display, egl_surface);
+                } else {
+                    /*
+                     * This is an ugly hack and waiting on the X11 file
+                     * descriptor should be implemented eventually.
+                     */
+                    struct linted_asynch_task_sleep_until sleeper_task;
+                    {
+                        struct timespec request = { .tv_sec = 0, .tv_nsec = 10 };
+                        linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
+                                                       &request);
+                    }
+                    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&sleeper_task));
+                    errnum = LINTED_UPCAST(&sleeper_task)->errnum;
+                    if (errnum != 0) {
+                        assert(errnum != EINVAL);
+                        assert(errnum != EFAULT);
+                        goto cleanup_gl;
+                    }
                 }
             }
         }
-    }
 
-cleanup_gl:
-    destroy_graphics(&graphics_state);
+    cleanup_gl:
+        destroy_graphics(&graphics_state);
 
-use_no_egl_context:
-    if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                        EGL_NO_CONTEXT)) {
-        if (0 == errnum) {
-            errnum = egl_error();
+    use_no_egl_context:
+        if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                            EGL_NO_CONTEXT)) {
+            if (0 == errnum) {
+                errnum = egl_error();
+            }
         }
-    }
 
-destroy_egl_context:
-    if (!eglDestroyContext(egl_display, egl_context)) {
-        if (0 == errnum) {
-            errnum = egl_error();
+    destroy_egl_context:
+        if (!eglDestroyContext(egl_display, egl_context)) {
+            if (0 == errnum) {
+                errnum = egl_error();
+            }
         }
-    }
+    } while (ENOSYS == errnum);
 
 destroy_egl_surface:
     if (!eglDestroySurface(egl_display, egl_surface)) {
@@ -601,6 +603,10 @@ destroy_pool : {
     if (0 == errnum) {
         errnum = destroy_errnum;
     }
+    /* Insure that the tasks are in proper scope until they are
+     * terminated */
+    (void)updater_task;
+    (void)controller_task;
 }
 
 shutdown:
