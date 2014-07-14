@@ -821,8 +821,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         }
         goto process_exited;
 
-        /* A process starts stopped after it is automatically
-         * traced. */
+    /* A process starts stopped after it is automatically
+     * traced. */
     case CLD_STOPPED:
         goto set_settings_and_start;
 
@@ -854,8 +854,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             }
 
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%i cloned off child: %i\n",
-                                   pid, child);
+                                   "%i cloned off child: %i\n", pid, child);
 
             if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
                 errnum = errno;
@@ -880,11 +879,11 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
     }
 
     if (false) {
-    set_settings_and_start:;
+    set_settings_and_start:
+        ;
         intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK
-            | PTRACE_O_TRACECLONE | PTRACE_O_TRACESYSGOOD;
-        if (-1
-            == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL, (void *)data)) {
+                        | PTRACE_O_TRACECLONE | PTRACE_O_TRACESYSGOOD;
+        if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL, (void *)data)) {
             errnum = errno;
 
             if (ESRCH == errnum) {
@@ -929,8 +928,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         }
 
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "starting task %i signalled %i: %s\n",
-                               pid, signum, strsignal(signum));
+                               "starting task %i signalled %i: %s\n", pid,
+                               signum, strsignal(signum));
 
         if (SIGTRAP == signum) {
             signum = 0;
@@ -950,7 +949,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             assert(errnum != ESRCH);
             assert(false);
         }
-    finish:;
+    finish:
+        ;
     }
 
     return 0;
