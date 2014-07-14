@@ -929,7 +929,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         }
 
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "starting task %i signalled %i\n", pid, signum);
+                               "starting task %i signalled %i: %s\n",
+                               pid, signum, strsignal(signum));
 
         if (SIGTRAP == signum) {
             signum = 0;
