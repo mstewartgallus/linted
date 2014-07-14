@@ -821,20 +821,17 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         }
         goto process_exited;
 
-    case CLD_STOPPED: {
-        intptr_t signal = exit_status;
-        if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)signal)) {
-            assert(errnum != 0);
-            assert(errnum != EINVAL);
-            assert(errnum != EPERM);
-            assert(errnum != ESRCH);
-            assert(false);
-        }
-        break;
-    }
+        /* A process starts stopped after it is automatically
+         * traced. */
+    case CLD_STOPPED:
+        goto set_settings_and_start;
 
-    case CLD_TRAPPED: {
+    case CLD_TRAPPED:
         switch (exit_status) {
+        /* SIGTRAP after a process does a PTRACE_ME */
+        case SIGTRAP:
+            goto set_settings_and_start;
+
         case SIGTRAP | PTRACE_EVENT_FORK << 8u:
         case SIGTRAP | PTRACE_EVENT_VFORK << 8u:
         case SIGTRAP | PTRACE_EVENT_CLONE << 8u: {
@@ -857,38 +854,8 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             }
 
             linted_io_write_format(STDERR_FILENO, NULL,
-                                   "starting to trace child: %i\n", child);
-
-            if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
-                errnum = errno;
-                if (errnum != ESRCH) {
-                    assert(errnum != 0);
-                    assert(errnum != EINVAL);
-                    assert(errnum != EPERM);
-                    assert(errnum != ESRCH);
-                    assert(false);
-                }
-            }
-            break;
-        }
-
-        /* SIGTRAP start of traced program execution */
-        case SIGTRAP: {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "starting to trace: %i\n", pid);
-
-            intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK
-                            | PTRACE_O_TRACECLONE | PTRACE_O_TRACESYSGOOD;
-            if (-1
-                == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL, (void *)data)) {
-                errnum = errno;
-                if (errnum != ESRCH) {
-                    assert(errnum != 0);
-                    assert(errnum != EINVAL);
-                    assert(errnum != EPERM);
-                    assert(false);
-                }
-            }
+                                   "%i cloned off child: %i\n",
+                                   pid, child);
 
             if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
                 errnum = errno;
@@ -907,10 +874,82 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
             assert(false);
         }
         break;
-    }
 
     default:
         assert(false);
+    }
+
+    if (false) {
+    set_settings_and_start:;
+        intptr_t data = PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK
+            | PTRACE_O_TRACECLONE | PTRACE_O_TRACESYSGOOD;
+        if (-1
+            == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL, (void *)data)) {
+            errnum = errno;
+
+            if (ESRCH == errnum) {
+                /* Another process killed it already */
+                goto finish;
+            }
+
+            assert(errnum != 0);
+            assert(errnum != EINVAL);
+            assert(errnum != EPERM);
+            assert(false);
+        }
+
+        int signum;
+
+        {
+            siginfo_t info;
+            if (-1 == ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL,
+                             (void *)&info)) {
+                errnum = errno;
+
+                switch (errnum) {
+                case ESRCH:
+                    /* Another process killed it already */
+                    goto finish;
+
+                /* Stopped due to SIGSTOP and not trap */
+                case EINVAL:
+                    signum = SIGSTOP;
+                    break;
+
+                default:
+                    assert(errnum != 0);
+                    assert(errnum != EPERM);
+                    assert(errnum != ESRCH);
+                    assert(false);
+                    break;
+                }
+            } else {
+                signum = info.si_signo;
+            }
+        }
+
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "starting task %i signalled %i\n", pid, signum);
+
+        if (SIGTRAP == signum) {
+            signum = 0;
+        }
+
+        if (-1 == ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)signum)) {
+            errnum = errno;
+
+            if (ESRCH == errnum) {
+                /* Another process killed it already */
+                goto finish;
+            }
+
+            assert(errnum != 0);
+            assert(errnum != EINVAL);
+            assert(errnum != EPERM);
+            assert(errnum != ESRCH);
+            assert(false);
+        }
+    finish:;
     }
 
     return 0;
