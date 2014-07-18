@@ -24,6 +24,10 @@
 
 linted_error linted_mem_alloc(void **memp, size_t size)
 {
+    if (0u == size) {
+        size = 1u;
+    }
+
     void *memory = malloc(size);
     if (NULL == memory) {
         linted_error errnum = errno;
@@ -41,7 +45,12 @@ linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
         return ENOMEM;
     }
 
-    void *memory = malloc(size * nmemb);
+    size_t total = size * nmemb;
+    if (0u == total) {
+        total = 1u;
+    }
+
+    void *memory = malloc(total);
     if (NULL == memory) {
         linted_error errnum = errno;
         assert(errnum != 0);
@@ -54,6 +63,10 @@ linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 
 linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 {
+    if (0u == size) {
+        size = 1u;
+    }
+
     void *memory = calloc(1u, size);
     if (NULL == memory) {
         linted_error errnum = errno;
@@ -68,6 +81,17 @@ linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
                                            size_t size)
 {
+    if (0u == nmemb || 0u == size) {
+        void * memory = malloc(1u);
+        if (NULL == memory) {
+            linted_error errnum = errno;
+            assert(errnum != 0);
+            return errnum;
+        }
+        *memp = memory;
+        return 0;
+    }
+
     void *memory = calloc(nmemb, size);
     if (NULL == memory) {
         linted_error errnum = errno;
@@ -81,6 +105,10 @@ linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
 
 linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size)
 {
+    if (0u == new_size) {
+        new_size = 1u;
+    }
+
     void *new_memory = realloc(memory, new_size);
     if (NULL == new_memory) {
         linted_error errnum = errno;
@@ -99,7 +127,12 @@ linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
         return ENOMEM;
     }
 
-    void *new_memory = realloc(memory, nmemb * size);
+    size_t total = size * nmemb;
+    if (0u == total) {
+        total = 1u;
+    }
+
+    void *new_memory = realloc(memory, total);
     if (NULL == new_memory) {
         linted_error errnum = errno;
         assert(errnum != 0);

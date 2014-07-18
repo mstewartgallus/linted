@@ -66,7 +66,7 @@ dist-hook:
 
 .PHONY: indent
 indent: $(SOURCES)
-	$(CLANG_FORMAT) $(linted_CLANG_FORMATFLAGS) $^
+	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^
 
 .PHONY: doxygen
 doxygen:

@@ -54,15 +54,6 @@ AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
 ])
 dnl
-AC_FUNC_MALLOC
-AS_IF([test "x${ac_cv_func_malloc}" = "xno"],[
- AC_MSG_ERROR([Unable to find malloc function for which malloc(0) != NULL])
-])
-AC_FUNC_REALLOC
-AS_IF([test "x${ac_cv_func_realloc}" = "xno"],[
- AC_MSG_ERROR([Unable to find realloc function for which realloc(NULL, 0) != NULL])
-])
-dnl
 AC_CHECK_HEADERS([windows.h])
 AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   dnl Using winelib to build or building on a Windows system.
@@ -75,11 +66,7 @@ AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   dnl
   AC_CHECK_HEADERS([sys/resource.h])
   dnl
-  AC_FUNC_MMAP
-  AS_IF([test "x${ac_cv_func_mmap_fixed_mapped}" = "xno"],[
-    AC_MSG_ERROR([Unable to find a good mmap function])
-  ])
-  dnl
+ dnl
   AC_FUNC_STRERROR_R
   AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
    AC_MSG_ERROR([Unable to find strerror_r function])
