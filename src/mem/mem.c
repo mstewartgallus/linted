@@ -82,7 +82,7 @@ linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
                                            size_t size)
 {
     if (0u == nmemb || 0u == size) {
-        void * memory = malloc(1u);
+        void *memory = malloc(1u);
         if (NULL == memory) {
             linted_error errnum = errno;
             assert(errnum != 0);

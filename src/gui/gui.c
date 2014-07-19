@@ -884,40 +884,44 @@ static linted_error init_graphics(linted_logger logger,
     /* We want a neutral, middle brightness */
 
     /* It might be possible to use a physically based model based off
-   * the energy contained in a ray of light of a certain hue but we
-   * have chosen to model brightnes as:
-   */
-    /* brightness = 0.2126 red + 0.7152 green + 0.0722 blue */
+     * the energy contained in a ray of light of a certain hue but we
+     * have chosen to model brightnes as:
+     */
+    /* brightness = r red + g green + b blue */
 
     /* Note that this is a crappy approximation that only works for
-   * some monitors and eyes
-   */
+     * some monitors and eyes.
+     */
 
-    /* brightest = 0.2126 + 0.7152 + 0.0722 */
+    /* brightest = r + g + b */
     /* darkest = 0 */
 
     /* We calculate a middling brightness taking into account gamma
-   * and nonlinearity
-   */
+     * and nonlinearity.
+     */
 
     /* Note that how bright we want our background colour to be is
-   * really a matter of taste and not math. The halfway point is
-   * simply a good starting point.
-   */
-    double brightness = (0.2126 + 0.7152 + 0.0722) * square(0.5);
+     * really a matter of taste and not math. The halfway point is
+     * simply a good starting point.
+     */
+    double r = 0.2126;
+    double g = 0.7152;
+    double b = 0.0722;
+
+    double brightness = (r + g + b) * square(0.5);
 
     /* We can then carve off some red and green to make room for more
-   * blue but still keep the same amount of brightness.
-   */
-    /* brightness = 0.2126 red + 0.7152 green + 0.0722 blue */
+     * blue but still keep the same amount of brightness.
+     */
+    /* brightness = r red + g green + b blue */
     /* red = green = x */
-    /* brightness = (0.2126 + 0.7152) x + 0.0722 blue */
-    /* brightness - 0.0722 blue = (0.2126 + 0.7152) x */
-    /* (brightness - 0.0722 blue) / (0.2126 + 0.7152) = x */
+    /* brightness = (r + g) x + b blue */
+    /* brightness - b blue = (r + g) x */
+    /* (brightness - b blue) / (r + g) = x */
 
     /* adjust blue to taste */
     double blue = square(0.75);
-    double x = (brightness - 0.0722 * blue) / (0.2126 + 0.7152);
+    double x = (brightness - b * blue) / (r + g);
     double red = x;
     double green = x;
 
