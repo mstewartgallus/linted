@@ -165,7 +165,6 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
     struct linted_queue_node *tip = &queue->tip;
     pthread_mutex_t *lock = &queue->lock;
-    pthread_cond_t *gains_member = &queue->gains_member;
 
     errnum = pthread_mutex_lock(lock);
     assert(errnum != EDEADLK);
