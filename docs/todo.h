@@ -11,6 +11,8 @@
  *
  * Linted -- TODO
  *
+ * @todo chroot and sandbox applications
+ *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
  * - The tools:
