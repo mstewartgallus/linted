@@ -13,6 +13,11 @@
  *
  * @todo chroot and sandbox applications
  *
+ * @todo unshare with CLONE_NEWPID and replace ptracing to
+ * containerize subprograms (this doesn't work with threads so a new
+ * solution needs to be found). Perhaps forking and CLONE_PARENT might
+ * work somewhat? Daemonization is kind of cruddy though.
+ *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
  * - The tools:
