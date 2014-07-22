@@ -129,7 +129,7 @@ static linted_ko kos[3u];
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-simulator",
-        .open_current_working_directory = false,
+        .open_current_working_directory = true,
         .kos_size = LINTED_ARRAY_SIZE(kos),
         .kos = kos };
 
