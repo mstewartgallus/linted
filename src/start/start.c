@@ -214,7 +214,22 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    /* Start sandboxing a bit */
+    /* Prevent other processes ptracing this process and sending
+     * signals. I'm not worried about other processes ptracing this
+     * process (because of Yama hardening) but am worried about them
+     * sending signals to it.
+     */
+    if (-1 == prctl(PR_SET_DUMPABLE, 0)) {
+        errnum = errno;
+
+        assert(errnum != EINVAL);
+
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not stop core dumps: %s\n",
+                               program_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
+    }
+
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         errnum = errno;
 
