@@ -239,14 +239,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
-    if (-1 == unshare(CLONE_NEWUSER
-                      | CLONE_NEWIPC
-                      | CLONE_NEWPID
-                      | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
+    if (-1 == unshare(CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
+                      | CLONE_NEWUTS | CLONE_NEWNS)) {
         errnum = errno;
-        linted_io_write_format(
-            STDERR_FILENO, NULL, "%s: can't unshare privileges: %s\n",
-            process_name, linted_error_string_alloc(errno));
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: can't unshare privileges: %s\n",
+                               process_name, linted_error_string_alloc(errno));
         return EXIT_FAILURE;
     }
 
@@ -254,9 +252,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     pid_t child = fork();
     if (-1 == child) {
         errnum = errno;
-        linted_io_write_format(
-            STDERR_FILENO, NULL, "%s: fork: %s\n",
-            process_name, linted_error_string_alloc(errnum));
+        linted_io_write_format(STDERR_FILENO, NULL, "%s: fork: %s\n",
+                               process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
 

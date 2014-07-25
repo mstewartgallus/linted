@@ -116,8 +116,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return run_stop(process_name, argc - last_index + 1u,
                         argv + last_index - 1u);
     } else {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: unrecognized command '%s'\n",
-                               process_name, command);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: unrecognized command '%s'\n", process_name,
+                               command);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -168,8 +169,9 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
     }
 
     if (bad_argument != NULL) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: too many arguments: '%s'\n",
-                               process_name, bad_argument);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: too many arguments: '%s'\n", process_name,
+                               bad_argument);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -183,8 +185,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 
     char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               process_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", process_name);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -192,8 +194,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: LINTED_SOCKET is too long\n",
-                               process_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: LINTED_SOCKET is too long\n", process_name);
         return EXIT_FAILURE;
     }
 
@@ -219,8 +221,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
     {
         linted_manager manager;
         if ((errnum = linted_manager_connect(&manager, path, path_len)) != 0) {
-            failure(STDERR_FILENO, process_name, LINTED_STR("can not create socket"),
-                    errnum);
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not create socket"), errnum);
             return EXIT_FAILURE;
         }
         linted = manager;
@@ -238,8 +240,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
                                process_name, service_name);
 
         if ((errnum = linted_manager_send_request(linted, &request)) != 0) {
-            failure(STDERR_FILENO, process_name, LINTED_STR("can not send request"),
-                    errnum);
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not send request"), errnum);
             return EXIT_FAILURE;
         }
     }
@@ -249,8 +251,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
         size_t bytes_read;
         if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read))
             != 0) {
-            failure(STDERR_FILENO, process_name, LINTED_STR("can not read reply"),
-                    errnum);
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
         }
 
@@ -269,8 +271,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
         }
 
         if (reply.status.is_up) {
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n", process_name,
-                                   service_name);
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n",
+                                   process_name, service_name);
         } else {
             linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is down\n",
                                    process_name, service_name);
@@ -319,8 +321,9 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
     }
 
     if (bad_argument != NULL) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: too many arguments: '%s'\n",
-                               process_name, bad_argument);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: too many arguments: '%s'\n", process_name,
+                               bad_argument);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -334,8 +337,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 
     char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               process_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", process_name);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -343,8 +346,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: LINTED_SOCKET is too long\n",
-                               process_name);
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: LINTED_SOCKET is too long\n", process_name);
         return EXIT_FAILURE;
     }
 
@@ -354,8 +357,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
         linted_manager manager;
         linted_error errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
-            failure(STDERR_FILENO, process_name, LINTED_STR("can not create socket"),
-                    errnum);
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not create socket"), errnum);
             return EXIT_FAILURE;
         }
         linted = manager;
@@ -386,8 +389,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
         linted_error errnum
             = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
-            failure(STDERR_FILENO, process_name, LINTED_STR("can not read reply"),
-                    errnum);
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not read reply"), errnum);
             return EXIT_FAILURE;
         }
 
@@ -401,7 +404,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
             linted_io_write_format(STDOUT_FILENO, NULL, "%s: gui was killed\n",
                                    process_name);
         } else {
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s: the gui was not killed\n",
+            linted_io_write_format(STDOUT_FILENO, NULL,
+                                   "%s: the gui was not killed\n",
                                    process_name);
         }
     }
