@@ -29,24 +29,24 @@
 #include <stdbool.h>
 #include <string.h>
 
-static uint_fast8_t run_status(char const *program_name, size_t argc,
+static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[const]);
-static uint_fast8_t run_stop(char const *program_name, size_t argc,
+static uint_fast8_t run_stop(char const *process_name, size_t argc,
                              char const *const argv[const]);
 
-static linted_error ctl_help(linted_ko ko, char const *program_name,
+static linted_error ctl_help(linted_ko ko, char const *process_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport);
-static linted_error status_help(linted_ko ko, char const *program_name,
+static linted_error status_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
-static linted_error stop_help(linted_ko ko, char const *program_name,
+static linted_error stop_help(linted_ko ko, char const *process_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport);
-static linted_error failure(linted_ko ko, char const *program_name,
+static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 
 struct linted_start_config const linted_start_config
@@ -55,7 +55,7 @@ struct linted_start_config const linted_start_config
         .kos_size = 0u,
         .kos = NULL };
 
-uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
+uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
     bool need_help = false;
@@ -83,14 +83,14 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     ++last_index;
 
     if (need_help) {
-        ctl_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        ctl_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
                  LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -103,28 +103,28 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
 
     if (NULL == command) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: missing COMMAND\n",
-                               program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (0 == strcmp("status", command)) {
-        return run_status(program_name, argc - last_index + 1u,
+        return run_status(process_name, argc - last_index + 1u,
                           argv + last_index - 1u);
     } else if (0 == strcmp("stop", command)) {
-        return run_stop(program_name, argc - last_index + 1u,
+        return run_stop(process_name, argc - last_index + 1u,
                         argv + last_index - 1u);
     } else {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: unrecognized command '%s'\n",
-                               program_name, command);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name, command);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 }
 
-static uint_fast8_t run_status(char const *program_name, size_t argc,
+static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[const])
 {
     bool need_version = false;
@@ -155,22 +155,22 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     }
 
     if (need_add_help) {
-        status_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        status_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
                     LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (bad_argument != NULL) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: too many arguments: '%s'\n",
-                               program_name, bad_argument);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name, bad_argument);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -184,8 +184,8 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -193,14 +193,14 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: LINTED_SOCKET is too long\n",
-                               program_name);
+                               process_name);
         return EXIT_FAILURE;
     }
 
     if (NULL == service_name) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: missing SERVICE\n",
-                               program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -208,8 +208,8 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     linted_error errnum;
     enum linted_service service;
     if ((errnum = linted_service_for_name(&service, service_name)) != 0) {
-        failure(STDERR_FILENO, program_name, LINTED_STR("SERVICE"), errnum);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"), errnum);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -219,7 +219,7 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
     {
         linted_manager manager;
         if ((errnum = linted_manager_connect(&manager, path, path_len)) != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not create socket"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can not create socket"),
                     errnum);
             return EXIT_FAILURE;
         }
@@ -235,10 +235,10 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the status request for %s\n",
-                               program_name, service_name);
+                               process_name, service_name);
 
         if ((errnum = linted_manager_send_request(linted, &request)) != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not send request"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can not send request"),
                     errnum);
             return EXIT_FAILURE;
         }
@@ -249,14 +249,14 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         size_t bytes_read;
         if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read))
             != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not read reply"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can not read reply"),
                     errnum);
             return EXIT_FAILURE;
         }
 
         if (0u == bytes_read) {
             linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
-                                   program_name);
+                                   process_name);
             return EXIT_FAILURE;
         }
 
@@ -264,23 +264,23 @@ static uint_fast8_t run_status(char const *program_name, size_t argc,
         if (bytes_read != sizeof reply) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: reply was too small: %i\n",
-                                   program_name, bytes_read);
+                                   process_name, bytes_read);
             return EXIT_FAILURE;
         }
 
         if (reply.status.is_up) {
-            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n", program_name,
+            linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n", process_name,
                                    service_name);
         } else {
             linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is down\n",
-                                   program_name, service_name);
+                                   process_name, service_name);
         }
     }
 
     return EXIT_SUCCESS;
 }
 
-static uint_fast8_t run_stop(char const *program_name, size_t argc,
+static uint_fast8_t run_stop(char const *process_name, size_t argc,
                              char const *const argv[const])
 {
     bool need_version = false;
@@ -306,22 +306,22 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
     }
 
     if (need_add_help) {
-        stop_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        stop_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
                   LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
     if (bad_argument != NULL) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: too many arguments: '%s'\n",
-                               program_name, bad_argument);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name, bad_argument);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -335,8 +335,8 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
     char const *path = getenv("LINTED_SOCKET");
     if (NULL == path) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: missing LINTED_SOCKET\n",
-                               program_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+                               process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
@@ -344,7 +344,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
     size_t path_len = strlen(path);
     if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: LINTED_SOCKET is too long\n",
-                               program_name);
+                               process_name);
         return EXIT_FAILURE;
     }
 
@@ -354,7 +354,7 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
         linted_manager manager;
         linted_error errnum = linted_manager_connect(&manager, path, path_len);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not create socket"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can not create socket"),
                     errnum);
             return EXIT_FAILURE;
         }
@@ -370,11 +370,11 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the stop request for the gui\n",
-                               program_name);
+                               process_name);
 
         linted_error errnum = linted_manager_send_request(linted, &request);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can send request"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can send request"),
                     errnum);
             return EXIT_FAILURE;
         }
@@ -386,30 +386,30 @@ static uint_fast8_t run_stop(char const *program_name, size_t argc,
         linted_error errnum
             = linted_manager_recv_reply(linted, &reply, &bytes_read);
         if (errnum != 0) {
-            failure(STDERR_FILENO, program_name, LINTED_STR("can not read reply"),
+            failure(STDERR_FILENO, process_name, LINTED_STR("can not read reply"),
                     errnum);
             return EXIT_FAILURE;
         }
 
         if (0u == bytes_read) {
             linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
-                                   program_name);
+                                   process_name);
             return EXIT_FAILURE;
         }
 
         if (reply.stop.was_up) {
             linted_io_write_format(STDOUT_FILENO, NULL, "%s: gui was killed\n",
-                                   program_name);
+                                   process_name);
         } else {
             linted_io_write_format(STDOUT_FILENO, NULL, "%s: the gui was not killed\n",
-                                   program_name);
+                                   process_name);
         }
     }
 
     return EXIT_SUCCESS;
 }
 
-static linted_error ctl_help(linted_ko ko, char const *program_name,
+static linted_error ctl_help(linted_ko ko, char const *process_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
                              struct linted_str package_bugreport)
@@ -426,7 +426,7 @@ static linted_error ctl_help(linted_ko ko, char const *program_name,
     }
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-                                            program_name)) != 0) {
+                                            process_name)) != 0) {
         goto free_buffer;
     }
 
@@ -506,7 +506,7 @@ free_buffer:
     return errnum;
 }
 
-static linted_error status_help(linted_ko ko, char const *program_name,
+static linted_error status_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport)
@@ -518,7 +518,7 @@ static linted_error status_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
         return errnum;
     }
 
@@ -584,7 +584,7 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error stop_help(linted_ko ko, char const *program_name,
+static linted_error stop_help(linted_ko ko, char const *process_name,
                               struct linted_str package_name,
                               struct linted_str package_url,
                               struct linted_str package_bugreport)
@@ -596,7 +596,7 @@ static linted_error stop_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
         return errnum;
     }
 
@@ -661,12 +661,12 @@ Report bugs to <"))) != 0) {
     return 0;
 }
 
-static linted_error failure(linted_ko ko, char const *program_name,
+static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error error)
 {
     linted_error errnum;
 
-    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
         return errnum;
     }
 

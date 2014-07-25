@@ -120,7 +120,7 @@ static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
-static linted_error simulator_help(linted_ko ko, char const *program_name,
+static linted_error simulator_help(linted_ko ko, char const *process_name,
                                    struct linted_str package_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
@@ -133,7 +133,7 @@ struct linted_start_config const linted_start_config
         .kos_size = LINTED_ARRAY_SIZE(kos),
         .kos = kos };
 
-uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
+uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
     linted_logger logger = kos[0u];
@@ -157,14 +157,14 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     }
 
     if (need_help) {
-        simulator_help(STDOUT_FILENO, program_name, LINTED_STR(PACKAGE_NAME),
+        simulator_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
                        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
         return EXIT_SUCCESS;
     }
 
     if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, program_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, program_name,
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
@@ -180,7 +180,7 @@ uint_fast8_t linted_start(int cwd, char const *const program_name, size_t argc,
     if ((errnum = linted_util_sanitize_environment()) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not sanitize the environment: %s",
-                               program_name, linted_error_string_alloc(errnum));
+                               process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
 
@@ -522,7 +522,7 @@ static linted_updater_uint absolute(linted_updater_int x)
                                        : imaxabs(x);
 }
 
-static linted_error simulator_help(linted_ko ko, char const *program_name,
+static linted_error simulator_help(linted_ko ko, char const *process_name,
                                    struct linted_str package_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport)
@@ -533,7 +533,7 @@ static linted_error simulator_help(linted_ko ko, char const *program_name,
         return errnum;
     }
 
-    if ((errnum = linted_io_write_string(ko, NULL, program_name)) != 0) {
+    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
         return errnum;
     }
 

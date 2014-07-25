@@ -49,7 +49,7 @@ free_buffer:
     return errnum;
 }
 
-linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
+linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
                                          char const *bad_option)
 {
     linted_error errnum;
@@ -59,7 +59,7 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *program_name,
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-                                            program_name)) != 0) {
+                                            process_name)) != 0) {
         goto free_buffer;
     }
 
@@ -88,7 +88,7 @@ free_buffer:
 }
 
 linted_error linted_locale_try_for_more_help(linted_ko ko,
-                                             char const *program_name,
+                                             char const *process_name,
                                              struct linted_str help_option)
 {
     linted_error errnum;
@@ -103,7 +103,7 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
     }
 
     if ((errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-                                            program_name)) != 0) {
+                                            process_name)) != 0) {
         goto free_buffer;
     }
 
