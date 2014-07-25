@@ -244,13 +244,10 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                       | CLONE_NEWPID
                       | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
         errnum = errno;
-        /* If we're already sandboxed don't worry */
-        if (errnum != EPERM) {
-            linted_io_write_format(
-                STDERR_FILENO, NULL, "%s: can't unshare privileges: %s\n",
-                process_name, linted_error_string_alloc(errno));
-            return EXIT_FAILURE;
-        }
+        linted_io_write_format(
+            STDERR_FILENO, NULL, "%s: can't unshare privileges: %s\n",
+            process_name, linted_error_string_alloc(errno));
+        return EXIT_FAILURE;
     }
 
     /* Fork to allow multithreading after unshare(CLONE_NEWPID) */
