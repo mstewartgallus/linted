@@ -237,20 +237,6 @@ It is insecure to run a game as root!\n"));
         linted_random_seed_generator(entropy);
     }
 
-    /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
-    if (-1 == unshare(CLONE_NEWUSER
-                      | CLONE_NEWIPC
-                      | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
-        errnum = errno;
-        /* If we're already sandboxed don't worry */
-        if (errnum != EPERM) {
-            linted_io_write_format(
-                STDERR_FILENO, NULL, "%s: can't unshare privileges: %s\n",
-                program_name, linted_error_string_alloc(errno));
-            return EXIT_FAILURE;
-        }
-    }
-
     return linted_start(cwd, program_name, argc, (char const * const *)argv);
 }
 

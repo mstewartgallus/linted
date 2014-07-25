@@ -228,13 +228,32 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 {
     linted_error errnum;
 
-    if (-1 == unshare(CLONE_NEWPID)) {
-        errnum = errno;
-        linted_io_write_format(
-            STDERR_FILENO, NULL, "%s: unshare: %s\n",
-            process_name, linted_error_string_alloc(errnum));
+    /* Acquire socket before unsharing namespaces */
+    linted_manager new_connections;
+    {
+        linted_manager xx;
+        if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) != 0) {
+            goto exit_services;
+        }
+        new_connections = xx;
     }
 
+    /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
+    if (-1 == unshare(CLONE_NEWUSER
+                      | CLONE_NEWIPC
+                      | CLONE_NEWPID
+                      | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
+        errnum = errno;
+        /* If we're already sandboxed don't worry */
+        if (errnum != EPERM) {
+            linted_io_write_format(
+                STDERR_FILENO, NULL, "%s: can't unshare privileges: %s\n",
+                process_name, linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* Fork to allow multithreading after unshare(CLONE_NEWPID) */
     pid_t child = fork();
     if (-1 == child) {
         errnum = errno;
@@ -542,15 +561,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         if (errnum != 0) {
             goto exit_services;
         }
-    }
-
-    linted_manager new_connections;
-    {
-        linted_manager xx;
-        if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) != 0) {
-            goto exit_services;
-        }
-        new_connections = xx;
     }
 
     {

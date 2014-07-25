@@ -12,7 +12,6 @@
  * Linted -- TODO
  *
  * @todo chroot and sandbox applications
- * @todo escape socket connection out of namespace sandbox
  *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
