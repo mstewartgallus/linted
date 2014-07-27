@@ -525,7 +525,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     struct linted_asynch_task_sleep_until sleeper_task;
                     {
                         struct timespec request
-                            = { .tv_sec = 0, .tv_nsec = 10 };
+                            = { .tv_sec = 0, .tv_nsec = 100000000 };
                         linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
                                                        &request);
                     }
