@@ -298,7 +298,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
     if (-1 == unshare(CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
                       | CLONE_NEWUTS | CLONE_NEWNS)) {
-        errnum = errno;
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: can't unshare privileges: %s\n",
                                process_name, linted_error_string_alloc(errno));
@@ -346,9 +345,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-/* TODO: Close files leading outside of the sandbox  */
-try_opening_fstab:
-    ;
+    /* TODO: Close files leading outside of the sandbox  */
     FILE *fstab = setmntent(fstab_path, "re");
     if (NULL == fstab) {
         perror("setmtent");

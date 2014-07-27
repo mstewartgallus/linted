@@ -285,10 +285,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
     int dirfd_copy;
 
-    if (is_relative_path && !at_fdcwd) {
+    if (at_fdcwd) {
+        dirfd_copy = AT_FDCWD;
+    } else if (is_relative_path && at_fdcwd) {
         if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long)0))) {
             exit_with_error(spawn_error, errno);
         }
+    } else {
+        dirfd_copy = -1;
     }
 
     if (file_actions != NULL) {
@@ -298,13 +302,13 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             case FILE_ACTION_ADDDUP2: {
                 int newfildes = action->adddup2.newfildes;
 
-                if (is_relative_path && !at_fdcwd) {
-                    if (dirfd_copy == newfildes) {
-                        dirfd_copy
-                            = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, (long)0);
-                        if (-1 == dirfd_copy) {
-                            exit_with_error(spawn_error, errno);
-                        }
+                if (dirfd_copy >= 0 && dirfd_copy == newfildes) {
+                    /* We don't need to close the old dirfd copy
+                     * because it is closed by the following dup2.
+                     */
+                    dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, 0L);
+                    if (-1 == dirfd_copy) {
+                        exit_with_error(spawn_error, errno);
                     }
                 }
 

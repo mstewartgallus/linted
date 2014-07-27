@@ -59,7 +59,11 @@ def go():
                              # code.
                              '--suppress=resourceLeak',
 
-                             '--template=gcc']
+                             # Having a widely scoped errnum variable
+                             # is useful
+                             '--suppress=variableScope',
+
+                             '--template={file}:{line}: ({id}) {message}']
 
             if 'D__unix__=1' in define_flags:
                 cppcheck_args.append('--platform=unix64')
