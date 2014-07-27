@@ -29,6 +29,8 @@ EXTRA_DIST=
 MOSTLYCLEANFILES=
 
 pkgconfdir=$(sysconfdir)/linted
+uninstall-hook:
+	- rmdir '$(pkgconfdir)'
 
 EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
 
