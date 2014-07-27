@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=simulator
+pkglibexec_PROGRAMS+=%D%/simulator
 
-simulator_SOURCES=%D%/simulator.c
-simulator_LDADD=\
+%C%_simulator_SOURCES=%D%/simulator.c
+%C%_simulator_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\

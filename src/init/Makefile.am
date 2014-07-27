@@ -14,11 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=linted
+bin_PROGRAMS+=%D%/linted
 
-linted_SOURCES=%D%/init.c
-linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
-linted_LDADD=\
+%C%_linted_SOURCES=%D%/init.c
+%C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
+%C%_linted_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\

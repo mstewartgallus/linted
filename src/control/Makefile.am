@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=linted-control
+bin_PROGRAMS+=%D%/linted-control
 
-linted_control_SOURCES=%D%/control.c
-linted_control_LDADD=\
+%C%_linted_control_SOURCES=%D%/control.c
+%C%_linted_control_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\

@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=gui
+pkglibexec_PROGRAMS+=%D%/gui
 
-gui_SOURCES=%D%/gui.c %D%/assets.c
-gui_LDADD=\
+%C%_gui_SOURCES=%D%/gui.c %D%/assets.c
+%C%_gui_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
@@ -38,9 +38,9 @@ gui_LDADD=\
   $(X11_XCB_LIBS)\
   $(GLES_LIBS)\
   $(EGL_LIBS)
-gui_LDFLAGS=$(AM_LDFLAGS)
+%C%_gui_LDFLAGS=$(AM_LDFLAGS)
 
-gui_CPPFLAGS=\
+%C%_gui_CPPFLAGS=\
   $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GLES_FLAGS) $(EGL_FLAGS)\
   -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
 

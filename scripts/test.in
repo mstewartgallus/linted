@@ -6,4 +6,4 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-exec "${ROOT}/../linted" --simulator="${ROOT}/../simulator" --gui="${ROOT}/../gui" "$@"
+exec "${ROOT}/../src/init/linted" --simulator="${ROOT}/../src/simulator/simulator" --gui="${ROOT}/../src/gui/gui" "$@"
