@@ -308,6 +308,25 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return info.si_status;
     }
 
+    /* Favor other processes over this process hierarchy. Only
+     * superuser may lower priorities so this is not stoppable. This
+     * also makes the process hierarchy nicer for the OOM killer.
+     */
+    errno = 0;
+    int priority = getpriority(PRIO_PROCESS, 0);
+    if (-1 == priority) {
+        errnum = errno;
+        if (errnum != 0) {
+            perror("getpriority");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
+        perror("setpriority");
+        return EXIT_FAILURE;
+    }
+
     {
         char const *config_home_string = getenv("XDG_CONFIG_HOME");
         if (NULL == config_home_string) {
