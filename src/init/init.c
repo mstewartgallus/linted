@@ -232,33 +232,34 @@ struct linted_start_config const linted_start_config
         .kos_size = 0u,
         .kos = NULL };
 
-static char default_fstab[] = "# Similar to /etc/fstab but for Linted sandboxing. Paths are\n"
-    "# interpreted relative to the location Linted chroots to.\n"
-    "#\n"
-    "# <file system>	<mount point>	<type>	<options>\n"
-    "proc	proc	proc	ro,nodev,noexec,nosuid\n"
-    "sys	sys	sysfs	ro,nodev,noexec,nosuid\n"
-    "\n"
-    "/dev	dev	none	rbind\n"
-    "\n"
-    "tmpfs	run	tmpfs	none\n"
-    "tmpfs	var	tmpfs	none\n"
-    "\n"
-    "# Allow connecting to X11\n"
-    "/tmp	tmp	none	ro,bind\n"
-    "\n"
-    "/etc	./etc	none	ro,bind\n"
-    "\n"
-    "/lib	lib	none	ro,bind\n"
-    "/lib32	lib32	none	ro,bind\n"
-    "/lib64	lib64	none	ro,bind\n"
-    "/lib64	lib64	none	ro,bind\n"
-    "\n"
-    "/bin	bin	none	ro,bind\n"
-    "/sbin	sbin	none	ro,bind\n"
-    "/usr	usr	none	ro,bind\n"
-    "\n"
-    "/home	home	none	ro,rbind\n";
+static char default_fstab[]
+    = "# Similar to /etc/fstab but for Linted sandboxing. Paths are\n"
+      "# interpreted relative to the location Linted chroots to.\n"
+      "#\n"
+      "# <file system>	<mount point>	<type>	<options>\n"
+      "proc	proc	proc	ro,nodev,noexec,nosuid\n"
+      "sys	sys	sysfs	ro,nodev,noexec,nosuid\n"
+      "\n"
+      "/dev	dev	none	rbind\n"
+      "\n"
+      "tmpfs	run	tmpfs	none\n"
+      "tmpfs	var	tmpfs	none\n"
+      "\n"
+      "# Allow connecting to X11\n"
+      "/tmp	tmp	none	ro,bind\n"
+      "\n"
+      "/etc	./etc	none	ro,bind\n"
+      "\n"
+      "/lib	lib	none	ro,bind\n"
+      "/lib32	lib32	none	ro,bind\n"
+      "/lib64	lib64	none	ro,bind\n"
+      "/lib64	lib64	none	ro,bind\n"
+      "\n"
+      "/bin	bin	none	ro,bind\n"
+      "/sbin	sbin	none	ro,bind\n"
+      "/usr	usr	none	ro,bind\n"
+      "\n"
+      "/home	home	none	ro,rbind\n";
 
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
@@ -334,18 +335,20 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    /* TODO: Close files leading outside of the sandbox  */
-try_opening_fstab:;
-    FILE * fstab = setmntent("fstab", "re");
+/* TODO: Close files leading outside of the sandbox  */
+try_opening_fstab:
+    ;
+    FILE *fstab = setmntent("fstab", "re");
     if (NULL == fstab) {
         errnum = errno;
         if (ENOENT == errnum) {
             linted_ko ko;
             {
                 linted_ko xx;
-                if ((errnum = linted_file_create(&xx, AT_FDCWD, "fstab",
-                                                 LINTED_FILE_WRONLY | LINTED_FILE_EXCL,
-                                                 S_IRWXU)) != 0) {
+                if ((errnum
+                     = linted_file_create(&xx, AT_FDCWD, "fstab",
+                                          LINTED_FILE_WRONLY | LINTED_FILE_EXCL,
+                                          S_IRWXU)) != 0) {
                     if (EEXIST == errnum) {
                         goto try_opening_fstab;
                     }
@@ -431,7 +434,7 @@ try_opening_fstab:;
 
     for (;;) {
         errno = 0;
-        struct mntent * entry = getmntent(fstab);
+        struct mntent *entry = getmntent(fstab);
         if (NULL == entry) {
             errnum = errno;
             if (errnum != 0) {
@@ -452,17 +455,12 @@ try_opening_fstab:;
             NODEV,
             NOEXEC
         };
-        static char const * const token[] = {
-            [BIND] = "bind",
-            [RBIND] = "rbind",
-            [RO] = MNTOPT_RO,
-            [RW] = MNTOPT_RW,
-            [SUID] = MNTOPT_SUID,
-            [NOSUID] = MNTOPT_NOSUID,
-            [NODEV] = "nodev",
-            [NOEXEC] = "noexec",
-            NULL
-        };
+        static char const *const token[]
+            = {[BIND] = "bind",      [RBIND] = "rbind",
+               [RO] = MNTOPT_RO,     [RW] = MNTOPT_RW,
+               [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
+               [NODEV] = "nodev",    [NOEXEC] = "noexec",
+               NULL };
         bool bind = false;
         bool rec = false;
         bool readonly = false;
@@ -478,7 +476,7 @@ try_opening_fstab:;
             }
 
             while (*subopts != '\0') {
-                switch (getsubopt(&subopts, (char *const*)token, &value)) {
+                switch (getsubopt(&subopts, (char * const *)token, &value)) {
                 case BIND:
                     bind = true;
                     break;
@@ -551,7 +549,6 @@ try_opening_fstab:;
             mountflags |= MS_NOEXEC;
         }
 
-
         if (-1 == mkdir(entry->mnt_dir, S_IRWXU)) {
             errnum = errno;
             if (errnum != EEXIST) {
@@ -560,9 +557,8 @@ try_opening_fstab:;
             }
         }
 
-        if (-1 == mount(entry->mnt_fsname, entry->mnt_dir,
-                        entry->mnt_type, mountflags,
-                        value)) {
+        if (-1 == mount(entry->mnt_fsname, entry->mnt_dir, entry->mnt_type,
+                        mountflags, value)) {
             perror("mount");
             return EXIT_FAILURE;
         }
@@ -593,44 +589,19 @@ try_opening_fstab:;
 
     /* Drop all privileges I might possibly have. I'm not sure I need
      * to do this and I probably can do this in a better way. */
-    static unsigned long const capability[] = {
-        CAP_CHOWN,
-        CAP_DAC_OVERRIDE,
-        CAP_DAC_READ_SEARCH,
-        CAP_FOWNER,
-        CAP_FSETID,
-        CAP_KILL,
-        CAP_SETGID,
-        CAP_SETUID,
-        CAP_SETPCAP,
-        CAP_LINUX_IMMUTABLE,
-        CAP_NET_BIND_SERVICE,
-        CAP_NET_BROADCAST,
-        CAP_NET_ADMIN,
-        CAP_NET_RAW,
-        CAP_IPC_LOCK,
-        CAP_IPC_OWNER,
-        CAP_SYS_MODULE,
-        CAP_SYS_RAWIO,
-        CAP_SYS_CHROOT,
-        CAP_SYS_PTRACE,
-        CAP_SYS_PACCT,
-        CAP_SYS_ADMIN,
-        CAP_SYS_BOOT,
-        CAP_SYS_NICE,
-        CAP_SYS_RESOURCE,
-        CAP_SYS_TIME,
-        CAP_SYS_TTY_CONFIG,
-        CAP_MKNOD,
-        CAP_LEASE,
-        CAP_AUDIT_WRITE,
-        CAP_AUDIT_CONTROL,
-        CAP_SETFCAP,
-        CAP_MAC_OVERRIDE,
-        CAP_MAC_ADMIN,
-        CAP_SYSLOG,
-        CAP_WAKE_ALARM
-    };
+    static unsigned long const capability[]
+        = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
+            CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
+            CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
+            CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
+            CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
+            CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
+            CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
+            CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
+            CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
+            CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
+            CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
+            CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(capability); ++ii) {
         if (-1 == prctl(PR_CAPBSET_DROP, capability[ii], 0, 0, 0)) {
