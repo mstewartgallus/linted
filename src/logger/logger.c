@@ -34,7 +34,7 @@ linted_error linted_logger_create(linted_logger *loggerp, int flags)
     attr.maxmsg = 10;
     attr.msgsize = LINTED_LOGGER_LOG_MAX;
 
-    return linted_mq_create(loggerp, &attr, 0);
+    return linted_mq_create(loggerp, "/logger", &attr, 0);
 }
 
 /**

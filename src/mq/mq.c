@@ -25,31 +25,44 @@
 #include <limits.h>
 #include <mqueue.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 
-#define TEMPLATE_PREFIX "/anonymous-mq-"
-#define TEMPLATE_NAME TEMPLATE_PREFIX "XXXXXXXXXX"
+#define PATH_MAX 255u
+#define RANDOM_BYTES 8u
 
 /**
  * Implemented using POSIX message queues.
  */
 
-linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
-                              int flags)
+linted_error linted_mq_create(linted_mq *mqp, char const * debugpath,
+                              struct linted_mq_attr *attr, int flags)
 {
     linted_error errnum;
-    char random_mq_name[sizeof TEMPLATE_NAME];
+    char random_mq_name[PATH_MAX + 1u];
     linted_mq ko;
+
+    if (debugpath[0u] != '/') {
+        return EINVAL;
+    }
+
+    size_t path_size = strlen(debugpath + 1u);
+
+    if (path_size > PATH_MAX - 1u - RANDOM_BYTES) {
+        return ENAMETOOLONG;
+    }
 
     size_t maxmsg = attr->maxmsg;
     size_t msgsize = attr->msgsize;
 
-    memcpy(random_mq_name, TEMPLATE_NAME, sizeof TEMPLATE_NAME);
+    memcpy(1u + random_mq_name, 1u + debugpath, path_size);
+    random_mq_name[0u] = '/';
+    random_mq_name[1u + path_size] = '-';
+    random_mq_name[1u + path_size + 1u + RANDOM_BYTES] = '\0';
 
     do {
-        for (size_t ii = sizeof TEMPLATE_PREFIX - 1u;
-             ii < sizeof TEMPLATE_NAME - 1u; ++ii) {
+        for (size_t ii = 0u; ii < RANDOM_BYTES; ++ii) {
             char random_char;
             for (;;) {
                 /* Normally using the modulus would give a bad
@@ -67,7 +80,7 @@ linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
                 }
             }
 
-            random_mq_name[ii] = random_char;
+            random_mq_name[1u + path_size + 1u + ii] = random_char;
         }
 
         {

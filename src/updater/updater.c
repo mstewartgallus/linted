@@ -37,7 +37,7 @@ linted_error linted_updater_create(linted_updater *updaterp, int flags)
     attr.msgsize
         = LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
 
-    return linted_mq_create(updaterp, &attr, 0);
+    return linted_mq_create(updaterp, "/updater", &attr, 0);
 }
 
 void linted_updater_send(struct linted_updater_task_send *task, int task_id,

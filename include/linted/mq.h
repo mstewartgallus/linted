@@ -58,6 +58,9 @@ struct linted_mq_task_send
  *
  * @param mqp Returns a message queue.
  *
+ * @param debugpath A name to associate with the queue that is used
+ *                  for debugging.  Must start with /.
+ *
  * @param attr The attributes for the created message queue.
  *
  * @param flags Must be zero.
@@ -74,8 +77,8 @@ struct linted_mq_task_send
  *
  * @error ENOSPC Insufficient space.
  */
-linted_error linted_mq_create(linted_mq *mqp, struct linted_mq_attr *attr,
-                              int flags);
+linted_error linted_mq_create(linted_mq *mqp, char const * debugpath,
+                              struct linted_mq_attr *attr, int flags);
 
 void linted_mq_task_receive(struct linted_mq_task_receive *task,
                             unsigned task_action, linted_ko ko, char *buf,
