@@ -248,7 +248,7 @@ static char default_fstab[]
       "# Allow connecting to X11\n"
       "/tmp	tmp	none	ro,bind\n"
       "\n"
-      "/etc	./etc	none	ro,bind\n"
+      "/etc	etc	none	ro,bind\n"
       "\n"
       "/lib	lib	none	ro,bind\n"
       "/lib32	lib32	none	ro,bind\n"
