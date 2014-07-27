@@ -11,6 +11,11 @@
  *
  * Linted -- TODO
  *
+ * @bug Sandboxing fails competely. Due to a completely idiotic kernel
+ *      bug (see https://bugzilla.kernel.org/show_bug.cgi?id=24912)
+ *      using a bind mount as readonly would fail completely silently
+ *      and there is no way to workaround this.
+ *
  * @todo chroot and sandbox applications
  *
  * @todo Review and criticize several static analysers.
