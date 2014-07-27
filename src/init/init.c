@@ -23,9 +23,11 @@
 #include "linted/controller.h"
 #include "linted/db.h"
 #include "linted/error.h"
+#include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
+#include "linted/lock.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mem.h"
@@ -36,12 +38,19 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <mntent.h>
+#include <fcntl.h>
 #include <sched.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/mount.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <linux/capability.h>
 #include <linux/sched.h>
 
 #define BACKLOG 20u
@@ -223,6 +232,34 @@ struct linted_start_config const linted_start_config
         .kos_size = 0u,
         .kos = NULL };
 
+static char default_fstab[] = "# Similar to /etc/fstab but for Linted sandboxing. Paths are\n"
+    "# interpreted relative to the location Linted chroots to.\n"
+    "#\n"
+    "# <file system>	<mount point>	<type>	<options>\n"
+    "proc	proc	proc	ro,nodev,noexec,nosuid\n"
+    "sys	sys	sysfs	ro,nodev,noexec,nosuid\n"
+    "\n"
+    "/dev	dev	none	rbind\n"
+    "\n"
+    "tmpfs	run	tmpfs	none\n"
+    "tmpfs	var	tmpfs	none\n"
+    "\n"
+    "# Allow connecting to X11\n"
+    "/tmp	tmp	none	ro,bind\n"
+    "\n"
+    "/etc	./etc	none	ro,bind\n"
+    "\n"
+    "/lib	lib	none	ro,bind\n"
+    "/lib32	lib32	none	ro,bind\n"
+    "/lib64	lib64	none	ro,bind\n"
+    "/lib64	lib64	none	ro,bind\n"
+    "\n"
+    "/bin	bin	none	ro,bind\n"
+    "/sbin	sbin	none	ro,bind\n"
+    "/usr	usr	none	ro,bind\n"
+    "\n"
+    "/home	home	none	ro,rbind\n";
+
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
@@ -268,6 +305,338 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             assert(false);
         }
         return info.si_status;
+    }
+
+    {
+        char const *config_home_string = getenv("XDG_CONFIG_HOME");
+        if (NULL == config_home_string) {
+            /* TODO: Fallback somewhere smart */
+            fputs("missing XDG_CONFIG_HOME\n", stderr);
+            return EXIT_FAILURE;
+        }
+
+        if (-1 == chdir(config_home_string)) {
+            perror("chdir");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == mkdir("linted", S_IRWXU)) {
+        errnum = errno;
+        if (errnum != EEXIST) {
+            perror("mkdir");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == chdir("linted")) {
+        perror("chdir");
+        return EXIT_FAILURE;
+    }
+
+    /* TODO: Close files leading outside of the sandbox  */
+try_opening_fstab:;
+    FILE * fstab = setmntent("fstab", "re");
+    if (NULL == fstab) {
+        errnum = errno;
+        if (ENOENT == errnum) {
+            linted_ko ko;
+            {
+                linted_ko xx;
+                if ((errnum = linted_file_create(&xx, AT_FDCWD, "fstab",
+                                                 LINTED_FILE_WRONLY | LINTED_FILE_EXCL,
+                                                 S_IRWXU)) != 0) {
+                    if (EEXIST == errnum) {
+                        goto try_opening_fstab;
+                    }
+                    errno = errnum;
+                    perror("linted_file_create");
+                    return EXIT_FAILURE;
+                }
+                ko = xx;
+            }
+
+            linted_lock lock;
+            {
+                linted_lock xx;
+                if ((errnum = linted_lock_acquire(&xx, ko)) != 0) {
+                    errno = errnum;
+                    perror("linted_lock_acquire");
+                    return EXIT_FAILURE;
+                }
+                lock = xx;
+            }
+
+            {
+                struct linted_ko_task_write task;
+                linted_ko_task_write(&task, 0, ko, default_fstab,
+                                     sizeof default_fstab - 1u);
+                linted_asynch_pool_submit(NULL, LINTED_UPCAST(&task));
+                if ((errnum = LINTED_UPCAST(&task)->errnum) != 0) {
+                    errno = errnum;
+                    perror("linted_ko_task_write");
+                    return EXIT_FAILURE;
+                }
+            }
+
+            linted_lock_release(lock);
+            goto try_opening_fstab;
+        }
+        perror("setmtent");
+        return EXIT_FAILURE;
+    }
+
+    linted_lock lock;
+    {
+        linted_lock xx;
+        if ((errnum = linted_lock_acquire(&xx, fileno(fstab))) != 0) {
+            errno = errnum;
+            perror("linted_lock_acquire");
+            return EXIT_FAILURE;
+        }
+        lock = xx;
+    }
+
+    {
+        char const *runtime_dir_string = getenv("XDG_RUNTIME_DIR");
+        if (NULL == runtime_dir_string) {
+            /* TODO: Fallback somewhere smart */
+            fputs("missing XDG_RUNTIME_DIR\n", stderr);
+            return EXIT_FAILURE;
+        }
+
+        if (-1 == chdir(runtime_dir_string)) {
+            perror("chdir");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == mkdir("linted", S_IRWXU)) {
+        errnum = errno;
+        if (errnum != EEXIST) {
+            perror("mkdir");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (-1 == mount(NULL, "linted", "tmpfs", 0, NULL)) {
+        perror("mount");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == chdir("linted")) {
+        perror("chdir");
+        return EXIT_FAILURE;
+    }
+
+    for (;;) {
+        errno = 0;
+        struct mntent * entry = getmntent(fstab);
+        if (NULL == entry) {
+            errnum = errno;
+            if (errnum != 0) {
+                perror("getmntent");
+                return EXIT_FAILURE;
+            }
+
+            break;
+        }
+
+        enum {
+            BIND,
+            RBIND,
+            RO,
+            RW,
+            SUID,
+            NOSUID,
+            NODEV,
+            NOEXEC
+        };
+        static char const * const token[] = {
+            [BIND] = "bind",
+            [RBIND] = "rbind",
+            [RO] = MNTOPT_RO,
+            [RW] = MNTOPT_RW,
+            [SUID] = MNTOPT_SUID,
+            [NOSUID] = MNTOPT_NOSUID,
+            [NODEV] = "nodev",
+            [NOEXEC] = "noexec",
+            NULL
+        };
+        bool bind = false;
+        bool rec = false;
+        bool readonly = false;
+        bool readwrite = false;
+        bool suid = true;
+        bool dev = true;
+        bool exec = true;
+        char *value = NULL;
+        {
+            char *subopts = entry->mnt_opts;
+            if (0 == strcmp("none", subopts)) {
+                goto mount;
+            }
+
+            while (*subopts != '\0') {
+                switch (getsubopt(&subopts, (char *const*)token, &value)) {
+                case BIND:
+                    bind = true;
+                    break;
+
+                case RBIND:
+                    bind = true;
+                    rec = true;
+                    break;
+
+                case RO:
+                    readonly = true;
+                    break;
+
+                case RW:
+                    readwrite = true;
+                    break;
+
+                case SUID:
+                    suid = true;
+                    break;
+
+                case NOSUID:
+                    suid = false;
+                    break;
+
+                case NODEV:
+                    dev = false;
+                    break;
+
+                case NOEXEC:
+                    exec = false;
+                    break;
+
+                default:
+                    fprintf(stderr, "No match found for token: /%s/\n", value);
+                    goto mount;
+                }
+            }
+        }
+    mount:
+        if (readwrite && readonly) {
+            fprintf(stderr, "Only one of '%s' and '%s' can be specified\n",
+                    token[RO], token[RW]);
+            return EXIT_FAILURE;
+        }
+
+        unsigned long mountflags = 0;
+
+        if (bind) {
+            mountflags |= MS_BIND;
+        }
+
+        if (rec) {
+            mountflags |= MS_REC;
+        }
+
+        if (readonly) {
+            mountflags |= MS_RDONLY;
+        }
+
+        if (!suid) {
+            mountflags |= MS_NOSUID;
+        }
+
+        if (!dev) {
+            mountflags |= MS_NODEV;
+        }
+
+        if (!exec) {
+            mountflags |= MS_NOEXEC;
+        }
+
+
+        if (-1 == mkdir(entry->mnt_dir, S_IRWXU)) {
+            errnum = errno;
+            if (errnum != EEXIST) {
+                perror("mkdir");
+                return EXIT_FAILURE;
+            }
+        }
+
+        if (-1 == mount(entry->mnt_fsname, entry->mnt_dir,
+                        entry->mnt_type, mountflags,
+                        value)) {
+            perror("mount");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (endmntent(fstab) != 1) {
+        perror("endmntent");
+        return EXIT_FAILURE;
+    }
+
+    linted_lock_release(lock);
+
+    if (-1 == chroot("./")) {
+        perror("chroot");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == chdir("/")) {
+        perror("chdir");
+        return EXIT_FAILURE;
+    }
+
+    /* Prevent future privilege gains */
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    /* Drop all privileges I might possibly have. I'm not sure I need
+     * to do this and I probably can do this in a better way. */
+    static unsigned long const capability[] = {
+        CAP_CHOWN,
+        CAP_DAC_OVERRIDE,
+        CAP_DAC_READ_SEARCH,
+        CAP_FOWNER,
+        CAP_FSETID,
+        CAP_KILL,
+        CAP_SETGID,
+        CAP_SETUID,
+        CAP_SETPCAP,
+        CAP_LINUX_IMMUTABLE,
+        CAP_NET_BIND_SERVICE,
+        CAP_NET_BROADCAST,
+        CAP_NET_ADMIN,
+        CAP_NET_RAW,
+        CAP_IPC_LOCK,
+        CAP_IPC_OWNER,
+        CAP_SYS_MODULE,
+        CAP_SYS_RAWIO,
+        CAP_SYS_CHROOT,
+        CAP_SYS_PTRACE,
+        CAP_SYS_PACCT,
+        CAP_SYS_ADMIN,
+        CAP_SYS_BOOT,
+        CAP_SYS_NICE,
+        CAP_SYS_RESOURCE,
+        CAP_SYS_TIME,
+        CAP_SYS_TTY_CONFIG,
+        CAP_MKNOD,
+        CAP_LEASE,
+        CAP_AUDIT_WRITE,
+        CAP_AUDIT_CONTROL,
+        CAP_SETFCAP,
+        CAP_MAC_OVERRIDE,
+        CAP_MAC_ADMIN,
+        CAP_SYSLOG,
+        CAP_WAKE_ALARM
+    };
+
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(capability); ++ii) {
+        if (-1 == prctl(PR_CAPBSET_DROP, capability[ii], 0, 0, 0)) {
+            perror("prctl");
+            return EXIT_FAILURE;
+        }
     }
 
     bool need_help = false;

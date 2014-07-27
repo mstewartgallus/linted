@@ -22,9 +22,12 @@ linted_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\
+  src/file/libfile.la\
+  src/ko/libko.la\
   src/io/libio.la\
   src/ko/libko.la\
   src/locale/liblocale.la\
+  src/lock/liblock.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
   src/util/libutil.la\
