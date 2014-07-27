@@ -23,11 +23,9 @@
 #include "linted/controller.h"
 #include "linted/db.h"
 #include "linted/error.h"
-#include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
-#include "linted/lock.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mem.h"
@@ -60,6 +58,7 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
+#define FSTAB_OPTION "--fstab"
 #define SIMULATOR_OPTION "--simulator"
 #define GUI_OPTION "--gui"
 
@@ -232,39 +231,59 @@ struct linted_start_config const linted_start_config
         .kos_size = 0u,
         .kos = NULL };
 
-static char default_fstab[]
-    = "# Similar to /etc/fstab but for Linted sandboxing. Paths are\n"
-      "# interpreted relative to the location Linted chroots to.\n"
-      "#\n"
-      "# <file system>	<mount point>	<type>	<options>\n"
-      "proc	proc	proc	ro,nodev,noexec,nosuid\n"
-      "sys	sys	sysfs	ro,nodev,noexec,nosuid\n"
-      "\n"
-      "/dev	dev	none	rbind\n"
-      "\n"
-      "tmpfs	run	tmpfs	none\n"
-      "tmpfs	var	tmpfs	none\n"
-      "\n"
-      "# Allow connecting to X11\n"
-      "/tmp	tmp	none	ro,bind\n"
-      "\n"
-      "/etc	etc	none	ro,bind\n"
-      "\n"
-      "/lib	lib	none	ro,bind\n"
-      "/lib32	lib32	none	ro,bind\n"
-      "/lib64	lib64	none	ro,bind\n"
-      "/lib64	lib64	none	ro,bind\n"
-      "\n"
-      "/bin	bin	none	ro,bind\n"
-      "/sbin	sbin	none	ro,bind\n"
-      "/usr	usr	none	ro,bind\n"
-      "\n"
-      "/home	home	none	ro,rbind\n";
-
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
     linted_error errnum;
+
+    bool need_help = false;
+    bool need_version = false;
+
+    char const *bad_option = NULL;
+
+    char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
+    char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
+    char const *fstab_path = PKGCONFDIR "/fstab";
+
+    for (size_t ii = 1u; ii < argc; ++ii) {
+        char const *argument = argv[ii];
+
+        if (0 == strcmp(argument, HELP_OPTION)) {
+            need_help = true;
+        } else if (0 == strcmp(argument, VERSION_OPTION)) {
+            need_version = true;
+        } else if (0 == strncmp(argument, FSTAB_OPTION "=",
+                                strlen(FSTAB_OPTION "="))) {
+            fstab_path = argument + strlen(FSTAB_OPTION "=");
+        } else if (0 == strncmp(argument, SIMULATOR_OPTION "=",
+                                strlen(SIMULATOR_OPTION "="))) {
+            simulator_path = argument + strlen(SIMULATOR_OPTION "=");
+        } else if (0 == strncmp(argument, GUI_OPTION "=",
+                                strlen(GUI_OPTION "="))) {
+            gui_path = argument + strlen(GUI_OPTION "=");
+        } else {
+            bad_option = argument;
+        }
+    }
+
+    if (need_help) {
+        linted_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
+                    LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+                                        LINTED_STR(HELP_OPTION));
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
+        return EXIT_SUCCESS;
+    }
 
     /* Acquire socket before unsharing namespaces */
     linted_manager new_connections;
@@ -327,96 +346,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    {
-        char const *config_home_string = getenv("XDG_CONFIG_HOME");
-        if (NULL == config_home_string) {
-            /* TODO: Fallback somewhere smart */
-            fputs("missing XDG_CONFIG_HOME\n", stderr);
-            return EXIT_FAILURE;
-        }
-
-        if (-1 == chdir(config_home_string)) {
-            perror("chdir");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (-1 == mkdir("linted", S_IRWXU)) {
-        errnum = errno;
-        if (errnum != EEXIST) {
-            perror("mkdir");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (-1 == chdir("linted")) {
-        perror("chdir");
-        return EXIT_FAILURE;
-    }
-
 /* TODO: Close files leading outside of the sandbox  */
 try_opening_fstab:
     ;
-    FILE *fstab = setmntent("fstab", "re");
+    FILE *fstab = setmntent(fstab_path, "re");
     if (NULL == fstab) {
-        errnum = errno;
-        if (ENOENT == errnum) {
-            linted_ko ko;
-            {
-                linted_ko xx;
-                if ((errnum
-                     = linted_file_create(&xx, AT_FDCWD, "fstab",
-                                          LINTED_FILE_WRONLY | LINTED_FILE_EXCL,
-                                          S_IRWXU)) != 0) {
-                    if (EEXIST == errnum) {
-                        goto try_opening_fstab;
-                    }
-                    errno = errnum;
-                    perror("linted_file_create");
-                    return EXIT_FAILURE;
-                }
-                ko = xx;
-            }
-
-            linted_lock lock;
-            {
-                linted_lock xx;
-                if ((errnum = linted_lock_acquire(&xx, ko)) != 0) {
-                    errno = errnum;
-                    perror("linted_lock_acquire");
-                    return EXIT_FAILURE;
-                }
-                lock = xx;
-            }
-
-            {
-                struct linted_ko_task_write task;
-                linted_ko_task_write(&task, 0, ko, default_fstab,
-                                     sizeof default_fstab - 1u);
-                linted_asynch_pool_submit(NULL, LINTED_UPCAST(&task));
-                if ((errnum = LINTED_UPCAST(&task)->errnum) != 0) {
-                    errno = errnum;
-                    perror("linted_ko_task_write");
-                    return EXIT_FAILURE;
-                }
-            }
-
-            linted_lock_release(lock);
-            goto try_opening_fstab;
-        }
         perror("setmtent");
         return EXIT_FAILURE;
-    }
-
-    linted_lock lock;
-    {
-        linted_lock xx;
-        if ((errnum = linted_lock_acquire(&xx, fileno(fstab))) != 0) {
-            errno = errnum;
-            perror("linted_lock_acquire");
-            return EXIT_FAILURE;
-        }
-        lock = xx;
     }
 
     {
@@ -588,8 +524,6 @@ try_opening_fstab:
         return EXIT_FAILURE;
     }
 
-    linted_lock_release(lock);
-
     if (-1 == chroot("./")) {
         perror("chroot");
         return EXIT_FAILURE;
@@ -627,56 +561,6 @@ try_opening_fstab:
             perror("prctl");
             return EXIT_FAILURE;
         }
-    }
-
-    bool need_help = false;
-    bool need_version = false;
-
-    char const *bad_option = NULL;
-
-    char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
-    char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-
-    for (size_t ii = 1u; ii < argc; ++ii) {
-        char const *argument = argv[ii];
-
-        if (0 == strcmp(argument, HELP_OPTION)) {
-            need_help = true;
-        } else if (0 == strcmp(argument, VERSION_OPTION)) {
-            need_version = true;
-
-        } else if (0 == strncmp(argument, SIMULATOR_OPTION "=",
-                                strlen(SIMULATOR_OPTION "="))) {
-
-            simulator_path = argument + strlen(SIMULATOR_OPTION "=");
-
-        } else if (0 == strncmp(argument, GUI_OPTION "=",
-                                strlen(GUI_OPTION "="))) {
-
-            gui_path = argument + strlen(GUI_OPTION "=");
-
-        } else {
-            bad_option = argument;
-        }
-    }
-
-    if (need_help) {
-        linted_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-                    LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-        return EXIT_SUCCESS;
-    }
-
-    if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                              LINTED_STR(COPYRIGHT_YEAR));
-        return EXIT_SUCCESS;
     }
 
     if ((errnum = check_db(cwd)) != 0) {
@@ -1661,6 +1545,7 @@ Play the game.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+  --fstab             the location of the chroot mount instructions\n\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {
         return errnum;

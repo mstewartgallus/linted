@@ -17,6 +17,7 @@
 #define LINTED_LINTED_BINARIES_H
 
 #define PKGLIBEXECDIR "@pkglibexecdir@"
+#define PKGCONFDIR "@pkgconfdir@"
 #define EXEEXT "@EXEEXT@"
 
 #endif /* LINTED_LINTED_BINARIES_H */

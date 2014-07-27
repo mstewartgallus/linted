@@ -16,18 +16,18 @@
 # limitations under the License.
 bin_PROGRAMS+=%D%/linted
 
+dist_pkgconf_DATA=%D%/fstab
+
 %C%_linted_SOURCES=%D%/init.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\
-  src/file/libfile.la\
   src/ko/libko.la\
   src/io/libio.la\
   src/ko/libko.la\
   src/locale/liblocale.la\
-  src/lock/liblock.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
   src/util/libutil.la\
@@ -44,5 +44,6 @@ MOSTLYCLEANFILES+=%D%/binaries.h
 %D%/binaries.h: $(MAKEFILE) %D%/binaries.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
+	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $(srcdir)/%D%/binaries.h.in > $@

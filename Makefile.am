@@ -28,6 +28,8 @@ BUILT_SOURCES=
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 
+pkgconfdir=$(sysconfdir)/linted
+
 EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
 
 AM_LDFLAGS=\
@@ -55,7 +57,9 @@ AM_CFLAGS=\
 EXTRA_DIST+=scripts/test.in
 scripts/test: $(MAKEFILE) scripts/test.in
 	$(MKDIR_P) scripts
-	cat $(srcdir)/scripts/test.in > $@
+	sed \
+	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
+	  $(srcdir)/scripts/test.in > $@
 	chmod u+x $@
 
 dist-hook:

@@ -4,6 +4,10 @@ set -e
 set -C
 set -u
 
+SRCDIR="@srcdir@"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-exec "${ROOT}/../src/init/linted" --simulator="${ROOT}/../src/simulator/simulator" --gui="${ROOT}/../src/gui/gui" "$@"
+exec "${ROOT}/../src/init/linted"\
+     --fstab="${SRCDIR}/src/init/fstab"\
+     --simulator="${ROOT}/../src/simulator/simulator"\
+     --gui="${ROOT}/../src/gui/gui" "$@"
