@@ -95,7 +95,7 @@ json-c-models:
 	     $(abs_srcdir)/configure &&\
 	  $(MAKE) $(AM_MAKEFLAGS) CC=$(abs_srcdir)/scripts/json-cc
 
-LINTED_FRAMA_C_BINARY=simulator
+LINTED_FRAMA_C_BINARY=src/simulator/simulator
 .PHONY: frama-c-lint
 frama-c-lint:
 	BINARY=$(LINTED_FRAMA_C_BINARY) &&\
@@ -138,10 +138,10 @@ CBMC_FLAGS=--unwind 100 --depth 200
 # and is only a basic double check.
 .PHONY: cbmc-lint
 cbmc-lint:
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/gui
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/simulator
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/linted
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/linted-control
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/gui/gui
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/simulator/simulator
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/init/linted
+	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/control/linted-control
 
 linted_CLANG_FORMATFLAGS=-i
 
