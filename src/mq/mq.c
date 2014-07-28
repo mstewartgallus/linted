@@ -29,7 +29,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define PATH_MAX 255u
+#define FILE_MAX 255u
 #define RANDOM_BYTES 8u
 
 /**
@@ -40,7 +40,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const * debugpath,
                               struct linted_mq_attr *attr, int flags)
 {
     linted_error errnum;
-    char random_mq_name[PATH_MAX + 1u];
+    char random_mq_name[FILE_MAX + 1u];
     linted_mq ko;
 
     if (debugpath[0u] != '/') {
@@ -49,7 +49,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const * debugpath,
 
     size_t path_size = strlen(debugpath + 1u);
 
-    if (path_size > PATH_MAX - 1u - RANDOM_BYTES) {
+    if (path_size > FILE_MAX - 1u - RANDOM_BYTES) {
         return ENAMETOOLONG;
     }
 
