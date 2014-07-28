@@ -30,7 +30,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdnoreturn.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -56,7 +55,7 @@ struct linted_asynch_pool
     pthread_t workers[];
 };
 
-static noreturn void *worker_routine(void *arg);
+static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
@@ -305,7 +304,7 @@ void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
     task->request = *request;
 }
 
-static noreturn void *worker_routine(void *arg)
+static void *worker_routine(void *arg)
 {
     struct linted_asynch_pool *pool = arg;
 

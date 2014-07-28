@@ -16,14 +16,14 @@ dnl
 dnl We use the C11 standard because it better specifies termination
 dnl properties of the C programming language.
 LINTED_CHECK_CFLAGS([linted_CPPFLAGS_LANGUAGE],[
-        [-std=c11]dnl
+        [-std=c99]dnl
         [-pedantic-errors]dnl
         [-pthread]dnl
 ])
 AC_SUBST([linted_CPPFLAGS_LANGUAGE])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
-        [-std=c11]dnl
+        [-std=c99]dnl
         [-pedantic-errors]dnl
         [-pthread]dnl
 ])
