@@ -304,28 +304,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    /* Acquire socket before unsharing namespaces */
-    linted_manager new_connections;
+    /* Clone off a child in a new PID namespace. CLONEW_NEWUSER is
+     * needed to allow the permissions to work.
+     */
     {
-        linted_manager xx;
-        if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) != 0) {
-            goto exit_services;
-        }
-        new_connections = xx;
-    }
-
-    if ((errnum = check_db(cwd)) != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: database: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
-    }
-
-    {
-        pid_t child = syscall(__NR_clone,
-                              SIGCHLD /* Wait for the child */
-                              | CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
-                              | CLONE_NEWUTS | CLONE_NEWNS, NULL);
+        pid_t child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -375,6 +358,28 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL);
     prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL);
+
+    /* Acquire socket before unsharing namespaces */
+    linted_manager new_connections;
+    {
+        linted_manager xx;
+        if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) != 0) {
+            goto exit_services;
+        }
+        new_connections = xx;
+    }
+
+    if ((errnum = check_db(cwd)) != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: database: %s\n",
+                               process_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
+        perror("unshare");
+        return EXIT_FAILURE;
+    }
 
     /* Favor other processes over this process hierarchy. Only
      * superuser may lower priorities so this is not stoppable. This
