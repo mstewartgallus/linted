@@ -414,7 +414,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             NODEV,
             NOEXEC
         };
-        static char const *const token[]
+        static char const *const tokens[]
             = {[BIND] = "bind",      [RBIND] = "rbind",
                [RO] = MNTOPT_RO,     [RW] = MNTOPT_RW,
                [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
@@ -445,7 +445,15 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
             char *value = NULL;
             while (*subopts != '\0') {
-                switch (getsubopt(&subopts, (char * const *)token, &value)) {
+                int token;
+                {
+                    char * xx = subopts;
+                    char * yy = value;
+                    token = getsubopt(&xx, (char * const *)tokens, &yy);
+                    subopts = xx;
+                    value = yy;
+                }
+                switch (token) {
                 case BIND:
                     bind = true;
                     break;
@@ -481,14 +489,17 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
                 default:
                     leftovers = strstr(mnt_opts, value);
-                    goto mount;
+                    goto free_subopts_str;
                 }
             }
+        free_subopts_str:
+            free(subopts_str);
         }
+
     mount:
         if (readwrite && readonly) {
             fprintf(stderr, "Only one of '%s' and '%s' can be specified\n",
-                    token[RO], token[RW]);
+                    tokens[RO], tokens[RW]);
             return EXIT_FAILURE;
         }
 
