@@ -2,29 +2,26 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
+/dev	dev	none	rbind
+/tmp	tmp	none	bind    # Allow connecting to X11
+/home	home	none	rbind   # TODO: This doesn't work with overlayfs
+
 proc	proc	proc	ro,nosuid,nodev,noexec
 sys	sys	sysfs	ro,nosuid,nodev,noexec
 
-/dev	dev	none	rbind
+overlayfs	etc	overlayfs	ro,lowerdir=/etc,upperdir=/etc
 
-tmpfs	var	tmpfs	noexec,nosuid
+overlayfs	lib	overlayfs	ro,lowerdir=/lib,upperdir=/lib
+overlayfs	lib32	overlayfs	ro,lowerdir=/lib32,upperdir=/lib32
+overlayfs	lib64	overlayfs	ro,lowerdir=/lib64,upperdir=/lib64
 
-# Allow connecting to X11
-/tmp	tmp	none	ro,bind
+overlayfs	bin	overlayfs	ro,lowerdir=/bin,upperdir=/bin
+overlayfs	sbin	overlayfs	ro,lowerdir=/sbin,upperdir=/sbin
+overlayfs	usr	overlayfs	ro,lowerdir=/usr,upperdir=/usr
 
 # Separate everything else
+tmpfs	var	tmpfs	noexec,nosuid
 tmpfs	run	tmpfs	nosuid,noexec
 tmpfs	run/lock	tmpfs	nosuid,nodev,noexec
 tmpfs	run/shm	tmpfs	nosuid,nodev
 
-/etc	etc	none	ro,bind
-
-/lib	lib	none	ro,bind
-/lib32	lib32	none	ro,bind
-/lib64	lib64	none	ro,bind
-
-/bin	bin	none	ro,bind
-/sbin	sbin	none	ro,bind
-/usr	usr	none	ro,bind
-
-/home	home	none	ro,rbind

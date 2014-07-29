@@ -295,6 +295,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         new_connections = xx;
     }
 
+    if ((errnum = check_db(cwd)) != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: database: %s\n",
+                               process_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
+    }
+
     /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
     if (-1 == unshare(CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
                       | CLONE_NEWUTS | CLONE_NEWNS)) {
@@ -420,13 +427,23 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         bool suid = true;
         bool dev = true;
         bool exec = true;
-        char *value = NULL;
+        char *leftovers = NULL;
         {
-            char *subopts = entry->mnt_opts;
-            if (0 == strcmp("none", subopts)) {
+            char *mnt_opts = entry->mnt_opts;
+
+            if (0 == strcmp("none", mnt_opts)) {
                 goto mount;
             }
 
+            char *subopts_str = strdup(mnt_opts);
+            if (NULL == subopts_str) {
+                perror("strdup");
+                return EXIT_FAILURE;
+            }
+
+            char * subopts = subopts_str;
+
+            char *value = NULL;
             while (*subopts != '\0') {
                 switch (getsubopt(&subopts, (char * const *)token, &value)) {
                 case BIND:
@@ -463,7 +480,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     break;
 
                 default:
-                    fprintf(stderr, "No match found for token: /%s/\n", value);
+                    leftovers = strstr(mnt_opts, value);
                     goto mount;
                 }
             }
@@ -509,8 +526,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             }
         }
 
-        if (-1 == mount(entry->mnt_fsname, entry->mnt_dir, entry->mnt_type,
-                        mountflags, value)) {
+        if (-1 == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL : entry->mnt_fsname,
+                        entry->mnt_dir, entry->mnt_type,
+                        mountflags, leftovers)) {
             perror("mount");
             return EXIT_FAILURE;
         }
@@ -558,13 +576,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             perror("prctl");
             return EXIT_FAILURE;
         }
-    }
-
-    if ((errnum = check_db(cwd)) != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: database: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
     }
 
     char const *original_display = getenv("DISPLAY");
