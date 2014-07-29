@@ -231,6 +231,20 @@ struct linted_start_config const linted_start_config
         .kos_size = 0u,
         .kos = NULL };
 
+static unsigned long const capabilities[]
+    = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
+        CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
+        CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
+        CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
+        CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
+        CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
+        CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
+        CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
+        CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
+        CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
+        CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
+        CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
+
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
@@ -301,6 +315,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                                process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
     }
+
+    /**
+     * @bug This code is racy. check_db uses threads and kills them
+     * but it can't know for sure that the threads are done. The
+     * unshare call should be turned into a system clone call so
+     * CLONE_NEWPID isn't used on this task (which stops it from using
+     * threads). It should also use prctl(PR_SET_PDEATHSIG, SIGKILL);
+     */
 
     /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
     if (-1 == unshare(CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
@@ -441,14 +463,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 return EXIT_FAILURE;
             }
 
-            char * subopts = subopts_str;
+            char *subopts = subopts_str;
 
             char *value = NULL;
             while (*subopts != '\0') {
                 int token;
                 {
-                    char * xx = subopts;
-                    char * yy = value;
+                    char *xx = subopts;
+                    char *yy = value;
                     token = getsubopt(&xx, (char * const *)tokens, &yy);
                     subopts = xx;
                     value = yy;
@@ -508,7 +530,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 Due to a completely idiotic kernel bug (see \
 https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a bind mount\
 as readonly would fail completely silently and there is no way to \
-workaround this\n", stderr);
+workaround this\n",
+                  stderr);
             return EXIT_FAILURE;
         }
 
@@ -546,9 +569,10 @@ workaround this\n", stderr);
             }
         }
 
-        if (-1 == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL : entry->mnt_fsname,
-                        entry->mnt_dir, entry->mnt_type,
-                        mountflags, leftovers)) {
+        if (-1
+            == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL
+                                                            : entry->mnt_fsname,
+                     entry->mnt_dir, entry->mnt_type, mountflags, leftovers)) {
             perror("mount");
             return EXIT_FAILURE;
         }
@@ -577,22 +601,8 @@ workaround this\n", stderr);
 
     /* Drop all privileges I might possibly have. I'm not sure I need
      * to do this and I probably can do this in a better way. */
-    static unsigned long const capability[]
-        = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
-            CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
-            CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
-            CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
-            CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
-            CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
-            CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
-            CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
-            CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
-            CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
-            CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
-            CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
-
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(capability); ++ii) {
-        if (-1 == prctl(PR_CAPBSET_DROP, capability[ii], 0, 0, 0)) {
+    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
+        if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
             perror("prctl");
             return EXIT_FAILURE;
         }

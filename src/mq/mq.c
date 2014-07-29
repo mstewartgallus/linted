@@ -36,7 +36,7 @@
  * Implemented using POSIX message queues.
  */
 
-linted_error linted_mq_create(linted_mq *mqp, char const * debugpath,
+linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                               struct linted_mq_attr *attr, int flags)
 {
     linted_error errnum;
