@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -61,6 +62,10 @@
 #define FSTAB_OPTION "--fstab"
 #define SIMULATOR_OPTION "--simulator"
 #define GUI_OPTION "--gui"
+
+#ifndef PR_SET_CHILD_SUBREAPER
+#define PR_SET_CHILD_SUBREAPER 36UL
+#endif
 
 enum {
     WAITER,
@@ -316,44 +321,60 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    /**
-     * @bug This code is racy. check_db uses threads and kills them
-     * but it can't know for sure that the threads are done. The
-     * unshare call should be turned into a system clone call so
-     * CLONE_NEWPID isn't used on this task (which stops it from using
-     * threads). It should also use prctl(PR_SET_PDEATHSIG, SIGKILL);
-     */
-
-    /* CLONE_NEWUSER let's us do the rest of the calls unprivileged */
-    if (-1 == unshare(CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
-                      | CLONE_NEWUTS | CLONE_NEWNS)) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: can't unshare privileges: %s\n",
-                               process_name, linted_error_string_alloc(errno));
-        return EXIT_FAILURE;
-    }
-
-    /* Fork to allow multithreading after unshare(CLONE_NEWPID) */
-    pid_t child = fork();
-    if (-1 == child) {
-        errnum = errno;
-        linted_io_write_format(STDERR_FILENO, NULL, "%s: fork: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
-    }
-
-    if (child != 0) {
-        siginfo_t info;
-        do {
-            errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            assert(errnum != EINVAL);
-            assert(errnum != ECHILD);
-            assert(false);
+    {
+        pid_t child = syscall(__NR_clone,
+                              SIGCHLD /* Wait for the child */
+                              | CLONE_NEWUSER | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNET
+                              | CLONE_NEWUTS | CLONE_NEWNS, NULL);
+        if (-1 == child) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: can't clone unprivileged process: %s\n",
+                                   process_name, linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
         }
-        return info.si_status;
+
+        if (child != 0) {
+            siginfo_t info;
+            do {
+                errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+            } while (EINTR == errnum);
+            if (errnum != 0) {
+                assert(errnum != EINVAL);
+                assert(errnum != ECHILD);
+                assert(false);
+            }
+            return info.si_status;
+        }
     }
+
+    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL);
+
+    /* Fork again so that we can properly use signals on ourself */
+    {
+        pid_t child = fork();
+        if (-1 == child) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: can't clone unprivileged process: %s\n",
+                                   process_name, linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+
+        if (child != 0) {
+            siginfo_t info;
+            do {
+                errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+            } while (EINTR == errnum);
+            if (errnum != 0) {
+                assert(errnum != EINVAL);
+                assert(errnum != ECHILD);
+                assert(false);
+            }
+            return info.si_status;
+        }
+    }
+
+    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL);
+    prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL);
 
     /* Favor other processes over this process hierarchy. Only
      * superuser may lower priorities so this is not stoppable. This
@@ -879,7 +900,7 @@ workaround this\n",
     struct new_connection_task new_connection_task;
 
     linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
-                              __WALL);
+                              0);
     waiter_task.pool = pool;
     waiter_task.gui_service = gui_service;
     waiter_task.sim_service = sim_service;
@@ -942,24 +963,11 @@ close_new_connections : {
 }
 
 exit_services:
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
-        union service_config const *service_config = &config[ii];
-
-        if (service_config->type != SERVICE_PROCESS) {
-            continue;
-        }
-
-        struct service_process *service = &services[ii].process;
-        pid_t pid = service->pid;
-
-        if (pid != -1) {
-            linted_error kill_errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
-            /* kill_errnum == ESRCH is fine */
-            assert(kill_errnum != EINVAL);
-            assert(kill_errnum != EPERM);
-
-            service->pid = -1;
-        }
+    {
+        linted_error kill_errnum = -1 == kill(-1, SIGKILL) ? errno : 0;
+        /* kill_errnum == ESRCH is fine */
+        assert(kill_errnum != EINVAL);
+        assert(kill_errnum != EPERM);
     }
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
@@ -988,6 +996,7 @@ exit_services:
         if (0 == errnum) {
             errnum = destroy_errnum;
         }
+
         /* Insure that the tasks are in proper scope until they are
          * terminated */
         (void)waiter_task;
@@ -1103,7 +1112,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         return errnum;
     }
 
-    struct wait_service_task *wait_service_task
+   struct wait_service_task *wait_service_task
         = LINTED_DOWNCAST(struct wait_service_task, completed_task);
 
     struct linted_asynch_pool *pool = wait_service_task->pool;
@@ -1483,7 +1492,7 @@ close_db : {
 }
 
 destroy_pool : {
-    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+   linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;
     }
