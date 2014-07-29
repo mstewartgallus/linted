@@ -492,6 +492,15 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             return EXIT_FAILURE;
         }
 
+        if (bind && readonly) {
+            fputs("\
+Due to a completely idiotic kernel bug (see \
+https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a bind mount\
+as readonly would fail completely silently and there is no way to \
+workaround this\n", stderr);
+            return EXIT_FAILURE;
+        }
+
         unsigned long mountflags = 0;
 
         if (bind) {
