@@ -203,11 +203,10 @@ struct connection_pool
 };
 
 static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
-                               char const * simulator_path,
-                               char const * gui_path);
+                            char const *simulator_path, char const *gui_path);
 static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
-                               char const * simulator_path,
-                               char const * gui_path);
+                               char const *simulator_path,
+                               char const *gui_path);
 
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
@@ -316,11 +315,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
      */
     pid_t child;
     {
-        child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
+        child
+            = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
-                                   process_name, linted_error_string_alloc(errno));
+                                   process_name,
+                                   linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
 
@@ -344,8 +345,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 }
 
 static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
-                               char const * simulator_path,
-                               char const * gui_path)
+                            char const *simulator_path, char const *gui_path)
 {
     linted_error errnum;
 
@@ -370,7 +370,8 @@ static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
-                                   process_name, linted_error_string_alloc(errno));
+                                   process_name,
+                                   linted_error_string_alloc(errno));
             return EXIT_FAILURE;
         }
 
@@ -394,8 +395,7 @@ static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
 }
 
 static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
-                               char const * simulator_path,
-                               char const * gui_path)
+                               char const *simulator_path, char const *gui_path)
 {
     linted_error errnum;
 
@@ -434,7 +434,8 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
         return EXIT_FAILURE;
     }
 
-    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
+    if (-1
+        == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
         perror("unshare");
         return EXIT_FAILURE;
     }
@@ -671,7 +672,6 @@ workaround this\n",
         perror("mount");
         return EXIT_FAILURE;
     }
-
 
     if (-1 == chroot(".")) {
         perror("chroot");
@@ -1031,13 +1031,12 @@ close_new_connections : {
     }
 }
 
-exit_services:
-    {
-        linted_error kill_errnum = -1 == kill(-1, SIGKILL) ? errno : 0;
-        /* kill_errnum == ESRCH is fine */
-        assert(kill_errnum != EINVAL);
-        assert(kill_errnum != EPERM);
-    }
+exit_services : {
+    linted_error kill_errnum = -1 == kill(-1, SIGKILL) ? errno : 0;
+    /* kill_errnum == ESRCH is fine */
+    assert(kill_errnum != EINVAL);
+    assert(kill_errnum != EPERM);
+}
 
     for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
@@ -1181,7 +1180,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         return errnum;
     }
 
-   struct wait_service_task *wait_service_task
+    struct wait_service_task *wait_service_task
         = LINTED_DOWNCAST(struct wait_service_task, completed_task);
 
     struct linted_asynch_pool *pool = wait_service_task->pool;
@@ -1561,7 +1560,7 @@ close_db : {
 }
 
 destroy_pool : {
-   linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;
     }
