@@ -202,6 +202,13 @@ struct connection_pool
     size_t count;
 };
 
+static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
+                               char const * simulator_path,
+                               char const * gui_path);
+static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
+                               char const * simulator_path,
+                               char const * gui_path);
+
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
@@ -304,11 +311,12 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    /* Clone off a child in a new PID namespace. CLONEW_NEWUSER is
+    /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
      * needed to allow the permissions to work.
      */
+    pid_t child;
     {
-        pid_t child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
+        child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -316,25 +324,49 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (child != 0) {
-            siginfo_t info;
-            do {
-                errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-            } while (EINTR == errnum);
-            if (errnum != 0) {
-                assert(errnum != EINVAL);
-                assert(errnum != ECHILD);
-                assert(false);
-            }
-            return info.si_status;
+        if (0 == child) {
+            return do_init(cwd, fstab_path, simulator_path, gui_path);
         }
     }
 
-    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL);
-
-    /* Fork again so that we can properly use signals on ourself */
     {
-        pid_t child = fork();
+        siginfo_t info;
+        do {
+            errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+        } while (EINTR == errnum);
+        if (errnum != 0) {
+            assert(errnum != EINVAL);
+            assert(errnum != ECHILD);
+            assert(false);
+        }
+        return info.si_status;
+    }
+}
+
+static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
+                               char const * simulator_path,
+                               char const * gui_path)
+{
+    linted_error errnum;
+
+    static char const process_name[] = "init";
+
+    /* The init. In the future it should reap all processes and
+     * monitor the process monitor to restart it if it dies
+     */
+    if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    pid_t child;
+    {
+        child = fork();
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -342,22 +374,48 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (child != 0) {
-            siginfo_t info;
-            do {
-                errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-            } while (EINTR == errnum);
-            if (errnum != 0) {
-                assert(errnum != EINVAL);
-                assert(errnum != ECHILD);
-                assert(false);
-            }
-            return info.si_status;
+        if (0 == child) {
+            return do_monitor(cwd, fstab_path, simulator_path, gui_path);
         }
     }
 
-    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL);
-    prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL);
+    {
+        siginfo_t info;
+        do {
+            errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+        } while (EINTR == errnum);
+        if (errnum != 0) {
+            assert(errnum != EINVAL);
+            assert(errnum != ECHILD);
+            assert(false);
+        }
+        return info.si_status;
+    }
+}
+
+static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
+                               char const * simulator_path,
+                               char const * gui_path)
+{
+    linted_error errnum;
+
+    static char const process_name[] = "monitor";
+
+    /* The process monitor and manager */
+    if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL)) {
+        perror("prctl");
+        return EXIT_FAILURE;
+    }
 
     /* Acquire socket before unsharing namespaces */
     linted_manager new_connections;
