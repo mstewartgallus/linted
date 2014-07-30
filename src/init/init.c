@@ -683,6 +683,16 @@ workaround this\n",
         return EXIT_FAILURE;
     }
 
+    if (-1 == setgroups(0u, NULL)) {
+        perror("setgroups");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1u)) {
+        perror("sethostname");
+        return EXIT_FAILURE;
+    }
+
     /* Prevent future privilege gains */
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         perror("prctl");
