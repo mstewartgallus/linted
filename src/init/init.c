@@ -667,7 +667,13 @@ workaround this\n",
         return EXIT_FAILURE;
     }
 
-    if (-1 == chroot("./")) {
+    if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
+        perror("mount");
+        return EXIT_FAILURE;
+    }
+
+
+    if (-1 == chroot(".")) {
         perror("chroot");
         return EXIT_FAILURE;
     }
