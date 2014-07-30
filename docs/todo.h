@@ -13,6 +13,9 @@
  *
  * @bug Sandbox /home with overlayfs
  *
+ * @bug Currently attackers can ptrace init and regain access to the
+ *      host system.
+ *
  * @todo chroot and sandbox applications
  *
  * @todo Review and criticize several static analysers.
