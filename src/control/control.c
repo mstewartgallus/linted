@@ -52,7 +52,7 @@ static linted_error failure(linted_ko ko, char const *process_name,
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-control",
         .open_current_working_directory = false,
-        .kos_size = 0u,
+        .kos_size = 0U,
         .kos = NULL };
 
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
@@ -63,7 +63,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     char const *bad_option = NULL;
     char const *command = NULL;
-    size_t last_index = 1u;
+    size_t last_index = 1U;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 
@@ -110,11 +110,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     if (0 == strcmp("status", command)) {
-        return run_status(process_name, argc - last_index + 1u,
-                          argv + last_index - 1u);
+        return run_status(process_name, argc - last_index + 1U,
+                          argv + last_index - 1U);
     } else if (0 == strcmp("stop", command)) {
-        return run_stop(process_name, argc - last_index + 1u,
-                        argv + last_index - 1u);
+        return run_stop(process_name, argc - last_index + 1U,
+                        argv + last_index - 1U);
     } else {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n", process_name,
@@ -133,7 +133,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
     char const *service_name = NULL;
     char const *bad_option = NULL;
     char const *bad_argument = NULL;
-    size_t last_index = 1u;
+    size_t last_index = 1U;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 
@@ -193,7 +193,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
     }
 
     size_t path_len = strlen(path);
-    if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: LINTED_SOCKET is too long\n", process_name);
         return EXIT_FAILURE;
@@ -256,7 +256,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (0u == bytes_read) {
+        if (0U == bytes_read) {
             linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
                                    process_name);
             return EXIT_FAILURE;
@@ -289,7 +289,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
     bool need_add_help = false;
     char const *bad_option = NULL;
     char const *bad_argument = NULL;
-    size_t last_index = 1u;
+    size_t last_index = 1U;
     for (; last_index < argc; ++last_index) {
         char const *argument = argv[last_index];
 
@@ -345,7 +345,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
     }
 
     size_t path_len = strlen(path);
-    if (path_len > LINTED_MANAGER_PATH_MAX - 1u) {
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: LINTED_SOCKET is too long\n", process_name);
         return EXIT_FAILURE;
@@ -394,7 +394,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
             return EXIT_FAILURE;
         }
 
-        if (0u == bytes_read) {
+        if (0U == bytes_read) {
             linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
                                    process_name);
             return EXIT_FAILURE;
@@ -420,8 +420,8 @@ static linted_error ctl_help(linted_ko ko, char const *process_name,
 {
     linted_error errnum;
 
-    size_t size = 0u;
-    size_t capacity = 0u;
+    size_t size = 0U;
+    size_t capacity = 0U;
     char *buffer = NULL;
 
     if ((errnum = linted_str_append_str(&buffer, &capacity, &size,

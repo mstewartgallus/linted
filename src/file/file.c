@@ -30,17 +30,17 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
     linted_error errnum;
 
     if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY & ~LINTED_FILE_RDWR
-         & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0u) {
+         & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0U) {
         return EINVAL;
     }
 
-    bool file_rdonly = (flags & LINTED_FILE_RDONLY) != 0u;
-    bool file_wronly = (flags & LINTED_FILE_WRONLY) != 0u;
-    bool file_rdwr = (flags & LINTED_FILE_RDWR) != 0u;
+    bool file_rdonly = (flags & LINTED_FILE_RDONLY) != 0U;
+    bool file_wronly = (flags & LINTED_FILE_WRONLY) != 0U;
+    bool file_rdwr = (flags & LINTED_FILE_RDWR) != 0U;
 
-    bool file_sync = (flags & LINTED_FILE_SYNC) != 0u;
+    bool file_sync = (flags & LINTED_FILE_SYNC) != 0U;
 
-    bool file_excl = (flags & LINTED_FILE_EXCL) != 0u;
+    bool file_excl = (flags & LINTED_FILE_EXCL) != 0U;
 
     if (file_rdonly && file_wronly) {
         return EINVAL;

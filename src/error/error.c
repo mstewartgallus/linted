@@ -34,7 +34,7 @@ static char const unknown_error_string[] = "unknown error";
 char const *linted_error_string_alloc(linted_error errnum_to_print)
 {
     linted_error errnum;
-    size_t buf_size = 40u;
+    size_t buf_size = 40U;
 
     char *buf;
     {
@@ -66,7 +66,7 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
         if (SIZE_MAX / 3 < buf_size) {
             goto out_of_memory;
         }
-        buf_size = (buf_size * 3u) / 2u;
+        buf_size = (buf_size * 3U) / 2U;
 
         char *newbuf;
         {
@@ -85,7 +85,7 @@ char const *linted_error_string_alloc(linted_error errnum_to_print)
     char *newbuf;
     {
         void *xx;
-        if ((errnum = linted_mem_realloc(&xx, buf, strlen(buf) + 1u)) != 0) {
+        if ((errnum = linted_mem_realloc(&xx, buf, strlen(buf) + 1U)) != 0) {
             goto out_of_memory;
         }
         newbuf = xx;

@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <mntent.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -52,9 +53,9 @@
 #include <linux/capability.h>
 #include <linux/sched.h>
 
-#define BACKLOG 20u
+#define BACKLOG 20U
 
-#define MAX_MANAGE_CONNECTIONS 10u
+#define MAX_MANAGE_CONNECTIONS 10U
 
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
@@ -239,7 +240,7 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-init",
         .open_current_working_directory = true,
-        .kos_size = 0u,
+        .kos_size = 0U,
         .kos = NULL };
 
 static unsigned long const capabilities[]
@@ -270,7 +271,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
     char const *fstab_path = PKGCONFDIR "/fstab";
 
-    for (size_t ii = 1u; ii < argc; ++ii) {
+    for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
         if (0 == strcmp(argument, HELP_OPTION)) {
@@ -683,12 +684,12 @@ workaround this\n",
         return EXIT_FAILURE;
     }
 
-    if (-1 == setgroups(0u, NULL)) {
+    if (-1 == setgroups(0U, NULL)) {
         perror("setgroups");
         return EXIT_FAILURE;
     }
 
-    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1u)) {
+    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
         perror("sethostname");
         return EXIT_FAILURE;
     }
@@ -701,7 +702,7 @@ workaround this\n",
 
     /* Drop all privileges I might possibly have. I'm not sure I need
      * to do this and I probably can do this in a better way. */
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
         if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
             perror("prctl");
             return EXIT_FAILURE;
@@ -720,7 +721,7 @@ workaround this\n",
 
     size_t display_value_length = strlen(original_display);
     size_t display_string_length = strlen("DISPLAY=") + display_value_length
-                                   + 1u;
+                                   + 1U;
     char *display;
     {
         void *xx;
@@ -735,7 +736,7 @@ workaround this\n",
     memcpy(display, "DISPLAY=", strlen("DISPLAY="));
     memcpy(display + strlen("DISPLAY="), original_display,
            display_value_length);
-    display[display_string_length - 1u] = '\0';
+    display[display_string_length - 1U] = '\0';
 
     errnum = linted_util_sanitize_environment();
     if (errnum != 0) {
@@ -828,7 +829,7 @@ workaround this\n",
            [LINTED_SERVICE_UPDATER] = { .file = { .is_open = false } },
            [LINTED_SERVICE_CONTROLLER] = { .file = { .is_open = false } } };
 
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
         if (service_config->type != SERVICE_FILE) {
             continue;
@@ -847,7 +848,7 @@ workaround this\n",
 
     linted_logger logger_read = services[LINTED_SERVICE_LOGGER].file.ko;
 
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
             continue;
         }
@@ -877,13 +878,13 @@ workaround this\n",
         linted_ko *proc_kos;
         {
             void *xx;
-            if ((errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0u],
+            if ((errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U],
                                                  dup_pairs_size)) != 0) {
                 goto destroy_attr;
             }
             proc_kos = xx;
         }
-        size_t kos_opened = 0u;
+        size_t kos_opened = 0U;
         for (; kos_opened < dup_pairs_size;) {
             struct dup_pair const *dup_pair =
                 &proc_config->dup_pairs.dup_pairs[kos_opened];
@@ -904,7 +905,7 @@ workaround this\n",
             ++kos_opened;
 
             if ((errnum = linted_spawn_file_actions_adddup2(
-                     &file_actions, ko, kos_opened - 1u)) != 0) {
+                     &file_actions, ko, kos_opened - 1U)) != 0) {
                 goto destroy_proc_kos;
             }
         }
@@ -1004,7 +1005,7 @@ workaround this\n",
                                         LINTED_UPCAST(&new_connection_task))));
 
     for (;;) {
-        struct linted_asynch_task *completed_tasks[20u];
+        struct linted_asynch_task *completed_tasks[20U];
         size_t task_count;
         {
             size_t xx;
@@ -1013,7 +1014,7 @@ workaround this\n",
             task_count = xx;
         }
 
-        for (size_t ii = 0u; ii < task_count; ++ii) {
+        for (size_t ii = 0U; ii < task_count; ++ii) {
             if ((errnum = dispatch(completed_tasks[ii])) != 0) {
                 goto close_connections;
             }
@@ -1048,7 +1049,7 @@ exit_services : {
     assert(kill_errnum != EPERM);
 }
 
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
 
         if (LINTED_SERVICE_STDERR == ii) {
@@ -1284,7 +1285,7 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 
     struct connection *connection;
 
-    size_t ii = 0u;
+    size_t ii = 0U;
     for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
         connection = &connection_pool->connections[ii];
         if (-1 == connection->ko) {
@@ -1514,7 +1515,7 @@ static linted_error check_db(linted_ko cwd)
 
         static char const hello[] = "Hello anybody!";
         char const *data = hello;
-        size_t data_size = sizeof hello - 1u;
+        size_t data_size = sizeof hello - 1U;
 
         struct linted_ko_task_write write_task;
 
@@ -1522,7 +1523,7 @@ static linted_error check_db(linted_ko cwd)
                              data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 
-        struct linted_asynch_task *completed_tasks[20u];
+        struct linted_asynch_task *completed_tasks[20U];
         size_t task_count;
         {
             size_t xx;
@@ -1531,7 +1532,7 @@ static linted_error check_db(linted_ko cwd)
             task_count = xx;
         }
 
-        for (size_t ii = 0u; ii < task_count; ++ii) {
+        for (size_t ii = 0U; ii < task_count; ++ii) {
             struct linted_asynch_task *completed_task = completed_tasks[ii];
             if ((errnum = completed_task->errnum) != 0) {
                 goto close_tmp;
@@ -1592,9 +1593,9 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
         pool = xx;
     }
 
-    pool->count = 0u;
+    pool->count = 0U;
 
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         pool->connections[ii].ko = -1;
     }
 
@@ -1605,7 +1606,7 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 static linted_error connection_pool_destroy(struct connection_pool *pool)
 {
     linted_error errnum = 0;
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
         struct connection *const connection = &pool->connections[ii];
         linted_ko const ko = connection->ko;
         if (ko != -1) {

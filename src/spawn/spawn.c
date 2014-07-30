@@ -138,13 +138,13 @@ linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
     file_actions = *file_actionsp;
 
     old_count = file_actions->action_count;
-    new_count = old_count + 1u;
+    new_count = old_count + 1U;
     {
         void *xx;
         if ((errnum = linted_mem_realloc(
                  &xx, file_actions,
                  sizeof *file_actions
-                 + new_count * sizeof file_actions->actions[0u])) != 0) {
+                 + new_count * sizeof file_actions->actions[0U])) != 0) {
             return errnum;
         }
         new_file_actions = xx;
@@ -175,7 +175,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           char *const argv[], char *const envp[])
 {
     linted_error errnum = 0;
-    bool is_relative_path = filename[0u] != '/';
+    bool is_relative_path = filename[0U] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     if (is_relative_path && !at_fdcwd && dirfd < 0) {
         return EBADF;
@@ -296,7 +296,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     }
 
     if (file_actions != NULL) {
-        for (size_t ii = 0u; ii < file_actions->action_count; ++ii) {
+        for (size_t ii = 0U; ii < file_actions->action_count; ++ii) {
             union file_action const *action = &file_actions->actions[ii];
             switch (action->type) {
             case FILE_ACTION_ADDDUP2: {
@@ -334,15 +334,15 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[])
 {
     linted_error errnum;
-    bool is_relative_path = filename[0u] != '/';
+    bool is_relative_path = filename[0U] != '/';
     bool at_fdcwd = AT_FDCWD == dirfd;
     char *new_path = NULL;
 
     if (is_relative_path && !at_fdcwd) {
         {
             void *xx;
-            if ((errnum = linted_mem_alloc(&xx, strlen("/proc/self/fd/") + 10u
-                                                + strlen(filename) + 1u))
+            if ((errnum = linted_mem_alloc(&xx, strlen("/proc/self/fd/") + 10U
+                                                + strlen(filename) + 1U))
                 != 0) {
                 errno = errnum;
                 return -1;
@@ -369,11 +369,11 @@ static size_t align_to_page_size(size_t size)
     size_t page_size = sysconf(_SC_PAGESIZE);
 
     /* This should always be true */
-    assert(page_size > 0u);
+    assert(page_size > 0U);
 
     /* Round up to a multiple of page size */
     size_t remainder = size % page_size;
-    if (0u == remainder)
+    if (0U == remainder)
         return size;
 
     return size - remainder + page_size;

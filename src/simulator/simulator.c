@@ -39,7 +39,7 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
-#define ROTATION_SPEED 512u
+#define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
 enum {
@@ -68,7 +68,7 @@ struct differentiable
 
 struct simulator_state
 {
-    struct differentiable position[3u];
+    struct differentiable position[3U];
 
     linted_updater_angle x_rotation;
     linted_updater_angle y_rotation;
@@ -125,7 +125,7 @@ static linted_error simulator_help(linted_ko ko, char const *process_name,
                                    struct linted_str package_url,
                                    struct linted_str package_bugreport);
 
-static linted_ko kos[3u];
+static linted_ko kos[3U];
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-simulator",
@@ -136,15 +136,15 @@ struct linted_start_config const linted_start_config
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
-    linted_logger logger = kos[0u];
-    linted_controller controller = kos[1u];
-    linted_updater updater = kos[2u];
+    linted_logger logger = kos[0U];
+    linted_controller controller = kos[1U];
+    linted_updater updater = kos[2U];
 
     bool need_help = false;
     bool need_version = false;
     char const *bad_option = NULL;
 
-    for (size_t ii = 1u; ii < argc; ++ii) {
+    for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
@@ -186,7 +186,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     {
         static char const message[] = "starting simulator";
-        linted_logger_log(logger, message, sizeof message - 1u);
+        linted_logger_log(logger, message, sizeof message - 1U);
     }
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
@@ -196,8 +196,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             .write_in_progress = false,
             .position = { { .value = 0, .old = 0 }, { .value = 0, .old = 0 },
                           { .value = 3 * 1024, .old = 3 * 1024 } },
-            .x_rotation = LINTED_UPDATER_ANGLE(1u, 2u),
-            .y_rotation = LINTED_UPDATER_ANGLE(0u, 1u) };
+            .x_rotation = LINTED_UPDATER_ANGLE(1U, 2U),
+            .y_rotation = LINTED_UPDATER_ANGLE(0U, 1U) };
 
     struct linted_asynch_pool *pool;
     {
@@ -236,7 +236,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     /* TODO: Detect SIGTERM and exit normally */
     for (;;) {
-        struct linted_asynch_task *completed_tasks[20u];
+        struct linted_asynch_task *completed_tasks[20U];
         size_t task_count;
         {
             size_t xx;
@@ -245,7 +245,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             task_count = xx;
         }
 
-        for (size_t ii = 0u; ii < task_count; ++ii) {
+        for (size_t ii = 0U; ii < task_count; ++ii) {
             if ((errnum = dispatch(completed_tasks[ii])) != 0) {
                 goto destroy_pool;
             }
@@ -326,9 +326,9 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
     {
         struct linted_updater_update update
-            = { .x_position = simulator_state->position[0u].value,
-                .y_position = simulator_state->position[1u].value,
-                .z_position = simulator_state->position[2u].value,
+            = { .x_position = simulator_state->position[0U].value,
+                .y_position = simulator_state->position[1U].value,
+                .z_position = simulator_state->position[2U].value,
                 .x_rotation = simulator_state->x_rotation,
                 .y_rotation = simulator_state->y_rotation };
 
@@ -405,9 +405,9 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 
     {
         struct linted_updater_update update
-            = { .x_position = simulator_state->position[0u].value,
-                .y_position = simulator_state->position[1u].value,
-                .z_position = simulator_state->position[2u].value,
+            = { .x_position = simulator_state->position[0U].value,
+                .y_position = simulator_state->position[1U].value,
+                .z_position = simulator_state->position[2U].value,
                 .x_rotation = simulator_state->x_rotation,
                 .y_rotation = simulator_state->y_rotation };
 
@@ -433,14 +433,14 @@ static void simulate_tick(struct simulator_state *simulator_state,
 
     linted_updater_angle x_rotation = simulator_state->x_rotation;
 
-    linted_updater_int const thrusts[3u]
+    linted_updater_int const thrusts[3U]
         = { -(linted_updater_cos(x_rotation) * action_state->x) / 2
             - (linted_updater_sin(x_rotation) * action_state->z) / 2,
             -LINTED_UPDATER_INT_MAX * action_state->jumping,
             -(linted_updater_cos(x_rotation) * action_state->z) / 2
             + (linted_updater_sin(x_rotation) * action_state->x) / 2 };
 
-    for (size_t ii = 0u; ii < LINTED_ARRAY_SIZE(simulator_state->position);
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(simulator_state->position);
          ++ii) {
         linted_updater_int position = simulator_state->position[ii].value;
         linted_updater_int old_position = simulator_state->position[ii].old;
@@ -493,10 +493,10 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
     if (absolute(tilt) <= DEAD_ZONE) {
         new_rotation = *rotation;
     } else {
-        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15u, 16u);
-        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3u, 16u);
+        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15U, 16U);
+        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3U, 16U);
         linted_updater_angle increment
-            = LINTED_UPDATER_ANGLE(1u, ROTATION_SPEED);
+            = LINTED_UPDATER_ANGLE(1U, ROTATION_SPEED);
 
         new_rotation = linted_updater_angle_add_clamped(
             tilt_sign, minimum, maximum, *rotation, increment);

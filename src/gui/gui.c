@@ -87,7 +87,7 @@ struct sim_model
     float z_position;
 };
 
-EGLint const attribute_list[][2u]
+EGLint const attribute_list[][2U]
     = { { EGL_RED_SIZE, 5 },
         { EGL_GREEN_SIZE, 6 },
         { EGL_BLUE_SIZE, 5 },
@@ -96,7 +96,7 @@ EGLint const attribute_list[][2u]
         { EGL_STENCIL_SIZE, EGL_DONT_CARE },
         { EGL_NONE, EGL_NONE /* A waste of an int. Oh well. */ } };
 
-EGLint const egl_context_attributes[][2u]
+EGLint const egl_context_attributes[][2U]
     = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
 
 struct on_gui_event_args
@@ -156,9 +156,9 @@ static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
 static void flush_gl_errors(void);
-static void matrix_multiply(GLfloat const a[static restrict 4u][4u],
-                            GLfloat const b[static restrict 4u][4u],
-                            GLfloat result[static restrict 4u][4u]);
+static void matrix_multiply(GLfloat const a[static restrict 4U][4U],
+                            GLfloat const b[static restrict 4U][4U],
+                            GLfloat result[static restrict 4U][4U]);
 
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
@@ -177,7 +177,7 @@ static linted_error failure(linted_ko ko, char const *process_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-static linted_ko kos[3u];
+static linted_ko kos[3U];
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-gui",
@@ -190,16 +190,16 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 {
     linted_error errnum = 0;
 
-    linted_logger logger = kos[0u];
-    linted_controller controller = kos[1u];
-    linted_updater updater = kos[2u];
+    linted_logger logger = kos[0U];
+    linted_controller controller = kos[1U];
+    linted_updater updater = kos[2U];
 
     bool need_help = false;
     bool need_version = false;
 
     char const *bad_option = NULL;
 
-    for (size_t ii = 1u; ii < argc; ++ii) {
+    for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
         if (0 == strcmp(HELP_OPTION, argument)) {
@@ -240,7 +240,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    size_t display_string_length = strlen(original_display) + 1u;
+    size_t display_string_length = strlen(original_display) + 1U;
     char *display_env_var;
     {
         void *xx;
@@ -315,7 +315,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     {
         xcb_screen_iterator_t iter
             = xcb_setup_roots_iterator(xcb_get_setup(connection));
-        for (size_t ii = 0u; ii < screen_number; ++ii) {
+        for (size_t ii = 0U; ii < screen_number; ++ii) {
             if (0 == iter.rem) {
                 break;
             }
@@ -337,13 +337,13 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     {
-        uint32_t event_max = 0u;
+        uint32_t event_max = 0U;
         event_max |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
         event_max |= XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW;
         event_max |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
-        uint32_t values[] = { event_max, 0u };
+        uint32_t values[] = { event_max, 0U };
         xcb_create_window(connection, XCB_COPY_FROM_PARENT, window,
                           screen->root, 0, 0, window_model.width,
                           window_model.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
@@ -425,7 +425,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     {
         EGLConfig xx;
         EGLint yy = num_configs;
-        if (!eglChooseConfig(egl_display, attribute_list[0u], &xx, 1u, &yy)) {
+        if (!eglChooseConfig(egl_display, attribute_list[0U], &xx, 1U, &yy)) {
             errnum = egl_error();
             goto destroy_egl_display;
         }
@@ -442,7 +442,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     do {
         EGLContext egl_context
             = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT,
-                               egl_context_attributes[0u]);
+                               egl_context_attributes[0U]);
         if (EGL_NO_CONTEXT == egl_context) {
             errnum = egl_error();
             goto destroy_egl_surface;
@@ -488,7 +488,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 }
             }
 
-            struct linted_asynch_task *completed_tasks[20u];
+            struct linted_asynch_task *completed_tasks[20U];
             size_t task_count;
             linted_error poll_errnum;
             {
@@ -501,7 +501,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
             bool had_asynch_event = poll_errnum != EAGAIN;
             if (had_asynch_event) {
-                for (size_t ii = 0u; ii < task_count; ++ii) {
+                for (size_t ii = 0U; ii < task_count; ++ii) {
                     if ((errnum = dispatch(completed_tasks[ii])) != 0) {
                         goto cleanup_gl;
                     }
@@ -943,7 +943,7 @@ static linted_error init_graphics(linted_logger logger,
         glAttachShader(program, fragment_shader);
         glDeleteShader(fragment_shader);
 
-        glShaderSource(fragment_shader, 1u,
+        glShaderSource(fragment_shader, 1U,
                        (GLchar const **)&linted_assets_fragment_shader, NULL);
         glCompileShader(fragment_shader);
 
@@ -979,7 +979,7 @@ static linted_error init_graphics(linted_logger logger,
         glAttachShader(program, vertex_shader);
         glDeleteShader(vertex_shader);
 
-        glShaderSource(vertex_shader, 1u,
+        glShaderSource(vertex_shader, 1U,
                        (GLchar const **)&linted_assets_vertex_shader, NULL);
         glCompileShader(vertex_shader);
 
@@ -1049,10 +1049,10 @@ static linted_error init_graphics(linted_logger logger,
     glEnableVertexAttribArray(normal);
 
     glVertexAttribPointer(
-        vertex, LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0u]),
+        vertex, LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0U]),
         GL_FLOAT, false, 0, linted_assets_triangle_vertices);
     glVertexAttribPointer(normal,
-                          LINTED_ARRAY_SIZE(linted_assets_triangle_normals[0u]),
+                          LINTED_ARRAY_SIZE(linted_assets_triangle_normals[0U]),
                           GL_FLOAT, false, 0, linted_assets_triangle_normals);
 
     graphics_state->program = program;
@@ -1095,52 +1095,52 @@ static void render_graphics(struct graphics_state const *graphics_state,
         /* Rotate the camera */
         GLfloat cos_y = cosf(sim_model->y_rotation);
         GLfloat sin_y = sinf(sim_model->y_rotation);
-        GLfloat const y_rotation[][4u] = { { 1, 0, 0, 0 },
+        GLfloat const y_rotation[][4U] = { { 1, 0, 0, 0 },
                                            { 0, cos_y, -sin_y, 0 },
                                            { 0, sin_y, cos_y, 0 },
                                            { 0, 0, 0, 1 } };
 
         GLfloat cos_x = cosf(sim_model->x_rotation);
         GLfloat sin_x = sinf(sim_model->x_rotation);
-        GLfloat const x_rotation[][4u] = { { cos_x, 0, sin_x, 0 },
+        GLfloat const x_rotation[][4U] = { { cos_x, 0, sin_x, 0 },
                                            { 0, 1, 0, 0 },
                                            { -sin_x, 0, cos_x, 0 },
                                            { 0, 0, 0, 1 } };
 
         /* Translate the camera */
-        GLfloat const camera[][4u]
+        GLfloat const camera[][4U]
             = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
                 { sim_model->x_position, sim_model->y_position,
                   sim_model->z_position, 1 } };
 
         GLfloat aspect = window_model->width / (GLfloat)window_model->height;
-        double fov = acosf(-1.0f) / 4;
+        double fov = acosf(-1.0F) / 4;
 
         double d = 1 / tan(fov / 2);
         double far = 1000;
         double near = 1;
 
-        GLfloat const projection[][4u]
+        GLfloat const projection[][4U]
             = { { d / aspect, 0, 0, 0 }, { 0, d, 0, 0 },
                 { 0,                           0,
                   (far + near) / (near - far), 2 * far * near / (near - far) },
                 { 0, 0, -1, 0 } };
 
-        GLfloat rotations[4u][4u];
-        GLfloat model_view[4u][4u];
-        GLfloat model_view_projection[4u][4u];
+        GLfloat rotations[4U][4U];
+        GLfloat model_view[4U][4U];
+        GLfloat model_view_projection[4U][4U];
 
         matrix_multiply(x_rotation, y_rotation, rotations);
-        matrix_multiply((const GLfloat(*)[4u])camera,
-                        (const GLfloat(*)[4u])rotations, model_view);
-        matrix_multiply((const GLfloat(*)[4u])model_view, projection,
+        matrix_multiply((const GLfloat(*)[4U])camera,
+                        (const GLfloat(*)[4U])rotations, model_view);
+        matrix_multiply((const GLfloat(*)[4U])model_view, projection,
                         model_view_projection);
 
-        glUniformMatrix4fv(graphics_state->model_view_projection_matrix, 1u,
-                           false, model_view_projection[0u]);
+        glUniformMatrix4fv(graphics_state->model_view_projection_matrix, 1U,
+                           false, model_view_projection[0U]);
     }
 
-    glDrawElements(GL_TRIANGLES, 3 * linted_assets_triangle_indices_size,
+    glDrawElements(GL_TRIANGLES, 3U * linted_assets_triangle_indices_size,
                    GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
 }
 
@@ -1176,45 +1176,45 @@ static linted_error get_gl_error(void)
     }
 }
 
-static void matrix_multiply(GLfloat const a[static restrict 4u][4u],
-                            GLfloat const b[static restrict 4u][4u],
-                            GLfloat result[static restrict 4u][4u])
+static void matrix_multiply(GLfloat const a[static restrict 4U][4U],
+                            GLfloat const b[static restrict 4U][4U],
+                            GLfloat result[static restrict 4U][4U])
 {
-    result[0u][0u] = a[0u][0u] * b[0u][0u] + a[0u][1u] * b[1u][0u]
-                     + a[0u][2u] * b[2u][0u] + a[0u][3u] * b[3u][0u];
-    result[1u][0u] = a[1u][0u] * b[0u][0u] + a[1u][1u] * b[1u][0u]
-                     + a[1u][2u] * b[2u][0u] + a[1u][3u] * b[3u][0u];
-    result[2u][0u] = a[2u][0u] * b[0u][0u] + a[2u][1u] * b[1u][0u]
-                     + a[2u][2u] * b[2u][0u] + a[2u][3u] * b[3u][0u];
-    result[3u][0u] = a[3u][0u] * b[0u][0u] + a[3u][1u] * b[1u][0u]
-                     + a[3u][2u] * b[2u][0u] + a[3u][3u] * b[3u][0u];
+    result[0U][0U] = a[0U][0U] * b[0U][0U] + a[0U][1U] * b[1U][0U]
+                     + a[0U][2U] * b[2U][0U] + a[0U][3U] * b[3U][0U];
+    result[1U][0U] = a[1U][0U] * b[0U][0U] + a[1U][1U] * b[1U][0U]
+                     + a[1U][2U] * b[2U][0U] + a[1U][3U] * b[3U][0U];
+    result[2U][0U] = a[2U][0U] * b[0U][0U] + a[2U][1U] * b[1U][0U]
+                     + a[2U][2U] * b[2U][0U] + a[2U][3U] * b[3U][0U];
+    result[3U][0U] = a[3U][0U] * b[0U][0U] + a[3U][1U] * b[1U][0U]
+                     + a[3U][2U] * b[2U][0U] + a[3U][3U] * b[3U][0U];
 
-    result[0u][1u] = a[0u][0u] * b[0u][1u] + a[0u][1u] * b[1u][1u]
-                     + a[0u][2u] * b[2u][1u] + a[0u][3u] * b[3u][1u];
-    result[1u][1u] = a[1u][0u] * b[0u][1u] + a[1u][1u] * b[1u][1u]
-                     + a[1u][2u] * b[2u][1u] + a[1u][3u] * b[3u][1u];
-    result[2u][1u] = a[2u][0u] * b[0u][1u] + a[2u][1u] * b[1u][1u]
-                     + a[2u][2u] * b[2u][1u] + a[2u][3u] * b[3u][1u];
-    result[3u][1u] = a[3u][0u] * b[0u][1u] + a[3u][1u] * b[1u][1u]
-                     + a[3u][2u] * b[2u][1u] + a[3u][3u] * b[3u][1u];
+    result[0U][1U] = a[0U][0U] * b[0U][1U] + a[0U][1U] * b[1U][1U]
+                     + a[0U][2U] * b[2U][1U] + a[0U][3U] * b[3U][1U];
+    result[1U][1U] = a[1U][0U] * b[0U][1U] + a[1U][1U] * b[1U][1U]
+                     + a[1U][2U] * b[2U][1U] + a[1U][3U] * b[3U][1U];
+    result[2U][1U] = a[2U][0U] * b[0U][1U] + a[2U][1U] * b[1U][1U]
+                     + a[2U][2U] * b[2U][1U] + a[2U][3U] * b[3U][1U];
+    result[3U][1U] = a[3U][0U] * b[0U][1U] + a[3U][1U] * b[1U][1U]
+                     + a[3U][2U] * b[2U][1U] + a[3U][3U] * b[3U][1U];
 
-    result[0u][2u] = a[0u][0u] * b[0u][2u] + a[0u][1u] * b[1u][2u]
-                     + a[0u][2u] * b[2u][2u] + a[0u][3u] * b[3u][2u];
-    result[1u][2u] = a[1u][0u] * b[0u][2u] + a[1u][1u] * b[1u][2u]
-                     + a[1u][2u] * b[2u][2u] + a[1u][3u] * b[3u][2u];
-    result[2u][2u] = a[2u][0u] * b[0u][2u] + a[2u][1u] * b[1u][2u]
-                     + a[2u][2u] * b[2u][2u] + a[2u][3u] * b[3u][2u];
-    result[3u][2u] = a[3u][0u] * b[0u][2u] + a[3u][1u] * b[1u][2u]
-                     + a[3u][2u] * b[2u][2u] + a[3u][3u] * b[3u][2u];
+    result[0U][2U] = a[0U][0U] * b[0U][2U] + a[0U][1U] * b[1U][2U]
+                     + a[0U][2U] * b[2U][2U] + a[0U][3U] * b[3U][2U];
+    result[1U][2U] = a[1U][0U] * b[0U][2U] + a[1U][1U] * b[1U][2U]
+                     + a[1U][2U] * b[2U][2U] + a[1U][3U] * b[3U][2U];
+    result[2U][2U] = a[2U][0U] * b[0U][2U] + a[2U][1U] * b[1U][2U]
+                     + a[2U][2U] * b[2U][2U] + a[2U][3U] * b[3U][2U];
+    result[3U][2U] = a[3U][0U] * b[0U][2U] + a[3U][1U] * b[1U][2U]
+                     + a[3U][2U] * b[2U][2U] + a[3U][3U] * b[3U][2U];
 
-    result[0u][3u] = a[0u][0u] * b[0u][3u] + a[0u][1u] * b[1u][3u]
-                     + a[0u][2u] * b[2u][3u] + a[0u][3u] * b[3u][3u];
-    result[1u][3u] = a[1u][0u] * b[0u][3u] + a[1u][1u] * b[1u][3u]
-                     + a[1u][2u] * b[2u][3u] + a[1u][3u] * b[3u][3u];
-    result[2u][3u] = a[2u][0u] * b[0u][3u] + a[2u][1u] * b[1u][3u]
-                     + a[2u][2u] * b[2u][3u] + a[2u][3u] * b[3u][3u];
-    result[3u][3u] = a[3u][0u] * b[0u][3u] + a[3u][1u] * b[1u][3u]
-                     + a[3u][2u] * b[2u][3u] + a[3u][3u] * b[3u][3u];
+    result[0U][3U] = a[0U][0U] * b[0U][3U] + a[0U][1U] * b[1U][3U]
+                     + a[0U][2U] * b[2U][3U] + a[0U][3U] * b[3U][3U];
+    result[1U][3U] = a[1U][0U] * b[0U][3U] + a[1U][1U] * b[1U][3U]
+                     + a[1U][2U] * b[2U][3U] + a[1U][3U] * b[3U][3U];
+    result[2U][3U] = a[2U][0U] * b[0U][3U] + a[2U][1U] * b[1U][3U]
+                     + a[2U][2U] * b[2U][3U] + a[2U][3U] * b[3U][3U];
+    result[3U][3U] = a[3U][0U] * b[0U][3U] + a[3U][1U] * b[1U][3U]
+                     + a[3U][2U] * b[2U][3U] + a[3U][3U] * b[3U][3U];
 }
 
 static linted_error egl_error(void)

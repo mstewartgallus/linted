@@ -48,13 +48,13 @@ struct linted_controller_message
 struct linted_controller_task_send
 {
     struct linted_mq_task_send parent;
-    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1u];
+    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 struct linted_controller_task_receive
 {
     struct linted_mq_task_receive parent;
-    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1u];
+    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 linted_error linted_controller_create(linted_controller *controllerp,

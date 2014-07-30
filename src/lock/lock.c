@@ -43,9 +43,9 @@ linted_error linted_lock_file_create(linted_ko *kop, linted_ko dirko,
         return EINVAL;
     }
 
-    bool lock_rdonly = (flags & LINTED_LOCK_RDONLY) != 0u;
-    bool lock_wronly = (flags & LINTED_LOCK_WRONLY) != 0u;
-    bool lock_rdwr = (flags & LINTED_LOCK_RDWR) != 0u;
+    bool lock_rdonly = (flags & LINTED_LOCK_RDONLY) != 0U;
+    bool lock_wronly = (flags & LINTED_LOCK_WRONLY) != 0U;
+    bool lock_rdwr = (flags & LINTED_LOCK_RDWR) != 0U;
 
     bool lock_excl = (flags & LINTED_LOCK_EXCL) != 0;
 
@@ -259,11 +259,11 @@ static size_t align_to_page_size(size_t size)
     size_t page_size = sysconf(_SC_PAGESIZE);
 
     /* This should always be true */
-    assert(page_size > 0u);
+    assert(page_size > 0U);
 
     /* Round up to a multiple of page size */
     size_t remainder = size % page_size;
-    if (0u == remainder)
+    if (0U == remainder)
         return size;
 
     return size - remainder + page_size;

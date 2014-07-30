@@ -29,8 +29,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define FILE_MAX 255u
-#define RANDOM_BYTES 8u
+#define FILE_MAX 255U
+#define RANDOM_BYTES 8U
 
 /**
  * Implemented using POSIX message queues.
@@ -40,35 +40,35 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                               struct linted_mq_attr *attr, int flags)
 {
     linted_error errnum;
-    char random_mq_name[FILE_MAX + 1u];
+    char random_mq_name[FILE_MAX + 1U];
     linted_mq ko;
 
-    if (debugpath[0u] != '/') {
+    if (debugpath[0U] != '/') {
         return EINVAL;
     }
 
-    size_t path_size = strlen(debugpath + 1u);
+    size_t path_size = strlen(debugpath + 1U);
 
-    if (path_size > FILE_MAX - 1u - RANDOM_BYTES) {
+    if (path_size > FILE_MAX - 1U - RANDOM_BYTES) {
         return ENAMETOOLONG;
     }
 
     size_t maxmsg = attr->maxmsg;
     size_t msgsize = attr->msgsize;
 
-    memcpy(1u + random_mq_name, 1u + debugpath, path_size);
-    random_mq_name[0u] = '/';
-    random_mq_name[1u + path_size] = '-';
-    random_mq_name[1u + path_size + 1u + RANDOM_BYTES] = '\0';
+    memcpy(1U + random_mq_name, 1U + debugpath, path_size);
+    random_mq_name[0U] = '/';
+    random_mq_name[1U + path_size] = '-';
+    random_mq_name[1U + path_size + 1U + RANDOM_BYTES] = '\0';
 
     do {
-        for (size_t ii = 0u; ii < RANDOM_BYTES; ++ii) {
+        for (size_t ii = 0U; ii < RANDOM_BYTES; ++ii) {
             char random_char;
             for (;;) {
                 /* Normally using the modulus would give a bad
-                 * distribution but CHAR_MAX + 1u is a power of two
+                 * distribution but CHAR_MAX + 1U is a power of two
                  */
-                random_char = linted_random_fast() % (CHAR_MAX + 1u);
+                random_char = linted_random_fast() % (CHAR_MAX + 1U);
 
                 /* Throw out results and retry for an even
                  * distribution
@@ -80,7 +80,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                 }
             }
 
-            random_mq_name[1u + path_size + 1u + ii] = random_char;
+            random_mq_name[1U + path_size + 1U + ii] = random_char;
         }
 
         {
@@ -131,7 +131,7 @@ void linted_mq_task_receive(struct linted_mq_task_receive *task,
     task->ko = ko;
     task->buf = buf;
     task->size = size;
-    task->bytes_read = 0u;
+    task->bytes_read = 0U;
 }
 
 void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
@@ -143,5 +143,5 @@ void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
     task->ko = ko;
     task->buf = buf;
     task->size = size;
-    task->bytes_wrote = 0u;
+    task->bytes_wrote = 0U;
 }

@@ -86,7 +86,7 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    char const *const process_name = argv[0u];
+    char const *const process_name = argv[0U];
 
     linted_ko *open_kos;
     size_t open_kos_size;
@@ -108,7 +108,7 @@ It is insecure to run a game as root!\n"));
     sort_kos(open_kos, open_kos_size);
 
     /* Sanitize the fds */
-    for (size_t ii = 0u; ii < open_kos_size; ++ii) {
+    for (size_t ii = 0U; ii < open_kos_size; ++ii) {
         linted_ko fd = open_kos[ii];
 
         /* Running under Valgrind */
@@ -126,7 +126,7 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        char pathname[sizeof FDS_DIR + 10u];
+        char pathname[sizeof FDS_DIR + 10U];
         sprintf(pathname, FDS_DIR "/%i", fd);
 
         int new_fd;
@@ -162,12 +162,12 @@ It is insecure to run a game as root!\n"));
         }
     }
 
-    size_t bad_files = 0u;
-    for (size_t ii = 0u; ii < open_kos_size; ++ii) {
+    size_t bad_files = 0U;
+    for (size_t ii = 0U; ii < open_kos_size; ++ii) {
         while (-1 == open_kos[ii]) {
             ++bad_files;
-            for (size_t jj = ii + 1u; jj < open_kos_size; ++jj) {
-                open_kos[jj - 1u] = open_kos[jj];
+            for (size_t jj = ii + 1U; jj < open_kos_size; ++jj) {
+                open_kos[jj - 1U] = open_kos[jj];
             }
         }
     }
@@ -176,18 +176,18 @@ It is insecure to run a game as root!\n"));
     size_t kos_size = linted_start_config.kos_size;
     linted_ko *kos = linted_start_config.kos;
 
-    if (open_kos_size < kos_size + 3u) {
+    if (open_kos_size < kos_size + 3U) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: too little files passed in\n",
                                process_name);
         return EXIT_FAILURE;
     }
 
-    for (size_t ii = 0u; ii < kos_size; ++ii) {
-        kos[ii] = open_kos[ii + 3u];
+    for (size_t ii = 0U; ii < kos_size; ++ii) {
+        kos[ii] = open_kos[ii + 3U];
     }
 
-    for (size_t ii = 3u + kos_size; ii < open_kos_size; ++ii) {
+    for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
         /* Don't check for errors, could just be a leaked /dev/full handle */
         linted_ko_close(open_kos[ii]);
     }
@@ -247,8 +247,8 @@ static bool is_open(linted_ko ko)
 
 static void sort_kos(linted_ko *kos, size_t size)
 {
-    for (size_t ii = 0u; ii < size; ++ii) {
-        for (size_t jj = ii + 1u; jj < size; ++jj) {
+    for (size_t ii = 0U; ii < size; ++ii) {
+        for (size_t jj = ii + 1U; jj < size; ++jj) {
             linted_ko kos_ii = kos[ii];
             linted_ko kos_jj = kos[jj];
 
@@ -263,7 +263,7 @@ static void sort_kos(linted_ko *kos, size_t size)
 static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 {
     linted_error errnum = 0;
-    size_t size = 0u;
+    size_t size = 0U;
     linted_ko *fds = NULL;
 
     /*
@@ -322,7 +322,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
         fds = xx;
     }
 
-    for (size_t ii = 0u; ii < size;) {
+    for (size_t ii = 0U; ii < size;) {
         errno = 0;
         struct dirent *const result = readdir(fds_dir);
         {

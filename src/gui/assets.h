@@ -19,7 +19,7 @@
 #include <stddef.h>
 #include <GLES2/gl2.h>
 
-typedef GLfloat linted_assets_point[3u];
+typedef GLfloat linted_assets_point[3U];
 
 extern linted_assets_point const *const linted_assets_triangle_vertices;
 extern linted_assets_point const *const linted_assets_triangle_normals;

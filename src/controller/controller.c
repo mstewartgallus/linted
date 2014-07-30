@@ -57,9 +57,9 @@ void linted_controller_send(struct linted_controller_task_send *task,
     tip += LINTED_RPC_INT32_SIZE;
 
     unsigned char bitfield
-        = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1u
-          | ((uintmax_t)message->right) << 2u | ((uintmax_t)message->left) << 3u
-          | ((uintmax_t)message->jumping) << 4u;
+        = ((uintmax_t)message->forward) | ((uintmax_t)message->back) << 1U
+          | ((uintmax_t)message->right) << 2U | ((uintmax_t)message->left) << 3U
+          | ((uintmax_t)message->jumping) << 4U;
     memcpy(tip, &bitfield, sizeof bitfield);
 }
 
@@ -85,16 +85,16 @@ linted_controller_decode(struct linted_controller_task_receive const *task,
     unsigned char bitfield;
     memcpy(&bitfield, tip, sizeof bitfield);
 
-    if ((bitfield & ~(1u | 1u << 1u | 1u << 2u | 1u << 3u | 1u << 4u)) != 0u) {
+    if ((bitfield & ~(1U | 1U << 1U | 1U << 2U | 1U << 3U | 1U << 4U)) != 0U) {
         return EPROTO;
     }
 
-    message->forward = bitfield & 1u;
-    message->back = (bitfield & (1u << 1u)) != 0u;
-    message->right = (bitfield & (1u << 2u)) != 0u;
-    message->left = (bitfield & (1u << 3u)) != 0u;
+    message->forward = bitfield & 1U;
+    message->back = (bitfield & (1U << 1U)) != 0U;
+    message->right = (bitfield & (1U << 2U)) != 0U;
+    message->left = (bitfield & (1U << 3U)) != 0U;
 
-    message->jumping = (bitfield & (1u << 4u)) != 0u;
+    message->jumping = (bitfield & (1U << 4U)) != 0U;
 
     return 0;
 }

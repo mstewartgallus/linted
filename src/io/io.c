@@ -87,7 +87,7 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
     }
 
     {
-        size_t string_size = (unsigned)bytes_should_write + 1u;
+        size_t string_size = (unsigned)bytes_should_write + 1U;
 
         char *string;
         {

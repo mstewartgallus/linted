@@ -159,12 +159,12 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             goto free_version_text;
         }
 
-        if (version_file_size != sizeof CURRENT_VERSION - 1u) {
+        if (version_file_size != sizeof CURRENT_VERSION - 1U) {
             errnum = EINVAL;
             goto free_version_text;
         }
 
-        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1u)
+        if (memcmp(version_text, CURRENT_VERSION, sizeof CURRENT_VERSION - 1U)
             != 0) {
             errnum = EINVAL;
             goto free_version_text;
@@ -202,7 +202,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
         }
 
         errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
-                                     sizeof CURRENT_VERSION - 1u);
+                                     sizeof CURRENT_VERSION - 1U);
 
         {
             linted_error close_errnum = linted_ko_close(version_file_write);
@@ -265,13 +265,13 @@ linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp)
                    - sizeof field_name;
 
 try_again:
-    for (size_t ii = 0u; ii < 6u; ++ii) {
+    for (size_t ii = 0U; ii < 6U; ++ii) {
         char random_char;
         for (;;) {
             /* Normally using the modulus would give a bad
-             * distribution but CHAR_MAX + 1u is a power of two
+             * distribution but CHAR_MAX + 1U is a power of two
              */
-            random_char = linted_random_fast() % (CHAR_MAX + 1u);
+            random_char = linted_random_fast() % (CHAR_MAX + 1U);
 
             /* Throw out results and retry for an even
              * distribution
@@ -336,7 +336,7 @@ static linted_error prepend(char **result, char const *base,
     size_t base_size = strlen(base);
     size_t pathname_size = strlen(pathname);
 
-    size_t new_path_size = base_size + pathname_size + 1u;
+    size_t new_path_size = base_size + pathname_size + 1U;
 
     char *new_path;
     {
@@ -347,7 +347,7 @@ static linted_error prepend(char **result, char const *base,
         new_path = xx;
     }
 
-    new_path[new_path_size - 1u] = '\0';
+    new_path[new_path_size - 1U] = '\0';
     memcpy(new_path, base, base_size);
     memcpy(new_path + base_size, pathname, pathname_size);
 

@@ -130,7 +130,7 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
     }
 
     {
-        size_t string_size = bytes_should_write + 1u;
+        size_t string_size = bytes_should_write + 1U;
 
         char *string;
         {

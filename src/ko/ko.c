@@ -36,15 +36,15 @@
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 {
     size_t length = strlen(str);
-    unsigned position = 1u;
+    unsigned position = 1U;
 
-    if ('0' == str[0u] && length != 1u) {
+    if ('0' == str[0U] && length != 1U) {
         return EINVAL;
     }
 
-    unsigned total = 0u;
-    for (; length > 0u; --length) {
-        char const digit = str[length - 1u];
+    unsigned total = 0U;
+    for (; length > 0U; --length) {
+        char const digit = str[length - 1U];
 
         if ('0' <= digit && digit <= '9') {
             unsigned long sum = total + ((unsigned)(digit - '0')) * position;
@@ -57,7 +57,7 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
             return EINVAL;
         }
 
-        unsigned long next_position = 10u * position;
+        unsigned long next_position = 10U * position;
         if (next_position > INT_MAX) {
             return ERANGE;
         }
@@ -79,15 +79,15 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
     linted_error errnum;
 
     if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR
-         & ~LINTED_KO_SYNC) != 0u) {
+         & ~LINTED_KO_SYNC) != 0U) {
         return EINVAL;
     }
 
-    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0u;
-    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0u;
-    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0u;
+    bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
+    bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
+    bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0U;
 
-    bool ko_sync = (flags & LINTED_KO_SYNC) != 0u;
+    bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
 
     if (ko_rdonly && ko_wronly) {
         return EINVAL;
@@ -144,7 +144,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin, int flags)
 {
-    char pathname[sizeof "/proc/self/fd/" + 10u];
+    char pathname[sizeof "/proc/self/fd/" + 10U];
     sprintf(pathname, "/proc/self/fd/%i", koin);
     return linted_ko_open(kooutp, -1, pathname, flags);
 }
@@ -198,8 +198,8 @@ void linted_ko_task_read(struct linted_ko_task_read *task, unsigned task_action,
     task->ko = ko;
     task->buf = buf;
     task->size = size;
-    task->current_position = 0u;
-    task->bytes_read = 0u;
+    task->current_position = 0U;
+    task->bytes_read = 0U;
 }
 
 void linted_ko_task_write(struct linted_ko_task_write *task,
@@ -212,8 +212,8 @@ void linted_ko_task_write(struct linted_ko_task_write *task,
     task->ko = ko;
     task->buf = buf;
     task->size = size;
-    task->current_position = 0u;
-    task->bytes_wrote = 0u;
+    task->current_position = 0U;
+    task->bytes_wrote = 0U;
 }
 
 void linted_ko_task_accept(struct linted_ko_task_accept *task,
