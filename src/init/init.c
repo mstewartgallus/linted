@@ -209,6 +209,8 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
                                char const *simulator_path,
                                char const *gui_path);
 
+static void drop_privileges(char const *fstab_path);
+
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
@@ -402,6 +404,16 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
 
     static char const process_name[] = "monitor";
 
+    if (-1 == unshare(CLONE_NEWUTS)) {
+        perror("unshare");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
+        perror("sethostname");
+        return EXIT_FAILURE;
+    }
+
     /* The process monitor and manager */
     if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
         perror("prctl");
@@ -435,279 +447,7 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
         return EXIT_FAILURE;
     }
 
-    if (-1
-        == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWNS)) {
-        perror("unshare");
-        return EXIT_FAILURE;
-    }
-
-    /* Favor other processes over this process hierarchy. Only
-     * superuser may lower priorities so this is not stoppable. This
-     * also makes the process hierarchy nicer for the OOM killer.
-     */
-    errno = 0;
-    int priority = getpriority(PRIO_PROCESS, 0);
-    if (-1 == priority) {
-        errnum = errno;
-        if (errnum != 0) {
-            perror("getpriority");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
-        perror("setpriority");
-        return EXIT_FAILURE;
-    }
-
-    /* TODO: Close files leading outside of the sandbox  */
-    FILE *fstab = setmntent(fstab_path, "re");
-    if (NULL == fstab) {
-        perror("setmtent");
-        return EXIT_FAILURE;
-    }
-
-    {
-        char const *runtime_dir_string = getenv("XDG_RUNTIME_DIR");
-        if (NULL == runtime_dir_string) {
-            /* TODO: Fallback somewhere smart */
-            fputs("missing XDG_RUNTIME_DIR\n", stderr);
-            return EXIT_FAILURE;
-        }
-
-        if (-1 == chdir(runtime_dir_string)) {
-            perror("chdir");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (-1 == mkdir("linted", S_IRWXU)) {
-        errnum = errno;
-        if (errnum != EEXIST) {
-            perror("mkdir");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (-1 == mount(NULL, "linted", "tmpfs", 0, NULL)) {
-        perror("mount");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == chdir("linted")) {
-        perror("chdir");
-        return EXIT_FAILURE;
-    }
-
-    for (;;) {
-        errno = 0;
-        struct mntent *entry = getmntent(fstab);
-        if (NULL == entry) {
-            errnum = errno;
-            if (errnum != 0) {
-                perror("getmntent");
-                return EXIT_FAILURE;
-            }
-
-            break;
-        }
-
-        enum {
-            BIND,
-            RBIND,
-            RO,
-            RW,
-            SUID,
-            NOSUID,
-            NODEV,
-            NOEXEC
-        };
-        static char const *const tokens[]
-            = {[BIND] = "bind",      [RBIND] = "rbind",
-               [RO] = MNTOPT_RO,     [RW] = MNTOPT_RW,
-               [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
-               [NODEV] = "nodev",    [NOEXEC] = "noexec",
-               NULL };
-        bool bind = false;
-        bool rec = false;
-        bool readonly = false;
-        bool readwrite = false;
-        bool suid = true;
-        bool dev = true;
-        bool exec = true;
-        char *leftovers = NULL;
-        {
-            char *mnt_opts = entry->mnt_opts;
-
-            if (0 == strcmp("none", mnt_opts)) {
-                goto mount;
-            }
-
-            char *subopts_str = strdup(mnt_opts);
-            if (NULL == subopts_str) {
-                perror("strdup");
-                return EXIT_FAILURE;
-            }
-
-            char *subopts = subopts_str;
-
-            char *value = NULL;
-            while (*subopts != '\0') {
-                int token;
-                {
-                    char *xx = subopts;
-                    char *yy = value;
-                    token = getsubopt(&xx, (char * const *)tokens, &yy);
-                    subopts = xx;
-                    value = yy;
-                }
-                switch (token) {
-                case BIND:
-                    bind = true;
-                    break;
-
-                case RBIND:
-                    bind = true;
-                    rec = true;
-                    break;
-
-                case RO:
-                    readonly = true;
-                    break;
-
-                case RW:
-                    readwrite = true;
-                    break;
-
-                case SUID:
-                    suid = true;
-                    break;
-
-                case NOSUID:
-                    suid = false;
-                    break;
-
-                case NODEV:
-                    dev = false;
-                    break;
-
-                case NOEXEC:
-                    exec = false;
-                    break;
-
-                default:
-                    leftovers = strstr(mnt_opts, value);
-                    goto free_subopts_str;
-                }
-            }
-        free_subopts_str:
-            free(subopts_str);
-        }
-
-    mount:
-        if (readwrite && readonly) {
-            fprintf(stderr, "Only one of '%s' and '%s' can be specified\n",
-                    tokens[RO], tokens[RW]);
-            return EXIT_FAILURE;
-        }
-
-        if (bind && readonly) {
-            fputs("\
-Due to a completely idiotic kernel bug (see \
-https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a bind mount\
-as readonly would fail completely silently and there is no way to \
-workaround this\n",
-                  stderr);
-            return EXIT_FAILURE;
-        }
-
-        unsigned long mountflags = 0;
-
-        if (bind) {
-            mountflags |= MS_BIND;
-        }
-
-        if (rec) {
-            mountflags |= MS_REC;
-        }
-
-        if (readonly) {
-            mountflags |= MS_RDONLY;
-        }
-
-        if (!suid) {
-            mountflags |= MS_NOSUID;
-        }
-
-        if (!dev) {
-            mountflags |= MS_NODEV;
-        }
-
-        if (!exec) {
-            mountflags |= MS_NOEXEC;
-        }
-
-        if (-1 == mkdir(entry->mnt_dir, S_IRWXU)) {
-            errnum = errno;
-            if (errnum != EEXIST) {
-                perror("mkdir");
-                return EXIT_FAILURE;
-            }
-        }
-
-        if (-1
-            == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL
-                                                            : entry->mnt_fsname,
-                     entry->mnt_dir, entry->mnt_type, mountflags, leftovers)) {
-            perror("mount");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (endmntent(fstab) != 1) {
-        perror("endmntent");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
-        perror("mount");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == chroot(".")) {
-        perror("chroot");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == chdir("/")) {
-        perror("chdir");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == setgroups(0U, NULL)) {
-        perror("setgroups");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
-        perror("sethostname");
-        return EXIT_FAILURE;
-    }
-
-    /* Prevent future privilege gains */
-    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-        perror("prctl");
-        return EXIT_FAILURE;
-    }
-
-    /* Drop all privileges I might possibly have. I'm not sure I need
-     * to do this and I probably can do this in a better way. */
-    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
-        if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
-            perror("prctl");
-            return EXIT_FAILURE;
-        }
-    }
+    drop_privileges(fstab_path);
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
@@ -1098,6 +838,273 @@ exit_services : {
     }
 
     return EXIT_SUCCESS;
+}
+
+static void drop_privileges(char const *fstab_path)
+{
+    linted_error errnum;
+
+    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
+        perror("unshare");
+        _exit(EXIT_FAILURE);
+    }
+
+    /* Favor other processes over this process hierarchy. Only
+     * superuser may lower priorities so this is not stoppable. This
+     * also makes the process hierarchy nicer for the OOM killer.
+     */
+    errno = 0;
+    int priority = getpriority(PRIO_PROCESS, 0);
+    if (-1 == priority) {
+        errnum = errno;
+        if (errnum != 0) {
+            perror("getpriority");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
+        perror("setpriority");
+        _exit(EXIT_FAILURE);
+    }
+
+    /* TODO: Close files leading outside of the sandbox  */
+    FILE *fstab = setmntent(fstab_path, "re");
+    if (NULL == fstab) {
+        perror("setmtent");
+        _exit(EXIT_FAILURE);
+    }
+
+    {
+        char const *runtime_dir_string = getenv("XDG_RUNTIME_DIR");
+        if (NULL == runtime_dir_string) {
+            /* TODO: Fallback somewhere smart */
+            fputs("missing XDG_RUNTIME_DIR\n", stderr);
+            _exit(EXIT_FAILURE);
+        }
+
+        if (-1 == chdir(runtime_dir_string)) {
+            perror("chdir");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (-1 == mkdir("linted", S_IRWXU)) {
+        errnum = errno;
+        if (errnum != EEXIST) {
+            perror("mkdir");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (-1 == mount(NULL, "linted", "tmpfs", 0, NULL)) {
+        perror("mount");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == chdir("linted")) {
+        perror("chdir");
+        _exit(EXIT_FAILURE);
+    }
+
+    for (;;) {
+        errno = 0;
+        struct mntent *entry = getmntent(fstab);
+        if (NULL == entry) {
+            errnum = errno;
+            if (errnum != 0) {
+                perror("getmntent");
+                _exit(EXIT_FAILURE);
+            }
+
+            break;
+        }
+
+        enum {
+            BIND,
+            RBIND,
+            RO,
+            RW,
+            SUID,
+            NOSUID,
+            NODEV,
+            NOEXEC
+        };
+        static char const *const tokens[]
+            = {[BIND] = "bind",      [RBIND] = "rbind",
+               [RO] = MNTOPT_RO,     [RW] = MNTOPT_RW,
+               [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
+               [NODEV] = "nodev",    [NOEXEC] = "noexec",
+               NULL };
+        bool bind = false;
+        bool rec = false;
+        bool readonly = false;
+        bool readwrite = false;
+        bool suid = true;
+        bool dev = true;
+        bool exec = true;
+        char *leftovers = NULL;
+        {
+            char *mnt_opts = entry->mnt_opts;
+
+            if (0 == strcmp("none", mnt_opts)) {
+                goto mount;
+            }
+
+            char *subopts_str = strdup(mnt_opts);
+            if (NULL == subopts_str) {
+                perror("strdup");
+                _exit(EXIT_FAILURE);
+            }
+
+            char *subopts = subopts_str;
+
+            char *value = NULL;
+            while (*subopts != '\0') {
+                int token;
+                {
+                    char *xx = subopts;
+                    char *yy = value;
+                    token = getsubopt(&xx, (char * const *)tokens, &yy);
+                    subopts = xx;
+                    value = yy;
+                }
+                switch (token) {
+                case BIND:
+                    bind = true;
+                    break;
+
+                case RBIND:
+                    bind = true;
+                    rec = true;
+                    break;
+
+                case RO:
+                    readonly = true;
+                    break;
+
+                case RW:
+                    readwrite = true;
+                    break;
+
+                case SUID:
+                    suid = true;
+                    break;
+
+                case NOSUID:
+                    suid = false;
+                    break;
+
+                case NODEV:
+                    dev = false;
+                    break;
+
+                case NOEXEC:
+                    exec = false;
+                    break;
+
+                default:
+                    leftovers = strstr(mnt_opts, value);
+                    goto free_subopts_str;
+                }
+            }
+        free_subopts_str:
+            free(subopts_str);
+        }
+
+    mount:
+        if (readwrite && readonly) {
+            fprintf(stderr, "Only one of '%s' and '%s' can be specified\n",
+                    tokens[RO], tokens[RW]);
+            _exit(EXIT_FAILURE);
+        }
+
+        if (bind && readonly) {
+            fputs("\
+Due to a completely idiotic kernel bug (see \
+https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a bind mount\
+as readonly would fail completely silently and there is no way to \
+workaround this\n",
+                  stderr);
+            _exit(EXIT_FAILURE);
+        }
+
+        unsigned long mountflags = 0;
+
+        if (bind) {
+            mountflags |= MS_BIND;
+        }
+
+        if (rec) {
+            mountflags |= MS_REC;
+        }
+
+        if (readonly) {
+            mountflags |= MS_RDONLY;
+        }
+
+        if (!suid) {
+            mountflags |= MS_NOSUID;
+        }
+
+        if (!dev) {
+            mountflags |= MS_NODEV;
+        }
+
+        if (!exec) {
+            mountflags |= MS_NOEXEC;
+        }
+
+        if (-1 == mkdir(entry->mnt_dir, S_IRWXU)) {
+            errnum = errno;
+            if (errnum != EEXIST) {
+                perror("mkdir");
+                _exit(EXIT_FAILURE);
+            }
+        }
+
+        if (-1
+            == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL
+                                                            : entry->mnt_fsname,
+                     entry->mnt_dir, entry->mnt_type, mountflags, leftovers)) {
+            perror("mount");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (endmntent(fstab) != 1) {
+        perror("endmntent");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
+        perror("mount");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == chroot(".")) {
+        perror("chroot");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == chdir("/")) {
+        perror("chdir");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == setgroups(0U, NULL)) {
+        perror("setgroups");
+        _exit(EXIT_FAILURE);
+    }
+
+    /* Drop all privileges I might possibly have. I'm not sure I need
+     * to do this and I probably can do this in a better way. */
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
+        if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
+            perror("prctl");
+            _exit(EXIT_FAILURE);
+        }
+    }
 }
 
 static linted_error find_stdin(linted_ko *kop)
