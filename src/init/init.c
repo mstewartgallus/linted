@@ -209,7 +209,8 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
                                char const *simulator_path,
                                char const *gui_path);
 
-static void drop_privileges(char const *fstab_path);
+static void drop_privileges(char const *fstab_path,
+                            char const *runtime_dir_string);
 
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
@@ -404,16 +405,6 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
 
     static char const process_name[] = "monitor";
 
-    if (-1 == unshare(CLONE_NEWUTS)) {
-        perror("unshare");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
-        perror("sethostname");
-        return EXIT_FAILURE;
-    }
-
     /* The process monitor and manager */
     if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
         perror("prctl");
@@ -427,6 +418,16 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
 
     if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL)) {
         perror("prctl");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == unshare(CLONE_NEWUTS)) {
+        perror("unshare");
+        return EXIT_FAILURE;
+    }
+
+    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
+        perror("sethostname");
         return EXIT_FAILURE;
     }
 
@@ -447,7 +448,21 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
         return EXIT_FAILURE;
     }
 
-    drop_privileges(fstab_path);
+    char const *runtime_dir_string;
+    {
+        char const * xx = getenv("XDG_RUNTIME_DIR");
+        if (NULL == xx) {
+            /* TODO: Fallback somewhere smart */
+            fputs("missing XDG_RUNTIME_DIR\n", stderr);
+            return EXIT_FAILURE;
+        }
+
+        runtime_dir_string = strdup(xx);
+        if (NULL == runtime_dir_string) {
+            perror("strdup");
+            return EXIT_FAILURE;
+        }
+    }
 
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
@@ -478,8 +493,7 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
            display_value_length);
     display[display_string_length - 1U] = '\0';
 
-    errnum = linted_util_sanitize_environment();
-    if (errnum != 0) {
+    if ((errnum = linted_util_sanitize_environment()) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
     %s: can not sanitize the environment: %s\n",
                                process_name, linted_error_string_alloc(errnum));
@@ -496,6 +510,8 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
 
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
+
+    drop_privileges(fstab_path, runtime_dir_string);
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
@@ -840,7 +856,8 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static void drop_privileges(char const *fstab_path)
+static void drop_privileges(char const *fstab_path,
+                            char const *runtime_dir_string)
 {
     linted_error errnum;
 
@@ -875,18 +892,9 @@ static void drop_privileges(char const *fstab_path)
         _exit(EXIT_FAILURE);
     }
 
-    {
-        char const *runtime_dir_string = getenv("XDG_RUNTIME_DIR");
-        if (NULL == runtime_dir_string) {
-            /* TODO: Fallback somewhere smart */
-            fputs("missing XDG_RUNTIME_DIR\n", stderr);
-            _exit(EXIT_FAILURE);
-        }
-
-        if (-1 == chdir(runtime_dir_string)) {
-            perror("chdir");
-            _exit(EXIT_FAILURE);
-        }
+    if (-1 == chdir(runtime_dir_string)) {
+        perror("chdir");
+        _exit(EXIT_FAILURE);
     }
 
     if (-1 == mkdir("linted", S_IRWXU)) {
