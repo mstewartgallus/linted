@@ -14,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+pkgconfdir=$(sysconfdir)/linted
+
 TESTS=
 XFAIL_TESTS=
 
@@ -28,7 +30,8 @@ BUILT_SOURCES=
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 
-pkgconfdir=$(sysconfdir)/linted
+dist_pkgconf_DATA=
+
 uninstall-hook:
 	- rmdir '$(pkgconfdir)'
 

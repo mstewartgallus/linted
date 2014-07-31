@@ -16,17 +16,35 @@
 # limitations under the License.
 bin_PROGRAMS+=%D%/linted
 
-dist_pkgconf_DATA=%D%/fstab
-
-%C%_linted_SOURCES=%D%/init.c
+%C%_linted_SOURCES=%D%/boot.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\
+  src/io/libio.la\
+  src/locale/liblocale.la\
+  src/util/libutil.la\
+  \
+  %D%/libinit.la
+
+noinst_LTLIBRARIES+=%D%/libinit.la
+%C%_libinit_la_SOURCES=%D%/init.c
+%C%_libinit_la_LIBADD=\
+  src/start/libstart.la\
+  \
+  src/error/liberror.la\
+  src/io/libio.la\
+  src/util/libutil.la\
+  \
+  %D%/libmonitor.la
+
+noinst_LTLIBRARIES+=%D%/libmonitor.la
+%C%_libmonitor_la_SOURCES=%D%/monitor.c
+%C%_libmonitor_la_LIBADD=\
+  src/error/liberror.la\
   src/ko/libko.la\
   src/io/libio.la\
-  src/ko/libko.la\
   src/locale/liblocale.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
@@ -37,6 +55,8 @@ dist_pkgconf_DATA=%D%/fstab
   src/logger/liblogger.la\
   src/manager/libmanager.la\
   src/updater/libupdater.la
+
+dist_pkgconf_DATA+=%D%/fstab
 
 BUILT_SOURCES+=%D%/binaries.h
 EXTRA_DIST+=%D%/binaries.h.in
