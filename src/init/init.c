@@ -203,9 +203,12 @@ struct connection_pool
     size_t count;
 };
 
-static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
+static uint_fast8_t do_init(linted_ko cwd, char const *display,
+                            char const *xdg_runtime_dir, char const *fstab_path,
                             char const *simulator_path, char const *gui_path);
-static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
+static uint_fast8_t do_monitor(linted_ko cwd, char const *display,
+                               char const *xdg_runtime_dir,
+                               char const *fstab_path,
                                char const *simulator_path,
                                char const *gui_path);
 
@@ -314,13 +317,49 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
+    char const * xdg_runtime_dir_orig = getenv("XDG_RUNTIME_DIR");
+    if (NULL == xdg_runtime_dir_orig) {
+        /* TODO: Fallback somewhere smart */
+        fputs("missing XDG_RUNTIME_DIR\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    char const * display_orig = getenv("DISPLAY");
+    if (NULL == display_orig) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing DISPLAY environment variable\n",
+                               process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+                                        LINTED_STR(HELP_OPTION));
+        return EXIT_FAILURE;
+    }
+
+    char const *xdg_runtime_dir = strdup(xdg_runtime_dir_orig);
+    if (NULL == xdg_runtime_dir) {
+        perror("strdup");
+        return EXIT_FAILURE;
+    }
+
+    char const *display = strdup(display_orig);
+    if (NULL == display) {
+        perror("strdup");
+        return EXIT_FAILURE;
+    }
+
+    if ((errnum = linted_util_sanitize_environment()) != 0) {
+        linted_io_write_format(STDERR_FILENO, NULL, "\
+    %s: can not sanitize the environment: %s\n",
+                               process_name, linted_error_string_alloc(errnum));
+        return EXIT_FAILURE;
+    }
+
     /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
      * needed to allow the permissions to work.
      */
     pid_t child;
     {
-        child
-            = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
+        child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID,
+                        NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -330,7 +369,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
 
         if (0 == child) {
-            return do_init(cwd, fstab_path, simulator_path, gui_path);
+            return do_init(cwd, display, xdg_runtime_dir, fstab_path,
+                           simulator_path, gui_path);
         }
     }
 
@@ -348,7 +388,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 }
 
-static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
+static uint_fast8_t do_init(linted_ko cwd, char const *display,
+                            char const *xdg_runtime_dir, char const *fstab_path,
                             char const *simulator_path, char const *gui_path)
 {
     linted_error errnum;
@@ -380,7 +421,8 @@ static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
         }
 
         if (0 == child) {
-            return do_monitor(cwd, fstab_path, simulator_path, gui_path);
+            return do_monitor(cwd, display, xdg_runtime_dir, fstab_path,
+                              simulator_path, gui_path);
         }
     }
 
@@ -398,7 +440,9 @@ static uint_fast8_t do_init(linted_ko cwd, char const *fstab_path,
     }
 }
 
-static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
+static uint_fast8_t do_monitor(linted_ko cwd, char const *display,
+                               char const *xdg_runtime_dir,
+                               char const *fstab_path,
                                char const *simulator_path, char const *gui_path)
 {
     linted_error errnum;
@@ -448,57 +492,23 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
         return EXIT_FAILURE;
     }
 
-    char const *runtime_dir_string;
-    {
-        char const * xx = getenv("XDG_RUNTIME_DIR");
-        if (NULL == xx) {
-            /* TODO: Fallback somewhere smart */
-            fputs("missing XDG_RUNTIME_DIR\n", stderr);
-            return EXIT_FAILURE;
-        }
-
-        runtime_dir_string = strdup(xx);
-        if (NULL == runtime_dir_string) {
-            perror("strdup");
-            return EXIT_FAILURE;
-        }
-    }
-
-    char const *original_display = getenv("DISPLAY");
-    if (NULL == original_display) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing DISPLAY environment variable\n",
-                               process_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    size_t display_value_length = strlen(original_display);
-    size_t display_string_length = strlen("DISPLAY=") + display_value_length
-                                   + 1U;
-    char *display;
+    size_t display_length = strlen(display);
+    size_t env_display_var_length = strlen("DISPLAY=") + display_length + 1U;
+    char *env_display_var;
     {
         void *xx;
-        if ((errnum = linted_mem_alloc(&xx, display_string_length)) != 0) {
+        if ((errnum = linted_mem_alloc(&xx, env_display_var_length)) != 0) {
             linted_io_write_format(
                 STDERR_FILENO, NULL, "%s: can't allocate DISPLAY string: %s\n",
                 process_name, linted_error_string_alloc(errnum));
             return EXIT_FAILURE;
         }
-        display = xx;
+        env_display_var = xx;
     }
-    memcpy(display, "DISPLAY=", strlen("DISPLAY="));
-    memcpy(display + strlen("DISPLAY="), original_display,
-           display_value_length);
-    display[display_string_length - 1U] = '\0';
-
-    if ((errnum = linted_util_sanitize_environment()) != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-    %s: can not sanitize the environment: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
-    }
+    memcpy(env_display_var, "DISPLAY=", strlen("DISPLAY="));
+    memcpy(env_display_var + strlen("DISPLAY="), display,
+           display_length);
+    env_display_var[env_display_var_length - 1U] = '\0';
 
     {
         /* Set signals to a safe default */
@@ -511,7 +521,7 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    drop_privileges(fstab_path, runtime_dir_string);
+    drop_privileges(fstab_path, xdg_runtime_dir);
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
@@ -537,7 +547,7 @@ static uint_fast8_t do_monitor(linted_ko cwd, char const *fstab_path,
                        .dirko = cwd,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
-                       .environment = (char const * const[]) { display, NULL },
+                       .environment = (char const * const[]) { env_display_var, NULL },
                        .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
