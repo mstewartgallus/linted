@@ -149,7 +149,7 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        if (-1 == fcntl(fd, F_SETFD, (long) oflags | FD_CLOEXEC)) {
+        if (-1 == fcntl(fd, F_SETFD, (long)oflags | FD_CLOEXEC)) {
             perror("fcntl");
             return EXIT_FAILURE;
         }

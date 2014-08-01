@@ -26,11 +26,9 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/manager.h"
 #include "linted/mem.h"
-#include "linted/start.h"
 #include "linted/spawn.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -38,17 +36,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <mntent.h>
-#include <fcntl.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-
-#include <linux/sched.h>
 
 #define BACKLOG 20U
 
@@ -244,7 +238,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         return EXIT_FAILURE;
     }
 
-    if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1L, 0UL, 0UL, 0UL)) {
+    if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1UL, 0UL, 0UL, 0UL)) {
         perror("prctl");
         return EXIT_FAILURE;
     }
@@ -602,10 +596,15 @@ close_new_connections : {
 }
 
 exit_services : {
-    linted_error kill_errnum = -1 == kill(-1, SIGKILL) ? errno : 0;
-    /* kill_errnum == ESRCH is fine */
-    assert(kill_errnum != EINVAL);
-    assert(kill_errnum != EPERM);
+    if (-1 == kill(-1, SIGKILL)) {
+        linted_error kill_errnum = errno;
+        assert(kill_errnum != 0);
+        if (kill_errnum != ESRCH) {
+            assert(kill_errnum != EINVAL);
+            assert(kill_errnum != EPERM);
+            assert(false);
+        }
+    }
 }
 
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
@@ -743,6 +742,7 @@ close_file:
     if (endmntent(fstab) != 1) {
         if (0 == errnum) {
             errnum = errno;
+            assert(errnum != 0);
         }
     }
 
@@ -1141,35 +1141,34 @@ static linted_error on_read_connection(struct linted_asynch_task
     switch (request->type) {
     case LINTED_MANAGER_STATUS: {
         union service const *service = &services[request->status.service];
-
+        pid_t pid;
         switch (config[request->status.service].type) {
-            {
-                pid_t pid;
+        case SERVICE_INIT:
+            pid = service->init.pid;
+            goto status_service_process;
 
-                if (false) {
-                case SERVICE_INIT:
-                    pid = service->init.pid;
-                } else {
-                case SERVICE_PROCESS:
-                    pid = service->process.pid;
-                }
+        case SERVICE_PROCESS:
+            pid = service->process.pid;
+            goto status_service_process;
 
-                errnum = -1 == kill(pid, 0) ? errno : 0;
-                assert(errnum != EINVAL);
-                switch (errnum) {
-                case 0:
-                    reply.status.is_up = true;
-                    break;
-
-                case ESRCH:
-                    reply.status.is_up = false;
-                    break;
-
-                default:
-                    goto connection_remove;
-                }
+        status_service_process:
+            if (0 == kill(pid, 0)) {
+                reply.status.is_up = true;
                 break;
             }
+
+            errnum = errno;
+            assert(errnum != 0);
+            assert(errnum != EINVAL);
+            switch (errnum) {
+            case ESRCH:
+                reply.status.is_up = false;
+                break;
+
+            default:
+                goto connection_remove;
+            }
+            break;
 
         default:
             break;
@@ -1179,39 +1178,38 @@ static linted_error on_read_connection(struct linted_asynch_task
 
     case LINTED_MANAGER_STOP: {
         union service const *service = &services[request->stop.service];
-
+        pid_t pid;
         switch (config[request->status.service].type) {
-            {
-                pid_t pid;
+        case SERVICE_INIT:
+            pid = service->init.pid;
+            goto stop_service_process;
 
-                if (false) {
-                case SERVICE_INIT:
-                    pid = service->init.pid;
-                } else {
-                case SERVICE_PROCESS:
-                    pid = service->process.pid;
-                }
+        case SERVICE_PROCESS:
+            pid = service->process.pid;
+            goto stop_service_process;
 
-                errnum = -1 == kill(pid, SIGKILL) ? errno : 0;
-                assert(errnum != EINVAL);
-                switch (errnum) {
-                case 0:
-                    reply.stop.was_up = true;
-                    break;
-
-                case ESRCH:
-                    reply.stop.was_up = false;
-                    break;
-
-                default:
-                    goto connection_remove;
-                }
+        stop_service_process:
+            if (0 == kill(pid, SIGKILL)) {
+                reply.stop.was_up = true;
+                break;
             }
+
+            errnum = errno;
+            assert(errnum != 0);
+            assert(errnum != EINVAL);
+            switch (errnum) {
+            case ESRCH:
+                reply.stop.was_up = false;
+                break;
+
+            default:
+                goto connection_remove;
+            }
+            break;
 
         default:
             break;
         }
-        break;
     }
     }
 
@@ -1232,17 +1230,16 @@ connection_remove:
     return errnum;
 }
 
-static linted_error on_write_connection(struct linted_asynch_task
-                                        *completed_task)
+static linted_error on_write_connection(struct linted_asynch_task *task)
 {
     linted_error errnum;
 
     struct write_conn_task *write_conn_task
-        = LINTED_DOWNCAST(struct write_conn_task, completed_task);
+        = LINTED_DOWNCAST(struct write_conn_task, task);
     struct connection_pool *connection_pool = write_conn_task->connection_pool;
     struct connection *connection = write_conn_task->connection;
 
-    errnum = completed_task->errnum;
+    errnum = task->errnum;
 
     {
         linted_error remove_errnum
@@ -1266,7 +1263,7 @@ static linted_error check_db(linted_ko cwd)
     struct linted_asynch_pool *pool;
     {
         struct linted_asynch_pool *xx;
-        if ((errnum = linted_asynch_pool_create(&xx, 1)) != 0) {
+        if ((errnum = linted_asynch_pool_create(&xx, 1U)) != 0) {
             return errnum;
         }
         pool = xx;

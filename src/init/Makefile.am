@@ -45,7 +45,6 @@ noinst_LTLIBRARIES+=%D%/libmonitor.la
   src/error/liberror.la\
   src/ko/libko.la\
   src/io/libio.la\
-  src/locale/liblocale.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
   src/util/libutil.la\
