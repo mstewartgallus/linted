@@ -209,7 +209,7 @@ static linted_error get_flags_and_data(char const *opts,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
 
-static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
+static void drop_privileges(linted_ko cwd, struct mount_args *mount_args,
                             size_t mount_args_size,
                             char const *runtime_dir_string);
 
@@ -691,7 +691,7 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
+static void drop_privileges(linted_ko cwd, struct mount_args *mount_args,
                             size_t mount_args_size,
                             char const *runtime_dir_string)
 {
@@ -723,7 +723,7 @@ static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
         }
     }
 
-    if (-1 == unshare(CLONE_NEWNET |CLONE_NEWNS)) {
+    if (-1 == unshare(CLONE_NEWNET | CLONE_NEWNS)) {
         perror("unshare");
         _exit(EXIT_FAILURE);
     }
