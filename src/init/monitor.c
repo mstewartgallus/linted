@@ -663,9 +663,6 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path)
 {
     linted_error errnum = 0;
-    struct mount_args *buf = NULL;
-    size_t size = 0U;
-    size_t buf_size = 0U;
 
     char const *abspath;
     if (fstab_path[0U] != '/') {
