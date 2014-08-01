@@ -40,8 +40,8 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                               struct linted_mq_attr *attr, int flags)
 {
     linted_error errnum;
-    char random_mq_name[FILE_MAX + 1U];
     linted_mq ko;
+    int unlink_status;
 
     if (debugpath[0U] != '/') {
         return EINVAL;
@@ -56,55 +56,60 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
     size_t maxmsg = attr->maxmsg;
     size_t msgsize = attr->msgsize;
 
-    memcpy(1U + random_mq_name, 1U + debugpath, path_size);
-    random_mq_name[0U] = '/';
-    random_mq_name[1U + path_size] = '-';
-    random_mq_name[1U + path_size + 1U + RANDOM_BYTES] = '\0';
+    {
+        char random_mq_name[FILE_MAX + 1U];
 
-    do {
-        for (size_t ii = 0U; ii < RANDOM_BYTES; ++ii) {
-            char random_char;
-            for (;;) {
-                /* Normally using the modulus would give a bad
-                 * distribution but CHAR_MAX + 1U is a power of two
-                 */
-                random_char = linted_random_fast() % (CHAR_MAX + 1U);
+        memcpy(1U + random_mq_name, 1U + debugpath, path_size);
+        random_mq_name[0U] = '/';
+        random_mq_name[1U + path_size] = '-';
+        random_mq_name[1U + path_size + 1U + RANDOM_BYTES] = '\0';
 
-                /* Throw out results and retry for an even
-                 * distribution
-                 */
-                if ((random_char >= 'a' && random_char <= 'z')
-                    || (random_char >= 'A' && random_char <= 'Z')
-                    || (random_char >= '0' && random_char <= '9')) {
-                    break;
+        do {
+            for (size_t ii = 0U; ii < RANDOM_BYTES; ++ii) {
+                char random_char;
+                for (;;) {
+                    /* Normally using the modulus would give a bad
+                     * distribution but CHAR_MAX + 1U is a power of two
+                     */
+                    random_char = linted_random_fast() % (CHAR_MAX + 1U);
+
+                    /* Throw out results and retry for an even
+                     * distribution
+                     */
+                    if ((random_char >= 'a' && random_char <= 'z')
+                        || (random_char >= 'A' && random_char <= 'Z')
+                        || (random_char >= '0' && random_char <= '9')) {
+                        break;
+                    }
                 }
+
+                random_mq_name[1U + path_size + 1U + ii] = random_char;
             }
 
-            random_mq_name[1U + path_size + 1U + ii] = random_char;
+            {
+                struct mq_attr mq_attr;
+                mq_attr.mq_flags = 0;
+                mq_attr.mq_curmsgs = 0;
+                mq_attr.mq_maxmsg = maxmsg;
+                mq_attr.mq_msgsize = msgsize;
+
+                ko = mq_open(random_mq_name, O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
+                             S_IRUSR | S_IWUSR, &mq_attr);
+            }
+            if (-1 == ko) {
+                errnum = errno;
+                assert(errnum != 0);
+            } else {
+                errnum = 0;
+            }
+        } while (EEXIST == errnum);
+        if (errnum != 0) {
+            goto exit_with_error;
         }
 
-        {
-            struct mq_attr mq_attr;
-            mq_attr.mq_flags = 0;
-            mq_attr.mq_curmsgs = 0;
-            mq_attr.mq_maxmsg = maxmsg;
-            mq_attr.mq_msgsize = msgsize;
-
-            ko = mq_open(random_mq_name, O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
-                         S_IRUSR | S_IWUSR, &mq_attr);
-        }
-        if (-1 == ko) {
-            errnum = errno;
-            assert(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-    } while (EEXIST == errnum);
-    if (errnum != 0) {
-        goto exit_with_error;
+        unlink_status = mq_unlink(random_mq_name);
     }
-
-    if (-1 == mq_unlink(random_mq_name)) {
+    if (-1 == unlink_status) {
         errnum = errno;
         assert(errnum != 0);
         goto exit_with_error_and_close;

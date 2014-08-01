@@ -1246,6 +1246,9 @@ static linted_error egl_error(void)
 
     case EGL_CONTEXT_LOST:
         return ENOSYS;
+
+    default:
+        assert(false);
     }
 }
 
