@@ -66,8 +66,8 @@ uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
         }
 
         if (0 == child) {
-            return linted_init_monitor(cwd, display, chrootdir_path,
-                                       fstab_path, simulator_path, gui_path);
+            return linted_init_monitor(cwd, display, chrootdir_path, fstab_path,
+                                       simulator_path, gui_path);
         }
     }
 

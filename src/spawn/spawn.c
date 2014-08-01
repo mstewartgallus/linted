@@ -67,7 +67,8 @@ struct linted_spawn_file_actions
     union file_action actions[];
 };
 
-struct mount_args {
+struct mount_args
+{
     char *source;
     char *target;
     char *filesystemtype;
@@ -77,9 +78,9 @@ struct mount_args {
 
 struct linted_spawn_attr
 {
-    char const * chrootdir;
+    char const *chrootdir;
     size_t mount_args_size;
-    struct mount_args * mount_args;
+    struct mount_args *mount_args;
     pid_t pgroup;
     bool setpgroup : 1U;
     bool drop_caps : 1U;
@@ -153,20 +154,19 @@ void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
-                                    char const * chrootdir)
+                                    char const *chrootdir)
 {
     attr->chrootdir = chrootdir;
 }
 
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
-                                        char const *source,
-                                        char const *target,
+                                        char const *source, char const *target,
                                         char const *filesystemtype,
                                         unsigned long mountflags,
-                                        char const * data)
+                                        char const *data)
 {
     linted_error errnum = 0;
-    struct mount_args * mount_args = attr->mount_args;
+    struct mount_args *mount_args = attr->mount_args;
     size_t size = attr->mount_args_size;
 
     size_t new_size = size + 1U;
@@ -178,7 +178,7 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
     char *source_copy;
     char *target_copy;
     char *filesystemtype_copy;
-    char * data_copy;
+    char *data_copy;
 
     if (NULL == source) {
         source_copy = NULL;
@@ -449,8 +449,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 }
 
                 if (-1 == mount(mount_arg->source, mount_arg->target,
-                                mount_arg->filesystemtype, mount_arg->mountflags,
-                                mount_arg->data)) {
+                                mount_arg->filesystemtype,
+                                mount_arg->mountflags, mount_arg->data)) {
                     exit_with_error(spawn_error, errno);
                 }
             }

@@ -193,8 +193,7 @@ struct connection_pool
     size_t count;
 };
 
-static linted_error parse_fstab(struct linted_spawn_attr * attr,
-                                linted_ko cwd,
+static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 
 static linted_error get_flags_and_data(char const *opts,
@@ -305,7 +304,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-   union service_config const config[]
+    union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
            [LINTED_SERVICE_SIMULATOR]
                = { .process
@@ -660,8 +659,8 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static linted_error parse_fstab(struct linted_spawn_attr * attr,
-                                linted_ko cwd, char const *fstab_path)
+static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
+                                char const *fstab_path)
 {
     linted_error errnum = 0;
     struct mount_args *buf = NULL;
@@ -737,11 +736,8 @@ static linted_error parse_fstab(struct linted_spawn_attr * attr,
             data = yy;
         }
 
-        if ((errnum = linted_spawn_attr_setmount(attr, fsname,
-                                                 dir,
-                                                 type,
-                                                 mountflags,
-                                                 data)) != 0) {
+        if ((errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
+                                                 mountflags, data)) != 0) {
             goto close_file;
         }
     }
