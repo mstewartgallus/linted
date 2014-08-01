@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 pkgconfdir=$(sysconfdir)/linted
+chrootdir=$(pkgdatadir)/chroot
 
 TESTS=
 XFAIL_TESTS=
@@ -34,6 +35,10 @@ dist_pkgconf_DATA=
 
 uninstall-hook:
 	- rmdir '$(pkgconfdir)'
+	- rmdir '$(chrootdir)'
+
+install-data-hook:
+	$(MKDIR_P) '$(chrootdir)'
 
 EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
 

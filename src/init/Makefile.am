@@ -64,6 +64,7 @@ MOSTLYCLEANFILES+=%D%/binaries.h
 %D%/binaries.h: $(MAKEFILE) %D%/binaries.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
+	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
 	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $(srcdir)/%D%/binaries.h.in > $@

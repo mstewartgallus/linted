@@ -209,9 +209,9 @@ static linted_error get_flags_and_data(char const *opts,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
 
-static void drop_privileges(linted_ko cwd, struct mount_args *mount_args,
-                            size_t mount_args_size,
-                            char const *runtime_dir_string);
+static void drop_privileges(char const *chrootdir_path,
+                            struct mount_args *mount_args,
+                            size_t mount_args_size);
 
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
@@ -237,7 +237,7 @@ static linted_error connection_remove(struct connection *connection,
                                       struct connection_pool *connection_pool);
 
 uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
-                                 char const *xdg_runtime_dir,
+                                 char const *chrootdir_path,
                                  char const *fstab_path,
                                  char const *simulator_path,
                                  char const *gui_path)
@@ -334,7 +334,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         mount_args = yy;
     }
 
-    drop_privileges(cwd, mount_args, mount_args_size, xdg_runtime_dir);
+    drop_privileges(chrootdir_path, mount_args, mount_args_size);
 
     for (size_t ii = 0U; ii < mount_args_size; ++ii) {
         struct mount_args *mount_arg = &mount_args[ii];
@@ -691,49 +691,23 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static void drop_privileges(linted_ko cwd, struct mount_args *mount_args,
-                            size_t mount_args_size,
-                            char const *runtime_dir_string)
+static void drop_privileges(char const *chrootdir_path,
+                            struct mount_args *mount_args,
+                            size_t mount_args_size)
 {
     linted_error errnum;
-
-    if (-1 == chdir(runtime_dir_string)) {
-        perror("chdir");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == mkdir("linted", S_IRWXU)) {
-        errnum = errno;
-        if (errnum != EEXIST) {
-            perror("mkdir");
-            _exit(EXIT_FAILURE);
-        }
-    }
-
-    if (-1 == chdir("linted")) {
-        perror("chdir");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == mkdir("chroot", S_IRWXU)) {
-        errnum = errno;
-        if (errnum != EEXIST) {
-            perror("mkdir");
-            _exit(EXIT_FAILURE);
-        }
-    }
 
     if (-1 == unshare(CLONE_NEWNET | CLONE_NEWNS)) {
         perror("unshare");
         _exit(EXIT_FAILURE);
     }
 
-    if (-1 == mount(NULL, "chroot", "tmpfs", 0, NULL)) {
+    if (-1 == mount(NULL, chrootdir_path, "tmpfs", 0, NULL)) {
         perror("mount");
         _exit(EXIT_FAILURE);
     }
 
-    if (-1 == chdir("chroot")) {
+    if (-1 == chdir(chrootdir_path)) {
         perror("chdir");
         _exit(EXIT_FAILURE);
     }

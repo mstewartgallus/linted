@@ -37,6 +37,7 @@
 #define HELP_OPTION "--help"
 #define VERSION_OPTION "--version"
 
+#define CHROOTDIR_OPTION "--chrootdir"
 #define FSTAB_OPTION "--fstab"
 #define SIMULATOR_OPTION "--simulator"
 #define GUI_OPTION "--gui"
@@ -69,6 +70,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
     char const *fstab_path = PKGCONFDIR "/fstab";
+    char const *chrootdir_path = CHROOTDIR;
 
     for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
@@ -77,6 +79,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             need_help = true;
         } else if (0 == strcmp(argument, VERSION_OPTION)) {
             need_version = true;
+        } else if (0 == strncmp(argument, CHROOTDIR_OPTION "=",
+                                strlen(CHROOTDIR_OPTION "="))) {
+            chrootdir_path = argument + strlen(CHROOTDIR_OPTION "=");
         } else if (0 == strncmp(argument, FSTAB_OPTION "=",
                                 strlen(FSTAB_OPTION "="))) {
             fstab_path = argument + strlen(FSTAB_OPTION "=");
@@ -110,13 +115,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    char const *xdg_runtime_dir_orig = getenv("XDG_RUNTIME_DIR");
-    if (NULL == xdg_runtime_dir_orig) {
-        /* TODO: Fallback somewhere smart */
-        fputs("missing XDG_RUNTIME_DIR\n", stderr);
-        return EXIT_FAILURE;
-    }
-
     char const *display_orig = getenv("DISPLAY");
     if (NULL == display_orig) {
         linted_io_write_format(STDERR_FILENO, NULL,
@@ -124,12 +122,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                                process_name);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    char const *xdg_runtime_dir = strdup(xdg_runtime_dir_orig);
-    if (NULL == xdg_runtime_dir) {
-        perror("strdup");
         return EXIT_FAILURE;
     }
 
@@ -162,7 +154,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
 
         if (0 == child) {
-            return linted_init_init(cwd, display, xdg_runtime_dir, fstab_path,
+            return linted_init_init(cwd, display, chrootdir_path, fstab_path,
                                     simulator_path, gui_path);
         }
     }
@@ -221,6 +213,7 @@ Play the game.\n"))) != 0) {
     }
 
     if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+  --chrootdir         the directory the chroot is mounted to\n\
   --fstab             the location of the chroot mount instructions\n\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {

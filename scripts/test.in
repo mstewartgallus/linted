@@ -6,8 +6,17 @@ set -u
 
 SRCDIR="@srcdir@"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+if test "x${XDG_RUNTIME_DIR}" = "x"
+then
+    # TODO: Find a fallback
+    echo "Don't have a runtime directory" >2
+    exit 1
+fi
+
+mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
 exec "${ROOT}/../src/init/linted"\
+     --chrootdir="${XDG_RUNTIME_DIR}/linted/chroot"\
      --fstab="${SRCDIR}/src/init/fstab"\
      --simulator="${ROOT}/../src/simulator/simulator"\
      --gui="${ROOT}/../src/gui/gui" "$@"
