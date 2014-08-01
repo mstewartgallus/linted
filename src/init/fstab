@@ -7,7 +7,6 @@
 /home	home	none	rbind   # TODO: This doesn't work with overlayfs
 
 proc	proc	proc	ro,nosuid,nodev,noexec
-sys	sys	sysfs	ro,nosuid,nodev,noexec
 
 overlayfs	etc	overlayfs	ro,lowerdir=/etc,upperdir=/etc
 
@@ -15,13 +14,4 @@ overlayfs	lib	overlayfs	ro,lowerdir=/lib,upperdir=/lib
 overlayfs	lib32	overlayfs	ro,lowerdir=/lib32,upperdir=/lib32
 overlayfs	lib64	overlayfs	ro,lowerdir=/lib64,upperdir=/lib64
 
-overlayfs	bin	overlayfs	ro,lowerdir=/bin,upperdir=/bin
-overlayfs	sbin	overlayfs	ro,lowerdir=/sbin,upperdir=/sbin
 overlayfs	usr	overlayfs	ro,lowerdir=/usr,upperdir=/usr
-
-# Separate everything else
-tmpfs	var	tmpfs	noexec,nosuid
-tmpfs	run	tmpfs	nosuid,noexec
-tmpfs	run/lock	tmpfs	nosuid,nodev,noexec
-tmpfs	run/shm	tmpfs	nosuid,nodev
-
