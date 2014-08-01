@@ -354,6 +354,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 
         child = fork();
+
         if (-1 == child) {
             errnum = errno;
             assert(errnum != 0);
@@ -428,7 +429,38 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
 
         if (attr->drop_caps) {
-            if (-1 == unshare(CLONE_NEWNET | CLONE_NEWNS)) {
+            /* Used ways to sandbox:
+             *
+             * - CLONE_NEWNS - Coupled with chrooting is good for
+             *                 sandboxing files.
+             *
+             * - CLONE_NEWIPC - Nobody really uses System V IPC
+             *                  objects anymore but maybe a few
+             *                  applications on the system have some
+             *                  for legacy communication purposes.
+             *
+             * - CLONE_NEWNET - Prevents processes from connecting to
+             *                  open abstract sockets.
+             *
+             * Unused
+             *
+             * - CLONE_NEWUTS - Clones the hostname namespace. Pretty
+             *                  useless.
+             *
+             * - CLONE_NEWUSER - Allows to create one's own users and
+             *                   enable some more
+             *                   sandboxes. Otherwise, it is pretty
+             *                   useless. Not permitted to use under
+             *                   the existing sandbox.
+             *
+             * - CLONE_NEWPID - Prevents processes from ptracing and
+             *                  signalling other
+             *                  processes. Unfortunately, PID 1 can't
+             *                  send itself signals so this is
+             *                  unusable for many applications.
+             *
+             */
+            if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
                 exit_with_error(spawn_error, errno);
             }
 
@@ -483,10 +515,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             }
 
             if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
-                exit_with_error(spawn_error, errno);
-            }
-
-            if (-1 == unshare(CLONE_NEWIPC)) {
                 exit_with_error(spawn_error, errno);
             }
 
