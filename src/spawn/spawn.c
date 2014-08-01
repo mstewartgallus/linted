@@ -36,6 +36,7 @@
 #include <sys/mount.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -415,6 +416,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     }
 
     if (attr != NULL) {
+
         if (attr->setpgroup) {
             if (-1 == setpgid(0, attr->pgroup)) {
                 errnum = errno;
