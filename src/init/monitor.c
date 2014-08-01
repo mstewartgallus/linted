@@ -193,25 +193,13 @@ struct connection_pool
     size_t count;
 };
 
-struct mount_args
-{
-    char *source;
-    char *target;
-    char *filesystemtype;
-    unsigned long mountflags;
-    char *data;
-};
-
-static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
-                                size_t *sizep, struct mount_args **mount_argsp);
+static linted_error parse_fstab(struct linted_spawn_attr * attr,
+                                linted_ko cwd,
+                                char const *fstab_path);
 
 static linted_error get_flags_and_data(char const *opts,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
-
-static void drop_privileges(char const *chrootdir_path,
-                            struct mount_args *mount_args,
-                            size_t mount_args_size);
 
 static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
@@ -317,35 +305,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    /* TODO: Close files leading outside of the sandbox  */
-    size_t mount_args_size;
-    struct mount_args *mount_args;
-    {
-        size_t xx;
-        struct mount_args *yy;
-
-        if ((errnum = parse_fstab(cwd, fstab_path, &xx, &yy)) != 0) {
-            errno = errnum;
-            perror("parse_fstab");
-            _exit(EXIT_FAILURE);
-        }
-
-        mount_args_size = xx;
-        mount_args = yy;
-    }
-
-    drop_privileges(chrootdir_path, mount_args, mount_args_size);
-
-    for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-        struct mount_args *mount_arg = &mount_args[ii];
-        linted_mem_free(mount_arg->source);
-        linted_mem_free(mount_arg->target);
-        linted_mem_free(mount_arg->filesystemtype);
-        linted_mem_free(mount_arg->data);
-    }
-    linted_mem_free(mount_args);
-
-    union service_config const config[]
+   union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
            [LINTED_SERVICE_SIMULATOR]
                = { .process
@@ -464,6 +424,15 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         }
 
         linted_spawn_attr_drop_caps(attr);
+
+        linted_spawn_attr_setchrootdir(attr, chrootdir_path);
+
+        /* TODO: Close files leading outside of the sandbox  */
+        if ((errnum = parse_fstab(attr, cwd, fstab_path)) != 0) {
+            errno = errnum;
+            perror("parse_fstab");
+            return EXIT_FAILURE;
+        }
 
         size_t dup_pairs_size = proc_config->dup_pairs.size;
         linted_ko *proc_kos;
@@ -691,64 +660,8 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static void drop_privileges(char const *chrootdir_path,
-                            struct mount_args *mount_args,
-                            size_t mount_args_size)
-{
-    linted_error errnum;
-
-    if (-1 == unshare(CLONE_NEWNET | CLONE_NEWNS)) {
-        perror("unshare");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == mount(NULL, chrootdir_path, "tmpfs", 0, NULL)) {
-        perror("mount");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == chdir(chrootdir_path)) {
-        perror("chdir");
-        _exit(EXIT_FAILURE);
-    }
-
-    for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-        struct mount_args *mount_arg = &mount_args[ii];
-
-        if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
-            errnum = errno;
-            if (errnum != EEXIST) {
-                perror("mkdir");
-                _exit(EXIT_FAILURE);
-            }
-        }
-
-        if (-1 == mount(mount_arg->source, mount_arg->target,
-                        mount_arg->filesystemtype, mount_arg->mountflags,
-                        mount_arg->data)) {
-            perror("mount");
-            _exit(EXIT_FAILURE);
-        }
-    }
-
-    if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
-        perror("mount");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == chroot(".")) {
-        perror("chroot");
-        _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == chdir("/")) {
-        perror("chdir");
-        _exit(EXIT_FAILURE);
-    }
-}
-
-static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
-                                size_t *sizep, struct mount_args **mount_argsp)
+static linted_error parse_fstab(struct linted_spawn_attr * attr,
+                                linted_ko cwd, char const *fstab_path)
 {
     linted_error errnum = 0;
     struct mount_args *buf = NULL;
@@ -786,35 +699,10 @@ static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
         if (NULL == entry) {
             errnum = errno;
             if (errnum != 0) {
-                goto free_mount_args;
+                goto close_file;
             }
 
             break;
-        }
-
-        if (size >= buf_size) {
-            size_t new_size = size + 1U;
-            if (new_size < size) {
-                errnum = ENOMEM;
-                goto free_mount_args;
-            }
-
-            if (SIZE_MAX / 3U < new_size) {
-                errnum = ENOMEM;
-                goto free_mount_args;
-            }
-            buf_size = (new_size * 3U) / 2U;
-
-            struct mount_args *newbuf;
-            {
-                void *xx;
-                if ((errnum = linted_mem_realloc_array(&xx, buf, buf_size,
-                                                       sizeof buf[0U])) != 0) {
-                    goto free_mount_args;
-                }
-                newbuf = xx;
-            }
-            buf = newbuf;
         }
 
         char const *fsname = entry->mnt_fsname;
@@ -843,102 +731,27 @@ static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
             unsigned long xx;
             char const *yy;
             if ((errnum = get_flags_and_data(opts, &xx, &yy)) != 0) {
-                goto free_mount_args;
+                goto close_file;
             }
             mountflags = xx;
             data = yy;
         }
 
-        char *source;
-        char *target;
-        char *filesystemtype;
-        char *data_copy;
-
-        if (NULL == fsname) {
-            source = NULL;
-        } else {
-            source = strdup(fsname);
-            if (NULL == source) {
-                goto free_mount_args;
-            }
-        }
-
-        if (NULL == dir) {
-            target = NULL;
-        } else {
-            target = strdup(dir);
-            if (NULL == target) {
-                goto free_source;
-            }
-        }
-
-        if (NULL == type) {
-            filesystemtype = NULL;
-        } else {
-            filesystemtype = strdup(type);
-            if (NULL == filesystemtype) {
-                goto free_target;
-            }
-        }
-
-        if (NULL == data) {
-            data_copy = NULL;
-        } else {
-            data_copy = strdup(data);
-            if (NULL == data_copy) {
-                goto free_filesystemtype;
-            }
-        }
-
-        if (errnum != 0) {
-        free_filesystemtype:
-            linted_mem_free(filesystemtype);
-
-        free_target:
-            linted_mem_free(target);
-
-        free_source:
-            linted_mem_free(source);
-            goto free_mount_args;
-        }
-
-        buf[size].source = source;
-        buf[size].target = target;
-        buf[size].filesystemtype = filesystemtype;
-        buf[size].mountflags = mountflags;
-        buf[size].data = data_copy;
-
-        ++size;
-    }
-
-    /* Save on excess memory, also give debugging allocators more
-     * information.
-     */
-    void *xx;
-    if ((errnum = linted_mem_realloc_array(&xx, buf, size, sizeof buf[0U]))
-        != 0) {
-        goto free_mount_args;
-    }
-    buf = xx;
-
-free_mount_args:
-    if (errnum != 0) {
-        for (size_t ii = 0U; ii < size; ++ii) {
-            linted_mem_free(buf[ii].source);
-            linted_mem_free(buf[ii].target);
-            linted_mem_free(buf[ii].filesystemtype);
-            linted_mem_free(buf[ii].data);
+        if ((errnum = linted_spawn_attr_setmount(attr, fsname,
+                                                 dir,
+                                                 type,
+                                                 mountflags,
+                                                 data)) != 0) {
+            goto close_file;
         }
     }
 
+close_file:
     if (endmntent(fstab) != 1) {
         if (0 == errnum) {
             errnum = errno;
         }
     }
-
-    *sizep = size;
-    *mount_argsp = buf;
 
     return errnum;
 }

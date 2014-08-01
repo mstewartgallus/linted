@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mount.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
@@ -66,8 +67,19 @@ struct linted_spawn_file_actions
     union file_action actions[];
 };
 
+struct mount_args {
+    char *source;
+    char *target;
+    char *filesystemtype;
+    unsigned long mountflags;
+    char *data;
+};
+
 struct linted_spawn_attr
 {
+    char const * chrootdir;
+    size_t mount_args_size;
+    struct mount_args * mount_args;
     pid_t pgroup;
     bool setpgroup : 1U;
     bool drop_caps : 1U;
@@ -120,15 +132,122 @@ void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr)
     attr->drop_caps = true;
 }
 
+void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
+{
+    for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
+        struct mount_args *mount_arg = &attr->mount_args[ii];
+        linted_mem_free(mount_arg->source);
+        linted_mem_free(mount_arg->target);
+        linted_mem_free(mount_arg->filesystemtype);
+        linted_mem_free(mount_arg->data);
+    }
+    linted_mem_free(attr->mount_args);
+
+    linted_mem_free(attr);
+}
+
 void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
     attr->setpgroup = true;
     attr->pgroup = pgroup;
 }
 
-void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
+void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
+                                    char const * chrootdir)
 {
-    linted_mem_free(attr);
+    attr->chrootdir = chrootdir;
+}
+
+linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
+                                        char const *source,
+                                        char const *target,
+                                        char const *filesystemtype,
+                                        unsigned long mountflags,
+                                        char const * data)
+{
+    linted_error errnum = 0;
+    struct mount_args * mount_args = attr->mount_args;
+    size_t size = attr->mount_args_size;
+
+    size_t new_size = size + 1U;
+    if (new_size < size) {
+        return ENOMEM;
+    }
+    size = new_size;
+
+    char *source_copy;
+    char *target_copy;
+    char *filesystemtype_copy;
+    char * data_copy;
+
+    if (NULL == source) {
+        source_copy = NULL;
+    } else {
+        source_copy = strdup(source);
+        if (NULL == source_copy) {
+            return errno;
+        }
+    }
+
+    if (NULL == target) {
+        target_copy = NULL;
+    } else {
+        target_copy = strdup(target);
+        if (NULL == target_copy) {
+            goto free_source;
+        }
+    }
+
+    if (NULL == filesystemtype) {
+        filesystemtype_copy = NULL;
+    } else {
+        filesystemtype_copy = strdup(filesystemtype);
+        if (NULL == filesystemtype) {
+            goto free_target;
+        }
+    }
+
+    if (NULL == data) {
+        data_copy = NULL;
+    } else {
+        data_copy = strdup(data);
+        if (NULL == data_copy) {
+            goto free_filesystemtype;
+        }
+    }
+
+    {
+        void *xx;
+        if ((errnum = linted_mem_realloc_array(&xx, mount_args, size,
+                                               sizeof mount_args[0U])) != 0) {
+            goto free_data;
+        }
+        mount_args = xx;
+    }
+
+    if (errnum != 0) {
+    free_data:
+        linted_mem_free(data_copy);
+
+    free_filesystemtype:
+        linted_mem_free(filesystemtype_copy);
+
+    free_target:
+        linted_mem_free(target_copy);
+
+    free_source:
+        linted_mem_free(source_copy);
+    } else {
+        mount_args[size - 1U].source = source_copy;
+        mount_args[size - 1U].target = target_copy;
+        mount_args[size - 1U].filesystemtype = filesystemtype_copy;
+        mount_args[size - 1U].mountflags = mountflags;
+        mount_args[size - 1U].data = data_copy;
+
+        attr->mount_args = mount_args;
+        attr->mount_args_size = size;
+    }
+    return errnum;
 }
 
 linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
@@ -307,6 +426,47 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
 
         if (attr->drop_caps) {
+            if (-1 == unshare(CLONE_NEWNET | CLONE_NEWNS)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == mount(NULL, attr->chrootdir, "tmpfs", 0, NULL)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == chdir(attr->chrootdir)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
+                struct mount_args *mount_arg = &attr->mount_args[ii];
+
+                if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
+                    errnum = errno;
+                    if (errnum != EEXIST) {
+                        exit_with_error(spawn_error, errno);
+                    }
+                }
+
+                if (-1 == mount(mount_arg->source, mount_arg->target,
+                                mount_arg->filesystemtype, mount_arg->mountflags,
+                                mount_arg->data)) {
+                    exit_with_error(spawn_error, errno);
+                }
+            }
+
+            if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == chroot(".")) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == chdir("/")) {
+                exit_with_error(spawn_error, errno);
+            }
+
             /* Favor other processes over this process hierarchy. Only
              * superuser may lower priorities so this is not stoppable. This
              * also makes the process hierarchy nicer for the OOM killer.
