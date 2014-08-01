@@ -196,6 +196,15 @@ struct connection_pool
     size_t count;
 };
 
+struct mount_args
+{
+    char *source;
+    char *target;
+    char *filesystemtype;
+    unsigned long mountflags;
+    char *data;
+};
+
 static unsigned long const capabilities[]
     = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
         CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
@@ -210,7 +219,15 @@ static unsigned long const capabilities[]
         CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
         CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
-static void drop_privileges(linted_ko cwd, char const *fstab_path,
+static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
+                                size_t *sizep, struct mount_args **mount_argsp);
+
+static linted_error get_flags_and_data(char const *opts,
+                                       unsigned long *mountflagsp,
+                                       char const **leftoversp);
+
+static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
+                            size_t mount_args_size,
                             char const *runtime_dir_string);
 
 static linted_error find_stdin(linted_ko *kop);
@@ -317,7 +334,33 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    drop_privileges(cwd, fstab_path, xdg_runtime_dir);
+    /* TODO: Close files leading outside of the sandbox  */
+    size_t mount_args_size;
+    struct mount_args *mount_args;
+    {
+        size_t xx;
+        struct mount_args *yy;
+
+        if ((errnum = parse_fstab(cwd, fstab_path, &xx, &yy)) != 0) {
+            errno = errnum;
+            perror("parse_fstab");
+            _exit(EXIT_FAILURE);
+        }
+
+        mount_args_size = xx;
+        mount_args = yy;
+    }
+
+    drop_privileges(cwd, mount_args, mount_args_size, xdg_runtime_dir);
+
+    for (size_t ii = 0U; ii < mount_args_size; ++ii) {
+        struct mount_args *mount_arg = &mount_args[ii];
+        linted_mem_free(mount_arg->source);
+        linted_mem_free(mount_arg->target);
+        linted_mem_free(mount_arg->filesystemtype);
+        linted_mem_free(mount_arg->data);
+    }
+    linted_mem_free(mount_args);
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
@@ -663,43 +706,11 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-struct mount_args
-{
-    char *source;
-    char *target;
-    char *filesystemtype;
-    unsigned long mountflags;
-    char *data;
-};
-
-static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
-                                size_t *sizep, struct mount_args **mount_argsp);
-
-static linted_error get_flags_and_data(char const *opts,
-                                       unsigned long *mountflagsp,
-                                       char const **leftoversp);
-
-static void drop_privileges(linted_ko cwd, char const *fstab_path,
+static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
+                            size_t mount_args_size,
                             char const *runtime_dir_string)
 {
     linted_error errnum;
-
-    /* TODO: Close files leading outside of the sandbox  */
-    size_t mount_args_size;
-    struct mount_args *mount_args;
-    {
-        size_t xx;
-        struct mount_args *yy;
-
-        if ((errnum = parse_fstab(cwd, fstab_path, &xx, &yy)) != 0) {
-            errno = errnum;
-            perror("parse_fstab");
-            _exit(EXIT_FAILURE);
-        }
-
-        mount_args_size = xx;
-        mount_args = yy;
-    }
 
     if (-1 == chdir(runtime_dir_string)) {
         perror("chdir");
@@ -778,14 +789,7 @@ static void drop_privileges(linted_ko cwd, char const *fstab_path,
             perror("mount");
             _exit(EXIT_FAILURE);
         }
-
-        linted_mem_free(mount_arg->source);
-        linted_mem_free(mount_arg->target);
-        linted_mem_free(mount_arg->filesystemtype);
-        linted_mem_free(mount_arg->data);
     }
-
-    linted_mem_free(mount_args);
 
     if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
         perror("mount");
