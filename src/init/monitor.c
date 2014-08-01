@@ -302,8 +302,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         env_display_var = xx;
     }
     memcpy(env_display_var, "DISPLAY=", strlen("DISPLAY="));
-    memcpy(env_display_var + strlen("DISPLAY="), display,
-           display_length);
+    memcpy(env_display_var + strlen("DISPLAY="), display, display_length);
     env_display_var[env_display_var_length - 1U] = '\0';
 
     {
@@ -343,7 +342,8 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                        .dirko = cwd,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
-                       .environment = (char const * const[]) { env_display_var, NULL },
+                       .environment
+                       = (char const * const[]) { env_display_var, NULL },
                        .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },

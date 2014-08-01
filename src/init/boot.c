@@ -110,14 +110,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    char const * xdg_runtime_dir_orig = getenv("XDG_RUNTIME_DIR");
+    char const *xdg_runtime_dir_orig = getenv("XDG_RUNTIME_DIR");
     if (NULL == xdg_runtime_dir_orig) {
         /* TODO: Fallback somewhere smart */
         fputs("missing XDG_RUNTIME_DIR\n", stderr);
         return EXIT_FAILURE;
     }
 
-    char const * display_orig = getenv("DISPLAY");
+    char const *display_orig = getenv("DISPLAY");
     if (NULL == display_orig) {
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: missing DISPLAY environment variable\n",
@@ -151,8 +151,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
      */
     pid_t child;
     {
-        child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID,
-                        NULL);
+        child
+            = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",

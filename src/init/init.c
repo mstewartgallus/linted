@@ -34,8 +34,7 @@
 uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
                               char const *xdg_runtime_dir,
                               char const *fstab_path,
-                              char const *simulator_path,
-                              char const *gui_path)
+                              char const *simulator_path, char const *gui_path)
 {
     linted_error errnum;
 
@@ -66,8 +65,8 @@ uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
         }
 
         if (0 == child) {
-            return linted_init_monitor(cwd, display, xdg_runtime_dir, fstab_path,
-                                       simulator_path, gui_path);
+            return linted_init_monitor(cwd, display, xdg_runtime_dir,
+                                       fstab_path, simulator_path, gui_path);
         }
     }
 
