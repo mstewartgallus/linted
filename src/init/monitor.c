@@ -686,31 +686,6 @@ static void drop_privileges(linted_ko cwd,
 {
     linted_error errnum;
 
-    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
-        perror("unshare");
-        _exit(EXIT_FAILURE);
-    }
-
-    /* Favor other processes over this process hierarchy. Only
-     * superuser may lower priorities so this is not stoppable. This
-     * also makes the process hierarchy nicer for the OOM killer.
-     */
-    errno = 0;
-    int priority = getpriority(PRIO_PROCESS, 0);
-    if (-1 == priority) {
-        errnum = errno;
-        if (errnum != 0) {
-            perror("getpriority");
-            _exit(EXIT_FAILURE);
-        }
-    }
-
-    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
-        perror("setpriority");
-        _exit(EXIT_FAILURE);
-    }
-
-
     if (-1 == fchdir(cwd)) {
         perror("fchdir");
         _exit(EXIT_FAILURE);
@@ -746,12 +721,49 @@ static void drop_privileges(linted_ko cwd,
         }
     }
 
-    if (-1 == mount(NULL, "linted", "tmpfs", 0, NULL)) {
+    if (-1 == chdir("linted")) {
+        perror("chdir");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == mkdir("chroot", S_IRWXU)) {
+        errnum = errno;
+        if (errnum != EEXIST) {
+            perror("mkdir");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
+        perror("unshare");
+        _exit(EXIT_FAILURE);
+    }
+
+    /* Favor other processes over this process hierarchy. Only
+     * superuser may lower priorities so this is not stoppable. This
+     * also makes the process hierarchy nicer for the OOM killer.
+     */
+    errno = 0;
+    int priority = getpriority(PRIO_PROCESS, 0);
+    if (-1 == priority) {
+        errnum = errno;
+        if (errnum != 0) {
+            perror("getpriority");
+            _exit(EXIT_FAILURE);
+        }
+    }
+
+    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
+        perror("setpriority");
+        _exit(EXIT_FAILURE);
+    }
+
+    if (-1 == mount(NULL, "chroot", "tmpfs", 0, NULL)) {
         perror("mount");
         _exit(EXIT_FAILURE);
     }
 
-    if (-1 == chdir("linted")) {
+    if (-1 == chdir("chroot")) {
         perror("chdir");
         _exit(EXIT_FAILURE);
     }
