@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
-#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -37,9 +36,6 @@
 #include <string.h>
 #include <sys/prctl.h>
 #include <unistd.h>
-
-/* Get the latest namespace constants */
-#include <linux/sched.h>
 
 #if defined __linux__
 #define FDS_DIR "/proc/self/fd"
@@ -145,11 +141,16 @@ It is insecure to run a game as root!\n"));
             continue;
         }
 
-        if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
+        if (-1 == dup2(new_fd, fd)) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: dup3(%i, %i): %s\n",
+%s: dup2(%i, %i): %s\n",
                                    process_name, new_fd, fd,
                                    linted_error_string_alloc(errno));
+            return EXIT_FAILURE;
+        }
+
+        if (-1 == fcntl(fd, F_SETFD, (long) oflags | FD_CLOEXEC)) {
+            perror("fcntl");
             return EXIT_FAILURE;
         }
 
