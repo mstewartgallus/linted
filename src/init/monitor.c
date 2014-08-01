@@ -672,7 +672,7 @@ struct mount_args {
     char *data;
 };
 
-static linted_error parse_fstab(char const * fstab_path,
+static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
                                 size_t * sizep,
                                 struct mount_args ** mount_argsp);
 
@@ -686,11 +686,6 @@ static void drop_privileges(linted_ko cwd,
 {
     linted_error errnum;
 
-    if (-1 == fchdir(cwd)) {
-        perror("fchdir");
-        _exit(EXIT_FAILURE);
-    }
-
     /* TODO: Close files leading outside of the sandbox  */
     size_t mount_args_size;
     struct mount_args * mount_args;
@@ -698,7 +693,7 @@ static void drop_privileges(linted_ko cwd,
         size_t xx;
         struct mount_args * yy;
 
-        if ((errnum = parse_fstab(fstab_path, &xx, &yy)) != 0) {
+        if ((errnum = parse_fstab(cwd, fstab_path, &xx, &yy)) != 0) {
             errno = errnum;
             perror("parse_fstab");
             _exit(EXIT_FAILURE);
@@ -825,7 +820,7 @@ static void drop_privileges(linted_ko cwd,
     }
 }
 
-static linted_error parse_fstab(char const * fstab_path,
+static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
                                 size_t * sizep, struct mount_args ** mount_argsp)
 {
     linted_error errnum = 0;
@@ -833,9 +828,27 @@ static linted_error parse_fstab(char const * fstab_path,
     size_t size = 0U;
     size_t buf_size = 0U;
 
-    FILE *fstab = setmntent(fstab_path, "re");
+    char const * abspath;
+    if (fstab_path[0U] != '/') {
+        char *xx;
+        if (-1 == asprintf(&xx, "/proc/self/fd/%i/%s", cwd, fstab_path)) {
+            errnum = errno;
+            assert(errnum != 0);
+            return errnum;
+        }
+        abspath = xx;
+    } else {
+        abspath = fstab_path;
+    }
+
+    FILE *fstab = setmntent(abspath, "re");
+    errnum = errno;
+
+    if (abspath != fstab_path) {
+        linted_mem_free((char*)abspath);
+    }
+
     if (NULL == fstab) {
-        errnum = errno;
         assert(errnum != 0);
         return errnum;
     }
