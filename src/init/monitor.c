@@ -210,8 +210,7 @@ static unsigned long const capabilities[]
         CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
         CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
-static void drop_privileges(linted_ko cwd,
-                            char const *fstab_path,
+static void drop_privileges(linted_ko cwd, char const *fstab_path,
                             char const *runtime_dir_string);
 
 static linted_error find_stdin(linted_ko *kop);
@@ -664,7 +663,8 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-struct mount_args {
+struct mount_args
+{
     char *source;
     char *target;
     char *filesystemtype;
@@ -672,26 +672,24 @@ struct mount_args {
     char *data;
 };
 
-static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
-                                size_t * sizep,
-                                struct mount_args ** mount_argsp);
+static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
+                                size_t *sizep, struct mount_args **mount_argsp);
 
 static linted_error get_flags_and_data(char const *opts,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
 
-static void drop_privileges(linted_ko cwd,
-                            char const *fstab_path,
+static void drop_privileges(linted_ko cwd, char const *fstab_path,
                             char const *runtime_dir_string)
 {
     linted_error errnum;
 
     /* TODO: Close files leading outside of the sandbox  */
     size_t mount_args_size;
-    struct mount_args * mount_args;
+    struct mount_args *mount_args;
     {
         size_t xx;
-        struct mount_args * yy;
+        struct mount_args *yy;
 
         if ((errnum = parse_fstab(cwd, fstab_path, &xx, &yy)) != 0) {
             errno = errnum;
@@ -764,7 +762,7 @@ static void drop_privileges(linted_ko cwd,
     }
 
     for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-        struct mount_args * mount_arg = &mount_args[ii];
+        struct mount_args *mount_arg = &mount_args[ii];
 
         if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
             errnum = errno;
@@ -774,10 +772,9 @@ static void drop_privileges(linted_ko cwd,
             }
         }
 
-        if (-1
-            == mount(mount_arg->source, mount_arg->target,
-                     mount_arg->filesystemtype, mount_arg->mountflags,
-                     mount_arg->data)) {
+        if (-1 == mount(mount_arg->source, mount_arg->target,
+                        mount_arg->filesystemtype, mount_arg->mountflags,
+                        mount_arg->data)) {
             perror("mount");
             _exit(EXIT_FAILURE);
         }
@@ -820,15 +817,15 @@ static void drop_privileges(linted_ko cwd,
     }
 }
 
-static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
-                                size_t * sizep, struct mount_args ** mount_argsp)
+static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
+                                size_t *sizep, struct mount_args **mount_argsp)
 {
     linted_error errnum = 0;
-    struct mount_args * buf = NULL;
+    struct mount_args *buf = NULL;
     size_t size = 0U;
     size_t buf_size = 0U;
 
-    char const * abspath;
+    char const *abspath;
     if (fstab_path[0U] != '/') {
         char *xx;
         if (-1 == asprintf(&xx, "/proc/self/fd/%i/%s", cwd, fstab_path)) {
@@ -845,7 +842,7 @@ static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
     errnum = errno;
 
     if (abspath != fstab_path) {
-        linted_mem_free((char*)abspath);
+        linted_mem_free((char *)abspath);
     }
 
     if (NULL == fstab) {
@@ -878,7 +875,7 @@ static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
             }
             buf_size = (new_size * 3U) / 2U;
 
-            struct mount_args * newbuf;
+            struct mount_args *newbuf;
             {
                 void *xx;
                 if ((errnum = linted_mem_realloc_array(&xx, buf, buf_size,
@@ -922,10 +919,10 @@ static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
             data = yy;
         }
 
-        char * source;
-        char * target;
-        char * filesystemtype;
-        char * data_copy;
+        char *source;
+        char *target;
+        char *filesystemtype;
+        char *data_copy;
 
         if (NULL == fsname) {
             source = NULL;
@@ -988,8 +985,8 @@ static linted_error parse_fstab(linted_ko cwd, char const * fstab_path,
      * information.
      */
     void *xx;
-    if ((errnum = linted_mem_realloc_array(&xx, buf, size,
-                                           sizeof buf[0U])) != 0) {
+    if ((errnum = linted_mem_realloc_array(&xx, buf, size, sizeof buf[0U]))
+        != 0) {
         goto free_mount_args;
     }
     buf = xx;
@@ -1033,15 +1030,10 @@ static linted_error get_flags_and_data(char const *opts,
 
     linted_error errnum;
 
-    static char const *const tokens[] = {[BIND] = "bind",
-                                         [RBIND] = "rbind",
-                                         [RO] = MNTOPT_RO,
-                                         [RW] = MNTOPT_RW,
-                                         [SUID] = MNTOPT_SUID,
-                                         [NOSUID] = MNTOPT_NOSUID,
-                                         [NODEV] = "nodev",
-                                         [NOEXEC] = "noexec",
-                                         NULL };
+    static char const *const tokens[]
+        = {[BIND] = "bind",   [RBIND] = "rbind",    [RO] = MNTOPT_RO,
+           [RW] = MNTOPT_RW,  [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
+           [NODEV] = "nodev", [NOEXEC] = "noexec",  NULL };
     bool bind = false;
     bool rec = false;
     bool readonly = false;
