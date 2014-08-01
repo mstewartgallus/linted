@@ -22,18 +22,24 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <linux/capability.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
@@ -63,13 +69,28 @@ struct linted_spawn_file_actions
 struct linted_spawn_attr
 {
     pid_t pgroup;
-    bool setpgroup : 1;
+    bool setpgroup : 1U;
+    bool drop_caps : 1U;
 };
 
 struct spawn_error
 {
     linted_error errnum;
 };
+
+static unsigned long const capabilities[]
+    = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
+        CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
+        CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
+        CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
+        CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
+        CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
+        CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
+        CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
+        CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
+        CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
+        CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
+        CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
 static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[]);
@@ -92,6 +113,11 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 
     *attrp = attr;
     return 0;
+}
+
+void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr)
+{
+    attr->drop_caps = true;
 }
 
 void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
@@ -277,6 +303,41 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 if (errnum != EACCES) {
                     exit_with_error(spawn_error, errnum);
                 }
+            }
+        }
+
+        if (attr->drop_caps) {
+            /* Favor other processes over this process hierarchy. Only
+             * superuser may lower priorities so this is not stoppable. This
+             * also makes the process hierarchy nicer for the OOM killer.
+             */
+            errno = 0;
+            int priority = getpriority(PRIO_PROCESS, 0);
+            if (-1 == priority) {
+                errnum = errno;
+                if (errnum != 0) {
+                    exit_with_error(spawn_error, errnum);
+                }
+            }
+
+            if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == unshare(CLONE_NEWIPC)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            /* Drop all privileges I might possibly have. I'm not sure I need
+             * to do this and I probably can do this in a better way. */
+            for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
+                if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
+                    exit_with_error(spawn_error, errno);
+                }
+            }
+
+            if (-1 == setgroups(0U, NULL)) {
+                exit_with_error(spawn_error, errno);
             }
         }
     }

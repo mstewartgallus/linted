@@ -36,11 +36,9 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <dirent.h>
 #include <errno.h>
 #include <mntent.h>
 #include <fcntl.h>
-#include <grp.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -50,7 +48,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <linux/capability.h>
 #include <linux/sched.h>
 
 #define BACKLOG 20U
@@ -204,20 +201,6 @@ struct mount_args
     unsigned long mountflags;
     char *data;
 };
-
-static unsigned long const capabilities[]
-    = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
-        CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
-        CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
-        CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
-        CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
-        CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
-        CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
-        CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
-        CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
-        CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
-        CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
-        CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
 static linted_error parse_fstab(linted_ko cwd, char const *fstab_path,
                                 size_t *sizep, struct mount_args **mount_argsp);
@@ -480,6 +463,8 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
             attr = xx;
         }
 
+        linted_spawn_attr_drop_caps(attr);
+
         size_t dup_pairs_size = proc_config->dup_pairs.size;
         linted_ko *proc_kos;
         {
@@ -738,27 +723,8 @@ static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
         }
     }
 
-    if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
+    if (-1 == unshare(CLONE_NEWNET |CLONE_NEWNS)) {
         perror("unshare");
-        _exit(EXIT_FAILURE);
-    }
-
-    /* Favor other processes over this process hierarchy. Only
-     * superuser may lower priorities so this is not stoppable. This
-     * also makes the process hierarchy nicer for the OOM killer.
-     */
-    errno = 0;
-    int priority = getpriority(PRIO_PROCESS, 0);
-    if (-1 == priority) {
-        errnum = errno;
-        if (errnum != 0) {
-            perror("getpriority");
-            _exit(EXIT_FAILURE);
-        }
-    }
-
-    if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
-        perror("setpriority");
         _exit(EXIT_FAILURE);
     }
 
@@ -804,20 +770,6 @@ static void drop_privileges(linted_ko cwd, struct mount_args * mount_args,
     if (-1 == chdir("/")) {
         perror("chdir");
         _exit(EXIT_FAILURE);
-    }
-
-    if (-1 == setgroups(0U, NULL)) {
-        perror("setgroups");
-        _exit(EXIT_FAILURE);
-    }
-
-    /* Drop all privileges I might possibly have. I'm not sure I need
-     * to do this and I probably can do this in a better way. */
-    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
-        if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
-            perror("prctl");
-            _exit(EXIT_FAILURE);
-        }
     }
 }
 
