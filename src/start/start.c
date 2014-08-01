@@ -166,9 +166,11 @@ It is insecure to run a game as root!\n"));
     for (size_t ii = 0U; ii < open_kos_size; ++ii) {
         while (-1 == open_kos[ii]) {
             ++bad_files;
-            for (size_t jj = ii + 1U; jj < open_kos_size; ++jj) {
-                open_kos[jj - 1U] = open_kos[jj];
+
+            if (open_kos_size <= ii + 1U) {
+                break;
             }
+            memmove(&open_kos[ii], &open_kos[ii + 1U], open_kos_size - ii - 1U);
         }
     }
     open_kos_size -= bad_files;
