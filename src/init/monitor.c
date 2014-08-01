@@ -36,6 +36,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <mntent.h>
 #include <fcntl.h>
@@ -209,7 +210,8 @@ static unsigned long const capabilities[]
         CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
         CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
-static void drop_privileges(char const *fstab_path,
+static void drop_privileges(linted_ko cwd,
+                            char const *fstab_path,
                             char const *runtime_dir_string);
 
 static linted_error find_stdin(linted_ko *kop);
@@ -316,7 +318,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
     }
 
-    drop_privileges(fstab_path, xdg_runtime_dir);
+    drop_privileges(cwd, fstab_path, xdg_runtime_dir);
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
@@ -662,7 +664,24 @@ exit_services : {
     return EXIT_SUCCESS;
 }
 
-static void drop_privileges(char const *fstab_path,
+struct mount_args {
+    char *source;
+    char *target;
+    char *filesystemtype;
+    unsigned long mountflags;
+    char *data;
+};
+
+static linted_error parse_fstab(char const * fstab_path,
+                                size_t * sizep,
+                                struct mount_args ** mount_argsp);
+
+static linted_error get_flags_and_data(char const *opts,
+                                       unsigned long *mountflagsp,
+                                       char const **leftoversp);
+
+static void drop_privileges(linted_ko cwd,
+                            char const *fstab_path,
                             char const *runtime_dir_string)
 {
     linted_error errnum;
@@ -691,11 +710,27 @@ static void drop_privileges(char const *fstab_path,
         _exit(EXIT_FAILURE);
     }
 
-    /* TODO: Close files leading outside of the sandbox  */
-    FILE *fstab = setmntent(fstab_path, "re");
-    if (NULL == fstab) {
-        perror("setmtent");
+
+    if (-1 == fchdir(cwd)) {
+        perror("fchdir");
         _exit(EXIT_FAILURE);
+    }
+
+    /* TODO: Close files leading outside of the sandbox  */
+    size_t mount_args_size;
+    struct mount_args * mount_args;
+    {
+        size_t xx;
+        struct mount_args * yy;
+
+        if ((errnum = parse_fstab(fstab_path, &xx, &yy)) != 0) {
+            errno = errnum;
+            perror("parse_fstab");
+            _exit(EXIT_FAILURE);
+        }
+
+        mount_args_size = xx;
+        mount_args = yy;
     }
 
     if (-1 == chdir(runtime_dir_string)) {
@@ -721,155 +756,10 @@ static void drop_privileges(char const *fstab_path,
         _exit(EXIT_FAILURE);
     }
 
-    for (;;) {
-        errno = 0;
-        struct mntent *entry = getmntent(fstab);
-        if (NULL == entry) {
-            errnum = errno;
-            if (errnum != 0) {
-                perror("getmntent");
-                _exit(EXIT_FAILURE);
-            }
+    for (size_t ii = 0U; ii < mount_args_size; ++ii) {
+        struct mount_args * mount_arg = &mount_args[ii];
 
-            break;
-        }
-
-        enum {
-            BIND,
-            RBIND,
-            RO,
-            RW,
-            SUID,
-            NOSUID,
-            NODEV,
-            NOEXEC
-        };
-        static char const *const tokens[]
-            = {[BIND] = "bind",      [RBIND] = "rbind",
-               [RO] = MNTOPT_RO,     [RW] = MNTOPT_RW,
-               [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
-               [NODEV] = "nodev",    [NOEXEC] = "noexec",
-               NULL };
-        bool bind = false;
-        bool rec = false;
-        bool readonly = false;
-        bool readwrite = false;
-        bool suid = true;
-        bool dev = true;
-        bool exec = true;
-        char *leftovers = NULL;
-        {
-            char *mnt_opts = entry->mnt_opts;
-
-            if (0 == strcmp("none", mnt_opts)) {
-                goto mount;
-            }
-
-            char *subopts_str = strdup(mnt_opts);
-            if (NULL == subopts_str) {
-                perror("strdup");
-                _exit(EXIT_FAILURE);
-            }
-
-            char *subopts = subopts_str;
-
-            char *value = NULL;
-            while (*subopts != '\0') {
-                int token;
-                {
-                    char *xx = subopts;
-                    char *yy = value;
-                    token = getsubopt(&xx, (char * const *)tokens, &yy);
-                    subopts = xx;
-                    value = yy;
-                }
-                switch (token) {
-                case BIND:
-                    bind = true;
-                    break;
-
-                case RBIND:
-                    bind = true;
-                    rec = true;
-                    break;
-
-                case RO:
-                    readonly = true;
-                    break;
-
-                case RW:
-                    readwrite = true;
-                    break;
-
-                case SUID:
-                    suid = true;
-                    break;
-
-                case NOSUID:
-                    suid = false;
-                    break;
-
-                case NODEV:
-                    dev = false;
-                    break;
-
-                case NOEXEC:
-                    exec = false;
-                    break;
-
-                default:
-                    leftovers = strstr(mnt_opts, value);
-                    goto free_subopts_str;
-                }
-            }
-        free_subopts_str:
-            free(subopts_str);
-        }
-
-    mount:
-        if (readwrite && readonly) {
-            fprintf(stderr, "Only one of '%s' and '%s' can be specified\n",
-                    tokens[RO], tokens[RW]);
-            _exit(EXIT_FAILURE);
-        }
-
-        if (bind && readonly) {
-            fputs("\
-Due to a completely idiotic kernel bug (see \
-https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a bind mount\
-as readonly would fail completely silently and there is no way to \
-workaround this\n",
-                  stderr);
-            _exit(EXIT_FAILURE);
-        }
-
-        unsigned long mountflags = 0;
-
-        if (bind) {
-            mountflags |= MS_BIND;
-        }
-
-        if (rec) {
-            mountflags |= MS_REC;
-        }
-
-        if (readonly) {
-            mountflags |= MS_RDONLY;
-        }
-
-        if (!suid) {
-            mountflags |= MS_NOSUID;
-        }
-
-        if (!dev) {
-            mountflags |= MS_NODEV;
-        }
-
-        if (!exec) {
-            mountflags |= MS_NOEXEC;
-        }
-
-        if (-1 == mkdir(entry->mnt_dir, S_IRWXU)) {
+        if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
             errnum = errno;
             if (errnum != EEXIST) {
                 perror("mkdir");
@@ -878,18 +768,20 @@ workaround this\n",
         }
 
         if (-1
-            == mount(0 == strcmp("none", entry->mnt_fsname) ? NULL
-                                                            : entry->mnt_fsname,
-                     entry->mnt_dir, entry->mnt_type, mountflags, leftovers)) {
+            == mount(mount_arg->source, mount_arg->target,
+                     mount_arg->filesystemtype, mount_arg->mountflags,
+                     mount_arg->data)) {
             perror("mount");
             _exit(EXIT_FAILURE);
         }
+
+        linted_mem_free(mount_arg->source);
+        linted_mem_free(mount_arg->target);
+        linted_mem_free(mount_arg->filesystemtype);
+        linted_mem_free(mount_arg->data);
     }
 
-    if (endmntent(fstab) != 1) {
-        perror("endmntent");
-        _exit(EXIT_FAILURE);
-    }
+    linted_mem_free(mount_args);
 
     if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
         perror("mount");
@@ -919,6 +811,326 @@ workaround this\n",
             _exit(EXIT_FAILURE);
         }
     }
+}
+
+static linted_error parse_fstab(char const * fstab_path,
+                                size_t * sizep, struct mount_args ** mount_argsp)
+{
+    linted_error errnum = 0;
+    struct mount_args * buf = NULL;
+    size_t size = 0U;
+    size_t buf_size = 0U;
+
+    FILE *fstab = setmntent(fstab_path, "re");
+    if (NULL == fstab) {
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
+    }
+
+    for (;;) {
+        errno = 0;
+        struct mntent *entry = getmntent(fstab);
+        if (NULL == entry) {
+            errnum = errno;
+            if (errnum != 0) {
+                goto free_mount_args;
+            }
+
+            break;
+        }
+
+        if (size >= buf_size) {
+            size_t new_size = size + 1U;
+            if (new_size < size) {
+                errnum = ENOMEM;
+                goto free_mount_args;
+            }
+
+            if (SIZE_MAX / 3U < new_size) {
+                errnum = ENOMEM;
+                goto free_mount_args;
+            }
+            buf_size = (new_size * 3U) / 2U;
+
+            struct mount_args * newbuf;
+            {
+                void *xx;
+                if ((errnum = linted_mem_realloc_array(&xx, buf, buf_size,
+                                                       sizeof buf[0U])) != 0) {
+                    goto free_mount_args;
+                }
+                newbuf = xx;
+            }
+            buf = newbuf;
+        }
+
+        char const *fsname = entry->mnt_fsname;
+        char const *dir = entry->mnt_dir;
+        char const *type = entry->mnt_type;
+        char const *opts = entry->mnt_opts;
+
+        if (0 == strcmp("none", fsname)) {
+            fsname = NULL;
+        }
+
+        if (0 == strcmp("none", type)) {
+            type = NULL;
+        }
+
+        if (0 == strcmp("none", opts)) {
+            opts = NULL;
+        }
+
+        unsigned long mountflags;
+        char const *data;
+        if (NULL == opts) {
+            mountflags = 0U;
+            data = NULL;
+        } else {
+            unsigned long xx;
+            char const *yy;
+            if ((errnum = get_flags_and_data(opts, &xx, &yy)) != 0) {
+                goto free_mount_args;
+            }
+            mountflags = xx;
+            data = yy;
+        }
+
+        char * source;
+        char * target;
+        char * filesystemtype;
+        char * data_copy;
+
+        if (NULL == fsname) {
+            source = NULL;
+        } else {
+            source = strdup(fsname);
+            if (NULL == source) {
+                goto free_mount_args;
+            }
+        }
+
+        if (NULL == dir) {
+            target = NULL;
+        } else {
+            target = strdup(dir);
+            if (NULL == target) {
+                goto free_source;
+            }
+        }
+
+        if (NULL == type) {
+            filesystemtype = NULL;
+        } else {
+            filesystemtype = strdup(type);
+            if (NULL == filesystemtype) {
+                goto free_target;
+            }
+        }
+
+        if (NULL == data) {
+            data_copy = NULL;
+        } else {
+            data_copy = strdup(data);
+            if (NULL == data_copy) {
+                goto free_filesystemtype;
+            }
+        }
+
+        if (errnum != 0) {
+        free_filesystemtype:
+            linted_mem_free(filesystemtype);
+
+        free_target:
+            linted_mem_free(target);
+
+        free_source:
+            linted_mem_free(source);
+            goto free_mount_args;
+        }
+
+        buf[size].source = source;
+        buf[size].target = target;
+        buf[size].filesystemtype = filesystemtype;
+        buf[size].mountflags = mountflags;
+        buf[size].data = data_copy;
+
+        ++size;
+    }
+
+    /* Save on excess memory, also give debugging allocators more
+     * information.
+     */
+    void *xx;
+    if ((errnum = linted_mem_realloc_array(&xx, buf, size,
+                                           sizeof buf[0U])) != 0) {
+        goto free_mount_args;
+    }
+    buf = xx;
+
+free_mount_args:
+    if (errnum != 0) {
+        for (size_t ii = 0U; ii < size; ++ii) {
+            linted_mem_free(buf[ii].source);
+            linted_mem_free(buf[ii].target);
+            linted_mem_free(buf[ii].filesystemtype);
+            linted_mem_free(buf[ii].data);
+        }
+    }
+
+    if (endmntent(fstab) != 1) {
+        if (0 == errnum) {
+            errnum = errno;
+        }
+    }
+
+    *sizep = size;
+    *mount_argsp = buf;
+
+    return errnum;
+}
+
+static linted_error get_flags_and_data(char const *opts,
+                                       unsigned long *mountflagsp,
+                                       char const **leftoversp)
+{
+    enum {
+        BIND,
+        RBIND,
+        RO,
+        RW,
+        SUID,
+        NOSUID,
+        NODEV,
+        NOEXEC
+    };
+
+    linted_error errnum;
+
+    static char const *const tokens[] = {[BIND] = "bind",
+                                         [RBIND] = "rbind",
+                                         [RO] = MNTOPT_RO,
+                                         [RW] = MNTOPT_RW,
+                                         [SUID] = MNTOPT_SUID,
+                                         [NOSUID] = MNTOPT_NOSUID,
+                                         [NODEV] = "nodev",
+                                         [NOEXEC] = "noexec",
+                                         NULL };
+    bool bind = false;
+    bool rec = false;
+    bool readonly = false;
+    bool readwrite = false;
+    bool suid = true;
+    bool dev = true;
+    bool exec = true;
+    char *leftovers = NULL;
+
+    char *subopts_str = strdup(opts);
+    if (NULL == subopts_str) {
+        errnum = errno;
+        assert(errnum != 0);
+        return errnum;
+    }
+
+    char *subopts = subopts_str;
+    char *value = NULL;
+
+    while (*subopts != '\0') {
+        int token;
+        {
+            char *xx = subopts;
+            char *yy = value;
+            token = getsubopt(&xx, (char * const *)tokens, &yy);
+            subopts = xx;
+            value = yy;
+        }
+        switch (token) {
+        case BIND:
+            bind = true;
+            break;
+
+        case RBIND:
+            bind = true;
+            rec = true;
+            break;
+
+        case RO:
+            readonly = true;
+            break;
+
+        case RW:
+            readwrite = true;
+            break;
+
+        case SUID:
+            suid = true;
+            break;
+
+        case NOSUID:
+            suid = false;
+            break;
+
+        case NODEV:
+            dev = false;
+            break;
+
+        case NOEXEC:
+            exec = false;
+            break;
+
+        default:
+            leftovers = strstr(opts, value);
+            goto free_subopts_str;
+        }
+    }
+
+free_subopts_str:
+    linted_mem_free(subopts_str);
+
+    if (readwrite && readonly) {
+        return EINVAL;
+    }
+
+    if (bind && readonly) {
+        /*
+         * Due to a completely idiotic kernel bug (see
+         * https://bugzilla.kernel.org/show_bug.cgi?id=24912)
+         * using a bind mount as readonly would fail completely
+         * silently and there is no way to workaround this
+         */
+        return EINVAL;
+    }
+
+    unsigned long mountflags = 0;
+
+    if (bind) {
+        mountflags |= MS_BIND;
+    }
+
+    if (rec) {
+        mountflags |= MS_REC;
+    }
+
+    if (readonly) {
+        mountflags |= MS_RDONLY;
+    }
+
+    if (!suid) {
+        mountflags |= MS_NOSUID;
+    }
+
+    if (!dev) {
+        mountflags |= MS_NODEV;
+    }
+
+    if (!exec) {
+        mountflags |= MS_NOEXEC;
+    }
+
+    *leftoversp = leftovers;
+    *mountflagsp = mountflags;
+    return 0;
 }
 
 static linted_error find_stdin(linted_ko *kop)
