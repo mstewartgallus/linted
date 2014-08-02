@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
@@ -40,8 +41,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-#include <linux/capability.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
@@ -91,20 +90,6 @@ struct spawn_error
 {
     linted_error errnum;
 };
-
-static unsigned long const capabilities[]
-    = { CAP_CHOWN,           CAP_DAC_OVERRIDE,     CAP_DAC_READ_SEARCH,
-        CAP_FOWNER,          CAP_FSETID,           CAP_KILL,
-        CAP_SETGID,          CAP_SETUID,           CAP_SETPCAP,
-        CAP_LINUX_IMMUTABLE, CAP_NET_BIND_SERVICE, CAP_NET_BROADCAST,
-        CAP_NET_ADMIN,       CAP_NET_RAW,          CAP_IPC_LOCK,
-        CAP_IPC_OWNER,       CAP_SYS_MODULE,       CAP_SYS_RAWIO,
-        CAP_SYS_CHROOT,      CAP_SYS_PTRACE,       CAP_SYS_PACCT,
-        CAP_SYS_ADMIN,       CAP_SYS_BOOT,         CAP_SYS_NICE,
-        CAP_SYS_RESOURCE,    CAP_SYS_TIME,         CAP_SYS_TTY_CONFIG,
-        CAP_MKNOD,           CAP_LEASE,            CAP_AUDIT_WRITE,
-        CAP_AUDIT_CONTROL,   CAP_SETFCAP,          CAP_MAC_OVERRIDE,
-        CAP_MAC_ADMIN,       CAP_SYSLOG,           CAP_WAKE_ALARM };
 
 static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[]);
@@ -518,18 +503,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 exit_with_error(spawn_error, errno);
             }
 
-            /* Drop all privileges I might possibly have. I'm not sure
-             * I need to do this and I probably can do this in a
-             * better way. Note that currently we do not use
-             * PR_SET_KEEPCAPS and do not map our sandboxed user to
-             * root but if we did in the future we would need this.
-             */
-            for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
-                if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
-                    exit_with_error(spawn_error, errno);
-                }
-            }
-
             if (-1 == setgroups(0U, NULL)) {
                 exit_with_error(spawn_error, errno);
             }
@@ -576,6 +549,35 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             default:
                 exit_with_error(spawn_error, EINVAL);
             }
+        }
+    }
+
+    if (attr != NULL && attr->drop_caps) {
+        /* Drop all privileges I might possibly have. I'm not sure I
+         * need to do this and I probably can do this in a better
+         * way. Note that currently we do not use PR_SET_KEEPCAPS and
+         * do not map our sandboxed user to root but if we did in the
+         * future we would need this.
+         */
+        cap_t caps = cap_get_proc();
+        if (NULL == caps) {
+            exit_with_error(spawn_error, errno);
+        }
+
+        /* Drop all capabilities after exec */
+        if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
+            exit_with_error(spawn_error, errno);
+        }
+        if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+            exit_with_error(spawn_error, errno);
+        }
+
+        if (-1 == cap_set_proc(caps)) {
+            exit_with_error(spawn_error, errno);
+        }
+
+        if (-1 == cap_free(caps)) {
+            exit_with_error(spawn_error, errno);
         }
     }
 
