@@ -50,5 +50,8 @@
  *
  * @todo Rewrite utility shell scripts in Python.
  *
+ * @todo Use the monitor to report crashes such as from seccomp rule
+ *       violations.
+ *
  * @todo Create a feed of possible vulnerabilities in all dependencies
  */

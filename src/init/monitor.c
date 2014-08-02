@@ -752,6 +752,7 @@ static struct sock_filter const gui_real_filter[] = {
     ALLOW(getuid),
     ALLOW(ioctl),
     ALLOW(lseek),
+    ALLOW(madvise),
     ALLOW(mincore),
     ALLOW(mmap),
     ALLOW(mprotect),
