@@ -99,7 +99,9 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
 
     if (0 == child) {
         /* Don't leak the process in case of an unexpected parent death */
-        prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0);
+        if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL)) {
+            return errno;
+        }
 
         /* Make a copy so that the parent can't unlock the lock accidentally */
         linted_lock_file dup_lock_file;
