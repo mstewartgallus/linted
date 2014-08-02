@@ -28,17 +28,26 @@
  * The monitor process is privileged with full capabilities and
  * controls everything.
  *
- * As far as we know the monitor cannot be attacked. The kernel
- * disallows sandboxed processes from ptracing monitor as they lack
- * capabilities inside the sandbox and so would violate privilege
- * boundaries by doing so. However, they can still send monitor
- * signals and so cause misbehaviour and also can kill monitor.
+ * Defended Against Attacks:
  *
- * @bug Sandbox /home with overlayfs. overlayfs has no equivalent to
- *      rbind and so can't work with encrypted user folders.
+ * - The kernel prevents sandboxed processes from ptracing,
+ *   process_vm_writeing, etc.. monitor as they lack capabilities
+ *   inside the sandbox and so would violate privilege boundaries by
+ *   doing so.
  *
- * @bug Currently attackers can send signals to monitor, kill it or
+ * @bug Attacking processes can access the home of the user with full
+ *      read, write access but we cannot sandbox /home with overlayfs
+ *      as overflayfs has no equivalent to rbind and so we can't work
+ *      with encrypted user folders.
+ *
+ * @bug Attacking processes can send signals to monitor and kill it or
  *      possibly otherwise cause misbehaviour.
+ *
+ * @bug Attacking processes can send signals to other processes and
+ *      kill theme or possibly otherwise cause misbehaviour.
+ *
+ * @bug Attacking processes can ptrace, process_vm_write,
+ *      etc.. against other processes and gain privileges.
  */
 
 uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
