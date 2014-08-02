@@ -730,6 +730,7 @@ static struct sock_filter const gui_real_filter[] = {
     ALLOW(arch_prctl),
     ALLOW(brk),
     ALLOW(chdir),
+    ALLOW(clock_nanosleep),
     ALLOW(clone),
     ALLOW(close),
     ALLOW(connect),
