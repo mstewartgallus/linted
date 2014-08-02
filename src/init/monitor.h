@@ -20,6 +20,27 @@
 
 #include <inttypes.h>
 
+/**
+ * @file
+ *
+ * Sandboxes and monitors the process hierarchy.
+ *
+ * The monitor process is privileged with full capabilities and
+ * controls everything.
+ *
+ * As far as we know the monitor cannot be attacked. The kernel
+ * disallows sandboxed processes from ptracing monitor as they lack
+ * capabilities inside the sandbox and so would violate privilege
+ * boundaries by doing so. However, they can still send monitor
+ * signals and so cause misbehaviour and also can kill monitor.
+ *
+ * @bug Sandbox /home with overlayfs. overlayfs has no equivalent to
+ *      rbind and so can't work with encrypted user folders.
+ *
+ * @bug Currently attackers can send signals to monitor, kill it or
+ *      possibly otherwise cause misbehaviour.
+ */
+
 uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                                  char const *chrootdir_path,
                                  char const *fstab_path,

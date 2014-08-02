@@ -6,7 +6,7 @@
 /tmp	tmp	none	bind    # Allow connecting to X11
 /home	home	none	rbind   # TODO: This doesn't work with overlayfs
 
-proc	proc	proc	ro,nosuid,nodev,noexec
+proc	proc	proc	ro,nosuid,nodev,noexec,hidepid=2
 
 overlayfs	etc	overlayfs	ro,lowerdir=/etc,upperdir=/etc
 

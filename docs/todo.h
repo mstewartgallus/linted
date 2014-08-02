@@ -11,14 +11,6 @@
  *
  * Linted -- TODO
  *
- * @bug Sandbox /home with overlayfs. overlayfs has no equivalent to
- *      rbind and so can't work with encrypted user folders.
- *
- * @bug Currently attackers can ptrace init and regain access to the
- *      host system.
- *
- * @todo chroot and sandbox application services.
- *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
  * - The tools:
