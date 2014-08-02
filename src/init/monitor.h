@@ -33,7 +33,7 @@
  * - The kernel prevents sandboxed processes from ptracing,
  *   process_vm_writeing, etc.. monitor as they lack capabilities
  *   inside the sandbox and so would violate privilege boundaries by
- *   doing so.
+ *   doing so. Also, those system calls are disabled through seccomp.
  *
  * @bug Attacking processes can access the home of the user with full
  *      read, write access but we cannot sandbox /home with overlayfs
@@ -48,6 +48,9 @@
  *
  * @bug Attacking processes can ptrace, process_vm_write,
  *      etc.. against other processes and gain privileges.
+ *
+ * @bug Attacking processes can possibly evade seccomp protections by
+ *      switching the architecture type.
  */
 
 uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,

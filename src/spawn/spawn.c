@@ -38,9 +38,12 @@
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <linux/seccomp.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
@@ -78,6 +81,7 @@ struct mount_args
 
 struct linted_spawn_attr
 {
+    struct sock_fprog const *fprog;
     char const *chrootdir;
     size_t mount_args_size;
     struct mount_args *mount_args;
@@ -137,6 +141,12 @@ void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
     attr->setpgroup = true;
     attr->pgroup = pgroup;
+}
+
+void linted_spawn_attr_set_seccomp_bpf(struct linted_spawn_attr *attr,
+                                       struct sock_fprog const *fprog)
+{
+    attr->fprog = fprog;
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
@@ -552,32 +562,45 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         }
     }
 
-    if (attr != NULL && attr->drop_caps) {
-        /* Drop all privileges I might possibly have. I'm not sure I
-         * need to do this and I probably can do this in a better
-         * way. Note that currently we do not use PR_SET_KEEPCAPS and
-         * do not map our sandboxed user to root but if we did in the
-         * future we would need this.
-         */
-        cap_t caps = cap_get_proc();
-        if (NULL == caps) {
-            exit_with_error(spawn_error, errno);
+    if (attr != NULL) {
+        if (attr->drop_caps) {
+            /* Drop all privileges I might possibly have. I'm not sure I
+             * need to do this and I probably can do this in a better
+             * way. Note that currently we do not use PR_SET_KEEPCAPS and
+             * do not map our sandboxed user to root but if we did in the
+             * future we would need this.
+             */
+            cap_t caps = cap_get_proc();
+            if (NULL == caps) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            /* Drop all capabilities after exec */
+            if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
+                exit_with_error(spawn_error, errno);
+            }
+            if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == cap_set_proc(caps)) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == cap_free(caps)) {
+                exit_with_error(spawn_error, errno);
+            }
         }
 
-        /* Drop all capabilities after exec */
-        if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-            exit_with_error(spawn_error, errno);
-        }
-        if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
-            exit_with_error(spawn_error, errno);
-        }
+        if (attr->fprog != NULL) {
+            if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
+                exit_with_error(spawn_error, errno);
+            }
 
-        if (-1 == cap_set_proc(caps)) {
-            exit_with_error(spawn_error, errno);
-        }
-
-        if (-1 == cap_free(caps)) {
-            exit_with_error(spawn_error, errno);
+            if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+                            attr->fprog, 0UL, 0UL)) {
+                exit_with_error(spawn_error, errno);
+            }
         }
     }
 
