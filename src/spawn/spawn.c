@@ -518,8 +518,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                 exit_with_error(spawn_error, errno);
             }
 
-            /* Drop all privileges I might possibly have. I'm not sure I need
-             * to do this and I probably can do this in a better way. */
+            /* Drop all privileges I might possibly have. I'm not sure
+             * I need to do this and I probably can do this in a
+             * better way. Note that currently we do not use
+             * PR_SET_KEEPCAPS and do not map our sandboxed user to
+             * root but if we did in the future we would need this.
+             */
             for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(capabilities); ++ii) {
                 if (-1 == prctl(PR_CAPBSET_DROP, capabilities[ii], 0, 0, 0)) {
                     exit_with_error(spawn_error, errno);

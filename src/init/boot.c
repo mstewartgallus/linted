@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -138,6 +139,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
+    gid_t gid = getgid();
+    uid_t uid = getuid();
+
     /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
      * needed to allow the permissions to work.
      */
@@ -154,6 +158,58 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
 
         if (0 == child) {
+            {
+                linted_ko file;
+                {
+                    linted_ko xx;
+                    if ((errnum = linted_ko_open(&xx, -1, "/proc/self/uid_map",
+                                                 LINTED_KO_WRONLY)) != 0) {
+                        errno = errnum;
+                        perror("open");
+                        return EXIT_FAILURE;
+                    }
+                    file = xx;
+                }
+
+                if ((errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+                                                     uid, uid)) != 0) {
+                    errno = errnum;
+                    perror("linted_io_write_format");
+                    return EXIT_FAILURE;
+                }
+
+                if (-1 == linted_ko_close(file)) {
+                    perror("linted_ko_close");
+                    return EXIT_FAILURE;
+                }
+            }
+
+            {
+                linted_ko file;
+                {
+                    linted_ko xx;
+                    if ((errnum = linted_ko_open(&xx, -1, "/proc/self/gid_map",
+                                                 LINTED_KO_WRONLY)) != 0) {
+                        errno = errnum;
+                        perror("open");
+                        return EXIT_FAILURE;
+                    }
+                    file = xx;
+                }
+
+                if ((errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+                                                     gid, gid)) != 0) {
+                    errno = errnum;
+                    perror("linted_io_write_format");
+                    return EXIT_FAILURE;
+                }
+
+                if (-1 == linted_ko_close(file)) {
+                    perror("linted_ko_close");
+                    return EXIT_FAILURE;
+                }
+            }
+
             return linted_init_init(cwd, display, chrootdir_path, fstab_path,
                                     simulator_path, gui_path);
         }
