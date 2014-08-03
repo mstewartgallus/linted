@@ -29,7 +29,7 @@ bin_PROGRAMS+=%D%/linted
   %D%/libinit.la
 
 noinst_LTLIBRARIES+=%D%/libinit.la
-%C%_libinit_la_SOURCES=%D%/init.c
+%C%_libinit_la_SOURCES=%D%/init.c %D%/init.h
 %C%_libinit_la_LIBADD=\
   src/start/libstart.la\
   \
@@ -40,7 +40,7 @@ noinst_LTLIBRARIES+=%D%/libinit.la
   %D%/libmonitor.la
 
 noinst_LTLIBRARIES+=%D%/libmonitor.la
-%C%_libmonitor_la_SOURCES=%D%/monitor.c
+%C%_libmonitor_la_SOURCES=%D%/monitor.c %D%/monitor.h
 %C%_libmonitor_la_LIBADD=\
   src/error/liberror.la\
   src/ko/libko.la\

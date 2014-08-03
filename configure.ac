@@ -16,7 +16,7 @@ dnl prevents deterministic builds.
 AC_DEFINE([COPYRIGHT_YEAR], ["2014"], [year in copyright message])
 dnl
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([subdir-objects -Wall std-options])
+AM_INIT_AUTOMAKE([subdir-objects -Wall])
 AC_CONFIG_HEADER([config.h])
 dnl
 AC_PREREQ([2.62])

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #define _POSIX_C_SOURCE 200112L
-#define _GNU_SOURCE 200112L
 
 #include "config.h"
 
@@ -25,7 +24,6 @@
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/mem.h"
 #include "linted/start.h"
@@ -45,9 +43,6 @@
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
-
-#define HELP_OPTION "--help"
-#define VERSION_OPTION "--version"
 
 enum {
     ON_RECEIVE_UPDATE,
@@ -169,10 +164,6 @@ static linted_error get_gl_error(void);
 
 static double square(double x);
 
-static linted_error gui_help(linted_ko ko, char const *process_name,
-                             struct linted_str package_name,
-                             struct linted_str package_url,
-                             struct linted_str package_bugreport);
 static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
@@ -195,49 +186,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
 
-    bool need_help = false;
-    bool need_version = false;
-
-    char const *bad_option = NULL;
-
-    for (size_t ii = 1U; ii < argc; ++ii) {
-        char const *argument = argv[ii];
-
-        if (0 == strcmp(HELP_OPTION, argument)) {
-            need_help = true;
-        } else if (0 == strcmp(VERSION_OPTION, argument)) {
-            need_version = true;
-        } else {
-            bad_option = argument;
-        }
-    }
-
-    if (need_help) {
-        gui_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-                 LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-        return EXIT_SUCCESS;
-    }
-
-    if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                              LINTED_STR(COPYRIGHT_YEAR));
-        return EXIT_SUCCESS;
-    }
-
     char const *original_display = getenv("DISPLAY");
     if (NULL == original_display) {
         linted_io_write_string(STDERR_FILENO, NULL, process_name);
         linted_io_write_str(STDERR_FILENO, NULL,
                             LINTED_STR(": no DISPLAY environment variable\n"));
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
         return EXIT_FAILURE;
     }
 
@@ -1308,85 +1261,6 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 static double square(double x)
 {
     return x * x;
-}
-
-static linted_error gui_help(linted_ko ko, char const *process_name,
-                             struct linted_str package_name,
-                             struct linted_str package_url,
-                             struct linted_str package_bugreport)
-{
-    linted_error errnum;
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Run the gui program.\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --logger            the logger file descriptor\n\
-  --controller        the controller file descriptor\n\
-  --updater           the updater file descriptor\n\
-  --shutdowner        the shutdowner file descriptor\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Report bugs to <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
- home page: <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
 }
 
 static linted_error failure(linted_ko ko, char const *process_name,

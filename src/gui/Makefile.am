@@ -24,7 +24,6 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/locale/liblocale.la\
   src/mem/libmem.la\
   src/util/libutil.la\
   \
@@ -38,7 +37,6 @@ pkglibexec_PROGRAMS+=%D%/gui
   $(X11_XCB_LIBS)\
   $(GLES_LIBS)\
   $(EGL_LIBS)
-%C%_gui_LDFLAGS=$(AM_LDFLAGS)
 
 %C%_gui_CPPFLAGS=\
   $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GLES_FLAGS) $(EGL_FLAGS)\

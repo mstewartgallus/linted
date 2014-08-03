@@ -22,7 +22,6 @@
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/locale.h"
 #include "linted/logger.h"
 #include "linted/start.h"
 #include "linted/updater.h"
@@ -35,9 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#define HELP_OPTION "--help"
-#define VERSION_OPTION "--version"
 
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
@@ -120,11 +116,6 @@ static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
-static linted_error simulator_help(linted_ko ko, char const *process_name,
-                                   struct linted_str package_name,
-                                   struct linted_str package_url,
-                                   struct linted_str package_bugreport);
-
 static linted_ko kos[3U];
 
 struct linted_start_config const linted_start_config
@@ -139,41 +130,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     linted_logger logger = kos[0U];
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
-
-    bool need_help = false;
-    bool need_version = false;
-    char const *bad_option = NULL;
-
-    for (size_t ii = 1U; ii < argc; ++ii) {
-        char const *argument = argv[ii];
-
-        if (0 == strcmp(HELP_OPTION, argument)) {
-            need_help = true;
-        } else if (0 == strcmp(VERSION_OPTION, argument)) {
-            need_version = true;
-        } else {
-            bad_option = argument;
-        }
-    }
-
-    if (need_help) {
-        simulator_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-                       LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-        return EXIT_SUCCESS;
-    }
-
-    if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
-        return EXIT_FAILURE;
-    }
-
-    if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                              LINTED_STR(COPYRIGHT_YEAR));
-        return EXIT_SUCCESS;
-    }
 
     linted_error errnum;
 
@@ -520,82 +476,4 @@ static linted_updater_uint absolute(linted_updater_int x)
     /* The implicit cast to unsigned is okay, obviously */
     return LINTED_UPDATER_INT_MIN == x ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
                                        : imaxabs(x);
-}
-
-static linted_error simulator_help(linted_ko ko, char const *process_name,
-                                   struct linted_str package_name,
-                                   struct linted_str package_url,
-                                   struct linted_str package_bugreport)
-{
-    linted_error errnum;
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Run the simulator.\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --logger            the logger file descriptor\n\
-  --controller        the controller file descriptor\n\
-  --updater           the updater file descriptor\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Report bugs to <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
- home page: <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
 }

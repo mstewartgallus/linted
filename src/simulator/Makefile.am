@@ -24,7 +24,6 @@ pkglibexec_PROGRAMS+=%D%/simulator
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/locale/liblocale.la\
   src/util/libutil.la\
   \
   src/controller/libcontroller.la\

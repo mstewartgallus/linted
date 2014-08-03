@@ -40,7 +40,7 @@ uninstall-hook:
 install-data-hook:
 	$(MKDIR_P) '$(chrootdir)'
 
-EXTRA_DIST+=scripts/ccwrapper.py libs/glloadgen-reloaded
+EXTRA_DIST+=scripts/ccwrapper.py
 
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_LANGUAGE)\
