@@ -36,6 +36,7 @@ AC_CANONICAL_HOST
 dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
+AC_C_RESTRICT
 dnl
 AC_CHECK_HEADERS([dnl
         limits.h dnl
@@ -75,13 +76,30 @@ AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
    AC_MSG_ERROR([Unable to find good fork function])
   ])
-  AC_CHECK_FUNCS([dup2 memset munmap select setenv socket strchr], [], [
+  AC_FUNC_GETMNTENT
+  AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
+   AC_MSG_ERROR([Unable to find getmntent function])
+  ])
+  AC_CHECK_FUNCS([[dup2]dnl
+                  [mkdir]dnl
+                  [memmove]dnl
+                  [memset]dnl
+                  [munmap]dnl
+                  [select]dnl
+                  [sethostname]dnl
+                  [setenv]dnl
+                  [socket]dnl
+                  [strchr]dnl
+                  [strdup]dnl
+                  [strstr]], [], [
    AC_MSG_ERROR([Unable to find function ${ac_func}])
   ])
   dnl
   AC_CHECK_FUNCS([environ], [], [
    AC_MSG_ERROR([Unable to find global variable ${ac_func}])
   ])
+  dnl
+  AC_TYPE_MODE_T
   dnl
   AC_TYPE_INT32_T
   AC_TYPE_UINT32_T
