@@ -18,6 +18,7 @@
 #include "linted/str.h"
 
 #include "linted/mem.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -125,7 +126,7 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
     int bytes_should_write = vsnprintf(NULL, 0, fmt, ap);
     if (bytes_should_write < 0) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         goto free_ap_copy;
     }
 
@@ -145,7 +146,7 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
             linted_mem_free(string);
 
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             goto free_ap_copy;
         }
 

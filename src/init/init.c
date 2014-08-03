@@ -79,7 +79,7 @@ uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
         if (errnum != 0) {
             assert(errnum != EINVAL);
             assert(errnum != ECHILD);
-            assert(false);
+            LINTED_ASSUME_UNREACHABLE();
         }
         return info.si_status;
     }

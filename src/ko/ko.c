@@ -128,7 +128,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
         fildes = openat(dirko, pathname, oflags);
         if (-1 == fildes) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
         }
@@ -169,7 +169,7 @@ linted_error linted_ko_close(linted_ko ko)
 
     if (-1 == close(ko)) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
     } else {
         errnum = 0;
     }

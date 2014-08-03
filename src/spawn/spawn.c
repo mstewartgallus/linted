@@ -333,7 +333,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -352,7 +352,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
         if (-1 == child) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         }
 
         if (0 == child) {
@@ -389,7 +389,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             if (attr->setpgroup) {
                 if (-1 == setpgid(child, attr->pgroup)) {
                     errnum = errno;
-                    assert(errnum != 0);
+                    LINTED_ASSUME(errnum != 0);
 
                     assert(errnum != EINVAL);
                     assert(EACCES == errnum || EPERM == errnum || ESRCH
@@ -403,7 +403,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
             if (0 == errnum) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
             }
         }
 
@@ -416,7 +416,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
         if (attr->setpgroup) {
             if (-1 == setpgid(0, attr->pgroup)) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
                 if (errnum != EACCES) {
                     exit_with_error(spawn_error, errnum);
                 }
@@ -684,5 +684,5 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
 
     raise(SIGTERM);
 
-    assert(false);
+    LINTED_ASSUME_UNREACHABLE();
 }

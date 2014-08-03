@@ -82,7 +82,7 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
     int bytes_should_write = vsnprintf(NULL, 0, format_str, ap);
     if (bytes_should_write < 0) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         goto free_va_lists;
     }
 
@@ -100,7 +100,7 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 
         if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             goto free_string;
         }
 

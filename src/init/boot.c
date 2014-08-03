@@ -223,7 +223,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         if (errnum != 0) {
             assert(errnum != EINVAL);
             assert(errnum != ECHILD);
-            assert(false);
+            LINTED_ASSUME_UNREACHABLE();
         }
         return info.si_status;
     }

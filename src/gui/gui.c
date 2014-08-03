@@ -630,7 +630,7 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
         return on_sent_control(completed_task);
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 
@@ -1249,7 +1249,7 @@ static linted_error egl_error(void)
         return ENOSYS;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 
@@ -1275,7 +1275,7 @@ static linted_error errnum_from_connection(xcb_connection_t *connection)
         return EINVAL;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 

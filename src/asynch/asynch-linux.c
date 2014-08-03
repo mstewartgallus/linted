@@ -357,7 +357,7 @@ static void run_task(struct linted_asynch_pool *pool,
         break;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 
@@ -397,7 +397,7 @@ static void run_task_read(struct linted_asynch_pool *pool,
                 = read(task_read->ko, task_read->buf + bytes_read, bytes_left);
             if (-1 == result) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
 
                 if (EINTR == errnum) {
                     continue;
@@ -459,7 +459,7 @@ static void run_task_write(struct linted_asynch_pool *pool,
                                    task_write->buf + bytes_wrote, bytes_left);
             if (-1 == result) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
 
                 if (EINTR == errnum) {
                     continue;
@@ -516,7 +516,7 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
                                         task_receive->size, NULL);
             if (-1 == result) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
                 continue;
             }
 
@@ -560,7 +560,7 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
             if (-1
                 == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
                 continue;
             }
 
@@ -625,7 +625,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
             child = waitpid(id, &xx, task_wait->options);
             if (-1 == child) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
             } else {
                 errnum = 0;
             }
@@ -665,7 +665,7 @@ finish:
             task_wait->info.si_code = CLD_CONTINUED;
             task_wait->info.si_status = 0;
         } else {
-            assert(false);
+            LINTED_ASSUME_UNREACHABLE();
         }
     }
 
@@ -692,7 +692,7 @@ static void run_task_accept(struct linted_asynch_pool *pool,
             = accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (-1 == new_ko) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
         }
@@ -754,7 +754,7 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
         if (-1 == clock_nanosleep(CLOCK_MONOTONIC, task_sleep->flags,
                                   &time_remaining, &time_remaining)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
         }
@@ -772,7 +772,7 @@ static linted_error poll_one(linted_ko ko, short events, short *revents)
     struct pollfd pollfd = { .fd = ko, .events = events };
     if (-1 == poll(&pollfd, 1U, -1)) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -793,7 +793,7 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
         socklen_t optlen = sizeof xx;
         if (-1 == getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &optlen)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = xx;
         }

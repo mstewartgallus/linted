@@ -281,7 +281,7 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
         return on_sent_update(completed_task);
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 

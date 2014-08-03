@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/random.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <dirent.h>
@@ -130,7 +131,7 @@ It is insecure to run a game as root!\n"));
             new_fd = openat(-1, pathname, oflags | O_NONBLOCK | O_CLOEXEC);
             if (-1 == new_fd) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
             } else {
                 errnum = 0;
             }
@@ -281,7 +282,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
     DIR *const fds_dir = opendir(FDS_DIR);
     if (NULL == fds_dir) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -363,7 +364,7 @@ free_fds:
 close_fds_dir:
     if (-1 == closedir(fds_dir)) {
         linted_error close_errnum = errno;
-        assert(close_errnum != 0);
+        LINTED_ASSUME(close_errnum != 0);
         assert(close_errnum != EBADF);
 
         if (0 == errnum) {

@@ -270,7 +270,7 @@ static void run_task(struct linted_asynch_pool *pool,
         break;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 

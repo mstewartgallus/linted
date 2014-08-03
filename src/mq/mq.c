@@ -99,7 +99,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
             }
             if (-1 == ko) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
             } else {
                 errnum = 0;
             }
@@ -112,7 +112,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
     }
     if (-1 == unlink_status) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         goto exit_with_error_and_close;
     }
 

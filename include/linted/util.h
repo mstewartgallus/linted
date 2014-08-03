@@ -20,6 +20,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -89,6 +90,27 @@ lazy developer error in file %s, function %s, and line %i:" format_string,     \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \
     } while (0)
+
+/* These are defined to ignore impossible warnings in release builds */
+#ifndef NDEBUG
+
+#define LINTED_ASSUME_UNREACHABLE() assert(0)
+#define LINTED_ASSUME(X) assert(X)
+
+#else
+
+#ifdef __GNUC__
+#define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
+#else
+#define LINTED_ASSUME_UNREACHABLE() do { } while (0)
+#endif
+
+#define LINTED_ASSUME(X) do {                   \
+        if (!(X)) {                             \
+            LINTED_ASSUME_UNREACHABLE();        \
+        }                                       \
+    } while (0)
+#endif
 
 static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
 {

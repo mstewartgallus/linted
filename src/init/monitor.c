@@ -608,11 +608,11 @@ close_new_connections : {
 exit_services : {
     if (-1 == kill(-1, SIGKILL)) {
         linted_error kill_errnum = errno;
-        assert(kill_errnum != 0);
+        LINTED_ASSUME(kill_errnum != 0);
         if (kill_errnum != ESRCH) {
             assert(kill_errnum != EINVAL);
             assert(kill_errnum != EPERM);
-            assert(false);
+            LINTED_ASSUME_UNREACHABLE();
         }
     }
 }
@@ -797,7 +797,7 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
         char *xx;
         if (-1 == asprintf(&xx, "/proc/self/fd/%i/%s", cwd, fstab_path)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             return errnum;
         }
         abspath = xx;
@@ -813,7 +813,7 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
     }
 
     if (NULL == fstab) {
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -871,7 +871,7 @@ close_file:
     if (endmntent(fstab) != 1) {
         if (0 == errnum) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         }
     }
 
@@ -911,7 +911,7 @@ static linted_error get_flags_and_data(char const *opts,
     char *subopts_str = strdup(opts);
     if (NULL == subopts_str) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -1067,7 +1067,7 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
         return on_write_connection(completed_task);
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 }
 
@@ -1131,7 +1131,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         if (pid == gui_service->pid || pid == sim_service->pid) {
             raise(exit_status);
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             return errnum;
         }
         break;
@@ -1140,7 +1140,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         if (pid == gui_service->pid || pid == sim_service->pid) {
             if (exit_status != 0) {
                 errnum = exit_status;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
                 return errnum;
             }
             goto process_exited;
@@ -1152,7 +1152,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
         break;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 
     return 0;
@@ -1208,7 +1208,7 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
         }
     }
     /* Impossible, listen has limited this */
-    assert(false);
+    LINTED_ASSUME_UNREACHABLE();
 got_space:
     connection->ko = new_socket;
 
@@ -1287,7 +1287,7 @@ static linted_error on_read_connection(struct linted_asynch_task
             }
 
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             assert(errnum != EINVAL);
             switch (errnum) {
             case ESRCH:
@@ -1324,7 +1324,7 @@ static linted_error on_read_connection(struct linted_asynch_task
             }
 
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             assert(errnum != EINVAL);
             switch (errnum) {
             case ESRCH:
@@ -1455,7 +1455,7 @@ static linted_error check_db(linted_ko cwd)
                 goto done_writing;
 
             default:
-                assert(false);
+                LINTED_ASSUME_UNREACHABLE();
             }
         }
 

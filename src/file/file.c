@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/file.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -85,7 +86,7 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
         fildes = openat(dirko, pathname, oflags, mode);
         if (-1 == fildes) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
         }

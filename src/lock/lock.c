@@ -20,6 +20,7 @@
 #include "linted/lock.h"
 
 #include "linted/file.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -80,7 +81,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (MAP_FAILED == spawn_error) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         assert(errnum != EINVAL);
         return errnum;
     }
@@ -93,7 +94,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
     pid_t child = fork();
     if (-1 == child) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -139,7 +140,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         do {
             if (-1 == waitid(P_PID, child, &info, WEXITED | WSTOPPED)) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
             } else {
                 errnum = 0;
             }
@@ -183,7 +184,7 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         case SIGTERM:
             /* Exited with error and passed an error code */
             errnum = *spawn_error;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             break;
 
         default:
@@ -204,13 +205,13 @@ linted_error linted_lock_acquire(linted_lock *lockp, linted_ko lock_file)
         break;
 
     default:
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 
 unmap_spawn_error:
     if (-1 == munmap(spawn_error, spawn_error_length)) {
         linted_error munmap_errnum = errno;
-        assert(munmap_errnum != 0);
+        LINTED_ASSUME(munmap_errnum != 0);
 
         if (0 == errnum) {
             errnum = munmap_errnum;
@@ -233,10 +234,10 @@ linted_error linted_lock_release(linted_lock lock)
             return EINVAL;
         }
 
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         assert(errnum != EINVAL);
         assert(errnum != EPERM);
-        assert(false);
+        LINTED_ASSUME_UNREACHABLE();
     }
 
     /* Unfortunately, one cannot pass NULL into the info parameter here */
@@ -244,7 +245,7 @@ linted_error linted_lock_release(linted_lock lock)
     do {
         if (-1 == waitid(P_PID, lock, &info, WEXITED)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
         }

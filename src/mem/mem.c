@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/mem.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -31,7 +32,7 @@ linted_error linted_mem_alloc(void **memp, size_t size)
     void *memory = malloc(size);
     if (NULL == memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -53,7 +54,7 @@ linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
     void *memory = malloc(total);
     if (NULL == memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -70,7 +71,7 @@ linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
     void *memory = calloc(1U, size);
     if (NULL == memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -85,7 +86,7 @@ linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
         void *memory = malloc(1U);
         if (NULL == memory) {
             linted_error errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             return errnum;
         }
         *memp = memory;
@@ -95,7 +96,7 @@ linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
     void *memory = calloc(nmemb, size);
     if (NULL == memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -112,7 +113,7 @@ linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size)
     void *new_memory = realloc(memory, new_size);
     if (NULL == new_memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 
@@ -135,7 +136,7 @@ linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
     void *new_memory = realloc(memory, total);
     if (NULL == new_memory) {
         linted_error errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
         return errnum;
     }
 

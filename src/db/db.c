@@ -26,6 +26,7 @@
 #include "linted/lock.h"
 #include "linted/mem.h"
 #include "linted/random.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -67,7 +68,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     if (db_creat) {
         if (-1 == mkdirat(cwd, pathname, S_IRWXU)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             if (errnum != EEXIST) {
                 return errnum;
             }
@@ -132,7 +133,7 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             struct stat stats;
             if (-1 == fstat(version_file, &stats)) {
                 errnum = errno;
-                assert(errnum != 0);
+                LINTED_ASSUME(errnum != 0);
                 goto close_version_file;
             }
 
@@ -217,13 +218,13 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
         if (-1 == mkdirat(the_db, TEMP_DIR, S_IRWXU)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             goto unlock_db;
         }
 
         if (-1 == mkdirat(the_db, FIELD_DIR, S_IRWXU)) {
             errnum = errno;
-            assert(errnum != 0);
+            LINTED_ASSUME(errnum != 0);
             goto unlock_db;
         }
         break;
@@ -321,7 +322,7 @@ linted_error linted_db_temp_send(linted_db db, char const *path,
 
     if (-1 == renameat(db, path, db, field_path)) {
         errnum = errno;
-        assert(errnum != 0);
+        LINTED_ASSUME(errnum != 0);
     }
 
     linted_mem_free(field_path);
