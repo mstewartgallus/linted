@@ -65,7 +65,7 @@ AM_CFLAGS=\
   $(linted_CFLAGS_WARNINGS)
 
 EXTRA_DIST+=scripts/test.in
-scripts/test: $(MAKEFILE) scripts/test.in
+scripts/test: Makefile scripts/test.in
 	$(MKDIR_P) scripts
 	sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
