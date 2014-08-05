@@ -236,7 +236,6 @@ exit:
 static struct sock_filter const real_filter[] = {
     BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
 
-    /* Simulator Permissions */
     ALLOW(access),
     ALLOW(arch_prctl),
     ALLOW(brk),
