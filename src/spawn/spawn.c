@@ -43,8 +43,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <linux/seccomp.h>
-
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
 enum file_action_type {
@@ -81,7 +79,6 @@ struct mount_args
 
 struct linted_spawn_attr
 {
-    struct sock_fprog const *fprog;
     char const *chrootdir;
     size_t mount_args_size;
     struct mount_args *mount_args;
@@ -141,12 +138,6 @@ void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
 {
     attr->setpgroup = true;
     attr->pgroup = pgroup;
-}
-
-void linted_spawn_attr_set_seccomp_bpf(struct linted_spawn_attr *attr,
-                                       struct sock_fprog const *fprog)
-{
-    attr->fprog = fprog;
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
@@ -588,17 +579,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             }
 
             if (-1 == cap_free(caps)) {
-                exit_with_error(spawn_error, errno);
-            }
-        }
-
-        if (attr->fprog != NULL) {
-            if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
-                exit_with_error(spawn_error, errno);
-            }
-
-            if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
-                            attr->fprog, 0UL, 0UL)) {
                 exit_with_error(spawn_error, errno);
             }
         }

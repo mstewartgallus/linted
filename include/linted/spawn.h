@@ -19,8 +19,6 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
-#include <sys/types.h>
-
 /**
  * @file
  *
@@ -37,8 +35,6 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
 void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr);
 void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup);
-void linted_spawn_attr_set_seccomp_bpf(struct linted_spawn_attr *attr,
-                                       struct sock_fprog const *fprog);
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir);
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,

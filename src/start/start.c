@@ -38,6 +38,8 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
+#include <linux/seccomp.h>
+
 #if defined __linux__
 #define FDS_DIR "/proc/self/fd"
 #else
@@ -227,6 +229,14 @@ It is insecure to run a game as root!\n"));
 %s: can not drop ability to raise privileges through execve: %s\n",
                                process_name, linted_error_string_alloc(errnum));
         return EXIT_FAILURE;
+    }
+
+    if (linted_start_config.seccomp_bpf != NULL) {
+        if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+                        linted_start_config.seccomp_bpf, 0UL, 0UL)) {
+            perror("prctl");
+            return EXIT_FAILURE;
+        }
     }
 
     {

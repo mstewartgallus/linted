@@ -44,7 +44,6 @@
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 
-#include <linux/filter.h>
 #include <linux/seccomp.h>
 
 #define BACKLOG 20U
@@ -93,7 +92,6 @@ struct service_config_process
     char const *const *environment;
     struct dup_pairs dup_pairs;
     linted_ko dirko;
-    struct sock_fprog const * seccomp_filter;
 };
 
 struct service_config_file
@@ -190,9 +188,6 @@ struct connection_pool
     struct connection connections[MAX_MANAGE_CONNECTIONS];
     size_t count;
 };
-
-static struct sock_fprog const gui_seccomp_filter;
-static struct sock_fprog const simulator_seccomp_filter;
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -310,7 +305,6 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
            [LINTED_SERVICE_SIMULATOR]
                = { .process
                    = { .type = SERVICE_PROCESS,
-                       .seccomp_filter = &simulator_seccomp_filter,
                        .dirko = cwd,
                        .path = simulator_path,
                        .arguments
@@ -327,7 +321,6 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
            [LINTED_SERVICE_GUI]
                = { .process
                    = { .type = SERVICE_PROCESS,
-                       .seccomp_filter = &gui_seccomp_filter,
                        .dirko = cwd,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
@@ -427,7 +420,6 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
 
         linted_spawn_attr_drop_caps(attr);
 
-        linted_spawn_attr_set_seccomp_bpf(attr, proc_config->seccomp_filter);
         linted_spawn_attr_setchrootdir(attr, chrootdir_path);
 
         /* TODO: Close files leading outside of the sandbox  */
@@ -667,125 +659,6 @@ exit_services : {
 
     return EXIT_SUCCESS;
 }
-
-#define ALLOW(XX)                                               \
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),     \
-        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
-
-static struct sock_filter const simulator_real_filter[] = {
-    BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
-
-    /* Simulator Permissions */
-    ALLOW(access),
-    ALLOW(arch_prctl),
-    ALLOW(brk),
-    ALLOW(chdir),
-    ALLOW(clock_nanosleep),
-    ALLOW(clone),
-    ALLOW(close),
-    ALLOW(dup2),
-    ALLOW(execve),
-    ALLOW(exit_group),
-    ALLOW(fcntl),
-    ALLOW(fstat),
-    ALLOW(futex),
-    ALLOW(getdents),
-    ALLOW(geteuid),
-    ALLOW(getpid),
-    ALLOW(getrlimit),
-    ALLOW(gettid),
-    ALLOW(getuid),
-    ALLOW(lseek),
-    ALLOW(mmap),
-    ALLOW(mprotect),
-    ALLOW(mq_timedreceive),
-    ALLOW(mq_timedsend),
-    ALLOW(munmap),
-    ALLOW(open),
-    ALLOW(openat),
-    ALLOW(poll),
-    ALLOW(prctl),
-    ALLOW(read),
-    ALLOW(rt_sigaction),
-    ALLOW(rt_sigprocmask),
-    ALLOW(sched_getaffinity),
-    ALLOW(setrlimit),
-    ALLOW(set_robust_list),
-    ALLOW(set_tid_address),
-    ALLOW(stat),
-    ALLOW(tgkill),
-
-    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
-
-static struct sock_fprog const simulator_seccomp_filter = {
-    .len = LINTED_ARRAY_SIZE(simulator_real_filter),
-    .filter = (struct sock_filter*) simulator_real_filter
-};
-
-static struct sock_filter const gui_real_filter[] = {
-    BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
-
-    ALLOW(access),
-    ALLOW(arch_prctl),
-    ALLOW(brk),
-    ALLOW(chdir),
-    ALLOW(clock_nanosleep),
-    ALLOW(clone),
-    ALLOW(close),
-    ALLOW(connect),
-    ALLOW(dup2),
-    ALLOW(execve),
-    ALLOW(exit),
-    ALLOW(exit_group),
-    ALLOW(fcntl),
-    ALLOW(fstat),
-    ALLOW(futex),
-    ALLOW(getdents),
-    ALLOW(getegid),
-    ALLOW(geteuid),
-    ALLOW(getgid),
-    ALLOW(getpeername),
-    ALLOW(getpid),
-    ALLOW(getrlimit),
-    ALLOW(gettid),
-    ALLOW(getuid),
-    ALLOW(ioctl),
-    ALLOW(lseek),
-    ALLOW(madvise),
-    ALLOW(mincore),
-    ALLOW(mmap),
-    ALLOW(mprotect),
-    ALLOW(mq_timedreceive),
-    ALLOW(mq_timedsend),
-    ALLOW(munmap),
-    ALLOW(open),
-    ALLOW(openat),
-    ALLOW(poll),
-    ALLOW(prctl),
-    ALLOW(read),
-    ALLOW(recvfrom),
-    ALLOW(rt_sigaction),
-    ALLOW(rt_sigprocmask),
-    ALLOW(sched_getaffinity),
-    ALLOW(setrlimit),
-    ALLOW(set_robust_list),
-    ALLOW(set_tid_address),
-    ALLOW(shutdown),
-    ALLOW(socket),
-    ALLOW(stat),
-    ALLOW(tgkill),
-    ALLOW(uname),
-    ALLOW(write),
-    ALLOW(writev),
-
-    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
-
-static struct sock_fprog const gui_seccomp_filter = {
-    .len = LINTED_ARRAY_SIZE(gui_real_filter),
-    .filter = (struct sock_filter*) gui_real_filter
-};
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path)

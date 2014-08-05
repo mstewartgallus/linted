@@ -33,7 +33,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <time.h>
+
+#include <linux/filter.h>
+#include <linux/seccomp.h>
 
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
@@ -100,6 +104,15 @@ struct sim_updater_task
     linted_ko updater;
 };
 
+static linted_ko kos[3U];
+static struct sock_fprog const seccomp_filter;
+struct linted_start_config const linted_start_config
+    = { .canonical_process_name = PACKAGE_NAME "-simulator",
+        .open_current_working_directory = true,
+        .kos_size = LINTED_ARRAY_SIZE(kos),
+        .kos = kos,
+        .seccomp_bpf = &seccomp_filter};
+
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error on_read_timer(struct linted_asynch_task *completed_task);
@@ -115,14 +128,6 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
 static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
-
-static linted_ko kos[3U];
-
-struct linted_start_config const linted_start_config
-    = { .canonical_process_name = PACKAGE_NAME "-simulator",
-        .open_current_working_directory = true,
-        .kos_size = LINTED_ARRAY_SIZE(kos),
-        .kos = kos };
 
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
@@ -223,6 +228,61 @@ destroy_pool : {
 exit:
     return errnum;
 }
+
+#define ALLOW(XX)                                               \
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),     \
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+
+static struct sock_filter const real_filter[] = {
+    BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+
+    /* Simulator Permissions */
+    ALLOW(access),
+    ALLOW(arch_prctl),
+    ALLOW(brk),
+    ALLOW(chdir),
+    ALLOW(clock_nanosleep),
+    ALLOW(clone),
+    ALLOW(close),
+    ALLOW(dup2),
+    ALLOW(execve),
+    ALLOW(exit_group),
+    ALLOW(fcntl),
+    ALLOW(fstat),
+    ALLOW(futex),
+    ALLOW(getdents),
+    ALLOW(geteuid),
+    ALLOW(getpid),
+    ALLOW(getrlimit),
+    ALLOW(gettid),
+    ALLOW(getuid),
+    ALLOW(lseek),
+    ALLOW(mmap),
+    ALLOW(mprotect),
+    ALLOW(mq_timedreceive),
+    ALLOW(mq_timedsend),
+    ALLOW(munmap),
+    ALLOW(open),
+    ALLOW(openat),
+    ALLOW(poll),
+    ALLOW(prctl),
+    ALLOW(read),
+    ALLOW(rt_sigaction),
+    ALLOW(rt_sigprocmask),
+    ALLOW(sched_getaffinity),
+    ALLOW(setrlimit),
+    ALLOW(set_robust_list),
+    ALLOW(set_tid_address),
+    ALLOW(stat),
+    ALLOW(tgkill),
+
+    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
+
+static struct sock_fprog const seccomp_filter = {
+    .len = LINTED_ARRAY_SIZE(real_filter),
+    .filter = (struct sock_filter*) real_filter
+};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {

@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <EGL/egl.h>
@@ -43,6 +44,9 @@
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
+
+#include <linux/filter.h>
+#include <linux/seccomp.h>
 
 enum {
     ON_RECEIVE_UPDATE,
@@ -124,6 +128,15 @@ struct gui_controller_task
     linted_ko controller;
 };
 
+static linted_ko kos[3U];
+static struct sock_fprog const seccomp_filter;
+struct linted_start_config const linted_start_config
+    = { .canonical_process_name = PACKAGE_NAME "-gui",
+        .open_current_working_directory = false,
+        .kos_size = LINTED_ARRAY_SIZE(kos),
+        .kos = kos,
+        .seccomp_bpf = &seccomp_filter};
+
 static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -168,14 +181,6 @@ static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
-
-static linted_ko kos[3U];
-
-struct linted_start_config const linted_start_config
-    = { .canonical_process_name = PACKAGE_NAME "-gui",
-        .open_current_working_directory = false,
-        .kos_size = LINTED_ARRAY_SIZE(kos),
-        .kos = kos };
 
 uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                           char const *const argv[const])
@@ -572,6 +577,75 @@ destroy_pool : {
 shutdown:
     return errnum;
 }
+
+#define ALLOW(XX)                                               \
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),     \
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+
+static struct sock_filter const real_filter[] = {
+    BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+
+    ALLOW(access),
+    ALLOW(arch_prctl),
+    ALLOW(brk),
+    ALLOW(chdir),
+    ALLOW(clock_nanosleep),
+    ALLOW(clone),
+    ALLOW(close),
+    ALLOW(connect),
+    ALLOW(dup2),
+    ALLOW(execve),
+    ALLOW(exit),
+    ALLOW(exit_group),
+    ALLOW(fcntl),
+    ALLOW(fstat),
+    ALLOW(futex),
+    ALLOW(getdents),
+    ALLOW(getegid),
+    ALLOW(geteuid),
+    ALLOW(getgid),
+    ALLOW(getpeername),
+    ALLOW(getpid),
+    ALLOW(getrlimit),
+    ALLOW(gettid),
+    ALLOW(getuid),
+    ALLOW(ioctl),
+    ALLOW(lseek),
+    ALLOW(madvise),
+    ALLOW(mincore),
+    ALLOW(mmap),
+    ALLOW(mprotect),
+    ALLOW(mq_timedreceive),
+    ALLOW(mq_timedsend),
+    ALLOW(munmap),
+    ALLOW(open),
+    ALLOW(openat),
+    ALLOW(poll),
+    ALLOW(prctl),
+    ALLOW(read),
+    ALLOW(recvfrom),
+    ALLOW(rt_sigaction),
+    ALLOW(rt_sigprocmask),
+    ALLOW(sched_getaffinity),
+    ALLOW(setrlimit),
+    ALLOW(set_robust_list),
+    ALLOW(set_tid_address),
+    ALLOW(shutdown),
+    ALLOW(socket),
+    ALLOW(stat),
+    ALLOW(tgkill),
+    ALLOW(uname),
+    ALLOW(write),
+    ALLOW(writev),
+
+    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
+
+static struct sock_fprog const seccomp_filter = {
+    .len = LINTED_ARRAY_SIZE(real_filter),
+    .filter = (struct sock_filter*) real_filter
+};
+
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
