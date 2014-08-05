@@ -23,7 +23,6 @@
 uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
                               char const *chrootdir_path,
                               char const *fstab_path,
-                              char const *simulator_path,
-                              char const *gui_path);
+                              char const *simulator_path, char const *gui_path);
 
 #endif /* LINTED_INIT_INIT_H */

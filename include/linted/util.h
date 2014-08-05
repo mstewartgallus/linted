@@ -102,13 +102,16 @@ lazy developer error in file %s, function %s, and line %i:" format_string,     \
 #ifdef __GNUC__
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
 #else
-#define LINTED_ASSUME_UNREACHABLE() do { } while (0)
+#define LINTED_ASSUME_UNREACHABLE()                                            \
+    do {                                                                       \
+    } while (0)
 #endif
 
-#define LINTED_ASSUME(X) do {                   \
-        if (!(X)) {                             \
-            LINTED_ASSUME_UNREACHABLE();        \
-        }                                       \
+#define LINTED_ASSUME(X)                                                       \
+    do {                                                                       \
+        if (!(X)) {                                                            \
+            LINTED_ASSUME_UNREACHABLE();                                       \
+        }                                                                      \
     } while (0)
 #endif
 
