@@ -506,7 +506,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         }
 
         linted_io_write_str(STDOUT_FILENO, NULL,
-                            LINTED_STR("management socket: "));
+                            LINTED_STR("LINTED_SOCKET="));
         linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
