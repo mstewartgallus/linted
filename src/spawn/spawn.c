@@ -82,8 +82,6 @@ struct linted_spawn_attr
     char const *chrootdir;
     size_t mount_args_size;
     struct mount_args *mount_args;
-    pid_t pgroup;
-    bool setpgroup : 1U;
     bool drop_caps : 1U;
 };
 
@@ -132,12 +130,6 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
     linted_mem_free(attr->mount_args);
 
     linted_mem_free(attr);
-}
-
-void linted_spawn_attr_setpgroup(struct linted_spawn_attr *attr, pid_t pgroup)
-{
-    attr->setpgroup = true;
-    attr->pgroup = pgroup;
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
@@ -376,20 +368,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
             goto unmap_spawn_error;
         }
 
-        if (attr != NULL) {
-            if (attr->setpgroup) {
-                if (-1 == setpgid(child, attr->pgroup)) {
-                    errnum = errno;
-                    LINTED_ASSUME(errnum != 0);
-
-                    assert(errnum != EINVAL);
-                    assert(EACCES == errnum || EPERM == errnum || ESRCH
-                                                                  == errnum);
-                    errnum = 0;
-                }
-            }
-        }
-
     unmap_spawn_error:
         if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
             if (0 == errnum) {
@@ -403,17 +381,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
     }
 
     if (attr != NULL) {
-
-        if (attr->setpgroup) {
-            if (-1 == setpgid(0, attr->pgroup)) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-                if (errnum != EACCES) {
-                    exit_with_error(spawn_error, errnum);
-                }
-            }
-        }
-
         if (attr->drop_caps) {
             /* Used ways to sandbox:
              *
