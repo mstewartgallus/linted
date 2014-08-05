@@ -17,6 +17,7 @@ mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
 exec "${ROOT}/../src/init/linted"\
      --chrootdir="${XDG_RUNTIME_DIR}/linted/chroot"\
-     --fstab="${SRCDIR}/src/init/fstab"\
+     --simulator-fstab="${SRCDIR}/src/simulator/simulator-fstab"\
+     --gui-fstab="${SRCDIR}/src/gui/gui-fstab"\
      --simulator="${ROOT}/../src/simulator/simulator"\
      --gui="${ROOT}/../src/gui/gui" "$@"

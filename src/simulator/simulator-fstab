@@ -1,0 +1,16 @@
+# Similar to /etc/fstab but for Linted sandboxing. Paths are
+# interpreted relative to the location Linted chroots to.
+#
+# <file system>	<mount point>	<type>	<options>
+/dev	dev	none	rbind
+/home	home	none	rbind   # TODO: This doesn't work with overlayfs
+
+proc	proc	proc	ro,nosuid,nodev,noexec,hidepid=2
+
+overlayfs	etc	overlayfs	ro,lowerdir=/etc,upperdir=/etc
+
+overlayfs	lib	overlayfs	ro,lowerdir=/lib,upperdir=/lib
+overlayfs	lib32	overlayfs	ro,lowerdir=/lib32,upperdir=/lib32
+overlayfs	lib64	overlayfs	ro,lowerdir=/lib64,upperdir=/lib64
+
+overlayfs	usr	overlayfs	ro,lowerdir=/usr,upperdir=/usr

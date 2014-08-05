@@ -55,8 +55,6 @@ noinst_LTLIBRARIES+=%D%/libmonitor.la
   src/manager/libmanager.la\
   src/updater/libupdater.la
 
-dist_pkgconf_DATA+=%D%/fstab
-
 BUILT_SOURCES+=%D%/binaries.h
 EXTRA_DIST+=%D%/binaries.h.in
 MOSTLYCLEANFILES+=%D%/binaries.h

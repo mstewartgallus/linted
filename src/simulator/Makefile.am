@@ -29,3 +29,5 @@ pkglibexec_PROGRAMS+=%D%/simulator
   src/controller/libcontroller.la\
   src/logger/liblogger.la\
   src/updater/libupdater.la
+
+dist_pkgconf_DATA+=%D%/simulator-fstab

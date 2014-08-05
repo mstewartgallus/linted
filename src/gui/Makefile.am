@@ -67,3 +67,5 @@ MOSTLYCLEANFILES+=%D%/assets.c
 	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
 	  $(srcdir)/%D%/assets/assets.py\
 	  --output=$@
+
+dist_pkgconf_DATA+=%D%/gui-fstab

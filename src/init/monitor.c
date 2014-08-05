@@ -88,6 +88,7 @@ struct service_config_process
 {
     enum service_type type;
     char const *path;
+    char const *fstab;
     char const *const *arguments;
     char const *const *environment;
     struct dup_pairs dup_pairs;
@@ -221,7 +222,8 @@ static linted_error connection_remove(struct connection *connection,
 
 uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                                  char const *chrootdir_path,
-                                 char const *fstab_path,
+                                 char const *simulator_fstab_path,
+                                 char const *gui_fstab_path,
                                  char const *simulator_path,
                                  char const *gui_path)
 {
@@ -306,6 +308,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                = { .process
                    = { .type = SERVICE_PROCESS,
                        .dirko = cwd,
+                       .fstab = simulator_fstab_path,
                        .path = simulator_path,
                        .arguments
                        = (char const * const[]) { simulator_path, NULL },
@@ -322,6 +325,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                = { .process
                    = { .type = SERVICE_PROCESS,
                        .dirko = cwd,
+                       .fstab = gui_fstab_path,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
                        .environment
@@ -423,7 +427,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         linted_spawn_attr_setchrootdir(attr, chrootdir_path);
 
         /* TODO: Close files leading outside of the sandbox  */
-        if ((errnum = parse_fstab(attr, cwd, fstab_path)) != 0) {
+        if ((errnum = parse_fstab(attr, cwd, proc_config->fstab)) != 0) {
             errno = errnum;
             perror("parse_fstab");
             return EXIT_FAILURE;

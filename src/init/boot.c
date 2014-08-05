@@ -43,7 +43,8 @@ enum {
     HELP,
     VERSION_OPTION,
     CHROOTDIR_OPTION,
-    FSTAB,
+    SIMULATOR_FSTAB,
+    GUI_FSTAB,
     SIMULATOR,
     GUI
 };
@@ -71,7 +72,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-    char const *fstab_path = PKGCONFDIR "/fstab";
+    char const *simulator_fstab_path = PKGCONFDIR "/simulator-fstab";
+    char const *gui_fstab_path = PKGCONFDIR "/gui-fstab";
     char const *chrootdir_path = CHROOTDIR;
 
     for (size_t ii = 1U; ii < argc; ++ii) {
@@ -81,7 +83,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             [HELP] = "--help",
             [VERSION_OPTION] = "--version",
             [CHROOTDIR_OPTION] = "--chrootdir",
-            [FSTAB] = "--fstab",
+            [SIMULATOR_FSTAB] = "--simulator-fstab",
+            [GUI_FSTAB] = "--gui-fstab",
             [SIMULATOR] = "--simulator",
             [GUI] = "--gui"
         };
@@ -121,11 +124,18 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
             chrootdir_path = argument + strlen("--chrootdir=");
             break;
 
-        case FSTAB:
-            if (argument[strlen(arguments[FSTAB])] != '=') {
+        case SIMULATOR_FSTAB:
+            if (argument[strlen(arguments[SIMULATOR_FSTAB])] != '=') {
                 goto bad_argument;
             }
-            fstab_path = argument + strlen("--fstab=");
+            simulator_fstab_path = argument + strlen("--simulator-fstab=");
+            break;
+
+        case GUI_FSTAB:
+            if (argument[strlen(arguments[GUI_FSTAB])] != '=') {
+                goto bad_argument;
+            }
+            gui_fstab_path = argument + strlen("--gui-fstab=");
             break;
 
         case SIMULATOR:
@@ -254,7 +264,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 }
             }
 
-            return linted_init_init(cwd, display, chrootdir_path, fstab_path,
+            return linted_init_init(cwd, display, chrootdir_path,
+                                    simulator_fstab_path, gui_fstab_path,
                                     simulator_path, gui_path);
         }
     }
