@@ -115,19 +115,40 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    if (0 == strcmp("status", command)) {
-        return run_status(process_name, argc - last_index + 1U,
-                          argv + last_index - 1U);
-    } else if (0 == strcmp("stop", command)) {
-        return run_stop(process_name, argc - last_index + 1U,
-                        argv + last_index - 1U);
-    } else {
+    enum {
+        STATUS,
+        STOP
+    };
+
+    static char const * const commands[] = {
+        [STATUS] = "status",
+        [STOP] = "stop"
+    };
+
+    int arg = -1;
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(commands); ++ii) {
+        if (0 == strcmp(command, commands[ii])) {
+            arg = ii;
+            break;
+        }
+    }
+
+    size_t new_argc = argc - last_index + 1U;
+    char const *const *new_argv = argv + last_index - 1U;
+    switch (arg) {
+    case -1:
         linted_io_write_format(STDERR_FILENO, NULL,
                                "%s: unrecognized command '%s'\n", process_name,
                                command);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
+
+    case STATUS:
+        return run_status(process_name, new_argc, new_argv);
+
+    case STOP:
+        return run_stop(process_name, new_argc, new_argv);
     }
 }
 

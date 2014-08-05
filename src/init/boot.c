@@ -79,7 +79,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
-        char const * arguments[] = {
+        static char const * const arguments[] = {
             [HELP] = "--help",
             [VERSION_OPTION] = "--version",
             [CHROOTDIR_OPTION] = "--chrootdir",
