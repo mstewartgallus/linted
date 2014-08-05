@@ -35,17 +35,18 @@
 
 #include <linux/sched.h>
 
-#define HELP_OPTION "--help"
-#define VERSION_OPTION "--version"
-
-#define CHROOTDIR_OPTION "--chrootdir"
-#define FSTAB_OPTION "--fstab"
-#define SIMULATOR_OPTION "--simulator"
-#define GUI_OPTION "--gui"
-
 #ifndef PR_SET_CHILD_SUBREAPER
 #define PR_SET_CHILD_SUBREAPER 36UL
 #endif
+
+enum {
+    HELP,
+    VERSION_OPTION,
+    CHROOTDIR_OPTION,
+    FSTAB,
+    SIMULATOR,
+    GUI
+};
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-init",
@@ -76,24 +77,67 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
-        if (0 == strcmp(argument, HELP_OPTION)) {
-            need_help = true;
-        } else if (0 == strcmp(argument, VERSION_OPTION)) {
-            need_version = true;
-        } else if (0 == strncmp(argument, CHROOTDIR_OPTION "=",
-                                strlen(CHROOTDIR_OPTION "="))) {
-            chrootdir_path = argument + strlen(CHROOTDIR_OPTION "=");
-        } else if (0 == strncmp(argument, FSTAB_OPTION "=",
-                                strlen(FSTAB_OPTION "="))) {
-            fstab_path = argument + strlen(FSTAB_OPTION "=");
-        } else if (0 == strncmp(argument, SIMULATOR_OPTION "=",
-                                strlen(SIMULATOR_OPTION "="))) {
-            simulator_path = argument + strlen(SIMULATOR_OPTION "=");
-        } else if (0 == strncmp(argument, GUI_OPTION "=",
-                                strlen(GUI_OPTION "="))) {
-            gui_path = argument + strlen(GUI_OPTION "=");
-        } else {
+        char const * arguments[] = {
+            [HELP] = "--help",
+            [VERSION_OPTION] = "--version",
+            [CHROOTDIR_OPTION] = "--chrootdir",
+            [FSTAB] = "--fstab",
+            [SIMULATOR] = "--simulator",
+            [GUI] = "--gui"
+        };
+
+        int arg = -1;
+        for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(arguments); ++ii) {
+            if (0 == strncmp(argument, arguments[ii], strlen(arguments[ii]))) {
+                arg = ii;
+                break;
+            }
+        }
+
+        switch (arg) {
+        bad_argument:
+        case -1:
             bad_option = argument;
+            break;
+
+        case HELP:
+            if (argument[strlen(arguments[HELP])] != '\0') {
+                goto bad_argument;
+            }
+            need_help = true;
+            break;
+
+        case VERSION_OPTION:
+            if (argument[strlen(arguments[VERSION_OPTION])] != '\0') {
+                goto bad_argument;
+            }
+            need_version = true;
+            break;
+
+        case CHROOTDIR_OPTION:
+            if (argument[strlen(arguments[CHROOTDIR_OPTION])] != '=') {
+                goto bad_argument;
+            }
+            chrootdir_path = argument + strlen("--chrootdir=");
+            break;
+
+        case FSTAB:
+            if (argument[strlen(arguments[FSTAB])] != '=') {
+                goto bad_argument;
+            }
+            fstab_path = argument + strlen("--fstab=");
+            break;
+
+        case SIMULATOR:
+            if (argument[strlen(arguments[SIMULATOR])] != '=') {
+                goto bad_argument;
+            }
+            simulator_path = argument + strlen("--simulator=");
+            break;
+
+        case GUI:
+            gui_path = argument + strlen("--gui=");
+            break;
         }
     }
 
@@ -106,7 +150,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     if (bad_option != NULL) {
         linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
@@ -122,7 +166,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                                "%s: missing DISPLAY environment variable\n",
                                process_name);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR(HELP_OPTION));
+                                        LINTED_STR("--help"));
         return EXIT_FAILURE;
     }
 
