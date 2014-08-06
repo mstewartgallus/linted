@@ -16,35 +16,18 @@
 # limitations under the License.
 bin_PROGRAMS+=%D%/linted
 
-%C%_linted_SOURCES=%D%/boot.c
+%C%_linted_SOURCES=\
+  %D%/boot.c\
+  %D%/init.c %D%/init.h\
+  %D%/monitor.c %D%/monitor.h
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/start/libstart.la\
   \
   src/error/liberror.la\
-  src/io/libio.la\
-  src/locale/liblocale.la\
-  src/util/libutil.la\
-  \
-  %D%/libinit.la
-
-noinst_LTLIBRARIES+=%D%/libinit.la
-%C%_libinit_la_SOURCES=%D%/init.c %D%/init.h
-%C%_libinit_la_LIBADD=\
-  src/start/libstart.la\
-  \
-  src/error/liberror.la\
-  src/io/libio.la\
-  src/util/libutil.la\
-  \
-  %D%/libmonitor.la
-
-noinst_LTLIBRARIES+=%D%/libmonitor.la
-%C%_libmonitor_la_SOURCES=%D%/monitor.c %D%/monitor.h
-%C%_libmonitor_la_LIBADD=\
-  src/error/liberror.la\
   src/ko/libko.la\
   src/io/libio.la\
+  src/locale/liblocale.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
   src/util/libutil.la\

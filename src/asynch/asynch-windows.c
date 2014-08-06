@@ -30,7 +30,6 @@
 #include <errno.h>
 #include <process.h>
 #include <stdbool.h>
-#include <stdnoreturn.h>
 #include <string.h>
 #include <windows.h>
 
@@ -54,7 +53,7 @@ struct linted_asynch_pool
     linted_ko workers[];
 };
 
-static noreturn DWORD WINAPI worker_routine(void *arg);
+static DWORD WINAPI worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
@@ -241,7 +240,7 @@ void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
     task->task_action = task_action;
 }
 
-static noreturn DWORD WINAPI worker_routine(void *arg)
+static DWORD WINAPI worker_routine(void *arg)
 {
     struct linted_asynch_pool *pool = arg;
 
