@@ -251,6 +251,19 @@ It is insecure to run a game as root!\n"));
         linted_random_seed_generator(entropy);
     }
 
+    {
+        /* Get EPIPEs */
+        struct sigaction action;
+
+        memset(&action, 0, sizeof action);
+        action.sa_handler = SIG_IGN;
+
+        if (-1 == sigaction(SIGPIPE, &action, NULL)) {
+            perror("sigaction");
+            return EXIT_FAILURE;
+        }
+    }
+
     return linted_start(cwd, process_name, argc, (char const * const *)argv);
 }
 

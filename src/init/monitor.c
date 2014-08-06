@@ -276,17 +276,6 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
     memcpy(env_display_var + strlen("DISPLAY="), display, display_length);
     env_display_var[env_display_var_length - 1U] = '\0';
 
-    {
-        /* Set signals to a safe default */
-        sigset_t sigblocked_set;
-        sigemptyset(&sigblocked_set);
-
-        /* Get EPIPEs */
-        sigaddset(&sigblocked_set, SIGPIPE);
-
-        pthread_sigmask(SIG_BLOCK, &sigblocked_set, NULL);
-    }
-
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
            [LINTED_SERVICE_SIMULATOR]
