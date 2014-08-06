@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _POSIX_C_SOURCE 200809L
+
 #include "config.h"
 
 #include "linted/error.h"
@@ -95,7 +97,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 
                 ko = mq_open(random_mq_name,
                              O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
-                             S_IRUSR | S_IWUSR, &mq_attr);
+                             0, &mq_attr);
             }
             if (-1 == ko) {
                 errnum = errno;
@@ -111,6 +113,18 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
         unlink_status = mq_unlink(random_mq_name);
     }
     if (-1 == unlink_status) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        goto exit_with_error_and_close;
+    }
+
+    /* We have to change permissions to reasonable settings AFTER
+     * unlinking the message queue from the filesystem because this
+     * process might have capabilities and process of the same user
+     * and group but with lesser capabilities could open it and mess
+     * with a process that has higher capabilities.
+     */
+    if (-1 == fchmod(ko, S_IRUSR | S_IWUSR)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
         goto exit_with_error_and_close;
