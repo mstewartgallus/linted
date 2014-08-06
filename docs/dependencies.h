@@ -36,9 +36,6 @@
  *
  * @section buildtime Build Time Dependencies
  *
- * - glLoadGenerator-reloaded
- *   - Main Site - https://bitbucket.org/Anteru/glloadgen-reloaded/
- *   - Bug Database - https://bitbucket.org/Anteru/glloadgen-reloaded/issues
  * - The GNU Compiler Collection
  *   - Main Site - https://www.gnu.org/software/gcc/
  *   - Bug Mailing List - http://gcc.gnu.org/ml/gcc-bugs/
