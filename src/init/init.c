@@ -26,7 +26,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <sys/prctl.h>
 #include <sys/types.h>

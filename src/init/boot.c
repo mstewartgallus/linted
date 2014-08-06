@@ -27,17 +27,12 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 
 #include <linux/sched.h>
-
-#ifndef PR_SET_CHILD_SUBREAPER
-#define PR_SET_CHILD_SUBREAPER 36UL
-#endif
 
 enum {
     HELP,
@@ -90,9 +85,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         };
 
         int arg = -1;
-        for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(arguments); ++ii) {
-            if (0 == strncmp(argument, arguments[ii], strlen(arguments[ii]))) {
-                arg = ii;
+        for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
+            if (0 == strncmp(argument, arguments[jj], strlen(arguments[jj]))) {
+                arg = jj;
                 break;
             }
         }
@@ -202,7 +197,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     pid_t child;
     {
         child
-            = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
+            = syscall(__NR_clone, SIGCHLD
+                      | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWUTS, NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -262,6 +258,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     perror("linted_ko_close");
                     return EXIT_FAILURE;
                 }
+            }
+
+            if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
+                perror("sethostname");
+                return EXIT_FAILURE;
             }
 
             return linted_init_init(cwd, display, chrootdir_path,

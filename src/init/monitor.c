@@ -36,15 +36,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <mntent.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
-#include <sys/syscall.h>
-
-#include <linux/seccomp.h>
 
 #define BACKLOG 20U
 
@@ -244,16 +239,6 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
 
     if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1UL, 0UL, 0UL, 0UL)) {
         perror("prctl");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == unshare(CLONE_NEWUTS)) {
-        perror("unshare");
-        return EXIT_FAILURE;
-    }
-
-    if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
-        perror("sethostname");
         return EXIT_FAILURE;
     }
 
