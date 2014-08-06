@@ -25,6 +25,10 @@
  * @file
  *
  * Implements message queues.
+ *
+ * @warning There is a race where a process with equal user and group
+ *          but different capabilities can open these while they are
+ *          being created.
  */
 
 typedef linted_ko linted_mq;

@@ -118,12 +118,6 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
         goto exit_with_error_and_close;
     }
 
-    /* We have to change permissions to reasonable settings AFTER
-     * unlinking the message queue from the filesystem because this
-     * process might have capabilities and process of the same user
-     * and group but with lesser capabilities could open it and mess
-     * with a process that has higher capabilities.
-     */
     if (-1 == fchmod(ko, S_IRUSR | S_IWUSR)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
