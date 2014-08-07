@@ -11,6 +11,11 @@
  *
  * Linted -- TODO
  *
+ * @todo Get the GCC flag -Wstack-size=500 to pass with no errors and
+ *       then set it as a default.
+ *
+ * @todo Investigate binary analysis tools like pahole.
+ *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
  * - The tools:
