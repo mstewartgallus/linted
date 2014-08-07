@@ -31,6 +31,7 @@ AC_SUBST([linted_CFLAGS_LANGUAGE])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_LANGUAGE],[
         [-pthread]dnl
+        [-Wl,--no-undefined]dnl
 ])
 AC_SUBST([linted_LDFLAGS_LANGUAGE])
 ])
