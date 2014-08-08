@@ -74,15 +74,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     for (size_t ii = 1U; ii < argc; ++ii) {
         char const *argument = argv[ii];
 
-        static char const * const arguments[] = {
-            [HELP] = "--help",
-            [VERSION_OPTION] = "--version",
-            [CHROOTDIR_OPTION] = "--chrootdir",
-            [SIMULATOR_FSTAB] = "--simulator-fstab",
-            [GUI_FSTAB] = "--gui-fstab",
-            [SIMULATOR] = "--simulator",
-            [GUI] = "--gui"
-        };
+        static char const *const arguments[]
+            = {[HELP] = "--help",
+               [VERSION_OPTION] = "--version",
+               [CHROOTDIR_OPTION] = "--chrootdir",
+               [SIMULATOR_FSTAB] = "--simulator-fstab",
+               [GUI_FSTAB] = "--gui-fstab",
+               [SIMULATOR] = "--simulator",
+               [GUI] = "--gui" };
 
         int arg = -1;
         for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
@@ -196,9 +195,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
      */
     pid_t child;
     {
-        child
-            = syscall(__NR_clone, SIGCHLD
-                      | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWUTS, NULL);
+        child = syscall(__NR_clone,
+                        SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWUTS,
+                        NULL);
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
@@ -260,7 +259,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 }
             }
 
-            if (-1 == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
+            if (-1
+                == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
                 perror("sethostname");
                 return EXIT_FAILURE;
             }

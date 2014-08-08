@@ -96,8 +96,8 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                 mq_attr.mq_msgsize = msgsize;
 
                 ko = mq_open(random_mq_name,
-                             O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK,
-                             0, &mq_attr);
+                             O_RDWR | O_CREAT | O_EXCL | O_NONBLOCK, 0,
+                             &mq_attr);
             }
             if (-1 == ko) {
                 errnum = errno;

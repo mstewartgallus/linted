@@ -50,12 +50,13 @@ make_directory:
         return errnum;
     }
 
-open_directory:;
+open_directory:
+    ;
     int fildes;
     do {
-        fildes = openat(dirko, pathname,
-                        O_CLOEXEC | O_NONBLOCK | O_DIRECTORY | O_NOFOLLOW,
-                        mode);
+        fildes
+            = openat(dirko, pathname,
+                     O_CLOEXEC | O_NONBLOCK | O_DIRECTORY | O_NOFOLLOW, mode);
         if (-1 == fildes) {
             errnum = errno;
             LINTED_ASSUME(errnum != 0);

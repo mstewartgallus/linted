@@ -479,8 +479,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
             goto close_new_connections;
         }
 
-        linted_io_write_str(STDOUT_FILENO, NULL,
-                            LINTED_STR("LINTED_SOCKET="));
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("LINTED_SOCKET="));
         linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
