@@ -105,7 +105,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
      * Always, be safe for execs and use O_NONBLOCK because asynch
      * functions handle that anyways and open may block otherwise.
      */
-    int oflags = O_CLOEXEC | O_NONBLOCK;
+    int oflags = O_CLOEXEC | O_NONBLOCK | O_NOCTTY;
 
     if (ko_rdonly) {
         oflags |= O_RDONLY;

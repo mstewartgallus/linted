@@ -130,7 +130,7 @@ It is insecure to run a game as root!\n"));
 
         int new_fd;
         do {
-            new_fd = openat(-1, pathname, oflags | O_NONBLOCK | O_CLOEXEC);
+            new_fd = openat(-1, pathname, oflags | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
             if (-1 == new_fd) {
                 errnum = errno;
                 LINTED_ASSUME(errnum != 0);
