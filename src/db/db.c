@@ -19,6 +19,7 @@
 
 #include "linted/db.h"
 
+#include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/file.h"
 #include "linted/io.h"
@@ -65,20 +66,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
     bool db_creat = (flags & LINTED_DB_CREAT) != 0;
 
+    linted_dir the_db;
     if (db_creat) {
-        if (-1 == mkdirat(cwd, pathname, S_IRWXU)) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-            if (errnum != EEXIST) {
-                return errnum;
-            }
-        }
-    }
-
-    linted_db the_db;
-    {
-        linted_db xx;
-        if ((errnum = linted_ko_open(&xx, cwd, pathname, 0)) != 0) {
+        linted_dir xx;
+        if ((errnum = linted_dir_create(&xx, cwd, pathname, 0, S_IRWXU)) != 0) {
             return errnum;
         }
         the_db = xx;
