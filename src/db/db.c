@@ -127,7 +127,13 @@ try_open_file:
                     goto unlink_file;
                 }
 
-                pthread_mutex_init(mutex, NULL);
+                {
+                    pthread_mutexattr_t attr;
+                    pthread_mutexattr_init(&attr);
+                    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+                    pthread_mutex_init(mutex, &attr);
+                    pthread_mutexattr_destroy(&attr);
+                }
 
                 munmap(mutex, mutex_length);
 
