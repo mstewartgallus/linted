@@ -107,9 +107,11 @@ LINTED_FRAMA_C_BINARY=src/simulator/simulator
 .PHONY: frama-c-lint
 frama-c-lint:
 	BINARY=$(LINTED_FRAMA_C_BINARY) &&\
-	(for II in $$($(srcdir)/scripts/flags json-c-models/$${BINARY}); do\
-	  echo -cpp-extra-args="$${II}";\
-	done && $(srcdir)/scripts/files json-c-models/$${BINARY}) | xargs\
+	(echo -cpp-extra-args="-I`frama-c -print-share-path`/libc" &&\
+	  for II in $$($(srcdir)/scripts/flags json-c-models/$${BINARY}); do\
+	    echo -cpp-extra-args="$${II}";\
+	  done && $(srcdir)/scripts/files json-c-models/$${BINARY}\
+	) | xargs\
 	  $(FRAMA_C)\
 	   -quiet\
 	   -journal-disable\
