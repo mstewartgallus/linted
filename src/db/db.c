@@ -24,7 +24,6 @@
 #include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/lock.h"
 #include "linted/mem.h"
 #include "linted/random.h"
 #include "linted/util.h"
