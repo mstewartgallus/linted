@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import json
+import subprocess
 import sys
 
 def go():
@@ -26,11 +27,22 @@ def go():
 
     arguments = parser.parse_args()
 
-    flags = []
+    filename = arguments.input_file
 
-    inputdata = None
-    with open(arguments.input_file, 'r') as the_file:
-        inputdata = the_file.read()
+    files_json = []
+
+    if filename.endswith('.a'):
+        members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
+        for member in members:
+            member_contents = subprocess.check_output(['ar', 'p', filename, member])
+            files_json.append(json.loads(member_contents.decode('utf-8')))
+    else:
+        inputdata = None
+        with open(filename, 'r') as the_file:
+            inputdata = the_file.read()
+        files_json.append(json.loads(inputdata))
+
+    flags = []
 
     def recurse(jsondata):
         for afile in jsondata['files']:
@@ -39,12 +51,12 @@ def go():
                 fileflags = jsondata['flags']
                 for flag in fileflags:
                     if (
-                        flag == '-E'
-                        or flag == '-C'
-                        or flag.startswith('-I')
-                        or flag.startswith('-i')
-                        or flag.startswith('-D')
-                        or flag.startswith('-U')
+                            flag == '-E'
+                            or flag == '-C'
+                            or flag.startswith('-I')
+                            or flag.startswith('-i')
+                            or flag.startswith('-D')
+                            or flag.startswith('-U')
                     ):
                         flags.append(flag)
             elif isinstance(afile, dict):
@@ -52,7 +64,8 @@ def go():
             else:
                 raise Exception('type error')
 
-    recurse(json.loads(inputdata))
+    for data in files_json:
+        recurse(data)
 
     print(' '.join(['\'' + ii + '\'' for ii in unique(flags)]))
 
