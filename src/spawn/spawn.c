@@ -242,8 +242,7 @@ linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
 
     {
         void *xx;
-        if ((errnum = linted_mem_alloc(&xx, sizeof *file_actions))
-            != 0) {
+        if ((errnum = linted_mem_alloc(&xx, sizeof *file_actions)) != 0) {
             return errnum;
         }
         file_actions = xx;
@@ -620,7 +619,7 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
 
     /* Stop the SIG_IGN handler from catching SIGTERM */
     {
-        struct sigaction action = {0};
+        struct sigaction action = { 0 };
 
         action.sa_handler = SIG_DFL;
 

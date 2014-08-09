@@ -31,7 +31,7 @@ linted_error linted_controller_create(linted_controller *controllerp, int flags)
         return EINVAL;
     }
 
-    struct linted_mq_attr attr = {0};
+    struct linted_mq_attr attr = { 0 };
 
     attr.maxmsg = 1;
     attr.msgsize

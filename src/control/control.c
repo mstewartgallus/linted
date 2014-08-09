@@ -274,7 +274,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
     }
 
     {
-        union linted_manager_request request = {0};
+        union linted_manager_request request = { 0 };
 
         request.type = LINTED_MANAGER_STATUS;
         request.status.service = LINTED_SERVICE_GUI;
@@ -409,7 +409,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
     }
 
     {
-        union linted_manager_request request = {0};
+        union linted_manager_request request = { 0 };
 
         request.type = LINTED_MANAGER_STOP;
         request.stop.service = LINTED_SERVICE_GUI;

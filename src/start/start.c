@@ -254,7 +254,7 @@ It is insecure to run a game as root!\n"));
 
     {
         /* Get EPIPEs */
-        struct sigaction action = {0};
+        struct sigaction action = { 0 };
 
         action.sa_handler = SIG_IGN;
 
