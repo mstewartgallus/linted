@@ -31,7 +31,6 @@ include %C%/file/Makefile.am
 include %C%/io/Makefile.am
 include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am
-include %C%/lock/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/mq/Makefile.am
 include %C%/random/Makefile.am

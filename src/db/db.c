@@ -33,11 +33,13 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -48,6 +50,11 @@
 
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
+
+static linted_error mutex_lock(linted_ko mutex);
+static linted_error mutex_unlock(linted_ko mutex_file);
+
+static size_t align_to_page_size(size_t size);
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
@@ -86,33 +93,84 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
      * version of the database.
      */
     linted_ko lock_file;
-
+try_open_file:
     {
         linted_ko xx;
-        if ((errnum = linted_lock_file_create(
-                 &xx, the_db, GLOBAL_LOCK, LINTED_LOCK_RDWR, S_IRUSR | S_IWUSR))
+        if ((errnum = linted_ko_open(&xx, the_db, GLOBAL_LOCK, LINTED_KO_RDWR))
             != 0) {
+            if (ENOENT == errnum) {
+                char pid_lock[] = "%i.lock";
+                sprintf(pid_lock, "%i.lock", getpid());
+
+                if ((errnum = linted_file_create(&xx, the_db, pid_lock,
+                                                 LINTED_FILE_RDWR, S_IRUSR | S_IWUSR)) != 0) {
+                    goto close_db;
+                }
+                lock_file = xx;
+
+                if (-1 == ftruncate(lock_file, sizeof (pthread_mutex_t))) {
+                    errnum = errno;
+                    LINTED_ASSUME(errnum != 0);
+                    assert(errnum != EINVAL);
+                    goto unlink_file;
+                }
+
+                size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
+
+                pthread_mutex_t *mutex
+                    = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
+                           MAP_SHARED, lock_file, 0);
+                if (MAP_FAILED == mutex) {
+                    errnum = errno;
+                    LINTED_ASSUME(errnum != 0);
+                    assert(errnum != EINVAL);
+                    goto unlink_file;
+                }
+
+                pthread_mutex_init(mutex, NULL);
+
+                munmap(mutex, mutex_length);
+
+                {
+                    char the_lock_file[] = "/proc/self/fd/XXXXXXXXXXXXXXX";
+                    sprintf(the_lock_file, "/proc/self/fd/%i", lock_file);
+                    if (-1 == linkat(-1, the_lock_file, the_db, GLOBAL_LOCK, AT_SYMLINK_FOLLOW)) {
+                        if (0 == errnum) {
+                            errnum = errno;
+                            LINTED_ASSUME(errnum != 0);
+                            assert(errnum != EINVAL);
+                        }
+                    }
+                }
+
+            unlink_file:
+                if (-1 == unlinkat(the_db, pid_lock, 0)) {
+                    if (0 == errnum) {
+                        errnum = errno;
+                        LINTED_ASSUME(errnum != 0);
+                        assert(errnum != EINVAL);
+                    }
+                }
+                if (errnum != 0) {
+                    linted_ko_close(lock_file);
+
+                    if (EEXIST == errnum) {
+                        goto try_open_file;
+                    }
+
+                    goto close_db;
+                }
+
+                goto got_file;
+            }
             goto close_db;
         }
         lock_file = xx;
     }
+got_file:;
 
-    linted_lock lock;
-    {
-        linted_lock xx;
-        errnum = linted_lock_acquire(&xx, lock_file);
-        lock = xx;
-    }
-
-    {
-        linted_error close_errnum = linted_ko_close(lock_file);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
-    }
-
-    if (errnum != 0) {
-        goto close_db;
+    if ((errnum = mutex_lock(lock_file)) != 0) {
+        goto close_lock_file;
     }
 
     /* Sole user of the database now */
@@ -229,7 +287,10 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
     }
 
 unlock_db:
-    linted_lock_release(lock);
+    mutex_unlock(lock_file);
+
+close_lock_file:
+    linted_ko_close(lock_file);
 
     if (errnum != 0) {
         goto close_db;
@@ -237,6 +298,7 @@ unlock_db:
 
     *dbp = the_db;
     return 0;
+
 
 close_db:
     linted_db_close(the_db);
@@ -351,4 +413,61 @@ static linted_error prepend(char **result, char const *base,
 
     *result = new_path;
     return 0;
+}
+
+static linted_error mutex_lock(linted_ko mutex_file)
+{
+    linted_error errnum;
+    size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
+
+    pthread_mutex_t *mutex = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
+                                  MAP_SHARED, mutex_file, 0);
+    if (MAP_FAILED == mutex) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        assert(errnum != EINVAL);
+        return errnum;
+    }
+
+    pthread_mutex_lock(mutex);
+
+    munmap(mutex, mutex_length);
+
+    return 0;
+}
+
+static linted_error mutex_unlock(linted_ko mutex_file)
+{
+    linted_error errnum;
+    size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
+
+    pthread_mutex_t *mutex = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
+                                  MAP_SHARED, mutex_file, 0);
+    if (MAP_FAILED == mutex) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        assert(errnum != EINVAL);
+        return errnum;
+    }
+
+    pthread_mutex_unlock(mutex);
+
+    munmap(mutex, mutex_length);
+
+    return 0;
+}
+
+static size_t align_to_page_size(size_t size)
+{
+    size_t page_size = sysconf(_SC_PAGESIZE);
+
+    /* This should always be true */
+    assert(page_size > 0U);
+
+    /* Round up to a multiple of page size */
+    size_t remainder = size % page_size;
+    if (0U == remainder)
+        return size;
+
+    return size - remainder + page_size;
 }
