@@ -153,6 +153,11 @@ try_to_create_lock_file:
                 goto unmap_mutexattr;
             }
 
+            if ((errnum = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)) != 0) {
+                assert(errnum != EINVAL);
+                assert(false);
+            }
+
             if ((errnum = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST)) != 0) {
                 assert(errnum != EINVAL);
                 assert(false);
