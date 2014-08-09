@@ -56,8 +56,7 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
     }
 
     {
-        struct sockaddr_un address;
-        memset(&address, 0, sizeof address);
+        struct sockaddr_un address = {0};
 
         address.sun_family = AF_UNIX;
 
@@ -113,8 +112,7 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
     }
 
     {
-        struct sockaddr_un address;
-        memset(&address, 0, sizeof address);
+        struct sockaddr_un address = {0};
 
         address.sun_family = AF_UNIX;
         memcpy(address.sun_path, path, path_len);
@@ -143,8 +141,7 @@ linted_error linted_manager_path(linted_manager manager,
                                  char buf[static LINTED_MANAGER_PATH_MAX],
                                  size_t *len)
 {
-    struct sockaddr_un address;
-    memset(&address, 0, sizeof address);
+    struct sockaddr_un address = {0};
 
     socklen_t addr_len = sizeof address;
     {

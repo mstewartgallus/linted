@@ -28,8 +28,7 @@ linted_error linted_logger_create(linted_logger *loggerp, int flags)
         return EINVAL;
     }
 
-    struct linted_mq_attr attr;
-    memset(&attr, 0, sizeof attr);
+    struct linted_mq_attr attr = {0};
 
     attr.maxmsg = 10;
     attr.msgsize = LINTED_LOGGER_LOG_MAX;

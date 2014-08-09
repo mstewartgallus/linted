@@ -103,11 +103,16 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 
     {
         void *xx;
-        if ((errnum = linted_mem_alloc_zeroed(&xx, sizeof *attr)) != 0) {
+        if ((errnum = linted_mem_alloc(&xx, sizeof *attr)) != 0) {
             return errnum;
         }
         attr = xx;
     }
+
+    attr->chrootdir = NULL;
+    attr->mount_args_size = 0U;
+    attr->mount_args = NULL;
+    attr->drop_caps = false;
 
     *attrp = attr;
     return 0;
@@ -237,12 +242,14 @@ linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
 
     {
         void *xx;
-        if ((errnum = linted_mem_alloc_zeroed(&xx, sizeof *file_actions))
+        if ((errnum = linted_mem_alloc(&xx, sizeof *file_actions))
             != 0) {
             return errnum;
         }
         file_actions = xx;
     }
+
+    file_actions->action_count = 0U;
 
     *file_actionsp = file_actions;
     return 0;
@@ -613,8 +620,8 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
 
     /* Stop the SIG_IGN handler from catching SIGTERM */
     {
-        struct sigaction action;
-        memset(&action, 0, sizeof action);
+        struct sigaction action = {0};
+
         action.sa_handler = SIG_DFL;
 
         sigaction(SIGTERM, &action, NULL);

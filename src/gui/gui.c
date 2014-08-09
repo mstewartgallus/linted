@@ -669,7 +669,15 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
     case LeaveNotify:
         window_model->focused = false;
 
-        memset(&controller_data->update, 0, sizeof controller_data->update);
+        controller_data->update.x_tilt = 0;
+        controller_data->update.y_tilt = 0;
+
+        controller_data->update.left = 0;
+        controller_data->update.right = 0;
+        controller_data->update.forward = 0;
+        controller_data->update.back = 0;
+
+        controller_data->update.jumping = 0;
 
         controller_data->update_pending = true;
         break;
@@ -1058,7 +1066,9 @@ static void destroy_graphics(struct graphics_state *graphics_state)
 {
     glUseProgram(0);
     glDeleteProgram(graphics_state->program);
-    memset(graphics_state, 0, sizeof *graphics_state);
+
+    graphics_state->program = 0;
+    graphics_state->model_view_projection_matrix = 0;
 }
 
 static void resize_graphics(struct graphics_state *graphics_state,
