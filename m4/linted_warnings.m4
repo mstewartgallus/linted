@@ -16,7 +16,6 @@ dnl
         [-Wdate-time]dnl Reproducible builds are GOOD
 dnl
         [-Woverflow]dnl
-dnl
         [-Wzero-as-null-pointer-constant]dnl
         [-Wformat=2]dnl
         [-Wunused] [-Wno-unused-parameter]dnl
@@ -32,6 +31,10 @@ dnl
         [-Wtrampolines]dnl We force a nonexecutable stack so for most
                        dnl targets would generate broken code if we
                        dnl used trampolines.
+dnl
+dnl     Make the = { 0 } idiom not cause warnings
+        [-Wno-missing-field-initializers]dnl
+        [-Wno-missing-braces]dnl
 ])
 AC_SUBST([linted_CFLAGS_WARNINGS])
 ])

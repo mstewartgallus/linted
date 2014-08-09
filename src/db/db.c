@@ -73,6 +73,12 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
             return errnum;
         }
         the_db = xx;
+    } else {
+        linted_dir xx;
+        if ((errnum = linted_ko_open(&xx, cwd, pathname, 0)) != 0) {
+            return errnum;
+        }
+        the_db = xx;
     }
 
     /*
