@@ -93,87 +93,128 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
      * version of the database.
      */
     linted_ko lock_file;
-try_open_file:
+
+try_to_open_lock_file:
     {
         linted_ko xx;
         if ((errnum = linted_ko_open(&xx, the_db, GLOBAL_LOCK, LINTED_KO_RDWR))
             != 0) {
             if (ENOENT == errnum) {
-                char pid_lock[] = "%i.lock";
-                sprintf(pid_lock, "%i.lock", getpid());
-
-                if ((errnum = linted_file_create(&xx, the_db, pid_lock,
-                                                 LINTED_FILE_RDWR, S_IRUSR | S_IWUSR)) != 0) {
-                    goto close_db;
-                }
-                lock_file = xx;
-
-                if (-1 == ftruncate(lock_file, sizeof (pthread_mutex_t))) {
-                    errnum = errno;
-                    LINTED_ASSUME(errnum != 0);
-                    assert(errnum != EINVAL);
-                    goto unlink_file;
-                }
-
-                size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
-
-                pthread_mutex_t *mutex
-                    = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
-                           MAP_SHARED, lock_file, 0);
-                if (MAP_FAILED == mutex) {
-                    errnum = errno;
-                    LINTED_ASSUME(errnum != 0);
-                    assert(errnum != EINVAL);
-                    goto unlink_file;
-                }
-
-                {
-                    pthread_mutexattr_t attr;
-                    pthread_mutexattr_init(&attr);
-                    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
-                    pthread_mutex_init(mutex, &attr);
-                    pthread_mutexattr_destroy(&attr);
-                }
-
-                munmap(mutex, mutex_length);
-
-                {
-                    char the_lock_file[] = "/proc/self/fd/XXXXXXXXXXXXXXX";
-                    sprintf(the_lock_file, "/proc/self/fd/%i", lock_file);
-                    if (-1 == linkat(-1, the_lock_file, the_db, GLOBAL_LOCK, AT_SYMLINK_FOLLOW)) {
-                        if (0 == errnum) {
-                            errnum = errno;
-                            LINTED_ASSUME(errnum != 0);
-                            assert(errnum != EINVAL);
-                        }
-                    }
-                }
-
-            unlink_file:
-                if (-1 == unlinkat(the_db, pid_lock, 0)) {
-                    if (0 == errnum) {
-                        errnum = errno;
-                        LINTED_ASSUME(errnum != 0);
-                        assert(errnum != EINVAL);
-                    }
-                }
-                if (errnum != 0) {
-                    linted_ko_close(lock_file);
-
-                    if (EEXIST == errnum) {
-                        goto try_open_file;
-                    }
-
-                    goto close_db;
-                }
-
-                goto got_file;
+                goto try_to_create_lock_file;
             }
             goto close_db;
         }
         lock_file = xx;
+        goto opened_lock_file;
     }
-got_file:;
+
+try_to_create_lock_file:
+    {
+        char prototype_lock_file[] = "%i.lock";
+        if (sprintf(prototype_lock_file, "%i.lock", getpid()) < 0) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+            assert(errnum != EINVAL);
+            goto close_db;
+        }
+
+        {
+            linted_ko xx;
+            if ((errnum = linted_file_create(&xx, the_db, prototype_lock_file,
+                                             LINTED_FILE_RDWR, S_IRUSR | S_IWUSR)) != 0) {
+                goto close_db;
+            }
+            lock_file = xx;
+        }
+
+        if (-1 == ftruncate(lock_file, sizeof (pthread_mutex_t))) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+            assert(errnum != EINVAL);
+            goto unlink_prototype_lock_file;
+        }
+
+        size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
+
+        pthread_mutex_t *mutex = mmap(NULL, mutex_length,
+                                      PROT_READ | PROT_WRITE, MAP_SHARED,
+                                      lock_file, 0);
+        if (MAP_FAILED == mutex) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+            assert(errnum != EINVAL);
+            goto unlink_prototype_lock_file;
+        }
+
+        {
+            pthread_mutexattr_t attr;
+
+            if ((errnum = pthread_mutexattr_init(&attr)) != 0) {
+                goto unmap_mutexattr;
+            }
+
+            if ((errnum = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST)) != 0) {
+                assert(errnum != EINVAL);
+                assert(false);
+            }
+
+            if ((errnum = pthread_mutex_init(mutex, &attr)) != 0) {
+                assert(errnum != EINVAL);
+            }
+
+            {
+                linted_error destroy_errnum = pthread_mutexattr_destroy(&attr);
+                assert(0 == destroy_errnum);
+            }
+        }
+
+    unmap_mutexattr:
+        if (-1 == munmap(mutex, mutex_length)) {
+            linted_error munmap_errnum = errno;
+            assert(munmap_errnum != EINVAL);
+            assert(false);
+        }
+
+        if (errnum != 0) {
+            goto unlink_prototype_lock_file;
+        }
+
+        {
+            char lock_file_path[] = "/proc/self/fd/XXXXXXXXXXXXXXX";
+            sprintf(lock_file_path, "/proc/self/fd/%i", lock_file);
+            if (-1 == linkat(-1, lock_file_path, the_db, GLOBAL_LOCK, AT_SYMLINK_FOLLOW)) {
+                errnum = errno;
+                LINTED_ASSUME(errnum != 0);
+                assert(errnum != EINVAL);
+            }
+        }
+
+    unlink_prototype_lock_file:
+        if (-1 == unlinkat(the_db, prototype_lock_file, 0)) {
+            if (0 == errnum) {
+                errnum = errno;
+                LINTED_ASSUME(errnum != 0);
+                assert(errnum != EINVAL);
+            }
+        }
+
+        if (errnum != 0) {
+            {
+                linted_error close_errnum = linted_ko_close(lock_file);
+                assert(close_errnum != EBADF);
+            }
+
+            if (EEXIST == errnum) {
+                goto try_to_open_lock_file;
+            }
+
+            goto close_db;
+        }
+
+        goto opened_lock_file;
+    }
+
+opened_lock_file:
 
     if ((errnum = mutex_lock(lock_file)) != 0) {
         goto close_lock_file;
@@ -423,7 +464,7 @@ static linted_error prepend(char **result, char const *base,
 
 static linted_error mutex_lock(linted_ko mutex_file)
 {
-    linted_error errnum;
+    linted_error errnum = 0;
     size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
 
     pthread_mutex_t *mutex = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
@@ -435,16 +476,26 @@ static linted_error mutex_lock(linted_ko mutex_file)
         return errnum;
     }
 
-    pthread_mutex_lock(mutex);
+    if ((errnum = pthread_mutex_lock(mutex)) != 0) {
+        if (EOWNERDEAD == errnum) {
+            linted_error cons_error = pthread_mutex_consistent(mutex);
+            assert(cons_error != EINVAL);
+            assert(0 == cons_error);
+        }
+    }
 
-    munmap(mutex, mutex_length);
+    if (-1 == munmap(mutex, mutex_length)) {
+        linted_error munmap_errnum = errno;
+        assert(munmap_errnum != EINVAL);
+        assert(false);
+    }
 
-    return 0;
+    return errnum;
 }
 
 static linted_error mutex_unlock(linted_ko mutex_file)
 {
-    linted_error errnum;
+    linted_error errnum = 0;
     size_t mutex_length = align_to_page_size(sizeof(pthread_mutex_t));
 
     pthread_mutex_t *mutex = mmap(NULL, mutex_length, PROT_READ | PROT_WRITE,
@@ -456,9 +507,17 @@ static linted_error mutex_unlock(linted_ko mutex_file)
         return errnum;
     }
 
-    pthread_mutex_unlock(mutex);
+    if ((errnum = pthread_mutex_unlock(mutex)) != 0) {
+        assert(errnum != EPERM);
+        assert(errnum != EINVAL);
+        assert(false);
+    }
 
-    munmap(mutex, mutex_length);
+    if (-1 == munmap(mutex, mutex_length)) {
+        linted_error munmap_errnum = errno;
+        assert(munmap_errnum != EINVAL);
+        assert(false);
+    }
 
     return 0;
 }
