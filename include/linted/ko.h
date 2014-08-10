@@ -33,11 +33,11 @@ typedef int linted_ko;
 #error no known most primitive platform kernel object type
 #endif
 
-#define LINTED_KO_RDONLY 1
-#define LINTED_KO_WRONLY (1 << 2)
-#define LINTED_KO_RDWR (1 << 3)
+#define LINTED_KO_RDONLY 1UL
+#define LINTED_KO_WRONLY (1UL << 1U)
+#define LINTED_KO_RDWR (1UL << 2U)
 
-#define LINTED_KO_SYNC (1 << 4)
+#define LINTED_KO_SYNC (1UL << 3U)
 
 struct linted_ko_task_accept
 {
@@ -79,10 +79,10 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 linted_error linted_ko_dummy(linted_ko * restrict kop);
 
 linted_error linted_ko_open(linted_ko * restrict kop, linted_ko dirko,
-                            char const *pathname, int flags);
+                            char const *pathname, unsigned long flags);
 
 linted_error linted_ko_reopen(linted_ko * restrict kooutp,
-                              linted_ko koin, int flags);
+                              linted_ko koin, unsigned long flags);
 
 /**
  * The linted_ko_close function closes a kernel object.

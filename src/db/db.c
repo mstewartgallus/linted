@@ -58,30 +58,30 @@ static size_t align_to_page_size(size_t size);
 static linted_error prepend(char **result, char const *base, char const *end);
 
 linted_error linted_db_open(linted_db * restrict dbp, linted_ko cwd,
-                            char const * pathname, int flags)
+                            char const * pathname, unsigned long flags)
 {
     linted_error errnum;
 
-    if ((flags & ~LINTED_DB_CREAT) != 0) {
+    if ((flags & ~LINTED_DB_CREAT) != 0U) {
         return EINVAL;
     }
 
-    if (0 == flags) {
+    if (0U == flags) {
         return EINVAL;
     }
 
-    bool db_creat = (flags & LINTED_DB_CREAT) != 0;
+    bool db_creat = (flags & LINTED_DB_CREAT) != 0U;
 
     linted_dir the_db;
     if (db_creat) {
         linted_dir xx;
-        if ((errnum = linted_dir_create(&xx, cwd, pathname, 0, S_IRWXU)) != 0) {
+        if ((errnum = linted_dir_create(&xx, cwd, pathname, 0U, S_IRWXU)) != 0) {
             return errnum;
         }
         the_db = xx;
     } else {
         linted_dir xx;
-        if ((errnum = linted_ko_open(&xx, cwd, pathname, 0)) != 0) {
+        if ((errnum = linted_ko_open(&xx, cwd, pathname, 0U)) != 0) {
             return errnum;
         }
         the_db = xx;

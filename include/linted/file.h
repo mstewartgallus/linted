@@ -29,15 +29,16 @@
 
 typedef linted_ko linted_file;
 
-#define LINTED_FILE_RDONLY 1
-#define LINTED_FILE_WRONLY (1 << 2)
-#define LINTED_FILE_RDWR (1 << 3)
+#define LINTED_FILE_RDONLY 1UL
+#define LINTED_FILE_WRONLY (1UL << 1U)
+#define LINTED_FILE_RDWR (1UL << 2U)
 
-#define LINTED_FILE_SYNC (1 << 4)
+#define LINTED_FILE_SYNC (1UL << 3U)
 
-#define LINTED_FILE_EXCL (1 << 5)
+#define LINTED_FILE_EXCL (1UL << 4U)
 
 linted_error linted_file_create(linted_file * restrict filep, linted_ko dirko,
-                                char const *pathname, int flags, mode_t mode);
+                                char const *pathname, unsigned long flags,
+                                mode_t mode);
 
 #endif /* LINTED_FILE_H */

@@ -28,17 +28,17 @@
  * @todo Add garbage collection.
  */
 
-#define LINTED_DB_CREAT 1
+#define LINTED_DB_CREAT 1UL
 
-#define LINTED_DB_EXCL (1 << 1)
-#define LINTED_DB_RDONLY (1 << 2)
-#define LINTED_DB_WRONLY (1 << 3)
-#define LINTED_DB_RDWR (1 << 4)
+#define LINTED_DB_EXCL (1UL << 1U)
+#define LINTED_DB_RDONLY (1UL << 2U)
+#define LINTED_DB_WRONLY (1UL << 3U)
+#define LINTED_DB_RDWR (1UL << 4U)
 
 typedef linted_ko linted_db;
 
 linted_error linted_db_open(linted_db * restrict dbp, linted_ko cwd,
-                            char const * pathname, int flags);
+                            char const * pathname, unsigned long flags);
 linted_error linted_db_close(linted_db db);
 
 linted_error linted_db_temp_file(linted_db db, linted_ko * restrict kop,

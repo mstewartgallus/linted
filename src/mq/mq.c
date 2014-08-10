@@ -39,11 +39,16 @@
  */
 
 linted_error linted_mq_create(linted_mq * restrict mqp, char const *debugpath,
-                              struct linted_mq_attr const *attr, int flags)
+                              struct linted_mq_attr const *attr,
+                              unsigned long flags)
 {
     linted_error errnum;
     linted_mq ko;
     int unlink_status;
+
+    if (flags != 0U) {
+        return EINVAL;
+    }
 
     if (debugpath[0U] != '/') {
         return EINVAL;

@@ -29,7 +29,7 @@
 /*@
   requires \valid(memp);
  */
-linted_error linted_mem_alloc(void **memp, size_t size);
+linted_error linted_mem_alloc(void ** restrict memp, size_t size);
 
 /*@
   requires \valid(memp);

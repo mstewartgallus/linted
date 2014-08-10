@@ -24,9 +24,10 @@
 #include <stddef.h>
 #include <string.h>
 
-linted_error linted_updater_create(linted_updater * restrict updaterp, int flags)
+linted_error linted_updater_create(linted_updater * restrict updaterp,
+                                   unsigned long flags)
 {
-    if (flags != 0) {
+    if (flags != 0U) {
         return EINVAL;
     }
 

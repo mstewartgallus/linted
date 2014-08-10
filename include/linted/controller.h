@@ -58,7 +58,7 @@ struct linted_controller_task_receive
 };
 
 linted_error linted_controller_create(linted_controller * restrict controllerp,
-                                      int flags);
+                                      unsigned long flags);
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             int task_id, linted_controller controller,

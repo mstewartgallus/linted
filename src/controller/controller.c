@@ -25,9 +25,10 @@
 #include <stdint.h>
 #include <string.h>
 
-linted_error linted_controller_create(linted_controller * restrict controllerp, int flags)
+linted_error linted_controller_create(linted_controller * restrict controllerp,
+                                      unsigned long flags)
 {
-    if (flags != 0) {
+    if (flags != 0U) {
         return EINVAL;
     }
 
