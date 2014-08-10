@@ -23,6 +23,5 @@ noinst_LTLIBRARIES+=%D%/libdb.la
   src/file/libfile.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/lock/liblock.la\
   src/mem/libmem.la\
   src/random/librandom.la

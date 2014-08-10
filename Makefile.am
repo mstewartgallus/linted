@@ -97,7 +97,7 @@ json-c-models:
 	cd json-c-models &&\
 	  (\
 	     echo $${CONFIG} &&\
-	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
+	     echo "CPPFLAGS=\"$(CPPFLAGS) -D__frama_c__ -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
 	     echo "--disable-shared"\
 	  ) | xargs\
 	     $(abs_srcdir)/configure &&\
@@ -115,6 +115,8 @@ frama-c-lint:
 	  $(FRAMA_C)\
 	   -quiet\
 	   -journal-disable\
+	   -pp-annot\
+	   -machdep x86_64\
 	   -warn-signed-downcast\
 	   -warn-unsigned-downcast\
 	   -warn-unsigned-overflow\

@@ -99,7 +99,7 @@ lazy developer error in file %s, function %s, and line %i:" format_string,     \
 
 #else
 
-#ifdef __GNUC__
+#if !defined __frama_c__ && defined __GNUC__
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
 #else
 #define LINTED_ASSUME_UNREACHABLE()                                            \
