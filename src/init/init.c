@@ -31,8 +31,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-uint_fast8_t linted_init_init(linted_ko cwd,
-                              char const *chrootdir_path,
+uint_fast8_t linted_init_init(linted_ko cwd, char const *chrootdir_path,
                               char const *simulator_fstab_path,
                               char const *gui_fstab_path,
                               char const *simulator_path, char const *gui_path)

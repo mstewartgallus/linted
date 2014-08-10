@@ -39,7 +39,7 @@ struct linted_logger_task
     struct linted_mq_task_receive parent;
 };
 
-linted_error linted_logger_create(linted_logger * restrict loggerp,
+linted_error linted_logger_create(linted_logger *restrict loggerp,
                                   unsigned long flags);
 
 linted_error linted_logger_close(linted_logger logger);

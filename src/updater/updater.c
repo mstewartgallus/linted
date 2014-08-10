@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include <string.h>
 
-linted_error linted_updater_create(linted_updater * restrict updaterp,
+linted_error linted_updater_create(linted_updater *restrict updaterp,
                                    unsigned long flags)
 {
     if (flags != 0U) {
@@ -41,8 +41,7 @@ linted_error linted_updater_create(linted_updater * restrict updaterp,
 }
 
 void linted_updater_send(struct linted_updater_task_send *task,
-                         unsigned task_id,
-                         linted_updater updater,
+                         unsigned task_id, linted_updater updater,
                          struct linted_updater_update const *update)
 {
     linted_mq_task_send(LINTED_UPCAST(task), task_id, updater, task->message,
@@ -73,7 +72,7 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 }
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
-                           struct linted_updater_update * restrict update)
+                           struct linted_updater_update *restrict update)
 {
     char const *tip = task->message;
 

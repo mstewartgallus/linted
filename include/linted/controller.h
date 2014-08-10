@@ -57,18 +57,19 @@ struct linted_controller_task_receive
     char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
-linted_error linted_controller_create(linted_controller * restrict controllerp,
+linted_error linted_controller_create(linted_controller *restrict controllerp,
                                       unsigned long flags);
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             unsigned task_id, linted_controller controller,
-                            struct linted_controller_message const * restrict message);
+                            struct linted_controller_message const
+                            *restrict message);
 
 void linted_controller_receive(struct linted_controller_task_receive *task,
                                unsigned task_id, linted_controller controller);
 
 linted_error
 linted_controller_decode(struct linted_controller_task_receive const *task,
-                         struct linted_controller_message * restrict message);
+                         struct linted_controller_message *restrict message);
 
 #endif /* LINTED_CONTROLLER_H */

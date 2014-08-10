@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
-linted_error linted_controller_create(linted_controller * restrict controllerp,
+linted_error linted_controller_create(linted_controller *restrict controllerp,
                                       unsigned long flags)
 {
     if (flags != 0U) {
@@ -43,7 +43,8 @@ linted_error linted_controller_create(linted_controller * restrict controllerp,
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             unsigned task_id, linted_controller controller,
-                            struct linted_controller_message const * restrict message)
+                            struct linted_controller_message const
+                            *restrict message)
 {
     linted_mq_task_send(LINTED_UPCAST(task), task_id, controller, task->message,
                         sizeof task->message);
@@ -72,7 +73,7 @@ void linted_controller_receive(struct linted_controller_task_receive *task,
 
 linted_error
 linted_controller_decode(struct linted_controller_task_receive const *task,
-                         struct linted_controller_message * restrict message)
+                         struct linted_controller_message *restrict message)
 {
     char const *tip = task->message;
 

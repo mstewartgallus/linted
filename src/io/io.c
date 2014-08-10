@@ -43,8 +43,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
     return LINTED_UPCAST(&read_task)->errnum;
 }
 
-linted_error linted_io_write_all(linted_ko ko,
-                                 size_t * restrict bytes_wrote_out,
+linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
                                  void const *buf, size_t size)
 {
     struct linted_ko_task_write write_task;
@@ -57,21 +56,21 @@ linted_error linted_io_write_all(linted_ko ko,
     return LINTED_UPCAST(&write_task)->errnum;
 }
 
-linted_error linted_io_write_str(linted_ko ko, size_t * restrict bytes_wrote,
+linted_error linted_io_write_str(linted_ko ko, size_t *restrict bytes_wrote,
                                  struct linted_str str)
 {
     return linted_io_write_all(ko, bytes_wrote, str.bytes, str.size);
 }
 
 linted_error linted_io_write_string(linted_ko ko,
-                                    size_t * restrict bytes_wrote_out,
+                                    size_t *restrict bytes_wrote_out,
                                     char const *s)
 {
     return linted_io_write_all(ko, bytes_wrote_out, s, strlen(s));
 }
 
 linted_error linted_io_write_format(linted_ko ko,
-                                    size_t * restrict bytes_wrote_out,
+                                    size_t *restrict bytes_wrote_out,
                                     char const *format_str, ...)
 {
     linted_error errnum = 0;

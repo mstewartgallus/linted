@@ -63,7 +63,8 @@ static void run_task_read(struct linted_asynch_pool *pool,
 static void run_task_write(struct linted_asynch_pool *pool,
                            struct linted_asynch_task *task);
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool ** restrict poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool
+                                       **restrict poolp,
                                        unsigned max_tasks)
 {
     linted_error errnum;
@@ -127,7 +128,8 @@ free_pool:
  * @bug The queue isn't safe to terminate. Use an OS queue or list
  *      that isn't corruptible.
  */
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool * restrict pool)
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool
+                                        *restrict pool)
 {
     linted_error errnum = 0;
 
@@ -160,8 +162,9 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task ** restrict completions,
-                                     size_t size, size_t * restrict task_countp)
+                                     struct linted_asynch_task
+                                     **restrict completions,
+                                     size_t size, size_t *restrict task_countp)
 {
     linted_error errnum;
     size_t task_count = 0U;
@@ -199,8 +202,9 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 }
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task ** restrict completions,
-                                     size_t size, size_t * restrict task_countp)
+                                     struct linted_asynch_task
+                                     **restrict completions,
+                                     size_t size, size_t *restrict task_countp)
 {
     linted_error errnum;
     size_t task_count = 0U;

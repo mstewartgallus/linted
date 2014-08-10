@@ -37,9 +37,8 @@ typedef linted_ko linted_dir;
 
 #define LINTED_DIR_EXCL 1UL
 
-linted_error linted_dir_create(linted_dir * restrict dirp, linted_ko dirko,
-                               char const * pathname,
-                               unsigned long flags,
+linted_error linted_dir_create(linted_dir *restrict dirp, linted_ko dirko,
+                               char const *pathname, unsigned long flags,
                                mode_t mode);
 
 #endif /* LINTED_DIR_H */

@@ -39,23 +39,21 @@ struct linted_str
         .size = sizeof Str - 1, .bytes = Str                                   \
     }
 
-linted_error linted_str_append(char ** restrict bufp, size_t * restrict capp,
-                               size_t * restrict sizep,
-                               char const *str, size_t strsize);
+linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
+                               size_t *restrict sizep, char const *str,
+                               size_t strsize);
 
-linted_error linted_str_append_str(char ** restrict bufp,
-                                   size_t * restrict capp,
-                                   size_t * restrict sizep,
+linted_error linted_str_append_str(char **restrict bufp, size_t *restrict capp,
+                                   size_t *restrict sizep,
                                    struct linted_str str);
 
-linted_error linted_str_append_cstring(char ** restrict bufp,
-                                       size_t * restrict capp,
-                                       size_t * restrict sizep,
-                                       char const *str);
+linted_error linted_str_append_cstring(char **restrict bufp,
+                                       size_t *restrict capp,
+                                       size_t *restrict sizep, char const *str);
 
-linted_error linted_str_append_format(char ** restrict bufp,
-                                      size_t * restrict capp,
-                                      size_t * restrict sizep,
+linted_error linted_str_append_format(char **restrict bufp,
+                                      size_t *restrict capp,
+                                      size_t *restrict sizep,
                                       char const *formatstr, ...);
 
 #endif /* LINTED_STR_H */

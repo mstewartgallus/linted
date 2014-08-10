@@ -84,20 +84,24 @@ struct linted_asynch_task_sleep_until
 };
 #endif
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool ** restrict poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool
+                                       **restrict poolp,
                                        unsigned max_tasks);
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool * restrict pool);
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool
+                                        *restrict pool);
 
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task ** restrict completions,
-                                     size_t size, size_t * restrict task_countp);
+                                     struct linted_asynch_task
+                                     **restrict completions,
+                                     size_t size, size_t *restrict task_countp);
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task ** restrict completions,
-                                     size_t size, size_t * restrict task_countp);
+                                     struct linted_asynch_task
+                                     **restrict completions,
+                                     size_t size, size_t *restrict task_countp);
 
 void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);

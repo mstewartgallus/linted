@@ -30,31 +30,31 @@ struct sock_fprog;
 struct linted_spawn_file_actions;
 struct linted_spawn_attr;
 
-linted_error linted_spawn_attr_init(struct linted_spawn_attr ** restrict attrp);
-void linted_spawn_attr_destroy(struct linted_spawn_attr * restrict attr);
+linted_error linted_spawn_attr_init(struct linted_spawn_attr **restrict attrp);
+void linted_spawn_attr_destroy(struct linted_spawn_attr *restrict attr);
 
-void linted_spawn_attr_drop_caps(struct linted_spawn_attr * restrict attr);
-void linted_spawn_attr_setchrootdir(struct linted_spawn_attr * restrict attr,
+void linted_spawn_attr_drop_caps(struct linted_spawn_attr *restrict attr);
+void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *restrict attr,
                                     char const *chrootdir);
-linted_error linted_spawn_attr_setmount(struct linted_spawn_attr * restrict attr,
+linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
                                         unsigned long mountflags,
                                         char const *data);
 
 linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
-                                            ** restrict file_actionsp);
+                                            **restrict file_actionsp);
 linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
-                                               ** restrict file_actionsp,
+                                               **restrict file_actionsp,
                                                linted_ko oldko,
                                                linted_ko newko);
 void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
-                                       * restrict file_actions);
+                                       *restrict file_actions);
 
 /**
  * Spawns a ptraced child
  */
-linted_error linted_spawn(pid_t * restrict childp, linted_ko dirko,
+linted_error linted_spawn(pid_t *restrict childp, linted_ko dirko,
                           char const *path,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,

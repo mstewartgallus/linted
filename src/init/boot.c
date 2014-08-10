@@ -164,7 +164,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-   gid_t gid = getgid();
+    gid_t gid = getgid();
     uid_t uid = getuid();
 
     /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
@@ -242,9 +242,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 return EXIT_FAILURE;
             }
 
-            return linted_init_init(cwd, chrootdir_path,
-                                    simulator_fstab_path, gui_fstab_path,
-                                    simulator_path, gui_path);
+            return linted_init_init(cwd, chrootdir_path, simulator_fstab_path,
+                                    gui_fstab_path, simulator_path, gui_path);
         }
     }
 

@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <string.h>
 
-linted_error linted_logger_create(linted_logger * restrict loggerp,
+linted_error linted_logger_create(linted_logger *restrict loggerp,
                                   unsigned long flags)
 {
     if (flags != 0U) {

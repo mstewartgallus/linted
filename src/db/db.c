@@ -57,8 +57,8 @@ static size_t align_to_page_size(size_t size);
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
-linted_error linted_db_open(linted_db * restrict dbp, linted_ko cwd,
-                            char const * pathname, unsigned long flags)
+linted_error linted_db_open(linted_db *restrict dbp, linted_ko cwd,
+                            char const *pathname, unsigned long flags)
 {
     linted_error errnum;
 
@@ -75,7 +75,8 @@ linted_error linted_db_open(linted_db * restrict dbp, linted_ko cwd,
     linted_dir the_db;
     if (db_creat) {
         linted_dir xx;
-        if ((errnum = linted_dir_create(&xx, cwd, pathname, 0U, S_IRWXU)) != 0) {
+        if ((errnum = linted_dir_create(&xx, cwd, pathname, 0U, S_IRWXU))
+            != 0) {
             return errnum;
         }
         the_db = xx;
@@ -361,8 +362,8 @@ linted_error linted_db_close(linted_db db)
     return linted_ko_close(db);
 }
 
-linted_error linted_db_temp_file(linted_db db, linted_ko * restrict kop,
-                                 char ** restrict pathp)
+linted_error linted_db_temp_file(linted_db db, linted_ko *restrict kop,
+                                 char **restrict pathp)
 {
     linted_error errnum = 0;
 
@@ -417,8 +418,8 @@ try_again:
     return 0;
 }
 
-linted_error linted_db_temp_send(linted_db db, char const * path,
-                                 char const * name)
+linted_error linted_db_temp_send(linted_db db, char const *path,
+                                 char const *name)
 {
     linted_error errnum;
 

@@ -81,7 +81,7 @@ struct linted_mq_task_send
  *
  * @error ENOSPC Insufficient space.
  */
-linted_error linted_mq_create(linted_mq * restrict mqp, char const *debugpath,
+linted_error linted_mq_create(linted_mq *restrict mqp, char const *debugpath,
                               struct linted_mq_attr const *attr,
                               unsigned long flags);
 

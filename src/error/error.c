@@ -106,7 +106,7 @@ unknown_error:
     return unknown_error_string;
 }
 
-void linted_error_string_free(char const * restrict error_string)
+void linted_error_string_free(char const *restrict error_string)
 {
     if (error_string != no_memory_string && error_string
                                             != unknown_error_string) {
