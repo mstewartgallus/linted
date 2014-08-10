@@ -212,12 +212,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
     memcpy(display_env_var, original_display, display_string_length);
 
-    if ((errnum = linted_util_sanitize_environment()) != 0) {
-        failure(STDERR_FILENO, process_name,
-                LINTED_STR("cannot sanitize the program environment"), errnum);
-        return EXIT_FAILURE;
-    }
-
     struct linted_asynch_pool *pool;
     {
         struct linted_asynch_pool *xx;

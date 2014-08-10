@@ -138,13 +138,6 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     linted_error errnum;
 
-    if ((errnum = linted_util_sanitize_environment()) != 0) {
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not sanitize the environment: %s",
-                               process_name, linted_error_string_alloc(errnum));
-        return EXIT_FAILURE;
-    }
-
     {
         static char const message[] = "starting simulator";
         linted_logger_log(logger, message, sizeof message - 1U);

@@ -30,7 +30,6 @@ bin_PROGRAMS+=%D%/linted
   src/locale/liblocale.la\
   src/mem/libmem.la\
   src/spawn/libspawn.la\
-  src/util/libutil.la\
   \
   src/controller/libcontroller.la\
   src/db/libdb.la\

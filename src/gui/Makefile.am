@@ -25,7 +25,6 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
-  src/util/libutil.la\
   \
   src/controller/libcontroller.la\
   src/logger/liblogger.la\

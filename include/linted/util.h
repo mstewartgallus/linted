@@ -130,6 +130,4 @@ static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
     return positive;
 }
 
-linted_error linted_util_sanitize_environment(void);
-
 #endif /* LINTED_UTIL_H */

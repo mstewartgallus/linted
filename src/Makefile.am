@@ -39,7 +39,6 @@ include %C%/service/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
-include %C%/util/Makefile.am
 
 include %C%/controller/Makefile.am
 include %C%/logger/Makefile.am
