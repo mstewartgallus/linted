@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <string.h>
 
-linted_error linted_logger_create(linted_logger *loggerp, int flags)
+linted_error linted_logger_create(linted_logger * restrict loggerp, int flags)
 {
     if (flags != 0) {
         return EINVAL;

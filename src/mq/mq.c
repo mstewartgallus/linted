@@ -38,8 +38,8 @@
  * Implemented using POSIX message queues.
  */
 
-linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
-                              struct linted_mq_attr *attr, int flags)
+linted_error linted_mq_create(linted_mq * restrict mqp, char const *debugpath,
+                              struct linted_mq_attr const *attr, int flags)
 {
     linted_error errnum;
     linted_mq ko;

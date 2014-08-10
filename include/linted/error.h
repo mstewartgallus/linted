@@ -35,6 +35,6 @@ typedef int linted_error;
 #endif
 
 char const *linted_error_string_alloc(linted_error errnum);
-void linted_error_string_free(char const *error_string);
+void linted_error_string_free(char const * restrict error_string);
 
 #endif /* LINTED_ERROR_H */

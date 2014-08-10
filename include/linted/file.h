@@ -37,7 +37,7 @@ typedef linted_ko linted_file;
 
 #define LINTED_FILE_EXCL (1 << 5)
 
-linted_error linted_file_create(linted_file *filep, linted_ko dirko,
+linted_error linted_file_create(linted_file * restrict filep, linted_ko dirko,
                                 char const *pathname, int flags, mode_t mode);
 
 #endif /* LINTED_FILE_H */

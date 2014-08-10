@@ -30,7 +30,7 @@
 #define LINTED_RPC_UINT32_SIZE 4U
 #define LINTED_RPC_INT32_SIZE 4U
 
-static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * buf)
+static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * restrict buf)
 {
 
     uint_fast16_t low = ((uintmax_t) fast) & 0xFFFFu;
@@ -46,7 +46,7 @@ static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * buf)
     memcpy(buf, bytes, sizeof bytes);
 }
 
-static inline uint_fast32_t linted_rpc_unpack_uint32(char const * buf)
+static inline uint_fast32_t linted_rpc_unpack_uint32(char const * restrict buf)
 {
     unsigned char pos_bytes[LINTED_RPC_UINT32_SIZE];
     memcpy(pos_bytes, buf, sizeof pos_bytes);
@@ -62,7 +62,7 @@ static inline uint_fast32_t linted_rpc_unpack_uint32(char const * buf)
     return positive;
 }
 
-static inline void linted_rpc_pack(int_fast32_t fast, char *buf)
+static inline void linted_rpc_pack(int_fast32_t fast, char * restrict buf)
 {
     /*
      * Unlike with the code in unpack converting from a signed to an
@@ -83,7 +83,7 @@ static inline void linted_rpc_pack(int_fast32_t fast, char *buf)
     memcpy(buf, bytes, sizeof bytes);
 }
 
-static inline int_fast32_t linted_rpc_unpack(char const *buf)
+static inline int_fast32_t linted_rpc_unpack(char const * restrict buf)
 {
     unsigned char pos_bytes[LINTED_RPC_INT32_SIZE];
     memcpy(pos_bytes, buf, sizeof pos_bytes);

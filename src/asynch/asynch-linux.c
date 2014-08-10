@@ -80,7 +80,7 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool ** restrict poolp,
                                        unsigned max_tasks)
 {
     linted_error errnum;
@@ -167,7 +167,7 @@ free_pool:
     return errnum;
 }
 
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool * restrict pool)
 {
     linted_error errnum = 0;
 
@@ -201,8 +201,8 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completions,
-                                     size_t size, size_t *task_countp)
+                                     struct linted_asynch_task ** restrict completions,
+                                     size_t size, size_t * restrict task_countp)
 {
     linted_error errnum;
     size_t task_count = 0U;
@@ -240,8 +240,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 }
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completions,
-                                     size_t size, size_t *task_countp)
+                                     struct linted_asynch_task ** restrict completions,
+                                     size_t size, size_t * restrict task_countp)
 {
     linted_error errnum;
     size_t task_count = 0U;

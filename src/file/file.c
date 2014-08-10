@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
+linted_error linted_file_create(linted_ko * restrict kop, linted_ko dirko,
                                 char const *pathname, int flags, mode_t mode)
 {
     linted_error errnum;

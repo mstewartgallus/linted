@@ -47,7 +47,7 @@ void linted_queue_node(struct linted_queue_node *node)
     node->next = NULL;
 }
 
-linted_error linted_queue_create(struct linted_queue **queuep)
+linted_error linted_queue_create(struct linted_queue ** restrict queuep)
 {
     linted_error errnum;
     struct linted_queue *queue;
@@ -75,7 +75,7 @@ linted_error linted_queue_create(struct linted_queue **queuep)
     return 0;
 }
 
-void linted_queue_destroy(struct linted_queue *queue)
+void linted_queue_destroy(struct linted_queue * restrict queue)
 {
     DeleteCriticalSection(&queue->lock);
 

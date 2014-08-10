@@ -36,7 +36,7 @@ enum linted_service {
     LINTED_SERVICE_UPDATER
 };
 
-linted_error linted_service_for_name(enum linted_service *service,
+linted_error linted_service_for_name(enum linted_service * restrict service,
                                      char const *name);
 
 #endif /* LINTED_SERVICE_H */

@@ -68,12 +68,12 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
     return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko *kop)
+linted_error linted_ko_dummy(linted_ko * restrict kop)
 {
     return linted_ko_open(kop, -1, "/dev/null", LINTED_KO_RDONLY);
 }
 
-linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
+linted_error linted_ko_open(linted_ko * restrict kop, linted_ko dirko,
                             char const *pathname, int flags)
 {
     linted_error errnum;
@@ -142,7 +142,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
     return 0;
 }
 
-linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin, int flags)
+linted_error linted_ko_reopen(linted_ko * restrict kooutp,
+                              linted_ko koin, int flags)
 {
     char pathname[sizeof "/proc/self/fd/" + 10U];
     sprintf(pathname, "/proc/self/fd/%i", koin);

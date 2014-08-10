@@ -38,7 +38,7 @@ struct pair const pairs[] = { { "init", LINTED_SERVICE_INIT },
                               { "controller", LINTED_SERVICE_CONTROLLER },
                               { "updater", LINTED_SERVICE_UPDATER } };
 
-linted_error linted_service_for_name(enum linted_service *servicep,
+linted_error linted_service_for_name(enum linted_service * restrict servicep,
                                      char const *name)
 {
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pairs); ++ii) {

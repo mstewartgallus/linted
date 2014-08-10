@@ -76,12 +76,13 @@ struct linted_ko_task_write
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 
-linted_error linted_ko_dummy(linted_ko *kop);
+linted_error linted_ko_dummy(linted_ko * restrict kop);
 
-linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
+linted_error linted_ko_open(linted_ko * restrict kop, linted_ko dirko,
                             char const *pathname, int flags);
 
-linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin, int flags);
+linted_error linted_ko_reopen(linted_ko * restrict kooutp,
+                              linted_ko koin, int flags);
 
 /**
  * The linted_ko_close function closes a kernel object.
