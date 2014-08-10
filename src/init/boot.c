@@ -164,23 +164,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         return EXIT_SUCCESS;
     }
 
-    char const *display_orig = getenv("DISPLAY");
-    if (NULL == display_orig) {
-        linted_io_write_format(STDERR_FILENO, NULL,
-                               "%s: missing DISPLAY environment variable\n",
-                               process_name);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR("--help"));
-        return EXIT_FAILURE;
-    }
-
-    char const *display = strdup(display_orig);
-    if (NULL == display) {
-        perror("strdup");
-        return EXIT_FAILURE;
-    }
-
-    gid_t gid = getgid();
+   gid_t gid = getgid();
     uid_t uid = getuid();
 
     /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
@@ -258,7 +242,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 return EXIT_FAILURE;
             }
 
-            return linted_init_init(cwd, display, chrootdir_path,
+            return linted_init_init(cwd, chrootdir_path,
                                     simulator_fstab_path, gui_fstab_path,
                                     simulator_path, gui_path);
         }

@@ -185,6 +185,72 @@ struct connection_pool
     size_t count;
 };
 
+static char const * const gui_envvars_to_keep[] = {
+    "DISPLAY",
+
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+
+    "EGL_DRIVERS_PATH",
+    "EGL_DRIVER",
+    "EGL_PLATFORM",
+    "EGL_LOG_LEVEL",
+    "EGL_SOFTWARE",
+
+    "LIBGL_DEBUG",
+    "LIBGL_DRIVERS_PATH",
+    "LIBGL_ALWAYS_INDIRECT",
+    "LIBGL_ALWAYS_SOFTWARE",
+    "LIBGL_NO_DRAWARRAYS",
+    "LIBGL_SHOW_FPS",
+
+    "MESA_NO_ASM",
+    "MESA_NO_MMX",
+    "MESA_NO_3DNOW",
+    "MESA_NO_SSE",
+    "MESA_DEBUG",
+    "MESA_LOG_FILE",
+    "MESA_TEX_PROG",
+    "MESA_TNL_PROG",
+    "MESA_EXTENSION_OVERRIDE"
+    "MESA_EXTENSION_MAX_YEAR",
+    "MESA_GL_VERSION_OVERRIDE",
+    "MESA_GLSL_VERSION_OVERRIDE",
+    "MESA_GLSL",
+    "MESA_RGB_VISUAL",
+    "MESA_CI_VISUAL",
+    "MESA_BACK_BUFFER",
+    "MESA_GAMMA",
+    "MESA_XSYNC",
+    "MESA_GLX_FORCE_CI",
+    "MESA_GLX_FORCE_ALPHA",
+    "MESA_GLX_DEPTH_BITS",
+    "MESA_GLX_ALPHA_BITS",
+    "INTEL_NO_HW",
+    "INTEL_DEBUG",
+    "RADEON_NO_TCL",
+    "GALLIUM_HUD",
+    "GALLIUM_LOG_FILE",
+    "GALLIUM_PRINT_OPTIONS"
+    "GALLIUM_DUMP_CPU"
+    "TGSI_PRINT_SANITY"
+    "DRAW_FSE",
+    "DRAW_NO_FSE",
+    "DRAW_USE_LLVM",
+    "ST_DEBUG",
+    "SOFTPIPE_DUMP_FS",
+    "SOFTPIPE_DUMP_GS",
+    "SOFTPIPE_NO_RAST",
+    "SOFTPIPE_USE_LLVM",
+    "LP_NO_RAST",
+    "LP_DEBUG",
+    "LP_PERF",
+    "LP_NUM_THREADS",
+    "SVGA_FORCE_SWTNL",
+    "SVGA_NO_SWTNL",
+    "SVGA_DEBUG"
+};
+
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 
@@ -215,7 +281,7 @@ static linted_error connection_pool_destroy(struct connection_pool *pool);
 static linted_error connection_remove(struct connection *connection,
                                       struct connection_pool *connection_pool);
 
-uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
+uint_fast8_t linted_init_monitor(linted_ko cwd,
                                  char const *chrootdir_path,
                                  char const *simulator_fstab_path,
                                  char const *gui_fstab_path,
@@ -247,7 +313,9 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
     {
         linted_manager xx;
         if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) != 0) {
-            goto exit_services;
+            errno = errnum;
+            perror("linted_manager_bind");
+            return EXIT_FAILURE;
         }
         new_connections = xx;
     }
@@ -259,22 +327,64 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
         return EXIT_FAILURE;
     }
 
-    size_t display_length = strlen(display);
-    size_t env_display_var_length = strlen("DISPLAY=") + display_length + 1U;
-    char *env_display_var;
+    char const * * gui_envvars = NULL;
+    size_t gui_envvars_count = 0U;
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(gui_envvars_to_keep); ++ii) {
+        char const * envvar_name = gui_envvars_to_keep[ii];
+
+        char const *envvar = getenv(envvar_name);
+        if (NULL == envvar) {
+            continue;
+        }
+
+        ++gui_envvars_count;
+        {
+            void * xx;
+            if ((errnum = linted_mem_realloc_array(&xx, gui_envvars,
+                                                   gui_envvars_count,
+                                                   sizeof gui_envvars[0U])) != 0) {
+                errno = errnum;
+                perror("linted_mem_realloc_array");
+                return EXIT_FAILURE;
+            }
+            gui_envvars = xx;
+        }
+
+        size_t envvar_name_length = strlen(envvar_name);
+        size_t envvar_length = strlen(envvar);
+
+        size_t assign_string_length = envvar_name_length + 1U + envvar_length;
+
+        char *assign_string;
+        {
+            void *xx;
+            if ((errnum = linted_mem_alloc(&xx, assign_string_length + 1U)) != 0) {
+                errno = errnum;
+                perror("linted_mem_alloc");
+                return EXIT_FAILURE;
+            }
+            assign_string = xx;
+        }
+        memcpy(assign_string, envvar_name, envvar_name_length);
+        assign_string[envvar_name_length] = '=';
+        memcpy(assign_string + envvar_name_length + 1U, envvar, envvar_length);
+        assign_string[assign_string_length] = '\0';
+
+        gui_envvars[gui_envvars_count - 1U] = assign_string;
+    }
+    ++gui_envvars_count;
     {
-        void *xx;
-        if ((errnum = linted_mem_alloc(&xx, env_display_var_length)) != 0) {
-            linted_io_write_format(
-                STDERR_FILENO, NULL, "%s: can't allocate DISPLAY string: %s\n",
-                process_name, linted_error_string_alloc(errnum));
+        void * xx;
+        if ((errnum = linted_mem_realloc_array(&xx, gui_envvars,
+                                               gui_envvars_count,
+                                               sizeof gui_envvars[0U])) != 0) {
+            errno = errnum;
+            perror("linted_mem_realloc_array");
             return EXIT_FAILURE;
         }
-        env_display_var = xx;
+        gui_envvars = xx;
     }
-    memcpy(env_display_var, "DISPLAY=", strlen("DISPLAY="));
-    memcpy(env_display_var + strlen("DISPLAY="), display, display_length);
-    env_display_var[env_display_var_length - 1U] = '\0';
+    gui_envvars[gui_envvars_count - 1U] = NULL;
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
@@ -302,8 +412,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *display,
                        .fstab = gui_fstab_path,
                        .path = gui_path,
                        .arguments = (char const * const[]) { gui_path, NULL },
-                       .environment
-                       = (char const * const[]) { env_display_var, NULL },
+                       .environment = gui_envvars,
                        .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },

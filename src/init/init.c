@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
+uint_fast8_t linted_init_init(linted_ko cwd,
                               char const *chrootdir_path,
                               char const *simulator_fstab_path,
                               char const *gui_fstab_path,
@@ -66,7 +66,7 @@ uint_fast8_t linted_init_init(linted_ko cwd, char const *display,
         }
 
         if (0 == child) {
-            return linted_init_monitor(cwd, display, chrootdir_path,
+            return linted_init_monitor(cwd, chrootdir_path,
                                        simulator_fstab_path, gui_fstab_path,
                                        simulator_path, gui_path);
         }
