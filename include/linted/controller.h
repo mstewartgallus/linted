@@ -61,11 +61,11 @@ linted_error linted_controller_create(linted_controller * restrict controllerp,
                                       unsigned long flags);
 
 void linted_controller_send(struct linted_controller_task_send *task,
-                            int task_id, linted_controller controller,
+                            unsigned task_id, linted_controller controller,
                             struct linted_controller_message const * restrict message);
 
 void linted_controller_receive(struct linted_controller_task_receive *task,
-                               int task_id, linted_controller controller);
+                               unsigned task_id, linted_controller controller);
 
 linted_error
 linted_controller_decode(struct linted_controller_task_receive const *task,

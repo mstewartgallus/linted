@@ -40,7 +40,8 @@ linted_error linted_updater_create(linted_updater * restrict updaterp,
     return linted_mq_create(updaterp, "/updater", &attr, 0);
 }
 
-void linted_updater_send(struct linted_updater_task_send *task, int task_id,
+void linted_updater_send(struct linted_updater_task_send *task,
+                         unsigned task_id,
                          linted_updater updater,
                          struct linted_updater_update const *update)
 {
@@ -65,7 +66,7 @@ void linted_updater_send(struct linted_updater_task_send *task, int task_id,
 }
 
 void linted_updater_receive(struct linted_updater_task_receive *task,
-                            int task_id, linted_updater updater)
+                            unsigned task_id, linted_updater updater)
 {
     linted_mq_task_receive(LINTED_UPCAST(task), task_id, updater, task->message,
                            sizeof task->message);

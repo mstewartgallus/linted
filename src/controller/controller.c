@@ -42,7 +42,7 @@ linted_error linted_controller_create(linted_controller * restrict controllerp,
 }
 
 void linted_controller_send(struct linted_controller_task_send *task,
-                            int task_id, linted_controller controller,
+                            unsigned task_id, linted_controller controller,
                             struct linted_controller_message const * restrict message)
 {
     linted_mq_task_send(LINTED_UPCAST(task), task_id, controller, task->message,
@@ -64,7 +64,7 @@ void linted_controller_send(struct linted_controller_task_send *task,
 }
 
 void linted_controller_receive(struct linted_controller_task_receive *task,
-                               int task_id, linted_controller controller)
+                               unsigned task_id, linted_controller controller)
 {
     linted_mq_task_receive(LINTED_UPCAST(task), task_id, controller,
                            task->message, sizeof task->message);
