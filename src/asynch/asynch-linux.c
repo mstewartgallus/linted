@@ -58,24 +58,24 @@ struct linted_asynch_pool
 static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
-                     struct linted_asynch_task *task);
+                     struct linted_asynch_task * restrict task);
 
 static void run_task_poll(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
+                          struct linted_asynch_task * restrict task);
 static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
+                          struct linted_asynch_task * restrict task);
 static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task);
+                           struct linted_asynch_task * restrict task);
 static void run_task_mq_receive(struct linted_asynch_pool *pool,
-                                struct linted_asynch_task *task);
+                                struct linted_asynch_task * restrict task);
 static void run_task_mq_send(struct linted_asynch_pool *pool,
-                             struct linted_asynch_task *task);
+                             struct linted_asynch_task * restrict task);
 static void run_task_waitid(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *task);
+                            struct linted_asynch_task * restrict task);
 static void run_task_accept(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *task);
+                            struct linted_asynch_task * restrict task);
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *task);
+                                 struct linted_asynch_task * restrict task);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
@@ -325,7 +325,7 @@ static void *worker_routine(void *arg)
 }
 
 static void run_task(struct linted_asynch_pool *pool,
-                     struct linted_asynch_task *task)
+                     struct linted_asynch_task * restrict task)
 {
     switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL:
@@ -366,9 +366,9 @@ static void run_task(struct linted_asynch_pool *pool,
 }
 
 static void run_task_poll(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
+                          struct linted_asynch_task * restrict task)
 {
-    struct linted_ko_task_poll *task_poll
+    struct linted_ko_task_poll  * restrict task_poll
         = LINTED_DOWNCAST(struct linted_ko_task_poll, task);
     linted_error errnum;
 
@@ -387,9 +387,9 @@ static void run_task_poll(struct linted_asynch_pool *pool,
 }
 
 static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
+                          struct linted_asynch_task * restrict task)
 {
-    struct linted_ko_task_read *task_read
+    struct linted_ko_task_read  * restrict task_read
         = LINTED_DOWNCAST(struct linted_ko_task_read, task);
     size_t bytes_read = task_read->current_position;
     size_t bytes_left = task_read->size - bytes_read;
@@ -449,9 +449,9 @@ static void run_task_read(struct linted_asynch_pool *pool,
 }
 
 static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task)
+                           struct linted_asynch_task * restrict task)
 {
-    struct linted_ko_task_write *task_write
+    struct linted_ko_task_write  * restrict task_write
         = LINTED_DOWNCAST(struct linted_ko_task_write, task);
     size_t bytes_wrote = task_write->current_position;
     size_t bytes_left = task_write->size - bytes_wrote;
@@ -508,9 +508,9 @@ static void run_task_write(struct linted_asynch_pool *pool,
 }
 
 static void run_task_mq_receive(struct linted_asynch_pool *pool,
-                                struct linted_asynch_task *task)
+                                struct linted_asynch_task * restrict task)
 {
-    struct linted_mq_task_receive *task_receive
+    struct linted_mq_task_receive  * restrict task_receive
         = LINTED_DOWNCAST(struct linted_mq_task_receive, task);
     size_t bytes_read = 0U;
     linted_error errnum = 0;
@@ -553,9 +553,9 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
 }
 
 static void run_task_mq_send(struct linted_asynch_pool *pool,
-                             struct linted_asynch_task *task)
+                             struct linted_asynch_task * restrict task)
 {
-    struct linted_mq_task_send *task_send
+    struct linted_mq_task_send  * restrict task_send
         = LINTED_DOWNCAST(struct linted_mq_task_send, task);
     size_t bytes_wrote = 0U;
     linted_error errnum = 0;
@@ -597,9 +597,9 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
 }
 
 static void run_task_waitid(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *task)
+                            struct linted_asynch_task * restrict task)
 {
-    struct linted_asynch_task_waitid *task_wait
+    struct linted_asynch_task_waitid  * restrict task_wait
         = LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
     linted_error errnum;
     int status;
@@ -681,9 +681,9 @@ finish:
 }
 
 static void run_task_accept(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *task)
+                            struct linted_asynch_task * restrict task)
 {
-    struct linted_ko_task_accept *task_accept
+    struct linted_ko_task_accept  * restrict task_accept
         = LINTED_DOWNCAST(struct linted_ko_task_accept, task);
 
     linted_ko new_ko = -1;
@@ -748,9 +748,9 @@ static void run_task_accept(struct linted_asynch_pool *pool,
 }
 
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *task)
+                                 struct linted_asynch_task * restrict task)
 {
-    struct linted_asynch_task_sleep_until *task_sleep
+    struct linted_asynch_task_sleep_until * restrict task_sleep
         = LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);
     linted_error errnum;
     struct timespec time_remaining = task_sleep->request;
