@@ -39,7 +39,7 @@
  */
 
 linted_error linted_mq_create(linted_mq *restrict mqp,
-                              char const * restrict debugpath,
+                              char const *restrict debugpath,
                               struct linted_mq_attr const *attr,
                               unsigned long flags)
 {

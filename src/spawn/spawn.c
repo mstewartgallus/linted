@@ -444,16 +444,16 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                 unsigned long mountflags = mount_arg->mountflags;
 
                 if (-1 == mount(mount_arg->source, mount_arg->target,
-                                mount_arg->filesystemtype,
-                                mountflags, mount_arg->data)) {
+                                mount_arg->filesystemtype, mountflags,
+                                mount_arg->data)) {
                     exit_with_error(spawn_error, errno);
                 }
 
                 if ((mountflags & MS_BIND) != 0U) {
                     mountflags |= MS_REMOUNT;
                     if (-1 == mount(mount_arg->source, mount_arg->target,
-                                    mount_arg->filesystemtype,
-                                    mountflags, mount_arg->data)) {
+                                    mount_arg->filesystemtype, mountflags,
+                                    mount_arg->data)) {
                         exit_with_error(spawn_error, errno);
                     }
                 }

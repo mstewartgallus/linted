@@ -69,7 +69,8 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
         }
 
 #if !defined NDBEBUG && defined PTHREAD_MUTEX_ERRORCHECK_NP
-        if ((errnum = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP)) != 0) {
+        if ((errnum = pthread_mutexattr_settype(
+                 &attr, PTHREAD_MUTEX_ERRORCHECK_NP)) != 0) {
             assert(errnum != EINVAL);
             assert(false);
         }

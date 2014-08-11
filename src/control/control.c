@@ -127,9 +127,8 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         STOP
     };
 
-    static char const *const commands[] = {[REBOOT] = "reboot",
-                                           [STATUS] = "status",
-                                           [STOP] = "stop"};
+    static char const *const commands[]
+        = {[REBOOT] = "reboot", [STATUS] = "status", [STOP] = "stop" };
 
     int arg = -1;
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(commands); ++ii) {
