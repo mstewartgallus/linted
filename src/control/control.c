@@ -41,11 +41,17 @@ struct linted_start_config const linted_start_config
         .kos = NULL,
         .seccomp_bpf = &seccomp_filter };
 
+static uint_fast8_t run_reboot(char const *process_name, size_t argc,
+                               char const *const argv[const]);
 static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[const]);
 static uint_fast8_t run_stop(char const *process_name, size_t argc,
                              char const *const argv[const]);
 
+static linted_error reboot_help(linted_ko ko, char const *process_name,
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport);
 static linted_error ctl_help(linted_ko ko, char const *process_name,
                              struct linted_str package_name,
                              struct linted_str package_url,
@@ -116,12 +122,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
     enum {
+        REBOOT,
         STATUS,
         STOP
     };
 
-    static char const *const commands[]
-        = {[STATUS] = "status", [STOP] = "stop" };
+    static char const *const commands[] = {[REBOOT] = "reboot",
+                                           [STATUS] = "status",
+                                           [STOP] = "stop"};
 
     int arg = -1;
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(commands); ++ii) {
@@ -134,6 +142,9 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     size_t new_argc = argc - last_index + 1U;
     char const *const *new_argv = argv + last_index - 1U;
     switch (arg) {
+    case REBOOT:
+        return run_reboot(process_name, new_argc, new_argv);
+
     case STATUS:
         return run_status(process_name, new_argc, new_argv);
 
@@ -169,6 +180,132 @@ static struct sock_filter const real_filter
 static struct sock_fprog const seccomp_filter
     = { .len = LINTED_ARRAY_SIZE(real_filter),
         .filter = (struct sock_filter *)real_filter };
+
+static uint_fast8_t run_reboot(char const *process_name, size_t argc,
+                               char const *const argv[const])
+{
+    bool need_version = false;
+    bool need_add_help = false;
+    char const *bad_option = NULL;
+    char const *bad_argument = NULL;
+    size_t last_index = 1U;
+    for (; last_index < argc; ++last_index) {
+        char const *argument = argv[last_index];
+
+        if (0 == strncmp(argument, "--", strlen("--"))) {
+            if (0 == strcmp(argument, "--help")) {
+                need_add_help = true;
+            } else if (0 == strcmp(argument, "--version")) {
+                need_version = true;
+            } else {
+                bad_option = argument;
+            }
+        } else {
+            bad_argument = argument;
+            break;
+        }
+    }
+
+    if (need_add_help) {
+        reboot_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
+                    LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
+        return EXIT_SUCCESS;
+    }
+
+    if (bad_option != NULL) {
+        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+                                        LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (bad_argument != NULL) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: too many arguments: '%s'\n", process_name,
+                               bad_argument);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+                                        LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    if (need_version) {
+        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+                              LINTED_STR(COPYRIGHT_YEAR));
+        return EXIT_SUCCESS;
+    }
+
+    char const *path = getenv("LINTED_SOCKET");
+    if (NULL == path) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: missing LINTED_SOCKET\n", process_name);
+        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+                                        LINTED_STR("--help"));
+        return EXIT_FAILURE;
+    }
+
+    size_t path_len = strlen(path);
+    if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
+        linted_io_write_format(STDERR_FILENO, NULL,
+                               "%s: LINTED_SOCKET is too long\n", process_name);
+        return EXIT_FAILURE;
+    }
+
+    linted_error errnum;
+    linted_manager linted;
+
+    {
+        linted_manager manager;
+        if ((errnum = linted_manager_connect(&manager, path, path_len)) != 0) {
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not create socket"), errnum);
+            return EXIT_FAILURE;
+        }
+        linted = manager;
+    }
+
+    {
+        union linted_manager_request request = { 0 };
+
+        request.type = LINTED_MANAGER_REBOOT;
+
+        linted_io_write_format(STDOUT_FILENO, NULL,
+                               "%s: sending the reboot request\n",
+                               process_name);
+
+        if ((errnum = linted_manager_send_request(linted, &request)) != 0) {
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not send request"), errnum);
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        union linted_manager_reply reply;
+        size_t bytes_read;
+        if ((errnum = linted_manager_recv_reply(linted, &reply, &bytes_read))
+            != 0) {
+            failure(STDERR_FILENO, process_name,
+                    LINTED_STR("can not read reply"), errnum);
+            return EXIT_FAILURE;
+        }
+
+        if (0U == bytes_read) {
+            linted_io_write_format(STDERR_FILENO, NULL, "%s: socket hung up\n",
+                                   process_name);
+            return EXIT_FAILURE;
+        }
+
+        /* Sent malformed input */
+        if (bytes_read != sizeof reply) {
+            linted_io_write_format(STDERR_FILENO, NULL,
+                                   "%s: reply was too small: %i\n",
+                                   process_name, bytes_read);
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[const])
@@ -551,6 +688,83 @@ Report bugs to <"))) != 0) {
 free_buffer:
     linted_mem_free(buffer);
     return errnum;
+}
+
+static linted_error reboot_help(linted_ko ko, char const *process_name,
+                                struct linted_str package_name,
+                                struct linted_str package_url,
+                                struct linted_str package_bugreport)
+{
+    linted_error errnum;
+
+    if ((errnum = linted_io_write_str(
+             ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(
+             ko, NULL, LINTED_STR(" reboot [OPTIONS]\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+Reboot the container.\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+  SOCKET              the socket to connect to\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+Report bugs to <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+ home page: <"))) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
+        return errnum;
+    }
+    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+        return errnum;
+    }
+
+    return 0;
 }
 
 static linted_error status_help(linted_ko ko, char const *process_name,

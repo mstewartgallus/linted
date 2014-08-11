@@ -36,6 +36,7 @@
 typedef linted_ko linted_manager;
 
 enum linted_manager_type {
+    LINTED_MANAGER_REBOOT,
     LINTED_MANAGER_STATUS,
     LINTED_MANAGER_STOP
 };

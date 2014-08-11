@@ -39,7 +39,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/mount.h>
+#include <sys/reboot.h>
 #include <sys/prctl.h>
+#include <unistd.h>
 
 #define BACKLOG 20U
 
@@ -1184,6 +1186,15 @@ static linted_error on_read_connection(struct linted_asynch_task
     union linted_manager_reply reply;
 
     switch (request->type) {
+    case LINTED_MANAGER_REBOOT: {
+        if (-1 == reboot(RB_POWER_OFF)) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+            goto connection_remove;
+        }
+        break;
+    }
+
     case LINTED_MANAGER_STATUS: {
         union service const *service = &services[request->status.service];
         pid_t pid;
