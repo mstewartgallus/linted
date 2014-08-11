@@ -10,13 +10,14 @@ dnl
 dnl Autodetects compiler warnings
 AC_DEFUN([LINTED_WARNINGS],[
 LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
+        [-Werror=unknown-warning-option]dnl
+dnl
         [-Wall]dnl
         [-Wextra]dnl
 dnl
         [-Wdate-time]dnl Reproducible builds are GOOD
 dnl
         [-Woverflow]dnl
-        [-Wzero-as-null-pointer-constant]dnl
         [-Wformat=2]dnl
         [-Wunused] [-Wno-unused-parameter]dnl
         [-Wshadow]dnl

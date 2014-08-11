@@ -13,12 +13,16 @@ dnl
 AC_DEFUN([LINTED_CHECK_CFLAGS],[
 dnl
 [linted_old_CFLAGS="${CFLAGS}"]
+[linted_old_werror_flag="${ac_c_werror_flag}"]
+dnl
+[ac_c_werror_flag='yes']
 dnl
 AC_LANG_PUSH([C])
 m4_foreach_w([linted_the_flag], $2, [
         AC_MSG_CHECKING([for C compiler flag linted_the_flag])
         [CFLAGS=']linted_the_flag[']
-        AC_LANG_WERROR
+
+        ac_c_werror_flag='yes'
 
         dnl ISO C requires a nonempty translation unit
         AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
@@ -32,6 +36,7 @@ m4_foreach_w([linted_the_flag], $2, [
         ])
 ])
 dnl
+[ac_c_werror_flag="${linted_old_werror_flag}"]
 [CFLAGS="${linted_old_CFLAGS}"]
 dnl
 AC_LANG_POP([C])

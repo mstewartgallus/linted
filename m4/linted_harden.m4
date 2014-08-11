@@ -18,12 +18,10 @@ AC_ARG_ENABLE(
 dnl
 AS_IF([test "x${enable_harden}" != "xno"], [
 dnl
+LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[dnl
 dnl No way to test this so it's added always. It won't harm programs
 dnl if it doesn't work.
-[linted_CPPFLAGS_HARDEN=-D_FORTIFY_SOURCE=2]
-AC_SUBST([linted_CPPFLAGS_HARDEN])
-dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[dnl
+        [-D_FORTIFY_SOURCE=2]dnl
         [-fstack-protector-all -Wstack-protector]dnl
         [-pie -fPIE]dnl
         [-Wa,--noexecstack]dnl

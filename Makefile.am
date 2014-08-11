@@ -48,21 +48,7 @@ AM_LDFLAGS=\
   $(linted_LDFLAGS_HARDEN)\
   $(linted_LDFLAGS_DEBUG)'
 
-AM_CPPFLAGS=\
-  $(linted_CPPFLAGS_LANGUAGE)\
-  $(linted_CPPFLAGS_OPTIMIZE)\
-  $(linted_CPPFLAGS_HARDEN)\
-  $(linted_CPPFLAGS_DEBUG)\
-  -I$(srcdir)/include
-
-AM_CFLAGS=\
-  $(linted_CFLAGS_LANGUAGE)\
-  $(linted_CFLAGS_FAST_BUILD)\
-  $(linted_CFLAGS_OPTIMIZE)\
-  $(linted_CFLAGS_HARDEN)\
-  $(linted_CFLAGS_MINOR_DEBUG)\
-  $(linted_CFLAGS_DEBUG)\
-  $(linted_CFLAGS_WARNINGS)
+AM_CPPFLAGS=-I$(srcdir)/include
 
 EXTRA_DIST+=scripts/test.in
 scripts/test: Makefile scripts/test.in
