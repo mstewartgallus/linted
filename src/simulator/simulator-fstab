@@ -3,14 +3,14 @@
 #
 # <file system>	<mount point>	<type>	<options>
 /dev	dev	none	rbind
-/home	home	none	rbind   # TODO: This doesn't work with overlayfs
+/home	home	none	rbind	# TODO: This doesn't work with ro,rbind
 
 proc	proc	proc	ro,nosuid,nodev,noexec,hidepid=2
 
-overlayfs	etc	overlayfs	ro,lowerdir=/etc,upperdir=/etc
+/etc	etc	none	ro,nosuid,nodev,noexec,bind
 
-overlayfs	lib	overlayfs	ro,lowerdir=/lib,upperdir=/lib
-overlayfs	lib32	overlayfs	ro,lowerdir=/lib32,upperdir=/lib32
-overlayfs	lib64	overlayfs	ro,lowerdir=/lib64,upperdir=/lib64
+/lib	lib	none	ro,nosuid,nodev,bind
+/lib32	lib32	none	ro,nosuid,nodev,bind
+/lib64	lib64	none	ro,nosuid,nodev,bind 
 
-overlayfs	usr	overlayfs	ro,lowerdir=/usr,upperdir=/usr
+/usr	usr	none	ro,nosuid,nodev,bind 

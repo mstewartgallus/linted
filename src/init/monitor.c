@@ -892,12 +892,18 @@ free_subopts_str:
         return EINVAL;
     }
 
-    if (bind && readonly) {
+    if (bind && rec && readonly) {
         /*
          * Due to a completely idiotic kernel bug (see
-         * https://bugzilla.kernel.org/show_bug.cgi?id=24912)
-         * using a bind mount as readonly would fail completely
-         * silently and there is no way to workaround this
+         * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
+         * recursive bind mount as readonly would fail completely
+         * silently and there is no way to workaround this.
+         *
+         * Even after working around by remounting it will fail for
+         * the recursive case. For example, /home directory that is
+         * recursively bind mounted as readonly and that has encrypted
+         * user directories as an example. The /home directory will be
+         * readonly but the user directory /home/user will not be.
          */
         return EINVAL;
     }
