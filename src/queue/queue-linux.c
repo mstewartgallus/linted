@@ -63,22 +63,42 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 
     {
         pthread_mutexattr_t attr;
-        pthread_mutexattr_init(&attr);
+
+        if ((errnum = pthread_mutexattr_init(&attr)) != 0) {
+            goto free_queue;
+        }
 
 #if !defined NDBEBUG && defined PTHREAD_MUTEX_ERRORCHECK_NP
-        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+        if ((errnum = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP)) != 0) {
+            assert(errnum != EINVAL);
+            assert(false);
+        }
 #endif
 
-        pthread_mutex_init(&queue->lock, &attr);
+        errnum = pthread_mutex_init(&queue->lock, &attr);
 
-        pthread_mutexattr_destroy(&attr);
+        if (pthread_mutexattr_destroy(&attr) != 0) {
+            assert(false);
+        }
+
+        if (errnum != 0) {
+            goto free_queue;
+        }
     }
 
-    pthread_cond_init(&queue->gains_member, NULL);
+    if ((errnum = pthread_cond_init(&queue->gains_member, NULL)) != 0) {
+        assert(errnum != EINVAL);
+        assert(false);
+    }
 
     *queuep = queue;
 
     return 0;
+
+free_queue:
+    linted_mem_free(queue);
+
+    return errnum;
 }
 
 void linted_queue_destroy(struct linted_queue *restrict queue)
@@ -97,6 +117,8 @@ void linted_queue_destroy(struct linted_queue *restrict queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
+    linted_error errnum;
+
     /* Guard against double insertions */
     assert(NULL == node->next);
     assert(NULL == node->prev);
@@ -105,7 +127,9 @@ void linted_queue_send(struct linted_queue *queue,
     pthread_mutex_t *lock = &queue->lock;
     pthread_cond_t *gains_member = &queue->gains_member;
 
-    pthread_mutex_lock(lock);
+    errnum = pthread_mutex_lock(lock);
+    assert(errnum != EDEADLK);
+
     pthread_cleanup_push(unlock_routine, lock);
 
     /* The nodes previous to the tip are the tail */
