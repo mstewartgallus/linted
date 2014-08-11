@@ -11,9 +11,9 @@ dnl Speeds up the build
 AC_DEFUN([LINTED_FAST_BUILD],[
 dnl
 AC_ARG_ENABLE(
-        [fast_build],
+        [fast-build],
         AS_HELP_STRING(
-                [--disable-fast_build],
+                [--disable-fast-build],
                 [disable adjustments for speeding up the build]))
 dnl
 AS_IF([test "x${enable_fast_build}" != "xno"], [
