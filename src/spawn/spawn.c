@@ -36,7 +36,6 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -491,7 +490,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
     if (at_fdcwd) {
         dirfd_copy = AT_FDCWD;
     } else if (is_relative_path && at_fdcwd) {
-        if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, (long)0))) {
+        if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, 0L))) {
             exit_with_error(spawn_error, errno);
         }
     } else {
