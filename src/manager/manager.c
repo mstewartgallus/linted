@@ -25,6 +25,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 #include <sys/socket.h>
 
@@ -41,8 +42,7 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
         return ENAMETOOLONG;
     }
 
-    int sock
-        = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
     if (-1 == sock) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
@@ -76,6 +76,22 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
     }
 
     if (-1 == listen(sock, backlog)) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        goto close_sock;
+    }
+
+    /* Set the nonblock status after binding because asynchronous
+     * binding is a pain to deal with.
+     */
+    int flags = fcntl(sock, F_GETFL);
+    if (-1 == flags) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        goto close_sock;
+    }
+
+    if (-1 == fcntl(sock, F_SETFL, (long) flags | O_NONBLOCK)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
         goto close_sock;
