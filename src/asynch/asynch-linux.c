@@ -52,6 +52,8 @@ struct linted_asynch_pool
 
     size_t worker_count;
 
+    bool stopped : 1U;
+
     pthread_t workers[];
 };
 
@@ -98,6 +100,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool
         }
         pool = xx;
     }
+
+    pool->stopped = false;
 
     if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
         goto free_pool;
@@ -168,10 +172,15 @@ free_pool:
     return errnum;
 }
 
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool
-                                        *restrict pool)
+linted_error linted_asynch_pool_stop(struct linted_asynch_pool* pool)
 {
     linted_error errnum = 0;
+
+    if (pool->stopped) {
+        return EINVAL;
+    }
+
+    pool->stopped = true;
 
     size_t worker_count = pool->worker_count;
 
@@ -184,6 +193,18 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool
     }
 
     linted_queue_destroy(pool->worker_command_queue);
+
+    return errnum;
+}
+
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
+{
+    linted_error errnum = 0;
+
+    if (!pool->stopped) {
+        linted_asynch_pool_stop(pool);
+    }
+
     linted_queue_destroy(pool->event_queue);
 
     linted_mem_free(pool);
@@ -197,6 +218,8 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
     if (NULL == pool) {
         run_task(NULL, task);
     } else {
+        assert (pool->stopped);
+
         task->errnum = EINPROGRESS;
         linted_queue_send(pool->worker_command_queue, LINTED_UPCAST(task));
     }
@@ -743,7 +766,10 @@ static void run_task_accept(struct linted_asynch_pool *pool,
     task_accept->returned_ko = new_ko;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 

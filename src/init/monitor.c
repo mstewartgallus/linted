@@ -227,11 +227,19 @@ static linted_error controller_create(linted_ko *kop);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
-static linted_error on_receive_log(struct linted_asynch_task *completed_task);
+static linted_error on_receive_log(struct linted_asynch_task *task);
 static linted_error on_new_connection(struct linted_asynch_task *task);
-static linted_error on_process_wait(struct linted_asynch_task *completed_task);
+static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_read_connection(struct linted_asynch_task *task);
 static linted_error on_write_connection(struct linted_asynch_task *task);
+
+static linted_error dispatch_drainers(struct linted_asynch_task *completed_task);
+
+static linted_error drain_on_receive_log(struct linted_asynch_task *task);
+static linted_error drain_on_new_connection(struct linted_asynch_task *task);
+static linted_error drain_on_process_wait(struct linted_asynch_task *task);
+static linted_error drain_on_read_connection(struct linted_asynch_task *task);
+static linted_error drain_on_write_connection(struct linted_asynch_task *task);
 
 static linted_error check_db(linted_ko cwd);
 
@@ -603,34 +611,64 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
                                         LINTED_UPCAST(&new_connection_task))));
-
-    for (;;) {
+    {
         struct linted_asynch_task *completed_tasks[20U];
         size_t task_count;
-        {
-            size_t xx;
-            linted_asynch_pool_wait(pool, completed_tasks,
-                                    LINTED_ARRAY_SIZE(completed_tasks), &xx);
-            task_count = xx;
-        }
+        size_t ii;
 
-        for (size_t ii = 0U; ii < task_count; ++ii) {
-            if ((errnum = dispatch(completed_tasks[ii])) != 0) {
-                goto close_connections;
+        for (;;) {
+            {
+                size_t xx;
+                linted_asynch_pool_wait(pool, completed_tasks,
+                                        LINTED_ARRAY_SIZE(completed_tasks), &xx);
+                task_count = xx;
+            }
+
+            for (ii = 0U; ii < task_count; ++ii) {
+                if ((errnum = dispatch(completed_tasks[ii])) != 0) {
+                    goto drain_dispatches;
+                }
             }
 
             if (-1 == gui_service->pid) {
-                goto close_connections;
+                goto drain_dispatches;
             }
         }
+
+    drain_dispatches:
+        linted_asynch_pool_stop(pool);
+
+        for (; ii < task_count; ++ii) {
+            linted_error dispatch_error = dispatch_drainers(completed_tasks[ii]);
+            if (0 == errnum) {
+                errnum = dispatch_error;
+            }
+        }
+
+        linted_error poll_errnum;
+        do {
+            {
+                size_t xx;
+                poll_errnum = linted_asynch_pool_poll(pool, completed_tasks,
+                                                      LINTED_ARRAY_SIZE(completed_tasks), &xx);
+                task_count = xx;
+            }
+
+            for (ii = 0U; ii < task_count; ++ii) {
+                linted_error dispatch_error = dispatch_drainers(completed_tasks[ii]);
+                if (0 == errnum) {
+                    errnum = dispatch_error;
+                }
+            }
+        } while (poll_errnum != EAGAIN);
     }
 
-close_connections : {
-    linted_error close_errnum = connection_pool_destroy(connection_pool);
-    if (0 == errnum) {
-        errnum = close_errnum;
+    {
+        linted_error close_errnum = connection_pool_destroy(connection_pool);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
     }
-}
 
 free_logger_buffer:
     linted_mem_free(logger_buffer);
@@ -1312,6 +1350,68 @@ static linted_error on_write_connection(struct linted_asynch_task *task)
     }
 
     return errnum;
+}
+
+static linted_error dispatch_drainers(struct linted_asynch_task *completed_task)
+{
+    switch (completed_task->task_action) {
+    case NEW_CONNECTIONS:
+        return drain_on_new_connection(completed_task);
+
+    case LOGGER:
+        return drain_on_receive_log(completed_task);
+
+    case WAITER:
+        return drain_on_process_wait(completed_task);
+
+    case READ_CONNECTION:
+        return drain_on_read_connection(completed_task);
+
+    case WRITE_CONNECTION:
+        return drain_on_write_connection(completed_task);
+
+    default:
+        LINTED_ASSUME_UNREACHABLE();
+    }
+}
+
+static linted_error drain_on_receive_log(struct linted_asynch_task *task)
+{
+    return task->errnum;
+}
+
+static linted_error drain_on_new_connection(struct linted_asynch_task *task)
+{
+    linted_error errnum;
+
+    if ((errnum = task->errnum) != 0) {
+        return errnum;
+    }
+
+    struct new_connection_task *new_connection_task
+        = LINTED_DOWNCAST(struct new_connection_task, task);
+
+    struct linted_ko_task_accept *accept_task
+        = LINTED_UPCAST(LINTED_UPCAST(new_connection_task));
+
+    linted_manager new_socket = accept_task->returned_ko;
+
+    return linted_ko_close(new_socket);
+}
+
+static linted_error drain_on_process_wait(struct linted_asynch_task *task)
+{
+    return task->errnum;
+}
+
+static linted_error drain_on_read_connection(struct linted_asynch_task *task)
+{
+    return task->errnum;
+}
+
+static linted_error drain_on_write_connection(struct linted_asynch_task *task)
+{
+    return task->errnum;
 }
 
 static linted_error check_db(linted_ko cwd)
