@@ -611,56 +611,41 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
                                         LINTED_UPCAST(&new_connection_task))));
-    {
-        struct linted_asynch_task *completed_tasks[20U];
-        size_t task_count;
-        size_t ii;
-
-        for (;;) {
-            {
-                size_t xx;
-                linted_asynch_pool_wait(pool, completed_tasks,
-                                        LINTED_ARRAY_SIZE(completed_tasks), &xx);
-                task_count = xx;
-            }
-
-            for (ii = 0U; ii < task_count; ++ii) {
-                if ((errnum = dispatch(completed_tasks[ii])) != 0) {
-                    goto drain_dispatches;
-                }
-            }
-
-            if (-1 == gui_service->pid) {
-                goto drain_dispatches;
-            }
+    for (;;) {
+        struct linted_asynch_task *completed_task;
+        {
+            struct linted_asynch_task *xx;
+            linted_asynch_pool_wait(pool, &xx);
+            completed_task = xx;
         }
 
-    drain_dispatches:
-        linted_asynch_pool_stop(pool);
-
-        for (; ii < task_count; ++ii) {
-            linted_error dispatch_error = dispatch_drainers(completed_tasks[ii]);
-            if (0 == errnum) {
-                errnum = dispatch_error;
-            }
+        if ((errnum = dispatch(completed_task)) != 0) {
+            goto drain_dispatches;
         }
 
-        linted_error poll_errnum;
-        do {
-            {
-                size_t xx;
-                poll_errnum = linted_asynch_pool_poll(pool, completed_tasks,
-                                                      LINTED_ARRAY_SIZE(completed_tasks), &xx);
-                task_count = xx;
-            }
+        if (-1 == gui_service->pid) {
+            goto drain_dispatches;
+        }
+    }
 
-            for (ii = 0U; ii < task_count; ++ii) {
-                linted_error dispatch_error = dispatch_drainers(completed_tasks[ii]);
-                if (0 == errnum) {
-                    errnum = dispatch_error;
-                }
+drain_dispatches:
+    linted_asynch_pool_stop(pool);
+
+    for (;;) {
+        struct linted_asynch_task *completed_task;
+        {
+            struct linted_asynch_task *xx;
+            linted_error poll_errnum = linted_asynch_pool_poll(pool, &xx);
+            if (EAGAIN == poll_errnum) {
+                break;
             }
-        } while (poll_errnum != EAGAIN);
+            completed_task = xx;
+        }
+
+        linted_error dispatch_error = dispatch_drainers(completed_task);
+        if (0 == errnum) {
+            errnum = dispatch_error;
+        }
     }
 
     {
@@ -1468,28 +1453,23 @@ static linted_error check_db(linted_ko cwd)
                              data_size);
         linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
 
-        struct linted_asynch_task *completed_tasks[20U];
-        size_t task_count;
+        struct linted_asynch_task *completed_task;
         {
-            size_t xx;
-            linted_asynch_pool_wait(pool, completed_tasks,
-                                    LINTED_ARRAY_SIZE(completed_tasks), &xx);
-            task_count = xx;
+            struct linted_asynch_task *xx;
+            linted_asynch_pool_wait(pool, &xx);
+            completed_task = xx;
         }
 
-        for (size_t ii = 0U; ii < task_count; ++ii) {
-            struct linted_asynch_task *completed_task = completed_tasks[ii];
-            if ((errnum = completed_task->errnum) != 0) {
-                goto close_tmp;
-            }
+        if ((errnum = completed_task->errnum) != 0) {
+            goto close_tmp;
+        }
 
-            switch (completed_task->task_action) {
-            case TMP_WRITE_FINISHED:
-                goto done_writing;
+        switch (completed_task->task_action) {
+        case TMP_WRITE_FINISHED:
+            goto done_writing;
 
-            default:
-                LINTED_ASSUME_UNREACHABLE();
-            }
+        default:
+            LINTED_ASSUME_UNREACHABLE();
         }
 
     done_writing:

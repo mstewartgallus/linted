@@ -190,19 +190,15 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
 
     /* TODO: Detect SIGTERM and exit normally */
     for (;;) {
-        struct linted_asynch_task *completed_tasks[20U];
-        size_t task_count;
+        struct linted_asynch_task *completed_task;
         {
-            size_t xx;
-            linted_asynch_pool_wait(pool, completed_tasks,
-                                    LINTED_ARRAY_SIZE(completed_tasks), &xx);
-            task_count = xx;
+            struct linted_asynch_task *xx;
+            linted_asynch_pool_wait(pool, &xx);
+            completed_task = xx;
         }
 
-        for (size_t ii = 0U; ii < task_count; ++ii) {
-            if ((errnum = dispatch(completed_tasks[ii])) != 0) {
-                goto destroy_pool;
-            }
+        if ((errnum = dispatch(completed_task)) != 0) {
+            goto destroy_pool;
         }
     }
 

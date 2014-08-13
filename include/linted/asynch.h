@@ -94,14 +94,10 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task
-                                     **restrict completions,
-                                     size_t size, size_t *restrict task_countp);
+                                     struct linted_asynch_task **completionp);
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task
-                                     **restrict completions,
-                                     size_t size, size_t *restrict task_countp);
+                                     struct linted_asynch_task **completionp);
 
 void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
                         unsigned task_action);
