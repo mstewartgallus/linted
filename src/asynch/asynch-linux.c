@@ -172,7 +172,7 @@ free_pool:
     return errnum;
 }
 
-linted_error linted_asynch_pool_stop(struct linted_asynch_pool* pool)
+linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool)
 {
     linted_error errnum = 0;
 
@@ -197,7 +197,7 @@ linted_error linted_asynch_pool_stop(struct linted_asynch_pool* pool)
     return errnum;
 }
 
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
     linted_error errnum = 0;
 
@@ -218,7 +218,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
     if (NULL == pool) {
         run_task(NULL, task);
     } else {
-        assert (pool->stopped);
+        assert(pool->stopped);
 
         task->errnum = EINPROGRESS;
         linted_queue_send(pool->worker_command_queue, LINTED_UPCAST(task));

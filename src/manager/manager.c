@@ -91,7 +91,7 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
         goto close_sock;
     }
 
-    if (-1 == fcntl(sock, F_SETFL, (long) flags | O_NONBLOCK)) {
+    if (-1 == fcntl(sock, F_SETFL, (long)flags | O_NONBLOCK)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
         goto close_sock;

@@ -233,7 +233,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_read_connection(struct linted_asynch_task *task);
 static linted_error on_write_connection(struct linted_asynch_task *task);
 
-static linted_error dispatch_drainers(struct linted_asynch_task *completed_task);
+static linted_error dispatch_drainers(struct linted_asynch_task
+                                      *completed_task);
 
 static linted_error drain_on_receive_log(struct linted_asynch_task *task);
 static linted_error drain_on_new_connection(struct linted_asynch_task *task);
