@@ -405,7 +405,10 @@ static void run_task_poll(struct linted_asynch_pool *pool,
     task->errnum = errnum;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -467,7 +470,10 @@ static void run_task_read(struct linted_asynch_pool *pool,
     task_read->current_position = 0U;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -526,7 +532,10 @@ static void run_task_write(struct linted_asynch_pool *pool,
     task_write->current_position = 0U;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -571,7 +580,10 @@ static void run_task_mq_receive(struct linted_asynch_pool *pool,
     task_receive->bytes_read = bytes_read;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -615,7 +627,10 @@ static void run_task_mq_send(struct linted_asynch_pool *pool,
     task_send->bytes_wrote = bytes_wrote;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -699,7 +714,10 @@ finish:
     task->errnum = errnum;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -793,7 +811,10 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
     task->errnum = errnum;
 
     if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
         linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
