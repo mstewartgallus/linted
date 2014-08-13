@@ -1097,26 +1097,34 @@ static void render_graphics(struct graphics_state const *graphics_state,
      */
 
     {
-        /* Rotate the camera */
-        GLfloat cos_y = cosf(sim_model->y_rotation);
-        GLfloat sin_y = sinf(sim_model->y_rotation);
-        GLfloat const y_rotation[][4U] = { { 1, 0, 0, 0 },
-                                           { 0, cos_y, -sin_y, 0 },
-                                           { 0, sin_y, cos_y, 0 },
-                                           { 0, 0, 0, 1 } };
+        GLfloat x_rotation = sim_model->x_rotation;
+        GLfloat y_rotation = sim_model->y_rotation;
 
-        GLfloat cos_x = cosf(sim_model->x_rotation);
-        GLfloat sin_x = sinf(sim_model->x_rotation);
-        GLfloat const x_rotation[][4U] = { { cos_x, 0, sin_x, 0 },
-                                           { 0, 1, 0, 0 },
-                                           { -sin_x, 0, cos_x, 0 },
-                                           { 0, 0, 0, 1 } };
+        GLfloat x_position = sim_model->x_position;
+        GLfloat y_position = sim_model->y_position;
+        GLfloat z_position = sim_model->z_position;
+
+        /* Rotate the camera */
+        GLfloat cos_y = cosf(y_rotation);
+        GLfloat sin_y = sinf(y_rotation);
+        GLfloat const y_rotation_matrix[][4U] = { { 1, 0, 0, 0 },
+                                                  { 0, cos_y, -sin_y, 0 },
+                                                  { 0, sin_y, cos_y, 0 },
+                                                  { 0, 0, 0, 1 } };
+
+        GLfloat cos_x = cosf(x_rotation);
+        GLfloat sin_x = sinf(x_rotation);
+        GLfloat const x_rotation_matrix[][4U] = { { cos_x, 0, sin_x, 0 },
+                                                  { 0, 1, 0, 0 },
+                                                  { -sin_x, 0, cos_x, 0 },
+                                                  { 0, 0, 0, 1 } };
 
         /* Translate the camera */
         GLfloat const camera[][4U]
-            = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 },
-                { sim_model->x_position, sim_model->y_position,
-                  sim_model->z_position, 1 } };
+            = { { 1, 0, 0, 0 },
+                { 0, 1, 0, 0 },
+                { 0, 0, 1, 0 },
+                { x_position, y_position, z_position, 1 } };
 
         GLfloat aspect = window_model->width / (GLfloat)window_model->height;
         double fov = acosf(-1.0F) / 4;
@@ -1135,7 +1143,7 @@ static void render_graphics(struct graphics_state const *graphics_state,
         GLfloat model_view[4U][4U];
         GLfloat model_view_projection[4U][4U];
 
-        matrix_multiply(x_rotation, y_rotation, rotations);
+        matrix_multiply(x_rotation_matrix, y_rotation_matrix, rotations);
         matrix_multiply((const GLfloat(*)[4U])camera,
                         (const GLfloat(*)[4U])rotations, model_view);
         matrix_multiply((const GLfloat(*)[4U])model_view, projection,
