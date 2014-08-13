@@ -81,6 +81,14 @@ linted_error linted_ko_dummy(linted_ko *restrict kop);
 linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
                             char const *pathname, unsigned long flags);
 
+/**
+ * @bug Does not work for sockets. Sockets are complicated because
+ *      they one can bind or connect to them. Only one socket can be
+ *      bound to a socket at a time but many can connect. Checking for
+ *      the socket type with fstat should work and connecting through
+ *      /proc/self/fd but dealing with bind is more complicated and
+ *      not something I fully understand.
+ */
 linted_error linted_ko_reopen(linted_ko *restrict kooutp, linted_ko koin,
                               unsigned long flags);
 
