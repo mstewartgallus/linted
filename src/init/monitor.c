@@ -1495,12 +1495,15 @@ close_db : {
     }
 }
 
-destroy_pool : {
-    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-    if (0 == errnum) {
-        errnum = destroy_errnum;
+destroy_pool:
+    linted_asynch_pool_stop(pool);
+
+    {
+        linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+        if (0 == errnum) {
+            errnum = destroy_errnum;
+        }
     }
-}
 
     return errnum;
 }

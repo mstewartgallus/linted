@@ -441,20 +441,18 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                 }
             }
 
-            struct linted_asynch_task *completed_task;
             linted_error poll_errnum;
+            bool had_asynch_event;
             {
-                struct linted_asynch_task *xx;
-                poll_errnum = linted_asynch_pool_poll(pool, &xx);
-                if (0 == poll_errnum) {
-                    completed_task = xx;
-                }
-            }
+                struct linted_asynch_task *completed_task;
+                poll_errnum = linted_asynch_pool_poll(pool, &completed_task);
 
-            bool had_asynch_event = poll_errnum != EAGAIN;
-            if (had_asynch_event) {
-                if ((errnum = dispatch(completed_task)) != 0) {
-                    goto cleanup_gl;
+                had_asynch_event = poll_errnum != EAGAIN;
+
+                if (had_asynch_event) {
+                    if ((errnum = dispatch(completed_task)) != 0) {
+                        goto cleanup_gl;
+                    }
                 }
             }
 
@@ -555,6 +553,26 @@ disconnect:
     XCloseDisplay(display);
 
 destroy_pool : {
+    linted_asynch_pool_stop(pool);
+
+    for (;;) {
+        struct linted_asynch_task *completed_task;
+        linted_error poll_errnum;
+        {
+            struct linted_asynch_task *xx;
+            poll_errnum = linted_asynch_pool_poll(pool, &xx);
+            if (EAGAIN == poll_errnum) {
+                break;
+            }
+            completed_task = xx;
+        }
+
+        linted_error dispatch_errnum = completed_task->errnum;
+        if (0 == errnum) {
+            errnum = dispatch_errnum;
+        }
+    }
+
     linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;

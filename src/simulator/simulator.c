@@ -203,6 +203,26 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     }
 
 destroy_pool : {
+    linted_asynch_pool_stop(pool);
+
+    for (;;) {
+        struct linted_asynch_task *completed_task;
+        linted_error poll_errnum;
+        {
+            struct linted_asynch_task *xx;
+            poll_errnum = linted_asynch_pool_poll(pool, &xx);
+            if (EAGAIN == poll_errnum) {
+                break;
+            }
+            completed_task = xx;
+        }
+
+        linted_error dispatch_errnum = completed_task->errnum;
+        if (0 == errnum) {
+            errnum = dispatch_errnum;
+        }
+    }
+
     linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
     if (0 == errnum) {
         errnum = destroy_errnum;

@@ -202,7 +202,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool* pool)
     linted_error errnum = 0;
 
     if (!pool->stopped) {
-        linted_asynch_pool_stop(pool);
+        return EBUSY;
     }
 
     linted_queue_destroy(pool->event_queue);
