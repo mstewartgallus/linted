@@ -172,6 +172,7 @@ static struct sock_filter const real_filter
            ALLOW(getdents), ALLOW(geteuid), ALLOW(getrlimit), ALLOW(getuid),
            ALLOW(lseek), ALLOW(mmap), ALLOW(mprotect), ALLOW(munmap),
            ALLOW(open), ALLOW(openat), ALLOW(prctl), ALLOW(read),
+           ALLOW(restart_syscall),
            ALLOW(rt_sigaction), ALLOW(rt_sigprocmask), ALLOW(set_robust_list),
            ALLOW(set_tid_address), ALLOW(socket), ALLOW(stat), ALLOW(write),
            BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL) };

@@ -252,7 +252,8 @@ static struct sock_filter const real_filter
            ALLOW(getrlimit), ALLOW(gettid), ALLOW(getuid), ALLOW(lseek),
            ALLOW(mmap), ALLOW(mprotect), ALLOW(mq_timedreceive),
            ALLOW(mq_timedsend), ALLOW(munmap), ALLOW(open), ALLOW(openat),
-           ALLOW(poll), ALLOW(prctl), ALLOW(read), ALLOW(rt_sigaction),
+           ALLOW(poll), ALLOW(prctl), ALLOW(read),
+           ALLOW(restart_syscall), ALLOW(rt_sigaction),
            ALLOW(rt_sigprocmask), ALLOW(sched_getaffinity), ALLOW(setrlimit),
            ALLOW(set_robust_list), ALLOW(set_tid_address), ALLOW(stat),
            ALLOW(tgkill), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL) };

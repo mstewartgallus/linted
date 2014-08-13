@@ -604,6 +604,7 @@ static struct sock_filter const real_filter
            ALLOW(mmap), ALLOW(mprotect), ALLOW(mq_timedreceive),
            ALLOW(mq_timedsend), ALLOW(munmap), ALLOW(open), ALLOW(openat),
            ALLOW(poll), ALLOW(prctl), ALLOW(read), ALLOW(recvfrom),
+           ALLOW(restart_syscall),
            ALLOW(rt_sigaction), ALLOW(rt_sigprocmask), ALLOW(sched_getaffinity),
            ALLOW(setrlimit), ALLOW(set_robust_list), ALLOW(set_tid_address),
            ALLOW(shutdown), ALLOW(socket), ALLOW(stat), ALLOW(tgkill),
