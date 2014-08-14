@@ -199,6 +199,42 @@ It is insecure to run a game as root!\n"));
     }
     linted_mem_free(open_kos);
 
+
+    if (kos_size > 0U) {
+        char * listen_pid_string = getenv("LISTEN_PID");
+        if (NULL == listen_pid_string) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: need LISTEN_PID\n",
+                                   process_name);
+            return EXIT_FAILURE;
+        }
+
+        pid_t pid = atoi(listen_pid_string);
+        if (getpid() != pid) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: LISTEN_PID %i != getpid() %i\n",
+                                   process_name, pid, getpid());
+            return EXIT_FAILURE;
+        }
+
+        char * listen_fds_string = getenv("LISTEN_FDS");
+        if (NULL == listen_fds_string) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: need LISTEN_FDS\n",
+                                   process_name);
+            return EXIT_FAILURE;
+        }
+
+        int fds_count = atoi(listen_fds_string);
+        if (fds_count != kos_size) {
+                        linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: LISTEN_FDS %i != %lu\n",
+                                               process_name, fds_count, kos_size);
+
+            return EXIT_FAILURE;
+        }
+    }
+
     linted_ko cwd;
     if (linted_start_config.open_current_working_directory) {
         cwd = open("./", O_DIRECTORY | O_CLOEXEC);

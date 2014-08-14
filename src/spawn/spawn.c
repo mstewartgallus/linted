@@ -302,7 +302,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                           char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
-                          char *const argv[], char *const envp[])
+                          char *const argv[], char *const input_envp[])
 {
     linted_error errnum = 0;
     bool is_relative_path = filename[0U] != '/';
@@ -324,6 +324,37 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
         return errnum;
+    }
+
+    size_t count = 0U;
+    for (char *const*env = input_envp; *env != NULL; ++env) {
+        ++count;
+    }
+
+    char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
+    char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";
+
+    char **envp;
+
+    if (file_actions != NULL && file_actions->action_count > 0U) {
+        {
+            void * xx;
+            if ((errnum = linted_mem_alloc_array(&xx, count + 3U, sizeof input_envp[0U])) != 0) {
+                goto unmap_spawn_error;
+            }
+            envp = xx;
+        }
+
+        for (size_t ii = 0U; ii < count; ++ii) {
+            envp[ii] = input_envp[ii];
+        }
+
+        envp[count] = listen_pid;
+        envp[count + 1U] = listen_fds;
+        envp[count + 2U] = NULL;
+        sprintf(listen_fds, "LISTEN_FDS=%i", (int)file_actions->action_count - 3U);
+    } else {
+        envp = (char **)input_envp;
     }
 
     pid_t child;
@@ -370,8 +401,8 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
     }
 
     if (child != 0) {
-        if (errnum != 0) {
-            goto unmap_spawn_error;
+        if (envp != input_envp) {
+            linted_mem_free(envp);
         }
 
     unmap_spawn_error:
@@ -382,8 +413,14 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             }
         }
 
-        *childp = child;
+        if (0 == errnum) {
+            *childp = child;
+        }
         return errnum;
+    }
+
+    if (file_actions != NULL && file_actions->action_count > 0U) {
+        sprintf(listen_pid, "LISTEN_PID=%i", getpid());
     }
 
     if (attr != NULL) {
@@ -568,7 +605,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         }
     }
 
-    execveat(dirfd_copy, filename, argv, envp);
+    execveat(dirfd_copy, filename, argv,(char*const*) envp);
 
     exit_with_error(spawn_error, errno);
     return 0;
