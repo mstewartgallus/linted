@@ -523,14 +523,6 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                 exit_with_error(spawn_error, errno);
             }
 
-            if (-1 == chroot(".")) {
-                exit_with_error(spawn_error, errno);
-            }
-
-            if (-1 == chdir("/")) {
-                exit_with_error(spawn_error, errno);
-            }
-
             /* Favor other processes over this process hierarchy. Only
              * superuser may lower priorities so this is not stoppable. This
              * also makes the process hierarchy nicer for the OOM killer.
