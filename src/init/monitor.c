@@ -223,6 +223,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 
 static linted_error get_flags_and_data(char const *opts,
+                                       bool *mkdir_flagp,
+                                       bool *touch_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
 
@@ -797,22 +799,31 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
             opts = NULL;
         }
 
+        bool mkdir_flag;
+        bool touch_flag;
         unsigned long mountflags;
         char const *data;
         if (NULL == opts) {
+            mkdir_flag = false;
+            touch_flag = false;
             mountflags = 0U;
             data = NULL;
         } else {
-            unsigned long xx;
-            char const *yy;
-            if ((errnum = get_flags_and_data(opts, &xx, &yy)) != 0) {
+            bool xx;
+            bool yy;
+            unsigned long zz;
+            char const *ww;
+            if ((errnum = get_flags_and_data(opts, &xx, &yy, &zz, &ww)) != 0) {
                 goto close_file;
             }
-            mountflags = xx;
-            data = yy;
+            mkdir_flag = xx;
+            touch_flag = yy;
+            mountflags = zz;
+            data = ww;
         }
 
         if ((errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
+                                                 mkdir_flag, touch_flag,
                                                  mountflags, data)) != 0) {
             goto close_file;
         }
@@ -830,10 +841,14 @@ close_file:
 }
 
 static linted_error get_flags_and_data(char const *opts,
+                                       bool *mkdir_flagp,
+                                       bool *touch_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp)
 {
     enum {
+        MKDIR,
+        TOUCH,
         BIND,
         RBIND,
         RO,
@@ -847,9 +862,12 @@ static linted_error get_flags_and_data(char const *opts,
     linted_error errnum;
 
     static char const *const tokens[]
-        = {[BIND] = "bind",   [RBIND] = "rbind",    [RO] = MNTOPT_RO,
+        = {[MKDIR] = "mkdir", [TOUCH] = "touch",
+           [BIND] = "bind",   [RBIND] = "rbind",    [RO] = MNTOPT_RO,
            [RW] = MNTOPT_RW,  [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
            [NODEV] = "nodev", [NOEXEC] = "noexec",  NULL };
+    bool touch_flag = false;
+    bool mkdir_flag = false;
     bool bind = false;
     bool rec = false;
     bool readonly = false;
@@ -879,6 +897,14 @@ static linted_error get_flags_and_data(char const *opts,
             value = yy;
         }
         switch (token) {
+        case MKDIR:
+            mkdir_flag = true;
+            break;
+
+        case TOUCH:
+            touch_flag = true;
+            break;
+
         case BIND:
             bind = true;
             break;
@@ -941,6 +967,10 @@ free_subopts_str:
         return EINVAL;
     }
 
+    if (mkdir_flag && touch_flag) {
+        return EINVAL;
+    }
+
     unsigned long mountflags = 0;
 
     if (bind) {
@@ -968,6 +998,8 @@ free_subopts_str:
     }
 
     *leftoversp = leftovers;
+    *mkdir_flagp = mkdir_flag;
+    *touch_flagp = touch_flag;
     *mountflagsp = mountflags;
     return 0;
 }

@@ -2,15 +2,18 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
-/dev	dev	none	rbind
-/home	home	none	rbind	# TODO: This doesn't work with ro,rbind
+/home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
 
-proc	proc	proc	ro,nosuid,nodev,noexec,hidepid=2
+tmpfs	dev	tmpfs	mkdir,nosuid,noexec
+/dev/null	dev/null	none	touch,bind
+/dev/random	dev/random	none	touch,bind
 
-/etc	etc	none	ro,nosuid,nodev,noexec,bind
+proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
 
-/lib	lib	none	ro,nosuid,nodev,bind
-/lib32	lib32	none	ro,nosuid,nodev,bind
-/lib64	lib64	none	ro,nosuid,nodev,bind 
+/etc	etc	none	mkdir,ro,nosuid,nodev,noexec,bind
 
-/usr	usr	none	ro,nosuid,nodev,bind 
+/lib	lib	none	mkdir,ro,nosuid,nodev,bind
+/lib32	lib32	none	mkdir,ro,nosuid,nodev,bind
+/lib64	lib64	none	mkdir,ro,nosuid,nodev,bind 
+
+/usr	usr	none	mkdir,ro,nosuid,nodev,bind 

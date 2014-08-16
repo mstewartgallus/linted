@@ -20,6 +20,7 @@
 #include "linted/spawn.h"
 
 #include "linted/error.h"
+#include "linted/file.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/util.h"
@@ -74,6 +75,8 @@ struct mount_args
     char *filesystemtype;
     unsigned long mountflags;
     char *data;
+    bool mkdir_flag : 1U;
+    bool touch_flag : 1U;
 };
 
 struct linted_spawn_attr
@@ -145,6 +148,8 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *restrict attr,
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
+                                        bool mkdir_flag,
+                                        bool touch_flag,
                                         unsigned long mountflags,
                                         char const *data)
 {
@@ -224,6 +229,8 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
         mount_args[size - 1U].source = source_copy;
         mount_args[size - 1U].target = target_copy;
         mount_args[size - 1U].filesystemtype = filesystemtype_copy;
+        mount_args[size - 1U].mkdir_flag = mkdir_flag;
+        mount_args[size - 1U].touch_flag = touch_flag;
         mount_args[size - 1U].mountflags = mountflags;
         mount_args[size - 1U].data = data_copy;
 
@@ -471,11 +478,20 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
                 struct mount_args *mount_arg = &attr->mount_args[ii];
 
-                if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
-                    errnum = errno;
-                    if (errnum != EEXIST) {
+
+                if (mount_arg->mkdir_flag) {
+                    if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
                         exit_with_error(spawn_error, errno);
                     }
+                } else if (mount_arg->touch_flag) {
+                    linted_ko xx;
+                    if ((errnum = linted_file_create(&xx, AT_FDCWD,
+                                                     mount_arg->target,
+                                                     LINTED_FILE_EXCL,
+                                                     S_IRWXU)) != 0) {
+                        exit_with_error(spawn_error, errno);
+                    }
+                    linted_ko_close(xx);
                 }
 
                 unsigned long mountflags = mount_arg->mountflags;

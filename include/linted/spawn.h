@@ -19,6 +19,8 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
+#include <stdbool.h>
+
 /**
  * @file
  *
@@ -39,6 +41,8 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *restrict attr,
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
+                                        bool mkdir_flag,
+                                        bool touch_flag,
                                         unsigned long mountflags,
                                         char const *data);
 
