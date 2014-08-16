@@ -512,7 +512,14 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                 }
             }
 
-            if (-1 == mount(".", "/", NULL, MS_MOVE, NULL)) {
+            /* Magic incantation that clears up /proc/mounts more than
+             * mount MS_MOVE
+             */
+            if (-1 == syscall(__NR_pivot_root, ".", ".")) {
+                exit_with_error(spawn_error, errno);
+            }
+
+            if (-1 == umount2(".", MNT_DETACH)) {
                 exit_with_error(spawn_error, errno);
             }
 
