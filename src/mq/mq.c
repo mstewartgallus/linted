@@ -39,7 +39,6 @@
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
 
-
 /**
  * Implemented using POSIX message queues.
  */
@@ -280,7 +279,7 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
     }
 
     /* Not a socket, can't use getsockopt to get errors */
-    assert (0 == (revents & POLLERR));
+    assert(0 == (revents & POLLERR));
 
     return errnum;
 }
