@@ -26,6 +26,8 @@
 #include <errno.h>
 #include <limits.h>
 #include <mqueue.h>
+#include <poll.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,10 +36,13 @@
 #define FILE_MAX 255U
 #define RANDOM_BYTES 8U
 
+static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error check_for_poll_error(linted_ko ko, short revents);
+
+
 /**
  * Implemented using POSIX message queues.
  */
-
 linted_error linted_mq_create(linted_mq *restrict mqp,
                               char const *restrict debugpath,
                               struct linted_mq_attr const *attr,
@@ -164,4 +169,118 @@ void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
     task->buf = buf;
     task->size = size;
     task->bytes_wrote = 0U;
+}
+
+void linted_mq_do_receive(struct linted_asynch_pool *pool,
+                          struct linted_asynch_task *restrict task)
+{
+    struct linted_mq_task_receive *restrict task_receive
+        = LINTED_DOWNCAST(struct linted_mq_task_receive, task);
+    size_t bytes_read = 0U;
+    linted_error errnum = 0;
+    for (;;) {
+        do {
+            ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
+                                        task_receive->size, NULL);
+            if (-1 == result) {
+                errnum = errno;
+                LINTED_ASSUME(errnum != 0);
+                continue;
+            }
+
+            bytes_read = result;
+        } while (EINTR == errnum);
+
+        if (errnum != EAGAIN) {
+            break;
+        }
+
+        short revents = 0;
+        do {
+            errnum = poll_one(task_receive->ko, POLLIN, &revents);
+        } while (EINTR == errnum);
+        if (errnum != 0) {
+            break;
+        }
+
+        if ((errnum = check_for_poll_error(task_receive->ko, revents)) != 0) {
+            break;
+        }
+    }
+
+    task->errnum = errnum;
+    task_receive->bytes_read = bytes_read;
+
+    linted_asynch_pool_complete(pool, task);
+}
+
+void linted_mq_do_send(struct linted_asynch_pool *pool,
+                       struct linted_asynch_task *restrict task)
+{
+    struct linted_mq_task_send *restrict task_send
+        = LINTED_DOWNCAST(struct linted_mq_task_send, task);
+    size_t bytes_wrote = 0U;
+    linted_error errnum = 0;
+    for (;;) {
+        do {
+            if (-1
+                == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
+                errnum = errno;
+                LINTED_ASSUME(errnum != 0);
+                continue;
+            }
+
+            bytes_wrote = task_send->size;
+        } while (EINTR == errnum);
+
+        if (errnum != EAGAIN) {
+            break;
+        }
+
+        short revents = 0;
+        do {
+            errnum = poll_one(task_send->ko, POLLOUT, &revents);
+        } while (EINTR == errnum);
+        if (errnum != 0) {
+            break;
+        }
+
+        if ((errnum = check_for_poll_error(task_send->ko, revents)) != 0) {
+            break;
+        }
+    }
+
+    task->errnum = errnum;
+    task_send->bytes_wrote = bytes_wrote;
+
+    linted_asynch_pool_complete(pool, task);
+}
+
+static linted_error poll_one(linted_ko ko, short events, short *revents)
+{
+    struct pollfd pollfd = { .fd = ko, .events = events };
+    if (-1 == poll(&pollfd, 1U, -1)) {
+        linted_error errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        return errnum;
+    }
+
+    *revents = pollfd.revents;
+    return 0;
+}
+
+static linted_error check_for_poll_error(linted_ko ko, short revents)
+{
+    linted_error errnum = 0;
+
+    if ((revents & POLLNVAL) != 0) {
+        errnum = EBADF;
+    } else if ((revents & POLLHUP) != 0) {
+        errnum = EPIPE;
+    }
+
+    /* Not a socket, can't use getsockopt to get errors */
+    assert (0 == (revents & POLLERR));
+
+    return errnum;
 }

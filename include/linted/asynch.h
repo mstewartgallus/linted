@@ -93,6 +93,9 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
 
+void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task);
+
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp);
 

@@ -118,4 +118,16 @@ void linted_ko_task_write(struct linted_ko_task_write *task,
 void linted_ko_task_accept(struct linted_ko_task_accept *task,
                            unsigned task_action, linted_ko ko);
 
+void linted_ko_do_poll(struct linted_asynch_pool *pool,
+                       struct linted_asynch_task *restrict task);
+
+void linted_ko_do_read(struct linted_asynch_pool *pool,
+                       struct linted_asynch_task *restrict task);
+
+void linted_ko_do_write(struct linted_asynch_pool *pool,
+                        struct linted_asynch_task *restrict task);
+
+void linted_ko_do_accept(struct linted_asynch_pool *pool,
+                         struct linted_asynch_task *restrict task);
+
 #endif /* LINTED_KO_H */

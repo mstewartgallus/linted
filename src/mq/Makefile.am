@@ -21,3 +21,4 @@ noinst_LTLIBRARIES+=%D%/libmq.la
 %C%_libmq_la_LIBADD=\
   src/random/librandom.la\
   -lrt
+# There is a circular dependency with libasynch

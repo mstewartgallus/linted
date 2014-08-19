@@ -17,3 +17,4 @@
 
 noinst_LTLIBRARIES+=%D%/libko.la
 %C%_libko_la_SOURCES=%D%/ko.c include/linted/ko.h
+# Circular depedence with libasynch

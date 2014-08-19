@@ -27,14 +27,9 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <mqueue.h>
-#include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 struct linted_asynch_pool
@@ -54,7 +49,7 @@ struct linted_asynch_pool
 
     size_t worker_count;
 
-    bool stopped : 1U;
+    _Bool stopped : 1U;
 
     pthread_t workers[];
 };
@@ -64,25 +59,10 @@ static void *worker_routine(void *arg);
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *restrict task);
 
-static void run_task_poll(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *restrict task);
-static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *restrict task);
-static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *restrict task);
-static void run_task_mq_receive(struct linted_asynch_pool *pool,
-                                struct linted_asynch_task *restrict task);
-static void run_task_mq_send(struct linted_asynch_pool *pool,
-                             struct linted_asynch_task *restrict task);
 static void run_task_waitid(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *restrict task);
-static void run_task_accept(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *restrict task);
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *restrict task);
-
-static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(linted_ko ko, short revents);
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool
                                        **restrict poolp,
@@ -227,6 +207,17 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
     }
 }
 
+void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task)
+{
+    if (pool != NULL) {
+        int oldstate;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
+        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+        pthread_setcancelstate(oldstate, NULL);
+    }
+}
+
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp)
 {
@@ -314,23 +305,23 @@ static void run_task(struct linted_asynch_pool *pool,
 {
     switch (task->type) {
     case LINTED_ASYNCH_TASK_POLL:
-        run_task_poll(pool, task);
+        linted_ko_do_poll(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_READ:
-        run_task_read(pool, task);
+        linted_ko_do_read(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_WRITE:
-        run_task_write(pool, task);
+        linted_ko_do_write(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_MQ_RECEIVE:
-        run_task_mq_receive(pool, task);
+        linted_mq_do_receive(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_MQ_SEND:
-        run_task_mq_send(pool, task);
+        linted_mq_do_send(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_WAITID:
@@ -338,7 +329,7 @@ static void run_task(struct linted_asynch_pool *pool,
         break;
 
     case LINTED_ASYNCH_TASK_ACCEPT:
-        run_task_accept(pool, task);
+        linted_ko_do_accept(pool, task);
         break;
 
     case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
@@ -347,252 +338,6 @@ static void run_task(struct linted_asynch_pool *pool,
 
     default:
         LINTED_ASSUME_UNREACHABLE();
-    }
-}
-
-static void run_task_poll(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *restrict task)
-{
-    struct linted_ko_task_poll *restrict task_poll
-        = LINTED_DOWNCAST(struct linted_ko_task_poll, task);
-    linted_error errnum;
-
-    short revents = 0;
-
-    do {
-        errnum = poll_one(task_poll->ko, task_poll->events, &revents);
-    } while (EINTR == errnum);
-
-    task_poll->revents = revents;
-    task->errnum = errnum;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *restrict task)
-{
-    struct linted_ko_task_read *restrict task_read
-        = LINTED_DOWNCAST(struct linted_ko_task_read, task);
-    size_t bytes_read = task_read->current_position;
-    size_t bytes_left = task_read->size - bytes_read;
-
-    linted_error errnum = 0;
-    for (;;) {
-        for (;;) {
-            ssize_t result
-                = read(task_read->ko, task_read->buf + bytes_read, bytes_left);
-            if (-1 == result) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-
-                if (EINTR == errnum) {
-                    continue;
-                }
-
-                break;
-            }
-
-            size_t bytes_read_delta = result;
-            if (0U == bytes_read_delta) {
-                break;
-            }
-
-            bytes_read += bytes_read_delta;
-            bytes_left -= bytes_read_delta;
-            if (0U == bytes_left) {
-                break;
-            }
-        }
-
-        if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
-            break;
-        }
-
-        short revents = 0;
-        do {
-            errnum = poll_one(task_read->ko, POLLIN, &revents);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            break;
-        }
-
-        if ((errnum = check_for_poll_error(task_read->ko, revents)) != 0) {
-            break;
-        }
-    }
-
-    task->errnum = errnum;
-    task_read->bytes_read = bytes_read;
-    task_read->current_position = 0U;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *restrict task)
-{
-    struct linted_ko_task_write *restrict task_write
-        = LINTED_DOWNCAST(struct linted_ko_task_write, task);
-    size_t bytes_wrote = task_write->current_position;
-    size_t bytes_left = task_write->size - bytes_wrote;
-
-    linted_error errnum = 0;
-    for (;;) {
-        for (;;) {
-            ssize_t result = write(task_write->ko,
-                                   task_write->buf + bytes_wrote, bytes_left);
-            if (-1 == result) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-
-                if (EINTR == errnum) {
-                    continue;
-                }
-
-                break;
-            }
-
-            size_t bytes_wrote_delta = result;
-
-            bytes_wrote += bytes_wrote_delta;
-            bytes_left -= bytes_wrote_delta;
-            if (0U == bytes_left) {
-                break;
-            }
-        }
-
-        if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
-            break;
-        }
-
-        short revents = 0;
-        do {
-            errnum = poll_one(task_write->ko, POLLOUT, &revents);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            break;
-        }
-
-        if ((errnum = check_for_poll_error(task_write->ko, revents)) != 0) {
-            break;
-        }
-    }
-
-    task->errnum = errnum;
-    task_write->bytes_wrote = bytes_wrote;
-    task_write->current_position = 0U;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static void run_task_mq_receive(struct linted_asynch_pool *pool,
-                                struct linted_asynch_task *restrict task)
-{
-    struct linted_mq_task_receive *restrict task_receive
-        = LINTED_DOWNCAST(struct linted_mq_task_receive, task);
-    size_t bytes_read = 0U;
-    linted_error errnum = 0;
-    for (;;) {
-        do {
-            ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
-                                        task_receive->size, NULL);
-            if (-1 == result) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-                continue;
-            }
-
-            bytes_read = result;
-        } while (EINTR == errnum);
-
-        if (errnum != EAGAIN) {
-            break;
-        }
-
-        short revents = 0;
-        do {
-            errnum = poll_one(task_receive->ko, POLLIN, &revents);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            break;
-        }
-
-        if ((errnum = check_for_poll_error(task_receive->ko, revents)) != 0) {
-            break;
-        }
-    }
-
-    task->errnum = errnum;
-    task_receive->bytes_read = bytes_read;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static void run_task_mq_send(struct linted_asynch_pool *pool,
-                             struct linted_asynch_task *restrict task)
-{
-    struct linted_mq_task_send *restrict task_send
-        = LINTED_DOWNCAST(struct linted_mq_task_send, task);
-    size_t bytes_wrote = 0U;
-    linted_error errnum = 0;
-    for (;;) {
-        do {
-            if (-1
-                == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-                continue;
-            }
-
-            bytes_wrote = task_send->size;
-        } while (EINTR == errnum);
-
-        if (errnum != EAGAIN) {
-            break;
-        }
-
-        short revents = 0;
-        do {
-            errnum = poll_one(task_send->ko, POLLOUT, &revents);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            break;
-        }
-
-        if ((errnum = check_for_poll_error(task_send->ko, revents)) != 0) {
-            break;
-        }
-    }
-
-    task->errnum = errnum;
-    task_send->bytes_wrote = bytes_wrote;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
     }
 }
 
@@ -675,82 +420,7 @@ finish:
 
     task->errnum = errnum;
 
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static void run_task_accept(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *restrict task)
-{
-    struct linted_ko_task_accept *restrict task_accept
-        = LINTED_DOWNCAST(struct linted_ko_task_accept, task);
-
-    linted_ko new_ko = -1;
-    linted_error errnum;
-
-    for (;;) {
-    retry_accept:
-
-        new_ko
-            = accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
-        if (-1 == new_ko) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-
-        /**
-         * @bug On BSD accept returns the same file description as
-         * passed into connect so this file descriptor shares NONBLOCK
-         * status with the connector. I'm not sure of a way to sever
-         * shared file descriptions on BSD.
-         */
-
-        /* Retry on network error */
-        switch (errnum) {
-        case EINTR:
-        case ENETDOWN:
-        case EPROTO:
-        case ENOPROTOOPT:
-        case EHOSTDOWN:
-        case ENONET:
-        case EHOSTUNREACH:
-        case EOPNOTSUPP:
-        case ENETUNREACH:
-            goto retry_accept;
-        }
-
-        if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
-            break;
-        }
-
-        short revents = 0;
-        do {
-            errnum = poll_one(task_accept->ko, POLLIN, &revents);
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            break;
-        }
-
-        if ((errnum = check_for_poll_error(task_accept->ko, revents)) != 0) {
-            break;
-        }
-    }
-
-    task->errnum = errnum;
-    task_accept->returned_ko = new_ko;
-
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
+    linted_asynch_pool_complete(pool, task);
 }
 
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
@@ -772,45 +442,5 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
 
     task->errnum = errnum;
 
-    if (pool != NULL) {
-        int oldstate;
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-        linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-        pthread_setcancelstate(oldstate, NULL);
-    }
-}
-
-static linted_error poll_one(linted_ko ko, short events, short *revents)
-{
-    struct pollfd pollfd = { .fd = ko, .events = events };
-    if (-1 == poll(&pollfd, 1U, -1)) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
-
-    *revents = pollfd.revents;
-    return 0;
-}
-
-static linted_error check_for_poll_error(linted_ko ko, short revents)
-{
-    linted_error errnum = 0;
-
-    if ((revents & POLLNVAL) != 0) {
-        errnum = EBADF;
-    } else if ((revents & POLLHUP) != 0) {
-        errnum = EPIPE;
-    } else if ((revents & POLLERR) != 0) {
-        linted_error xx = errnum;
-        socklen_t optlen = sizeof xx;
-        if (-1 == getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &optlen)) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-        } else {
-            errnum = xx;
-        }
-    }
-
-    return errnum;
+    linted_asynch_pool_complete(pool, task);
 }
