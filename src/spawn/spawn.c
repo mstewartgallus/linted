@@ -148,8 +148,7 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *restrict attr,
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
-                                        bool mkdir_flag,
-                                        bool touch_flag,
+                                        bool mkdir_flag, bool touch_flag,
                                         unsigned long mountflags,
                                         char const *data)
 {
@@ -334,7 +333,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
     }
 
     size_t count = 0U;
-    for (char *const*env = input_envp; *env != NULL; ++env) {
+    for (char *const *env = input_envp; *env != NULL; ++env) {
         ++count;
     }
 
@@ -345,8 +344,9 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
 
     if (file_actions != NULL && file_actions->action_count > 0U) {
         {
-            void * xx;
-            if ((errnum = linted_mem_alloc_array(&xx, count + 3U, sizeof input_envp[0U])) != 0) {
+            void *xx;
+            if ((errnum = linted_mem_alloc_array(&xx, count + 3U,
+                                                 sizeof input_envp[0U])) != 0) {
                 goto unmap_spawn_error;
             }
             envp = xx;
@@ -359,7 +359,8 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         envp[count] = listen_pid;
         envp[count + 1U] = listen_fds;
         envp[count + 2U] = NULL;
-        sprintf(listen_fds, "LISTEN_FDS=%i", (int)file_actions->action_count - 3U);
+        sprintf(listen_fds, "LISTEN_FDS=%i",
+                (int)file_actions->action_count - 3U);
     } else {
         envp = (char **)input_envp;
     }
@@ -478,17 +479,15 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
                 struct mount_args *mount_arg = &attr->mount_args[ii];
 
-
                 if (mount_arg->mkdir_flag) {
                     if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
                         exit_with_error(spawn_error, errno);
                     }
                 } else if (mount_arg->touch_flag) {
                     linted_ko xx;
-                    if ((errnum = linted_file_create(&xx, AT_FDCWD,
-                                                     mount_arg->target,
-                                                     LINTED_FILE_EXCL,
-                                                     S_IRWXU)) != 0) {
+                    if ((errnum = linted_file_create(
+                             &xx, AT_FDCWD, mount_arg->target, LINTED_FILE_EXCL,
+                             S_IRWXU)) != 0) {
                         exit_with_error(spawn_error, errno);
                     }
                     linted_ko_close(xx);
@@ -620,7 +619,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         }
     }
 
-    execveat(dirfd_copy, filename, argv,(char*const*) envp);
+    execveat(dirfd_copy, filename, argv, (char * const *)envp);
 
     exit_with_error(spawn_error, errno);
     return 0;

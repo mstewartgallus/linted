@@ -222,8 +222,7 @@ static char const *const gui_envvars_to_keep[]
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 
-static linted_error get_flags_and_data(char const *opts,
-                                       bool *mkdir_flagp,
+static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
                                        bool *touch_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
@@ -822,9 +821,9 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
             data = ww;
         }
 
-        if ((errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
-                                                 mkdir_flag, touch_flag,
-                                                 mountflags, data)) != 0) {
+        if ((errnum
+             = linted_spawn_attr_setmount(attr, fsname, dir, type, mkdir_flag,
+                                          touch_flag, mountflags, data)) != 0) {
             goto close_file;
         }
     }
@@ -840,8 +839,7 @@ close_file:
     return errnum;
 }
 
-static linted_error get_flags_and_data(char const *opts,
-                                       bool *mkdir_flagp,
+static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
                                        bool *touch_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp)
@@ -862,10 +860,10 @@ static linted_error get_flags_and_data(char const *opts,
     linted_error errnum;
 
     static char const *const tokens[]
-        = {[MKDIR] = "mkdir", [TOUCH] = "touch",
-           [BIND] = "bind",   [RBIND] = "rbind",    [RO] = MNTOPT_RO,
-           [RW] = MNTOPT_RW,  [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID,
-           [NODEV] = "nodev", [NOEXEC] = "noexec",  NULL };
+        = {[MKDIR] = "mkdir",    [TOUCH] = "touch",        [BIND] = "bind",
+           [RBIND] = "rbind",    [RO] = MNTOPT_RO,         [RW] = MNTOPT_RW,
+           [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID, [NODEV] = "nodev",
+           [NOEXEC] = "noexec",  NULL };
     bool touch_flag = false;
     bool mkdir_flag = false;
     bool bind = false;

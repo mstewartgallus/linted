@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 
@@ -184,6 +185,14 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
         }
 
         if (0 == child) {
+            /* Stupidly, uid_map and gid_map aren't writable in these
+             * when the binary is not dumpable.
+             */
+            if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
+                perror("prctl");
+                return EXIT_FAILURE;
+            }
+
             {
                 linted_ko file;
                 {
@@ -191,7 +200,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     if ((errnum = linted_ko_open(&xx, -1, "/proc/self/uid_map",
                                                  LINTED_KO_WRONLY)) != 0) {
                         errno = errnum;
-                        perror("open");
+                        perror("linted_ko_open");
                         return EXIT_FAILURE;
                     }
                     file = xx;
@@ -217,7 +226,7 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     if ((errnum = linted_ko_open(&xx, -1, "/proc/self/gid_map",
                                                  LINTED_KO_WRONLY)) != 0) {
                         errno = errnum;
-                        perror("open");
+                        perror("linted_ko_open");
                         return EXIT_FAILURE;
                     }
                     file = xx;
@@ -234,6 +243,11 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
                     perror("linted_ko_close");
                     return EXIT_FAILURE;
                 }
+            }
+
+            if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
+                perror("prctl");
+                return EXIT_FAILURE;
             }
 
             if (-1
