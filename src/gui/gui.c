@@ -165,9 +165,9 @@ static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
 static void flush_gl_errors(void);
-static void matrix_multiply(GLfloat const a[static restrict 4U][4U],
-                            GLfloat const b[static restrict 4U][4U],
-                            GLfloat result[static restrict 4U][4U]);
+static void matrix_multiply(GLfloat const a[restrict 4U][4U],
+                            GLfloat const b[restrict 4U][4U],
+                            GLfloat result[restrict 4U][4U]);
 
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
@@ -1189,9 +1189,9 @@ static linted_error get_gl_error(void)
     }
 }
 
-static void matrix_multiply(GLfloat const a[static restrict 4U][4U],
-                            GLfloat const b[static restrict 4U][4U],
-                            GLfloat result[static restrict 4U][4U])
+static void matrix_multiply(GLfloat const a[restrict 4U][4U],
+                            GLfloat const b[restrict 4U][4U],
+                            GLfloat result[restrict 4U][4U])
 {
     result[0U][0U] = a[0U][0U] * b[0U][0U] + a[0U][1U] * b[1U][0U]
                      + a[0U][2U] * b[2U][0U] + a[0U][3U] * b[3U][0U];
