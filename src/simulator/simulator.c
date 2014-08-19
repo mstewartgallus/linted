@@ -57,7 +57,7 @@ struct action_state
     int x : 2;
     int z : 2;
 
-    bool jumping : 1;
+    bool jumping : 1U;
 };
 
 struct differentiable
@@ -73,8 +73,8 @@ struct simulator_state
     linted_updater_angle x_rotation;
     linted_updater_angle y_rotation;
 
-    bool update_pending : 1;
-    bool write_in_progress : 1;
+    bool update_pending : 1U;
+    bool write_in_progress : 1U;
 };
 
 struct sim_updater_task;

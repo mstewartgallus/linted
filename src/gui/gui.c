@@ -57,8 +57,8 @@ enum {
 struct controller_data
 {
     struct linted_controller_message update;
-    bool update_pending : 1;
-    bool update_in_progress : 1;
+    bool update_pending : 1U;
+    bool update_in_progress : 1U;
 };
 
 struct graphics_state
@@ -72,9 +72,9 @@ struct window_model
     unsigned width;
     unsigned height;
 
-    bool resize_pending : 1;
-    bool viewable : 1;
-    bool focused : 1;
+    bool resize_pending : 1U;
+    bool viewable : 1U;
+    bool focused : 1U;
 };
 
 struct sim_model

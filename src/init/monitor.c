@@ -118,7 +118,7 @@ struct service_process
 struct service_file
 {
     linted_ko ko;
-    bool is_open : 1;
+    bool is_open : 1U;
 };
 
 union service
