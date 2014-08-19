@@ -320,6 +320,16 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
     size_t bytes_left = task_write->size - bytes_wrote;
 
     linted_error errnum = 0;
+
+    sigset_t oldset;
+    /* Get EPIPEs */
+    /* SIGPIPE may not be blocked already */
+    /* Reuse oldset to save on stack space */
+    sigemptyset(&oldset);
+    sigaddset(&oldset, SIGPIPE);
+
+    pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+
     for (;;) {
         for (;;) {
             ssize_t result = write(task_write->ko,
@@ -360,6 +370,22 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
             break;
         }
     }
+
+    /* Consume SIGPIPEs */
+    {
+        sigset_t sigpipeset;
+
+        sigemptyset(&sigpipeset);
+        sigaddset(&sigpipeset, SIGPIPE);
+
+        {
+            struct timespec timeout = { 0 };
+
+            sigtimedwait(&sigpipeset, NULL, &timeout);
+        }
+    }
+
+    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
     task->errnum = errnum;
     task_write->bytes_wrote = bytes_wrote;

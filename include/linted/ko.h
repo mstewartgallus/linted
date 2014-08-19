@@ -111,6 +111,9 @@ void linted_ko_task_poll(struct linted_ko_task_poll *task, unsigned task_action,
 void linted_ko_task_read(struct linted_ko_task_read *task, unsigned task_action,
                          linted_ko ko, char *buf, size_t size);
 
+/**
+ * @warning Consumes pending SIGPIPEs
+ */
 void linted_ko_task_write(struct linted_ko_task_write *task,
                           unsigned task_action, linted_ko ko, char const *buf,
                           size_t size);
@@ -124,6 +127,9 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 void linted_ko_do_read(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *restrict task);
 
+/**
+ * @warning Consumes pending SIGPIPEs
+ */
 void linted_ko_do_write(struct linted_asynch_pool *pool,
                         struct linted_asynch_task *restrict task);
 
