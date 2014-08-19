@@ -199,9 +199,8 @@ It is insecure to run a game as root!\n"));
     }
     linted_mem_free(open_kos);
 
-
     if (kos_size > 0U) {
-        char * listen_pid_string = getenv("LISTEN_PID");
+        char *listen_pid_string = getenv("LISTEN_PID");
         if (NULL == listen_pid_string) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: need LISTEN_PID\n",
@@ -217,7 +216,7 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        char * listen_fds_string = getenv("LISTEN_FDS");
+        char *listen_fds_string = getenv("LISTEN_FDS");
         if (NULL == listen_fds_string) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: need LISTEN_FDS\n",
@@ -225,12 +224,22 @@ It is insecure to run a game as root!\n"));
             return EXIT_FAILURE;
         }
 
-        int fds_count = atoi(listen_fds_string);
-        if (fds_count != kos_size) {
-                        linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: LISTEN_FDS %i != %lu\n",
-                                               process_name, fds_count, kos_size);
+        linted_ko fds_count;
+        {
+            linted_ko xx;
+            if ((errnum = linted_ko_from_cstring(listen_fds_string, &xx))
+                != 0) {
+                errno = errnum;
+                perror("linted_ko_from_cstring");
+                return EXIT_FAILURE;
+            }
+            fds_count = xx;
+        }
 
+        if ((uintmax_t)fds_count != kos_size) {
+            linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: LISTEN_FDS %i != %lu\n",
+                                   process_name, fds_count, kos_size);
             return EXIT_FAILURE;
         }
     }
