@@ -12,12 +12,18 @@
  * Linted -- Coding Standards
  *
  * This is a list of standards for maintaining correct and high
- * quality code in Linted. The Linted project unconditionally enforces
- * it's rules for correct code. No exceptions. The Linted project
- * almost always enforce it's rules for high quality code but
- * recognize that they are only heuristics and that exceptions are
- * okay occasionally. The rules for code style are very arbitrary but
- * may be bent occasionally.
+ * quality code in Linted.  It is more important to understand the
+ * standard and why it is what it is than to follow it.
+ *
+ * The Linted project unconditionally enforces it's rules for correct
+ * code. No exceptions.
+ *
+ * The Linted project almost always enforce it's rules for high
+ * quality code but recognize that they are only heuristics and that
+ * exceptions are okay occasionally.
+ *
+ * The rules for code style are very arbitrary but may be bent
+ * occasionally.
  *
  * @section correctness Code Correctness
  *
