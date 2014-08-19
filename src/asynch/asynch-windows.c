@@ -18,6 +18,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "config.h"
+
 #include "linted/asynch.h"
 
 #include "linted/ko.h"

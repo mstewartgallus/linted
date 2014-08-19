@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "config.h"
-
 #if defined _WIN32 || defined _WIN64
 #include "asynch-windows.c"
 #elif defined __linux__
