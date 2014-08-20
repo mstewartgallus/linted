@@ -177,10 +177,14 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
         = LINTED_DOWNCAST(struct linted_mq_task_receive, task);
     size_t bytes_read = 0U;
     linted_error errnum = 0;
+
+    linted_ko ko = task_receive->ko;
+    char *buf = task_receive->buf;
+    size_t size = task_receive->size;
+
     for (;;) {
         do {
-            ssize_t result = mq_receive(task_receive->ko, task_receive->buf,
-                                        task_receive->size, NULL);
+            ssize_t result = mq_receive(ko, buf, size, NULL);
             if (-1 == result) {
                 errnum = errno;
                 LINTED_ASSUME(errnum != 0);
@@ -196,13 +200,17 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 
         short revents = 0;
         do {
-            errnum = poll_one(task_receive->ko, POLLIN, &revents);
+            short xx;
+            errnum = poll_one(ko, POLLIN, &xx);
+            if (0 == errnum) {
+                revents = xx;
+            }
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
         }
 
-        if ((errnum = check_for_poll_error(task_receive->ko, revents)) != 0) {
+        if ((errnum = check_for_poll_error(ko, revents)) != 0) {
             break;
         }
     }
@@ -220,16 +228,20 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
         = LINTED_DOWNCAST(struct linted_mq_task_send, task);
     size_t bytes_wrote = 0U;
     linted_error errnum = 0;
+
+    linted_ko ko = task_send->ko;
+    char const *buf = task_send->buf;
+    size_t size = task_send->size;
+
     for (;;) {
         do {
-            if (-1
-                == mq_send(task_send->ko, task_send->buf, task_send->size, 0)) {
+            if (-1 == mq_send(ko, buf, size, 0)) {
                 errnum = errno;
                 LINTED_ASSUME(errnum != 0);
                 continue;
             }
 
-            bytes_wrote = task_send->size;
+            bytes_wrote = size;
         } while (EINTR == errnum);
 
         if (errnum != EAGAIN) {
@@ -238,13 +250,17 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 
         short revents = 0;
         do {
-            errnum = poll_one(task_send->ko, POLLOUT, &revents);
+            short xx;
+            errnum = poll_one(task_send->ko, POLLOUT, &xx);
+            if (0 == errnum) {
+                revents = xx;
+            }
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
         }
 
-        if ((errnum = check_for_poll_error(task_send->ko, revents)) != 0) {
+        if ((errnum = check_for_poll_error(ko, revents)) != 0) {
             break;
         }
     }

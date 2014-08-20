@@ -239,10 +239,16 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
         = LINTED_DOWNCAST(struct linted_ko_task_poll, task);
     linted_error errnum;
 
-    short revents = 0;
+    linted_ko ko = task_poll->ko;
+    short events = task_poll->events;
 
+    short revents = 0;
     do {
-        errnum = poll_one(task_poll->ko, task_poll->events, &revents);
+        short xx;
+        errnum = poll_one(ko, events, &xx);
+        if (0 == errnum) {
+            revents = xx;
+        }
     } while (EINTR == errnum);
 
     task_poll->revents = revents;
@@ -259,11 +265,13 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
     size_t bytes_read = task_read->current_position;
     size_t bytes_left = task_read->size - bytes_read;
 
+    linted_ko ko = task_read->ko;
+    char *buf = task_read->buf;
+
     linted_error errnum = 0;
     for (;;) {
         for (;;) {
-            ssize_t result
-                = read(task_read->ko, task_read->buf + bytes_read, bytes_left);
+            ssize_t result = read(ko, buf + bytes_read, bytes_left);
             if (-1 == result) {
                 errnum = errno;
                 LINTED_ASSUME(errnum != 0);
@@ -293,13 +301,17 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 
         short revents = 0;
         do {
-            errnum = poll_one(task_read->ko, POLLIN, &revents);
+            short xx;
+            errnum = poll_one(ko, POLLIN, &xx);
+            if (0 == errnum) {
+                revents = xx;
+            }
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
         }
 
-        if ((errnum = check_for_poll_error(task_read->ko, revents)) != 0) {
+        if ((errnum = check_for_poll_error(ko, revents)) != 0) {
             break;
         }
     }
@@ -321,6 +333,9 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
     linted_error errnum = 0;
 
+    linted_ko ko = task_write->ko;
+    char const *buf = task_write->buf;
+
     sigset_t oldset;
     /* Get EPIPEs */
     /* SIGPIPE may not be blocked already */
@@ -332,8 +347,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
     for (;;) {
         for (;;) {
-            ssize_t result = write(task_write->ko,
-                                   task_write->buf + bytes_wrote, bytes_left);
+            ssize_t result = write(ko, buf + bytes_wrote, bytes_left);
             if (-1 == result) {
                 errnum = errno;
                 LINTED_ASSUME(errnum != 0);
@@ -360,13 +374,17 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
         short revents = 0;
         do {
-            errnum = poll_one(task_write->ko, POLLOUT, &revents);
+            short xx;
+            errnum = poll_one(ko, POLLOUT, &xx);
+            if (0 == errnum) {
+                revents = xx;
+            }
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
         }
 
-        if ((errnum = check_for_poll_error(task_write->ko, revents)) != 0) {
+        if ((errnum = check_for_poll_error(ko, revents)) != 0) {
             break;
         }
     }
@@ -402,12 +420,10 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 
     linted_ko new_ko = -1;
     linted_error errnum;
+    linted_ko ko = task_accept->ko;
 
     for (;;) {
-    retry_accept:
-
-        new_ko
-            = accept4(task_accept->ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (-1 == new_ko) {
             errnum = errno;
             LINTED_ASSUME(errnum != 0);
@@ -433,7 +449,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
         case EHOSTUNREACH:
         case EOPNOTSUPP:
         case ENETUNREACH:
-            goto retry_accept;
+            continue;
         }
 
         if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
@@ -442,13 +458,17 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 
         short revents = 0;
         do {
-            errnum = poll_one(task_accept->ko, POLLIN, &revents);
+            short xx;
+            errnum = poll_one(ko, POLLIN, &xx);
+            if (0 == errnum) {
+                revents = xx;
+            }
         } while (EINTR == errnum);
         if (errnum != 0) {
             break;
         }
 
-        if ((errnum = check_for_poll_error(task_accept->ko, revents)) != 0) {
+        if ((errnum = check_for_poll_error(ko, revents)) != 0) {
             break;
         }
     }

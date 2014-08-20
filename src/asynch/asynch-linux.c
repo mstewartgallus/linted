@@ -349,35 +349,36 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
     linted_error errnum;
     int status;
     pid_t child;
+
+    pid_t id;
+    switch (task_wait->idtype) {
+    case P_PID:
+        id = task_wait->id;
+        break;
+
+    case P_ALL:
+        id = -1;
+        break;
+
+    case P_PGID:
+        id = -(pid_t)task_wait->id;
+        break;
+
+    default:
+        errnum = EINVAL;
+        goto finish;
+    }
+
+    int options = task_wait->options;
+
     do {
-        pid_t id;
-        switch (task_wait->idtype) {
-        case P_PID:
-            id = task_wait->id;
-            break;
-
-        case P_ALL:
-            id = -1;
-            break;
-
-        case P_PGID:
-            id = -(pid_t)task_wait->id;
-            break;
-
-        default:
-            errnum = EINVAL;
-            goto finish;
-        }
-
-        {
-            int xx;
-            child = waitpid(id, &xx, task_wait->options);
-            if (-1 == child) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
-            } else {
-                errnum = 0;
-            }
+        int xx;
+        child = waitpid(id, &xx, options);
+        if (-1 == child) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+        } else {
+            errnum = 0;
             status = xx;
         }
     } while (EINTR == errnum);
@@ -429,10 +430,13 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
     struct linted_asynch_task_sleep_until *restrict task_sleep
         = LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);
     linted_error errnum;
+
+    int flags = task_sleep->flags;
     struct timespec time_remaining = task_sleep->request;
+
     do {
-        if (-1 == clock_nanosleep(CLOCK_MONOTONIC, task_sleep->flags,
-                                  &time_remaining, &time_remaining)) {
+        if (-1 == clock_nanosleep(CLOCK_MONOTONIC, flags, &time_remaining,
+                                  &time_remaining)) {
             errnum = errno;
             LINTED_ASSUME(errnum != 0);
         } else {
