@@ -359,7 +359,6 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
         }
     } while (EINTR == errnum);
 
-complete:
     task->errnum = errnum;
 
     linted_asynch_pool_complete(pool, task);
