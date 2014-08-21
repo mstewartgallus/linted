@@ -145,7 +145,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task);
 
 static linted_error egl_error(void);
 
-static linted_error errnum_from_connection(xcb_connection_t *connection);
+static linted_error get_xcb_conn_error(xcb_connection_t *connection);
+static linted_error get_xcb_error(xcb_generic_error_t *error);
 
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y);
@@ -228,7 +229,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     }
 
     xcb_window_t window = xcb_generate_id(connection);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto disconnect;
     }
 
@@ -247,19 +248,19 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
             XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
             XCB_CW_EVENT_MASK, values);
     }
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto disconnect;
     }
 
     xcb_intern_atom_cookie_t protocols_ck
         = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
 
     xcb_intern_atom_cookie_t delete_ck
         = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
 
@@ -267,19 +268,20 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     xcb_atom_t wm_protocols_atom;
     {
         xcb_intern_atom_reply_t *protocols_ck_reply;
-        xcb_generic_error_t *protocols_ck_error;
+        xcb_generic_error_t *protocols_ck_err;
         {
             xcb_generic_error_t *xx;
             protocols_ck_reply
                 = xcb_intern_atom_reply(connection, protocols_ck, &xx);
-            protocols_ck_error = xx;
+            protocols_ck_err = xx;
         }
-        if ((errnum = errnum_from_connection(connection)) != 0) {
+        if ((errnum = get_xcb_conn_error(connection)) != 0) {
             goto destroy_window;
         }
 
-        if (protocols_ck_error != NULL) {
-            errnum = ENOSYS;
+        if (protocols_ck_err != NULL) {
+            errnum = get_xcb_error(protocols_ck_err);
+            linted_mem_free(protocols_ck_err);
             goto destroy_window;
         }
 
@@ -289,18 +291,19 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
     {
         xcb_intern_atom_reply_t *delete_ck_reply;
-        xcb_generic_error_t *delete_ck_error;
+        xcb_generic_error_t *delete_ck_err;
         {
             xcb_generic_error_t *xx;
             delete_ck_reply = xcb_intern_atom_reply(connection, delete_ck, &xx);
-            if ((errnum = errnum_from_connection(connection)) != 0) {
+            if ((errnum = get_xcb_conn_error(connection)) != 0) {
                 goto destroy_window;
             }
-            delete_ck_error = xx;
+            delete_ck_err = xx;
         }
 
-        if (delete_ck_error != NULL) {
-            errnum = ENOSYS;
+        if (delete_ck_err != NULL) {
+            errnum = get_xcb_error(delete_ck_err);
+            linted_mem_free(delete_ck_err);
             goto destroy_window;
         }
 
@@ -311,45 +314,44 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
         connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32, 1,
         &wm_delete_window_atom);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
 
     xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
 
     xcb_generic_error_t *create_window_err
         = xcb_request_check(connection, create_window_ck);
     if (create_window_err != NULL) {
+        errnum = get_xcb_error(create_window_err);
         linted_mem_free(create_window_err);
-        errnum = ENOSYS;
         goto destroy_window;
     }
 
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
 
-    xcb_generic_error_t *ch_prop_error
-        = xcb_request_check(connection, ch_prop_ck);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    xcb_generic_error_t *ch_prop_err = xcb_request_check(connection, ch_prop_ck);
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
-    if (ch_prop_error != NULL) {
-        linted_mem_free(ch_prop_error);
-        errnum = ENOSYS;
+    if (ch_prop_err != NULL) {
+        errnum = get_xcb_error(ch_prop_err);
+        linted_mem_free(ch_prop_err);
         goto destroy_window;
     }
 
     xcb_generic_error_t *map_ck_err = xcb_request_check(connection, map_ck);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
     if (map_ck_err != NULL) {
+        errnum = get_xcb_error(map_ck_err);
         linted_mem_free(map_ck_err);
-        errnum = ENOSYS;
         goto destroy_window;
     }
 
@@ -559,6 +561,7 @@ destroy_pool : {
      * terminated */
     (void)updater_task;
     (void)controller_task;
+}
 
 destroy_egl_surface:
     if (!eglDestroySurface(egl_display, egl_surface)) {
@@ -584,28 +587,29 @@ destroy_window : {
     xcb_void_cookie_t destroy_ck
         = xcb_destroy_window_checked(connection, window);
 
-    linted_error conn_errnum = errnum_from_connection(connection);
+    linted_error conn_errnum = get_xcb_conn_error(connection);
     if (0 == errnum) {
         errnum = conn_errnum;
     }
 
     xcb_generic_error_t *destroy_err
         = xcb_request_check(connection, destroy_ck);
-    conn_errnum = errnum_from_connection(connection);
+    conn_errnum = get_xcb_conn_error(connection);
     if (0 == errnum) {
         errnum = conn_errnum;
     }
     if (destroy_err != NULL) {
+        linted_error destroy_errnum = get_xcb_error(destroy_err);
         linted_mem_free(destroy_err);
-        if (0 == errnum) {
-            errnum = ENOSYS;
+
+        if (0 == destroy_errnum) {
+            errnum = destroy_errnum;
         }
     }
 }
 
 disconnect:
     XCloseDisplay(display);
-}
 
     return errnum;
 }
@@ -1328,7 +1332,7 @@ static linted_error egl_error(void)
     }
 }
 
-static linted_error errnum_from_connection(xcb_connection_t *connection)
+static linted_error get_xcb_conn_error(xcb_connection_t *connection)
 {
     switch (xcb_connection_has_error(connection)) {
     case 0:
@@ -1354,26 +1358,32 @@ static linted_error errnum_from_connection(xcb_connection_t *connection)
     }
 }
 
+static linted_error get_xcb_error(xcb_generic_error_t *error)
+{
+    /* For now just be crappy. */
+    return ENOSYS;
+}
+
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y)
 {
     linted_error errnum;
 
     xcb_query_pointer_cookie_t cookie = xcb_query_pointer(connection, window);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         return errnum;
     }
 
     xcb_generic_error_t *error;
     xcb_query_pointer_reply_t *reply
         = xcb_query_pointer_reply(connection, cookie, &error);
-    if ((errnum = errnum_from_connection(connection)) != 0) {
+    if ((errnum = get_xcb_conn_error(connection)) != 0) {
         return errnum;
     }
 
     if (error != NULL) {
+        errnum = get_xcb_error(error);
         linted_mem_free(error);
-        errnum = ENOSYS;
         return errnum;
     }
 
