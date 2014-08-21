@@ -85,7 +85,7 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
     linted_error errnum;
 
     if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR
-         & ~LINTED_KO_SYNC) != 0U) {
+         & ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U) {
         return EINVAL;
     }
 
@@ -94,6 +94,8 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
     bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0U;
 
     bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
+
+    bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
 
     if (ko_rdonly && ko_wronly) {
         return EINVAL;
@@ -104,6 +106,13 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
     }
 
     if (ko_rdwr && ko_wronly) {
+        return EINVAL;
+    }
+
+    if ((ko_directory && ko_rdonly)
+        || (ko_directory && ko_wronly)
+        || (ko_directory && ko_rdwr)
+        || (ko_directory && ko_sync)) {
         return EINVAL;
     }
 
@@ -127,6 +136,10 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
 
     if (ko_sync) {
         oflags |= O_SYNC;
+    }
+
+    if (ko_directory) {
+        oflags |= O_DIRECTORY;
     }
 
     int fildes;

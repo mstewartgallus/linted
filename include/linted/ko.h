@@ -39,6 +39,8 @@ typedef int linted_ko;
 
 #define LINTED_KO_SYNC (1UL << 3U)
 
+#define LINTED_KO_DIRECTORY (1UL << 4U)
+
 struct linted_ko_task_accept
 {
     struct linted_asynch_task parent;

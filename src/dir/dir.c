@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/dir.h"
+#include "linted/ko.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -40,14 +41,25 @@ linted_error linted_dir_create(linted_ko *restrict kop, linted_ko dirko,
 
     bool dir_excl = (flags & LINTED_DIR_EXCL) != 0UL;
 
+    /* Guard against potential concurrency issues by making a private
+     * copy */
+    linted_ko dirkodup;
+    {
+        linted_ko xx;
+        if ((errnum = linted_ko_reopen(&xx, dirko, LINTED_KO_DIRECTORY)) != 0) {
+            return errnum;
+        }
+        dirkodup = xx;
+    }
+
 make_directory:
-    if (-1 == mkdirat(dirko, pathname, mode)) {
+    if (-1 == mkdirat(dirkodup, pathname, mode)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
         if (EEXIST == errnum && !dir_excl) {
             goto open_directory;
         }
-        return errnum;
+        goto close_dirkodup;
     }
 
 open_directory:
@@ -55,7 +67,7 @@ open_directory:
     int fildes;
     do {
         fildes
-            = openat(dirko, pathname,
+            = openat(dirkodup, pathname,
                      O_CLOEXEC | O_NONBLOCK | O_DIRECTORY | O_NOFOLLOW, mode);
         if (-1 == fildes) {
             errnum = errno;
@@ -67,6 +79,15 @@ open_directory:
 
     if (ENOENT == errnum) {
         goto make_directory;
+    }
+
+close_dirkodup:
+    {
+        linted_error close_errnum = linted_ko_close(dirkodup);
+        assert(close_errnum != EBADF);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
     }
 
     if (errnum != 0) {
