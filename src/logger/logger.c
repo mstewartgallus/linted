@@ -20,7 +20,6 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <string.h>
 
 linted_error linted_logger_create(linted_logger *restrict loggerp,
                                   unsigned long flags)

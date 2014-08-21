@@ -27,7 +27,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <string.h>
 
 struct linted_queue
 {

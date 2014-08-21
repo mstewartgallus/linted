@@ -22,7 +22,6 @@
 
 #include <errno.h>
 #include <stddef.h>
-#include <string.h>
 
 linted_error linted_updater_create(linted_updater *restrict updaterp,
                                    unsigned long flags)

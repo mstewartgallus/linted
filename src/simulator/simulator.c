@@ -32,7 +32,6 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/syscall.h>
 #include <time.h>
 
@@ -54,8 +53,8 @@ struct action_state
     linted_updater_int x_tilt;
     linted_updater_int y_tilt;
 
-    int x : 2;
-    int z : 2;
+    int x : 2U;
+    int z : 2U;
 
     bool jumping : 1U;
 };
