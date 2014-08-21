@@ -20,7 +20,6 @@
 #include "linted/str.h"
 
 #include <stddef.h>
-#include <stdint.h>
 #include <sys/types.h>
 
 struct linted_start_config
@@ -34,7 +33,7 @@ struct linted_start_config
 
 extern struct linted_start_config const linted_start_config;
 
-uint_fast8_t linted_start(linted_ko cwd, char const *const process_name,
-                          size_t argc, char const *const argv[const]);
+unsigned char linted_start(linted_ko cwd, char const *const process_name,
+                           size_t argc, char const *const argv[const]);
 
 #endif /* LINTED_START_H */

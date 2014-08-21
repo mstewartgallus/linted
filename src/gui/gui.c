@@ -182,8 +182,8 @@ static linted_error failure(linted_ko ko, char const *process_name,
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
-uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
-                          char const *const argv[const])
+unsigned char linted_start(linted_ko cwd, char const *const process_name,
+                           size_t argc, char const *const argv[const])
 {
     linted_error errnum = 0;
 

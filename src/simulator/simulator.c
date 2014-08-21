@@ -129,8 +129,8 @@ static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
-uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
-                          char const *const argv[const])
+unsigned char linted_start(linted_ko cwd, char const *const process_name,
+                           size_t argc, char const *const argv[const])
 {
     linted_logger logger = kos[0U];
     linted_controller controller = kos[1U];

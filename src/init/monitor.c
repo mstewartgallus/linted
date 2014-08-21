@@ -259,11 +259,11 @@ static linted_error connection_pool_destroy(struct connection_pool *pool);
 static linted_error connection_remove(struct connection *connection,
                                       struct connection_pool *connection_pool);
 
-uint_fast8_t linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
-                                 char const *simulator_fstab_path,
-                                 char const *gui_fstab_path,
-                                 char const *simulator_path,
-                                 char const *gui_path)
+unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
+                                  char const *simulator_fstab_path,
+                                  char const *gui_fstab_path,
+                                  char const *simulator_path,
+                                  char const *gui_path)
 {
     linted_error errnum;
 
