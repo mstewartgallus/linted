@@ -87,18 +87,6 @@ struct sim_model
     float z_position;
 };
 
-EGLint const attribute_list[][2U]
-    = { { EGL_RED_SIZE, 5 },
-        { EGL_GREEN_SIZE, 6 },
-        { EGL_BLUE_SIZE, 5 },
-        { EGL_ALPHA_SIZE, EGL_DONT_CARE },
-        { EGL_DEPTH_SIZE, 16 },
-        { EGL_STENCIL_SIZE, EGL_DONT_CARE },
-        { EGL_NONE, EGL_NONE /* A waste of an int. Oh well. */ } };
-
-EGLint const egl_context_attributes[][2U]
-    = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
-
 struct on_gui_event_args
 {
     xcb_connection_t *connection;
@@ -130,6 +118,19 @@ struct gui_controller_task
 
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
+
+static EGLint const attribute_list[][2U]
+    = { { EGL_RED_SIZE, 5 },
+        { EGL_GREEN_SIZE, 6 },
+        { EGL_BLUE_SIZE, 5 },
+        { EGL_ALPHA_SIZE, EGL_DONT_CARE },
+        { EGL_DEPTH_SIZE, 16 },
+        { EGL_STENCIL_SIZE, EGL_DONT_CARE },
+        { EGL_NONE, EGL_NONE } };
+
+static EGLint const egl_context_attributes[][2U]
+    = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
+
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-gui",
         .open_current_working_directory = false,
@@ -191,27 +192,6 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
 
-    char const *original_display = getenv("DISPLAY");
-    if (NULL == original_display) {
-        linted_io_write_string(STDERR_FILENO, NULL, process_name);
-        linted_io_write_str(STDERR_FILENO, NULL,
-                            LINTED_STR(": no DISPLAY environment variable\n"));
-        return EXIT_FAILURE;
-    }
-
-    size_t display_string_length = strlen(original_display) + 1U;
-    char *display_env_var;
-    {
-        void *xx;
-        if ((errnum = linted_mem_alloc(&xx, display_string_length)) != 0) {
-            failure(STDERR_FILENO, process_name,
-                    LINTED_STR("no DISPLAY environment variable"), errnum);
-            return EXIT_FAILURE;
-        }
-        display_env_var = xx;
-    }
-    memcpy(display_env_var, original_display, display_string_length);
-
     struct linted_asynch_pool *pool;
     {
         struct linted_asynch_pool *xx;
@@ -228,18 +208,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
                                          /* Do the initial resize */
                                          .resize_pending = true };
 
-    struct controller_data controller_data = {
-        .update
-        = { .forward = false, .back = false, .right = false, .left = false },
-        .update_pending = false,
-        .update_in_progress = false
-    };
-
-    struct sim_model sim_model = { .x_rotation = 0,
-                                   .y_rotation = 0,
-                                   .x_position = 0,
-                                   .y_position = 0,
-                                   .z_position = 0 };
+    struct controller_data controller_data = { 0 };
+    struct sim_model sim_model = { 0 };
 
     struct gui_updater_task updater_task;
     struct gui_controller_task controller_task;
@@ -255,7 +225,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     linted_asynch_pool_submit(
         pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
 
-    Display *display = XOpenDisplay(display_env_var);
+    Display *display = XOpenDisplay(NULL);
     if (NULL == display) {
         errnum = ENOSYS;
         goto destroy_pool;
@@ -800,9 +770,9 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
         sim_model->y_rotation
             = linted_updater_angle_to_float(update.y_rotation);
 
-        sim_model->x_position = update.x_position * (1 / (double)2048);
-        sim_model->y_position = update.y_position * (1 / (double)2048);
-        sim_model->z_position = update.z_position * (1 / (double)2048);
+        sim_model->x_position = update.x_position * (1 / 2048.0);
+        sim_model->y_position = update.y_position * (1 / 2048.0);
+        sim_model->z_position = update.z_position * (1 / 2048.0);
     }
 
     if (!controller_data->update_pending
