@@ -335,7 +335,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         goto destroy_window;
     }
 
-    xcb_generic_error_t *ch_prop_err = xcb_request_check(connection, ch_prop_ck);
+    xcb_generic_error_t *ch_prop_err
+        = xcb_request_check(connection, ch_prop_ck);
     if ((errnum = get_xcb_conn_error(connection)) != 0) {
         goto destroy_window;
     }
