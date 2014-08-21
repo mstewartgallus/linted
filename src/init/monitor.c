@@ -599,7 +599,7 @@ uint_fast8_t linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
     struct new_connection_task new_connection_task;
 
     linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
-                              0);
+                              WEXITED);
     waiter_task.pool = pool;
     waiter_task.gui_service = gui_service;
     waiter_task.sim_service = sim_service;

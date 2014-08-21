@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
@@ -345,78 +345,21 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
     struct linted_asynch_task_waitid *restrict task_wait
         = LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
     linted_error errnum;
-    int status;
-    pid_t child;
 
-    pid_t id;
-    switch (task_wait->idtype) {
-    case P_PID:
-        id = task_wait->id;
-        break;
-
-    case P_ALL:
-        id = -1;
-        break;
-
-    case P_PGID:
-        id = -(pid_t)task_wait->id;
-        break;
-
-    default:
-        errnum = EINVAL;
-        goto finish;
-    }
-
+    idtype_t idtype = task_wait->idtype;
+    id_t id = task_wait->id;
     int options = task_wait->options;
 
     do {
-        int xx;
-        child = waitpid(id, &xx, options);
-        if (-1 == child) {
+        if (-1 == waitid(idtype, id, &task_wait->info, options)) {
             errnum = errno;
             LINTED_ASSUME(errnum != 0);
         } else {
             errnum = 0;
-            status = xx;
         }
     } while (EINTR == errnum);
 
-finish:
-    if (0 == errnum) {
-        task_wait->info.si_uid = 0;
-        task_wait->info.si_pid = child;
-        task_wait->info.si_signo = SIGCHLD;
-
-        if (WIFEXITED(status)) {
-            task_wait->info.si_code = CLD_EXITED;
-            task_wait->info.si_status = WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
-            if (WCOREDUMP(status)) {
-                task_wait->info.si_code = CLD_DUMPED;
-            } else {
-                task_wait->info.si_code = CLD_KILLED;
-            }
-            task_wait->info.si_status = WTERMSIG(status);
-        } else if (WIFSTOPPED(status)) {
-            if (SIGTRAP == WSTOPSIG(status)) {
-                task_wait->info.si_code = CLD_TRAPPED;
-            } else {
-                task_wait->info.si_code = CLD_STOPPED;
-            }
-
-#if defined __linux__
-            task_wait->info.si_status = (status >> 8) & 0xffff;
-#else
-#error How to get special ptrace information from signal is unknown on this platform
-#endif
-        } else if (WIFCONTINUED(status)) {
-            task_wait->info.si_code = CLD_CONTINUED;
-            task_wait->info.si_status = 0;
-        } else {
-            LINTED_ASSUME_UNREACHABLE();
-        }
-    }
-
+complete:
     task->errnum = errnum;
 
     linted_asynch_pool_complete(pool, task);
