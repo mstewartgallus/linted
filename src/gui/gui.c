@@ -119,17 +119,16 @@ struct gui_controller_task
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
 
-static EGLint const attribute_list[][2U]
-    = { { EGL_RED_SIZE, 5 },
-        { EGL_GREEN_SIZE, 6 },
-        { EGL_BLUE_SIZE, 5 },
-        { EGL_ALPHA_SIZE, EGL_DONT_CARE },
-        { EGL_DEPTH_SIZE, 16 },
-        { EGL_STENCIL_SIZE, EGL_DONT_CARE },
-        { EGL_NONE, EGL_NONE } };
+static EGLint const attr_list[] = { EGL_RED_SIZE,     5,             /*  */
+                                    EGL_GREEN_SIZE,   6,             /*  */
+                                    EGL_BLUE_SIZE,    5,             /*  */
+                                    EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
+                                    EGL_DEPTH_SIZE,   16,            /*  */
+                                    EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
+                                    EGL_NONE,         EGL_NONE };
 
-static EGLint const egl_context_attributes[][2U]
-    = { { EGL_CONTEXT_CLIENT_VERSION, 2 }, { EGL_NONE, EGL_NONE } };
+static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
+                                       EGL_NONE,                   EGL_NONE };
 
 struct linted_start_config const linted_start_config
     = { .canonical_process_name = PACKAGE_NAME "-gui",
@@ -178,8 +177,6 @@ static linted_error get_gl_error(void);
 
 static double square(double x);
 
-static linted_error failure(linted_ko ko, char const *process_name,
-                            struct linted_str message, linted_error errnum);
 static linted_error log_str(linted_logger logger, struct linted_str start,
                             char const *str);
 
@@ -348,7 +345,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     {
         EGLConfig xx;
         EGLint yy = num_configs;
-        if (!eglChooseConfig(egl_display, attribute_list[0U], &xx, 1U, &yy)) {
+        if (!eglChooseConfig(egl_display, attr_list, &xx, 1U, &yy)) {
             errnum = egl_error();
             goto destroy_egl_display;
         }
@@ -363,9 +360,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     }
 
     do {
-        EGLContext egl_context
-            = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT,
-                               egl_context_attributes[0U]);
+        EGLContext egl_context = eglCreateContext(egl_display, egl_config,
+                                                  EGL_NO_CONTEXT, context_attr);
         if (EGL_NO_CONTEXT == egl_context) {
             errnum = egl_error();
             goto destroy_egl_surface;
@@ -561,24 +557,64 @@ shutdown:
     BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                    \
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
-static struct sock_filter const real_filter
-    [] = { BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+static struct sock_filter const real_filter[] = {
+    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
                     offsetof(struct seccomp_data, nr)),
-           ALLOW(access), ALLOW(arch_prctl), ALLOW(brk), ALLOW(chdir),
-           ALLOW(clock_nanosleep), ALLOW(clone), ALLOW(close), ALLOW(connect),
-           ALLOW(dup2), ALLOW(execve), ALLOW(exit), ALLOW(exit_group),
-           ALLOW(fcntl), ALLOW(fstat), ALLOW(futex), ALLOW(getdents),
-           ALLOW(getegid), ALLOW(geteuid), ALLOW(getgid), ALLOW(getpeername),
-           ALLOW(getpid), ALLOW(getrlimit), ALLOW(gettid), ALLOW(getuid),
-           ALLOW(ioctl), ALLOW(lseek), ALLOW(madvise), ALLOW(mincore),
-           ALLOW(mmap), ALLOW(mprotect), ALLOW(mq_timedreceive),
-           ALLOW(mq_timedsend), ALLOW(munmap), ALLOW(open), ALLOW(openat),
-           ALLOW(poll), ALLOW(prctl), ALLOW(read), ALLOW(recvfrom),
-           ALLOW(restart_syscall), ALLOW(rt_sigaction), ALLOW(rt_sigprocmask),
-           ALLOW(sched_getaffinity), ALLOW(setrlimit), ALLOW(set_robust_list),
-           ALLOW(set_tid_address), ALLOW(shutdown), ALLOW(socket), ALLOW(stat),
-           ALLOW(tgkill), ALLOW(uname), ALLOW(write), ALLOW(writev),
-           BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL) };
+    /*  */ ALLOW(access),
+    /*  */ ALLOW(arch_prctl),
+    /*  */ ALLOW(brk),
+    /*  */ ALLOW(chdir),
+    /*  */ ALLOW(clock_nanosleep),
+    /*  */ ALLOW(clone),
+    /*  */ ALLOW(close),
+    /*  */ ALLOW(connect),
+    /*  */ ALLOW(dup2),
+    /*  */ ALLOW(execve),
+    /*  */ ALLOW(exit),
+    /*  */ ALLOW(exit_group),
+    /*  */ ALLOW(fcntl),
+    /*  */ ALLOW(fstat),
+    /*  */ ALLOW(futex),
+    /*  */ ALLOW(getdents),
+    /*  */ ALLOW(getegid),
+    /*  */ ALLOW(geteuid),
+    /*  */ ALLOW(getgid),
+    /*  */ ALLOW(getpeername),
+    /*  */ ALLOW(getpid),
+    /*  */ ALLOW(getrlimit),
+    /*  */ ALLOW(gettid),
+    /*  */ ALLOW(getuid),
+    /*  */ ALLOW(ioctl),
+    /*  */ ALLOW(lseek),
+    /*  */ ALLOW(madvise),
+    /*  */ ALLOW(mincore),
+    /*  */ ALLOW(mmap),
+    /*  */ ALLOW(mprotect),
+    /*  */ ALLOW(mq_timedreceive),
+    /*  */ ALLOW(mq_timedsend),
+    /*  */ ALLOW(munmap),
+    /*  */ ALLOW(open),
+    /*  */ ALLOW(openat),
+    /*  */ ALLOW(poll),
+    /*  */ ALLOW(prctl),
+    /*  */ ALLOW(read),
+    /*  */ ALLOW(recvfrom),
+    /*  */ ALLOW(restart_syscall),
+    /*  */ ALLOW(rt_sigaction),
+    /*  */ ALLOW(rt_sigprocmask),
+    /*  */ ALLOW(sched_getaffinity),
+    /*  */ ALLOW(setrlimit),
+    /*  */ ALLOW(set_robust_list),
+    /*  */ ALLOW(set_tid_address),
+    /*  */ ALLOW(shutdown),
+    /*  */ ALLOW(socket),
+    /*  */ ALLOW(stat),
+    /*  */ ALLOW(tgkill),
+    /*  */ ALLOW(uname),
+    /*  */ ALLOW(write),
+    /*  */ ALLOW(writev),
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
 
 static struct sock_fprog const seccomp_filter
     = { .len = LINTED_ARRAY_SIZE(real_filter),
@@ -1097,7 +1133,7 @@ static void render_graphics(struct graphics_state const *graphics_state,
                 { x_position, y_position, z_position, 1 } };
 
         GLfloat aspect = window_model->width / (GLfloat)window_model->height;
-        double fov = acosf(-1.0F) / 4;
+        double fov = acos(-1.0) / 4;
 
         double d = 1 / tan(fov / 2);
         double far = 1000;
@@ -1290,42 +1326,6 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 static double square(double x)
 {
     return x * x;
-}
-
-static linted_error failure(linted_ko ko, char const *process_name,
-                            struct linted_str message, linted_error error)
-{
-    linted_error errnum;
-
-    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "))) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, message)) != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "))) != 0) {
-        return errnum;
-    }
-
-    char const *error_string = linted_error_string_alloc(error);
-    errnum = linted_io_write_string(ko, NULL, error_string);
-    linted_error_string_free(error_string);
-
-    if (errnum != 0) {
-        return errnum;
-    }
-
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
-
-    return 0;
 }
 
 static linted_error log_str(linted_logger logger, struct linted_str start,
