@@ -66,9 +66,8 @@ open_directory:
     ;
     int fildes;
     do {
-        fildes
-            = openat(dirkodup, pathname,
-                     O_CLOEXEC | O_NONBLOCK | O_DIRECTORY | O_NOFOLLOW, mode);
+        fildes = openat(dirkodup, pathname,
+                        O_CLOEXEC | O_NONBLOCK | O_DIRECTORY, mode);
         if (-1 == fildes) {
             errnum = errno;
             LINTED_ASSUME(errnum != 0);
@@ -81,14 +80,13 @@ open_directory:
         goto make_directory;
     }
 
-close_dirkodup:
-    {
-        linted_error close_errnum = linted_ko_close(dirkodup);
-        assert(close_errnum != EBADF);
-        if (0 == errnum) {
-            errnum = close_errnum;
-        }
+close_dirkodup : {
+    linted_error close_errnum = linted_ko_close(dirkodup);
+    assert(close_errnum != EBADF);
+    if (0 == errnum) {
+        errnum = close_errnum;
     }
+}
 
     if (errnum != 0) {
         return errnum;

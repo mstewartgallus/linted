@@ -109,10 +109,8 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
         return EINVAL;
     }
 
-    if ((ko_directory && ko_rdonly)
-        || (ko_directory && ko_wronly)
-        || (ko_directory && ko_rdwr)
-        || (ko_directory && ko_sync)) {
+    if ((ko_directory && ko_rdonly) || (ko_directory && ko_wronly)
+        || (ko_directory && ko_rdwr) || (ko_directory && ko_sync)) {
         return EINVAL;
     }
 
