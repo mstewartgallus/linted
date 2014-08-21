@@ -21,7 +21,6 @@
 #include "linted/rpc.h"
 #include "linted/util.h"
 
-#include <stdbool.h>
 #include <stdint.h>
 
 /**
@@ -37,12 +36,12 @@ struct linted_controller_message
     int_fast32_t x_tilt;
     int_fast32_t y_tilt;
 
-    bool left : 1U;
-    bool right : 1U;
-    bool forward : 1U;
-    bool back : 1U;
+    _Bool left : 1U;
+    _Bool right : 1U;
+    _Bool forward : 1U;
+    _Bool back : 1U;
 
-    bool jumping : 1U;
+    _Bool jumping : 1U;
 };
 
 struct linted_controller_task_send

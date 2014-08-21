@@ -19,7 +19,6 @@
 #include "linted/error.h"
 #include "linted/queue.h"
 
-#include <stddef.h>
 #include <sys/types.h>
 
 #if _POSIX_C_SOURCE >= 199309L

@@ -29,8 +29,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
 
 struct linted_asynch_pool
 {
@@ -49,7 +47,7 @@ struct linted_asynch_pool
 
     size_t worker_count;
 
-    _Bool stopped : 1U;
+    bool stopped : 1U;
 
     pthread_t workers[];
 };

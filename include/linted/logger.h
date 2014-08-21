@@ -27,7 +27,7 @@
  * Exposes a protocol for logging events.
  */
 
-#define LINTED_LOGGER_LOG_MAX 1024
+#define LINTED_LOGGER_LOG_MAX 1024U
 
 /**
  * A handle to access the logger. Is safe to share between processes.

@@ -25,7 +25,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/syscall.h>

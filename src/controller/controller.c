@@ -17,12 +17,10 @@
 
 #include "linted/controller.h"
 
-#include "linted/io.h"
 #include "linted/mq.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <stdint.h>
 #include <string.h>
 
 linted_error linted_controller_create(linted_controller *restrict controllerp,

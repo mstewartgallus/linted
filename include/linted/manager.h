@@ -21,7 +21,6 @@
 #include "linted/ko.h"
 #include "linted/service.h"
 
-#include <stdbool.h>
 #include <sys/un.h>
 
 /**
@@ -49,7 +48,7 @@ struct linted_manager_status_request
 
 struct linted_manager_status_reply
 {
-    bool is_up;
+    _Bool is_up;
 };
 
 struct linted_manager_stop_request
@@ -60,7 +59,7 @@ struct linted_manager_stop_request
 
 struct linted_manager_stop_reply
 {
-    bool was_up;
+    _Bool was_up;
 };
 
 union linted_manager_request
