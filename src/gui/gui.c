@@ -189,15 +189,6 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
 
-    struct linted_asynch_pool *pool;
-    {
-        struct linted_asynch_pool *xx;
-        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
-            goto shutdown;
-        }
-        pool = xx;
-    }
-
     struct window_model window_model = { .width = 640,
                                          .height = 480,
                                          .viewable = true,
@@ -208,24 +199,9 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
     struct controller_data controller_data = { 0 };
     struct sim_model sim_model = { 0 };
 
-    struct gui_updater_task updater_task;
-    struct gui_controller_task controller_task;
-
-    linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
-                           updater);
-    updater_task.sim_model = &sim_model;
-    updater_task.controller_task = &controller_task;
-    updater_task.controller_data = &controller_data;
-    updater_task.pool = pool;
-    updater_task.controller = controller;
-
-    linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
-
     Display *display = XOpenDisplay(NULL);
     if (NULL == display) {
-        errnum = ENOSYS;
-        goto destroy_pool;
+        return ENOSYS;
     }
 
     xcb_connection_t *connection = XGetXCBConnection(display);
@@ -256,6 +232,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         goto disconnect;
     }
 
+    xcb_void_cookie_t create_window_ck;
     {
         uint32_t event_max = 0U;
         event_max |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
@@ -264,59 +241,115 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         event_max |= XCB_EVENT_MASK_POINTER_MOTION;
 
         uint32_t values[] = { event_max, 0U };
-        xcb_create_window(connection, XCB_COPY_FROM_PARENT, window,
-                          screen->root, 0, 0, window_model.width,
-                          window_model.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
-                          screen->root_visual, XCB_CW_EVENT_MASK, values);
+        create_window_ck = xcb_create_window_checked(
+            connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
+            window_model.width, window_model.height, 0,
+            XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+            XCB_CW_EVENT_MASK, values);
     }
     if ((errnum = errnum_from_connection(connection)) != 0) {
         goto disconnect;
     }
 
-    xcb_atom_t wm_delete_window;
-    {
-        xcb_intern_atom_cookie_t cookie
-            = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-        if ((errnum = errnum_from_connection(connection)) != 0) {
-            goto destroy_window;
-        }
-
-        xcb_intern_atom_reply_t *reply
-            = xcb_intern_atom_reply(connection, cookie, 0);
-        if ((errnum = errnum_from_connection(connection)) != 0) {
-            goto destroy_window;
-        }
-        xcb_atom_t wm_protocols = reply->atom;
-        linted_mem_free(reply);
-
-        xcb_intern_atom_cookie_t cookie2
-            = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-        if ((errnum = errnum_from_connection(connection)) != 0) {
-            goto destroy_window;
-        }
-
-        xcb_intern_atom_reply_t *reply2
-            = xcb_intern_atom_reply(connection, cookie2, 0);
-        if ((errnum = errnum_from_connection(connection)) != 0) {
-            goto destroy_window;
-        }
-        wm_delete_window = reply2->atom;
-        linted_mem_free(reply2);
-
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-                            wm_protocols, 4, 32, 1, &wm_delete_window);
-        if ((errnum = errnum_from_connection(connection)) != 0) {
-            goto destroy_window;
-        }
-    }
-
-    xcb_map_window(connection, window);
+    xcb_intern_atom_cookie_t protocols_ck
+        = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
     if ((errnum = errnum_from_connection(connection)) != 0) {
         goto destroy_window;
     }
 
-    xcb_flush(connection);
+    xcb_intern_atom_cookie_t delete_ck
+        = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
     if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+
+    xcb_atom_t wm_delete_window_atom;
+    xcb_atom_t wm_protocols_atom;
+    {
+        xcb_intern_atom_reply_t *protocols_ck_reply;
+        xcb_generic_error_t *protocols_ck_error;
+        {
+            xcb_generic_error_t *xx;
+            protocols_ck_reply
+                = xcb_intern_atom_reply(connection, protocols_ck, &xx);
+            protocols_ck_error = xx;
+        }
+        if ((errnum = errnum_from_connection(connection)) != 0) {
+            goto destroy_window;
+        }
+
+        if (protocols_ck_error != NULL) {
+            errnum = ENOSYS;
+            goto destroy_window;
+        }
+
+        wm_protocols_atom = protocols_ck_reply->atom;
+        linted_mem_free(protocols_ck_reply);
+    }
+
+    {
+        xcb_intern_atom_reply_t *delete_ck_reply;
+        xcb_generic_error_t *delete_ck_error;
+        {
+            xcb_generic_error_t *xx;
+            delete_ck_reply = xcb_intern_atom_reply(connection, delete_ck, &xx);
+            if ((errnum = errnum_from_connection(connection)) != 0) {
+                goto destroy_window;
+            }
+            delete_ck_error = xx;
+        }
+
+        if (delete_ck_error != NULL) {
+            errnum = ENOSYS;
+            goto destroy_window;
+        }
+
+        wm_delete_window_atom = delete_ck_reply->atom;
+        linted_mem_free(delete_ck_reply);
+    }
+
+    xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
+        connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32, 1,
+        &wm_delete_window_atom);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+
+    xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+
+    xcb_generic_error_t *create_window_err
+        = xcb_request_check(connection, create_window_ck);
+    if (create_window_err != NULL) {
+        linted_mem_free(create_window_err);
+        errnum = ENOSYS;
+        goto destroy_window;
+    }
+
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+
+    xcb_generic_error_t *ch_prop_error
+        = xcb_request_check(connection, ch_prop_ck);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+    if (ch_prop_error != NULL) {
+        linted_mem_free(ch_prop_error);
+        errnum = ENOSYS;
+        goto destroy_window;
+    }
+
+    xcb_generic_error_t *map_ck_err = xcb_request_check(connection, map_ck);
+    if ((errnum = errnum_from_connection(connection)) != 0) {
+        goto destroy_window;
+    }
+    if (map_ck_err != NULL) {
+        linted_mem_free(map_ck_err);
+        errnum = ENOSYS;
         goto destroy_window;
     }
 
@@ -359,12 +392,35 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         goto destroy_egl_display;
     }
 
+    struct linted_asynch_pool *pool;
+    {
+        struct linted_asynch_pool *xx;
+        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+            goto destroy_egl_surface;
+        }
+        pool = xx;
+    }
+
+    struct gui_updater_task updater_task;
+    struct gui_controller_task controller_task;
+
+    linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
+                           updater);
+    updater_task.sim_model = &sim_model;
+    updater_task.controller_task = &controller_task;
+    updater_task.controller_data = &controller_data;
+    updater_task.pool = pool;
+    updater_task.controller = controller;
+
+    linted_asynch_pool_submit(
+        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
+
     do {
         EGLContext egl_context = eglCreateContext(egl_display, egl_config,
                                                   EGL_NO_CONTEXT, context_attr);
         if (EGL_NO_CONTEXT == egl_context) {
             errnum = egl_error();
-            goto destroy_egl_surface;
+            goto destroy_pool;
         }
 
         if (!eglMakeCurrent(egl_display, egl_surface, egl_surface,
@@ -474,50 +530,6 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         }
     } while (ENOSYS == errnum);
 
-destroy_egl_surface:
-    if (!eglDestroySurface(egl_display, egl_surface)) {
-        if (0 == errnum) {
-            errnum = egl_error();
-        }
-    }
-
-destroy_egl_display:
-    if (!eglTerminate(egl_display)) {
-        if (0 == errnum) {
-            errnum = egl_error();
-        }
-    }
-
-    if (!eglReleaseThread()) {
-        if (0 == errnum) {
-            errnum = egl_error();
-        }
-    }
-
-destroy_window:
-    xcb_destroy_window(connection, window);
-    {
-        linted_error conn_errnum = errnum_from_connection(connection);
-        if (0 == errnum) {
-            errnum = conn_errnum;
-        }
-    }
-
-disconnect:
-    xcb_flush(connection);
-    {
-        linted_error conn_errnum = errnum_from_connection(connection);
-        if (0 == errnum) {
-            errnum = conn_errnum;
-        }
-    }
-
-    /**
-     * @todo Check for errors that have accumulated on the connection.
-     */
-
-    XCloseDisplay(display);
-
 destroy_pool : {
     linted_asynch_pool_stop(pool);
 
@@ -547,9 +559,54 @@ destroy_pool : {
      * terminated */
     (void)updater_task;
     (void)controller_task;
+
+destroy_egl_surface:
+    if (!eglDestroySurface(egl_display, egl_surface)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
+
+destroy_egl_display:
+    if (!eglTerminate(egl_display)) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
+
+    if (!eglReleaseThread()) {
+        if (0 == errnum) {
+            errnum = egl_error();
+        }
+    }
+
+destroy_window : {
+    xcb_void_cookie_t destroy_ck
+        = xcb_destroy_window_checked(connection, window);
+
+    linted_error conn_errnum = errnum_from_connection(connection);
+    if (0 == errnum) {
+        errnum = conn_errnum;
+    }
+
+    xcb_generic_error_t *destroy_err
+        = xcb_request_check(connection, destroy_ck);
+    conn_errnum = errnum_from_connection(connection);
+    if (0 == errnum) {
+        errnum = conn_errnum;
+    }
+    if (destroy_err != NULL) {
+        linted_mem_free(destroy_err);
+        if (0 == errnum) {
+            errnum = ENOSYS;
+        }
+    }
 }
 
-shutdown:
+disconnect:
+    XCloseDisplay(display);
+}
+
     return errnum;
 }
 
@@ -1311,7 +1368,12 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
     xcb_query_pointer_reply_t *reply
         = xcb_query_pointer_reply(connection, cookie, &error);
     if ((errnum = errnum_from_connection(connection)) != 0) {
-        linted_mem_free(reply);
+        return errnum;
+    }
+
+    if (error != NULL) {
+        linted_mem_free(error);
+        errnum = ENOSYS;
         return errnum;
     }
 
