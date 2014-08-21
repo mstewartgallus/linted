@@ -25,17 +25,9 @@
  * @file
  *
  * Abstracts over the concept of a filesystem directory.
- *
- * @warning Directories are not atomically created and opened. If a
- *          directory is created somewhere that an attacker can
- *          manipulate a privileged program to delete directories in
- *          (perhaps a tmpcleaner program) then an attacker create his
- *          own directory in the spot and have one open his directory.
  */
 
 typedef linted_ko linted_dir;
-
-#define LINTED_DIR_EXCL 1UL
 
 linted_error linted_dir_create(linted_dir *restrict dirp, linted_ko dirko,
                                char const *pathname, unsigned long flags,

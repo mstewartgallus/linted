@@ -35,11 +35,9 @@ linted_error linted_dir_create(linted_ko *restrict kop, linted_ko dirko,
 {
     linted_error errnum;
 
-    if ((flags & ~LINTED_DIR_EXCL) != 0UL) {
+    if (flags != 0UL) {
         return EINVAL;
     }
-
-    bool dir_excl = (flags & LINTED_DIR_EXCL) != 0UL;
 
     /* Guard against potential concurrency issues by making a private
      * copy */
@@ -56,7 +54,7 @@ make_directory:
     if (-1 == mkdirat(dirkodup, pathname, mode)) {
         errnum = errno;
         LINTED_ASSUME(errnum != 0);
-        if (EEXIST == errnum && !dir_excl) {
+        if (EEXIST == errnum) {
             goto open_directory;
         }
         goto close_dirkodup;
