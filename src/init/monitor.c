@@ -464,6 +464,15 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
         struct service_process *service = &services[ii].process;
         struct service_config_process const *proc_config = &config[ii].process;
+
+        size_t dup_pairs_size = proc_config->dup_pairs.size;
+        struct dup_pair const *dup_pairs = proc_config->dup_pairs.dup_pairs;
+        char const *fstab = proc_config->fstab;
+        linted_ko dirko = proc_config->dirko;
+        char const *const *environment = proc_config->environment;
+        char const *const *arguments = proc_config->arguments;
+        char const *path = proc_config->path;
+
         struct linted_spawn_file_actions *file_actions;
         struct linted_spawn_attr *attr;
 
@@ -488,13 +497,12 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         linted_spawn_attr_setchrootdir(attr, chrootdir_path);
 
         /* TODO: Close files leading outside of the sandbox  */
-        if ((errnum = parse_fstab(attr, cwd, proc_config->fstab)) != 0) {
+        if ((errnum = parse_fstab(attr, cwd, fstab)) != 0) {
             errno = errnum;
             perror("parse_fstab");
             return EXIT_FAILURE;
         }
 
-        size_t dup_pairs_size = proc_config->dup_pairs.size;
         linted_ko *proc_kos;
         {
             void *xx;
@@ -506,8 +514,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         }
         size_t kos_opened = 0U;
         for (; kos_opened < dup_pairs_size;) {
-            struct dup_pair const *dup_pair =
-                &proc_config->dup_pairs.dup_pairs[kos_opened];
+            struct dup_pair const *dup_pair = &dup_pairs[kos_opened];
 
             struct service_file const *file = &services[dup_pair->service].file;
 
@@ -532,10 +539,9 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
         {
             pid_t process;
-            if ((errnum = linted_spawn(
-                     &process, proc_config->dirko, proc_config->path,
-                     file_actions, attr, (char **)proc_config->arguments,
-                     (char **)proc_config->environment)) != 0) {
+            if ((errnum = linted_spawn(&process, dirko, path, file_actions,
+                                       attr, (char **)arguments,
+                                       (char **)environment)) != 0) {
                 goto destroy_attr;
             }
 
@@ -569,6 +575,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("LINTED_SOCKET="));
         linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+        linted_ko_close(STDOUT_FILENO);
     }
 
     char *logger_buffer;
