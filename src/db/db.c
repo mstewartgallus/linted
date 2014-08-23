@@ -50,6 +50,9 @@
 #define FIELD_DIR "fields"
 #define TEMP_DIR "temp"
 
+#define FILE_MAX 255U
+#define RANDOM_BYTES 8U
+
 static linted_error mutex_lock(linted_ko mutex);
 static linted_error mutex_unlock(linted_ko mutex_file);
 
@@ -108,22 +111,49 @@ try_to_open_lock_file : {
 }
 
 try_to_create_lock_file : {
-    char prototype_lock_file[] = "%i.lock";
-    if (sprintf(prototype_lock_file, "%i.lock", getpid()) < 0) {
-        errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        assert(errnum != EINVAL);
-        goto close_db;
-    }
+    static char const debugpath[] = "/dev/shm/global.lock";
+    size_t path_size = strlen(debugpath);
+    char random_shm_name[FILE_MAX + 1U];
 
-    {
-        linted_ko xx;
-        if ((errnum = linted_file_create(&xx, the_db, prototype_lock_file,
-                                         LINTED_FILE_RDWR, S_IRUSR | S_IWUSR))
-            != 0) {
-            goto close_db;
+    memcpy(random_shm_name, debugpath, path_size);
+    random_shm_name[path_size] = '-';
+    random_shm_name[path_size + 1U + RANDOM_BYTES] = '\0';
+
+    do {
+        for (size_t ii = 0U; ii < RANDOM_BYTES; ++ii) {
+            char random_char;
+            for (;;) {
+                /* Normally using the modulus would give a bad
+                 * distribution but CHAR_MAX + 1U is a power of two
+                 */
+                random_char = linted_random_fast() % (CHAR_MAX + 1U);
+
+                /* Throw out results and retry for an even
+                 * distribution
+                 */
+                if ((random_char >= 'a' && random_char <= 'z')
+                    || (random_char >= 'A' && random_char <= 'Z')
+                    || (random_char >= '0' && random_char <= '9')) {
+                    break;
+                }
+            }
+
+            random_shm_name[path_size + 1U + ii] = random_char;
         }
-        lock_file = xx;
+
+        {
+            linted_ko xx;
+            fprintf(stderr, "path: %s\n", random_shm_name);
+            errnum = linted_file_create(&xx, -1, random_shm_name,
+                                        LINTED_FILE_EXCL | LINTED_FILE_RDWR,
+                                        S_IRUSR | S_IWUSR);
+            if (0 == errnum) {
+                lock_file = xx;
+            }
+        }
+    } while (EEXIST == errnum);
+    if (errnum != 0) {
+        goto close_db;
     }
 
     if (-1 == ftruncate(lock_file, sizeof(pthread_mutex_t))) {
@@ -184,40 +214,22 @@ unmap_mutexattr:
         goto unlink_prototype_lock_file;
     }
 
-    {
-        char lock_file_path[] = "/proc/self/fd/XXXXXXXXXXXXXXX";
-        sprintf(lock_file_path, "/proc/self/fd/%i", lock_file);
-        if (-1 == linkat(-1, lock_file_path, the_db, GLOBAL_LOCK,
-                         AT_SYMLINK_FOLLOW)) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-            assert(errnum != EINVAL);
-        }
-    }
-
-unlink_prototype_lock_file:
-    if (-1 == unlinkat(the_db, prototype_lock_file, 0)) {
-        if (0 == errnum) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-            assert(errnum != EINVAL);
-        }
-    }
-
-    if (errnum != 0) {
-        {
-            linted_error close_errnum = linted_ko_close(lock_file);
-            assert(close_errnum != EBADF);
-        }
-
-        if (EEXIST == errnum) {
-            goto try_to_open_lock_file;
-        }
-
-        goto close_db;
+    if (-1 == symlinkat(random_shm_name, the_db, GLOBAL_LOCK)) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        goto unlink_prototype_lock_file;
     }
 
     goto opened_lock_file;
+
+unlink_prototype_lock_file:
+    unlink(random_shm_name);
+    linted_ko_close(lock_file);
+
+    if (EEXIST == errnum) {
+        goto try_to_open_lock_file;
+    }
+    goto close_db;
 }
 
 opened_lock_file:
