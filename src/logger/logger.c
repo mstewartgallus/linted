@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 199309L
-
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -25,12 +23,8 @@
 #include "linted/start.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 enum {
     ON_RECEIVE_LOG,
@@ -146,29 +140,28 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
     }
 }
 
-static linted_error on_receive_log(struct linted_asynch_task *completed_task)
+static linted_error on_receive_log(struct linted_asynch_task *task)
 {
     linted_error errnum;
 
-    if ((errnum = completed_task->errnum) != 0) {
+    if ((errnum = task->errnum) != 0) {
         return errnum;
     }
 
-    struct logger_task *logger_task
-        = LINTED_DOWNCAST(struct logger_task, completed_task);
+    struct logger_task *logger_task = LINTED_DOWNCAST(struct logger_task, task);
 
     struct linted_asynch_pool *pool = logger_task->pool;
     linted_ko log_ko = logger_task->log_ko;
     char const *process_name = logger_task->process_name;
     size_t log_size = LINTED_UPCAST(LINTED_UPCAST(logger_task))->bytes_read;
-    char const *logger_buffer = LINTED_UPCAST(LINTED_UPCAST(logger_task))->buf;
+    char const *buf = LINTED_UPCAST(LINTED_UPCAST(logger_task))->buf;
 
     linted_io_write_string(log_ko, NULL, process_name);
     linted_io_write_str(log_ko, NULL, LINTED_STR(": "));
-    linted_io_write_all(log_ko, NULL, logger_buffer, log_size);
+    linted_io_write_all(log_ko, NULL, buf, log_size);
     linted_io_write_str(log_ko, NULL, LINTED_STR("\n"));
 
-    linted_asynch_pool_submit(pool, completed_task);
+    linted_asynch_pool_submit(pool, task);
 
     return 0;
 }
