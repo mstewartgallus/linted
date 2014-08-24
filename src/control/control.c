@@ -25,6 +25,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -162,19 +163,43 @@ uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
     BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                    \
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
-static struct sock_filter const real_filter
-    [] = { BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+static struct sock_filter const real_filter[] = {
+    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
                     offsetof(struct seccomp_data, nr)),
-           ALLOW(access), ALLOW(arch_prctl), ALLOW(brk), ALLOW(chdir),
-           ALLOW(close), ALLOW(connect), ALLOW(dup2), ALLOW(execve),
-           ALLOW(exit_group), ALLOW(fcntl), ALLOW(fstat), ALLOW(futex),
-           ALLOW(getdents), ALLOW(geteuid), ALLOW(getrlimit), ALLOW(getuid),
-           ALLOW(lseek), ALLOW(mmap), ALLOW(mprotect), ALLOW(munmap),
-           ALLOW(open), ALLOW(openat), ALLOW(prctl), ALLOW(read),
-           ALLOW(restart_syscall), ALLOW(rt_sigaction), ALLOW(rt_sigprocmask),
-           ALLOW(set_robust_list), ALLOW(set_tid_address), ALLOW(socket),
-           ALLOW(stat), ALLOW(write),
-           BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL) };
+    /*  */ ALLOW(access),
+    /*  */ ALLOW(arch_prctl),
+    /*  */ ALLOW(brk),
+    /*  */ ALLOW(chdir),
+    /*  */ ALLOW(close),
+    /*  */ ALLOW(connect),
+    /*  */ ALLOW(dup2),
+    /*  */ ALLOW(execve),
+    /*  */ ALLOW(exit_group),
+    /*  */ ALLOW(fcntl),
+    /*  */ ALLOW(fstat),
+    /*  */ ALLOW(futex),
+    /*  */ ALLOW(getdents),
+    /*  */ ALLOW(geteuid),
+    /*  */ ALLOW(getrlimit),
+    /*  */ ALLOW(getuid),
+    /*  */ ALLOW(lseek),
+    /*  */ ALLOW(mmap),
+    /*  */ ALLOW(mprotect),
+    /*  */ ALLOW(munmap),
+    /*  */ ALLOW(open),
+    /*  */ ALLOW(openat),
+    /*  */ ALLOW(prctl),
+    /*  */ ALLOW(read),
+    /*  */ ALLOW(restart_syscall),
+    /*  */ ALLOW(rt_sigaction),
+    /*  */ ALLOW(rt_sigprocmask),
+    /*  */ ALLOW(set_robust_list),
+    /*  */ ALLOW(set_tid_address),
+    /*  */ ALLOW(socket),
+    /*  */ ALLOW(stat),
+    /*  */ ALLOW(write),
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
 
 static struct sock_fprog const seccomp_filter
     = { .len = LINTED_ARRAY_SIZE(real_filter),
@@ -380,6 +405,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
+    linted_error errnum;
+
     if (NULL == service_name) {
         linted_io_write_format(STDERR_FILENO, NULL, "%s: missing SERVICE\n",
                                process_name);
@@ -388,10 +415,9 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
         return EXIT_FAILURE;
     }
 
-    linted_error errnum;
-    enum linted_service service;
-    if ((errnum = linted_service_for_name(&service, service_name)) != 0) {
-        failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"), errnum);
+    size_t service_name_len = strlen(service_name);
+    if (service_name_len > LINTED_SERVICE_NAME_MAX) {
+        failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"), EINVAL);
         linted_locale_try_for_more_help(STDERR_FILENO, process_name,
                                         LINTED_STR("--help"));
         return EXIT_FAILURE;
@@ -413,7 +439,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
         union linted_manager_request request = { 0 };
 
         request.type = LINTED_MANAGER_STATUS;
-        request.status.service = LINTED_SERVICE_GUI;
+        request.status.size = service_name_len;
+        memcpy(request.status.service_name, service_name, service_name_len);
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the status request for %s\n",
@@ -548,7 +575,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
         union linted_manager_request request = { 0 };
 
         request.type = LINTED_MANAGER_STOP;
-        request.stop.service = LINTED_SERVICE_GUI;
+        request.stop.size = sizeof "gui" - 1U;
+        memcpy(request.stop.service_name, "gui", sizeof "gui" - 1U);
 
         linted_io_write_format(STDOUT_FILENO, NULL,
                                "%s: sending the stop request for the gui\n",

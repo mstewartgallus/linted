@@ -1271,9 +1271,20 @@ static linted_error on_read_connection(struct linted_asynch_task
     }
 
     case LINTED_MANAGER_STATUS: {
-        union service const *service = &services[request->status.service];
+        enum linted_service service_nr;
+        {
+            enum linted_service xx;
+            if ((errnum = linted_service_for_name(
+                     &xx, request->status.service_name)) != 0) {
+                reply.status.is_up = false;
+                break;
+            }
+            service_nr = xx;
+        }
+
+        union service const *service = &services[service_nr];
         pid_t pid;
-        switch (config[request->status.service].type) {
+        switch (config[service_nr].type) {
         case SERVICE_INIT:
             pid = service->init.pid;
             goto status_service_process;
@@ -1308,9 +1319,20 @@ static linted_error on_read_connection(struct linted_asynch_task
     }
 
     case LINTED_MANAGER_STOP: {
-        union service const *service = &services[request->stop.service];
+        enum linted_service service_nr;
+        {
+            enum linted_service xx;
+            if ((errnum = linted_service_for_name(
+                     &xx, request->status.service_name)) != 0) {
+                reply.stop.was_up = false;
+                break;
+            }
+            service_nr = xx;
+        }
+
+        union service const *service = &services[service_nr];
         pid_t pid;
-        switch (config[request->status.service].type) {
+        switch (config[service_nr].type) {
         case SERVICE_INIT:
             pid = service->init.pid;
             goto stop_service_process;

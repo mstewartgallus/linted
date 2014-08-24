@@ -36,6 +36,11 @@ enum linted_service {
     LINTED_SERVICE_UPDATER
 };
 
+enum {
+    LINTED_SERVICE_NAME_MAX = 255
+};
+#define LINTED_SERVICE_NAME_MAX ((unsigned)LINTED_SERVICE_NAME_MAX)
+
 linted_error linted_service_for_name(enum linted_service *restrict service,
                                      char const *name);
 
