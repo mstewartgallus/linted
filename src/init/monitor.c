@@ -575,7 +575,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("LINTED_SOCKET="));
         linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-        linted_ko_close(STDOUT_FILENO);
     }
 
     char *logger_buffer;
