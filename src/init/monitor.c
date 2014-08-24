@@ -497,9 +497,9 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         }
 
         /* TODO: Close files leading outside of the sandbox  */
-        if (fstab != NULL) {
-            linted_spawn_attr_drop_caps(attr);
+        linted_spawn_attr_drop_caps(attr);
 
+        if (fstab != NULL) {
             linted_spawn_attr_setchrootdir(attr, chrootdir_path);
 
             if ((errnum = parse_fstab(attr, cwd, fstab)) != 0) {

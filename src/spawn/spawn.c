@@ -432,7 +432,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
     }
 
     if (attr != NULL) {
-        if (attr->drop_caps) {
+        if (attr->chrootdir != NULL) {
             /* Used ways to sandbox:
              *
              * - CLONE_NEWNS - Coupled with chrooting is good for
@@ -521,7 +521,9 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             if (-1 == umount2(".", MNT_DETACH)) {
                 exit_with_error(spawn_error, errno);
             }
+        }
 
+        if (attr->drop_caps) {
             /* Favor other processes over this process hierarchy. Only
              * superuser may lower priorities so this is not stoppable. This
              * also makes the process hierarchy nicer for the OOM killer.
@@ -569,7 +571,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                 if (dirfd_copy >= 0 && dirfd_copy == newfildes) {
                     /* We don't need to close the old dirfd copy
                      * because it is closed by the following dup2.
-                     */
+                    */
                     dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, 0L);
                     if (-1 == dirfd_copy) {
                         exit_with_error(spawn_error, errno);
