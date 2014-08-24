@@ -143,7 +143,6 @@ try_to_create_lock_file : {
 
         {
             linted_ko xx;
-            fprintf(stderr, "path: %s\n", random_shm_name);
             errnum = linted_file_create(&xx, -1, random_shm_name,
                                         LINTED_FILE_EXCL | LINTED_FILE_RDWR,
                                         S_IRUSR | S_IWUSR);
