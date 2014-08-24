@@ -37,11 +37,15 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <linux/filter.h>
+#include <linux/seccomp.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
@@ -91,6 +95,8 @@ struct spawn_error
 {
     linted_error errnum;
 };
+
+static struct sock_fprog const ban_forks_filter;
 
 static int execveat(int dirfd, const char *filename, char *const argv[],
                     char *const envp[]);
@@ -621,6 +627,18 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         }
     }
 
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
+        exit_with_error(spawn_error, errno);
+    }
+
+    /* Ban the process from spawning new ones so that resource
+     * limits can be enforced properly.
+     */
+    if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+                    &ban_forks_filter, 0UL, 0UL)) {
+        exit_with_error(spawn_error, errno);
+    }
+
     execveat(dirfd_copy, filename, argv, (char * const *)envp);
 
     exit_with_error(spawn_error, errno);
@@ -703,3 +721,24 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
 
     LINTED_ASSUME_UNREACHABLE();
 }
+
+#define THREAD_CLONE (CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID)
+
+static struct sock_filter const real_filter[] = {
+    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                    offsetof(struct seccomp_data, nr)),
+
+    /*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_clone, 1U, 0U),
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+
+    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                    offsetof(struct seccomp_data, args[2U])),
+
+    /*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, THREAD_CLONE, 1U, 0U),
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
+
+static struct sock_fprog const ban_forks_filter= { .len = LINTED_ARRAY_SIZE(real_filter),
+                                                   .filter = (struct sock_filter *)real_filter };
