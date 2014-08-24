@@ -102,6 +102,7 @@ try_to_open_lock_file : {
     if ((errnum = linted_ko_open(&xx, the_db, GLOBAL_LOCK, LINTED_KO_RDWR))
         != 0) {
         if (ENOENT == errnum) {
+            unlinkat(the_db, GLOBAL_LOCK, 0);
             goto try_to_create_lock_file;
         }
         goto close_db;
