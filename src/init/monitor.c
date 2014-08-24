@@ -132,7 +132,6 @@ struct wait_service_task
     struct linted_asynch_task_waitid parent;
     struct linted_asynch_pool *pool;
     struct service_process *gui_service;
-    struct service_process *sim_service;
 };
 
 struct connection;
@@ -594,8 +593,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
     }
 
     struct service_process *gui_service = &services[LINTED_SERVICE_GUI].process;
-    struct service_process *sim_service =
-        &services[LINTED_SERVICE_SIMULATOR].process;
 
     struct wait_service_task waiter_task;
     struct new_connection_task new_connection_task;
@@ -604,7 +601,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                               WEXITED);
     waiter_task.pool = pool;
     waiter_task.gui_service = gui_service;
-    waiter_task.sim_service = sim_service;
 
     linted_manager_accept(LINTED_UPCAST(&new_connection_task), NEW_CONNECTIONS,
                           new_connections);
@@ -1058,7 +1054,6 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 
     struct linted_asynch_pool *pool = wait_service_task->pool;
     struct service_process *gui_service = wait_service_task->gui_service;
-    struct service_process *sim_service = wait_service_task->sim_service;
 
     int exit_status;
     int exit_code;
@@ -1101,10 +1096,6 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 process_exited:
     if (pid == gui_service->pid) {
         gui_service->pid = -1;
-    }
-
-    if (pid == sim_service->pid) {
-        sim_service->pid = -1;
     }
 
     return 0;
