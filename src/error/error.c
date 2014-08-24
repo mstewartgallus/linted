@@ -32,6 +32,10 @@ could not allocate memory for error string";
 
 static char const unknown_error_string[] = "unknown error";
 
+/**
+ * @todo Just use strerror. It's thread safe, just not reentrant or
+ *       async-signal safe.
+ */
 char const *linted_error_string_alloc(linted_error errnum_to_print)
 {
     linted_error errnum;
