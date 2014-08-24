@@ -24,7 +24,7 @@
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/logger.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/updater.h"
@@ -155,7 +155,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
                     struct controller_data *controller_data);
 
-static linted_error init_graphics(linted_logger logger,
+static linted_error init_graphics(linted_log log,
                                   struct graphics_state *graphics_state,
                                   struct window_model const *window_model);
 static void destroy_graphics(struct graphics_state *graphics_state);
@@ -178,7 +178,7 @@ static linted_error get_gl_error(void);
 
 static double square(double x);
 
-static linted_error log_str(linted_logger logger, struct linted_str start,
+static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
 
 unsigned char linted_start(linted_ko cwd, char const *const process_name,
@@ -186,7 +186,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 {
     linted_error errnum = 0;
 
-    linted_logger logger = kos[0U];
+    linted_log log = kos[0U];
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
 
@@ -434,7 +434,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
         struct graphics_state graphics_state;
 
-        if ((errnum = init_graphics(logger, &graphics_state, &window_model))
+        if ((errnum = init_graphics(log, &graphics_state, &window_model))
             != 0) {
             errnum = egl_error();
             goto use_no_egl_context;
@@ -941,7 +941,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
     controller_data->update_pending = true;
 }
 
-static linted_error init_graphics(linted_logger logger,
+static linted_error init_graphics(linted_log log,
                                   struct graphics_state *graphics_state,
                                   struct window_model const *window_model)
 {
@@ -1033,7 +1033,7 @@ static linted_error init_graphics(linted_logger logger,
                 GLchar *info_log = xx;
                 glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
                                    info_log);
-                log_str(logger, LINTED_STR("Invalid shader: "), info_log);
+                log_str(log, LINTED_STR("Invalid shader: "), info_log);
                 linted_mem_free(info_log);
             }
             goto cleanup_program;
@@ -1068,7 +1068,7 @@ static linted_error init_graphics(linted_logger logger,
                 GLchar *info_log = xx;
                 glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
                                    info_log);
-                log_str(logger, LINTED_STR("Invalid shader: "), info_log);
+                log_str(log, LINTED_STR("Invalid shader: "), info_log);
                 linted_mem_free(info_log);
             }
             goto cleanup_program;
@@ -1091,7 +1091,7 @@ static linted_error init_graphics(linted_logger logger,
         if (0 == mem_errnum) {
             GLchar *info_log = xx;
             glGetProgramInfoLog(program, info_log_length, NULL, info_log);
-            log_str(logger, LINTED_STR("Invalid program: "), info_log);
+            log_str(log, LINTED_STR("Invalid program: "), info_log);
             linted_mem_free(info_log);
         }
         goto cleanup_program;
@@ -1401,7 +1401,7 @@ static double square(double x)
     return x * x;
 }
 
-static linted_error log_str(linted_logger logger, struct linted_str start,
+static linted_error log_str(linted_log log, struct linted_str start,
                             char const *error)
 {
     linted_error errnum;
@@ -1420,7 +1420,7 @@ static linted_error log_str(linted_logger logger, struct linted_str start,
     memcpy(full_string, start.bytes, start.size);
     memcpy(full_string + start.size, error, error_size);
 
-    errnum = linted_logger_log(logger, full_string, start.size + error_size);
+    errnum = linted_log_write(log, full_string, start.size + error_size);
 
     linted_mem_free(full_string);
 

@@ -22,7 +22,7 @@
 #include "linted/controller.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/logger.h"
+#include "linted/log.h"
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -131,7 +131,7 @@ static linted_updater_int sign(linted_updater_int x);
 unsigned char linted_start(linted_ko cwd, char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
-    linted_logger logger = kos[0U];
+    linted_log log = kos[0U];
     linted_controller controller = kos[1U];
     linted_updater updater = kos[2U];
 
@@ -139,7 +139,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
     {
         static char const message[] = "starting simulator";
-        linted_logger_log(logger, message, sizeof message - 1U);
+        linted_log_write(log, message, sizeof message - 1U);
     }
 
     struct action_state action_state = { .x = 0, .z = 0, .jumping = false };

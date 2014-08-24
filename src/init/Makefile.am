@@ -34,7 +34,7 @@ bin_PROGRAMS+=%D%/linted
   \
   src/controller/libcontroller.la\
   src/db/libdb.la\
-  src/logger/liblogger.la\
+  src/log/liblog.la\
   src/manager/libmanager.la\
   src/updater/libupdater.la
 

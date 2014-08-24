@@ -27,7 +27,7 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/mem/libmem.la\
   \
   src/controller/libcontroller.la\
-  src/logger/liblogger.la\
+  src/log/liblog.la\
   src/updater/libupdater.la\
   \
   -lm\

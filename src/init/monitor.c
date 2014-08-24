@@ -26,7 +26,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/logger.h"
+#include "linted/log.h"
 #include "linted/manager.h"
 #include "linted/mem.h"
 #include "linted/spawn.h"
@@ -53,7 +53,6 @@
 
 enum {
     WAITER,
-    LOGGER,
     NEW_CONNECTIONS,
     READ_CONNECTION,
     WRITE_CONNECTION
@@ -223,7 +222,7 @@ static linted_error find_stdin(linted_ko *kop);
 static linted_error find_stdout(linted_ko *kop);
 static linted_error find_stderr(linted_ko *kop);
 
-static linted_error logger_create(linted_ko *kop);
+static linted_error log_create(linted_ko *kop);
 static linted_error updater_create(linted_ko *kop);
 static linted_error controller_create(linted_ko *kop);
 
@@ -237,7 +236,6 @@ static linted_error on_write_connection(struct linted_asynch_task *task);
 static linted_error dispatch_drainers(struct linted_asynch_task
                                       *completed_task);
 
-static linted_error drain_on_receive_log(struct linted_asynch_task *task);
 static linted_error drain_on_new_connection(struct linted_asynch_task *task);
 static linted_error drain_on_process_wait(struct linted_asynch_task *task);
 static linted_error drain_on_read_connection(struct linted_asynch_task *task);
@@ -358,7 +356,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
-           [LINTED_SERVICE_LOGGER_PROCESS]
+           [LINTED_SERVICE_LOGGER]
                = { .process
                    = { .type = SERVICE_PROCESS,
                        .dirko = cwd,
@@ -371,7 +369,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
-                           { LINTED_KO_RDONLY, LINTED_SERVICE_LOGGER }
+                           { LINTED_KO_RDONLY, LINTED_SERVICE_LOG }
                        }) } },
            [LINTED_SERVICE_SIMULATOR]
                = { .process
@@ -386,7 +384,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
-                           { LINTED_KO_WRONLY, LINTED_SERVICE_LOGGER },
+                           { LINTED_KO_WRONLY, LINTED_SERVICE_LOG },
                            { LINTED_KO_RDONLY, LINTED_SERVICE_CONTROLLER },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_UPDATER }
                        }) } },
@@ -402,7 +400,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                            { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
-                           { LINTED_KO_WRONLY, LINTED_SERVICE_LOGGER },
+                           { LINTED_KO_WRONLY, LINTED_SERVICE_LOG },
                            { LINTED_KO_WRONLY, LINTED_SERVICE_CONTROLLER },
                            { LINTED_KO_RDONLY, LINTED_SERVICE_UPDATER }
                        }) } },
@@ -412,8 +410,8 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                = { .file = { .type = SERVICE_FILE, .generator = find_stdout } },
            [LINTED_SERVICE_STDERR]
                = { .file = { .type = SERVICE_FILE, .generator = find_stderr } },
-           [LINTED_SERVICE_LOGGER] = { .file = { .type = SERVICE_FILE,
-                                                 .generator = logger_create } },
+           [LINTED_SERVICE_LOG]
+               = { .file = { .type = SERVICE_FILE, .generator = log_create } },
            [LINTED_SERVICE_UPDATER]
                = { .file
                    = { .type = SERVICE_FILE, .generator = updater_create } },
@@ -436,13 +434,13 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
     union service services[]
         = {[LINTED_SERVICE_INIT] = { .init = { .pid = getpid() } },
-           [LINTED_SERVICE_LOGGER_PROCESS] = { .process = { .pid = -1 } },
+           [LINTED_SERVICE_LOGGER] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_GUI] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_STDIN] = { .file = { .is_open = false } },
            [LINTED_SERVICE_STDOUT] = { .file = { .is_open = false } },
            [LINTED_SERVICE_STDERR] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_LOGGER] = { .file = { .is_open = false } },
+           [LINTED_SERVICE_LOG] = { .file = { .is_open = false } },
            [LINTED_SERVICE_UPDATER] = { .file = { .is_open = false } },
            [LINTED_SERVICE_CONTROLLER] = { .file = { .is_open = false } } };
 
@@ -1012,19 +1010,19 @@ static linted_error find_stderr(linted_ko *kop)
     return 0;
 }
 
-static linted_error logger_create(linted_ko *kop)
+static linted_error log_create(linted_ko *kop)
 {
-    return linted_logger_create(kop, 0);
+    return linted_log_create(kop, 0U);
 }
 
 static linted_error updater_create(linted_ko *kop)
 {
-    return linted_updater_create(kop, 0);
+    return linted_updater_create(kop, 0U);
 }
 
 static linted_error controller_create(linted_ko *kop)
 {
-    return linted_controller_create(kop, 0);
+    return linted_controller_create(kop, 0U);
 }
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
@@ -1361,9 +1359,6 @@ static linted_error dispatch_drainers(struct linted_asynch_task *completed_task)
     case NEW_CONNECTIONS:
         return drain_on_new_connection(completed_task);
 
-    case LOGGER:
-        return drain_on_receive_log(completed_task);
-
     case WAITER:
         return drain_on_process_wait(completed_task);
 
@@ -1376,11 +1371,6 @@ static linted_error dispatch_drainers(struct linted_asynch_task *completed_task)
     default:
         LINTED_ASSUME_UNREACHABLE();
     }
-}
-
-static linted_error drain_on_receive_log(struct linted_asynch_task *task)
-{
-    return task->errnum;
 }
 
 static linted_error drain_on_new_connection(struct linted_asynch_task *task)

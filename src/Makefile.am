@@ -21,7 +21,7 @@ EXTRA_DIST+=\
 include %C%/control/Makefile.am
 include %C%/gui/Makefile.am
 include %C%/init/Makefile.am
-include %C%/logger_bin/Makefile.am
+include %C%/logger/Makefile.am
 include %C%/simulator/Makefile.am
 
 include %C%/asynch/Makefile.am
@@ -42,6 +42,6 @@ include %C%/start/Makefile.am
 include %C%/str/Makefile.am
 
 include %C%/controller/Makefile.am
-include %C%/logger/Makefile.am
+include %C%/log/Makefile.am
 include %C%/manager/Makefile.am
 include %C%/updater/Makefile.am

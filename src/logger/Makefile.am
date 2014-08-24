@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/liblogger.la
+pkglibexec_PROGRAMS+=%D%/logger
 
-%C%_liblogger_la_SOURCES=\
-  %D%/logger.c\
-  include/linted/logger.h
-%C%_liblogger_la_LIBADD=src/asynch/libasynch.la src/ko/libko.la
+%C%_logger_SOURCES=%D%/logger.c
+%C%_logger_LDADD=\
+  src/start/libstart.la\
+  \
+  src/asynch/libasynch.la\
+  src/error/liberror.la\
+  src/io/libio.la\
+  src/ko/libko.la\
+  \
+  src/log/liblog.la

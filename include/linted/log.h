@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_LOGGER_H
-#define LINTED_LOGGER_H
+#ifndef LINTED_LOG_H
+#define LINTED_LOG_H
 
 #include "linted/error.h"
 #include "linted/mq.h"
@@ -27,28 +27,26 @@
  * Exposes a protocol for logging events.
  */
 
-#define LINTED_LOGGER_LOG_MAX 1024U
+#define LINTED_LOG_MAX 1024U
 
 /**
- * A handle to access the logger. Is safe to share between processes.
+ * A handle to access the log. Is safe to share between processes.
  */
-typedef linted_mq linted_logger;
+typedef linted_mq linted_log;
 
-struct linted_logger_task
+struct linted_log_task
 {
     struct linted_mq_task_receive parent;
 };
 
-linted_error linted_logger_create(linted_logger *restrict loggerp,
-                                  unsigned long flags);
+linted_error linted_log_create(linted_log *restrict logp, unsigned long flags);
 
-linted_error linted_logger_close(linted_logger logger);
+linted_error linted_log_close(linted_log log);
 
-linted_error linted_logger_log(linted_logger logger, char const *msg_ptr,
-                               size_t msg_len);
+linted_error linted_log_write(linted_log log, char const *msg_ptr,
+                              size_t msg_len);
 
-void linted_logger_receive(struct linted_logger_task *task, unsigned task_id,
-                           linted_logger logger,
-                           char msg_ptr[static LINTED_LOGGER_LOG_MAX]);
+void linted_log_receive(struct linted_log_task *task, unsigned task_id,
+                        linted_log log, char msg_ptr[static LINTED_LOG_MAX]);
 
-#endif /* LINTED_LOGGER_H */
+#endif /* LINTED_LOG_H */
