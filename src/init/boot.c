@@ -69,8 +69,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
     char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
     char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-    char const *simulator_fstab_path = PKGCONFDIR "/simulator-fstab";
-    char const *gui_fstab_path = PKGCONFDIR "/gui-fstab";
+    char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
+    char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
     char const *chrootdir_path = CHROOTDIR;
 
     for (size_t ii = 1U; ii < argc; ++ii) {

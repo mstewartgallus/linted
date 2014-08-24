@@ -68,4 +68,7 @@
  *       violations.
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
+ *
+ * @todo Check the configuration directory before checking the default
+ *       configuration directory.
  */

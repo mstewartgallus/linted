@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 pkgconfdir=$(sysconfdir)/linted
+pkgdefaultconfdir=$(pkgdatadir)/defaultetc
 chrootdir=$(pkgdatadir)/chroot
 
 TESTS=
@@ -31,7 +32,7 @@ BUILT_SOURCES=
 EXTRA_DIST=
 MOSTLYCLEANFILES=
 
-dist_pkgconf_DATA=
+dist_pkgdefaultconf_DATA=
 
 uninstall-hook:
 	- rmdir '$(pkgconfdir)'

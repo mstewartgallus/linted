@@ -67,4 +67,4 @@ MOSTLYCLEANFILES+=%D%/assets.c
 	  $(srcdir)/%D%/assets/assets.py\
 	  --output=$@
 
-dist_pkgconf_DATA+=%D%/gui-fstab
+dist_pkgdefaultconf_DATA+=%D%/gui-fstab
