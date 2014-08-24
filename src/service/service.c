@@ -28,15 +28,17 @@ struct pair
     enum linted_service service;
 };
 
-struct pair const pairs[] = { { "init", LINTED_SERVICE_INIT },
-                              { "gui", LINTED_SERVICE_GUI },
-                              { "simulator", LINTED_SERVICE_SIMULATOR },
-                              { "stdin", LINTED_SERVICE_STDIN },
-                              { "stdout", LINTED_SERVICE_STDOUT },
-                              { "stderr", LINTED_SERVICE_STDERR },
-                              { "logger", LINTED_SERVICE_LOGGER },
-                              { "controller", LINTED_SERVICE_CONTROLLER },
-                              { "updater", LINTED_SERVICE_UPDATER } };
+struct pair const pairs[]
+    = { { "init", LINTED_SERVICE_INIT },
+        { "logger_process", LINTED_SERVICE_LOGGER_PROCESS },
+        { "gui", LINTED_SERVICE_GUI },
+        { "simulator", LINTED_SERVICE_SIMULATOR },
+        { "stdin", LINTED_SERVICE_STDIN },
+        { "stdout", LINTED_SERVICE_STDOUT },
+        { "stderr", LINTED_SERVICE_STDERR },
+        { "logger", LINTED_SERVICE_LOGGER },
+        { "controller", LINTED_SERVICE_CONTROLLER },
+        { "updater", LINTED_SERVICE_UPDATER } };
 
 linted_error linted_service_for_name(enum linted_service *restrict servicep,
                                      char const *name)

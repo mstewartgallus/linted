@@ -19,5 +19,6 @@ exec "${ROOT}/../src/init/linted"\
      --chrootdir="${XDG_RUNTIME_DIR}/linted/chroot"\
      --simulator-fstab="${SRCDIR}/src/simulator/simulator-fstab"\
      --gui-fstab="${SRCDIR}/src/gui/gui-fstab"\
+     --logger="${ROOT}/../src/logger_bin/logger"\
      --simulator="${ROOT}/../src/simulator/simulator"\
      --gui="${ROOT}/../src/gui/gui" "$@"

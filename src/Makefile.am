@@ -18,9 +18,10 @@
 EXTRA_DIST+=\
   include/linted/rpc.h
 
+include %C%/control/Makefile.am
 include %C%/gui/Makefile.am
 include %C%/init/Makefile.am
-include %C%/control/Makefile.am
+include %C%/logger_bin/Makefile.am
 include %C%/simulator/Makefile.am
 
 include %C%/asynch/Makefile.am

@@ -128,14 +128,6 @@ union service
     struct service_file file;
 };
 
-struct init_logger_task
-{
-    struct linted_logger_task parent;
-    struct linted_asynch_pool *pool;
-    char const *process_name;
-    linted_ko log_ko;
-};
-
 struct wait_service_task
 {
     struct linted_asynch_task_waitid parent;
@@ -237,7 +229,6 @@ static linted_error controller_create(linted_ko *kop);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
-static linted_error on_receive_log(struct linted_asynch_task *task);
 static linted_error on_new_connection(struct linted_asynch_task *task);
 static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_read_connection(struct linted_asynch_task *task);
@@ -262,6 +253,7 @@ static linted_error connection_remove(struct connection *connection,
 unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                                   char const *simulator_fstab_path,
                                   char const *gui_fstab_path,
+                                  char const *logger_path,
                                   char const *simulator_path,
                                   char const *gui_path)
 {
@@ -366,6 +358,21 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
     union service_config const config[]
         = {[LINTED_SERVICE_INIT] = { .type = SERVICE_INIT },
+           [LINTED_SERVICE_LOGGER_PROCESS]
+               = { .process
+                   = { .type = SERVICE_PROCESS,
+                       .dirko = cwd,
+                       .fstab = NULL,
+                       .path = logger_path,
+                       .arguments
+                       = (char const * const[]) { logger_path, NULL },
+                       .environment = (char const * const[]) { NULL },
+                       .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+                           { LINTED_KO_RDONLY, LINTED_SERVICE_STDIN },
+                           { LINTED_KO_WRONLY, LINTED_SERVICE_STDOUT },
+                           { LINTED_KO_WRONLY, LINTED_SERVICE_STDERR },
+                           { LINTED_KO_RDONLY, LINTED_SERVICE_LOGGER }
+                       }) } },
            [LINTED_SERVICE_SIMULATOR]
                = { .process
                    = { .type = SERVICE_PROCESS,
@@ -429,11 +436,12 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 
     union service services[]
         = {[LINTED_SERVICE_INIT] = { .init = { .pid = getpid() } },
+           [LINTED_SERVICE_LOGGER_PROCESS] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_GUI] = { .process = { .pid = -1 } },
+           [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_STDIN] = { .file = { .is_open = false } },
            [LINTED_SERVICE_STDOUT] = { .file = { .is_open = false } },
            [LINTED_SERVICE_STDERR] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
            [LINTED_SERVICE_LOGGER] = { .file = { .is_open = false } },
            [LINTED_SERVICE_UPDATER] = { .file = { .is_open = false } },
            [LINTED_SERVICE_CONTROLLER] = { .file = { .is_open = false } } };
@@ -454,8 +462,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         service->file.ko = ko;
         service->file.is_open = true;
     }
-
-    linted_logger logger_read = services[LINTED_SERVICE_LOGGER].file.ko;
 
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         if (config[ii].type != SERVICE_PROCESS) {
@@ -492,15 +498,17 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
             attr = xx;
         }
 
-        linted_spawn_attr_drop_caps(attr);
-
-        linted_spawn_attr_setchrootdir(attr, chrootdir_path);
-
         /* TODO: Close files leading outside of the sandbox  */
-        if ((errnum = parse_fstab(attr, cwd, fstab)) != 0) {
-            errno = errnum;
-            perror("parse_fstab");
-            return EXIT_FAILURE;
+        if (fstab != NULL) {
+            linted_spawn_attr_drop_caps(attr);
+
+            linted_spawn_attr_setchrootdir(attr, chrootdir_path);
+
+            if ((errnum = parse_fstab(attr, cwd, fstab)) != 0) {
+                errno = errnum;
+                perror("parse_fstab");
+                return EXIT_FAILURE;
+            }
         }
 
         linted_ko *proc_kos;
@@ -577,21 +585,12 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
     }
 
-    char *logger_buffer;
-    {
-        void *xx;
-        if ((errnum = linted_mem_alloc(&xx, LINTED_LOGGER_LOG_MAX)) != 0) {
-            goto close_new_connections;
-        }
-        logger_buffer = xx;
-    }
-
     struct connection_pool *connection_pool;
 
     {
         struct connection_pool *xx;
         if ((errnum = connection_pool_create(&xx)) != 0) {
-            goto free_logger_buffer;
+            goto close_new_connections;
         }
         connection_pool = xx;
     }
@@ -601,7 +600,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         &services[LINTED_SERVICE_SIMULATOR].process;
 
     struct wait_service_task waiter_task;
-    struct init_logger_task logger_task;
     struct new_connection_task new_connection_task;
 
     linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
@@ -609,12 +607,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
     waiter_task.pool = pool;
     waiter_task.gui_service = gui_service;
     waiter_task.sim_service = sim_service;
-
-    linted_logger_receive(LINTED_UPCAST(&logger_task), LOGGER, logger_read,
-                          logger_buffer);
-    logger_task.log_ko = STDERR_FILENO;
-    logger_task.process_name = process_name;
-    logger_task.pool = pool;
 
     linted_manager_accept(LINTED_UPCAST(&new_connection_task), NEW_CONNECTIONS,
                           new_connections);
@@ -624,8 +616,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
     new_connection_task.config = config;
 
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
-    linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
                                         LINTED_UPCAST(&new_connection_task))));
     for (;;) {
@@ -671,9 +661,6 @@ drain_dispatches:
             errnum = close_errnum;
         }
     }
-
-free_logger_buffer:
-    linted_mem_free(logger_buffer);
 
 close_new_connections : {
     linted_error close_errnum = linted_ko_close(new_connections);
@@ -724,7 +711,6 @@ exit_services : {
         /* Insure that the tasks are in proper scope until they are
          * terminated */
         (void)waiter_task;
-        (void)logger_task;
         (void)new_connection_task;
     }
 
@@ -1047,9 +1033,6 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
     case NEW_CONNECTIONS:
         return on_new_connection(completed_task);
 
-    case LOGGER:
-        return on_receive_log(completed_task);
-
     case WAITER:
         return on_process_wait(completed_task);
 
@@ -1062,33 +1045,6 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
     default:
         LINTED_ASSUME_UNREACHABLE();
     }
-}
-
-static linted_error on_receive_log(struct linted_asynch_task *completed_task)
-{
-    linted_error errnum;
-
-    if ((errnum = completed_task->errnum) != 0) {
-        return errnum;
-    }
-
-    struct init_logger_task *logger_task
-        = LINTED_DOWNCAST(struct init_logger_task, completed_task);
-
-    struct linted_asynch_pool *pool = logger_task->pool;
-    linted_ko log_ko = logger_task->log_ko;
-    char const *process_name = logger_task->process_name;
-    size_t log_size = LINTED_UPCAST(LINTED_UPCAST(logger_task))->bytes_read;
-    char const *logger_buffer = LINTED_UPCAST(LINTED_UPCAST(logger_task))->buf;
-
-    linted_io_write_string(log_ko, NULL, process_name);
-    linted_io_write_str(log_ko, NULL, LINTED_STR(": "));
-    linted_io_write_all(log_ko, NULL, logger_buffer, log_size);
-    linted_io_write_str(log_ko, NULL, LINTED_STR("\n"));
-
-    linted_asynch_pool_submit(pool, completed_task);
-
-    return 0;
 }
 
 static linted_error on_process_wait(struct linted_asynch_task *completed_task)
@@ -1121,24 +1077,18 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
     switch (exit_code) {
     case CLD_DUMPED:
     case CLD_KILLED:
-        if (pid == gui_service->pid || pid == sim_service->pid) {
-            raise(exit_status);
-            errnum = errno;
+        raise(exit_status);
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        return errnum;
+
+    case CLD_EXITED:
+        if (exit_status != 0) {
+            errnum = exit_status;
             LINTED_ASSUME(errnum != 0);
             return errnum;
         }
-        break;
-
-    case CLD_EXITED:
-        if (pid == gui_service->pid || pid == sim_service->pid) {
-            if (exit_status != 0) {
-                errnum = exit_status;
-                LINTED_ASSUME(errnum != 0);
-                return errnum;
-            }
-            goto process_exited;
-        }
-        break;
+        goto process_exited;
 
     case CLD_STOPPED:
         /* Presumably the process was stopped for a reason */
