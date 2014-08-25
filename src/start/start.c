@@ -95,8 +95,7 @@ It is insecure to run a game as root!\n"));
         if ((errnum = find_open_kos(&xx, &yy)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: couldn't find open files: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errnum));
+                                   process_name, linted_error_string(errnum));
             return EXIT_FAILURE;
         }
         open_kos = xx;
@@ -120,8 +119,7 @@ It is insecure to run a game as root!\n"));
         if (-1 == oflags) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: fcntl: F_GETFL: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errno));
+                                   process_name, linted_error_string(errno));
             return EXIT_FAILURE;
         }
 
@@ -149,7 +147,7 @@ It is insecure to run a game as root!\n"));
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: dup2(%i, %i): %s\n",
                                    process_name, new_fd, fd,
-                                   linted_error_string_alloc(errno));
+                                   linted_error_string(errno));
             return EXIT_FAILURE;
         }
 
@@ -161,8 +159,7 @@ It is insecure to run a game as root!\n"));
         if ((errnum = linted_ko_close(new_fd)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: linted_ko_close: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errnum));
+                                   process_name, linted_error_string(errnum));
             return EXIT_FAILURE;
         }
     }
@@ -251,8 +248,7 @@ It is insecure to run a game as root!\n"));
         if (-1 == cwd) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errno));
+                                   process_name, linted_error_string(errno));
             return EXIT_FAILURE;
         }
     } else {
@@ -262,7 +258,7 @@ It is insecure to run a game as root!\n"));
     if (-1 == chdir("/")) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not change to the root directory: %s\n",
-                               process_name, linted_error_string_alloc(errno));
+                               process_name, linted_error_string(errno));
         return EXIT_FAILURE;
     }
 
@@ -273,7 +269,7 @@ It is insecure to run a game as root!\n"));
 
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not drop ability to raise privileges through execve: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
+                               process_name, linted_error_string(errnum));
         return EXIT_FAILURE;
     }
 
@@ -290,8 +286,7 @@ It is insecure to run a game as root!\n"));
         if ((errnum = get_system_entropy(&entropy)) != 0) {
             linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not read a source of system entropy: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errnum));
+                                   process_name, linted_error_string(errnum));
             return EXIT_FAILURE;
         }
         linted_random_seed_generator(entropy);

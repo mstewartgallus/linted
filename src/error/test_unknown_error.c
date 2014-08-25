@@ -21,6 +21,6 @@
 
 int main(void)
 {
-    linted_error_string_alloc(-1);
+    linted_error_string(-1);
     return EXIT_SUCCESS;
 }

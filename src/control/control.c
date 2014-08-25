@@ -971,9 +971,7 @@ static linted_error failure(linted_ko ko, char const *process_name,
         return errnum;
     }
 
-    char const *error_string = linted_error_string_alloc(error);
-    errnum = linted_io_write_string(ko, NULL, error_string);
-    linted_error_string_free(error_string);
+    errnum = linted_io_write_string(ko, NULL, linted_error_string(error));
 
     if (errnum != 0) {
         return errnum;

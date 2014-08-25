@@ -311,7 +311,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
     if ((errnum = check_db(cwd)) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: database: %s\n",
-                               process_name, linted_error_string_alloc(errnum));
+                               process_name, linted_error_string(errnum));
         return EXIT_FAILURE;
     }
 
@@ -730,10 +730,9 @@ exit_services : {
     }
 
     if (errnum != 0) {
-        char const *error_string = linted_error_string_alloc(errnum);
         linted_io_write_format(STDERR_FILENO, NULL,
-                               "could not run the game: %s\n", error_string);
-        linted_error_string_free(error_string);
+                               "could not run the game: %s\n",
+                               linted_error_string(errnum));
 
         return EXIT_FAILURE;
     }

@@ -190,8 +190,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
         if (-1 == child) {
             linted_io_write_format(STDERR_FILENO, NULL,
                                    "%s: can't clone unprivileged process: %s\n",
-                                   process_name,
-                                   linted_error_string_alloc(errno));
+                                   process_name, linted_error_string(errno));
             return EXIT_FAILURE;
         }
 
