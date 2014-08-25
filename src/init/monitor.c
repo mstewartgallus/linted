@@ -107,22 +107,26 @@ union service_config
 
 struct service_init
 {
+    enum service_type type;
     pid_t pid;
 };
 
 struct service_process
 {
+    enum service_type type;
     pid_t pid;
 };
 
 struct service_file
 {
+    enum service_type type;
     linted_ko ko;
     bool is_open : 1U;
 };
 
 union service
 {
+    enum service_type type;
     struct service_init init;
     struct service_process process;
     struct service_file file;
@@ -434,17 +438,28 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         pool = xx;
     }
 
-    union service services[]
-        = {[LINTED_SERVICE_INIT] = { .init = { .pid = getpid() } },
-           [LINTED_SERVICE_LOGGER] = { .process = { .pid = -1 } },
-           [LINTED_SERVICE_GUI] = { .process = { .pid = -1 } },
-           [LINTED_SERVICE_SIMULATOR] = { .process = { .pid = -1 } },
-           [LINTED_SERVICE_STDIN] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_STDOUT] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_STDERR] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_LOG] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_UPDATER] = { .file = { .is_open = false } },
-           [LINTED_SERVICE_CONTROLLER] = { .file = { .is_open = false } } };
+    union service services[LINTED_ARRAY_SIZE(config)];
+
+    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
+        union service_config const *service_config = &config[ii];
+        union service *service = &services[ii];
+        switch (service_config->type) {
+        case SERVICE_INIT:
+            service->type = SERVICE_INIT;
+            service->init.pid = getpid();
+            break;
+
+        case SERVICE_PROCESS:
+            service->type = SERVICE_PROCESS;
+            service->init.pid = -1;
+            break;
+
+        case SERVICE_FILE:
+            service->type = SERVICE_FILE;
+            service->file.is_open = false;
+            break;
+        }
+    }
 
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
@@ -1184,7 +1199,6 @@ static linted_error on_read_connection(struct linted_asynch_task
     struct connection_pool *connection_pool = read_conn_task->connection_pool;
     struct connection *connection = read_conn_task->connection;
     union service const *services = read_conn_task->services;
-    union service_config const *config = read_conn_task->config;
 
     if ((errnum = completed_task->errnum) != 0) {
         /* The other end did something bad */
@@ -1227,7 +1241,7 @@ static linted_error on_read_connection(struct linted_asynch_task
 
         union service const *service = &services[service_nr];
         pid_t pid;
-        switch (config[service_nr].type) {
+        switch (service->type) {
         case SERVICE_INIT:
             pid = service->init.pid;
             goto status_service_process;
@@ -1275,7 +1289,7 @@ static linted_error on_read_connection(struct linted_asynch_task
 
         union service const *service = &services[service_nr];
         pid_t pid;
-        switch (config[service_nr].type) {
+        switch (service->type) {
         case SERVICE_INIT:
             pid = service->init.pid;
             goto stop_service_process;

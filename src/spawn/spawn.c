@@ -722,7 +722,10 @@ static void exit_with_error(volatile struct spawn_error *spawn_error,
     LINTED_ASSUME_UNREACHABLE();
 }
 
-#define THREAD_CLONE (CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID)
+#define THREAD_CLONE                                                           \
+    (CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD          \
+     | CLONE_SYSVSEM | CLONE_SETTLS | CLONE_PARENT_SETTID                      \
+     | CLONE_CHILD_CLEARTID)
 
 static struct sock_filter const real_filter[] = {
     /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
@@ -732,7 +735,8 @@ static struct sock_filter const real_filter[] = {
     /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
 
     /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                    offsetof(struct seccomp_data, args[2U])),
+                    offsetof(struct seccomp_data, args)
+                    + (sizeof(uint64_t) * 2U)),
 
     /*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, THREAD_CLONE, 1U, 0U),
     /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
@@ -740,5 +744,6 @@ static struct sock_filter const real_filter[] = {
     /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
 };
 
-static struct sock_fprog const ban_forks_filter= { .len = LINTED_ARRAY_SIZE(real_filter),
-                                                   .filter = (struct sock_filter *)real_filter };
+static struct sock_fprog const ban_forks_filter
+    = { .len = LINTED_ARRAY_SIZE(real_filter),
+        .filter = (struct sock_filter *)real_filter };
