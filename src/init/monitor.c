@@ -315,8 +315,20 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         return EXIT_FAILURE;
     }
 
-    char const **gui_envvars = NULL;
+    char const **gui_envvars;
     size_t gui_envvars_count = 0U;
+    {
+        void *xx;
+        if ((errnum = linted_mem_alloc_array(&xx,
+                                             LINTED_ARRAY_SIZE(gui_envvars_to_keep),
+                                             sizeof gui_envvars[0U])) != 0) {
+            errno = errnum;
+            perror("linted_mem_alloc_array");
+            return EXIT_FAILURE;
+        }
+        gui_envvars = xx;
+    }
+
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(gui_envvars_to_keep); ++ii) {
         char const *envvar_name = gui_envvars_to_keep[ii];
 
@@ -326,17 +338,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         }
 
         ++gui_envvars_count;
-        {
-            void *xx;
-            if ((errnum
-                 = linted_mem_realloc_array(&xx, gui_envvars, gui_envvars_count,
-                                            sizeof gui_envvars[0U])) != 0) {
-                errno = errnum;
-                perror("linted_mem_realloc_array");
-                return EXIT_FAILURE;
-            }
-            gui_envvars = xx;
-        }
 
         size_t envvar_name_length = strlen(envvar_name);
         size_t envvar_length = strlen(envvar);
