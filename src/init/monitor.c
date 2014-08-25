@@ -64,6 +64,10 @@ enum service_type {
     SERVICE_FILE
 };
 
+enum {
+    MAX_TASKS = READ_CONNECTION + MAX_MANAGE_CONNECTIONS
+};
+
 struct dup_pair
 {
     int flags;
@@ -292,6 +296,18 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         new_connections = xx;
     }
 
+    {
+        char buf[LINTED_MANAGER_PATH_MAX];
+        size_t len;
+        if ((errnum = linted_manager_path(new_connections, buf, &len)) != 0) {
+            return errnum;
+        }
+
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("LINTED_SOCKET="));
+        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
+        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+    }
+
     if ((errnum = check_db(cwd)) != 0) {
         linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: database: %s\n",
@@ -425,19 +441,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                = { .file = { .type = SERVICE_FILE,
                              .generator = controller_create } } };
 
-    enum {
-        MAX_TASKS = READ_CONNECTION + MAX_MANAGE_CONNECTIONS
-    };
-
-    struct linted_asynch_pool *pool;
-    {
-        struct linted_asynch_pool *xx;
-        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
-            return errnum;
-        }
-        pool = xx;
-    }
-
     union service services[LINTED_ARRAY_SIZE(config)];
 
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
@@ -460,6 +463,38 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
             break;
         }
     }
+
+    struct connection_pool *connection_pool;
+
+    {
+        struct connection_pool *xx;
+        if ((errnum = connection_pool_create(&xx)) != 0) {
+            return errnum;
+        }
+        connection_pool = xx;
+    }
+
+    struct linted_asynch_pool *pool;
+    {
+        struct linted_asynch_pool *xx;
+        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+            return errnum;
+        }
+        pool = xx;
+    }
+
+    struct wait_service_task waiter_task;
+    struct new_connection_task new_connection_task;
+
+    linted_manager_accept(LINTED_UPCAST(&new_connection_task), NEW_CONNECTIONS,
+                          new_connections);
+    new_connection_task.pool = pool;
+    new_connection_task.connection_pool = connection_pool;
+    new_connection_task.services = services;
+    new_connection_task.config = config;
+
+    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
+                                        LINTED_UPCAST(&new_connection_task))));
 
     for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(services); ++ii) {
         union service_config const *service_config = &config[ii];
@@ -581,7 +616,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         for (size_t jj = 0; jj < kos_opened; ++jj) {
             linted_ko_close(proc_kos[jj]);
         }
-        free(proc_kos);
+        linted_mem_free(proc_kos);
 
     destroy_attr:
         linted_spawn_attr_destroy(attr);
@@ -594,47 +629,14 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
         }
     }
 
-    {
-        char buf[LINTED_MANAGER_PATH_MAX];
-        size_t len;
-        if ((errnum = linted_manager_path(new_connections, buf, &len)) != 0) {
-            goto close_new_connections;
-        }
-
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("LINTED_SOCKET="));
-        linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
-        linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-    }
-
-    struct connection_pool *connection_pool;
-
-    {
-        struct connection_pool *xx;
-        if ((errnum = connection_pool_create(&xx)) != 0) {
-            goto close_new_connections;
-        }
-        connection_pool = xx;
-    }
-
-    struct wait_service_task waiter_task;
-    struct new_connection_task new_connection_task;
-
     linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL, -1,
                               WEXITED);
     waiter_task.pool = pool;
     waiter_task.halt_pid = halt_pid;
     waiter_task.time_to_exit = false;
 
-    linted_manager_accept(LINTED_UPCAST(&new_connection_task), NEW_CONNECTIONS,
-                          new_connections);
-    new_connection_task.pool = pool;
-    new_connection_task.connection_pool = connection_pool;
-    new_connection_task.services = services;
-    new_connection_task.config = config;
-
     linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
-    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
-                                        LINTED_UPCAST(&new_connection_task))));
+
     while (!waiter_task.time_to_exit) {
         struct linted_asynch_task *completed_task;
         {
@@ -674,13 +676,6 @@ drain_dispatches:
             errnum = close_errnum;
         }
     }
-
-close_new_connections : {
-    linted_error close_errnum = linted_ko_close(new_connections);
-    if (0 == errnum) {
-        errnum = close_errnum;
-    }
-}
 
 exit_services : {
     if (-1 == kill(-1, SIGKILL)) {
@@ -725,6 +720,13 @@ exit_services : {
          * terminated */
         (void)waiter_task;
         (void)new_connection_task;
+    }
+
+    {
+        linted_error close_errnum = linted_ko_close(new_connections);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
     }
 
     if (errnum != 0) {
