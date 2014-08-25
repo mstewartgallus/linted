@@ -354,7 +354,11 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
     sigemptyset(&oldset);
     sigaddset(&oldset, SIGPIPE);
 
-    pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+    if (-1 == pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) {
+        errnum = errno;
+        LINTED_ASSUME(errnum != 0);
+        goto return_reply;
+    }
 
     for (;;) {
         for (;;) {
@@ -407,15 +411,32 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
         sigemptyset(&sigpipeset);
         sigaddset(&sigpipeset, SIGPIPE);
 
-        {
+        linted_error wait_errnum;
+        do {
             struct timespec timeout = { 0 };
 
-            sigtimedwait(&sigpipeset, NULL, &timeout);
+            if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
+                wait_errnum = errno;
+                LINTED_ASSUME(wait_errnum != 0);
+            } else {
+                wait_errnum = 0;
+            }
+        } while (EINTR == wait_errnum);
+        if (wait_errnum != 0 && wait_errnum != EAGAIN) {
+            if (0 == errnum) {
+                errnum = wait_errnum;
+            }
         }
     }
 
-    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+    if (-1 == pthread_sigmask(SIG_SETMASK, &oldset, NULL)) {
+        if (0 == errnum) {
+            errnum = errno;
+            LINTED_ASSUME(errnum != 0);
+        }
+    }
 
+return_reply:
     task->errnum = errnum;
     task_write->bytes_wrote = bytes_wrote;
     task_write->current_position = 0U;
