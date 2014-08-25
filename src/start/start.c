@@ -262,7 +262,7 @@ It is insecure to run a game as root!\n"));
         return EXIT_FAILURE;
     }
 
-    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+    if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
         errnum = errno;
 
         assert(errnum != EINVAL);
