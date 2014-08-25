@@ -36,7 +36,6 @@
 #include <string.h>
 #include <sys/capability.h>
 #include <sys/mount.h>
-#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -98,11 +97,9 @@ struct spawn_error
 
 static struct sock_fprog const ban_forks_filter;
 
-static int execveat(int dirfd, const char *filename, char *const argv[],
-                    char *const envp[]);
-static size_t align_to_page_size(size_t size);
-static void exit_with_error(volatile struct spawn_error *spawn_error,
-                            linted_error errnum);
+static linted_error my_execveat(int dirfd, const char *filename,
+                                char *const argv[], char *const envp[]);
+static void exit_with_error(linted_ko writer, linted_error errnum);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **restrict attrp)
 {
@@ -327,15 +324,15 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
      * So adddup2 works use memory mapping instead of a pipe to
      * communicate an error.
      */
-    size_t spawn_error_length = align_to_page_size(sizeof(struct spawn_error));
-
-    volatile struct spawn_error *spawn_error
-        = mmap(NULL, spawn_error_length, PROT_READ | PROT_WRITE,
-               MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (MAP_FAILED == spawn_error) {
-        errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
+    linted_ko reader;
+    linted_ko writer;
+    {
+        linted_ko xx[2U];
+        if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+            return errno;
+        }
+        reader = xx[0U];
+        writer = xx[1U];
     }
 
     size_t count = 0U;
@@ -353,7 +350,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             void *xx;
             if ((errnum = linted_mem_alloc_array(&xx, count + 3U,
                                                  sizeof input_envp[0U])) != 0) {
-                goto unmap_spawn_error;
+                goto close_pipes;
             }
             envp = xx;
         }
@@ -419,11 +416,34 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             linted_mem_free(envp);
         }
 
-    unmap_spawn_error:
-        if (-1 == munmap((void *)spawn_error, spawn_error_length)) {
+    close_pipes : {
+        linted_error close_errnum = linted_ko_close(writer);
+        if (0 == errnum) {
+            errnum = close_errnum;
+        }
+    }
+
+        {
+            linted_error spawn_error;
+            size_t bytes_wrote;
+            linted_error read_errnum = linted_io_read_all(
+                reader, &bytes_wrote, &spawn_error, sizeof spawn_error);
             if (0 == errnum) {
-                errnum = errno;
-                LINTED_ASSUME(errnum != 0);
+                errnum = read_errnum;
+            }
+
+            if (0 == errnum) {
+                /* If bytes_wrote is zero then a succesful exec occured */
+                if (bytes_wrote == sizeof spawn_error) {
+                    errnum = spawn_error;
+                }
+            }
+        }
+
+        {
+            linted_error close_errnum = linted_ko_close(reader);
+            if (0 == errnum) {
+                errnum = close_errnum;
             }
         }
 
@@ -436,6 +456,8 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
     if (file_actions != NULL && file_actions->action_count > 0U) {
         sprintf(listen_pid, "LISTEN_PID=%i", getpid());
     }
+
+    linted_ko_close(reader);
 
     if (attr != NULL) {
         if (attr->chrootdir != NULL) {
@@ -471,15 +493,15 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
              *
              */
             if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == mount(NULL, attr->chrootdir, "tmpfs", 0, NULL)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == chdir(attr->chrootdir)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
@@ -487,14 +509,14 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
 
                 if (mount_arg->mkdir_flag) {
                     if (-1 == mkdir(mount_arg->target, S_IRWXU)) {
-                        exit_with_error(spawn_error, errno);
+                        exit_with_error(writer, errno);
                     }
                 } else if (mount_arg->touch_flag) {
                     linted_ko xx;
                     if ((errnum = linted_file_create(
                              &xx, AT_FDCWD, mount_arg->target, LINTED_FILE_EXCL,
                              S_IRWXU)) != 0) {
-                        exit_with_error(spawn_error, errno);
+                        exit_with_error(writer, errno);
                     }
                     linted_ko_close(xx);
                 }
@@ -504,7 +526,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                 if (-1 == mount(mount_arg->source, mount_arg->target,
                                 mount_arg->filesystemtype, mountflags,
                                 mount_arg->data)) {
-                    exit_with_error(spawn_error, errno);
+                    exit_with_error(writer, errno);
                 }
 
                 if ((mountflags & MS_BIND) != 0U) {
@@ -512,7 +534,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                     if (-1 == mount(mount_arg->source, mount_arg->target,
                                     mount_arg->filesystemtype, mountflags,
                                     mount_arg->data)) {
-                        exit_with_error(spawn_error, errno);
+                        exit_with_error(writer, errno);
                     }
                 }
             }
@@ -521,11 +543,11 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
              * mount MS_MOVE
              */
             if (-1 == syscall(__NR_pivot_root, ".", ".")) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == umount2(".", MNT_DETACH)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
         }
 
@@ -539,16 +561,16 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
             if (-1 == priority) {
                 errnum = errno;
                 if (errnum != 0) {
-                    exit_with_error(spawn_error, errnum);
+                    exit_with_error(writer, errnum);
                 }
             }
 
             if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == setgroups(0U, NULL)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
         }
     }
@@ -561,7 +583,7 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
         dirfd_copy = AT_FDCWD;
     } else if (is_relative_path && at_fdcwd) {
         if (-1 == (dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, 0L))) {
-            exit_with_error(spawn_error, errno);
+            exit_with_error(writer, errno);
         }
     } else {
         dirfd_copy = -1;
@@ -580,18 +602,26 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
                     */
                     dirfd_copy = fcntl(dirfd_copy, F_DUPFD_CLOEXEC, 0L);
                     if (-1 == dirfd_copy) {
-                        exit_with_error(spawn_error, errno);
+                        exit_with_error(writer, errno);
                     }
                 }
 
+                if (writer == newfildes) {
+                    linted_ko new_writer = fcntl(writer, F_DUPFD_CLOEXEC, 0L);
+                    if (-1 == new_writer) {
+                        exit_with_error(writer, errno);
+                    }
+                    writer = new_writer;
+                }
+
                 if (-1 == dup2(action->adddup2.oldfildes, newfildes)) {
-                    exit_with_error(spawn_error, errno);
+                    exit_with_error(writer, errno);
                 }
                 break;
             }
 
             default:
-                exit_with_error(spawn_error, EINVAL);
+                exit_with_error(writer, EINVAL);
             }
         }
     }
@@ -606,29 +636,29 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
              */
             cap_t caps = cap_get_proc();
             if (NULL == caps) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             /* Drop all capabilities after exec */
             if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
             if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == cap_set_proc(caps)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
 
             if (-1 == cap_free(caps)) {
-                exit_with_error(spawn_error, errno);
+                exit_with_error(writer, errno);
             }
         }
     }
 
     if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
-        exit_with_error(spawn_error, errno);
+        exit_with_error(writer, errno);
     }
 
     /* Ban the process from spawning new ones so that resource
@@ -636,17 +666,17 @@ linted_error linted_spawn(pid_t *restrict childp, int dirfd,
      */
     if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
                     &ban_forks_filter, 0UL, 0UL)) {
-        exit_with_error(spawn_error, errno);
+        exit_with_error(writer, errno);
     }
 
-    execveat(dirfd_copy, filename, argv, (char * const *)envp);
+    errnum = my_execveat(dirfd_copy, filename, argv, (char * const *)envp);
 
-    exit_with_error(spawn_error, errno);
+    exit_with_error(writer, errnum);
     return 0;
 }
 
-static int execveat(int dirfd, const char *filename, char *const argv[],
-                    char *const envp[])
+static linted_error my_execveat(int dirfd, const char *filename,
+                                char *const argv[], char *const envp[])
 {
     linted_error errnum;
     bool is_relative_path = filename[0U] != '/';
@@ -659,8 +689,7 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
             if ((errnum = linted_mem_alloc(&xx, strlen("/proc/self/fd/") + 10U
                                                 + strlen(filename) + 1U))
                 != 0) {
-                errno = errnum;
-                return -1;
+                return errnum;
             }
             new_path = xx;
         }
@@ -669,57 +698,18 @@ static int execveat(int dirfd, const char *filename, char *const argv[],
     }
 
     execve(filename, argv, envp);
+    errnum = errno;
 
-    {
-        errnum = errno;
-        linted_mem_free(new_path);
-        errno = errnum;
-    }
+    linted_mem_free(new_path);
 
-    return -1;
+    return errnum;
 }
 
-static size_t align_to_page_size(size_t size)
+static void exit_with_error(linted_ko writer, linted_error errnum)
 {
-    size_t page_size = sysconf(_SC_PAGESIZE);
 
-    /* This should always be true */
-    assert(page_size > 0U);
-
-    /* Round up to a multiple of page size */
-    size_t remainder = size % page_size;
-    if (0U == remainder)
-        return size;
-
-    return size - remainder + page_size;
-}
-
-static void exit_with_error(volatile struct spawn_error *spawn_error,
-                            linted_error errnum)
-{
-    spawn_error->errnum = errnum;
-
-    /* Stop the SIG_IGN handler from catching SIGTERM */
-    {
-        struct sigaction action = { 0 };
-
-        action.sa_handler = SIG_DFL;
-
-        sigaction(SIGTERM, &action, NULL);
-    }
-
-    /* Unlock SIGTERM */
-    {
-        sigset_t termset;
-        sigemptyset(&termset);
-        sigaddset(&termset, SIGTERM);
-
-        pthread_sigmask(SIG_UNBLOCK, &termset, NULL);
-    }
-
-    raise(SIGTERM);
-
-    LINTED_ASSUME_UNREACHABLE();
+    linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
+    _Exit(0);
 }
 
 #define THREAD_CLONE                                                           \

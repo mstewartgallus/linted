@@ -530,17 +530,6 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
 
     if ((revents & POLLNVAL) != 0) {
         errnum = EBADF;
-    } else if ((revents & POLLHUP) != 0) {
-        errnum = EPIPE;
-    } else if ((revents & POLLERR) != 0) {
-        linted_error xx = errnum;
-        socklen_t optlen = sizeof xx;
-        if (-1 == getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &optlen)) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-        } else {
-            errnum = xx;
-        }
     }
 
     return errnum;
