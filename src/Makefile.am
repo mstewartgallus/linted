@@ -36,7 +36,6 @@ include %C%/mem/Makefile.am
 include %C%/mq/Makefile.am
 include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
-include %C%/service/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am

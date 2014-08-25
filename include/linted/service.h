@@ -24,25 +24,9 @@
  * Services.
  */
 
-enum linted_service {
-    LINTED_SERVICE_INIT,
-    LINTED_SERVICE_LOGGER,
-    LINTED_SERVICE_GUI,
-    LINTED_SERVICE_SIMULATOR,
-    LINTED_SERVICE_STDIN,
-    LINTED_SERVICE_STDOUT,
-    LINTED_SERVICE_STDERR,
-    LINTED_SERVICE_LOG,
-    LINTED_SERVICE_CONTROLLER,
-    LINTED_SERVICE_UPDATER
-};
-
 enum {
     LINTED_SERVICE_NAME_MAX = 255
 };
 #define LINTED_SERVICE_NAME_MAX ((unsigned)LINTED_SERVICE_NAME_MAX)
-
-linted_error linted_service_for_name(enum linted_service *restrict service,
-                                     char const *name);
 
 #endif /* LINTED_SERVICE_H */
