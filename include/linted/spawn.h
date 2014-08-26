@@ -52,8 +52,7 @@ void linted_spawn_file_actions_destroy(
 /**
  * Spawns a ptraced child
  */
-linted_error linted_spawn(pid_t *childp, linted_ko dirko,
-                          char const *path,
+linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *path,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char *const argv[], char *const envp[]);

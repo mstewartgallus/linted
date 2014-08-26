@@ -74,7 +74,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	{
 		void *xx;
 		if ((errnum = linted_mem_alloc(&xx, sizeof *pool +
-		                                       workers_size)) != 0) {
+		                                        workers_size)) != 0) {
 			return errnum;
 		}
 		pool = xx;

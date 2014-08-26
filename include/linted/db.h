@@ -37,12 +37,11 @@
 
 typedef linted_ko linted_db;
 
-linted_error linted_db_open(linted_db *dbp, linted_ko cwd,
-                            char const *pathname, unsigned long flags);
+linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
+                            unsigned long flags);
 linted_error linted_db_close(linted_db db);
 
-linted_error linted_db_temp_file(linted_db db, linted_ko *kop,
-                                 char **pathp);
+linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp);
 linted_error linted_db_temp_send(linted_db db, char const *path,
                                  char const *name);
 

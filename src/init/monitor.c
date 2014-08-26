@@ -256,8 +256,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_read_connection(struct linted_asynch_task *task);
 static linted_error on_write_connection(struct linted_asynch_task *task);
 
-static linted_error
-dispatch_drainers(struct linted_asynch_task *completed_task);
+static linted_error dispatch_drainers(struct linted_asynch_task *task);
 
 static linted_error drain_on_new_connection(struct linted_asynch_task *task);
 static linted_error drain_on_process_wait(struct linted_asynch_task *task);
@@ -756,9 +755,7 @@ drain_dispatches:
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-			linted_error poll_errnum =
-			    linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum) {
+			if (EAGAIN == linted_asynch_pool_poll(pool, &xx)) {
 				break;
 			}
 			completed_task = xx;
@@ -772,7 +769,7 @@ drain_dispatches:
 
 	{
 		linted_error close_errnum =
-		    connection_pool_destroy(connection_pool);
+			connection_pool_destroy(connection_pool);
 		if (0 == errnum) {
 			errnum = close_errnum;
 		}
@@ -1144,36 +1141,36 @@ static linted_error controller_create(linted_ko *kop)
 	return linted_controller_create(kop, 0U);
 }
 
-static linted_error dispatch(struct linted_asynch_task *completed_task)
+static linted_error dispatch(struct linted_asynch_task *task)
 {
-	switch (completed_task->task_action) {
+	switch (task->task_action) {
 	case NEW_CONNECTIONS:
-		return on_new_connection(completed_task);
+		return on_new_connection(task);
 
 	case WAITER:
-		return on_process_wait(completed_task);
+		return on_process_wait(task);
 
 	case READ_CONNECTION:
-		return on_read_connection(completed_task);
+		return on_read_connection(task);
 
 	case WRITE_CONNECTION:
-		return on_write_connection(completed_task);
+		return on_write_connection(task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_process_wait(struct linted_asynch_task *completed_task)
+static linted_error on_process_wait(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0) {
 		return errnum;
 	}
 
 	struct wait_service_task *wait_service_task =
-	    LINTED_DOWNCAST(struct wait_service_task, completed_task);
+	    LINTED_DOWNCAST(struct wait_service_task, task);
 
 	struct linted_asynch_pool *pool = wait_service_task->pool;
 	pid_t halt_pid = wait_service_task->halt_pid;
@@ -1188,7 +1185,7 @@ static linted_error on_process_wait(struct linted_asynch_task *completed_task)
 		pid = exit_info->si_pid;
 	}
 
-	linted_asynch_pool_submit(pool, completed_task);
+	linted_asynch_pool_submit(pool, task);
 
 	switch (exit_code) {
 	case CLD_DUMPED:
@@ -1263,7 +1260,6 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 			goto got_space;
 		}
 	}
-	/* Impossible, listen has limited this */
 	LINTED_ASSUME_UNREACHABLE();
 got_space:
 	connection->ko = new_socket;
@@ -1293,13 +1289,11 @@ close_new_socket : {
 	return errnum;
 }
 
-static linted_error
-on_read_connection(struct linted_asynch_task *completed_task)
+static linted_error on_read_connection(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	struct read_conn_task *read_conn_task =
-	    LINTED_DOWNCAST(struct read_conn_task, completed_task);
+	struct read_conn_task *read_conn_task = LINTED_DOWNCAST(struct read_conn_task, task);
 
 	struct linted_asynch_pool *pool = read_conn_task->pool;
 	struct connection_pool *connection_pool =
@@ -1308,7 +1302,7 @@ on_read_connection(struct linted_asynch_task *completed_task)
 	union service const *services = read_conn_task->services;
 	size_t services_size = read_conn_task->services_size;
 
-	if ((errnum = completed_task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
 		if ((errnum = connection_remove(connection, connection_pool)) !=
 		    0) {
@@ -1451,31 +1445,29 @@ static linted_error on_write_connection(struct linted_asynch_task *task)
 
 	errnum = task->errnum;
 
-	{
-		linted_error remove_errnum =
-		    connection_remove(connection, connection_pool);
-		if (0 == errnum) {
-			errnum = remove_errnum;
-		}
+	linted_error remove_errnum = connection_remove(connection,
+	                                               connection_pool);
+	if (0 == errnum) {
+		errnum = remove_errnum;
 	}
 
 	return errnum;
 }
 
-static linted_error dispatch_drainers(struct linted_asynch_task *completed_task)
+static linted_error dispatch_drainers(struct linted_asynch_task *task)
 {
-	switch (completed_task->task_action) {
+	switch (task->task_action) {
 	case NEW_CONNECTIONS:
-		return drain_on_new_connection(completed_task);
+		return drain_on_new_connection(task);
 
 	case WAITER:
-		return drain_on_process_wait(completed_task);
+		return drain_on_process_wait(task);
 
 	case READ_CONNECTION:
-		return drain_on_read_connection(completed_task);
+		return drain_on_read_connection(task);
 
 	case WRITE_CONNECTION:
-		return drain_on_write_connection(completed_task);
+		return drain_on_write_connection(task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();

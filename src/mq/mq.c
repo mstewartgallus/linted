@@ -42,8 +42,7 @@ static linted_error check_for_poll_error(linted_ko ko, short revents);
 /**
  * Implemented using POSIX message queues.
  */
-linted_error linted_mq_create(linted_mq *mqp,
-                              char const *debugpath,
+linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                               struct linted_mq_attr const *attr,
                               unsigned long flags)
 {

@@ -31,7 +31,7 @@
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                char const *pathname, unsigned long flags,
-                              mode_t mode)
+                               mode_t mode)
 {
 	linted_error errnum;
 

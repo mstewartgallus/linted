@@ -242,8 +242,8 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	return errnum;
 }
 
-linted_error linted_spawn_file_actions_init(
-    struct linted_spawn_file_actions **file_actionsp)
+linted_error
+linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 {
 	linted_error errnum;
 	struct linted_spawn_file_actions *file_actions;
@@ -309,8 +309,7 @@ void linted_spawn_file_actions_destroy(
 	linted_mem_free(file_actions);
 }
 
-linted_error linted_spawn(pid_t *childp, int dirfd,
-                          char const *filename,
+linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char *const argv[], char *const input_envp[])

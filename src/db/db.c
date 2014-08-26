@@ -60,8 +60,8 @@ static size_t align_to_page_size(size_t size);
 
 static linted_error prepend(char **result, char const *base, char const *end);
 
-linted_error linted_db_open(linted_db *dbp, linted_ko cwd,
-                            char const *pathname, unsigned long flags)
+linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
+                            unsigned long flags)
 {
 	linted_error errnum;
 
@@ -387,8 +387,7 @@ linted_error linted_db_close(linted_db db)
 	return linted_ko_close(db);
 }
 
-linted_error linted_db_temp_file(linted_db db, linted_ko *kop,
-                                 char **pathp)
+linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp)
 {
 	linted_error errnum = 0;
 
