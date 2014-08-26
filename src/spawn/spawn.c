@@ -757,6 +757,12 @@ static struct sock_filter const real_filter[] = {
 	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 	                offsetof(struct seccomp_data, nr)),
 
+	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_vfork, 0U, 1U),
+	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
+
+	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_fork, 0U, 1U),
+	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
+
 	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_clone, 1U, 0U),
 	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
 
