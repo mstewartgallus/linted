@@ -90,11 +90,6 @@ struct linted_spawn_attr
 	bool drop_caps : 1U;
 };
 
-struct spawn_error
-{
-	linted_error errnum;
-};
-
 static struct sock_fprog const ban_forks_filter;
 
 static linted_error my_execveat(int dirfd, const char *filename,
