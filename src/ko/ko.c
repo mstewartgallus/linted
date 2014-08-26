@@ -77,7 +77,7 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 
 linted_error linted_ko_dummy(linted_ko *kop)
 {
-	return linted_ko_open(kop, -1, "/dev/null", LINTED_KO_RDONLY);
+	return linted_ko_open(kop, AT_FDCWD, "/dev/null", LINTED_KO_RDONLY);
 }
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
@@ -165,7 +165,7 @@ linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
 {
 	char pathname[sizeof "/proc/self/fd/" + 10U];
 	sprintf(pathname, "/proc/self/fd/%i", koin);
-	return linted_ko_open(kooutp, -1, pathname, flags);
+	return linted_ko_open(kooutp, AT_FDCWD, pathname, flags);
 }
 
 linted_error linted_ko_close(linted_ko ko)

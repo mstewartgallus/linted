@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -218,7 +219,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					if ((errnum = linted_ko_open(
-					         &xx, -1, "/proc/self/uid_map",
+						     &xx, AT_FDCWD,
+						     "/proc/self/uid_map",
 					         LINTED_KO_WRONLY)) != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
@@ -246,7 +248,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					if ((errnum = linted_ko_open(
-					         &xx, -1, "/proc/self/gid_map",
+					         &xx, AT_FDCWD, "/proc/self/gid_map",
 					         LINTED_KO_WRONLY)) != 0) {
 						errno = errnum;
 						perror("linted_ko_open");

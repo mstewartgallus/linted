@@ -87,120 +87,8 @@ It is insecure to run a game as root!\n"));
 
 	char const *const process_name = argv[0U];
 
-	linted_ko *open_kos;
-	size_t open_kos_size;
-	{
-		linted_ko *xx;
-		size_t yy;
-		if ((errnum = find_open_kos(&xx, &yy)) != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: couldn't find open files: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		open_kos = xx;
-		open_kos_size = yy;
-	}
-
-	/* Sort the fds from smallest to largest */
-	sort_kos(open_kos, open_kos_size);
-
-	/* Sanitize the fds */
-	for (size_t ii = 0U; ii < open_kos_size; ++ii) {
-		linted_ko fd = open_kos[ii];
-
-		/* Running under Valgrind */
-		if (!is_open(fd)) {
-			open_kos[ii] = -1;
-			continue;
-		}
-
-		int oflags = fcntl(fd, F_GETFL);
-		if (-1 == oflags) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFL: %s\n",
-			                       process_name,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-
-		char pathname[sizeof FDS_DIR + 10U];
-		sprintf(pathname, FDS_DIR "/%i", fd);
-
-		int new_fd;
-		do {
-			new_fd = openat(-1, pathname, oflags | O_NONBLOCK |
-			                                  O_NOCTTY | O_CLOEXEC);
-			if (-1 == new_fd) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
-			}
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			linted_ko_close(fd);
-			open_kos[ii] = -1;
-			continue;
-		}
-
-		if (-1 == dup2(new_fd, fd)) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: dup2(%i, %i): %s\n",
-			                       process_name, new_fd, fd,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-
-		if (-1 == fcntl(fd, F_SETFD, (long)oflags | FD_CLOEXEC)) {
-			perror("fcntl");
-			return EXIT_FAILURE;
-		}
-
-		if ((errnum = linted_ko_close(new_fd)) != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: linted_ko_close: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-	}
-
-	size_t bad_files = 0U;
-	for (size_t ii = 0U; ii < open_kos_size; ++ii) {
-		while (-1 == open_kos[ii]) {
-			++bad_files;
-
-			if (open_kos_size <= ii + 1U) {
-				break;
-			}
-			memmove(&open_kos[ii], &open_kos[ii + 1U],
-			        open_kos_size - ii - 1U);
-		}
-	}
-	open_kos_size -= bad_files;
-
 	size_t kos_size = linted_start_config.kos_size;
 	linted_ko *kos = linted_start_config.kos;
-
-	if (open_kos_size < kos_size + 3U) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little files passed in\n",
-		                       process_name);
-		return EXIT_FAILURE;
-	}
-
-	for (size_t ii = 0U; ii < kos_size; ++ii) {
-		kos[ii] = open_kos[ii + 3U];
-	}
-
-	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
-		/* Don't check for errors, could just be a leaked /dev/full
-		 * handle */
-		linted_ko_close(open_kos[ii]);
-	}
-	linted_mem_free(open_kos);
 
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
@@ -247,6 +135,100 @@ It is insecure to run a game as root!\n"));
 			return EXIT_FAILURE;
 		}
 	}
+
+	linted_ko *open_kos;
+	size_t open_kos_size;
+	{
+		linted_ko *xx;
+		size_t yy;
+		if ((errnum = find_open_kos(&xx, &yy)) != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: couldn't find open files: %s\n",
+			                       process_name,
+			                       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		open_kos = xx;
+		open_kos_size = yy;
+	}
+
+	if (open_kos_size < kos_size + 3U) {
+		linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: too little files passed in\n",
+		                       process_name);
+		return EXIT_FAILURE;
+	}
+
+	/* Sort the fds from smallest to largest */
+	sort_kos(open_kos, open_kos_size);
+
+	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
+		/* Don't check for errors, could just be a leaked /dev/full
+		 * handle */
+		linted_ko_close(open_kos[ii]);
+	}
+
+	/* Sanitize the fds */
+	for (size_t ii = 0U; ii < 3U + kos_size; ++ii) {
+		linted_ko fd = open_kos[ii];
+
+		int oflags = fcntl(fd, F_GETFL);
+		if (-1 == oflags) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFL: %s\n",
+			                       process_name,
+			                       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		char pathname[sizeof FDS_DIR + 10U];
+		sprintf(pathname, FDS_DIR "/%i", fd);
+
+		int new_fd;
+		do {
+			new_fd = openat(AT_FDCWD, pathname, oflags | O_NONBLOCK |
+			                O_NOCTTY | O_CLOEXEC);
+			if (-1 == new_fd) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			} else {
+				errnum = 0;
+			}
+		} while (EINTR == errnum);
+		if (errnum != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: openat: %s\n",
+			                       process_name,
+			                       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == dup2(new_fd, fd)) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: dup2(%i, %i): %s\n",
+			                       process_name, new_fd, fd,
+			                       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == fcntl(fd, F_SETFD, (long)oflags | FD_CLOEXEC)) {
+			perror("fcntl");
+			return EXIT_FAILURE;
+		}
+
+		if ((errnum = linted_ko_close(new_fd)) != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: linted_ko_close: %s\n",
+			                       process_name,
+			                       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+	}
+
+	for (size_t ii = 0U; ii < kos_size; ++ii) {
+		kos[ii] = open_kos[ii + 3U];
+	}
+	linted_mem_free(open_kos);
 
 	linted_ko cwd;
 	if (linted_start_config.open_current_working_directory) {
@@ -454,7 +436,7 @@ static linted_error get_system_entropy(unsigned *entropyp)
 
 	{
 		linted_ko xx;
-		if ((errnum = linted_ko_open(&xx, -1, "/dev/random",
+		if ((errnum = linted_ko_open(&xx, AT_FDCWD, "/dev/random",
 		                             LINTED_KO_RDONLY)) != 0) {
 			return errnum;
 		}
