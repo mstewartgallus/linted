@@ -75,12 +75,12 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 	return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko *restrict kop)
+linted_error linted_ko_dummy(linted_ko *kop)
 {
 	return linted_ko_open(kop, -1, "/dev/null", LINTED_KO_RDONLY);
 }
 
-linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
+linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
 	linted_error errnum;
@@ -160,7 +160,7 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
 	return 0;
 }
 
-linted_error linted_ko_reopen(linted_ko *restrict kooutp, linted_ko koin,
+linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
                               unsigned long flags)
 {
 	char pathname[sizeof "/proc/self/fd/" + 10U];
@@ -245,7 +245,7 @@ void linted_ko_task_accept(struct linted_ko_task_accept *task,
 }
 
 void linted_ko_do_poll(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *restrict task)
+                       struct linted_asynch_task *task)
 {
 	struct linted_ko_task_poll *restrict task_poll =
 	    LINTED_DOWNCAST(struct linted_ko_task_poll, task);
@@ -270,9 +270,9 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 }
 
 void linted_ko_do_read(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *restrict task)
+                       struct linted_asynch_task *task)
 {
-	struct linted_ko_task_read *restrict task_read =
+	struct linted_ko_task_read *task_read =
 	    LINTED_DOWNCAST(struct linted_ko_task_read, task);
 	size_t bytes_read = task_read->current_position;
 	size_t bytes_left = task_read->size - bytes_read;
@@ -336,9 +336,9 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 }
 
 void linted_ko_do_write(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task *restrict task)
+                        struct linted_asynch_task *task)
 {
-	struct linted_ko_task_write *restrict task_write =
+	struct linted_ko_task_write *task_write =
 	    LINTED_DOWNCAST(struct linted_ko_task_write, task);
 	size_t bytes_wrote = task_write->current_position;
 	size_t bytes_left = task_write->size - bytes_wrote;
@@ -447,9 +447,9 @@ return_reply:
 }
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,
-                         struct linted_asynch_task *restrict task)
+                         struct linted_asynch_task *task)
 {
-	struct linted_ko_task_accept *restrict task_accept =
+	struct linted_ko_task_accept *task_accept =
 	    LINTED_DOWNCAST(struct linted_ko_task_accept, task);
 
 	linted_ko new_ko = -1;

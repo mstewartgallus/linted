@@ -21,7 +21,7 @@
 
 #include <errno.h>
 
-linted_error linted_log_create(linted_log *restrict logp, unsigned long flags)
+linted_error linted_log_create(linted_log *logp, unsigned long flags)
 {
 	if (flags != 0U) {
 		return EINVAL;

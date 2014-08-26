@@ -78,9 +78,9 @@ struct linted_ko_task_write
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 
-linted_error linted_ko_dummy(linted_ko *restrict kop);
+linted_error linted_ko_dummy(linted_ko *kop);
 
-linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
+linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags);
 
 /**
@@ -91,7 +91,7 @@ linted_error linted_ko_open(linted_ko *restrict kop, linted_ko dirko,
  *      /proc/self/fd but dealing with bind is more complicated and
  *      not something I fully understand.
  */
-linted_error linted_ko_reopen(linted_ko *restrict kooutp, linted_ko koin,
+linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
                               unsigned long flags);
 
 /**
@@ -124,18 +124,18 @@ void linted_ko_task_accept(struct linted_ko_task_accept *task,
                            unsigned task_action, linted_ko ko);
 
 void linted_ko_do_poll(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *restrict task);
+                       struct linted_asynch_task *task);
 
 void linted_ko_do_read(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *restrict task);
+                       struct linted_asynch_task *task);
 
 /**
  * @warning Consumes pending SIGPIPEs
  */
 void linted_ko_do_write(struct linted_asynch_pool *pool,
-                        struct linted_asynch_task *restrict task);
+                        struct linted_asynch_task *task);
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,
-                         struct linted_asynch_task *restrict task);
+                         struct linted_asynch_task *task);
 
 #endif /* LINTED_KO_H */

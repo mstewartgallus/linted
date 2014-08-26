@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-linted_error linted_mem_alloc(void **restrict memp, size_t size)
+linted_error linted_mem_alloc(void **memp, size_t size)
 {
 	if (0U == size) {
 		size = 1U;
@@ -40,7 +40,7 @@ linted_error linted_mem_alloc(void **restrict memp, size_t size)
 	return 0;
 }
 
-linted_error linted_mem_alloc_array(void **restrict memp, size_t nmemb,
+linted_error linted_mem_alloc_array(void **memp, size_t nmemb,
                                     size_t size)
 {
 	if (size != 0U && SIZE_MAX / size < nmemb) {
@@ -63,7 +63,7 @@ linted_error linted_mem_alloc_array(void **restrict memp, size_t nmemb,
 	return 0;
 }
 
-linted_error linted_mem_alloc_zeroed(void **restrict memp, size_t size)
+linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 {
 	if (0U == size) {
 		size = 1U;
@@ -80,7 +80,7 @@ linted_error linted_mem_alloc_zeroed(void **restrict memp, size_t size)
 	return 0;
 }
 
-linted_error linted_mem_alloc_array_zeroed(void **restrict memp, size_t nmemb,
+linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
                                            size_t size)
 {
 	if (0U == nmemb || 0U == size) {
@@ -105,7 +105,7 @@ linted_error linted_mem_alloc_array_zeroed(void **restrict memp, size_t nmemb,
 	return 0;
 }
 
-linted_error linted_mem_realloc(void **restrict memp, void *restrict memory,
+linted_error linted_mem_realloc(void **memp, void *memory,
                                 size_t new_size)
 {
 	if (0U == new_size) {
@@ -123,8 +123,8 @@ linted_error linted_mem_realloc(void **restrict memp, void *restrict memory,
 	return 0;
 }
 
-linted_error linted_mem_realloc_array(void **restrict memp,
-                                      void *restrict memory, size_t nmemb,
+linted_error linted_mem_realloc_array(void **memp,
+                                      void *memory, size_t nmemb,
                                       size_t size)
 {
 	if (size != 0U && SIZE_MAX / size < nmemb) {
@@ -147,7 +147,7 @@ linted_error linted_mem_realloc_array(void **restrict memp,
 	return 0;
 }
 
-void linted_mem_free(void *restrict memory)
+void linted_mem_free(void *memory)
 {
 	free(memory);
 }

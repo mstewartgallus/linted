@@ -85,7 +85,7 @@ struct linted_updater_task_receive
 
 static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
-linted_error linted_updater_create(linted_updater *restrict updaterp,
+linted_error linted_updater_create(linted_updater *updaterp,
                                    unsigned long flags);
 
 void linted_updater_send(struct linted_updater_task_send *task,
@@ -96,7 +96,7 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
                             unsigned task_id, linted_updater updater);
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
-                           struct linted_updater_update *restrict update);
+                           struct linted_updater_update *update);
 
 static inline float linted_updater_angle_to_float(linted_updater_angle theta)
 {

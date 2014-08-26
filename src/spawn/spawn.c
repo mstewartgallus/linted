@@ -101,7 +101,7 @@ static linted_error my_execveat(int dirfd, const char *filename,
                                 char *const argv[], char *const envp[]);
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
-linted_error linted_spawn_attr_init(struct linted_spawn_attr **restrict attrp)
+linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
 	linted_error errnum;
 	struct linted_spawn_attr *attr;
@@ -123,12 +123,12 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **restrict attrp)
 	return 0;
 }
 
-void linted_spawn_attr_drop_caps(struct linted_spawn_attr *restrict attr)
+void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr)
 {
 	attr->drop_caps = true;
 }
 
-void linted_spawn_attr_destroy(struct linted_spawn_attr *restrict attr)
+void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
 	for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
 		struct mount_args *mount_arg = &attr->mount_args[ii];
@@ -142,13 +142,13 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *restrict attr)
 	linted_mem_free(attr);
 }
 
-void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *restrict attr,
+void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir)
 {
 	attr->chrootdir = chrootdir;
 }
 
-linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
+linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
                                         bool mkdir_flag, bool touch_flag,
@@ -243,7 +243,7 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
 }
 
 linted_error linted_spawn_file_actions_init(
-    struct linted_spawn_file_actions **restrict file_actionsp)
+    struct linted_spawn_file_actions **file_actionsp)
 {
 	linted_error errnum;
 	struct linted_spawn_file_actions *file_actions;
@@ -264,7 +264,7 @@ linted_error linted_spawn_file_actions_init(
 }
 
 linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **restrict file_actionsp, int oldfildes,
+    struct linted_spawn_file_actions **file_actionsp, int oldfildes,
     int newfildes)
 {
 	linted_error errnum;
@@ -304,12 +304,12 @@ linted_error linted_spawn_file_actions_adddup2(
 }
 
 void linted_spawn_file_actions_destroy(
-    struct linted_spawn_file_actions *restrict file_actions)
+    struct linted_spawn_file_actions *file_actions)
 {
 	linted_mem_free(file_actions);
 }
 
-linted_error linted_spawn(pid_t *restrict childp, int dirfd,
+linted_error linted_spawn(pid_t *childp, int dirfd,
                           char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,

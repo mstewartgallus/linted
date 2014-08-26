@@ -83,8 +83,7 @@ struct linted_asynch_task_sleep_until
 };
 #endif
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
-                                           poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);

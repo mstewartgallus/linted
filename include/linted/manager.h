@@ -120,6 +120,6 @@ linted_manager_send_request(linted_manager manager,
 
 linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply *reply,
-                                       size_t *restrict size);
+                                       size_t *size);
 
 #endif /* LINTED_MANAGER_H */

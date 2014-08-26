@@ -55,15 +55,14 @@ struct linted_asynch_pool
 static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
-                     struct linted_asynch_task *restrict task);
+                     struct linted_asynch_task *task);
 
 static void run_task_waitid(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *restrict task);
+                            struct linted_asynch_task *task);
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *restrict task);
+                                 struct linted_asynch_task *task);
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
-                                           poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
 {
 	linted_error errnum;
@@ -75,7 +74,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
 	{
 		void *xx;
 		if ((errnum = linted_mem_alloc(&xx, sizeof *pool +
-		                                        workers_size)) != 0) {
+		                                       workers_size)) != 0) {
 			return errnum;
 		}
 		pool = xx;
@@ -301,7 +300,7 @@ static void *worker_routine(void *arg)
 }
 
 static void run_task(struct linted_asynch_pool *pool,
-                     struct linted_asynch_task *restrict task)
+                     struct linted_asynch_task *task)
 {
 	switch (task->type) {
 	case LINTED_ASYNCH_TASK_POLL:
@@ -342,9 +341,9 @@ static void run_task(struct linted_asynch_pool *pool,
 }
 
 static void run_task_waitid(struct linted_asynch_pool *pool,
-                            struct linted_asynch_task *restrict task)
+                            struct linted_asynch_task *task)
 {
-	struct linted_asynch_task_waitid *restrict task_wait =
+	struct linted_asynch_task_waitid *task_wait =
 	    LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
 	linted_error errnum;
 
@@ -367,7 +366,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 }
 
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *restrict task)
+                                 struct linted_asynch_task *task)
 {
 	struct linted_asynch_task_sleep_until *restrict task_sleep =
 	    LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);

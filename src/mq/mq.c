@@ -42,8 +42,8 @@ static linted_error check_for_poll_error(linted_ko ko, short revents);
 /**
  * Implemented using POSIX message queues.
  */
-linted_error linted_mq_create(linted_mq *restrict mqp,
-                              char const *restrict debugpath,
+linted_error linted_mq_create(linted_mq *mqp,
+                              char const *debugpath,
                               struct linted_mq_attr const *attr,
                               unsigned long flags)
 {
@@ -180,9 +180,9 @@ void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
 }
 
 void linted_mq_do_receive(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *restrict task)
+                          struct linted_asynch_task *task)
 {
-	struct linted_mq_task_receive *restrict task_receive =
+	struct linted_mq_task_receive *task_receive =
 	    LINTED_DOWNCAST(struct linted_mq_task_receive, task);
 	size_t bytes_read = 0U;
 	linted_error errnum = 0;
@@ -231,9 +231,9 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 }
 
 void linted_mq_do_send(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *restrict task)
+                       struct linted_asynch_task *task)
 {
-	struct linted_mq_task_send *restrict task_send =
+	struct linted_mq_task_send *task_send =
 	    LINTED_DOWNCAST(struct linted_mq_task_send, task);
 	size_t bytes_wrote = 0U;
 	linted_error errnum = 0;

@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <stddef.h>
 
-linted_error linted_updater_create(linted_updater *restrict updaterp,
+linted_error linted_updater_create(linted_updater *updaterp,
                                    unsigned long flags)
 {
 	if (flags != 0U) {
@@ -71,7 +71,7 @@ void linted_updater_receive(struct linted_updater_task_receive *task,
 }
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
-                           struct linted_updater_update *restrict update)
+                           struct linted_updater_update *update)
 {
 	char const *tip = task->message;
 

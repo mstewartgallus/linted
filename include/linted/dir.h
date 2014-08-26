@@ -29,7 +29,7 @@
 
 typedef linted_ko linted_dir;
 
-linted_error linted_dir_create(linted_dir *restrict dirp, linted_ko dirko,
+linted_error linted_dir_create(linted_dir *dirp, linted_ko dirko,
                                char const *pathname, unsigned long flags,
                                mode_t mode);
 
