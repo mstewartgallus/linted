@@ -1,6 +1,7 @@
 # -*- mode: yaml -*-
 BasedOnStyle: LLVM
-IndentWidth: 4
+UseTab: ForIndentation
+IndentWidth: 8
 ColumnLimit: 80
+AllowShortIfStatementsOnASingleLine: false
 BreakBeforeBraces: Linux
-BreakBeforeBinaryOperators: true

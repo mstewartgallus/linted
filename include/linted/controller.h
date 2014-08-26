@@ -33,27 +33,27 @@ typedef linted_mq linted_controller;
 
 struct linted_controller_message
 {
-    int_fast32_t x_tilt;
-    int_fast32_t y_tilt;
+	int_fast32_t x_tilt;
+	int_fast32_t y_tilt;
 
-    _Bool left : 1U;
-    _Bool right : 1U;
-    _Bool forward : 1U;
-    _Bool back : 1U;
+	_Bool left : 1U;
+	_Bool right : 1U;
+	_Bool forward : 1U;
+	_Bool back : 1U;
 
-    _Bool jumping : 1U;
+	_Bool jumping : 1U;
 };
 
 struct linted_controller_task_send
 {
-    struct linted_mq_task_send parent;
-    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	struct linted_mq_task_send parent;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 struct linted_controller_task_receive
 {
-    struct linted_mq_task_receive parent;
-    char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	struct linted_mq_task_receive parent;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 linted_error linted_controller_create(linted_controller *restrict controllerp,
@@ -61,8 +61,8 @@ linted_error linted_controller_create(linted_controller *restrict controllerp,
 
 void linted_controller_send(struct linted_controller_task_send *task,
                             unsigned task_id, linted_controller controller,
-                            struct linted_controller_message const
-                            *restrict message);
+                            struct linted_controller_message const *restrict
+                                message);
 
 void linted_controller_receive(struct linted_controller_task_receive *task,
                                unsigned task_id, linted_controller controller);

@@ -21,6 +21,6 @@
 
 int main(void)
 {
-    linted_error_string(-1);
-    return EXIT_SUCCESS;
+	linted_error_string(-1);
+	return EXIT_SUCCESS;
 }

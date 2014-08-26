@@ -30,68 +30,68 @@
  */
 
 #define LINTED_MANAGER_PATH_MAX                                                \
-    (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
+	(sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
 typedef linted_ko linted_manager;
 
 enum linted_manager_type {
-    LINTED_MANAGER_REBOOT,
-    LINTED_MANAGER_STATUS,
-    LINTED_MANAGER_STOP
+	LINTED_MANAGER_REBOOT,
+	LINTED_MANAGER_STATUS,
+	LINTED_MANAGER_STOP
 };
 
 struct linted_manager_status_request
 {
-    enum linted_manager_type type;
-    size_t size;
-    char service_name[LINTED_SERVICE_NAME_MAX];
+	enum linted_manager_type type;
+	size_t size;
+	char service_name[LINTED_SERVICE_NAME_MAX];
 };
 
 struct linted_manager_status_reply
 {
-    _Bool is_up;
+	_Bool is_up;
 };
 
 struct linted_manager_stop_request
 {
-    enum linted_manager_type type;
-    size_t size;
-    char service_name[LINTED_SERVICE_NAME_MAX];
+	enum linted_manager_type type;
+	size_t size;
+	char service_name[LINTED_SERVICE_NAME_MAX];
 };
 
 struct linted_manager_stop_reply
 {
-    _Bool was_up;
+	_Bool was_up;
 };
 
 union linted_manager_request
 {
-    enum linted_manager_type type;
-    struct linted_manager_status_request status;
-    struct linted_manager_stop_request stop;
+	enum linted_manager_type type;
+	struct linted_manager_status_request status;
+	struct linted_manager_stop_request stop;
 };
 
 union linted_manager_reply
 {
-    struct linted_manager_status_reply status;
-    struct linted_manager_stop_reply stop;
+	struct linted_manager_status_reply status;
+	struct linted_manager_stop_reply stop;
 };
 
 struct linted_manager_task_accept
 {
-    struct linted_ko_task_accept parent;
+	struct linted_ko_task_accept parent;
 };
 
 struct linted_manager_task_recv_request
 {
-    struct linted_ko_task_read parent;
-    union linted_manager_request request;
+	struct linted_ko_task_read parent;
+	union linted_manager_request request;
 };
 
 struct linted_manager_task_send_reply
 {
-    struct linted_ko_task_write parent;
-    union linted_manager_reply reply;
+	struct linted_ko_task_write parent;
+	union linted_manager_reply reply;
 };
 
 linted_error linted_manager_bind(linted_manager *manager, int backlog,
@@ -114,9 +114,9 @@ void linted_manager_send_reply(struct linted_manager_task_send_reply *task,
                                unsigned task_action, linted_manager manager,
                                union linted_manager_reply const *reply);
 
-linted_error linted_manager_send_request(linted_manager manager,
-                                         union linted_manager_request const
-                                         *request);
+linted_error
+linted_manager_send_request(linted_manager manager,
+                            union linted_manager_request const *request);
 
 linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply *reply,

@@ -22,5 +22,5 @@
 
 char const *linted_error_string(linted_error errnum_to_print)
 {
-    return strerror(errnum_to_print);
+	return strerror(errnum_to_print);
 }

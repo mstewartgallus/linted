@@ -37,21 +37,22 @@
 #include <linux/sched.h>
 
 enum {
-    HELP,
-    VERSION_OPTION,
-    CHROOTDIR_OPTION,
-    SIMULATOR_FSTAB,
-    GUI_FSTAB,
-    LOGGER,
-    SIMULATOR,
-    GUI
+	HELP,
+	VERSION_OPTION,
+	CHROOTDIR_OPTION,
+	SIMULATOR_FSTAB,
+	GUI_FSTAB,
+	LOGGER,
+	SIMULATOR,
+	GUI
 };
 
-struct linted_start_config const linted_start_config
-    = { .canonical_process_name = PACKAGE_NAME "-init",
-        .open_current_working_directory = true,
-        .kos_size = 0U,
-        .kos = NULL };
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-init",
+	.open_current_working_directory = true,
+	.kos_size = 0U,
+	.kos = NULL
+};
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
@@ -61,229 +62,245 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(linted_ko cwd, char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    bool need_help = false;
-    bool need_version = false;
+	bool need_help = false;
+	bool need_version = false;
 
-    char const *bad_option = NULL;
+	char const *bad_option = NULL;
 
-    char const *logger_path = PKGLIBEXECDIR "/logger" EXEEXT;
-    char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
-    char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-    char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
-    char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
-    char const *chrootdir_path = CHROOTDIR;
+	char const *logger_path = PKGLIBEXECDIR "/logger" EXEEXT;
+	char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
+	char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
+	char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
+	char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
+	char const *chrootdir_path = CHROOTDIR;
 
-    for (size_t ii = 1U; ii < argc; ++ii) {
-        char const *argument = argv[ii];
+	for (size_t ii = 1U; ii < argc; ++ii) {
+		char const *argument = argv[ii];
 
-        static char const *const arguments[]
-            = {[HELP] = "--help",
-               [VERSION_OPTION] = "--version",
-               [CHROOTDIR_OPTION] = "--chrootdir",
-               [SIMULATOR_FSTAB] = "--simulator-fstab",
-               [GUI_FSTAB] = "--gui-fstab",
-               [LOGGER] = "--logger",
-               [SIMULATOR] = "--simulator",
-               [GUI] = "--gui" };
+		static char const *const arguments[] =
+		    {[HELP] = "--help",
+		     [VERSION_OPTION] = "--version",
+		     [CHROOTDIR_OPTION] = "--chrootdir",
+		     [SIMULATOR_FSTAB] = "--simulator-fstab",
+		     [GUI_FSTAB] = "--gui-fstab",
+		     [LOGGER] = "--logger",
+		     [SIMULATOR] = "--simulator",
+		     [GUI] = "--gui" };
 
-        int arg = -1;
-        for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
-            if (0 == strncmp(argument, arguments[jj], strlen(arguments[jj]))) {
-                arg = jj;
-                break;
-            }
-        }
+		int arg = -1;
+		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
+			if (0 == strncmp(argument, arguments[jj],
+			                 strlen(arguments[jj]))) {
+				arg = jj;
+				break;
+			}
+		}
 
-        switch (arg) {
-        bad_argument:
-        case -1:
-            bad_option = argument;
-            break;
+		switch (arg) {
+		bad_argument:
+		case -1:
+			bad_option = argument;
+			break;
 
-        case HELP:
-            if (argument[strlen(arguments[HELP])] != '\0') {
-                goto bad_argument;
-            }
-            need_help = true;
-            break;
+		case HELP:
+			if (argument[strlen(arguments[HELP])] != '\0') {
+				goto bad_argument;
+			}
+			need_help = true;
+			break;
 
-        case VERSION_OPTION:
-            if (argument[strlen(arguments[VERSION_OPTION])] != '\0') {
-                goto bad_argument;
-            }
-            need_version = true;
-            break;
+		case VERSION_OPTION:
+			if (argument[strlen(arguments[VERSION_OPTION])] !=
+			    '\0') {
+				goto bad_argument;
+			}
+			need_version = true;
+			break;
 
-        case CHROOTDIR_OPTION:
-            if (argument[strlen(arguments[CHROOTDIR_OPTION])] != '=') {
-                goto bad_argument;
-            }
-            chrootdir_path = argument + strlen("--chrootdir=");
-            break;
+		case CHROOTDIR_OPTION:
+			if (argument[strlen(arguments[CHROOTDIR_OPTION])] !=
+			    '=') {
+				goto bad_argument;
+			}
+			chrootdir_path = argument + strlen("--chrootdir=");
+			break;
 
-        case SIMULATOR_FSTAB:
-            if (argument[strlen(arguments[SIMULATOR_FSTAB])] != '=') {
-                goto bad_argument;
-            }
-            simulator_fstab_path = argument + strlen("--simulator-fstab=");
-            break;
+		case SIMULATOR_FSTAB:
+			if (argument[strlen(arguments[SIMULATOR_FSTAB])] !=
+			    '=') {
+				goto bad_argument;
+			}
+			simulator_fstab_path =
+			    argument + strlen("--simulator-fstab=");
+			break;
 
-        case GUI_FSTAB:
-            if (argument[strlen(arguments[GUI_FSTAB])] != '=') {
-                goto bad_argument;
-            }
-            gui_fstab_path = argument + strlen("--gui-fstab=");
-            break;
+		case GUI_FSTAB:
+			if (argument[strlen(arguments[GUI_FSTAB])] != '=') {
+				goto bad_argument;
+			}
+			gui_fstab_path = argument + strlen("--gui-fstab=");
+			break;
 
-        case LOGGER:
-            if (argument[strlen(arguments[LOGGER])] != '=') {
-                goto bad_argument;
-            }
-            logger_path = argument + strlen("--logger=");
-            break;
+		case LOGGER:
+			if (argument[strlen(arguments[LOGGER])] != '=') {
+				goto bad_argument;
+			}
+			logger_path = argument + strlen("--logger=");
+			break;
 
-        case SIMULATOR:
-            if (argument[strlen(arguments[SIMULATOR])] != '=') {
-                goto bad_argument;
-            }
-            simulator_path = argument + strlen("--simulator=");
-            break;
+		case SIMULATOR:
+			if (argument[strlen(arguments[SIMULATOR])] != '=') {
+				goto bad_argument;
+			}
+			simulator_path = argument + strlen("--simulator=");
+			break;
 
-        case GUI:
-            gui_path = argument + strlen("--gui=");
-            break;
-        }
-    }
+		case GUI:
+			gui_path = argument + strlen("--gui=");
+			break;
+		}
+	}
 
-    if (need_help) {
-        linted_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-                    LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
-        return EXIT_SUCCESS;
-    }
+	if (need_help) {
+		linted_help(STDOUT_FILENO, process_name,
+		            LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
+		            LINTED_STR(PACKAGE_BUGREPORT));
+		return EXIT_SUCCESS;
+	}
 
-    if (bad_option != NULL) {
-        linted_locale_on_bad_option(STDERR_FILENO, process_name, bad_option);
-        linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-                                        LINTED_STR("--help"));
-        return EXIT_FAILURE;
-    }
+	if (bad_option != NULL) {
+		linted_locale_on_bad_option(STDERR_FILENO, process_name,
+		                            bad_option);
+		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		                                LINTED_STR("--help"));
+		return EXIT_FAILURE;
+	}
 
-    if (need_version) {
-        linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-                              LINTED_STR(COPYRIGHT_YEAR));
-        return EXIT_SUCCESS;
-    }
+	if (need_version) {
+		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+		                      LINTED_STR(COPYRIGHT_YEAR));
+		return EXIT_SUCCESS;
+	}
 
-    gid_t gid = getgid();
-    uid_t uid = getuid();
+	gid_t gid = getgid();
+	uid_t uid = getuid();
 
-    /* Clone off a child in a new PID namespace. CLONE_NEWUSER is
-     * needed to allow the permissions to work.
-     */
-    pid_t child;
-    {
-        child = syscall(__NR_clone,
-                        SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWUTS,
-                        NULL);
-        if (-1 == child) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: can't clone unprivileged process: %s\n",
-                                   process_name, linted_error_string(errno));
-            return EXIT_FAILURE;
-        }
+	/* Clone off a child in a new PID namespace. CLONE_NEWUSER is
+	 * needed to allow the permissions to work.
+	 */
+	pid_t child;
+	{
+		child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER |
+		                                CLONE_NEWPID | CLONE_NEWUTS,
+		                NULL);
+		if (-1 == child) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL,
+			    "%s: can't clone unprivileged process: %s\n",
+			    process_name, linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
 
-        if (0 == child) {
-            /* Stupidly, uid_map and gid_map aren't writable in these
-             * when the binary is not dumpable.
-             */
-            if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
-                perror("prctl");
-                return EXIT_FAILURE;
-            }
+		if (0 == child) {
+			/* Stupidly, uid_map and gid_map aren't writable in
+			 * these
+			 * when the binary is not dumpable.
+			 */
+			if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
+				perror("prctl");
+				return EXIT_FAILURE;
+			}
 
-            {
-                linted_ko file;
-                {
-                    linted_ko xx;
-                    if ((errnum = linted_ko_open(&xx, -1, "/proc/self/uid_map",
-                                                 LINTED_KO_WRONLY)) != 0) {
-                        errno = errnum;
-                        perror("linted_ko_open");
-                        return EXIT_FAILURE;
-                    }
-                    file = xx;
-                }
+			{
+				linted_ko file;
+				{
+					linted_ko xx;
+					if ((errnum = linted_ko_open(
+					         &xx, -1, "/proc/self/uid_map",
+					         LINTED_KO_WRONLY)) != 0) {
+						errno = errnum;
+						perror("linted_ko_open");
+						return EXIT_FAILURE;
+					}
+					file = xx;
+				}
 
-                if ((errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-                                                     uid, uid)) != 0) {
-                    errno = errnum;
-                    perror("linted_io_write_format");
-                    return EXIT_FAILURE;
-                }
+				if ((errnum = linted_io_write_format(
+				         file, NULL, "%i %i 1\n", uid, uid)) !=
+				    0) {
+					errno = errnum;
+					perror("linted_io_write_format");
+					return EXIT_FAILURE;
+				}
 
-                if (-1 == linted_ko_close(file)) {
-                    perror("linted_ko_close");
-                    return EXIT_FAILURE;
-                }
-            }
+				if (-1 == linted_ko_close(file)) {
+					perror("linted_ko_close");
+					return EXIT_FAILURE;
+				}
+			}
 
-            {
-                linted_ko file;
-                {
-                    linted_ko xx;
-                    if ((errnum = linted_ko_open(&xx, -1, "/proc/self/gid_map",
-                                                 LINTED_KO_WRONLY)) != 0) {
-                        errno = errnum;
-                        perror("linted_ko_open");
-                        return EXIT_FAILURE;
-                    }
-                    file = xx;
-                }
+			{
+				linted_ko file;
+				{
+					linted_ko xx;
+					if ((errnum = linted_ko_open(
+					         &xx, -1, "/proc/self/gid_map",
+					         LINTED_KO_WRONLY)) != 0) {
+						errno = errnum;
+						perror("linted_ko_open");
+						return EXIT_FAILURE;
+					}
+					file = xx;
+				}
 
-                if ((errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-                                                     gid, gid)) != 0) {
-                    errno = errnum;
-                    perror("linted_io_write_format");
-                    return EXIT_FAILURE;
-                }
+				if ((errnum = linted_io_write_format(
+				         file, NULL, "%i %i 1\n", gid, gid)) !=
+				    0) {
+					errno = errnum;
+					perror("linted_io_write_format");
+					return EXIT_FAILURE;
+				}
 
-                if (-1 == linted_ko_close(file)) {
-                    perror("linted_ko_close");
-                    return EXIT_FAILURE;
-                }
-            }
+				if (-1 == linted_ko_close(file)) {
+					perror("linted_ko_close");
+					return EXIT_FAILURE;
+				}
+			}
 
-            if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
-                perror("prctl");
-                return EXIT_FAILURE;
-            }
+			if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
+				perror("prctl");
+				return EXIT_FAILURE;
+			}
 
-            if (-1
-                == sethostname(PACKAGE_TARNAME, sizeof PACKAGE_TARNAME - 1U)) {
-                perror("sethostname");
-                return EXIT_FAILURE;
-            }
+			if (-1 == sethostname(PACKAGE_TARNAME,
+			                      sizeof PACKAGE_TARNAME - 1U)) {
+				perror("sethostname");
+				return EXIT_FAILURE;
+			}
 
-            return linted_init_init(cwd, chrootdir_path, simulator_fstab_path,
-                                    gui_fstab_path, logger_path, simulator_path,
-                                    gui_path);
-        }
-    }
+			return linted_init_init(cwd, chrootdir_path,
+			                        simulator_fstab_path,
+			                        gui_fstab_path, logger_path,
+			                        simulator_path, gui_path);
+		}
+	}
 
-    {
-        siginfo_t info;
-        do {
-            errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            assert(errnum != EINVAL);
-            assert(errnum != ECHILD);
-            LINTED_ASSUME_UNREACHABLE();
-        }
-        return info.si_status;
-    }
+	{
+		siginfo_t info;
+		do {
+			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
+			             ? errno
+			             : 0;
+		} while (EINTR == errnum);
+		if (errnum != 0) {
+			assert(errnum != EINVAL);
+			assert(errnum != ECHILD);
+			LINTED_ASSUME_UNREACHABLE();
+		}
+		return info.si_status;
+	}
 }
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
@@ -291,76 +308,77 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
+	    0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n")))
-        != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_str(ko, NULL,
+	                                  LINTED_STR(" [OPTIONS]\n"))) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Play the game.\n"))) != 0) {
-        return errnum;
-    }
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"))) != 0) {
-        return errnum;
-    }
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --chrootdir         the directory the chroot is mounted to\n\
   --fstab             the location of the chroot mount instructions\n\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"))) != 0) {
-        return errnum;
-    }
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
-        return errnum;
-    }
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
 Report bugs to <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
+		return errnum;
+	}
+	if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
+		return errnum;
+	}
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+		return errnum;
+	}
 
-    if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
+		return errnum;
+	}
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
  home page: <"))) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
-        return errnum;
-    }
-    if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
-        return errnum;
-    }
+		return errnum;
+	}
+	if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
+		return errnum;
+	}
+	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+		return errnum;
+	}
 
-    return 0;
+	return 0;
 }

@@ -36,7 +36,7 @@ typedef linted_mq linted_log;
 
 struct linted_log_task
 {
-    struct linted_mq_task_receive parent;
+	struct linted_mq_task_receive parent;
 };
 
 linted_error linted_log_create(linted_log *restrict logp, unsigned long flags);

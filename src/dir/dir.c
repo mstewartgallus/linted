@@ -33,63 +33,64 @@ linted_error linted_dir_create(linted_ko *restrict kop, linted_ko dirko,
                                char const *pathname, unsigned long flags,
                                mode_t mode)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    if (flags != 0UL) {
-        return EINVAL;
-    }
+	if (flags != 0UL) {
+		return EINVAL;
+	}
 
-    /* Guard against potential concurrency issues by making a private
-     * copy */
-    linted_ko dirkodup;
-    {
-        linted_ko xx;
-        if ((errnum = linted_ko_reopen(&xx, dirko, LINTED_KO_DIRECTORY)) != 0) {
-            return errnum;
-        }
-        dirkodup = xx;
-    }
+	/* Guard against potential concurrency issues by making a private
+	 * copy */
+	linted_ko dirkodup;
+	{
+		linted_ko xx;
+		if ((errnum = linted_ko_reopen(&xx, dirko,
+		                               LINTED_KO_DIRECTORY)) != 0) {
+			return errnum;
+		}
+		dirkodup = xx;
+	}
 
 make_directory:
-    if (-1 == mkdirat(dirkodup, pathname, mode)) {
-        errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        if (EEXIST == errnum) {
-            goto open_directory;
-        }
-        goto close_dirkodup;
-    }
+	if (-1 == mkdirat(dirkodup, pathname, mode)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		if (EEXIST == errnum) {
+			goto open_directory;
+		}
+		goto close_dirkodup;
+	}
 
 open_directory:
-    ;
-    int fildes;
-    do {
-        fildes = openat(dirkodup, pathname,
-                        O_CLOEXEC | O_NONBLOCK | O_DIRECTORY, mode);
-        if (-1 == fildes) {
-            errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-        } else {
-            errnum = 0;
-        }
-    } while (EINTR == errnum);
+	;
+	int fildes;
+	do {
+		fildes = openat(dirkodup, pathname,
+		                O_CLOEXEC | O_NONBLOCK | O_DIRECTORY, mode);
+		if (-1 == fildes) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
 
-    if (ENOENT == errnum) {
-        goto make_directory;
-    }
+	if (ENOENT == errnum) {
+		goto make_directory;
+	}
 
 close_dirkodup : {
-    linted_error close_errnum = linted_ko_close(dirkodup);
-    assert(close_errnum != EBADF);
-    if (0 == errnum) {
-        errnum = close_errnum;
-    }
+	linted_error close_errnum = linted_ko_close(dirkodup);
+	assert(close_errnum != EBADF);
+	if (0 == errnum) {
+		errnum = close_errnum;
+	}
 }
 
-    if (errnum != 0) {
-        return errnum;
-    }
+	if (errnum != 0) {
+		return errnum;
+	}
 
-    *kop = fildes;
-    return 0;
+	*kop = fildes;
+	return 0;
 }

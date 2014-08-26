@@ -42,75 +42,76 @@
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
 
 enum {
-    ON_READ_TIMER,
-    ON_RECEIVE_CONTROLLER_EVENT,
-    ON_SENT_UPDATER_EVENT,
-    MAX_TASKS
+	ON_READ_TIMER,
+	ON_RECEIVE_CONTROLLER_EVENT,
+	ON_SENT_UPDATER_EVENT,
+	MAX_TASKS
 };
 
 struct action_state
 {
-    linted_updater_int x_tilt;
-    linted_updater_int y_tilt;
+	linted_updater_int x_tilt;
+	linted_updater_int y_tilt;
 
-    int x : 2U;
-    int z : 2U;
+	int x : 2U;
+	int z : 2U;
 
-    bool jumping : 1U;
+	bool jumping : 1U;
 };
 
 struct differentiable
 {
-    linted_updater_int value;
-    linted_updater_int old;
+	linted_updater_int value;
+	linted_updater_int old;
 };
 
 struct simulator_state
 {
-    struct differentiable position[3U];
+	struct differentiable position[3U];
 
-    linted_updater_angle x_rotation;
-    linted_updater_angle y_rotation;
+	linted_updater_angle x_rotation;
+	linted_updater_angle y_rotation;
 
-    bool update_pending : 1U;
-    bool write_in_progress : 1U;
+	bool update_pending : 1U;
+	bool write_in_progress : 1U;
 };
 
 struct sim_updater_task;
 
 struct sim_tick_task
 {
-    struct linted_asynch_task_sleep_until parent;
-    struct linted_asynch_pool *pool;
-    struct sim_updater_task *updater_task;
-    struct action_state const *action_state;
-    struct simulator_state *simulator_state;
-    linted_ko updater;
+	struct linted_asynch_task_sleep_until parent;
+	struct linted_asynch_pool *pool;
+	struct sim_updater_task *updater_task;
+	struct action_state const *action_state;
+	struct simulator_state *simulator_state;
+	linted_ko updater;
 };
 
 struct sim_controller_task
 {
-    struct linted_controller_task_receive parent;
-    struct linted_asynch_pool *pool;
-    struct action_state *action_state;
+	struct linted_controller_task_receive parent;
+	struct linted_asynch_pool *pool;
+	struct action_state *action_state;
 };
 
 struct sim_updater_task
 {
-    struct linted_updater_task_send parent;
-    struct simulator_state *simulator_state;
-    struct linted_asynch_pool *pool;
-    linted_ko updater;
+	struct linted_updater_task_send parent;
+	struct simulator_state *simulator_state;
+	struct linted_asynch_pool *pool;
+	linted_ko updater;
 };
 
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
-struct linted_start_config const linted_start_config
-    = { .canonical_process_name = PACKAGE_NAME "-simulator",
-        .open_current_working_directory = true,
-        .kos_size = LINTED_ARRAY_SIZE(kos),
-        .kos = kos,
-        .seccomp_bpf = &seccomp_filter };
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-simulator",
+	.open_current_working_directory = true,
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos,
+	.seccomp_bpf = &seccomp_filter
+};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
@@ -131,415 +132,427 @@ static linted_updater_int sign(linted_updater_int x);
 unsigned char linted_start(linted_ko cwd, char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
-    linted_log log = kos[0U];
-    linted_controller controller = kos[1U];
-    linted_updater updater = kos[2U];
+	linted_log log = kos[0U];
+	linted_controller controller = kos[1U];
+	linted_updater updater = kos[2U];
 
-    linted_error errnum;
+	linted_error errnum;
 
-    {
-        static char const message[] = "starting simulator";
-        linted_log_write(log, message, sizeof message - 1U);
-    }
+	{
+		static char const message[] = "starting simulator";
+		linted_log_write(log, message, sizeof message - 1U);
+	}
 
-    struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
+	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
-    struct simulator_state simulator_state
-        = { .update_pending = true, /* Initialize the gui at start */
-            .write_in_progress = false,
-            .position = { { .value = 0, .old = 0 }, { .value = 0, .old = 0 },
-                          { .value = 3 * 1024, .old = 3 * 1024 } },
-            .x_rotation = LINTED_UPDATER_ANGLE(1U, 2U),
-            .y_rotation = LINTED_UPDATER_ANGLE(0U, 1U) };
+	struct simulator_state simulator_state = {
+		.update_pending = true, /* Initialize the gui at start */
+		.write_in_progress = false,
+		.position = { { .value = 0, .old = 0 },
+			      { .value = 0, .old = 0 },
+			      { .value = 3 * 1024, .old = 3 * 1024 } },
+		.x_rotation = LINTED_UPDATER_ANGLE(1U, 2U),
+		.y_rotation = LINTED_UPDATER_ANGLE(0U, 1U)
+	};
 
-    struct linted_asynch_pool *pool;
-    {
-        struct linted_asynch_pool *xx;
-        if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
-            goto exit;
-        }
-        pool = xx;
-    }
+	struct linted_asynch_pool *pool;
+	{
+		struct linted_asynch_pool *xx;
+		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+			goto exit;
+		}
+		pool = xx;
+	}
 
-    struct sim_tick_task timer_task;
-    struct sim_controller_task controller_task;
-    struct sim_updater_task updater_task;
+	struct sim_tick_task timer_task;
+	struct sim_controller_task controller_task;
+	struct sim_updater_task updater_task;
 
-    {
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
+	{
+		struct timespec now;
+		clock_gettime(CLOCK_MONOTONIC, &now);
 
-        linted_asynch_task_sleep_until(LINTED_UPCAST(&timer_task),
-                                       ON_READ_TIMER, TIMER_ABSTIME, &now);
-    }
-    timer_task.pool = pool;
-    timer_task.updater_task = &updater_task;
-    timer_task.action_state = &action_state;
-    timer_task.simulator_state = &simulator_state;
-    timer_task.updater = updater;
+		linted_asynch_task_sleep_until(LINTED_UPCAST(&timer_task),
+		                               ON_READ_TIMER, TIMER_ABSTIME,
+		                               &now);
+	}
+	timer_task.pool = pool;
+	timer_task.updater_task = &updater_task;
+	timer_task.action_state = &action_state;
+	timer_task.simulator_state = &simulator_state;
+	timer_task.updater = updater;
 
-    linted_controller_receive(LINTED_UPCAST(&controller_task),
-                              ON_RECEIVE_CONTROLLER_EVENT, controller);
-    controller_task.pool = pool;
-    controller_task.action_state = &action_state;
+	linted_controller_receive(LINTED_UPCAST(&controller_task),
+	                          ON_RECEIVE_CONTROLLER_EVENT, controller);
+	controller_task.pool = pool;
+	controller_task.action_state = &action_state;
 
-    linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(&timer_task)));
-    linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&controller_task))));
+	linted_asynch_pool_submit(pool,
+	                          LINTED_UPCAST(LINTED_UPCAST(&timer_task)));
+	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
+	                                    LINTED_UPCAST(&controller_task))));
 
-    /* TODO: Detect SIGTERM and exit normally */
-    for (;;) {
-        struct linted_asynch_task *completed_task;
-        {
-            struct linted_asynch_task *xx;
-            linted_asynch_pool_wait(pool, &xx);
-            completed_task = xx;
-        }
+	/* TODO: Detect SIGTERM and exit normally */
+	for (;;) {
+		struct linted_asynch_task *completed_task;
+		{
+			struct linted_asynch_task *xx;
+			linted_asynch_pool_wait(pool, &xx);
+			completed_task = xx;
+		}
 
-        if ((errnum = dispatch(completed_task)) != 0) {
-            goto destroy_pool;
-        }
-    }
+		if ((errnum = dispatch(completed_task)) != 0) {
+			goto destroy_pool;
+		}
+	}
 
 destroy_pool : {
-    linted_asynch_pool_stop(pool);
+	linted_asynch_pool_stop(pool);
 
-    for (;;) {
-        struct linted_asynch_task *completed_task;
-        linted_error poll_errnum;
-        {
-            struct linted_asynch_task *xx;
-            poll_errnum = linted_asynch_pool_poll(pool, &xx);
-            if (EAGAIN == poll_errnum) {
-                break;
-            }
-            completed_task = xx;
-        }
+	for (;;) {
+		struct linted_asynch_task *completed_task;
+		linted_error poll_errnum;
+		{
+			struct linted_asynch_task *xx;
+			poll_errnum = linted_asynch_pool_poll(pool, &xx);
+			if (EAGAIN == poll_errnum) {
+				break;
+			}
+			completed_task = xx;
+		}
 
-        linted_error dispatch_errnum = completed_task->errnum;
-        if (0 == errnum) {
-            errnum = dispatch_errnum;
-        }
-    }
+		linted_error dispatch_errnum = completed_task->errnum;
+		if (0 == errnum) {
+			errnum = dispatch_errnum;
+		}
+	}
 
-    linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-    if (0 == errnum) {
-        errnum = destroy_errnum;
-    }
-    /* Insure that the tasks are in proper scope until they are
-     * terminated */
-    (void)timer_task;
-    (void)controller_task;
-    (void)updater_task;
+	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+	if (0 == errnum) {
+		errnum = destroy_errnum;
+	}
+	/* Insure that the tasks are in proper scope until they are
+	 * terminated */
+	(void)timer_task;
+	(void)controller_task;
+	(void)updater_task;
 }
 
 exit:
-    return errnum;
+	return errnum;
 }
 
 #define ALLOW(XX)                                                              \
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                    \
-        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                \
+	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
 static struct sock_filter const real_filter[] = {
-    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                    offsetof(struct seccomp_data, nr)),
-    /*  */ ALLOW(access),
-    /*  */ ALLOW(arch_prctl),
-    /*  */ ALLOW(brk),
-    /*  */ ALLOW(chdir),
-    /*  */ ALLOW(clock_nanosleep),
-    /*  */ ALLOW(clone),
-    /*  */ ALLOW(close),
-    /*  */ ALLOW(dup2),
-    /*  */ ALLOW(execve),
-    /*  */ ALLOW(exit_group),
-    /*  */ ALLOW(fcntl),
-    /*  */ ALLOW(fstat),
-    /*  */ ALLOW(futex),
-    /*  */ ALLOW(getdents),
-    /*  */ ALLOW(geteuid),
-    /*  */ ALLOW(getpid),
-    /*  */ ALLOW(getrlimit),
-    /*  */ ALLOW(gettid),
-    /*  */ ALLOW(getuid),
-    /*  */ ALLOW(lseek),
-    /*  */ ALLOW(mmap),
-    /*  */ ALLOW(mprotect),
-    /*  */ ALLOW(mq_timedreceive),
-    /*  */ ALLOW(mq_timedsend),
-    /*  */ ALLOW(munmap),
-    /*  */ ALLOW(open),
-    /*  */ ALLOW(openat),
-    /*  */ ALLOW(poll),
-    /*  */ ALLOW(prctl),
-    /*  */ ALLOW(read),
-    /*  */ ALLOW(restart_syscall),
-    /*  */ ALLOW(rt_sigaction),
-    /*  */ ALLOW(rt_sigprocmask),
-    /*  */ ALLOW(sched_getaffinity),
-    /*  */ ALLOW(setrlimit),
-    /*  */ ALLOW(set_robust_list),
-    /*  */ ALLOW(set_tid_address),
-    /*  */ ALLOW(stat),
-    /*  */ ALLOW(tgkill),
-    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+	                offsetof(struct seccomp_data, nr)),
+	/*  */ ALLOW(access),
+	/*  */ ALLOW(arch_prctl),
+	/*  */ ALLOW(brk),
+	/*  */ ALLOW(chdir),
+	/*  */ ALLOW(clock_nanosleep),
+	/*  */ ALLOW(clone),
+	/*  */ ALLOW(close),
+	/*  */ ALLOW(dup2),
+	/*  */ ALLOW(execve),
+	/*  */ ALLOW(exit_group),
+	/*  */ ALLOW(fcntl),
+	/*  */ ALLOW(fstat),
+	/*  */ ALLOW(futex),
+	/*  */ ALLOW(getdents),
+	/*  */ ALLOW(geteuid),
+	/*  */ ALLOW(getpid),
+	/*  */ ALLOW(getrlimit),
+	/*  */ ALLOW(gettid),
+	/*  */ ALLOW(getuid),
+	/*  */ ALLOW(lseek),
+	/*  */ ALLOW(mmap),
+	/*  */ ALLOW(mprotect),
+	/*  */ ALLOW(mq_timedreceive),
+	/*  */ ALLOW(mq_timedsend),
+	/*  */ ALLOW(munmap),
+	/*  */ ALLOW(open),
+	/*  */ ALLOW(openat),
+	/*  */ ALLOW(poll),
+	/*  */ ALLOW(prctl),
+	/*  */ ALLOW(read),
+	/*  */ ALLOW(restart_syscall),
+	/*  */ ALLOW(rt_sigaction),
+	/*  */ ALLOW(rt_sigprocmask),
+	/*  */ ALLOW(sched_getaffinity),
+	/*  */ ALLOW(setrlimit),
+	/*  */ ALLOW(set_robust_list),
+	/*  */ ALLOW(set_tid_address),
+	/*  */ ALLOW(stat),
+	/*  */ ALLOW(tgkill),
+	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
 };
 
-static struct sock_fprog const seccomp_filter
-    = { .len = LINTED_ARRAY_SIZE(real_filter),
-        .filter = (struct sock_filter *)real_filter };
+static struct sock_fprog const seccomp_filter = {
+	.len = LINTED_ARRAY_SIZE(real_filter),
+	.filter = (struct sock_filter *)real_filter
+};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
-    switch (completed_task->task_action) {
-    case ON_READ_TIMER:
-        return on_read_timer(completed_task);
+	switch (completed_task->task_action) {
+	case ON_READ_TIMER:
+		return on_read_timer(completed_task);
 
-    case ON_RECEIVE_CONTROLLER_EVENT:
-        return on_controller_receive(completed_task);
+	case ON_RECEIVE_CONTROLLER_EVENT:
+		return on_controller_receive(completed_task);
 
-    case ON_SENT_UPDATER_EVENT:
-        return on_sent_update(completed_task);
+	case ON_SENT_UPDATER_EVENT:
+		return on_sent_update(completed_task);
 
-    default:
-        LINTED_ASSUME_UNREACHABLE();
-    }
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
 }
 
 static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    if ((errnum = completed_task->errnum) != 0) {
-        return errnum;
-    }
+	if ((errnum = completed_task->errnum) != 0) {
+		return errnum;
+	}
 
-    struct sim_tick_task *timer_task
-        = LINTED_DOWNCAST(struct sim_tick_task, completed_task);
+	struct sim_tick_task *timer_task =
+	    LINTED_DOWNCAST(struct sim_tick_task, completed_task);
 
-    struct linted_asynch_pool *pool = timer_task->pool;
-    linted_ko updater = timer_task->updater;
-    struct sim_updater_task *updater_task = timer_task->updater_task;
-    struct action_state const *action_state = timer_task->action_state;
-    struct simulator_state *simulator_state = timer_task->simulator_state;
+	struct linted_asynch_pool *pool = timer_task->pool;
+	linted_ko updater = timer_task->updater;
+	struct sim_updater_task *updater_task = timer_task->updater_task;
+	struct action_state const *action_state = timer_task->action_state;
+	struct simulator_state *simulator_state = timer_task->simulator_state;
 
-    time_t requested_sec = LINTED_UPCAST(timer_task)->request.tv_sec;
-    long requested_nsec = LINTED_UPCAST(timer_task)->request.tv_nsec;
+	time_t requested_sec = LINTED_UPCAST(timer_task)->request.tv_sec;
+	long requested_nsec = LINTED_UPCAST(timer_task)->request.tv_nsec;
 
-    long const second = 1000000000;
-    requested_nsec += second / 60;
-    if (requested_nsec >= second) {
-        requested_nsec -= second;
-        requested_sec += 1;
-    }
+	long const second = 1000000000;
+	requested_nsec += second / 60;
+	if (requested_nsec >= second) {
+		requested_nsec -= second;
+		requested_sec += 1;
+	}
 
-    LINTED_UPCAST(timer_task)->request.tv_sec = requested_sec;
-    LINTED_UPCAST(timer_task)->request.tv_nsec = requested_nsec;
+	LINTED_UPCAST(timer_task)->request.tv_sec = requested_sec;
+	LINTED_UPCAST(timer_task)->request.tv_nsec = requested_nsec;
 
-    linted_asynch_pool_submit(pool, completed_task);
+	linted_asynch_pool_submit(pool, completed_task);
 
-    simulate_tick(simulator_state, action_state);
+	simulate_tick(simulator_state, action_state);
 
-    if (!simulator_state->update_pending
-        || simulator_state->write_in_progress) {
-        return 0;
-    }
+	if (!simulator_state->update_pending ||
+	    simulator_state->write_in_progress) {
+		return 0;
+	}
 
-    {
-        struct linted_updater_update update
-            = { .x_position = simulator_state->position[0U].value,
-                .y_position = simulator_state->position[1U].value,
-                .z_position = simulator_state->position[2U].value,
-                .x_rotation = simulator_state->x_rotation,
-                .y_rotation = simulator_state->y_rotation };
+	{
+		struct linted_updater_update update = {
+			.x_position = simulator_state->position[0U].value,
+			.y_position = simulator_state->position[1U].value,
+			.z_position = simulator_state->position[2U].value,
+			.x_rotation = simulator_state->x_rotation,
+			.y_rotation = simulator_state->y_rotation
+		};
 
-        linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
-                            updater, &update);
-    }
+		linted_updater_send(LINTED_UPCAST(updater_task),
+		                    ON_SENT_UPDATER_EVENT, updater, &update);
+	}
 
-    updater_task->simulator_state = simulator_state;
-    updater_task->pool = pool;
-    updater_task->updater = updater;
+	updater_task->simulator_state = simulator_state;
+	updater_task->pool = pool;
+	updater_task->updater = updater;
 
-    linted_asynch_pool_submit(
-        pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(updater_task))));
+	linted_asynch_pool_submit(
+	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(updater_task))));
 
-    simulator_state->update_pending = false;
-    simulator_state->write_in_progress = true;
+	simulator_state->update_pending = false;
+	simulator_state->write_in_progress = true;
 
-    return 0;
+	return 0;
 }
 
 static linted_error on_controller_receive(struct linted_asynch_task *task)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    if ((errnum = task->errnum) != 0) {
-        return errnum;
-    }
+	if ((errnum = task->errnum) != 0) {
+		return errnum;
+	}
 
-    struct sim_controller_task *controller_task
-        = LINTED_DOWNCAST(struct sim_controller_task, task);
+	struct sim_controller_task *controller_task =
+	    LINTED_DOWNCAST(struct sim_controller_task, task);
 
-    struct linted_asynch_pool *pool = controller_task->pool;
-    struct action_state *action_state = controller_task->action_state;
+	struct linted_asynch_pool *pool = controller_task->pool;
+	struct action_state *action_state = controller_task->action_state;
 
-    struct linted_controller_message message;
-    if ((errnum = linted_controller_decode(LINTED_UPCAST(controller_task),
-                                           &message)) != 0) {
-        return errnum;
-    }
+	struct linted_controller_message message;
+	if ((errnum = linted_controller_decode(LINTED_UPCAST(controller_task),
+	                                       &message)) != 0) {
+		return errnum;
+	}
 
-    linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_submit(pool, task);
 
-    action_state->x = message.right - message.left;
-    action_state->z = message.back - message.forward;
+	action_state->x = message.right - message.left;
+	action_state->z = message.back - message.forward;
 
-    action_state->x_tilt = -message.x_tilt;
-    action_state->y_tilt = -message.y_tilt;
+	action_state->x_tilt = -message.x_tilt;
+	action_state->y_tilt = -message.y_tilt;
 
-    action_state->jumping = message.jumping;
+	action_state->jumping = message.jumping;
 
-    return 0;
+	return 0;
 }
 
 static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    if ((errnum = completed_task->errnum) != 0) {
-        return errnum;
-    }
+	if ((errnum = completed_task->errnum) != 0) {
+		return errnum;
+	}
 
-    struct sim_updater_task *updater_task
-        = LINTED_DOWNCAST(struct sim_updater_task, completed_task);
+	struct sim_updater_task *updater_task =
+	    LINTED_DOWNCAST(struct sim_updater_task, completed_task);
 
-    struct linted_asynch_pool *pool = updater_task->pool;
-    linted_ko updater = updater_task->updater;
-    struct simulator_state *simulator_state = updater_task->simulator_state;
+	struct linted_asynch_pool *pool = updater_task->pool;
+	linted_ko updater = updater_task->updater;
+	struct simulator_state *simulator_state = updater_task->simulator_state;
 
-    simulator_state->write_in_progress = false;
+	simulator_state->write_in_progress = false;
 
-    if (!simulator_state->update_pending) {
-        return 0;
-    }
+	if (!simulator_state->update_pending) {
+		return 0;
+	}
 
-    {
-        struct linted_updater_update update
-            = { .x_position = simulator_state->position[0U].value,
-                .y_position = simulator_state->position[1U].value,
-                .z_position = simulator_state->position[2U].value,
-                .x_rotation = simulator_state->x_rotation,
-                .y_rotation = simulator_state->y_rotation };
+	{
+		struct linted_updater_update update = {
+			.x_position = simulator_state->position[0U].value,
+			.y_position = simulator_state->position[1U].value,
+			.z_position = simulator_state->position[2U].value,
+			.x_rotation = simulator_state->x_rotation,
+			.y_rotation = simulator_state->y_rotation
+		};
 
-        linted_updater_send(LINTED_UPCAST(updater_task), ON_SENT_UPDATER_EVENT,
-                            updater, &update);
-    }
+		linted_updater_send(LINTED_UPCAST(updater_task),
+		                    ON_SENT_UPDATER_EVENT, updater, &update);
+	}
 
-    updater_task->simulator_state = simulator_state;
-    updater_task->pool = pool;
-    updater_task->updater = updater;
+	updater_task->simulator_state = simulator_state;
+	updater_task->pool = pool;
+	updater_task->updater = updater;
 
-    linted_asynch_pool_submit(pool, completed_task);
+	linted_asynch_pool_submit(pool, completed_task);
 
-    simulator_state->update_pending = false;
-    simulator_state->write_in_progress = true;
+	simulator_state->update_pending = false;
+	simulator_state->write_in_progress = true;
 
-    return 0;
+	return 0;
 }
 
 static void simulate_tick(struct simulator_state *simulator_state,
                           struct action_state const *action_state)
 {
 
-    linted_updater_angle x_rotation = simulator_state->x_rotation;
+	linted_updater_angle x_rotation = simulator_state->x_rotation;
 
-    linted_updater_int const thrusts[3U]
-        = { -(linted_updater_cos(x_rotation) * action_state->x) / 2
-            - (linted_updater_sin(x_rotation) * action_state->z) / 2,
-            -LINTED_UPDATER_INT_MAX * action_state->jumping,
-            -(linted_updater_cos(x_rotation) * action_state->z) / 2
-            + (linted_updater_sin(x_rotation) * action_state->x) / 2 };
+	linted_updater_int const thrusts[3U] = {
+		-(linted_updater_cos(x_rotation) * action_state->x) / 2 -
+		    (linted_updater_sin(x_rotation) * action_state->z) / 2,
+		-LINTED_UPDATER_INT_MAX * action_state->jumping,
+		-(linted_updater_cos(x_rotation) * action_state->z) / 2 +
+		    (linted_updater_sin(x_rotation) * action_state->x) / 2
+	};
 
-    for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(simulator_state->position);
-         ++ii) {
-        linted_updater_int position = simulator_state->position[ii].value;
-        linted_updater_int old_position = simulator_state->position[ii].old;
-        linted_updater_int old_velocity = position - old_position;
-        linted_updater_int thrust = thrusts[ii];
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(simulator_state->position);
+	     ++ii) {
+		linted_updater_int position =
+		    simulator_state->position[ii].value;
+		linted_updater_int old_position =
+		    simulator_state->position[ii].old;
+		linted_updater_int old_velocity = position - old_position;
+		linted_updater_int thrust = thrusts[ii];
 
-        intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
+		intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
 
-        linted_updater_int guess_velocity
-            = linted_updater_isatadd(a, old_velocity);
+		linted_updater_int guess_velocity =
+		    linted_updater_isatadd(a, old_velocity);
 
-        linted_updater_int friction
-            = min_int(absolute(guess_velocity), 3 /* = μ Fₙ */)
-              * -sign(guess_velocity);
+		linted_updater_int friction =
+		    min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
+		    -sign(guess_velocity);
 
-        linted_updater_int new_velocity
-            = linted_updater_isatadd(guess_velocity, friction);
+		linted_updater_int new_velocity =
+		    linted_updater_isatadd(guess_velocity, friction);
 
-        linted_updater_int new_position
-            = linted_updater_isatadd(position, new_velocity);
+		linted_updater_int new_position =
+		    linted_updater_isatadd(position, new_velocity);
 
-        simulator_state->position[ii].value = new_position;
-        simulator_state->position[ii].old = position;
-    }
+		simulator_state->position[ii].value = new_position;
+		simulator_state->position[ii].old = position;
+	}
 
-    simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
-    simulate_clamped_rotation(&simulator_state->y_rotation,
-                              action_state->y_tilt);
+	simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
+	simulate_clamped_rotation(&simulator_state->y_rotation,
+	                          action_state->y_tilt);
 
-    simulator_state->update_pending = true;
+	simulator_state->update_pending = true;
 }
 
 static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt)
 {
 
-    linted_updater_angle increment = LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
+	linted_updater_angle increment =
+	    LINTED_UPDATER_ANGLE(1, ROTATION_SPEED);
 
-    *rotation = linted_updater_angle_add(
-        (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation, increment);
+	*rotation = linted_updater_angle_add(
+	    (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation, increment);
 }
 
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
                                       linted_updater_int tilt)
 {
-    linted_updater_int tilt_sign = sign(tilt);
+	linted_updater_int tilt_sign = sign(tilt);
 
-    linted_updater_angle new_rotation;
+	linted_updater_angle new_rotation;
 
-    if (absolute(tilt) <= DEAD_ZONE) {
-        new_rotation = *rotation;
-    } else {
-        linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15U, 16U);
-        linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3U, 16U);
-        linted_updater_angle increment
-            = LINTED_UPDATER_ANGLE(1U, ROTATION_SPEED);
+	if (absolute(tilt) <= DEAD_ZONE) {
+		new_rotation = *rotation;
+	} else {
+		linted_updater_angle minimum = LINTED_UPDATER_ANGLE(15U, 16U);
+		linted_updater_angle maximum = LINTED_UPDATER_ANGLE(3U, 16U);
+		linted_updater_angle increment =
+		    LINTED_UPDATER_ANGLE(1U, ROTATION_SPEED);
 
-        new_rotation = linted_updater_angle_add_clamped(
-            tilt_sign, minimum, maximum, *rotation, increment);
-    }
+		new_rotation = linted_updater_angle_add_clamped(
+		    tilt_sign, minimum, maximum, *rotation, increment);
+	}
 
-    *rotation = new_rotation;
+	*rotation = new_rotation;
 }
 
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y)
 {
-    return x < y ? x : y;
+	return x < y ? x : y;
 }
 
 static linted_updater_int sign(linted_updater_int x)
 {
-    return x > 0 ? 1 : 0 == x ? 0 : -1;
+	return x > 0 ? 1 : 0 == x ? 0 : -1;
 }
 
 static linted_updater_uint absolute(linted_updater_int x)
 {
-    /* The implicit cast to unsigned is okay, obviously */
-    return LINTED_UPDATER_INT_MIN == x ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
-                                       : imaxabs(x);
+	/* The implicit cast to unsigned is okay, obviously */
+	return LINTED_UPDATER_INT_MIN == x
+	           ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
+	           : imaxabs(x);
 }

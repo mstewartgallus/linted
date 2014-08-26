@@ -37,50 +37,56 @@ unsigned char linted_init_init(linted_ko cwd, char const *chrootdir_path,
                                char const *logger_path,
                                char const *simulator_path, char const *gui_path)
 {
-    linted_error errnum;
+	linted_error errnum;
 
-    static char const process_name[] = "init";
+	static char const process_name[] = "init";
 
-    /* The init. In the future it should reap all processes and
-     * monitor the process monitor to restart it if it dies
-     */
-    if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
-        perror("prctl");
-        return EXIT_FAILURE;
-    }
+	/* The init. In the future it should reap all processes and
+	 * monitor the process monitor to restart it if it dies
+	 */
+	if (-1 ==
+	    prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
+		perror("prctl");
+		return EXIT_FAILURE;
+	}
 
-    if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL)) {
-        perror("prctl");
-        return EXIT_FAILURE;
-    }
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL)) {
+		perror("prctl");
+		return EXIT_FAILURE;
+	}
 
-    pid_t child;
-    {
-        child = fork();
-        if (-1 == child) {
-            linted_io_write_format(STDERR_FILENO, NULL,
-                                   "%s: can't clone unprivileged process: %s\n",
-                                   process_name, linted_error_string(errno));
-            return EXIT_FAILURE;
-        }
+	pid_t child;
+	{
+		child = fork();
+		if (-1 == child) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL,
+			    "%s: can't clone unprivileged process: %s\n",
+			    process_name, linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
 
-        if (0 == child) {
-            return linted_init_monitor(cwd, chrootdir_path,
-                                       simulator_fstab_path, gui_fstab_path,
-                                       logger_path, simulator_path, gui_path);
-        }
-    }
+		if (0 == child) {
+			return linted_init_monitor(cwd, chrootdir_path,
+			                           simulator_fstab_path,
+			                           gui_fstab_path, logger_path,
+			                           simulator_path, gui_path);
+		}
+	}
 
-    {
-        siginfo_t info;
-        do {
-            errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-        } while (EINTR == errnum);
-        if (errnum != 0) {
-            assert(errnum != EINVAL);
-            assert(errnum != ECHILD);
-            LINTED_ASSUME_UNREACHABLE();
-        }
-        return info.si_status;
-    }
+	{
+		siginfo_t info;
+		do {
+			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
+			             ? errno
+			             : 0;
+		} while (EINTR == errnum);
+		if (errnum != 0) {
+			assert(errnum != EINVAL);
+			assert(errnum != ECHILD);
+			LINTED_ASSUME_UNREACHABLE();
+		}
+		return info.si_status;
+	}
 }

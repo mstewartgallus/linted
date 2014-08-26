@@ -24,11 +24,11 @@
 
 struct linted_start_config
 {
-    char const *canonical_process_name;
-    size_t kos_size;
-    linted_ko *kos;
-    struct sock_fprog const *seccomp_bpf;
-    _Bool open_current_working_directory : 1U;
+	char const *canonical_process_name;
+	size_t kos_size;
+	linted_ko *kos;
+	struct sock_fprog const *seccomp_bpf;
+	_Bool open_current_working_directory : 1U;
 };
 
 extern struct linted_start_config const linted_start_config;

@@ -43,48 +43,48 @@
  */
 
 enum {
-    LINTED_ASYNCH_TASK_POLL,
-    LINTED_ASYNCH_TASK_READ,
-    LINTED_ASYNCH_TASK_WRITE,
-    LINTED_ASYNCH_TASK_MQ_RECEIVE,
-    LINTED_ASYNCH_TASK_MQ_SEND,
-    LINTED_ASYNCH_TASK_WAITID,
-    LINTED_ASYNCH_TASK_ACCEPT,
-    LINTED_ASYNCH_TASK_SLEEP_UNTIL
+	LINTED_ASYNCH_TASK_POLL,
+	LINTED_ASYNCH_TASK_READ,
+	LINTED_ASYNCH_TASK_WRITE,
+	LINTED_ASYNCH_TASK_MQ_RECEIVE,
+	LINTED_ASYNCH_TASK_MQ_SEND,
+	LINTED_ASYNCH_TASK_WAITID,
+	LINTED_ASYNCH_TASK_ACCEPT,
+	LINTED_ASYNCH_TASK_SLEEP_UNTIL
 };
 
 struct linted_asynch_pool;
 
 struct linted_asynch_task
 {
-    struct linted_queue_node parent;
-    linted_error errnum;
-    unsigned type;
-    unsigned task_action;
+	struct linted_queue_node parent;
+	linted_error errnum;
+	unsigned type;
+	unsigned task_action;
 };
 
 #if _POSIX_C_SOURCE >= 200809L
 struct linted_asynch_task_waitid
 {
-    struct linted_asynch_task parent;
-    siginfo_t info;
-    idtype_t idtype;
-    id_t id;
-    int options;
+	struct linted_asynch_task parent;
+	siginfo_t info;
+	idtype_t idtype;
+	id_t id;
+	int options;
 };
 #endif
 
 #if _POSIX_C_SOURCE >= 199309L
 struct linted_asynch_task_sleep_until
 {
-    struct linted_asynch_task parent;
-    int flags;
-    struct timespec request;
+	struct linted_asynch_task parent;
+	int flags;
+	struct timespec request;
 };
 #endif
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool
-                                       **restrict poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
+                                           poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);

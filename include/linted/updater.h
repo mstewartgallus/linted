@@ -42,33 +42,33 @@ typedef int_least32_t linted_updater_int;
 
 typedef struct linted_updater__angle
 {
-    linted_updater_uint _value;
+	linted_updater_uint _value;
 } linted_updater_angle;
 
 struct linted_updater_update
 {
-    linted_updater_int x_position;
-    linted_updater_int y_position;
-    linted_updater_int z_position;
+	linted_updater_int x_position;
+	linted_updater_int y_position;
+	linted_updater_int z_position;
 
-    linted_updater_angle x_rotation;
-    linted_updater_angle y_rotation;
+	linted_updater_angle x_rotation;
+	linted_updater_angle y_rotation;
 };
 
 struct linted_updater_task_send
 {
-    struct linted_mq_task_send parent;
-    char message
-        [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
-         + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
+	struct linted_mq_task_send parent;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
+	             LINTED_RPC_UINT32_SIZE];
 };
 
 struct linted_updater_task_receive
 {
-    struct linted_mq_task_receive parent;
-    char message
-        [LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE
-         + LINTED_RPC_UINT32_SIZE + LINTED_RPC_UINT32_SIZE];
+	struct linted_mq_task_receive parent;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
+	             LINTED_RPC_UINT32_SIZE];
 };
 
 #define LINTED_UPDATER_UINT_MAX UINT32_MAX
@@ -79,9 +79,9 @@ struct linted_updater_task_receive
 #define LINTED_UPDATER_Id PRIdLEAST32
 
 #define LINTED_UPDATER_ANGLE(X, Y)                                             \
-    {                                                                          \
-        ._value = (((uintmax_t)LINTED_UPDATER_UINT_MAX) / (Y)) * (X)           \
-    }
+	{                                                                      \
+		._value = (((uintmax_t)LINTED_UPDATER_UINT_MAX) / (Y)) * (X)   \
+	}
 
 static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
@@ -100,47 +100,49 @@ void linted_updater_decode(struct linted_updater_task_receive const *task,
 
 static inline float linted_updater_angle_to_float(linted_updater_angle theta)
 {
-    return theta._value * (2 * 3.14159265358979323846264338327 / UINT32_MAX);
+	return theta._value *
+	       (2 * 3.14159265358979323846264338327 / UINT32_MAX);
 }
 
 static inline linted_updater_angle
 linted_updater_angle_add(int sign, linted_updater_angle theta,
                          linted_updater_angle phi)
 {
-    linted_updater_angle angle;
-    angle._value = (theta._value + sign * (int_fast64_t)phi._value)
-                   % UINT32_MAX;
-    return angle;
+	linted_updater_angle angle;
+	angle._value =
+	    (theta._value + sign * (int_fast64_t)phi._value) % UINT32_MAX;
+	return angle;
 }
 
 static inline linted_updater_angle linted_updater_angle_add_clamped(
     int sign, linted_updater_angle min, linted_updater_angle max,
     linted_updater_angle theta, linted_updater_angle phi)
 {
-    assert(max._value <= LINTED_UPDATER_UINT_MAX / 2U);
-    assert(LINTED_UPDATER_UINT_MAX / 2U < min._value);
+	assert(max._value <= LINTED_UPDATER_UINT_MAX / 2U);
+	assert(LINTED_UPDATER_UINT_MAX / 2U < min._value);
 
-    linted_updater_uint result
-        = (theta._value + sign * (int_fast64_t)phi._value)
-          % LINTED_UPDATER_UINT_MAX;
-    switch ((sign > 0) | (theta._value > LINTED_UPDATER_UINT_MAX / 2U) << 1U) {
-    case 1U | (1U << 1U) :
-        break;
+	linted_updater_uint result =
+	    (theta._value + sign * (int_fast64_t)phi._value) %
+	    LINTED_UPDATER_UINT_MAX;
+	switch ((sign > 0) | (theta._value > LINTED_UPDATER_UINT_MAX / 2U)
+	                         << 1U) {
+	case 1U | (1U << 1U) :
+		break;
 
-    case 1U | (0U << 1U) :
-        result = result > max._value ? max._value : result;
-        break;
+	case 1U | (0U << 1U) :
+		result = result > max._value ? max._value : result;
+		break;
 
-    case 0U | (1U << 1U) :
-        result = result > min._value ? result : min._value;
-        break;
+	case 0U | (1U << 1U) :
+		result = result > min._value ? result : min._value;
+		break;
 
-    case 0U | (0U << 1U) :
-        break;
-    }
-    linted_updater_angle angle;
-    angle._value = result;
-    return angle;
+	case 0U | (0U << 1U) :
+		break;
+	}
+	linted_updater_angle angle;
+	angle._value = result;
+	return angle;
 }
 
 /**
@@ -148,37 +150,37 @@ static inline linted_updater_angle linted_updater_angle_add_clamped(
  */
 static inline linted_updater_int linted_updater_sin(linted_updater_angle angle)
 {
-    linted_updater_uint x = angle._value;
-    /* Hack it in using the math library for now */
-    return sin(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX))
-           * INT32_MAX;
+	linted_updater_uint x = angle._value;
+	/* Hack it in using the math library for now */
+	return sin(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) *
+	       INT32_MAX;
 }
 
 static inline linted_updater_int linted_updater_cos(linted_updater_angle angle)
 {
-    linted_updater_uint x = angle._value;
-    /* Hack it in using the math library for now */
-    return cos(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX))
-           * INT32_MAX;
+	linted_updater_uint x = angle._value;
+	/* Hack it in using the math library for now */
+	return cos(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) *
+	       INT32_MAX;
 }
 
 static inline linted_updater_int linted_updater_isatadd(linted_updater_int x,
                                                         linted_updater_int y)
 {
-    return linted_updater__saturate((int_fast64_t)x + y);
+	return linted_updater__saturate((int_fast64_t)x + y);
 }
 
 static linted_updater_int linted_updater__saturate(int_fast64_t x)
 {
-    if (x > LINTED_UPDATER_INT_MAX) {
-        return LINTED_UPDATER_INT_MAX;
-    }
+	if (x > LINTED_UPDATER_INT_MAX) {
+		return LINTED_UPDATER_INT_MAX;
+	}
 
-    if (x < LINTED_UPDATER_INT_MIN) {
-        return LINTED_UPDATER_INT_MIN;
-    }
+	if (x < LINTED_UPDATER_INT_MIN) {
+		return LINTED_UPDATER_INT_MIN;
+	}
 
-    return x;
+	return x;
 }
 
 #endif /* LINTED_UPDATER_H */

@@ -41,14 +41,13 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *restrict attr,
                                         unsigned long mountflags,
                                         char const *data);
 
-linted_error linted_spawn_file_actions_init(struct linted_spawn_file_actions
-                                            **restrict file_actionsp);
-linted_error linted_spawn_file_actions_adddup2(struct linted_spawn_file_actions
-                                               **restrict file_actionsp,
-                                               linted_ko oldko,
-                                               linted_ko newko);
-void linted_spawn_file_actions_destroy(struct linted_spawn_file_actions
-                                       *restrict file_actions);
+linted_error linted_spawn_file_actions_init(
+    struct linted_spawn_file_actions **restrict file_actionsp);
+linted_error linted_spawn_file_actions_adddup2(
+    struct linted_spawn_file_actions **restrict file_actionsp, linted_ko oldko,
+    linted_ko newko);
+void linted_spawn_file_actions_destroy(
+    struct linted_spawn_file_actions *restrict file_actions);
 
 /**
  * Spawns a ptraced child

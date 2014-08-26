@@ -23,16 +23,16 @@
 
 linted_error linted_log_create(linted_log *restrict logp, unsigned long flags)
 {
-    if (flags != 0U) {
-        return EINVAL;
-    }
+	if (flags != 0U) {
+		return EINVAL;
+	}
 
-    struct linted_mq_attr attr = { 0 };
+	struct linted_mq_attr attr = { 0 };
 
-    attr.maxmsg = 10;
-    attr.msgsize = LINTED_LOG_MAX;
+	attr.maxmsg = 10;
+	attr.msgsize = LINTED_LOG_MAX;
 
-    return linted_mq_create(logp, "/log", &attr, 0);
+	return linted_mq_create(logp, "/log", &attr, 0);
 }
 
 /**
@@ -41,17 +41,17 @@ linted_error linted_log_create(linted_log *restrict logp, unsigned long flags)
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
                               size_t msg_len)
 {
-    struct linted_mq_task_send send_task;
+	struct linted_mq_task_send send_task;
 
-    linted_mq_task_send(&send_task, 0, log, msg_ptr, msg_len);
-    linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
+	linted_mq_task_send(&send_task, 0, log, msg_ptr, msg_len);
+	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
 
-    return LINTED_UPCAST(&send_task)->errnum;
+	return LINTED_UPCAST(&send_task)->errnum;
 }
 
 void linted_log_receive(struct linted_log_task *task, unsigned task_id,
                         linted_log log, char msg_ptr[static LINTED_LOG_MAX])
 {
-    linted_mq_task_receive(LINTED_UPCAST(task), task_id, log, msg_ptr,
-                           LINTED_LOG_MAX);
+	linted_mq_task_receive(LINTED_UPCAST(task), task_id, log, msg_ptr,
+	                       LINTED_LOG_MAX);
 }

@@ -27,8 +27,8 @@ struct linted_queue;
 
 struct linted_queue_node
 {
-    struct linted_queue_node *prev;
-    struct linted_queue_node *next;
+	struct linted_queue_node *prev;
+	struct linted_queue_node *next;
 };
 
 void linted_queue_node(struct linted_queue_node *node);

@@ -35,26 +35,26 @@ typedef linted_ko linted_mq;
 
 struct linted_mq_attr
 {
-    size_t maxmsg;
-    size_t msgsize;
+	size_t maxmsg;
+	size_t msgsize;
 };
 
 struct linted_mq_task_receive
 {
-    struct linted_asynch_task parent;
-    char *buf;
-    size_t size;
-    size_t bytes_read;
-    linted_ko ko;
+	struct linted_asynch_task parent;
+	char *buf;
+	size_t size;
+	size_t bytes_read;
+	linted_ko ko;
 };
 
 struct linted_mq_task_send
 {
-    struct linted_asynch_task parent;
-    char const *buf;
-    size_t size;
-    size_t bytes_wrote;
-    linted_ko ko;
+	struct linted_asynch_task parent;
+	char const *buf;
+	size_t size;
+	size_t bytes_wrote;
+	linted_ko ko;
 };
 
 /**

@@ -36,139 +36,139 @@
 
 struct linted_queue
 {
-    struct linted_queue_node tip;
-    CRITICAL_SECTION lock;
-    CONDITION_VARIABLE gains_member;
+	struct linted_queue_node tip;
+	CRITICAL_SECTION lock;
+	CONDITION_VARIABLE gains_member;
 };
 
 void linted_queue_node(struct linted_queue_node *node)
 {
-    node->prev = NULL;
-    node->next = NULL;
+	node->prev = NULL;
+	node->next = NULL;
 }
 
 linted_error linted_queue_create(struct linted_queue **restrict queuep)
 {
-    linted_error errnum;
-    struct linted_queue *queue;
-    {
-        void *xx;
-        if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0) {
-            return errnum;
-        }
-        queue = xx;
-    }
+	linted_error errnum;
+	struct linted_queue *queue;
+	{
+		void *xx;
+		if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0) {
+			return errnum;
+		}
+		queue = xx;
+	}
 
-    struct linted_queue_node *tip = &queue->tip;
+	struct linted_queue_node *tip = &queue->tip;
 
-    tip->prev = tip;
-    tip->next = tip;
+	tip->prev = tip;
+	tip->next = tip;
 
-    if (0 == InitializeCriticalSectionAndSpinCount(&queue->lock, 4000)) {
-        return GetLastError();
-    }
+	if (0 == InitializeCriticalSectionAndSpinCount(&queue->lock, 4000)) {
+		return GetLastError();
+	}
 
-    InitializeConditionVariable(&queue->gains_member);
+	InitializeConditionVariable(&queue->gains_member);
 
-    *queuep = queue;
+	*queuep = queue;
 
-    return 0;
+	return 0;
 }
 
 void linted_queue_destroy(struct linted_queue *restrict queue)
 {
-    DeleteCriticalSection(&queue->lock);
+	DeleteCriticalSection(&queue->lock);
 
-    linted_mem_free(queue);
+	linted_mem_free(queue);
 }
 
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
-    /* Guard against double insertions */
-    assert(NULL == node->next);
-    assert(NULL == node->prev);
+	/* Guard against double insertions */
+	assert(NULL == node->next);
+	assert(NULL == node->prev);
 
-    struct linted_queue_node *tip = &queue->tip;
+	struct linted_queue_node *tip = &queue->tip;
 
-    EnterCriticalSection(&queue->lock);
+	EnterCriticalSection(&queue->lock);
 
-    /* The nodes previous to the tip are the tail */
-    struct linted_queue_node *tail = tip->prev;
-    tail->next = node;
-    node->prev = tail;
-    node->next = tip;
-    tip->prev = node;
+	/* The nodes previous to the tip are the tail */
+	struct linted_queue_node *tail = tip->prev;
+	tail->next = node;
+	node->prev = tail;
+	node->next = tip;
+	tip->prev = node;
 
-    WakeConditionVariable(&queue->gains_member);
+	WakeConditionVariable(&queue->gains_member);
 
-    LeaveCriticalSection(&queue->lock);
+	LeaveCriticalSection(&queue->lock);
 }
 
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
-    struct linted_queue_node *head;
+	struct linted_queue_node *head;
 
-    struct linted_queue_node *tip = &queue->tip;
+	struct linted_queue_node *tip = &queue->tip;
 
-    EnterCriticalSection(&queue->lock);
+	EnterCriticalSection(&queue->lock);
 
-    /* The nodes next to the tip are the head */
-    for (;;) {
-        head = tip->next;
-        if (head != tip) {
-            break;
-        }
+	/* The nodes next to the tip are the head */
+	for (;;) {
+		head = tip->next;
+		if (head != tip) {
+			break;
+		}
 
-        if (!SleepConditionVariableCS(&queue->gains_member, &queue->lock,
-                                      INFINITE)) {
-            LINTED_ASSUME_UNREACHABLE();
-        }
-    }
+		if (!SleepConditionVariableCS(&queue->gains_member,
+		                              &queue->lock, INFINITE)) {
+			LINTED_ASSUME_UNREACHABLE();
+		}
+	}
 
-    struct linted_queue_node *next = head->next;
-    tip->next = next;
-    next->prev = tip;
+	struct linted_queue_node *next = head->next;
+	tip->next = next;
+	next->prev = tip;
 
-    LeaveCriticalSection(&queue->lock);
+	LeaveCriticalSection(&queue->lock);
 
-    /* Refresh the node for reuse later */
-    linted_queue_node(head);
+	/* Refresh the node for reuse later */
+	linted_queue_node(head);
 
-    *nodep = head;
+	*nodep = head;
 }
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **nodep)
 {
-    linted_error errnum = 0;
-    struct linted_queue_node *head;
+	linted_error errnum = 0;
+	struct linted_queue_node *head;
 
-    struct linted_queue_node *tip = &queue->tip;
+	struct linted_queue_node *tip = &queue->tip;
 
-    EnterCriticalSection(&queue->lock);
+	EnterCriticalSection(&queue->lock);
 
-    /* The nodes next to the tip are the head */
-    head = tip->next;
-    if (head == tip) {
-        errnum = EAGAIN;
-        goto leave_section;
-    }
+	/* The nodes next to the tip are the head */
+	head = tip->next;
+	if (head == tip) {
+		errnum = EAGAIN;
+		goto leave_section;
+	}
 
-    struct linted_queue_node *next = head->next;
-    tip->next = next;
-    next->prev = tip;
+	struct linted_queue_node *next = head->next;
+	tip->next = next;
+	next->prev = tip;
 
 leave_section:
-    LeaveCriticalSection(&queue->lock);
+	LeaveCriticalSection(&queue->lock);
 
-    if (0 == errnum) {
-        /* Refresh the node for reuse later */
-        linted_queue_node(head);
+	if (0 == errnum) {
+		/* Refresh the node for reuse later */
+		linted_queue_node(head);
 
-        *nodep = head;
-    }
+		*nodep = head;
+	}
 
-    return errnum;
+	return errnum;
 }

@@ -25,129 +25,129 @@
 
 linted_error linted_mem_alloc(void **restrict memp, size_t size)
 {
-    if (0U == size) {
-        size = 1U;
-    }
+	if (0U == size) {
+		size = 1U;
+	}
 
-    void *memory = malloc(size);
-    if (NULL == memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *memory = malloc(size);
+	if (NULL == memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = memory;
-    return 0;
+	*memp = memory;
+	return 0;
 }
 
 linted_error linted_mem_alloc_array(void **restrict memp, size_t nmemb,
                                     size_t size)
 {
-    if (size != 0U && SIZE_MAX / size < nmemb) {
-        return ENOMEM;
-    }
+	if (size != 0U && SIZE_MAX / size < nmemb) {
+		return ENOMEM;
+	}
 
-    size_t total = size * nmemb;
-    if (0U == total) {
-        total = 1U;
-    }
+	size_t total = size * nmemb;
+	if (0U == total) {
+		total = 1U;
+	}
 
-    void *memory = malloc(total);
-    if (NULL == memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *memory = malloc(total);
+	if (NULL == memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = memory;
-    return 0;
+	*memp = memory;
+	return 0;
 }
 
 linted_error linted_mem_alloc_zeroed(void **restrict memp, size_t size)
 {
-    if (0U == size) {
-        size = 1U;
-    }
+	if (0U == size) {
+		size = 1U;
+	}
 
-    void *memory = calloc(1U, size);
-    if (NULL == memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *memory = calloc(1U, size);
+	if (NULL == memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = memory;
-    return 0;
+	*memp = memory;
+	return 0;
 }
 
 linted_error linted_mem_alloc_array_zeroed(void **restrict memp, size_t nmemb,
                                            size_t size)
 {
-    if (0U == nmemb || 0U == size) {
-        void *memory = malloc(1U);
-        if (NULL == memory) {
-            linted_error errnum = errno;
-            LINTED_ASSUME(errnum != 0);
-            return errnum;
-        }
-        *memp = memory;
-        return 0;
-    }
+	if (0U == nmemb || 0U == size) {
+		void *memory = malloc(1U);
+		if (NULL == memory) {
+			linted_error errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		*memp = memory;
+		return 0;
+	}
 
-    void *memory = calloc(nmemb, size);
-    if (NULL == memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *memory = calloc(nmemb, size);
+	if (NULL == memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = memory;
-    return 0;
+	*memp = memory;
+	return 0;
 }
 
 linted_error linted_mem_realloc(void **restrict memp, void *restrict memory,
                                 size_t new_size)
 {
-    if (0U == new_size) {
-        new_size = 1U;
-    }
+	if (0U == new_size) {
+		new_size = 1U;
+	}
 
-    void *new_memory = realloc(memory, new_size);
-    if (NULL == new_memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *new_memory = realloc(memory, new_size);
+	if (NULL == new_memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = new_memory;
-    return 0;
+	*memp = new_memory;
+	return 0;
 }
 
 linted_error linted_mem_realloc_array(void **restrict memp,
                                       void *restrict memory, size_t nmemb,
                                       size_t size)
 {
-    if (size != 0U && SIZE_MAX / size < nmemb) {
-        return ENOMEM;
-    }
+	if (size != 0U && SIZE_MAX / size < nmemb) {
+		return ENOMEM;
+	}
 
-    size_t total = size * nmemb;
-    if (0U == total) {
-        total = 1U;
-    }
+	size_t total = size * nmemb;
+	if (0U == total) {
+		total = 1U;
+	}
 
-    void *new_memory = realloc(memory, total);
-    if (NULL == new_memory) {
-        linted_error errnum = errno;
-        LINTED_ASSUME(errnum != 0);
-        return errnum;
-    }
+	void *new_memory = realloc(memory, total);
+	if (NULL == new_memory) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
-    *memp = new_memory;
-    return 0;
+	*memp = new_memory;
+	return 0;
 }
 
 void linted_mem_free(void *restrict memory)
 {
-    free(memory);
+	free(memory);
 }
