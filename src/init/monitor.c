@@ -895,10 +895,6 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			fsname = NULL;
 		}
 
-		if (0 == strcmp("none", type)) {
-			type = NULL;
-		}
-
 		if (0 == strcmp("none", opts)) {
 			opts = NULL;
 		}

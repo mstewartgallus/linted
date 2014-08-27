@@ -166,74 +166,28 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **restrict
-                                         completions,
-                                     size_t size, size_t *restrict task_countp)
+                                     struct linted_asynch_task **completionp)
 {
-	linted_error errnum;
-	size_t task_count = 0U;
+	struct linted_queue_node *node;
 
-	if (0U == size) {
-		return EINVAL;
-	}
+	linted_queue_recv(pool->event_queue, &node);
 
-	/* Wait for one event */
-	{
-		struct linted_queue_node *node;
-		linted_queue_recv(pool->event_queue, &node);
-
-		/* The node is the first member of the task */
-		completions[task_count] =
-		    LINTED_DOWNCAST(struct linted_asynch_task, node);
-		++task_count;
-	}
-
-	/* Then poll for more */
-	for (; task_count < size; ++task_count) {
-		struct linted_queue_node *node;
-		errnum = linted_queue_try_recv(pool->event_queue, &node);
-		if (EAGAIN == errnum) {
-			break;
-		}
-
-		completions[task_count] =
-		    LINTED_DOWNCAST(struct linted_asynch_task, node);
-	}
-
-	*task_countp = task_count;
+	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
 	return 0U;
 }
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **restrict
-                                         completions,
-                                     size_t size, size_t *restrict task_countp)
+                                     struct linted_asynch_task **completionp)
 {
 	linted_error errnum;
-	size_t task_count = 0U;
+	struct linted_queue_node *node;
 
-	if (0U == size) {
-		return EINVAL;
+	if ((errnum = linted_queue_try_recv(pool->event_queue, &node)) != 0) {
+		return errnum;
 	}
 
-	for (; task_count < size; ++task_count) {
-		struct linted_queue_node *node;
-		errnum = linted_queue_try_recv(pool->event_queue, &node);
-		if (EAGAIN == errnum) {
-			break;
-		}
-
-		/* The node is the first member of the task */
-		completions[task_count] =
-		    LINTED_DOWNCAST(struct linted_asynch_task, node);
-	}
-
-	*task_countp = task_count;
-
-	if (0U == task_count) {
-		return EAGAIN;
-	}
+	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
 	return 0;
 }

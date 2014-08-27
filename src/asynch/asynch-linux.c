@@ -220,14 +220,11 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp)
 {
-	/* Wait for one event */
-	{
-		struct linted_queue_node *node;
-		linted_queue_recv(pool->event_queue, &node);
+	struct linted_queue_node *node;
 
-		/* The node is the first member of the task */
-		*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
-	}
+	linted_queue_recv(pool->event_queue, &node);
+
+	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
 	return 0U;
 }
@@ -236,16 +233,13 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp)
 {
 	linted_error errnum;
+	struct linted_queue_node *node;
 
-	{
-		struct linted_queue_node *node;
-		errnum = linted_queue_try_recv(pool->event_queue, &node);
-		if (EAGAIN == errnum) {
-			return EAGAIN;
-		}
-
-		*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
+	if ((errnum = linted_queue_try_recv(pool->event_queue, &node)) != 0) {
+		return errnum;
 	}
+
+	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
 	return 0;
 }

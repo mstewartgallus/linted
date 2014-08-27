@@ -194,7 +194,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	pid_t child;
 	{
 		child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER |
-		                                CLONE_NEWPID | CLONE_NEWUTS,
+		                                CLONE_NEWPID,
 		                NULL);
 		if (-1 == child) {
 			linted_io_write_format(
@@ -273,12 +273,6 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 			if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
 				perror("prctl");
-				return EXIT_FAILURE;
-			}
-
-			if (-1 == sethostname(PACKAGE_TARNAME,
-			                      sizeof PACKAGE_TARNAME - 1U)) {
-				perror("sethostname");
 				return EXIT_FAILURE;
 			}
 
