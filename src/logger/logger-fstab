@@ -1,0 +1,19 @@
+# Similar to /etc/fstab but for Linted sandboxing. Paths are
+# interpreted relative to the location Linted chroots to.
+#
+# <file system>	<mount point>	<type>	<options>
+/home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
+
+tmpfs	dev	tmpfs	mkdir,nosuid,noexec
+/dev/null	dev/null	none	touch,bind
+/dev/random	dev/random	none	touch,bind
+
+proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
+
+/etc	etc	none	mkdir,ro,nosuid,nodev,noexec,bind
+
+/lib	lib	none	mkdir,ro,nosuid,nodev,bind
+/lib32	lib32	none	mkdir,ro,nosuid,nodev,bind
+/lib64	lib64	none	mkdir,ro,nosuid,nodev,bind 
+
+/usr	usr	none	mkdir,ro,nosuid,nodev,bind 

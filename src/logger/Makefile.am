@@ -26,3 +26,5 @@ pkglibexec_PROGRAMS+=%D%/logger
   src/ko/libko.la\
   \
   src/log/liblog.la
+
+dist_pkgdefaultconf_DATA+=%D%/logger-fstab

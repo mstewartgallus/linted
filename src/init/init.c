@@ -32,6 +32,7 @@
 #include <sys/wait.h>
 
 unsigned char linted_init_init(linted_ko cwd, char const *chrootdir_path,
+                               char const *logger_fstab_path,
                                char const *simulator_fstab_path,
                                char const *gui_fstab_path,
                                char const *logger_path,
@@ -69,6 +70,7 @@ unsigned char linted_init_init(linted_ko cwd, char const *chrootdir_path,
 
 		if (0 == child) {
 			return linted_init_monitor(cwd, chrootdir_path,
+			                           logger_fstab_path,
 			                           simulator_fstab_path,
 			                           gui_fstab_path, logger_path,
 			                           simulator_path, gui_path);

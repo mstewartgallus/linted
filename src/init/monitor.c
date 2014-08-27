@@ -274,6 +274,7 @@ static union service const *service_for_name(union service const *services,
                                              size_t size, const char *name);
 
 unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
+                                  char const *logger_fstab_path,
                                   char const *simulator_fstab_path,
                                   char const *gui_fstab_path,
                                   char const *logger_path,
@@ -421,7 +422,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 				          .name = "logger",
 				          .type = SERVICE_TYPE_PROCESS,
 				          .dirko = cwd,
-				          .fstab = NULL,
+				          .fstab = logger_fstab_path,
 				          .path = logger_path,
 				          .arguments =
 				              (char const *

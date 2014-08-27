@@ -41,6 +41,7 @@ enum {
 	HELP,
 	VERSION_OPTION,
 	CHROOTDIR_OPTION,
+	LOGGER_FSTAB,
 	SIMULATOR_FSTAB,
 	GUI_FSTAB,
 	LOGGER,
@@ -73,8 +74,11 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	char const *logger_path = PKGLIBEXECDIR "/logger" EXEEXT;
 	char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
 	char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
+
+	char const *logger_fstab_path = PKGDEFAULTCONFDIR "/logger-fstab";
 	char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
 	char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
+
 	char const *chrootdir_path = CHROOTDIR;
 
 	for (size_t ii = 1U; ii < argc; ++ii) {
@@ -84,6 +88,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		    {[HELP] = "--help",
 		     [VERSION_OPTION] = "--version",
 		     [CHROOTDIR_OPTION] = "--chrootdir",
+		     [LOGGER_FSTAB] = "--logger-fstab",
 		     [SIMULATOR_FSTAB] = "--simulator-fstab",
 		     [GUI_FSTAB] = "--gui-fstab",
 		     [LOGGER] = "--logger",
@@ -126,6 +131,15 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				goto bad_argument;
 			}
 			chrootdir_path = argument + strlen("--chrootdir=");
+			break;
+
+		case LOGGER_FSTAB:
+			if (argument[strlen(arguments[LOGGER_FSTAB])] !=
+			    '=') {
+				goto bad_argument;
+			}
+			logger_fstab_path =
+			    argument + strlen("--logger-fstab=");
 			break;
 
 		case SIMULATOR_FSTAB:
@@ -277,6 +291,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			}
 
 			return linted_init_init(cwd, chrootdir_path,
+			                        logger_fstab_path,
 			                        simulator_fstab_path,
 			                        gui_fstab_path, logger_path,
 			                        simulator_path, gui_path);
