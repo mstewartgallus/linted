@@ -137,7 +137,6 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	linted_updater updater = kos[2U];
 
 	linted_error errnum;
-
 	{
 		static char const message[] = "starting simulator";
 		linted_log_write(log, message, sizeof message - 1U);

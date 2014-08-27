@@ -282,7 +282,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			goto destroy_window;
 		}
 
-		if (protocols_ck_err != NULL) {
+		if (NULL == protocols_ck_reply) {
 			errnum = get_xcb_error(protocols_ck_err);
 			linted_mem_free(protocols_ck_err);
 			goto destroy_window;
@@ -305,7 +305,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			delete_ck_err = xx;
 		}
 
-		if (delete_ck_err != NULL) {
+		if (NULL == delete_ck_reply) {
 			errnum = get_xcb_error(delete_ck_err);
 			linted_mem_free(delete_ck_err);
 			goto destroy_window;
@@ -334,6 +334,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		linted_mem_free(create_window_err);
 		goto destroy_window;
 	}
+
 
 	if ((errnum = get_xcb_conn_error(connection)) != 0) {
 		goto destroy_window;
