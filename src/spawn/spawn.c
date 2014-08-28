@@ -375,7 +375,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		sigset_t sigset;
 		sigfillset(&sigset);
 
-		if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) != 0) {
+		if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) !=
+		    0) {
 			goto free_env;
 		}
 
@@ -408,8 +409,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 					 * signals.
 					 */
 
-					if (0 == errnum
-					    && sigerrnum != EINVAL) {
+					if (0 == errnum &&
+					    sigerrnum != EINVAL) {
 						errnum = sigerrnum;
 					}
 
@@ -420,17 +421,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 				if (action.sa_handler != SIG_IGN) {
 					action.sa_handler = SIG_DFL;
 
-					if (-1 == sigaction(ii, &action, NULL)) {
+					if (-1 ==
+					    sigaction(ii, &action, NULL)) {
 						if (0 == errnum) {
 							errnum = errno;
-							LINTED_ASSUME(errnum != 0);
+							LINTED_ASSUME(errnum !=
+							              0);
 						}
 					}
 				}
 			}
 		}
 
-		linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		linted_error mask_errnum =
+		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
 		if (0 == errnum) {
 			errnum = mask_errnum;
 		}

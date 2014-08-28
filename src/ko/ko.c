@@ -435,7 +435,8 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	}
 
 	{
-		linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+		linted_error mask_errnum =
+		    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 		if (0 == errnum) {
 			errnum = mask_errnum;
 		}

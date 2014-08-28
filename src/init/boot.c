@@ -134,8 +134,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			break;
 
 		case LOGGER_FSTAB:
-			if (argument[strlen(arguments[LOGGER_FSTAB])] !=
-			    '=') {
+			if (argument[strlen(arguments[LOGGER_FSTAB])] != '=') {
 				goto bad_argument;
 			}
 			logger_fstab_path =
@@ -207,9 +206,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	 */
 	pid_t child;
 	{
-		child = syscall(__NR_clone, SIGCHLD | CLONE_NEWUSER |
-		                                CLONE_NEWPID,
-		                NULL);
+		child = syscall(__NR_clone,
+		                SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
 		if (-1 == child) {
 			linted_io_write_format(
 			    STDERR_FILENO, NULL,
@@ -233,8 +231,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					if ((errnum = linted_ko_open(
-						     &xx, AT_FDCWD,
-						     "/proc/self/uid_map",
+					         &xx, AT_FDCWD,
+					         "/proc/self/uid_map",
 					         LINTED_KO_WRONLY)) != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
@@ -262,7 +260,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					if ((errnum = linted_ko_open(
-					         &xx, AT_FDCWD, "/proc/self/gid_map",
+					         &xx, AT_FDCWD,
+					         "/proc/self/gid_map",
 					         LINTED_KO_WRONLY)) != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
@@ -290,11 +289,10 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				return EXIT_FAILURE;
 			}
 
-			return linted_init_init(cwd, chrootdir_path,
-			                        logger_fstab_path,
-			                        simulator_fstab_path,
-			                        gui_fstab_path, logger_path,
-			                        simulator_path, gui_path);
+			return linted_init_init(
+			    cwd, chrootdir_path, logger_fstab_path,
+			    simulator_fstab_path, gui_fstab_path, logger_path,
+			    simulator_path, gui_path);
 		}
 	}
 

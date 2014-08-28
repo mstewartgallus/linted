@@ -230,8 +230,7 @@ static char const *const gui_envvars_to_keep[] = {
 	"LP_NO_RAST",               "LP_DEBUG",
 	"LP_PERF",                  "LP_NUM_THREADS",
 	"SVGA_FORCE_SWTNL",         "SVGA_NO_SWTNL",
-	"SVGA_DEBUG",
-	NULL
+	"SVGA_DEBUG",               NULL
 };
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -277,13 +276,10 @@ static union service const *service_for_name(union service const *services,
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
-                                  char const *logger_fstab_path,
-                                  char const *simulator_fstab_path,
-                                  char const *gui_fstab_path,
-                                  char const *logger_path,
-                                  char const *simulator_path,
-                                  char const *gui_path)
+unsigned char linted_init_monitor(
+    linted_ko cwd, char const *chrootdir_path, char const *logger_fstab_path,
+    char const *simulator_fstab_path, char const *gui_fstab_path,
+    char const *logger_path, char const *simulator_path, char const *gui_path)
 {
 	linted_error errnum;
 
@@ -427,7 +423,8 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 				     .path = gui_path,
 				     .arguments = (char const *
 				                   const[]) { gui_path, NULL },
-			             .environment = (char const *const*)gui_envvars,
+				     .environment =
+				         (char const * const *)gui_envvars,
 				     .dup_pairs = DUP_PAIRS((
 				         struct dup_pair const[]) {
 					     { LINTED_KO_RDONLY,
@@ -721,7 +718,7 @@ drain_dispatches:
 
 	{
 		linted_error close_errnum =
-			connection_pool_destroy(connection_pool);
+		    connection_pool_destroy(connection_pool);
 		if (0 == errnum) {
 			errnum = close_errnum;
 		}
@@ -1241,7 +1238,8 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	struct read_conn_task *read_conn_task = LINTED_DOWNCAST(struct read_conn_task, task);
+	struct read_conn_task *read_conn_task =
+	    LINTED_DOWNCAST(struct read_conn_task, task);
 
 	struct linted_asynch_pool *pool = read_conn_task->pool;
 	struct connection_pool *connection_pool =
@@ -1393,8 +1391,8 @@ static linted_error on_write_connection(struct linted_asynch_task *task)
 
 	errnum = task->errnum;
 
-	linted_error remove_errnum = connection_remove(connection,
-	                                               connection_pool);
+	linted_error remove_errnum =
+	    connection_remove(connection, connection_pool);
 	if (0 == errnum) {
 		errnum = remove_errnum;
 	}
@@ -1649,7 +1647,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
                                    char const *const *allowed_envvars)
 {
 	size_t allowed_envvars_size;
-	char * * result_envvars;
+	char **result_envvars;
 	linted_error errnum;
 
 	for (size_t ii = 0U;; ++ii) {
@@ -1661,8 +1659,9 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc_array(&xx, allowed_envvars_size,
-		                                     sizeof result_envvars[0U])) != 0) {
+		if ((errnum = linted_mem_alloc_array(
+		         &xx, allowed_envvars_size,
+		         sizeof result_envvars[0U])) != 0) {
 			return errnum;
 		}
 		result_envvars = xx;

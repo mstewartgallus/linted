@@ -69,11 +69,10 @@ unsigned char linted_init_init(linted_ko cwd, char const *chrootdir_path,
 		}
 
 		if (0 == child) {
-			return linted_init_monitor(cwd, chrootdir_path,
-			                           logger_fstab_path,
-			                           simulator_fstab_path,
-			                           gui_fstab_path, logger_path,
-			                           simulator_path, gui_path);
+			return linted_init_monitor(
+			    cwd, chrootdir_path, logger_fstab_path,
+			    simulator_fstab_path, gui_fstab_path, logger_path,
+			    simulator_path, gui_path);
 		}
 	}
 

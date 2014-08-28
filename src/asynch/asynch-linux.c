@@ -103,9 +103,10 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		 * Our tasks are only I/O tasks and have extremely tiny stacks.
 		 */
 		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
-		assert (stack_min != -1);
+		assert(stack_min != -1);
 
-		if ((errnum = pthread_attr_setstacksize(&worker_attributes, stack_min)) != 0) {
+		if ((errnum = pthread_attr_setstacksize(&worker_attributes,
+		                                        stack_min)) != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
