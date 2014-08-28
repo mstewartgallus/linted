@@ -230,7 +230,8 @@ static char const *const gui_envvars_to_keep[] = {
 	"LP_NO_RAST",               "LP_DEBUG",
 	"LP_PERF",                  "LP_NUM_THREADS",
 	"SVGA_FORCE_SWTNL",         "SVGA_NO_SWTNL",
-	"SVGA_DEBUG"
+	"SVGA_DEBUG",
+	NULL
 };
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -272,6 +273,9 @@ static linted_error connection_remove(struct connection *connection,
 
 static union service const *service_for_name(union service const *services,
                                              size_t size, const char *name);
+
+static linted_error filter_envvars(char ***resultsp,
+                                   char const *const *allowed_envvars);
 
 unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
                                   char const *logger_fstab_path,
@@ -338,69 +342,16 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 		return EXIT_FAILURE;
 	}
 
-	char const **gui_envvars;
-	size_t gui_envvars_count = 0U;
+	char **gui_envvars;
 	{
-		void *xx;
-		if ((errnum = linted_mem_alloc_array(
-		         &xx, LINTED_ARRAY_SIZE(gui_envvars_to_keep),
-		         sizeof gui_envvars[0U])) != 0) {
+		char **xx;
+		if ((errnum = filter_envvars(&xx, gui_envvars_to_keep)) != 0) {
 			errno = errnum;
-			perror("linted_mem_alloc_array");
+			perror("filter_envvars");
 			return EXIT_FAILURE;
 		}
 		gui_envvars = xx;
 	}
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(gui_envvars_to_keep);
-	     ++ii) {
-		char const *envvar_name = gui_envvars_to_keep[ii];
-
-		char const *envvar = getenv(envvar_name);
-		if (NULL == envvar) {
-			continue;
-		}
-
-		++gui_envvars_count;
-
-		size_t envvar_name_length = strlen(envvar_name);
-		size_t envvar_length = strlen(envvar);
-
-		size_t assign_string_length =
-		    envvar_name_length + 1U + envvar_length;
-
-		char *assign_string;
-		{
-			void *xx;
-			if ((errnum = linted_mem_alloc(
-			         &xx, assign_string_length + 1U)) != 0) {
-				errno = errnum;
-				perror("linted_mem_alloc");
-				return EXIT_FAILURE;
-			}
-			assign_string = xx;
-		}
-		memcpy(assign_string, envvar_name, envvar_name_length);
-		assign_string[envvar_name_length] = '=';
-		memcpy(assign_string + envvar_name_length + 1U, envvar,
-		       envvar_length);
-		assign_string[assign_string_length] = '\0';
-
-		gui_envvars[gui_envvars_count - 1U] = assign_string;
-	}
-	++gui_envvars_count;
-	{
-		void *xx;
-		if ((errnum = linted_mem_realloc_array(
-		         &xx, gui_envvars, gui_envvars_count,
-		         sizeof gui_envvars[0U])) != 0) {
-			errno = errnum;
-			perror("linted_mem_realloc_array");
-			return EXIT_FAILURE;
-		}
-		gui_envvars = xx;
-	}
-	gui_envvars[gui_envvars_count - 1U] = NULL;
 
 	enum {
 		SERVICE_INIT,
@@ -476,7 +427,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir_path,
 				     .path = gui_path,
 				     .arguments = (char const *
 				                   const[]) { gui_path, NULL },
-				     .environment = gui_envvars,
+			             .environment = (char const *const*)gui_envvars,
 				     .dup_pairs = DUP_PAIRS((
 				         struct dup_pair const[]) {
 					     { LINTED_KO_RDONLY,
@@ -1692,4 +1643,85 @@ static union service const *service_for_name(union service const *services,
 	}
 
 	return NULL;
+}
+
+static linted_error filter_envvars(char ***result_envvarsp,
+                                   char const *const *allowed_envvars)
+{
+	size_t allowed_envvars_size;
+	char * * result_envvars;
+	linted_error errnum;
+
+	for (size_t ii = 0U;; ++ii) {
+		if (NULL == allowed_envvars[ii]) {
+			allowed_envvars_size = ii;
+			break;
+		}
+	}
+
+	{
+		void *xx;
+		if ((errnum = linted_mem_alloc_array(&xx, allowed_envvars_size,
+		                                     sizeof result_envvars[0U])) != 0) {
+			return errnum;
+		}
+		result_envvars = xx;
+	}
+
+	size_t result_envvars_size = 0U;
+	for (size_t ii = 0U; ii < allowed_envvars_size; ++ii) {
+		char const *envvar_name = allowed_envvars[ii];
+
+		char const *envvar_value = getenv(envvar_name);
+		if (NULL == envvar_value) {
+			continue;
+		}
+
+		++result_envvars_size;
+
+		size_t envvar_name_length = strlen(envvar_name);
+		size_t envvar_value_length = strlen(envvar_value);
+
+		size_t assign_string_length =
+		    envvar_name_length + 1U + envvar_value_length;
+
+		char *assign_string;
+		{
+			void *xx;
+			if ((errnum = linted_mem_alloc(
+			         &xx, assign_string_length + 1U)) != 0) {
+				goto free_result_envvars;
+			}
+			assign_string = xx;
+		}
+		memcpy(assign_string, envvar_name, envvar_name_length);
+		assign_string[envvar_name_length] = '=';
+		memcpy(assign_string + envvar_name_length + 1U, envvar_value,
+		       envvar_value_length);
+		assign_string[assign_string_length] = '\0';
+
+		result_envvars[result_envvars_size - 1U] = assign_string;
+	}
+
+	{
+		void *xx;
+		if ((errnum = linted_mem_realloc_array(
+		         &xx, result_envvars, result_envvars_size + 1U,
+		         sizeof result_envvars[0U])) != 0) {
+			goto free_result_envvars;
+		}
+		result_envvars = xx;
+	}
+	result_envvars[result_envvars_size] = NULL;
+
+	*result_envvarsp = result_envvars;
+
+	return 0;
+
+free_result_envvars:
+	for (size_t ii = 0U; ii < result_envvars_size; ++ii) {
+		linted_mem_free(result_envvars[ii]);
+	}
+	linted_mem_free(result_envvars);
+	return errnum;
 }
