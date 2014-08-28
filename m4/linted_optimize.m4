@@ -22,6 +22,8 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[dnl
         [-O]dnl
         [-O2]dnl
         [-O3]dnl
+        [-Os]dnl We use -Os because we have many binaries and so this
+             dnl increases cold start time.
 dnl
         [-fno-common]dnl This gives better performance and stops
                      dnl sloppy code
