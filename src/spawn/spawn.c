@@ -96,6 +96,8 @@ static linted_error my_execveat(int dirfd, const char *filename,
                                 char *const argv[], char *const envp[]);
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
+static void pid_to_str(char * buf, pid_t pid);
+
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
 	linted_error errnum;
@@ -490,7 +492,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (file_actions != NULL && file_actions->action_count > 0U) {
-		sprintf(listen_pid, "LISTEN_PID=%i", getpid());
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
 	}
 
 	linted_ko_close(reader);
@@ -776,6 +778,30 @@ static void exit_with_error(linted_ko writer, linted_error errnum)
 
 	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
 	_Exit(0);
+}
+
+static void pid_to_str(char * buf, pid_t pid)
+{
+	size_t strsize = 0U;
+
+	assert(pid > 0);
+
+	for (;;) {
+		memmove(buf + 1U, buf, strsize);
+
+		pid_t digit = pid % 10;
+
+		*buf = '0' + digit;
+
+		pid /= 10;
+		++strsize;
+
+		if (0 == pid) {
+			break;
+		}
+	}
+
+	buf[strsize] = '\0';
 }
 
 #define THREAD_CLONE                                                           \
