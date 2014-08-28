@@ -273,7 +273,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		xcb_intern_atom_reply_t *protocols_ck_reply;
 		xcb_generic_error_t *protocols_ck_err;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = NULL;
 			protocols_ck_reply = xcb_intern_atom_reply(
 			    connection, protocols_ck, &xx);
 			protocols_ck_err = xx;
@@ -282,7 +282,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			goto destroy_window;
 		}
 
-		if (NULL == protocols_ck_reply) {
+		if (protocols_ck_err != NULL) {
 			errnum = get_xcb_error(protocols_ck_err);
 			linted_mem_free(protocols_ck_err);
 			goto destroy_window;
@@ -296,7 +296,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		xcb_intern_atom_reply_t *delete_ck_reply;
 		xcb_generic_error_t *delete_ck_err;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = NULL;
 			delete_ck_reply =
 			    xcb_intern_atom_reply(connection, delete_ck, &xx);
 			if ((errnum = get_xcb_conn_error(connection)) != 0) {
@@ -305,7 +305,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			delete_ck_err = xx;
 		}
 
-		if (NULL == delete_ck_reply) {
+		if (delete_ck_err != NULL) {
 			errnum = get_xcb_error(delete_ck_err);
 			linted_mem_free(delete_ck_err);
 			goto destroy_window;
