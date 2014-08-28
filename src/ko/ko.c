@@ -182,7 +182,9 @@ linted_error linted_ko_close(linted_ko ko)
 	/* First use the signal set for the full set */
 	sigfillset(&sigset);
 
-	pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+	if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) != 0) {
+		return errnum;
+	}
 
 	/* Then reuse the signal set for the old set */
 
@@ -193,7 +195,10 @@ linted_error linted_ko_close(linted_ko ko)
 		errnum = 0;
 	}
 
-	pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+	linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+	if (0 == errnum) {
+		errnum = mask_errnum;
+	}
 
 	return errnum;
 }

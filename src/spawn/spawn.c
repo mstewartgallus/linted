@@ -375,7 +375,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		sigset_t sigset;
 		sigfillset(&sigset);
 
-		pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+		if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) != 0) {
+			goto free_env;
+		}
 
 		child = fork();
 
@@ -397,20 +399,45 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 				}
 
 				struct sigaction action;
-				sigaction(ii, NULL, &action);
+				if (-1 == sigaction(ii, NULL, &action)) {
+					linted_error sigerrnum = errno;
+					LINTED_ASSUME(sigerrnum != 0);
+
+					/* If sigerrnum == EINVAL then
+					 * we are trampling on OS
+					 * signals.
+					 */
+
+					if (0 == errnum
+					    && sigerrnum != EINVAL) {
+						errnum = sigerrnum;
+					}
+
+					/* Skip setting this action */
+					continue;
+				}
 
 				if (action.sa_handler != SIG_IGN) {
 					action.sa_handler = SIG_DFL;
 
-					sigaction(ii, &action, NULL);
+					if (-1 == sigaction(ii, &action, NULL)) {
+						if (0 == errnum) {
+							errnum = errno;
+							LINTED_ASSUME(errnum != 0);
+						}
+					}
 				}
 			}
 		}
 
-		pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		if (0 == errnum) {
+			errnum = mask_errnum;
+		}
 	}
 
 	if (child != 0) {
+	free_env:
 		if (envp != input_envp) {
 			linted_mem_free(envp);
 		}
@@ -452,6 +479,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			*childp = child;
 		}
 		return errnum;
+	}
+
+	if (errnum != 0) {
+		exit_with_error(writer, errnum);
 	}
 
 	if (file_actions != NULL && file_actions->action_count > 0U) {
