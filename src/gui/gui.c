@@ -230,7 +230,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	xcb_window_t window = xcb_generate_id(connection);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto disconnect;
 	}
 
@@ -251,19 +252,22 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
 		    XCB_CW_EVENT_MASK, values);
 	}
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto disconnect;
 	}
 
 	xcb_intern_atom_cookie_t protocols_ck =
-	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 
 	xcb_intern_atom_cookie_t delete_ck =
-	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 
@@ -278,7 +282,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			    connection, protocols_ck, &xx);
 			protocols_ck_err = xx;
 		}
-		if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		errnum = get_xcb_conn_error(connection);
+		if (errnum != 0) {
 			goto destroy_window;
 		}
 
@@ -298,8 +303,9 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		{
 			xcb_generic_error_t *xx = NULL;
 			delete_ck_reply =
-			    xcb_intern_atom_reply(connection, delete_ck, &xx);
-			if ((errnum = get_xcb_conn_error(connection)) != 0) {
+				xcb_intern_atom_reply(connection, delete_ck, &xx);
+			errnum = get_xcb_conn_error(connection);
+			if (errnum != 0) {
 				goto destroy_window;
 			}
 			delete_ck_err = xx;
@@ -318,12 +324,14 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
 	    connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
 	    1, &wm_delete_window_atom);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 
 	xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 
@@ -335,13 +343,15 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		goto destroy_window;
 	}
 
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 
 	xcb_generic_error_t *ch_prop_err =
-	    xcb_request_check(connection, ch_prop_ck);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		xcb_request_check(connection, ch_prop_ck);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 	if (ch_prop_err != NULL) {
@@ -351,7 +361,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	xcb_generic_error_t *map_ck_err = xcb_request_check(connection, map_ck);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		goto destroy_window;
 	}
 	if (map_ck_err != NULL) {
@@ -402,7 +413,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0) {
 			goto destroy_egl_surface;
 		}
 		pool = xx;
@@ -438,8 +450,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 		struct graphics_state graphics_state;
 
-		if ((errnum = init_graphics(log, &graphics_state,
-		                            &window_model)) != 0) {
+		errnum = init_graphics(log, &graphics_state, &window_model);
+		if (errnum != 0) {
 			errnum = egl_error();
 			goto use_no_egl_context;
 		}
@@ -464,8 +476,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					.controller_data = &controller_data,
 					.time_to_quit = &time_to_quit
 				};
-				if ((errnum = on_gui_event(&event, args)) !=
-				    0) {
+				errnum = on_gui_event(&event, args);
+				if (errnum != 0) {
 					goto cleanup_gl;
 				}
 				if (time_to_quit) {
@@ -483,8 +495,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				had_asynch_event = poll_errnum != EAGAIN;
 
 				if (had_asynch_event) {
-					if ((errnum = dispatch(
-					         completed_task)) != 0) {
+					errnum = dispatch(completed_task);
+					if (errnum != 0) {
 						goto cleanup_gl;
 					}
 				}
@@ -756,8 +768,8 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 		window_model->focused = true;
 
 		int x, y;
-		if ((errnum = get_mouse_position(connection, window, &x, &y)) !=
-		    0) {
+		errnum = get_mouse_position(connection, window, &x, &y);
+		if (errnum != 0) {
 			return errnum;
 		}
 
@@ -1414,15 +1426,17 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	linted_error errnum;
 
 	xcb_query_pointer_cookie_t cookie =
-	    xcb_query_pointer(connection, window);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		xcb_query_pointer(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		return errnum;
 	}
 
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply =
-	    xcb_query_pointer_reply(connection, cookie, &error);
-	if ((errnum = get_xcb_conn_error(connection)) != 0) {
+		xcb_query_pointer_reply(connection, cookie, &error);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0) {
 		return errnum;
 	}
 
@@ -1454,8 +1468,8 @@ static linted_error log_str(linted_log log, struct linted_str start,
 	char *full_string;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, error_size + start.size)) !=
-		    0) {
+		errnum = linted_mem_alloc(&xx, error_size + start.size);
+		if (errnum != 0) {
 			/* Silently drop log */
 			return errnum;
 		}

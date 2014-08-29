@@ -73,8 +73,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *pool +
-		                                        workers_size)) != 0) {
+		errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size);
+		if (errnum != 0) {
 			return errnum;
 		}
 		pool = xx;
@@ -82,11 +82,13 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
 	pool->stopped = false;
 
-	if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
+	errnum = linted_queue_create(&pool->worker_command_queue);
+	if (errnum != 0) {
 		goto free_pool;
 	}
 
-	if ((errnum = linted_queue_create(&pool->event_queue)) != 0) {
+	errnum = linted_queue_create(&pool->event_queue);
+	if (errnum != 0) {
 		goto destroy_worker_command_queue;
 	}
 
@@ -95,7 +97,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	{
 		pthread_attr_t worker_attributes;
 
-		if ((errnum = pthread_attr_init(&worker_attributes)) != 0) {
+		errnum = pthread_attr_init(&worker_attributes);
+		if (errnum != 0) {
 			goto destroy_event_queue;
 		}
 
@@ -105,17 +108,18 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
 		assert(stack_min != -1);
 
-		if ((errnum = pthread_attr_setstacksize(&worker_attributes,
-		                                        stack_min)) != 0) {
+		errnum = pthread_attr_setstacksize(&worker_attributes,
+		                                   stack_min);
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			if ((errnum =
-			         pthread_create(&pool->workers[created_threads],
+			errnum = pthread_create(&pool->workers[created_threads],
 			                        &worker_attributes,
-			                        worker_routine, pool)) != 0) {
+			                        worker_routine, pool);
+			if (errnum != 0) {
 				break;
 			}
 		}

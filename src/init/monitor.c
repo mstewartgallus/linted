@@ -307,8 +307,8 @@ unsigned char linted_init_monitor(
 	linted_manager new_connections;
 	{
 		linted_manager xx;
-		if ((errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0)) !=
-		    0) {
+		errnum = linted_manager_bind(&xx, BACKLOG, NULL, 0);
+		if (errnum != 0) {
 			errno = errnum;
 			perror("linted_manager_bind");
 			return EXIT_FAILURE;
@@ -319,8 +319,8 @@ unsigned char linted_init_monitor(
 	{
 		char buf[LINTED_MANAGER_PATH_MAX];
 		size_t len;
-		if ((errnum = linted_manager_path(new_connections, buf,
-		                                  &len)) != 0) {
+		errnum = linted_manager_path(new_connections, buf, &len);
+		if (errnum != 0) {
 			return errnum;
 		}
 
@@ -341,7 +341,8 @@ unsigned char linted_init_monitor(
 	char **gui_envvars;
 	{
 		char **xx;
-		if ((errnum = filter_envvars(&xx, gui_envvars_to_keep)) != 0) {
+		errnum = filter_envvars(&xx, gui_envvars_to_keep);
+		if (errnum != 0) {
 			errno = errnum;
 			perror("filter_envvars");
 			return EXIT_FAILURE;
@@ -466,9 +467,10 @@ unsigned char linted_init_monitor(
 		size_t new_services_size = services_size + 1U;
 		{
 			void *xx;
-			if ((errnum = linted_mem_realloc_array(
+			errnum = linted_mem_realloc_array(
 			         &xx, services, new_services_size,
-			         sizeof services[0U])) != 0) {
+			         sizeof services[0U]);
+			if (errnum != 0) {
 				errno = errnum;
 				perror("linted_mem_alloc_array");
 				return EXIT_FAILURE;
@@ -504,7 +506,8 @@ unsigned char linted_init_monitor(
 
 	{
 		struct connection_pool *xx;
-		if ((errnum = connection_pool_create(&xx)) != 0) {
+		errnum = connection_pool_create(&xx);
+		if (errnum != 0) {
 			return errnum;
 		}
 		connection_pool = xx;
@@ -513,7 +516,8 @@ unsigned char linted_init_monitor(
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0) {
 			return errnum;
 		}
 		pool = xx;
@@ -576,8 +580,8 @@ unsigned char linted_init_monitor(
 
 		{
 			struct linted_spawn_file_actions *xx;
-			if ((errnum = linted_spawn_file_actions_init(&xx)) !=
-			    0) {
+			errnum = linted_spawn_file_actions_init(&xx);
+			if (errnum != 0) {
 				goto exit_services;
 			}
 			file_actions = xx;
@@ -607,9 +611,10 @@ unsigned char linted_init_monitor(
 		linted_ko *proc_kos;
 		{
 			void *xx;
-			if ((errnum = linted_mem_alloc_array(
-			         &xx, sizeof proc_kos[0U], dup_pairs_size)) !=
-			    0) {
+			errnum = linted_mem_alloc_array(&xx,
+			                                sizeof proc_kos[0U],
+			                                dup_pairs_size);
+			if (errnum != 0) {
 				goto destroy_attr;
 			}
 			proc_kos = xx;
@@ -625,9 +630,9 @@ unsigned char linted_init_monitor(
 			linted_ko ko;
 			{
 				linted_ko xx;
-				if ((errnum = linted_ko_reopen(
-				         &xx, file->ko, dup_pair->flags)) !=
-				    0) {
+				errnum = linted_ko_reopen(&xx, file->ko,
+				                          dup_pair->flags);
+				if (errnum !=  0) {
 					goto destroy_proc_kos;
 				}
 				ko = xx;
@@ -636,18 +641,20 @@ unsigned char linted_init_monitor(
 			proc_kos[kos_opened] = ko;
 			++kos_opened;
 
-			if ((errnum = linted_spawn_file_actions_adddup2(
-			         &file_actions, ko, kos_opened - 1U)) != 0) {
+			errnum = linted_spawn_file_actions_adddup2(&file_actions,
+			                                           ko,
+			                                           kos_opened - 1U);
+			if (errnum != 0) {
 				goto destroy_proc_kos;
 			}
 		}
 
 		{
 			pid_t process;
-			if ((errnum = linted_spawn(
+			errnum = linted_spawn(
 			         &process, dirko, path, file_actions, attr,
-			         (char **)arguments, (char **)environment)) !=
-			    0) {
+			         (char **)arguments, (char **)environment);
+			if (errnum != 0) {
 				goto destroy_attr;
 			}
 
@@ -862,8 +869,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			bool yy;
 			unsigned long zz;
 			char const *ww;
-			if ((errnum = get_flags_and_data(opts, &xx, &yy, &zz,
-			                                 &ww)) != 0) {
+			errnum = get_flags_and_data(opts, &xx, &yy, &zz, &ww);
+			if (errnum != 0) {
 				goto close_file;
 			}
 			mkdir_flag = xx;
@@ -872,9 +879,10 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			data = ww;
 		}
 
-		if ((errnum = linted_spawn_attr_setmount(
+		errnum = linted_spawn_attr_setmount(
 		         attr, fsname, dir, type, mkdir_flag, touch_flag,
-		         mountflags, data)) != 0) {
+		         mountflags, data);
+		if (errnum != 0) {
 			goto close_file;
 		}
 	}
@@ -1250,8 +1258,8 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 
 	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
-		if ((errnum = connection_remove(connection, connection_pool)) !=
-		    0) {
+		errnum = connection_remove(connection, connection_pool);
+		if (errnum != 0) {
 			return errnum;
 		}
 		return 0;

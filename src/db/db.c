@@ -78,14 +78,15 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 	linted_dir the_db;
 	if (db_creat) {
 		linted_dir xx;
-		if ((errnum = linted_dir_create(&xx, cwd, pathname, 0U,
-		                                S_IRWXU)) != 0) {
+		errnum = linted_dir_create(&xx, cwd, pathname, 0U, S_IRWXU);
+		if (errnum != 0) {
 			return errnum;
 		}
 		the_db = xx;
 	} else {
 		linted_dir xx;
-		if ((errnum = linted_ko_open(&xx, cwd, pathname, 0U)) != 0) {
+		errnum = linted_ko_open(&xx, cwd, pathname, 0U);
+		if (errnum != 0) {
 			return errnum;
 		}
 		the_db = xx;
@@ -99,8 +100,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 
 try_to_open_lock_file : {
 	linted_ko xx;
-	if ((errnum = linted_ko_open(&xx, the_db, GLOBAL_LOCK,
-	                             LINTED_KO_RDWR)) != 0) {
+	errnum = linted_ko_open(&xx, the_db, GLOBAL_LOCK, LINTED_KO_RDWR);
+	if (errnum != 0) {
 		if (ENOENT == errnum) {
 			unlinkat(the_db, GLOBAL_LOCK, 0);
 			goto try_to_create_lock_file;
@@ -184,23 +185,25 @@ try_to_create_lock_file : {
 	{
 		pthread_mutexattr_t attr;
 
-		if ((errnum = pthread_mutexattr_init(&attr)) != 0) {
+		errnum = pthread_mutexattr_init(&attr);
+		if (errnum != 0) {
 			goto unmap_mutexattr;
 		}
 
-		if ((errnum = pthread_mutexattr_setpshared(
-		         &attr, PTHREAD_PROCESS_SHARED)) != 0) {
+		errnum = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
-		if ((errnum = pthread_mutexattr_setrobust(
-		         &attr, PTHREAD_MUTEX_ROBUST)) != 0) {
+		errnum = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
-		if ((errnum = pthread_mutex_init(mutex, &attr)) != 0) {
+		errnum = pthread_mutex_init(mutex, &attr);
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 		}
 
@@ -242,7 +245,8 @@ unlink_prototype_lock_file:
 
 opened_lock_file:
 
-	if ((errnum = mutex_lock(lock_file)) != 0) {
+	errnum = mutex_lock(lock_file);
+	if (errnum != 0) {
 		goto close_lock_file;
 	}
 
@@ -251,8 +255,10 @@ opened_lock_file:
 	{
 		linted_ko xx;
 		errnum =
-		    linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
-		version_file = xx;
+			linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
+		if (0 == errnum) {
+			version_file = xx;
+		}
 	}
 	switch (errnum) {
 	case 0: {
@@ -278,16 +284,16 @@ opened_lock_file:
 		char *version_text;
 		{
 			void *xx;
-			if ((errnum = linted_mem_alloc(
-			         &xx, version_file_size)) != 0) {
+			errnum = linted_mem_alloc(&xx, version_file_size);
+			if (errnum != 0) {
 				goto close_version_file;
 			}
 			version_text = xx;
 		}
 
-		if ((errnum =
-		         linted_io_read_all(version_file, NULL, version_text,
-		                            version_file_size)) != 0) {
+		errnum = linted_io_read_all(version_file, NULL, version_text,
+		                            version_file_size);
+		if (errnum != 0) {
 			goto free_version_text;
 		}
 
@@ -324,10 +330,10 @@ opened_lock_file:
 		linted_ko version_file_write;
 		{
 			linted_ko xx;
-			if ((errnum = linted_file_create(
-			         &xx, the_db, "version",
+			errnum = linted_file_create(&xx, the_db, "version",
 			         LINTED_FILE_RDWR | LINTED_FILE_SYNC,
-			         S_IRUSR | S_IWUSR)) != 0) {
+			         S_IRUSR | S_IWUSR);
+			if (errnum != 0) {
 				goto unlock_db;
 			}
 			version_file_write = xx;
@@ -394,7 +400,8 @@ linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp)
 	static char const field_name[] = "field-XXXXXX.tmp";
 
 	char *temp_path;
-	if ((errnum = prepend(&temp_path, TEMP_DIR "/", field_name)) != 0) {
+	errnum = prepend(&temp_path, TEMP_DIR "/", field_name);
+	if (errnum != 0) {
 		return errnum;
 	}
 
@@ -450,7 +457,8 @@ linted_error linted_db_temp_send(linted_db db, char const *path,
 	char *field_path;
 	{
 		char *xx;
-		if ((errnum = prepend(&xx, FIELD_DIR "/", name)) != 0) {
+		errnum = prepend(&xx, FIELD_DIR "/", name);
+		if (errnum != 0) {
 			return errnum;
 		}
 		field_path = xx;
@@ -478,7 +486,8 @@ static linted_error prepend(char **result, char const *base,
 	char *new_path;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, new_path_size)) != 0) {
+		errnum = linted_mem_alloc(&xx, new_path_size);
+		if (errnum != 0) {
 			return errnum;
 		}
 		new_path = xx;
@@ -540,7 +549,8 @@ static linted_error mutex_unlock(linted_ko mutex_file)
 		return errnum;
 	}
 
-	if ((errnum = pthread_mutex_unlock(mutex)) != 0) {
+	errnum = pthread_mutex_unlock(mutex);
+	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(errnum != EINVAL);
 		assert(false);

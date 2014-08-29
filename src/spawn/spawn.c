@@ -105,7 +105,8 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *attr)) != 0) {
+		errnum = linted_mem_alloc(&xx, sizeof *attr);
+		if (errnum != 0) {
 			return errnum;
 		}
 		attr = xx;
@@ -181,6 +182,8 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	} else {
 		target_copy = strdup(target);
 		if (NULL == target_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto free_source;
 		}
 	}
@@ -190,6 +193,8 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	} else {
 		filesystemtype_copy = strdup(filesystemtype);
 		if (NULL == filesystemtype) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto free_target;
 		}
 	}
@@ -199,14 +204,17 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	} else {
 		data_copy = strdup(data);
 		if (NULL == data_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto free_filesystemtype;
 		}
 	}
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_realloc_array(
-		         &xx, mount_args, size, sizeof mount_args[0U])) != 0) {
+		errnum = linted_mem_realloc_array(&xx, mount_args, size,
+		                                  sizeof mount_args[0U]);
+		if (errnum != 0) {
 			goto free_data;
 		}
 		mount_args = xx;
@@ -247,8 +255,8 @@ linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *file_actions)) !=
-		    0) {
+		errnum = linted_mem_alloc(&xx, sizeof *file_actions);
+		if (errnum != 0) {
 			return errnum;
 		}
 		file_actions = xx;
@@ -275,13 +283,13 @@ linted_error linted_spawn_file_actions_adddup2(
 
 	old_count = file_actions->action_count;
 	new_count = old_count + 1U;
+
+	size_t new_size = sizeof *file_actions +
+		new_count * sizeof file_actions->actions[0U];
 	{
 		void *xx;
-		if ((errnum = linted_mem_realloc(
-		         &xx, file_actions,
-		         sizeof *file_actions +
-		             new_count * sizeof file_actions->actions[0U])) !=
-		    0) {
+		errnum = linted_mem_realloc(&xx, file_actions, new_size);
+		if (errnum != 0) {
 			return errnum;
 		}
 		new_file_actions = xx;
@@ -364,9 +372,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (file_actions != NULL && file_actions->action_count > 0U) {
 		{
 			void *xx;
-			if ((errnum = linted_mem_alloc_array(
-			         &xx, count + 3U, sizeof input_envp[0U])) !=
-			    0) {
+			errnum = linted_mem_alloc_array(&xx, count + 3U,
+			                                sizeof envp[0U]);
+			if (errnum != 0) {
 				goto close_pipes;
 			}
 			envp = xx;
@@ -405,8 +413,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		sigset_t sigset;
 		sigfillset(&sigset);
 
-		if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) !=
-		    0) {
+		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+		if (errnum != 0) {
 			child = -1;
 			goto free_caps;
 		}
@@ -462,8 +470,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			}
 		}
 
-		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset,
+		                                           NULL);
 		if (0 == errnum) {
 			errnum = mask_errnum;
 		}
@@ -496,8 +504,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		{
 			size_t xx;
 			linted_error yy;
-			if ((errnum = linted_io_read_all(
-			         reader, &xx, &yy, sizeof spawn_error)) != 0) {
+			errnum = linted_io_read_all(reader, &xx, &yy,
+			                            sizeof spawn_error);
+			if (errnum != 0) {
 				goto close_reader;
 			}
 			bytes_read = xx;
@@ -590,10 +599,11 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 				}
 			} else if (mount_arg->touch_flag) {
 				linted_ko xx;
-				if ((errnum = linted_file_create(
+				errnum = linted_file_create(
 				         &xx, AT_FDCWD, mount_arg->target,
-				         LINTED_FILE_EXCL, S_IRWXU)) != 0) {
-					exit_with_error(writer, errno);
+				         LINTED_FILE_EXCL, S_IRWXU);
+				if (errnum != 0) {
+					exit_with_error(writer, errnum);
 				}
 				linted_ko_close(xx);
 			}

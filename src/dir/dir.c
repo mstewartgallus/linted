@@ -44,8 +44,8 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	linted_ko dirkodup;
 	{
 		linted_ko xx;
-		if ((errnum = linted_ko_reopen(&xx, dirko,
-		                               LINTED_KO_DIRECTORY)) != 0) {
+		errnum = linted_ko_reopen(&xx, dirko, LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
 			return errnum;
 		}
 		dirkodup = xx;

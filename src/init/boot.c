@@ -230,10 +230,11 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				linted_ko file;
 				{
 					linted_ko xx;
-					if ((errnum = linted_ko_open(
+					errnum = linted_ko_open(
 					         &xx, AT_FDCWD,
 					         "/proc/self/uid_map",
-					         LINTED_KO_WRONLY)) != 0) {
+					         LINTED_KO_WRONLY);
+					if (errnum != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
 						return EXIT_FAILURE;
@@ -241,15 +242,18 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					file = xx;
 				}
 
-				if ((errnum = linted_io_write_format(
-				         file, NULL, "%i %i 1\n", uid, uid)) !=
-				    0) {
+				errnum = linted_io_write_format(file, NULL,
+				                                "%i %i 1\n",
+				                                uid, uid);
+				if (errnum != 0) {
 					errno = errnum;
 					perror("linted_io_write_format");
 					return EXIT_FAILURE;
 				}
 
-				if (-1 == linted_ko_close(file)) {
+				errnum = linted_ko_close(file);
+				if (errnum != 0) {
+					errno = errnum;
 					perror("linted_ko_close");
 					return EXIT_FAILURE;
 				}
@@ -259,10 +263,11 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				linted_ko file;
 				{
 					linted_ko xx;
-					if ((errnum = linted_ko_open(
+					errnum = linted_ko_open(
 					         &xx, AT_FDCWD,
 					         "/proc/self/gid_map",
-					         LINTED_KO_WRONLY)) != 0) {
+					         LINTED_KO_WRONLY);
+					if (errnum != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
 						return EXIT_FAILURE;
@@ -270,15 +275,17 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					file = xx;
 				}
 
-				if ((errnum = linted_io_write_format(
-				         file, NULL, "%i %i 1\n", gid, gid)) !=
-				    0) {
+				errnum = linted_io_write_format(file, NULL,
+				                                "%i %i 1\n",
+				                                gid, gid);
+				if (errnum != 0) {
 					errno = errnum;
 					perror("linted_io_write_format");
 					return EXIT_FAILURE;
 				}
 
-				if (-1 == linted_ko_close(file)) {
+				errnum = linted_ko_close(file);
+				if (errnum != 0) {
 					perror("linted_ko_close");
 					return EXIT_FAILURE;
 				}
@@ -319,73 +326,84 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 {
 	linted_error errnum;
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "))) !=
-	    0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_string(ko, NULL, process_name)) != 0) {
+	errnum = linted_io_write_string(ko, NULL, process_name);
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL,
-	                                  LINTED_STR(" [OPTIONS]\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Play the game.\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Play the game.\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --help              display this help and exit\n\
-  --version           display version information and exit\n"))) != 0) {
+  --version           display version information and exit\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --chrootdir         the directory the chroot is mounted to\n\
   --fstab             the location of the chroot mount instructions\n\
   --simulator         the location of the simulator executable\n\
-  --gui               the location of the gui executable\n"))) != 0) {
+  --gui               the location of the gui executable\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-Report bugs to <"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
+	if (errnum != 0) {
 		return errnum;
 	}
-	if ((errnum = linted_io_write_str(ko, NULL, package_bugreport)) != 0) {
+	errnum = linted_io_write_str(ko, NULL, package_bugreport);
+	if (errnum != 0) {
 		return errnum;
 	}
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 
-	if ((errnum = linted_io_write_str(ko, NULL, package_name)) != 0) {
+	errnum = linted_io_write_str(ko, NULL, package_name);
+	if (errnum != 0) {
 		return errnum;
 	}
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
- home page: <"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
+	if (errnum != 0) {
 		return errnum;
 	}
-	if ((errnum = linted_io_write_str(ko, NULL, package_url)) != 0) {
+	errnum = linted_io_write_str(ko, NULL, package_url);
+	if (errnum != 0) {
 		return errnum;
 	}
-	if ((errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"))) != 0) {
+	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	if (errnum != 0) {
 		return errnum;
 	}
 

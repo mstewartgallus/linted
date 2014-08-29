@@ -94,8 +94,8 @@ linted_error linted_io_write_format(linted_ko ko,
 		char *string;
 		{
 			void *xx;
-			if ((errnum = linted_mem_alloc_zeroed(
-			         &xx, string_size)) != 0) {
+			errnum = linted_mem_alloc_zeroed(&xx, string_size);
+			if (errnum != 0) {
 				goto free_va_lists;
 			}
 			string = xx;

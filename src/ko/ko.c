@@ -182,7 +182,8 @@ linted_error linted_ko_close(linted_ko ko)
 	/* First use the signal set for the full set */
 	sigfillset(&sigset);
 
-	if ((errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset)) != 0) {
+	errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+	if (errnum != 0) {
 		return errnum;
 	}
 
