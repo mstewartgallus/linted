@@ -137,13 +137,11 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	return 0;
 
 destroy_threads:
-	for (size_t ii = 0U; ii < created_threads; ++ii) {
+	for (size_t ii = 0U; ii < created_threads; ++ii)
 		pthread_cancel(pool->workers[ii]);
-	}
 
-	for (size_t ii = 0U; ii < created_threads; ++ii) {
+	for (size_t ii = 0U; ii < created_threads; ++ii)
 		pthread_join(pool->workers[ii], NULL);
-	}
 
 destroy_event_queue:
 	linted_queue_destroy(pool->event_queue);
