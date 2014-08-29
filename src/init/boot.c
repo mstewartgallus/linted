@@ -111,63 +111,53 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			break;
 
 		case HELP:
-			if (argument[strlen(arguments[HELP])] != '\0') {
+			if (argument[strlen(arguments[HELP])] != '\0')
 				goto bad_argument;
-			}
 			need_help = true;
 			break;
 
 		case VERSION_OPTION:
-			if (argument[strlen(arguments[VERSION_OPTION])] !=
-			    '\0') {
+			if (argument[strlen(arguments[VERSION_OPTION])] != '\0')
 				goto bad_argument;
-			}
 			need_version = true;
 			break;
 
 		case CHROOTDIR_OPTION:
 			if (argument[strlen(arguments[CHROOTDIR_OPTION])] !=
-			    '=') {
+			    '=')
 				goto bad_argument;
-			}
 			chrootdir_path = argument + strlen("--chrootdir=");
 			break;
 
 		case LOGGER_FSTAB:
-			if (argument[strlen(arguments[LOGGER_FSTAB])] != '=') {
+			if (argument[strlen(arguments[LOGGER_FSTAB])] != '=')
 				goto bad_argument;
-			}
 			logger_fstab_path =
 			    argument + strlen("--logger-fstab=");
 			break;
 
 		case SIMULATOR_FSTAB:
-			if (argument[strlen(arguments[SIMULATOR_FSTAB])] !=
-			    '=') {
+			if (argument[strlen(arguments[SIMULATOR_FSTAB])] != '=')
 				goto bad_argument;
-			}
 			simulator_fstab_path =
 			    argument + strlen("--simulator-fstab=");
 			break;
 
 		case GUI_FSTAB:
-			if (argument[strlen(arguments[GUI_FSTAB])] != '=') {
+			if (argument[strlen(arguments[GUI_FSTAB])] != '=')
 				goto bad_argument;
-			}
 			gui_fstab_path = argument + strlen("--gui-fstab=");
 			break;
 
 		case LOGGER:
-			if (argument[strlen(arguments[LOGGER])] != '=') {
+			if (argument[strlen(arguments[LOGGER])] != '=')
 				goto bad_argument;
-			}
 			logger_path = argument + strlen("--logger=");
 			break;
 
 		case SIMULATOR:
-			if (argument[strlen(arguments[SIMULATOR])] != '=') {
+			if (argument[strlen(arguments[SIMULATOR])] != '=')
 				goto bad_argument;
-			}
 			simulator_path = argument + strlen("--simulator=");
 			break;
 
@@ -323,85 +313,74 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_string(ko, NULL, process_name);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Play the game.\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   --chrootdir         the directory the chroot is mounted to\n\
   --fstab             the location of the chroot mount instructions\n\
   --simulator         the location of the simulator executable\n\
   --gui               the location of the gui executable\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
+
 	errnum = linted_io_write_str(ko, NULL, package_bugreport);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
+
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	errnum = linted_io_write_str(ko, NULL, package_name);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
+
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
+
 	errnum = linted_io_write_str(ko, NULL, package_url);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
+
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	return 0;
 }

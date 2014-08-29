@@ -26,9 +26,8 @@
 linted_error linted_updater_create(linted_updater *updaterp,
                                    unsigned long flags)
 {
-	if (flags != 0U) {
+	if (flags != 0U)
 		return EINVAL;
-	}
 
 	struct linted_mq_attr attr = { 0 };
 

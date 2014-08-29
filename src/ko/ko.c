@@ -44,9 +44,8 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 	size_t length = strlen(str);
 	unsigned position = 1U;
 
-	if ('0' == str[0U] && length != 1U) {
+	if ('0' == str[0U] && length != 1U)
 		return EINVAL;
-	}
 
 	unsigned total = 0U;
 	for (; length > 0U; --length) {
@@ -55,9 +54,8 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 		if ('0' <= digit && digit <= '9') {
 			unsigned long sum =
 			    total + ((unsigned)(digit - '0')) * position;
-			if (sum > INT_MAX) {
+			if (sum > INT_MAX)
 				return ERANGE;
-			}
 
 			total = sum;
 		} else {
@@ -65,9 +63,8 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 		}
 
 		unsigned long next_position = 10U * position;
-		if (next_position > INT_MAX) {
+		if (next_position > INT_MAX)
 			return ERANGE;
-		}
 		position = next_position;
 	}
 
@@ -86,9 +83,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	linted_error errnum;
 
 	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR &
-	     ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U) {
+	     ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
 		return EINVAL;
-	}
 
 	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
 	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
@@ -98,22 +94,18 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
 
-	if (ko_rdonly && ko_wronly) {
+	if (ko_rdonly && ko_wronly)
 		return EINVAL;
-	}
 
-	if (ko_rdwr && ko_rdonly) {
+	if (ko_rdwr && ko_rdonly)
 		return EINVAL;
-	}
 
-	if (ko_rdwr && ko_wronly) {
+	if (ko_rdwr && ko_wronly)
 		return EINVAL;
-	}
 
 	if ((ko_directory && ko_rdonly) || (ko_directory && ko_wronly) ||
-	    (ko_directory && ko_rdwr) || (ko_directory && ko_sync)) {
+	    (ko_directory && ko_rdwr) || (ko_directory && ko_sync))
 		return EINVAL;
-	}
 
 	/*
 	 * Always, be safe for execs and use O_NONBLOCK because asynch
@@ -121,25 +113,20 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	 */
 	int oflags = O_CLOEXEC | O_NONBLOCK | O_NOCTTY;
 
-	if (ko_rdonly) {
+	if (ko_rdonly)
 		oflags |= O_RDONLY;
-	}
 
-	if (ko_wronly) {
+	if (ko_wronly)
 		oflags |= O_WRONLY;
-	}
 
-	if (ko_rdwr) {
+	if (ko_rdwr)
 		oflags |= O_RDWR;
-	}
 
-	if (ko_sync) {
+	if (ko_sync)
 		oflags |= O_SYNC;
-	}
 
-	if (ko_directory) {
+	if (ko_directory)
 		oflags |= O_DIRECTORY;
-	}
 
 	int fildes;
 	do {
@@ -151,9 +138,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 			errnum = 0;
 		}
 	} while (EINTR == errnum);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	*kop = fildes;
 
@@ -183,9 +169,8 @@ linted_error linted_ko_close(linted_ko ko)
 	sigfillset(&sigset);
 
 	errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	/* Then reuse the signal set for the old set */
 
@@ -197,9 +182,8 @@ linted_error linted_ko_close(linted_ko ko)
 	}
 
 	linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, NULL);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = mask_errnum;
-	}
 
 	return errnum;
 }
@@ -264,9 +248,8 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	do {
 		short xx;
 		errnum = poll_one(ko, events, &xx);
-		if (0 == errnum) {
+		if (0 == errnum)
 			revents = xx;
-		}
 	} while (EINTR == errnum);
 
 	task_poll->revents = revents;
@@ -294,44 +277,37 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 
-				if (EINTR == errnum) {
+				if (EINTR == errnum)
 					continue;
-				}
 
 				break;
 			}
 
 			size_t bytes_read_delta = result;
-			if (0U == bytes_read_delta) {
+			if (0U == bytes_read_delta)
 				break;
-			}
 
 			bytes_read += bytes_read_delta;
 			bytes_left -= bytes_read_delta;
-			if (0U == bytes_left) {
+			if (0U == bytes_left)
 				break;
-			}
 		}
 
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
+		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
 			break;
-		}
 
 		short revents = 0;
 		do {
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum) {
+			if (0 == errnum)
 				revents = xx;
-			}
 		} while (EINTR == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			break;
-		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0) {
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
 			break;
-		}
 	}
 
 	task->errnum = errnum;
@@ -361,9 +337,8 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	sigemptyset(&oldset);
 	sigaddset(&oldset, SIGPIPE);
 
-	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0) {
+	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0)
 		goto return_reply;
-	}
 
 	for (;;) {
 		for (;;) {
@@ -373,9 +348,8 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 
-				if (EINTR == errnum) {
+				if (EINTR == errnum)
 					continue;
-				}
 
 				break;
 			}
@@ -384,30 +358,25 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
 			bytes_wrote += bytes_wrote_delta;
 			bytes_left -= bytes_wrote_delta;
-			if (0U == bytes_left) {
+			if (0U == bytes_left)
 				break;
-			}
 		}
 
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
+		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
 			break;
-		}
 
 		short revents = 0;
 		do {
 			short xx;
 			errnum = poll_one(ko, POLLOUT, &xx);
-			if (0 == errnum) {
+			if (0 == errnum)
 				revents = xx;
-			}
 		} while (EINTR == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			break;
-		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0) {
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
 			break;
-		}
 	}
 
 	/* Consume SIGPIPEs */
@@ -429,18 +398,16 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 			}
 		} while (EINTR == wait_errnum);
 		if (wait_errnum != 0 && wait_errnum != EAGAIN) {
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = wait_errnum;
-			}
 		}
 	}
 
 	{
 		linted_error mask_errnum =
 		    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = mask_errnum;
-		}
 	}
 
 return_reply:
@@ -491,25 +458,21 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 			continue;
 		}
 
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK) {
+		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
 			break;
-		}
 
 		short revents = 0;
 		do {
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum) {
+			if (0 == errnum)
 				revents = xx;
-			}
 		} while (EINTR == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			break;
-		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0) {
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
 			break;
-		}
 	}
 
 	task->errnum = errnum;
@@ -535,9 +498,8 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
 {
 	linted_error errnum = 0;
 
-	if ((revents & POLLNVAL) != 0) {
+	if ((revents & POLLNVAL) != 0)
 		errnum = EBADF;
-	}
 
 	return errnum;
 }

@@ -74,23 +74,21 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
+
 		pool = xx;
 	}
 
 	pool->stopped = false;
 
 	errnum = linted_queue_create(&pool->worker_command_queue);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto free_pool;
-	}
 
 	errnum = linted_queue_create(&pool->event_queue);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_worker_command_queue;
-	}
 
 	pool->worker_count = max_tasks;
 
@@ -119,23 +117,20 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 			errnum = pthread_create(&pool->workers[created_threads],
 			                        &worker_attributes,
 			                        worker_routine, pool);
-			if (errnum != 0) {
+			if (errnum != 0)
 				break;
-			}
 		}
 
 		{
 			linted_error destroy_errnum =
 			    pthread_attr_destroy(&worker_attributes);
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = destroy_errnum;
-			}
 		}
 	}
 
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_threads;
-	}
 
 	*poolp = pool;
 
@@ -166,21 +161,18 @@ linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool)
 {
 	linted_error errnum = 0;
 
-	if (pool->stopped) {
+	if (pool->stopped)
 		return EINVAL;
-	}
 
 	pool->stopped = true;
 
 	size_t worker_count = pool->worker_count;
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		pthread_cancel(pool->workers[ii]);
-	}
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		pthread_join(pool->workers[ii], NULL);
-	}
 
 	linted_queue_destroy(pool->worker_command_queue);
 
@@ -191,9 +183,8 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
 	linted_error errnum = 0;
 
-	if (!pool->stopped) {
+	if (!pool->stopped)
 		return EBUSY;
-	}
 
 	linted_queue_destroy(pool->event_queue);
 
@@ -219,12 +210,14 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	if (pool != NULL) {
-		int oldstate;
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
-		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-		pthread_setcancelstate(oldstate, NULL);
+	if (NULL == pool) {
+		return;
 	}
+
+	int oldstate;
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
+	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+	pthread_setcancelstate(oldstate, NULL);
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
@@ -245,9 +238,9 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 	linted_error errnum;
 	struct linted_queue_node *node;
 
-	if ((errnum = linted_queue_try_recv(pool->event_queue, &node)) != 0) {
+	errnum = linted_queue_try_recv(pool->event_queue, &node);
+	if (errnum != 0)
 		return errnum;
-	}
 
 	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 

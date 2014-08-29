@@ -49,9 +49,8 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 	struct linted_queue *queue;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0) {
+		if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0)
 			return errnum;
-		}
 		queue = xx;
 	}
 
@@ -63,9 +62,8 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 	{
 		pthread_mutexattr_t attr;
 
-		if ((errnum = pthread_mutexattr_init(&attr)) != 0) {
+		if ((errnum = pthread_mutexattr_init(&attr)) != 0)
 			goto free_queue;
-		}
 
 #if !defined NDBEBUG && defined PTHREAD_MUTEX_ERRORCHECK_NP
 		if ((errnum = pthread_mutexattr_settype(
@@ -77,13 +75,11 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 
 		errnum = pthread_mutex_init(&queue->lock, &attr);
 
-		if (pthread_mutexattr_destroy(&attr) != 0) {
+		if (pthread_mutexattr_destroy(&attr) != 0)
 			assert(false);
-		}
 
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto free_queue;
-		}
 	}
 
 	if ((errnum = pthread_cond_init(&queue->gains_member, NULL)) != 0) {
@@ -162,9 +158,8 @@ void linted_queue_recv(struct linted_queue *queue,
 	/* The nodes next to the tip are the head */
 	for (;;) {
 		head = tip->next;
-		if (head != tip) {
+		if (head != tip)
 			break;
-		}
 
 		pthread_cond_wait(gains_member, lock);
 	}

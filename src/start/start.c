@@ -56,18 +56,15 @@ int main(int argc, char *argv[])
 	linted_error errnum;
 
 	/* Check whether basics are open */
-	if (!is_open(STDERR_FILENO)) {
+	if (!is_open(STDERR_FILENO))
 		/* Sadly, this is all we can do */
 		return EXIT_FAILURE;
-	}
 
-	if (!is_open(STDOUT_FILENO)) {
+	if (!is_open(STDOUT_FILENO))
 		return EXIT_FAILURE;
-	}
 
-	if (!is_open(STDIN_FILENO)) {
+	if (!is_open(STDIN_FILENO))
 		return EXIT_FAILURE;
-	}
 
 	/* First we check if we are run with proper security */
 	uid_t const uid = getuid();
@@ -162,11 +159,10 @@ It is insecure to run a game as root!\n"));
 	/* Sort the fds from smallest to largest */
 	sort_kos(open_kos, open_kos_size);
 
-	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
+	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
 		/* Don't check for errors, could just be a leaked /dev/full
 		 * handle */
 		linted_ko_close(open_kos[ii]);
-	}
 
 	/* Sanitize the fds */
 	for (size_t ii = 0U; ii < 3U + kos_size; ++ii) {
@@ -226,9 +222,8 @@ It is insecure to run a game as root!\n"));
 		}
 	}
 
-	for (size_t ii = 0U; ii < kos_size; ++ii) {
+	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = open_kos[ii + 3U];
-	}
 	linted_mem_free(open_kos);
 
 	linted_ko cwd;
@@ -337,27 +332,22 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		struct dirent *const result = readdir(fds_dir);
 		{
 			errnum = errno;
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto close_fds_dir;
-			}
 		}
-		if (NULL == result) {
+		if (NULL == result)
 			break;
-		}
 
 		char const *const d_name = result->d_name;
-		if (0 == strcmp(d_name, ".")) {
+		if (0 == strcmp(d_name, "."))
 			continue;
-		}
 
-		if (0 == strcmp(d_name, "..")) {
+		if (0 == strcmp(d_name, ".."))
 			continue;
-		}
 
 		int const fd = atoi(d_name);
-		if (fd == dirfd(fds_dir)) {
+		if (fd == dirfd(fds_dir))
 			continue;
-		}
 
 		++size;
 	}
@@ -367,9 +357,8 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 	{
 		void *xx;
 		errnum = linted_mem_alloc_array(&xx, size, sizeof fds[0]);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto close_fds_dir;
-		}
 		fds = xx;
 	}
 
@@ -378,25 +367,21 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		struct dirent *const result = readdir(fds_dir);
 		{
 			errnum = errno;
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto free_fds;
-			}
 		}
 
 		char const *const d_name = result->d_name;
-		if (0 == strcmp(d_name, ".")) {
+		if (0 == strcmp(d_name, "."))
 			continue;
-		}
 
-		if (0 == strcmp(d_name, "..")) {
+		if (0 == strcmp(d_name, ".."))
 			continue;
-		}
 
 		int const fd = atoi(d_name);
 
-		if (fd == dirfd(fds_dir)) {
+		if (fd == dirfd(fds_dir))
 			continue;
-		}
 
 		fds[ii] = fd;
 		++ii;
@@ -414,9 +399,8 @@ close_fds_dir:
 		LINTED_ASSUME(close_errnum != 0);
 		assert(close_errnum != EBADF);
 
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = close_errnum;
-		}
 	}
 
 	*sizep = size;
@@ -439,24 +423,21 @@ static linted_error get_system_entropy(unsigned *entropyp)
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, AT_FDCWD, "/dev/random",
 		                        LINTED_KO_RDONLY);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		random = xx;
 	}
 
 	{
 		unsigned xx;
 		errnum = linted_io_read_all(random, NULL, &xx, sizeof xx);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		entropy = xx;
 	}
 
-	if ((errnum = linted_ko_close(random)) != 0) {
+	if ((errnum = linted_ko_close(random)) != 0)
 		return errnum;
-	}
 
 	*entropyp = entropy;
 	return 0;

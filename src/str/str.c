@@ -38,9 +38,8 @@ linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
 	size_t cap = *capp;
 	size_t size = *sizep;
 
-	if (size > SIZE_MAX - strsize) {
+	if (size > SIZE_MAX - strsize)
 		return ENOMEM;
-	}
 
 	size_t new_size = size + strsize;
 
@@ -52,9 +51,8 @@ linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
 		{
 			void *xx;
 			errnum = linted_mem_realloc(&xx, buf, new_cap);
-			if (errnum != 0) {
+			if (errnum != 0)
 				return errnum;
-			}
 			new_buf = xx;
 		}
 		buf = new_buf;
@@ -101,17 +99,15 @@ linted_error linted_str_append_format(char **restrict bufp,
 	{
 		char *xx;
 		size_t yy;
-		if ((errnum = valloc_sprintf(&xx, &yy, fmt, ap)) != 0) {
+		if ((errnum = valloc_sprintf(&xx, &yy, fmt, ap)) != 0)
 			goto free_ap;
-		}
 		str = xx;
 		strsize = yy;
 	}
 
 	errnum = linted_str_append(bufp, capp, sizep, str, strsize);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto free_str;
-	}
 
 free_str:
 	linted_mem_free(str);
@@ -144,9 +140,8 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
 		{
 			void *xx;
 			errnum = linted_mem_alloc(&xx, string_size);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto free_ap_copy;
-			}
 			string = xx;
 		}
 

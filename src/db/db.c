@@ -65,13 +65,11 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 {
 	linted_error errnum;
 
-	if ((flags & ~LINTED_DB_CREAT) != 0U) {
+	if ((flags & ~LINTED_DB_CREAT) != 0U)
 		return EINVAL;
-	}
 
-	if (0U == flags) {
+	if (0U == flags)
 		return EINVAL;
-	}
 
 	bool db_creat = (flags & LINTED_DB_CREAT) != 0U;
 
@@ -159,9 +157,8 @@ try_to_create_lock_file : {
 			}
 		}
 	} while (EEXIST == errnum);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto close_db;
-	}
 
 	if (-1 == ftruncate(lock_file, sizeof(pthread_mutex_t))) {
 		errnum = errno;
@@ -186,9 +183,8 @@ try_to_create_lock_file : {
 		pthread_mutexattr_t attr;
 
 		errnum = pthread_mutexattr_init(&attr);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto unmap_mutexattr;
-		}
 
 		errnum =
 		    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
@@ -223,9 +219,8 @@ unmap_mutexattr:
 		assert(false);
 	}
 
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto unlink_prototype_lock_file;
-	}
 
 	if (-1 == symlinkat(random_shm_name, the_db, GLOBAL_LOCK)) {
 		errnum = errno;
@@ -239,18 +234,16 @@ unlink_prototype_lock_file:
 	unlink(random_shm_name);
 	linted_ko_close(lock_file);
 
-	if (EEXIST == errnum) {
+	if (EEXIST == errnum)
 		goto try_to_open_lock_file;
-	}
 	goto close_db;
 }
 
 opened_lock_file:
 
 	errnum = mutex_lock(lock_file);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto close_lock_file;
-	}
 
 	/* Sole user of the database now */
 	linted_ko version_file;
@@ -287,17 +280,15 @@ opened_lock_file:
 		{
 			void *xx;
 			errnum = linted_mem_alloc(&xx, version_file_size);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto close_version_file;
-			}
 			version_text = xx;
 		}
 
 		errnum = linted_io_read_all(version_file, NULL, version_text,
 		                            version_file_size);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto free_version_text;
-		}
 
 		if (version_file_size != sizeof CURRENT_VERSION - 1U) {
 			errnum = EINVAL;
@@ -336,9 +327,8 @@ opened_lock_file:
 			                            LINTED_FILE_RDWR |
 			                                LINTED_FILE_SYNC,
 			                            S_IRUSR | S_IWUSR);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto unlock_db;
-			}
 			version_file_write = xx;
 		}
 
@@ -349,14 +339,12 @@ opened_lock_file:
 		{
 			linted_error close_errnum =
 			    linted_ko_close(version_file_write);
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = close_errnum;
-			}
 		}
 
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto unlock_db;
-		}
 
 		if (-1 == mkdirat(the_db, TEMP_DIR, S_IRWXU)) {
 			errnum = errno;
@@ -379,9 +367,8 @@ unlock_db:
 close_lock_file:
 	linted_ko_close(lock_file);
 
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto close_db;
-	}
 
 	*dbp = the_db;
 	return 0;
@@ -404,9 +391,8 @@ linted_error linted_db_temp_file(linted_db db, linted_ko *kop, char **pathp)
 
 	char *temp_path;
 	errnum = prepend(&temp_path, TEMP_DIR "/", field_name);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	char *xxxxxx =
 	    temp_path + strlen(temp_path) + sizeof "field-" - sizeof field_name;
@@ -425,9 +411,8 @@ try_again:
 			 */
 			if ((random_char >= 'a' && random_char <= 'z') ||
 			    (random_char >= 'A' && random_char <= 'Z') ||
-			    (random_char >= '0' && random_char <= '9')) {
+			    (random_char >= '0' && random_char <= '9'))
 				break;
-			}
 		}
 
 		xxxxxx[ii] = random_char;
@@ -438,9 +423,8 @@ try_again:
 	                            LINTED_FILE_RDWR | LINTED_FILE_SYNC |
 	                                LINTED_FILE_EXCL,
 	                            S_IRUSR | S_IWUSR);
-	if (EEXIST == errnum) {
+	if (EEXIST == errnum)
 		goto try_again;
-	}
 
 	if (errnum != 0) {
 		linted_mem_free(temp_path);
@@ -461,9 +445,8 @@ linted_error linted_db_temp_send(linted_db db, char const *path,
 	{
 		char *xx;
 		errnum = prepend(&xx, FIELD_DIR "/", name);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		field_path = xx;
 	}
 
@@ -490,9 +473,8 @@ static linted_error prepend(char **result, char const *base,
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, new_path_size);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		new_path = xx;
 	}
 

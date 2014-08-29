@@ -320,9 +320,8 @@ unsigned char linted_init_monitor(
 		char buf[LINTED_MANAGER_PATH_MAX];
 		size_t len;
 		errnum = linted_manager_path(new_connections, buf, &len);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 
 		linted_io_write_str(STDOUT_FILENO, NULL,
 		                    LINTED_STR("LINTED_SOCKET="));
@@ -507,9 +506,8 @@ unsigned char linted_init_monitor(
 	{
 		struct connection_pool *xx;
 		errnum = connection_pool_create(&xx);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		connection_pool = xx;
 	}
 
@@ -517,9 +515,8 @@ unsigned char linted_init_monitor(
 	{
 		struct linted_asynch_pool *xx;
 		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		pool = xx;
 	}
 
@@ -540,16 +537,14 @@ unsigned char linted_init_monitor(
 
 	for (size_t ii = 0U; ii < services_size; ++ii) {
 		union service_config const *service_config = &config[ii];
-		if (service_config->type != SERVICE_TYPE_FILE) {
+		if (service_config->type != SERVICE_TYPE_FILE)
 			continue;
-		}
 
 		union service *service = &services[ii];
 
 		linted_ko ko;
-		if ((errnum = service_config->file.generator(&ko)) != 0) {
+		if ((errnum = service_config->file.generator(&ko)) != 0)
 			goto exit_services;
-		}
 
 		service->file.ko = ko;
 		service->file.is_open = true;
@@ -558,9 +553,8 @@ unsigned char linted_init_monitor(
 	pid_t halt_pid = -1;
 
 	for (size_t ii = 0U; ii < services_size; ++ii) {
-		if (config[ii].type != SERVICE_TYPE_PROCESS) {
+		if (config[ii].type != SERVICE_TYPE_PROCESS)
 			continue;
-		}
 
 		struct service_process *service = &services[ii].process;
 		struct service_config_process const *proc_config =
@@ -581,17 +575,15 @@ unsigned char linted_init_monitor(
 		{
 			struct linted_spawn_file_actions *xx;
 			errnum = linted_spawn_file_actions_init(&xx);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto exit_services;
-			}
 			file_actions = xx;
 		}
 
 		{
 			struct linted_spawn_attr *xx;
-			if ((errnum = linted_spawn_attr_init(&xx)) != 0) {
+			if ((errnum = linted_spawn_attr_init(&xx)) != 0)
 				goto destroy_file_actions;
-			}
 			attr = xx;
 		}
 
@@ -613,9 +605,8 @@ unsigned char linted_init_monitor(
 			void *xx;
 			errnum = linted_mem_alloc_array(
 			    &xx, sizeof proc_kos[0U], dup_pairs_size);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto destroy_attr;
-			}
 			proc_kos = xx;
 		}
 		size_t kos_opened = 0U;
@@ -631,9 +622,8 @@ unsigned char linted_init_monitor(
 				linted_ko xx;
 				errnum = linted_ko_reopen(&xx, file->ko,
 				                          dup_pair->flags);
-				if (errnum != 0) {
+				if (errnum != 0)
 					goto destroy_proc_kos;
-				}
 				ko = xx;
 			}
 
@@ -642,9 +632,8 @@ unsigned char linted_init_monitor(
 
 			errnum = linted_spawn_file_actions_adddup2(
 			    &file_actions, ko, kos_opened - 1U);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto destroy_proc_kos;
-			}
 		}
 
 		{
@@ -652,21 +641,18 @@ unsigned char linted_init_monitor(
 			errnum = linted_spawn(
 			    &process, dirko, path, file_actions, attr,
 			    (char **)arguments, (char **)environment);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto destroy_attr;
-			}
 
-			if (proc_config->halt_after_exit) {
+			if (proc_config->halt_after_exit)
 				halt_pid = process;
-			}
 
 			service->pid = process;
 		}
 
 	destroy_proc_kos:
-		for (size_t jj = 0; jj < kos_opened; ++jj) {
+		for (size_t jj = 0; jj < kos_opened; ++jj)
 			linted_ko_close(proc_kos[jj]);
-		}
 		linted_mem_free(proc_kos);
 
 	destroy_attr:
@@ -675,9 +661,8 @@ unsigned char linted_init_monitor(
 	destroy_file_actions:
 		linted_spawn_file_actions_destroy(file_actions);
 
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto exit_services;
-		}
 	}
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
@@ -697,9 +682,8 @@ unsigned char linted_init_monitor(
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0) {
+		if ((errnum = dispatch(completed_task)) != 0)
 			goto drain_dispatches;
-		}
 	}
 
 drain_dispatches:
@@ -709,24 +693,21 @@ drain_dispatches:
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-			if (EAGAIN == linted_asynch_pool_poll(pool, &xx)) {
+			if (EAGAIN == linted_asynch_pool_poll(pool, &xx))
 				break;
-			}
 			completed_task = xx;
 		}
 
 		linted_error dispatch_error = dispatch_drainers(completed_task);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = dispatch_error;
-		}
 	}
 
 	{
 		linted_error close_errnum =
 		    connection_pool_destroy(connection_pool);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = close_errnum;
-		}
 	}
 
 exit_services : {
@@ -744,29 +725,25 @@ exit_services : {
 	for (size_t ii = 0U; ii < services_size; ++ii) {
 		union service_config const *service_config = &config[ii];
 
-		if (SERVICE_STDERR == ii) {
+		if (SERVICE_STDERR == ii)
 			continue;
-		}
 
-		if (service_config->type != SERVICE_TYPE_FILE) {
+		if (service_config->type != SERVICE_TYPE_FILE)
 			continue;
-		}
 
 		struct service_file *file = &services[ii].file;
 		if (file->is_open) {
 			linted_error close_errnum = linted_ko_close(file->ko);
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = close_errnum;
-			}
 		}
 		file->is_open = false;
 	}
 
 	{
 		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = destroy_errnum;
-		}
 
 		/* Insure that the tasks are in proper scope until they are
 		 * terminated */
@@ -776,9 +753,8 @@ exit_services : {
 
 	{
 		linted_error close_errnum = linted_ko_close(new_connections);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = close_errnum;
-		}
 	}
 
 	if (errnum != 0) {
@@ -789,10 +765,9 @@ exit_services : {
 		return EXIT_FAILURE;
 	}
 
-	if (linted_ko_close(STDERR_FILENO) != 0) {
+	if (linted_ko_close(STDERR_FILENO) != 0)
 		/* Sadly, this is all we can do */
 		return EXIT_FAILURE;
-	}
 
 	return EXIT_SUCCESS;
 }
@@ -833,9 +808,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 		struct mntent *entry = getmntent(fstab);
 		if (NULL == entry) {
 			errnum = errno;
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto close_file;
-			}
 
 			break;
 		}
@@ -868,9 +842,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			unsigned long zz;
 			char const *ww;
 			errnum = get_flags_and_data(opts, &xx, &yy, &zz, &ww);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto close_file;
-			}
 			mkdir_flag = xx;
 			touch_flag = yy;
 			mountflags = zz;
@@ -880,9 +853,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 		errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
 		                                    mkdir_flag, touch_flag,
 		                                    mountflags, data);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto close_file;
-		}
 	}
 
 close_file:
@@ -1002,11 +974,10 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
 free_subopts_str:
 	linted_mem_free(subopts_str);
 
-	if (readwrite && readonly) {
+	if (readwrite && readonly)
 		return EINVAL;
-	}
 
-	if (bind && rec && readonly) {
+	if (bind && rec && readonly)
 		/*
 		 * Due to a completely idiotic kernel bug (see
 		 * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
@@ -1020,37 +991,29 @@ free_subopts_str:
 		 * readonly but the user directory /home/user will not be.
 		 */
 		return EINVAL;
-	}
 
-	if (mkdir_flag && touch_flag) {
+	if (mkdir_flag && touch_flag)
 		return EINVAL;
-	}
 
 	unsigned long mountflags = 0;
 
-	if (bind) {
+	if (bind)
 		mountflags |= MS_BIND;
-	}
 
-	if (rec) {
+	if (rec)
 		mountflags |= MS_REC;
-	}
 
-	if (readonly) {
+	if (readonly)
 		mountflags |= MS_RDONLY;
-	}
 
-	if (!suid) {
+	if (!suid)
 		mountflags |= MS_NOSUID;
-	}
 
-	if (!dev) {
+	if (!dev)
 		mountflags |= MS_NODEV;
-	}
 
-	if (!exec) {
+	if (!exec)
 		mountflags |= MS_NOEXEC;
-	}
 
 	*leftoversp = leftovers;
 	*mkdir_flagp = mkdir_flag;
@@ -1165,9 +1128,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	return 0;
 
 process_exited:
-	if (pid == halt_pid) {
+	if (pid == halt_pid)
 		wait_service_task->time_to_exit = true;
-	}
 
 	return 0;
 }
@@ -1176,9 +1138,8 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0) {
+	if ((errnum = completed_task->errnum) != 0)
 		return errnum;
-	}
 
 	struct new_connection_task *new_connection_task =
 	    LINTED_DOWNCAST(struct new_connection_task, completed_task);
@@ -1197,19 +1158,17 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 	linted_manager new_socket = accept_task->returned_ko;
 	linted_asynch_pool_submit(pool, completed_task);
 
-	if (connection_pool->count >= MAX_MANAGE_CONNECTIONS) {
+	if (connection_pool->count >= MAX_MANAGE_CONNECTIONS)
 		/* I'm sorry sir but we are full today. */
 		goto close_new_socket;
-	}
 
 	struct connection *connection;
 
 	size_t ii = 0U;
 	for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
 		connection = &connection_pool->connections[ii];
-		if (-1 == connection->ko) {
+		if (-1 == connection->ko)
 			goto got_space;
-		}
 	}
 	LINTED_ASSUME_UNREACHABLE();
 got_space:
@@ -1233,9 +1192,8 @@ got_space:
 
 close_new_socket : {
 	linted_error close_errnum = linted_ko_close(new_socket);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = close_errnum;
-	}
 }
 	return errnum;
 }
@@ -1257,9 +1215,8 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
 		errnum = connection_remove(connection, connection_pool);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		return 0;
 	}
 
@@ -1399,9 +1356,8 @@ static linted_error on_write_connection(struct linted_asynch_task *task)
 
 	linted_error remove_errnum =
 	    connection_remove(connection, connection_pool);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = remove_errnum;
-	}
 
 	return errnum;
 }
@@ -1430,9 +1386,8 @@ static linted_error drain_on_new_connection(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct new_connection_task *new_connection_task =
 	    LINTED_DOWNCAST(struct new_connection_task, task);
@@ -1471,9 +1426,8 @@ static linted_error check_db(linted_ko cwd)
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, 1U)) != 0) {
+		if ((errnum = linted_asynch_pool_create(&xx, 1U)) != 0)
 			return errnum;
-		}
 		pool = xx;
 	}
 
@@ -1484,10 +1438,9 @@ static linted_error check_db(linted_ko cwd)
 		 *       directory specification.
 		 */
 		linted_db xx;
-		if ((errnum = linted_db_open(&xx, cwd, "linted-db",
-		                             LINTED_DB_CREAT)) != 0) {
+		errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT);
+		if (errnum != 0)
 			goto destroy_pool;
-		}
 		my_db = xx;
 	}
 
@@ -1497,10 +1450,9 @@ static linted_error check_db(linted_ko cwd)
 		{
 			linted_ko xx;
 			char *yy;
-			if ((errnum = linted_db_temp_file(my_db, &xx, &yy)) !=
-			    0) {
+			errnum = linted_db_temp_file(my_db, &xx, &yy);
+			if (errnum != 0)
 				goto close_db;
-			}
 			tmp = xx;
 			path = yy;
 		}
@@ -1522,9 +1474,8 @@ static linted_error check_db(linted_ko cwd)
 			completed_task = xx;
 		}
 
-		if ((errnum = completed_task->errnum) != 0) {
+		if ((errnum = completed_task->errnum) != 0)
 			goto close_tmp;
-		}
 
 		switch (completed_task->task_action) {
 		case TMP_WRITE_FINISHED:
@@ -1535,26 +1486,23 @@ static linted_error check_db(linted_ko cwd)
 		}
 
 	done_writing:
-		if ((errnum = linted_db_temp_send(my_db, path, "hello")) != 0) {
+		if ((errnum = linted_db_temp_send(my_db, path, "hello")) != 0)
 			goto close_tmp;
-		}
 
 	close_tmp:
 		linted_mem_free(path);
 
 		{
 			linted_error close_errnum = linted_ko_close(tmp);
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = close_errnum;
-			}
 		}
 	}
 
 close_db : {
 	linted_error close_errnum = linted_db_close(my_db);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = close_errnum;
-	}
 }
 
 destroy_pool:
@@ -1562,9 +1510,8 @@ destroy_pool:
 
 	{
 		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = destroy_errnum;
-		}
 	}
 
 	return errnum;
@@ -1577,17 +1524,15 @@ static linted_error connection_pool_create(struct connection_pool **poolp)
 	struct connection_pool *pool;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *pool)) != 0) {
+		if ((errnum = linted_mem_alloc(&xx, sizeof *pool)) != 0)
 			return errnum;
-		}
 		pool = xx;
 	}
 
 	pool->count = 0U;
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii)
 		pool->connections[ii].ko = -1;
-	}
 
 	*poolp = pool;
 	return 0;
@@ -1601,9 +1546,8 @@ static linted_error connection_pool_destroy(struct connection_pool *pool)
 		linted_ko const ko = connection->ko;
 		if (ko != -1) {
 			linted_error close_errnum = linted_ko_close(ko);
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = close_errnum;
-			}
 		}
 	}
 	linted_mem_free(pool);
@@ -1627,21 +1571,18 @@ static union service const *service_for_name(union service const *services,
 	for (size_t ii = 0U; ii < size; ++ii) {
 		switch (services[ii].type) {
 		case SERVICE_TYPE_INIT:
-			if (0 == strcmp(services[ii].init.name, name)) {
+			if (0 == strcmp(services[ii].init.name, name))
 				return &services[ii];
-			}
 			break;
 
 		case SERVICE_TYPE_PROCESS:
-			if (0 == strcmp(services[ii].process.name, name)) {
+			if (0 == strcmp(services[ii].process.name, name))
 				return &services[ii];
-			}
 			break;
 
 		case SERVICE_TYPE_FILE:
-			if (0 == strcmp(services[ii].file.name, name)) {
+			if (0 == strcmp(services[ii].file.name, name))
 				return &services[ii];
-			}
 			break;
 		}
 	}
@@ -1665,11 +1606,10 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc_array(
-		         &xx, allowed_envvars_size,
-		         sizeof result_envvars[0U])) != 0) {
+		errnum = linted_mem_alloc_array(&xx, allowed_envvars_size,
+		                                sizeof result_envvars[0U]);
+		if (errnum != 0)
 			return errnum;
-		}
 		result_envvars = xx;
 	}
 
@@ -1678,9 +1618,8 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char const *envvar_name = allowed_envvars[ii];
 
 		char const *envvar_value = getenv(envvar_name);
-		if (NULL == envvar_value) {
+		if (NULL == envvar_value)
 			continue;
-		}
 
 		++result_envvars_size;
 
@@ -1693,10 +1632,10 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char *assign_string;
 		{
 			void *xx;
-			if ((errnum = linted_mem_alloc(
-			         &xx, assign_string_length + 1U)) != 0) {
+			errnum =
+			    linted_mem_alloc(&xx, assign_string_length + 1U);
+			if (errnum != 0)
 				goto free_result_envvars;
-			}
 			assign_string = xx;
 		}
 		memcpy(assign_string, envvar_name, envvar_name_length);
@@ -1710,11 +1649,11 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 	{
 		void *xx;
-		if ((errnum = linted_mem_realloc_array(
-		         &xx, result_envvars, result_envvars_size + 1U,
-		         sizeof result_envvars[0U])) != 0) {
+		errnum = linted_mem_realloc_array(&xx, result_envvars,
+		                                  result_envvars_size + 1U,
+		                                  sizeof result_envvars[0U]);
+		if (errnum != 0)
 			goto free_result_envvars;
-		}
 		result_envvars = xx;
 	}
 	result_envvars[result_envvars_size] = NULL;
@@ -1724,9 +1663,8 @@ static linted_error filter_envvars(char ***result_envvarsp,
 	return 0;
 
 free_result_envvars:
-	for (size_t ii = 0U; ii < result_envvars_size; ++ii) {
+	for (size_t ii = 0U; ii < result_envvars_size; ++ii)
 		linted_mem_free(result_envvars[ii]);
-	}
 	linted_mem_free(result_envvars);
 	return errnum;
 }

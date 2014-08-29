@@ -90,9 +90,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0) {
+		if ((errnum = dispatch(completed_task)) != 0)
 			goto destroy_pool;
-		}
 	}
 
 destroy_pool : {
@@ -118,9 +117,8 @@ destroy_pool : {
 	}
 
 	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = destroy_errnum;
-	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)logger_task;
@@ -145,9 +143,8 @@ static linted_error on_receive_log(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct logger_task *logger_task =
 	    LINTED_DOWNCAST(struct logger_task, task);

@@ -214,9 +214,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		xcb_screen_iterator_t iter =
 		    xcb_setup_roots_iterator(xcb_get_setup(connection));
 		for (size_t ii = 0U; ii < screen_number; ++ii) {
-			if (0 == iter.rem) {
+			if (0 == iter.rem)
 				break;
-			}
 
 			xcb_screen_next(&iter);
 		}
@@ -231,9 +230,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 	xcb_window_t window = xcb_generate_id(connection);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto disconnect;
-	}
 
 	xcb_void_cookie_t create_window_ck;
 	{
@@ -253,23 +251,20 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		    XCB_CW_EVENT_MASK, values);
 	}
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto disconnect;
-	}
 
 	xcb_intern_atom_cookie_t protocols_ck =
 	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 
 	xcb_intern_atom_cookie_t delete_ck =
 	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 
 	xcb_atom_t wm_delete_window_atom;
 	xcb_atom_t wm_protocols_atom;
@@ -283,9 +278,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			protocols_ck_err = xx;
 		}
 		errnum = get_xcb_conn_error(connection);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto destroy_window;
-		}
 
 		if (protocols_ck_err != NULL) {
 			errnum = get_xcb_error(protocols_ck_err);
@@ -305,9 +299,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			delete_ck_reply =
 			    xcb_intern_atom_reply(connection, delete_ck, &xx);
 			errnum = get_xcb_conn_error(connection);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto destroy_window;
-			}
 			delete_ck_err = xx;
 		}
 
@@ -325,15 +318,13 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	    connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
 	    1, &wm_delete_window_atom);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 
 	xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 
 	xcb_generic_error_t *create_window_err =
 	    xcb_request_check(connection, create_window_ck);
@@ -344,16 +335,14 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 
 	xcb_generic_error_t *ch_prop_err =
 	    xcb_request_check(connection, ch_prop_ck);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 	if (ch_prop_err != NULL) {
 		errnum = get_xcb_error(ch_prop_err);
 		linted_mem_free(ch_prop_err);
@@ -362,9 +351,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 	xcb_generic_error_t *map_ck_err = xcb_request_check(connection, map_ck);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		goto destroy_window;
-	}
 	if (map_ck_err != NULL) {
 		errnum = get_xcb_error(map_ck_err);
 		linted_mem_free(map_ck_err);
@@ -414,9 +402,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	{
 		struct linted_asynch_pool *xx;
 		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto destroy_egl_surface;
-		}
 		pool = xx;
 	}
 
@@ -477,12 +464,10 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					.time_to_quit = &time_to_quit
 				};
 				errnum = on_gui_event(&event, args);
-				if (errnum != 0) {
+				if (errnum != 0)
 					goto cleanup_gl;
-				}
-				if (time_to_quit) {
+				if (time_to_quit)
 					goto cleanup_gl;
-				}
 			}
 
 			linted_error poll_errnum;
@@ -496,9 +481,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 				if (had_asynch_event) {
 					errnum = dispatch(completed_task);
-					if (errnum != 0) {
+					if (errnum != 0)
 						goto cleanup_gl;
-					}
 				}
 			}
 
@@ -552,16 +536,14 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	use_no_egl_context:
 		if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
 		                    EGL_NO_CONTEXT)) {
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = egl_error();
-			}
 		}
 
 	destroy_egl_context:
 		if (!eglDestroyContext(egl_display, egl_context)) {
-			if (0 == errnum) {
+			if (0 == errnum)
 				errnum = egl_error();
-			}
 		}
 	} while (ENOSYS == errnum);
 
@@ -574,22 +556,19 @@ destroy_pool : {
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum) {
+			if (EAGAIN == poll_errnum)
 				break;
-			}
 			completed_task = xx;
 		}
 
 		linted_error dispatch_errnum = completed_task->errnum;
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = dispatch_errnum;
-		}
 	}
 
 	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = destroy_errnum;
-	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)updater_task;
@@ -598,22 +577,19 @@ destroy_pool : {
 
 destroy_egl_surface:
 	if (!eglDestroySurface(egl_display, egl_surface)) {
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = egl_error();
-		}
 	}
 
 destroy_egl_display:
 	if (!eglTerminate(egl_display)) {
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = egl_error();
-		}
 	}
 
 	if (!eglReleaseThread()) {
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = egl_error();
-		}
 	}
 
 destroy_window : {
@@ -621,23 +597,20 @@ destroy_window : {
 	    xcb_destroy_window_checked(connection, window);
 
 	linted_error conn_errnum = get_xcb_conn_error(connection);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = conn_errnum;
-	}
 
 	xcb_generic_error_t *destroy_err =
 	    xcb_request_check(connection, destroy_ck);
 	conn_errnum = get_xcb_conn_error(connection);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = conn_errnum;
-	}
 	if (destroy_err != NULL) {
 		linted_error destroy_errnum = get_xcb_error(destroy_err);
 		linted_mem_free(destroy_err);
 
-		if (0 == destroy_errnum) {
+		if (0 == destroy_errnum)
 			errnum = destroy_errnum;
-		}
 	}
 }
 
@@ -769,9 +742,8 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 
 		int x, y;
 		errnum = get_mouse_position(connection, window, &x, &y);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 
 		on_tilt(x, y, window_model, controller_data);
 		break;
@@ -878,9 +850,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct gui_updater_task *updater_task =
 	    LINTED_DOWNCAST(struct gui_updater_task, task);
@@ -909,9 +880,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	}
 
 	if (!controller_data->update_pending ||
-	    controller_data->update_in_progress) {
+	    controller_data->update_in_progress)
 		return 0;
-	}
 
 	linted_controller_send(LINTED_UPCAST(controller_task), ON_SENT_CONTROL,
 	                       controller, &controller_data->update);
@@ -932,9 +902,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct gui_controller_task *controller_task =
 	    LINTED_DOWNCAST(struct gui_controller_task, task);
@@ -946,9 +915,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 
 	controller_data->update_in_progress = false;
 
-	if (!controller_data->update_pending) {
+	if (!controller_data->update_pending)
 		return 0;
-	}
 
 	linted_controller_send(LINTED_UPCAST(controller_task), ON_SENT_CONTROL,
 	                       controller, &controller_data->update);
@@ -1036,9 +1004,8 @@ static linted_error init_graphics(linted_log log,
 
 	flush_gl_errors();
 	GLuint program = glCreateProgram();
-	if (0 == program) {
+	if (0 == program)
 		return get_gl_error();
-	}
 
 	{
 		flush_gl_errors();
@@ -1428,17 +1395,15 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	xcb_query_pointer_cookie_t cookie =
 	    xcb_query_pointer(connection, window);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply =
 	    xcb_query_pointer_reply(connection, cookie, &error);
 	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	if (error != NULL) {
 		errnum = get_xcb_error(error);
@@ -1469,10 +1434,9 @@ static linted_error log_str(linted_log log, struct linted_str start,
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, error_size + start.size);
-		if (errnum != 0) {
+		if (errnum != 0)
 			/* Silently drop log */
 			return errnum;
-		}
 		full_string = xx;
 	}
 

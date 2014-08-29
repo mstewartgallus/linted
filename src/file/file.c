@@ -32,9 +32,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	linted_error errnum;
 
 	if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY &
-	     ~LINTED_FILE_RDWR & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0U) {
+	     ~LINTED_FILE_RDWR & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0U)
 		return EINVAL;
-	}
 
 	bool file_rdonly = (flags & LINTED_FILE_RDONLY) != 0U;
 	bool file_wronly = (flags & LINTED_FILE_WRONLY) != 0U;
@@ -44,17 +43,14 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 
 	bool file_excl = (flags & LINTED_FILE_EXCL) != 0U;
 
-	if (file_rdonly && file_wronly) {
+	if (file_rdonly && file_wronly)
 		return EINVAL;
-	}
 
-	if (file_rdwr && file_rdonly) {
+	if (file_rdwr && file_rdonly)
 		return EINVAL;
-	}
 
-	if (file_rdwr && file_wronly) {
+	if (file_rdwr && file_wronly)
 		return EINVAL;
-	}
 
 	/*
 	 * Always, be safe for execs and use O_NONBLOCK because asynch
@@ -62,25 +58,20 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	 */
 	int oflags = O_CLOEXEC | O_NONBLOCK | O_CREAT;
 
-	if (file_rdonly) {
+	if (file_rdonly)
 		oflags |= O_RDONLY;
-	}
 
-	if (file_wronly) {
+	if (file_wronly)
 		oflags |= O_WRONLY;
-	}
 
-	if (file_rdwr) {
+	if (file_rdwr)
 		oflags |= O_RDWR;
-	}
 
-	if (file_sync) {
+	if (file_sync)
 		oflags |= O_SYNC;
-	}
 
-	if (file_excl) {
+	if (file_excl)
 		oflags |= O_EXCL;
-	}
 
 	int fildes;
 	do {
@@ -92,9 +83,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 			errnum = 0;
 		}
 	} while (EINTR == errnum);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	*kop = fildes;
 	return 0;

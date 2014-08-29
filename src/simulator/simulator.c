@@ -157,9 +157,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0)
 			goto exit;
-		}
 		pool = xx;
 	}
 
@@ -200,9 +199,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0) {
+		if ((errnum = dispatch(completed_task)) != 0)
 			goto destroy_pool;
-		}
 	}
 
 destroy_pool : {
@@ -214,22 +212,19 @@ destroy_pool : {
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum) {
+			if (EAGAIN == poll_errnum)
 				break;
-			}
 			completed_task = xx;
 		}
 
 		linted_error dispatch_errnum = completed_task->errnum;
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = dispatch_errnum;
-		}
 	}
 
 	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum) {
+	if (0 == errnum)
 		errnum = destroy_errnum;
-	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)timer_task;
@@ -316,9 +311,8 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0) {
+	if ((errnum = completed_task->errnum) != 0)
 		return errnum;
-	}
 
 	struct sim_tick_task *timer_task =
 	    LINTED_DOWNCAST(struct sim_tick_task, completed_task);
@@ -347,9 +341,8 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 	simulate_tick(simulator_state, action_state);
 
 	if (!simulator_state->update_pending ||
-	    simulator_state->write_in_progress) {
+	    simulator_state->write_in_progress)
 		return 0;
-	}
 
 	{
 		struct linted_updater_update update = {
@@ -381,9 +374,8 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct sim_controller_task *controller_task =
 	    LINTED_DOWNCAST(struct sim_controller_task, task);
@@ -394,9 +386,8 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
 	struct linted_controller_message message;
 	errnum =
 	    linted_controller_decode(LINTED_UPCAST(controller_task), &message);
-	if (errnum != 0) {
+	if (errnum != 0)
 		return errnum;
-	}
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -415,9 +406,8 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0) {
+	if ((errnum = completed_task->errnum) != 0)
 		return errnum;
-	}
 
 	struct sim_updater_task *updater_task =
 	    LINTED_DOWNCAST(struct sim_updater_task, completed_task);
@@ -428,9 +418,8 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 
 	simulator_state->write_in_progress = false;
 
-	if (!simulator_state->update_pending) {
+	if (!simulator_state->update_pending)
 		return 0;
-	}
 
 	{
 		struct linted_updater_update update = {

@@ -26,9 +26,8 @@
 linted_error linted_controller_create(linted_controller *controllerp,
                                       unsigned long flags)
 {
-	if (flags != 0U) {
+	if (flags != 0U)
 		return EINVAL;
-	}
 
 	struct linted_mq_attr attr = { 0 };
 
@@ -85,9 +84,8 @@ linted_controller_decode(struct linted_controller_task_receive const *task,
 	memcpy(&bitfield, tip, sizeof bitfield);
 
 	if ((bitfield & ~(1U | 1U << 1U | 1U << 2U | 1U << 3U | 1U << 4U)) !=
-	    0U) {
+	    0U)
 		return EPROTO;
-	}
 
 	message->forward = bitfield & 1U;
 	message->back = (bitfield & (1U << 1U)) != 0U;

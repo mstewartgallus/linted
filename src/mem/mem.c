@@ -25,9 +25,8 @@
 
 linted_error linted_mem_alloc(void **memp, size_t size)
 {
-	if (0U == size) {
+	if (0U == size)
 		size = 1U;
-	}
 
 	void *memory = malloc(size);
 	if (NULL == memory) {
@@ -42,14 +41,12 @@ linted_error linted_mem_alloc(void **memp, size_t size)
 
 linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 {
-	if (size != 0U && SIZE_MAX / size < nmemb) {
+	if (size != 0U && SIZE_MAX / size < nmemb)
 		return ENOMEM;
-	}
 
 	size_t total = size * nmemb;
-	if (0U == total) {
+	if (0U == total)
 		total = 1U;
-	}
 
 	void *memory = malloc(total);
 	if (NULL == memory) {
@@ -64,9 +61,8 @@ linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 
 linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 {
-	if (0U == size) {
+	if (0U == size)
 		size = 1U;
-	}
 
 	void *memory = calloc(1U, size);
 	if (NULL == memory) {
@@ -106,9 +102,8 @@ linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
 
 linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size)
 {
-	if (0U == new_size) {
+	if (0U == new_size)
 		new_size = 1U;
-	}
 
 	void *new_memory = realloc(memory, new_size);
 	if (NULL == new_memory) {
@@ -124,14 +119,12 @@ linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size)
 linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
                                       size_t size)
 {
-	if (size != 0U && SIZE_MAX / size < nmemb) {
+	if (size != 0U && SIZE_MAX / size < nmemb)
 		return ENOMEM;
-	}
 
 	size_t total = size * nmemb;
-	if (0U == total) {
+	if (0U == total)
 		total = 1U;
-	}
 
 	void *new_memory = realloc(memory, total);
 	if (NULL == new_memory) {

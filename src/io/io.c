@@ -37,9 +37,8 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 	linted_ko_task_read(&read_task, 0, ko, buf, size);
 	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&read_task));
 
-	if (bytes_read_out != NULL) {
+	if (bytes_read_out != NULL)
 		*bytes_read_out = read_task.bytes_read;
-	}
 	return LINTED_UPCAST(&read_task)->errnum;
 }
 
@@ -50,9 +49,8 @@ linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
 	linted_ko_task_write(&write_task, 0, ko, buf, size);
 	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&write_task));
 
-	if (bytes_wrote_out != NULL) {
+	if (bytes_wrote_out != NULL)
 		*bytes_wrote_out = write_task.bytes_wrote;
-	}
 	return LINTED_UPCAST(&write_task)->errnum;
 }
 
@@ -95,9 +93,8 @@ linted_error linted_io_write_format(linted_ko ko,
 		{
 			void *xx;
 			errnum = linted_mem_alloc_zeroed(&xx, string_size);
-			if (errnum != 0) {
+			if (errnum != 0)
 				goto free_va_lists;
-			}
 			string = xx;
 		}
 

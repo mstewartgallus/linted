@@ -34,13 +34,11 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
 {
 	linted_error errnum = 0;
 
-	if (NULL == path && path_len != 0U) {
+	if (NULL == path && path_len != 0U)
 		return EINVAL;
-	}
 
-	if (path_len > LINTED_MANAGER_PATH_MAX) {
+	if (path_len > LINTED_MANAGER_PATH_MAX)
 		return ENAMETOOLONG;
-	}
 
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
 	if (-1 == sock) {
@@ -62,9 +60,8 @@ linted_error linted_manager_bind(linted_manager *manager, int backlog,
 
 		if (path != NULL) {
 			memcpy(address.sun_path, path, path_len);
-			if ('@' == address.sun_path[0U]) {
+			if ('@' == address.sun_path[0U])
 				address.sun_path[0U] = '\0';
-			}
 		}
 
 		if (-1 == bind(sock, (void *)&address,
@@ -116,9 +113,8 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
 {
 	linted_error errnum = 0;
 
-	if (path_len > LINTED_MANAGER_PATH_MAX) {
+	if (path_len > LINTED_MANAGER_PATH_MAX)
 		return ENAMETOOLONG;
-	}
 
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
 	if (-1 == sock) {
@@ -133,9 +129,8 @@ linted_error linted_manager_connect(linted_manager *manager, char const *path,
 		address.sun_family = AF_UNIX;
 		memcpy(address.sun_path, path, path_len);
 
-		if ('@' == address.sun_path[0U]) {
+		if ('@' == address.sun_path[0U])
 			address.sun_path[0U] = '\0';
-		}
 
 		if (-1 == connect(sock, (void *)&address,
 		                  sizeof(sa_family_t) + path_len)) {
@@ -173,9 +168,8 @@ linted_error linted_manager_path(linted_manager manager,
 	*len = addr_len - sizeof(sa_family_t);
 	memcpy(buf, address.sun_path, *len);
 
-	if ('\0' == buf[0U]) {
+	if ('\0' == buf[0U])
 		buf[0U] = '@';
-	}
 
 	return 0;
 }
@@ -207,17 +201,16 @@ linted_error linted_manager_recv_reply(linted_manager manager,
                                        union linted_manager_reply *reply,
                                        size_t *size)
 {
-	linted_error errnum =
-	    linted_io_read_all(manager, size, reply, sizeof *reply);
+	linted_error errnum;
 
-	if (errnum != 0) {
+	errnum = linted_io_read_all(manager, size, reply, sizeof *reply);
+
+	if (errnum != 0)
 		return errnum;
-	}
 
 	/* Sent malformed input */
-	if (*size != sizeof *reply) {
+	if (*size != sizeof *reply)
 		return EPROTO;
-	}
 
 	return 0;
 }

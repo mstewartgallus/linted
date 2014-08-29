@@ -50,19 +50,16 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 	linted_mq ko;
 	int unlink_status;
 
-	if (flags != 0U) {
+	if (flags != 0U)
 		return EINVAL;
-	}
 
-	if (debugpath[0U] != '/') {
+	if (debugpath[0U] != '/')
 		return EINVAL;
-	}
 
 	size_t path_size = strlen(debugpath + 1U);
 
-	if (path_size > FILE_MAX - 1U - RANDOM_BYTES) {
+	if (path_size > FILE_MAX - 1U - RANDOM_BYTES)
 		return ENAMETOOLONG;
-	}
 
 	size_t maxmsg = attr->maxmsg;
 	size_t msgsize = attr->msgsize;
@@ -96,9 +93,8 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 					    (random_char >= 'A' &&
 					     random_char <= 'Z') ||
 					    (random_char >= '0' &&
-					     random_char <= '9')) {
+					     random_char <= '9'))
 						break;
-					}
 				}
 
 				random_mq_name[1U + path_size + 1U + ii] =
@@ -124,9 +120,8 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 				errnum = 0;
 			}
 		} while (EEXIST == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto exit_with_error;
-		}
 
 		unlink_status = mq_unlink(random_mq_name);
 	}
@@ -210,17 +205,14 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 		do {
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum) {
+			if (0 == errnum)
 				revents = xx;
-			}
 		} while (EINTR == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			break;
-		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0) {
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
 			break;
-		}
 	}
 
 	task->errnum = errnum;
@@ -252,25 +244,21 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 			bytes_wrote = size;
 		} while (EINTR == errnum);
 
-		if (errnum != EAGAIN) {
+		if (errnum != EAGAIN)
 			break;
-		}
 
 		short revents = 0;
 		do {
 			short xx;
 			errnum = poll_one(task_send->ko, POLLOUT, &xx);
-			if (0 == errnum) {
+			if (0 == errnum)
 				revents = xx;
-			}
 		} while (EINTR == errnum);
-		if (errnum != 0) {
+		if (errnum != 0)
 			break;
-		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0) {
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
 			break;
-		}
 	}
 
 	task->errnum = errnum;
