@@ -309,6 +309,9 @@ void linted_spawn_file_actions_destroy(
 	linted_mem_free(file_actions);
 }
 
+/**
+ * @bug assert isn't AS-safe.
+ */
 linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
@@ -390,6 +393,18 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_env;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_caps;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_caps;
 		}
 	}
 
@@ -680,7 +695,19 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
 			exit_with_error(writer, errno);
 
-		if (-1 == setgroups(0U, NULL))
+		/* We need to use the raw system call because GLibc
+		 * messes around with signals to synchronize the
+		 * permissions of every thread. Of course, after a
+		 * fork there is only one thread and there is no need
+		 * for the synchronization.
+		 *
+		 * See the following for problems related to the
+		 * nonatomic setxid calls.
+		 *
+		 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
+		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
+		 */
+		if (-1 == syscall(__NR_setgroups, 0U, NULL))
 			exit_with_error(writer, errno);
 
 		/* Drop all capabilities I might possibly have. I'm not
@@ -690,16 +717,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		 * to root but if we did in the future we would need
 		 * this.
 		 */
-		if (-1 == cap_clear_flag(caps, CAP_PERMITTED))
-			exit_with_error(writer, errno);
-
-		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE))
-			exit_with_error(writer, errno);
-
 		if (-1 == cap_set_proc(caps))
-			exit_with_error(writer, errno);
-
-		if (-1 == cap_free(caps))
 			exit_with_error(writer, errno);
 	}
 
