@@ -284,8 +284,8 @@ linted_error linted_spawn_file_actions_adddup2(
 	old_count = file_actions->action_count;
 	new_count = old_count + 1U;
 
-	size_t new_size = sizeof *file_actions +
-		new_count * sizeof file_actions->actions[0U];
+	size_t new_size =
+	    sizeof *file_actions + new_count * sizeof file_actions->actions[0U];
 	{
 		void *xx;
 		errnum = linted_mem_realloc(&xx, file_actions, new_size);
@@ -470,8 +470,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			}
 		}
 
-		linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset,
-		                                           NULL);
+		linted_error mask_errnum =
+		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
 		if (0 == errnum) {
 			errnum = mask_errnum;
 		}
@@ -600,8 +600,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			} else if (mount_arg->touch_flag) {
 				linted_ko xx;
 				errnum = linted_file_create(
-				         &xx, AT_FDCWD, mount_arg->target,
-				         LINTED_FILE_EXCL, S_IRWXU);
+				    &xx, AT_FDCWD, mount_arg->target,
+				    LINTED_FILE_EXCL, S_IRWXU);
 				if (errnum != 0) {
 					exit_with_error(writer, errnum);
 				}

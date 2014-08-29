@@ -231,9 +231,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					errnum = linted_ko_open(
-					         &xx, AT_FDCWD,
-					         "/proc/self/uid_map",
-					         LINTED_KO_WRONLY);
+					    &xx, AT_FDCWD, "/proc/self/uid_map",
+					    LINTED_KO_WRONLY);
 					if (errnum != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
@@ -242,9 +241,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					file = xx;
 				}
 
-				errnum = linted_io_write_format(file, NULL,
-				                                "%i %i 1\n",
-				                                uid, uid);
+				errnum = linted_io_write_format(
+				    file, NULL, "%i %i 1\n", uid, uid);
 				if (errnum != 0) {
 					errno = errnum;
 					perror("linted_io_write_format");
@@ -264,9 +262,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 				{
 					linted_ko xx;
 					errnum = linted_ko_open(
-					         &xx, AT_FDCWD,
-					         "/proc/self/gid_map",
-					         LINTED_KO_WRONLY);
+					    &xx, AT_FDCWD, "/proc/self/gid_map",
+					    LINTED_KO_WRONLY);
 					if (errnum != 0) {
 						errno = errnum;
 						perror("linted_ko_open");
@@ -275,9 +272,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 					file = xx;
 				}
 
-				errnum = linted_io_write_format(file, NULL,
-				                                "%i %i 1\n",
-				                                gid, gid);
+				errnum = linted_io_write_format(
+				    file, NULL, "%i %i 1\n", gid, gid);
 				if (errnum != 0) {
 					errno = errnum;
 					perror("linted_io_write_format");

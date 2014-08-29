@@ -467,9 +467,9 @@ unsigned char linted_init_monitor(
 		size_t new_services_size = services_size + 1U;
 		{
 			void *xx;
-			errnum = linted_mem_realloc_array(
-			         &xx, services, new_services_size,
-			         sizeof services[0U]);
+			errnum = linted_mem_realloc_array(&xx, services,
+			                                  new_services_size,
+			                                  sizeof services[0U]);
 			if (errnum != 0) {
 				errno = errnum;
 				perror("linted_mem_alloc_array");
@@ -611,9 +611,8 @@ unsigned char linted_init_monitor(
 		linted_ko *proc_kos;
 		{
 			void *xx;
-			errnum = linted_mem_alloc_array(&xx,
-			                                sizeof proc_kos[0U],
-			                                dup_pairs_size);
+			errnum = linted_mem_alloc_array(
+			    &xx, sizeof proc_kos[0U], dup_pairs_size);
 			if (errnum != 0) {
 				goto destroy_attr;
 			}
@@ -632,7 +631,7 @@ unsigned char linted_init_monitor(
 				linted_ko xx;
 				errnum = linted_ko_reopen(&xx, file->ko,
 				                          dup_pair->flags);
-				if (errnum !=  0) {
+				if (errnum != 0) {
 					goto destroy_proc_kos;
 				}
 				ko = xx;
@@ -641,9 +640,8 @@ unsigned char linted_init_monitor(
 			proc_kos[kos_opened] = ko;
 			++kos_opened;
 
-			errnum = linted_spawn_file_actions_adddup2(&file_actions,
-			                                           ko,
-			                                           kos_opened - 1U);
+			errnum = linted_spawn_file_actions_adddup2(
+			    &file_actions, ko, kos_opened - 1U);
 			if (errnum != 0) {
 				goto destroy_proc_kos;
 			}
@@ -652,8 +650,8 @@ unsigned char linted_init_monitor(
 		{
 			pid_t process;
 			errnum = linted_spawn(
-			         &process, dirko, path, file_actions, attr,
-			         (char **)arguments, (char **)environment);
+			    &process, dirko, path, file_actions, attr,
+			    (char **)arguments, (char **)environment);
 			if (errnum != 0) {
 				goto destroy_attr;
 			}
@@ -879,9 +877,9 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			data = ww;
 		}
 
-		errnum = linted_spawn_attr_setmount(
-		         attr, fsname, dir, type, mkdir_flag, touch_flag,
-		         mountflags, data);
+		errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
+		                                    mkdir_flag, touch_flag,
+		                                    mountflags, data);
 		if (errnum != 0) {
 			goto close_file;
 		}

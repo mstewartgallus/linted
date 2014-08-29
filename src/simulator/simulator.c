@@ -392,8 +392,8 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
 	struct action_state *action_state = controller_task->action_state;
 
 	struct linted_controller_message message;
-	errnum = linted_controller_decode(LINTED_UPCAST(controller_task),
-	                                  &message);
+	errnum =
+	    linted_controller_decode(LINTED_UPCAST(controller_task), &message);
 	if (errnum != 0) {
 		return errnum;
 	}

@@ -190,13 +190,15 @@ try_to_create_lock_file : {
 			goto unmap_mutexattr;
 		}
 
-		errnum = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+		errnum =
+		    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
-		errnum = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+		errnum =
+		    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
@@ -255,7 +257,7 @@ opened_lock_file:
 	{
 		linted_ko xx;
 		errnum =
-			linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
+		    linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
 		if (0 == errnum) {
 			version_file = xx;
 		}
@@ -331,8 +333,9 @@ opened_lock_file:
 		{
 			linted_ko xx;
 			errnum = linted_file_create(&xx, the_db, "version",
-			         LINTED_FILE_RDWR | LINTED_FILE_SYNC,
-			         S_IRUSR | S_IWUSR);
+			                            LINTED_FILE_RDWR |
+			                                LINTED_FILE_SYNC,
+			                            S_IRUSR | S_IWUSR);
 			if (errnum != 0) {
 				goto unlock_db;
 			}

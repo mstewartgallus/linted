@@ -258,14 +258,14 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	xcb_intern_atom_cookie_t protocols_ck =
-		xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0) {
 		goto destroy_window;
 	}
 
 	xcb_intern_atom_cookie_t delete_ck =
-		xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0) {
 		goto destroy_window;
@@ -303,7 +303,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		{
 			xcb_generic_error_t *xx = NULL;
 			delete_ck_reply =
-				xcb_intern_atom_reply(connection, delete_ck, &xx);
+			    xcb_intern_atom_reply(connection, delete_ck, &xx);
 			errnum = get_xcb_conn_error(connection);
 			if (errnum != 0) {
 				goto destroy_window;
@@ -349,7 +349,7 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	xcb_generic_error_t *ch_prop_err =
-		xcb_request_check(connection, ch_prop_ck);
+	    xcb_request_check(connection, ch_prop_ck);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0) {
 		goto destroy_window;
@@ -1426,7 +1426,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	linted_error errnum;
 
 	xcb_query_pointer_cookie_t cookie =
-		xcb_query_pointer(connection, window);
+	    xcb_query_pointer(connection, window);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0) {
 		return errnum;
@@ -1434,7 +1434,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply =
-		xcb_query_pointer_reply(connection, cookie, &error);
+	    xcb_query_pointer_reply(connection, cookie, &error);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0) {
 		return errnum;

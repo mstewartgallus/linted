@@ -671,8 +671,8 @@ static linted_error ctl_help(linted_ko ko, char const *process_name,
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-                                   process_name);
+	errnum =
+	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -689,8 +689,8 @@ Run the manager program.\n"));
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                                LINTED_STR("\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -702,8 +702,8 @@ Run the manager program.\n"));
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                                LINTED_STR("\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -715,8 +715,8 @@ Run the manager program.\n"));
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-                                LINTED_STR("\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -727,20 +727,19 @@ Report bugs to <"));
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               package_bugreport);
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, package_bugreport);
 	if (errnum) {
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-                               LINTED_STR(">\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR(">\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               package_name);
+	errnum = linted_str_append_str(&buffer, &capacity, &size, package_name);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -751,14 +750,13 @@ Report bugs to <"));
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                                package_url);
+	errnum = linted_str_append_str(&buffer, &capacity, &size, package_url);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-                               LINTED_STR(">\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR(">\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -781,7 +779,7 @@ static linted_error reboot_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-		ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
 	if (errnum != 0) {
 		return errnum;
 	}
@@ -791,7 +789,8 @@ static linted_error reboot_help(linted_ko ko, char const *process_name,
 		return errnum;
 	}
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" reboot [OPTIONS]\n"));
+	errnum =
+	    linted_io_write_str(ko, NULL, LINTED_STR(" reboot [OPTIONS]\n"));
 	if (errnum != 0) {
 		return errnum;
 	}
@@ -875,8 +874,8 @@ static linted_error status_help(linted_ko ko, char const *process_name,
 {
 	linted_error errnum;
 
-	errnum = linted_io_write_str(ko, NULL,
-	                             LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	errnum = linted_io_write_str(
+	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
 	if (errnum != 0) {
 		return errnum;
 	}
@@ -886,8 +885,8 @@ static linted_error status_help(linted_ko ko, char const *process_name,
 		return errnum;
 	}
 
-	errnum = linted_io_write_str(
-		ko, NULL, LINTED_STR(" status [OPTIONS] SERVICE\n"));
+	errnum = linted_io_write_str(ko, NULL,
+	                             LINTED_STR(" status [OPTIONS] SERVICE\n"));
 	if (errnum != 0) {
 		return errnum;
 	}
@@ -967,8 +966,8 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 {
 	linted_error errnum;
 
-	errnum = linted_io_write_str(ko, NULL,
-	                             LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	errnum = linted_io_write_str(
+	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
 	if (errnum != 0) {
 		return errnum;
 	}

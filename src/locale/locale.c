@@ -30,8 +30,8 @@ linted_error linted_locale_missing_process_name(linted_ko ko,
 	size_t capacity = 0U;
 	char *buffer = NULL;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                   package_name);
+	errnum =
+	    linted_str_append_cstring(&buffer, &capacity, &size, package_name);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -60,8 +60,8 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	size_t capacity = 0U;
 	char *buffer = NULL;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                   process_name);
+	errnum =
+	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
@@ -72,14 +72,14 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                   bad_option);
+	errnum =
+	    linted_str_append_cstring(&buffer, &capacity, &size, bad_option);
 	if (errnum != 0) {
 		goto free_buffer;
 	}
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               LINTED_STR("'\n"));
+	errnum =
+	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("'\n"));
 	if (errnum != 0) {
 		goto free_buffer;
 	}
