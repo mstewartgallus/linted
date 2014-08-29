@@ -26,19 +26,17 @@ int main(void)
 	{
 		void *xx;
 		errnum = linted_mem_alloc_array(&xx, 0U, 0U);
+		if (errnum != 0)
+			LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
 		linted_mem_free(xx);
-	}
-	if (errnum != 0) {
-		LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
 	}
 
 	{
 		void *xx;
 		errnum = linted_mem_realloc_array(&xx, NULL, 0U, 0U);
+		if (errnum != 0)
+			LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
 		linted_mem_free(xx);
-	}
-	if (errnum != 0) {
-		LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
 	}
 
 	return EXIT_SUCCESS;
