@@ -71,7 +71,7 @@ enum {
 struct dup_pair
 {
 	unsigned long flags;
-	size_t service;
+	char const *service_name;
 };
 
 struct dup_pairs
@@ -349,115 +349,73 @@ unsigned char linted_init_monitor(
 		gui_envvars = xx;
 	}
 
-	enum {
-		SERVICE_INIT,
-		SERVICE_LOGGER,
-		SERVICE_SIMULATOR,
-		SERVICE_GUI,
-		SERVICE_STDIN,
-		SERVICE_STDOUT,
-		SERVICE_STDERR,
-		SERVICE_LOG,
-		SERVICE_UPDATER,
-		SERVICE_CONTROLLER
-	};
-
 	union service_config const config[] =
-	    {[SERVICE_INIT] = { .init = { .name = "init",
-				          .type = SERVICE_TYPE_INIT } },
-	     [SERVICE_LOGGER] = { .process = {
-				          .name = "logger",
-				          .type = SERVICE_TYPE_PROCESS,
-				          .dirko = cwd,
-				          .fstab = logger_fstab_path,
-				          .path = logger_path,
-				          .arguments =
-				              (char const *
-				               const[]) { logger_path, NULL },
-				          .environment =
-				              (char const * const[]) { NULL },
-				          .dup_pairs = DUP_PAIRS(
-				              (struct dup_pair const[]) {
-					              { LINTED_KO_RDONLY,
-						        SERVICE_STDIN },
-					              { LINTED_KO_WRONLY,
-						        SERVICE_STDOUT },
-					              { LINTED_KO_WRONLY,
-						        SERVICE_STDERR },
-					              { LINTED_KO_RDONLY,
-						        SERVICE_LOG }
-					      })
-				  } },
-	     [SERVICE_SIMULATOR] = { .process =
-			                 { .name = "simulator",
-				           .type = SERVICE_TYPE_PROCESS,
-				           .dirko = cwd,
-				           .fstab = simulator_fstab_path,
-				           .path = simulator_path,
-				           .arguments = (char const * const[]) {
-					           simulator_path, NULL
-					   },
-				           .environment =
-				               (char const * const[]) { NULL },
-				           .dup_pairs = DUP_PAIRS(
-				               (struct dup_pair const[]) {
-					               { LINTED_KO_RDONLY,
-						         SERVICE_STDIN },
-					               { LINTED_KO_WRONLY,
-						         SERVICE_STDOUT },
-					               { LINTED_KO_WRONLY,
-						         SERVICE_STDERR },
-					               { LINTED_KO_WRONLY,
-						         SERVICE_LOG },
-					               { LINTED_KO_RDONLY,
-						         SERVICE_CONTROLLER },
-					               { LINTED_KO_WRONLY,
-						         SERVICE_UPDATER }
-					       }) } },
-	     [SERVICE_GUI] = { .process =
-			           { .name = "gui",
-				     .type = SERVICE_TYPE_PROCESS,
-				     .halt_after_exit = true,
-				     .dirko = cwd,
-				     .fstab = gui_fstab_path,
-				     .path = gui_path,
-				     .arguments = (char const *
-				                   const[]) { gui_path, NULL },
-				     .environment =
-				         (char const * const *)gui_envvars,
-				     .dup_pairs = DUP_PAIRS((
-				         struct dup_pair const[]) {
-					     { LINTED_KO_RDONLY,
-					       SERVICE_STDIN },
-					     { LINTED_KO_WRONLY,
-					       SERVICE_STDOUT },
-					     { LINTED_KO_WRONLY,
-					       SERVICE_STDERR },
-					     { LINTED_KO_WRONLY, SERVICE_LOG },
-					     { LINTED_KO_WRONLY,
-					       SERVICE_CONTROLLER },
-					     { LINTED_KO_RDONLY,
-					       SERVICE_UPDATER }
-				     }) } },
-	     [SERVICE_STDIN] = { .file = { .name = "stdin",
-				           .type = SERVICE_TYPE_FILE,
-				           .generator = find_stdin } },
-	     [SERVICE_STDOUT] = { .file = { .name = "stdout",
-				            .type = SERVICE_TYPE_FILE,
-				            .generator = find_stdout } },
-	     [SERVICE_STDERR] = { .file = { .name = "stderr",
-				            .type = SERVICE_TYPE_FILE,
-				            .generator = find_stderr } },
-	     [SERVICE_LOG] = { .file = { .name = "log",
-				         .type = SERVICE_TYPE_FILE,
-				         .generator = log_create } },
-	     [SERVICE_UPDATER] = { .file = { .name = "updater",
-				             .type = SERVICE_TYPE_FILE,
-				             .generator = updater_create } },
-	     [SERVICE_CONTROLLER] = { .file = { .name = "controller",
-				                .type = SERVICE_TYPE_FILE,
-				                .generator =
-				                    controller_create } } };
+	    { { .init = { .name = "init", .type = SERVICE_TYPE_INIT } },
+	      { .process = { .name = "logger",
+			     .type = SERVICE_TYPE_PROCESS,
+			     .dirko = cwd,
+			     .fstab = logger_fstab_path,
+			     .path = logger_path,
+			     .arguments =
+				 (char const * const[]) { logger_path, NULL },
+			     .environment = (char const * const[]) { NULL },
+			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+				     { LINTED_KO_RDONLY, "stdin" },
+				     { LINTED_KO_WRONLY, "stdout" },
+				     { LINTED_KO_WRONLY, "stderr" },
+				     { LINTED_KO_RDONLY, "log" }
+			     }) } },
+	      { .process = { .name = "simulator",
+			     .type = SERVICE_TYPE_PROCESS,
+			     .dirko = cwd,
+			     .fstab = simulator_fstab_path,
+			     .path = simulator_path,
+			     .arguments = (char const *
+				           const[]) { simulator_path, NULL },
+			     .environment = (char const * const[]) { NULL },
+			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+				     { LINTED_KO_RDONLY, "stdin" },
+				     { LINTED_KO_WRONLY, "stdout" },
+				     { LINTED_KO_WRONLY, "stderr" },
+				     { LINTED_KO_WRONLY, "log" },
+				     { LINTED_KO_RDONLY, "controller" },
+				     { LINTED_KO_WRONLY, "updater" }
+			     }) } },
+	      { .process = { .name = "gui",
+			     .type = SERVICE_TYPE_PROCESS,
+			     .halt_after_exit = true,
+			     .dirko = cwd,
+			     .fstab = gui_fstab_path,
+			     .path = gui_path,
+			     .arguments =
+				 (char const * const[]) { gui_path, NULL },
+			     .environment = (char const * const *)gui_envvars,
+			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
+				     { LINTED_KO_RDONLY, "stdin" },
+				     { LINTED_KO_WRONLY, "stdout" },
+				     { LINTED_KO_WRONLY, "stderr" },
+				     { LINTED_KO_WRONLY, "log" },
+				     { LINTED_KO_WRONLY, "controller" },
+				     { LINTED_KO_RDONLY, "updater" }
+			     }) } },
+	      { .file = { .name = "stdin",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = find_stdin } },
+	      { .file = { .name = "stdout",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = find_stdout } },
+	      { .file = { .name = "stderr",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = find_stderr } },
+	      { .file = { .name = "log",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = log_create } },
+	      { .file = { .name = "updater",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = updater_create } },
+	      { .file = { .name = "controller",
+			  .type = SERVICE_TYPE_FILE,
+			  .generator = controller_create } } };
 
 	size_t services_size = 0U;
 	union service *services = NULL;
@@ -614,8 +572,14 @@ unsigned char linted_init_monitor(
 			struct dup_pair const *dup_pair =
 			    &dup_pairs[kos_opened];
 
-			struct service_file const *file =
-			    &services[dup_pair->service].file;
+			union service const *service = service_for_name(
+			    services, services_size, dup_pair->service_name);
+			if (NULL == service) {
+				errnum = EINVAL;
+				goto destroy_proc_kos;
+			}
+
+			struct service_file const *file = &service->file;
 
 			linted_ko ko;
 			{
@@ -725,14 +689,14 @@ exit_services : {
 	for (size_t ii = 0U; ii < services_size; ++ii) {
 		union service_config const *service_config = &config[ii];
 
-		if (SERVICE_STDERR == ii)
-			continue;
-
 		if (service_config->type != SERVICE_TYPE_FILE)
 			continue;
 
 		struct service_file *file = &services[ii].file;
 		if (file->is_open) {
+			if (file->ko == STDERR_FILENO)
+				continue;
+
 			linted_error close_errnum = linted_ko_close(file->ko);
 			if (0 == errnum)
 				errnum = close_errnum;
@@ -1571,17 +1535,20 @@ static union service const *service_for_name(union service const *services,
 	for (size_t ii = 0U; ii < size; ++ii) {
 		switch (services[ii].type) {
 		case SERVICE_TYPE_INIT:
-			if (0 == strcmp(services[ii].init.name, name))
+			if (0 == strncmp(services[ii].init.name, name,
+			                 LINTED_SERVICE_NAME_MAX))
 				return &services[ii];
 			break;
 
 		case SERVICE_TYPE_PROCESS:
-			if (0 == strcmp(services[ii].process.name, name))
+			if (0 == strncmp(services[ii].process.name, name,
+			                 LINTED_SERVICE_NAME_MAX))
 				return &services[ii];
 			break;
 
 		case SERVICE_TYPE_FILE:
-			if (0 == strcmp(services[ii].file.name, name))
+			if (0 == strncmp(services[ii].file.name, name,
+			                 LINTED_SERVICE_NAME_MAX))
 				return &services[ii];
 			break;
 		}
