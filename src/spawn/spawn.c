@@ -88,6 +88,7 @@ struct linted_spawn_attr
 	char const *chdir_path;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
+	int clone_flags;
 	bool drop_caps : 1U;
 };
 
@@ -122,6 +123,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 		attr = xx;
 	}
 
+	attr->clone_flags = 0;
 	attr->chrootdir_path = NULL;
 	attr->chdir_path = NULL;
 	attr->mount_args_size = 0U;
@@ -149,6 +151,11 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags)
+{
+	attr->clone_flags = flags;
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
@@ -370,6 +377,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (is_relative_path && !at_fdcwd && dirfd < 0)
 		return EBADF;
 
+	int clone_flags;
 	char const *chrootdir_path;
 	char const *chdir_path;
 	size_t mount_args_size;
@@ -377,18 +385,23 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool drop_caps;
 
 	if (NULL == attr) {
+		clone_flags = 0;
 		chrootdir_path = NULL;
 		chdir_path = NULL;
 		mount_args_size = 0U;
 		mount_args = NULL;
 		drop_caps = false;
 	} else {
+		clone_flags = attr->clone_flags;
 		chrootdir_path = attr->chrootdir_path;
 		chdir_path = attr->chdir_path;
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
 	}
+
+	if (chrootdir_path != NULL && !((clone_flags & CLONE_NEWNS) != 0))
+		return EINVAL;
 
 	/*
 	 * So adddup2 works use memory mapping instead of a pipe to
@@ -523,6 +536,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		exit_with_error(writer, errnum);
 
 	linted_ko_close(reader);
+
+	if (-1 == unshare(clone_flags))
+		exit_with_error(writer, errno);
 
 	if (chrootdir_path != NULL) {
 		chroot_process(writer, chrootdir_path,
@@ -675,9 +691,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir_path,
 {
 	linted_error errnum;
 
-	if (-1 == unshare(CLONE_NEWNS))
-		exit_with_error(writer, errno);
-
 	if (-1 == mount(NULL, chrootdir_path, "tmpfs", 0, NULL))
 		exit_with_error(writer, errno);
 
@@ -729,9 +742,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir_path,
 static void drop_privileges(linted_ko writer, cap_t caps)
 {
 	linted_error errnum;
-
-	if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET))
-		exit_with_error(writer, errno);
 
 	/* Favor other processes over this process hierarchy.  Only
 	 * superuser may lower priorities so this is not

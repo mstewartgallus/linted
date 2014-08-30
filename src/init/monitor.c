@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <mntent.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/mount.h>
@@ -101,6 +102,7 @@ struct service_config_process
 	char const *const *environment;
 	struct dup_pairs dup_pairs;
 	linted_ko dirko;
+	int clone_flags;
 	bool halt_after_exit : 1U;
 };
 
@@ -366,7 +368,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .dirko = cwd,
 	                     .fstab = logger_fstab_path,
 	                     .chdir_path = "/var",
-			     .path = logger_path,
+	                     .path = logger_path,
+	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
 			     .arguments =
 				 (char const * const[]) { logger_path, NULL },
 			     .environment = (char const * const[]) { NULL },
@@ -381,6 +384,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .dirko = cwd,
 			     .fstab = simulator_fstab_path,
 	                     .path = simulator_path,
+	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
 	                     .chdir_path = "/var",
 			     .arguments = (char const *
 				           const[]) { simulator_path, NULL },
@@ -399,7 +403,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .dirko = cwd,
 	                     .fstab = gui_fstab_path,
 	                     .chdir_path = "/var",
-			     .path = gui_path,
+	                     .path = gui_path,
+	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
 			     .arguments =
 				 (char const * const[]) { gui_path, NULL },
 			     .environment = (char const * const *)gui_envvars,
@@ -537,6 +542,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		char const *fstab = proc_config->fstab;
 		char const *chdir_path = proc_config->chdir_path;
 		linted_ko dirko = proc_config->dirko;
+		int clone_flags = proc_config->clone_flags;
 		char const *const *environment = proc_config->environment;
 		char const *const *arguments = proc_config->arguments;
 		char const *path = proc_config->path;
@@ -560,6 +566,9 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		}
 
 		/* TODO: Close files leading outside of the sandbox  */
+		if (chdir_path != NULL)
+			linted_spawn_attr_setcloneflags(attr, clone_flags);
+
 		linted_spawn_attr_drop_caps(attr);
 
 		if (chdir_path != NULL)
