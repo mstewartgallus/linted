@@ -19,6 +19,7 @@
 
 #include "binaries.h"
 #include "init.h"
+#include "init_config.h"
 
 #include "linted/io.h"
 #include "linted/locale.h"
@@ -205,91 +206,9 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			    process_name, linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
-
-		if (0 == child) {
-			/* Stupidly, uid_map and gid_map aren't writable in
-			 * these
-			 * when the binary is not dumpable.
-			 */
-			if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
-				perror("prctl");
-				return EXIT_FAILURE;
-			}
-
-			{
-				linted_ko file;
-				{
-					linted_ko xx;
-					errnum = linted_ko_open(
-					    &xx, AT_FDCWD, "/proc/self/uid_map",
-					    LINTED_KO_WRONLY);
-					if (errnum != 0) {
-						errno = errnum;
-						perror("linted_ko_open");
-						return EXIT_FAILURE;
-					}
-					file = xx;
-				}
-
-				errnum = linted_io_write_format(
-				    file, NULL, "%i %i 1\n", uid, uid);
-				if (errnum != 0) {
-					errno = errnum;
-					perror("linted_io_write_format");
-					return EXIT_FAILURE;
-				}
-
-				errnum = linted_ko_close(file);
-				if (errnum != 0) {
-					errno = errnum;
-					perror("linted_ko_close");
-					return EXIT_FAILURE;
-				}
-			}
-
-			{
-				linted_ko file;
-				{
-					linted_ko xx;
-					errnum = linted_ko_open(
-					    &xx, AT_FDCWD, "/proc/self/gid_map",
-					    LINTED_KO_WRONLY);
-					if (errnum != 0) {
-						errno = errnum;
-						perror("linted_ko_open");
-						return EXIT_FAILURE;
-					}
-					file = xx;
-				}
-
-				errnum = linted_io_write_format(
-				    file, NULL, "%i %i 1\n", gid, gid);
-				if (errnum != 0) {
-					errno = errnum;
-					perror("linted_io_write_format");
-					return EXIT_FAILURE;
-				}
-
-				errnum = linted_ko_close(file);
-				if (errnum != 0) {
-					perror("linted_ko_close");
-					return EXIT_FAILURE;
-				}
-			}
-
-			if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
-				perror("prctl");
-				return EXIT_FAILURE;
-			}
-
-			return linted_init_init(
-			    cwd, chrootdir_path, logger_fstab_path,
-			    simulator_fstab_path, gui_fstab_path, logger_path,
-			    simulator_path, gui_path);
-		}
 	}
 
-	{
+	if (child != 0) {
 		siginfo_t info;
 		do {
 			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
@@ -303,6 +222,91 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		}
 		return info.si_status;
 	}
+
+	/* Stupidly, uid_map and gid_map aren't writable in these when
+	 * the binary is not dumpable.
+	 */
+	if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
+		perror("prctl");
+		return EXIT_FAILURE;
+	}
+
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/uid_map",
+			                   LINTED_KO_WRONLY);
+			if (errnum != 0) {
+				errno = errnum;
+				perror("linted_ko_open");
+				return EXIT_FAILURE;
+			}
+			file = xx;
+		}
+
+		errnum =
+		    linted_io_write_format(file, NULL, "%i %i 1\n", uid, uid);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_io_write_format");
+			return EXIT_FAILURE;
+		}
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_ko_close");
+			return EXIT_FAILURE;
+		}
+	}
+
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/gid_map",
+			                   LINTED_KO_WRONLY);
+			if (errnum != 0) {
+				errno = errnum;
+				perror("linted_ko_open");
+				return EXIT_FAILURE;
+			}
+			file = xx;
+		}
+
+		errnum =
+		    linted_io_write_format(file, NULL, "%i %i 1\n", gid, gid);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_io_write_format");
+			return EXIT_FAILURE;
+		}
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0) {
+			perror("linted_ko_close");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
+		perror("prctl");
+		return EXIT_FAILURE;
+	}
+
+	struct linted_init_config config = { .chrootdir_path = chrootdir_path,
+		                             .logger_fstab_path =
+		                                 logger_fstab_path,
+		                             .simulator_fstab_path =
+		                                 simulator_fstab_path,
+		                             .gui_fstab_path = gui_fstab_path,
+		                             .logger_path = logger_path,
+		                             .simulator_path = simulator_path,
+		                             .gui_path = gui_path };
+	return linted_init_init(cwd, &config);
 }
 
 static linted_error linted_help(linted_ko ko, char const *process_name,

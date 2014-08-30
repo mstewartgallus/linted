@@ -16,6 +16,8 @@
 #ifndef LINTED_INIT_MONITOR_H
 #define LINTED_INIT_MONITOR_H
 
+#include "init_config.h"
+
 #include "linted/ko.h"
 
 /**
@@ -51,9 +53,7 @@
  *      switching the architecture type.
  */
 
-unsigned char linted_init_monitor(
-    linted_ko cwd, char const *chrootdir_path, char const *logger_fstab_path,
-    char const *simulator_fstab_path, char const *gui_fstab_path,
-    char const *logger_path, char const *simulator_path, char const *gui_path);
+unsigned char linted_init_monitor(linted_ko cwd,
+                                  struct linted_init_config const *config);
 
 #endif /* LINTED_INIT_INIT_H */

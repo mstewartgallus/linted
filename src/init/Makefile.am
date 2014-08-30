@@ -19,7 +19,8 @@ bin_PROGRAMS+=%D%/linted
 %C%_linted_SOURCES=\
   %D%/boot.c\
   %D%/init.c %D%/init.h\
-  %D%/monitor.c %D%/monitor.h
+  %D%/monitor.c %D%/monitor.h\
+  %D%/init_config.h
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/start/libstart.la\

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_INIT_INIT_H
-#define LINTED_INIT_INIT_H
+#ifndef LINTED_INIT_CONFIG_H
+#define LINTED_INIT_CONFIG_H
 
-#include "init_config.h"
+struct linted_init_config
+{
+	char const *chrootdir_path;
 
-#include "linted/ko.h"
+	char const *logger_fstab_path;
+	char const *simulator_fstab_path;
+	char const *gui_fstab_path;
 
-unsigned char linted_init_init(linted_ko cwd,
-                               struct linted_init_config const *config);
+	char const *logger_path;
+	char const *simulator_path;
+	char const *gui_path;
+};
 
-#endif /* LINTED_INIT_INIT_H */
+#endif /* LINTED_INIT_CONFIG_H */

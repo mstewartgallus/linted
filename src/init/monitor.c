@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "init_config.h"
 #include "init.h"
 #include "monitor.h"
 
@@ -276,12 +277,20 @@ static union service const *service_for_name(union service const *services,
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-unsigned char linted_init_monitor(
-    linted_ko cwd, char const *chrootdir_path, char const *logger_fstab_path,
-    char const *simulator_fstab_path, char const *gui_fstab_path,
-    char const *logger_path, char const *simulator_path, char const *gui_path)
+unsigned char linted_init_monitor(linted_ko cwd,
+                                  struct linted_init_config const *init_config)
 {
 	linted_error errnum;
+
+	char const *chrootdir_path = init_config->chrootdir_path;
+
+	char const *logger_fstab_path = init_config->logger_fstab_path;
+	char const *simulator_fstab_path = init_config->simulator_fstab_path;
+	char const *gui_fstab_path = init_config->gui_fstab_path;
+
+	char const *logger_path = init_config->logger_path;
+	char const *simulator_path = init_config->simulator_path;
+	char const *gui_path = init_config->gui_path;
 
 	static char const process_name[] = "monitor";
 
