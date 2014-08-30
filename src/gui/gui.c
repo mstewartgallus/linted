@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -47,6 +48,20 @@
 
 #include <linux/filter.h>
 #include <linux/seccomp.h>
+
+/**
+ * @file
+ *
+ * @todo Separate the renderer and the input handler into different
+ *       threads.
+ */
+
+#define INPUT_EVENT_MASK                                                       \
+	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
+	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
+	 XCB_EVENT_MASK_POINTER_MOTION)
+
+#define RENDER_EVENT_MASK XCB_EVENT_MASK_STRUCTURE_NOTIFY
 
 enum {
 	ON_RECEIVE_UPDATE,
@@ -87,13 +102,19 @@ struct sim_model
 	float z_position;
 };
 
-struct on_gui_event_args
+struct on_input_event_args
 {
-	xcb_connection_t *connection;
+	xcb_connection_t *input_conn;
 	struct window_model *window_model;
 	struct controller_data *controller_data;
 	bool *time_to_quit;
 	xcb_window_t window;
+};
+
+struct on_gui_event_args
+{
+	struct window_model *window_model;
+	bool *time_to_quit;
 };
 
 struct gui_controller_task;
@@ -138,6 +159,8 @@ struct linted_start_config const linted_start_config = {
 	.seccomp_bpf = &seccomp_filter
 };
 
+static linted_error on_input_event(XEvent *event,
+                                   struct on_input_event_args args);
 static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -201,18 +224,25 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	struct controller_data controller_data = { 0 };
 	struct sim_model sim_model = { 0 };
 
-	Display *display = XOpenDisplay(NULL);
-	if (NULL == display) {
+	Display *input_display = XOpenDisplay(NULL);
+	if (NULL == input_display) {
 		return ENOSYS;
 	}
 
-	xcb_connection_t *connection = XGetXCBConnection(display);
-	unsigned screen_number = XDefaultScreen(display);
+	Display *render_display = XOpenDisplay(NULL);
+	if (NULL == render_display) {
+		errnum = ENOSYS;
+		goto close_input_display;
+	}
+
+	xcb_connection_t *input_conn = XGetXCBConnection(input_display);
+	xcb_connection_t *render_conn = XGetXCBConnection(render_display);
+	unsigned screen_number = XDefaultScreen(render_display);
 
 	xcb_screen_t *screen = NULL;
 	{
 		xcb_screen_iterator_t iter =
-		    xcb_setup_roots_iterator(xcb_get_setup(connection));
+		    xcb_setup_roots_iterator(xcb_get_setup(render_conn));
 		for (size_t ii = 0U; ii < screen_number; ++ii) {
 			if (0 == iter.rem)
 				break;
@@ -222,47 +252,39 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 		if (0 == iter.rem) {
 			errnum = EINVAL;
-			goto disconnect;
+			goto close_render_display;
 		}
 
 		screen = iter.data;
 	}
 
-	xcb_window_t window = xcb_generate_id(connection);
-	errnum = get_xcb_conn_error(connection);
+	xcb_window_t window = xcb_generate_id(render_conn);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
-		goto disconnect;
+		goto close_render_display;
 
 	xcb_void_cookie_t create_window_ck;
 	{
-		uint32_t event_max = 0U;
-		event_max |= XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-		event_max |=
-		    XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW;
-		event_max |=
-		    XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
-		event_max |= XCB_EVENT_MASK_POINTER_MOTION;
-
-		uint32_t values[] = { event_max, 0U };
+		uint32_t opts[] = { RENDER_EVENT_MASK, 0 };
 		create_window_ck = xcb_create_window_checked(
-		    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0,
+		    render_conn, XCB_COPY_FROM_PARENT, window, screen->root, 0,
 		    0, window_model.width, window_model.height, 0,
 		    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
-		    XCB_CW_EVENT_MASK, values);
+		    XCB_CW_EVENT_MASK, opts);
 	}
-	errnum = get_xcb_conn_error(connection);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
-		goto disconnect;
+		goto close_render_display;
 
 	xcb_intern_atom_cookie_t protocols_ck =
-	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-	errnum = get_xcb_conn_error(connection);
+	    xcb_intern_atom(render_conn, 1, 12, "WM_PROTOCOLS");
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t delete_ck =
-	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-	errnum = get_xcb_conn_error(connection);
+	    xcb_intern_atom(render_conn, 0, 16, "WM_DELETE_WINDOW");
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -274,10 +296,10 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		{
 			xcb_generic_error_t *xx = NULL;
 			protocols_ck_reply = xcb_intern_atom_reply(
-			    connection, protocols_ck, &xx);
+			    render_conn, protocols_ck, &xx);
 			protocols_ck_err = xx;
 		}
-		errnum = get_xcb_conn_error(connection);
+		errnum = get_xcb_conn_error(render_conn);
 		if (errnum != 0)
 			goto destroy_window;
 
@@ -297,8 +319,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		{
 			xcb_generic_error_t *xx = NULL;
 			delete_ck_reply =
-			    xcb_intern_atom_reply(connection, delete_ck, &xx);
-			errnum = get_xcb_conn_error(connection);
+			    xcb_intern_atom_reply(render_conn, delete_ck, &xx);
+			errnum = get_xcb_conn_error(render_conn);
 			if (errnum != 0)
 				goto destroy_window;
 			delete_ck_err = xx;
@@ -315,32 +337,32 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	}
 
 	xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
-	    connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
-	    1, &wm_delete_window_atom);
-	errnum = get_xcb_conn_error(connection);
+	    render_conn, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4,
+	    32, 1, &wm_delete_window_atom);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	xcb_void_cookie_t map_ck = xcb_map_window(render_conn, window);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *create_window_err =
-	    xcb_request_check(connection, create_window_ck);
+	    xcb_request_check(render_conn, create_window_ck);
 	if (create_window_err != NULL) {
 		errnum = get_xcb_error(create_window_err);
 		linted_mem_free(create_window_err);
 		goto destroy_window;
 	}
 
-	errnum = get_xcb_conn_error(connection);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *ch_prop_err =
-	    xcb_request_check(connection, ch_prop_ck);
-	errnum = get_xcb_conn_error(connection);
+	    xcb_request_check(render_conn, ch_prop_ck);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 	if (ch_prop_err != NULL) {
@@ -349,8 +371,9 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		goto destroy_window;
 	}
 
-	xcb_generic_error_t *map_ck_err = xcb_request_check(connection, map_ck);
-	errnum = get_xcb_conn_error(connection);
+	xcb_generic_error_t *map_ck_err =
+	    xcb_request_check(render_conn, map_ck);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		goto destroy_window;
 	if (map_ck_err != NULL) {
@@ -359,7 +382,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 		goto destroy_window;
 	}
 
-	EGLDisplay egl_display = eglGetDisplay((EGLNativeDisplayType)display);
+	EGLDisplay egl_display =
+	    eglGetDisplay((EGLNativeDisplayType)render_display);
 	if (EGL_NO_DISPLAY == egl_display) {
 		errnum = egl_error();
 		goto destroy_window;
@@ -396,6 +420,11 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 	if (EGL_NO_SURFACE == egl_surface) {
 		errnum = egl_error();
 		goto destroy_egl_display;
+	}
+
+	if (-1 == XSelectInput(input_display, window, INPUT_EVENT_MASK)) {
+		errnum = ENOSYS;
+		goto destroy_egl_surface;
 	}
 
 	struct linted_asynch_pool *pool;
@@ -445,22 +474,42 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 
 		/* TODO: Detect SIGTERM and exit normally */
 		for (;;) {
-			/* Handle GUI events first before rendering */
-			/* We have to use the Xlib event queue because of broken
-			 * Mesa
-			 * libraries which abuse it.
+			/* We have to use the Xlib event queue for
+			 * input events XCB isn't quite ready in this
+			 * respect yet.
 			 */
-			bool had_gui_event = XPending(display) > 0;
-			if (had_gui_event) {
+			bool had_input_event = XPending(input_display) > 0;
+			if (had_input_event) {
 				XEvent event;
-				XNextEvent(display, &event);
+				XNextEvent(input_display, &event);
 
 				bool time_to_quit;
-				struct on_gui_event_args args = {
-					.connection = connection,
+				struct on_input_event_args args = {
+					.input_conn = input_conn,
 					.window = window,
 					.window_model = &window_model,
 					.controller_data = &controller_data,
+					.time_to_quit = &time_to_quit
+				};
+				errnum = on_input_event(&event, args);
+				if (errnum != 0)
+					goto cleanup_gl;
+				if (time_to_quit)
+					goto cleanup_gl;
+			}
+
+			/* We have to use the Xlib event queue for the
+			 * renderer events because of broken Mesa
+			 * libraries which abuse it.
+			 */
+			bool had_gui_event = XPending(render_display) > 0;
+			if (had_gui_event) {
+				XEvent event;
+				XNextEvent(render_display, &event);
+
+				bool time_to_quit;
+				struct on_gui_event_args args = {
+					.window_model = &window_model,
 					.time_to_quit = &time_to_quit
 				};
 				errnum = on_gui_event(&event, args);
@@ -487,7 +536,8 @@ unsigned char linted_start(linted_ko cwd, char const *const process_name,
 			}
 
 			/* Only render or resize if we have time to waste */
-			if (!had_gui_event && !had_asynch_event) {
+			if (!had_input_event && !had_gui_event &&
+			    !had_asynch_event) {
 				if (window_model.resize_pending) {
 					resize_graphics(&graphics_state,
 					                window_model.width,
@@ -594,15 +644,15 @@ destroy_egl_display:
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
-	    xcb_destroy_window_checked(connection, window);
+	    xcb_destroy_window_checked(render_conn, window);
 
-	linted_error conn_errnum = get_xcb_conn_error(connection);
+	linted_error conn_errnum = get_xcb_conn_error(render_conn);
 	if (0 == errnum)
 		errnum = conn_errnum;
 
 	xcb_generic_error_t *destroy_err =
-	    xcb_request_check(connection, destroy_ck);
-	conn_errnum = get_xcb_conn_error(connection);
+	    xcb_request_check(render_conn, destroy_ck);
+	conn_errnum = get_xcb_conn_error(render_conn);
 	if (0 == errnum)
 		errnum = conn_errnum;
 	if (destroy_err != NULL) {
@@ -614,8 +664,11 @@ destroy_window : {
 	}
 }
 
-disconnect:
-	XCloseDisplay(display);
+close_render_display:
+	XCloseDisplay(render_display);
+
+close_input_display:
+	XCloseDisplay(input_display);
 
 	return errnum;
 }
@@ -702,9 +755,10 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
 	}
 }
 
-static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
+static linted_error on_input_event(XEvent *event,
+                                   struct on_input_event_args args)
 {
-	xcb_connection_t *connection = args.connection;
+	xcb_connection_t *input_conn = args.input_conn;
 	xcb_window_t window = args.window;
 	struct window_model *window_model = args.window_model;
 	struct controller_data *controller_data = args.controller_data;
@@ -714,14 +768,6 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 	bool time_to_quit = false;
 	bool is_key_down;
 	switch (event->type) {
-	case ConfigureNotify: {
-		XConfigureEvent const *configure_event = &event->xconfigure;
-		window_model->width = configure_event->width;
-		window_model->height = configure_event->height;
-		window_model->resize_pending = true;
-		break;
-	}
-
 	case MotionNotify: {
 		XMotionEvent const *motion_event = &event->xmotion;
 		on_tilt(motion_event->x, motion_event->y, window_model,
@@ -729,19 +775,11 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 		break;
 	}
 
-	case UnmapNotify:
-		window_model->viewable = false;
-		break;
-
-	case MapNotify:
-		window_model->viewable = true;
-		break;
-
 	case EnterNotify: {
 		window_model->focused = true;
 
 		int x, y;
-		errnum = get_mouse_position(connection, window, &x, &y);
+		errnum = get_mouse_position(input_conn, window, &x, &y);
 		if (errnum != 0)
 			return errnum;
 
@@ -765,11 +803,6 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 		controller_data->update_pending = true;
 		break;
 
-	case MappingNotify: {
-		XMappingEvent *mapping_event = &event->xmapping;
-		XRefreshKeyboardMapping(mapping_event);
-	}
-
 	case KeyPress:
 		is_key_down = true;
 		goto on_key_event;
@@ -777,9 +810,6 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 	case KeyRelease:
 		is_key_down = false;
 		goto on_key_event;
-
-	case ClientMessage:
-		goto quit_application;
 
 	default:
 		/* Unknown event type, ignore it */
@@ -835,6 +865,51 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 	move_backward:
 		controller_data->update.back = is_key_down;
 		controller_data->update_pending = true;
+		break;
+
+	quit_application:
+		time_to_quit = true;
+		break;
+	}
+
+	*time_to_quitp = time_to_quit;
+	return 0;
+}
+
+static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
+{
+	struct window_model *window_model = args.window_model;
+	bool *time_to_quitp = args.time_to_quit;
+
+	bool time_to_quit = false;
+	switch (event->type) {
+	case ConfigureNotify: {
+		XConfigureEvent const *configure_event = &event->xconfigure;
+		window_model->width = configure_event->width;
+		window_model->height = configure_event->height;
+		window_model->resize_pending = true;
+		break;
+	}
+
+	case UnmapNotify:
+		window_model->viewable = false;
+		break;
+
+	case MapNotify:
+		window_model->viewable = true;
+		break;
+
+	case MappingNotify: {
+		fprintf(stderr, "mapping\n");
+		XMappingEvent *mapping_event = &event->xmapping;
+		XRefreshKeyboardMapping(mapping_event);
+	}
+
+	case ClientMessage:
+		goto quit_application;
+
+	default:
+		/* Unknown event type, ignore it */
 		break;
 
 	quit_application:
@@ -1355,9 +1430,9 @@ static linted_error egl_error(void)
 	}
 }
 
-static linted_error get_xcb_conn_error(xcb_connection_t *connection)
+static linted_error get_xcb_conn_error(xcb_connection_t *render_conn)
 {
-	switch (xcb_connection_has_error(connection)) {
+	switch (xcb_connection_has_error(render_conn)) {
 	case 0:
 		return 0;
 
@@ -1387,21 +1462,21 @@ static linted_error get_xcb_error(xcb_generic_error_t *error)
 	return ENOSYS;
 }
 
-static linted_error get_mouse_position(xcb_connection_t *connection,
+static linted_error get_mouse_position(xcb_connection_t *render_conn,
                                        xcb_window_t window, int *x, int *y)
 {
 	linted_error errnum;
 
 	xcb_query_pointer_cookie_t cookie =
-	    xcb_query_pointer(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	    xcb_query_pointer(render_conn, window);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		return errnum;
 
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply =
-	    xcb_query_pointer_reply(connection, cookie, &error);
-	errnum = get_xcb_conn_error(connection);
+	    xcb_query_pointer_reply(render_conn, cookie, &error);
+	errnum = get_xcb_conn_error(render_conn);
 	if (errnum != 0)
 		return errnum;
 
