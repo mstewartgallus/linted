@@ -900,7 +900,6 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 		break;
 
 	case MappingNotify: {
-		fprintf(stderr, "mapping\n");
 		XMappingEvent *mapping_event = &event->xmapping;
 		XRefreshKeyboardMapping(mapping_event);
 	}
