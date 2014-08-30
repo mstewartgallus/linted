@@ -15,6 +15,23 @@
  *
  * <ul>
  *
+ * <li> Linux Dwarves tools
+ *
+ * - dwarves
+ *   - codiff       Diffs changes in binaries
+ *   - dtagnames    Lists tag names
+ *   - pahole       Finds holes in structures
+ *   - pdwtags      Dwarf information pretty printer
+ *   - pfunct       Displays information about functions
+ *   - pglobal      Displays information about global variables
+ *   - prefcnt      Tries to find unreferenced tags
+ *
+ * These tools would be extremely useful if they worked on a wider
+ * range of types. So far, they all seem to break and not handle any
+ * structure types that aren't extremely ordinary.
+ *
+ * </li>
+ *
  * <li> Flawfinder
  *
  * - Seems to be defunct right now.

@@ -12,17 +12,8 @@
  * Linted -- TODO
  *
  * @todo Eventually reduce -Wstack-usage to 500.
- *
- * @todo Investigate and explain how to use binary analysis tools
- *       like:
- * - dwarves
- *   - codiff       Diffs changes in binaries
- *   - dtagnames    Lists tag names
- *   - pahole       Finds holes in structures
- *   - pdwtags      Dwarf information pretty printer
- *   - pfunct       Displays information about functions
- *   - pglobal      Displays information about global variables
- *   - prefcnt      Tries to find unreferenced tags
+
+ * @todo Review and criticize use binary analysis tools like dwarves.
  *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.
