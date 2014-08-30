@@ -42,7 +42,6 @@ struct logger_task
 static linted_ko kos[1U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-logger",
-	.open_current_working_directory = false,
 	.kos_size = LINTED_ARRAY_SIZE(kos),
 	.kos = kos,
 	.seccomp_bpf = NULL
@@ -54,7 +53,7 @@ static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error on_receive_log(struct linted_asynch_task *completed_task);
 
-unsigned char linted_start(linted_ko cwd, char const *const process_name,
+unsigned char linted_start(char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
 	linted_log log = kos[0U];

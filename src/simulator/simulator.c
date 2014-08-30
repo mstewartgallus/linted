@@ -107,7 +107,6 @@ static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
-	.open_current_working_directory = true,
 	.kos_size = LINTED_ARRAY_SIZE(kos),
 	.kos = kos,
 	.seccomp_bpf = &seccomp_filter
@@ -129,7 +128,7 @@ static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
-unsigned char linted_start(linted_ko cwd, char const *const process_name,
+unsigned char linted_start(char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
 	linted_log log = kos[0U];

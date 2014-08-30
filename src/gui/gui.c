@@ -153,7 +153,6 @@ static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-gui",
-	.open_current_working_directory = false,
 	.kos_size = LINTED_ARRAY_SIZE(kos),
 	.kos = kos,
 	.seccomp_bpf = &seccomp_filter
@@ -205,7 +204,7 @@ static double square(double x);
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
 
-unsigned char linted_start(linted_ko cwd, char const *const process_name,
+unsigned char linted_start(char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
 	linted_error errnum = 0;

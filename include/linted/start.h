@@ -28,12 +28,11 @@ struct linted_start_config
 	size_t kos_size;
 	linted_ko *kos;
 	struct sock_fprog const *seccomp_bpf;
-	_Bool open_current_working_directory : 1U;
 };
 
 extern struct linted_start_config const linted_start_config;
 
-unsigned char linted_start(linted_ko cwd, char const *const process_name,
+unsigned char linted_start(char const *const process_name,
                            size_t argc, char const *const argv[const]);
 
 #endif /* LINTED_START_H */

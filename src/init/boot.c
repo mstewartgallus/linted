@@ -52,7 +52,6 @@ enum {
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",
-	.open_current_working_directory = true,
 	.kos_size = 0U,
 	.kos = NULL
 };
@@ -62,10 +61,32 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-unsigned char linted_start(linted_ko cwd, char const *const process_name,
+unsigned char linted_start(char const *const process_name,
                            size_t argc, char const *const argv[const])
 {
 	linted_error errnum;
+
+	linted_ko cwd;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not open the current working directory: %s\n",
+			                       process_name,
+			                       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		cwd = xx;
+	}
+
+	if (-1 == chdir("/")) {
+		linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not change to the root directory: %s\n",
+		                       process_name,
+		                       linted_error_string(errno));
+		return EXIT_FAILURE;
+	}
 
 	bool need_help = false;
 	bool need_version = false;

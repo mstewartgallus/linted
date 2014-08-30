@@ -226,28 +226,6 @@ It is insecure to run a game as root!\n"));
 		kos[ii] = open_kos[ii + 3U];
 	linted_mem_free(open_kos);
 
-	linted_ko cwd;
-	if (linted_start_config.open_current_working_directory) {
-		cwd = open("./", O_DIRECTORY | O_CLOEXEC);
-		if (-1 == cwd) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not open the current working directory: %s\n",
-			                       process_name,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	} else {
-		cwd = -1;
-	}
-
-	if (-1 == chdir("/")) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not change to the root directory: %s\n",
-		                       process_name,
-		                       linted_error_string(errno));
-		return EXIT_FAILURE;
-	}
-
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 
@@ -281,8 +259,7 @@ It is insecure to run a game as root!\n"));
 		linted_random_seed_generator(entropy);
 	}
 
-	return linted_start(cwd, process_name, argc,
-	                    (char const * const *)argv);
+	return linted_start(process_name, argc, (char const * const *)argv);
 }
 
 static bool is_open(linted_ko ko)

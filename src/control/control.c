@@ -36,7 +36,6 @@
 static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-control",
-	.open_current_working_directory = false,
 	.kos_size = 0U,
 	.kos = NULL,
 	.seccomp_bpf = &seccomp_filter
@@ -68,7 +67,7 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 
-uint_fast8_t linted_start(int cwd, char const *const process_name, size_t argc,
+uint_fast8_t linted_start(char const *const process_name, size_t argc,
                           char const *const argv[const])
 {
 	bool need_help = false;
