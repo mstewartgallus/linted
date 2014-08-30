@@ -35,6 +35,17 @@
  *   inside the sandbox and so would violate privilege boundaries by
  *   doing so. Also, those system calls are disabled through seccomp.
  *
+ * - Currently every process has the nondumpable bit inherited and so
+ *   processes within the process cannot ptrace, process_vm_write,
+ *   etc.. against other processes and gain more privileges.  However,
+ *   due to Linux kernel bug 82531 at
+ *   https://bugzilla.kernel.org/show_bug.cgi?id=82531 processes
+ *   cannot defend themselves against attackers from outside the
+ *   sandbox (which we don't need yet but should still know about).
+ *
+ * @bug Attacking processes can possibly evade seccomp protections by
+ *      switching the architecture type.
+ *
  * @bug Attacking processes can access the home of the user with full
  *      read, write access but we cannot sandbox /home with overlayfs
  *      as overflayfs has no equivalent to rbind and so we can't work
@@ -44,13 +55,7 @@
  *      possibly otherwise cause misbehaviour.
  *
  * @bug Attacking processes can send signals to other processes and
- *      kill theme or possibly otherwise cause misbehaviour.
- *
- * @bug Attacking processes can ptrace, process_vm_write,
- *      etc.. against other processes and gain privileges.
- *
- * @bug Attacking processes can possibly evade seccomp protections by
- *      switching the architecture type.
+ *      kill them or possibly otherwise cause misbehaviour.
  */
 
 unsigned char linted_init_monitor(linted_ko cwd,
