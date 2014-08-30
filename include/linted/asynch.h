@@ -33,13 +33,6 @@
  * @file
  *
  * Schedule tasks on kernel objects to be completed asynchronously.
- *
- * @todo Make the array queue a synchronous (not buffering at all
- *       queue).
- *
- * @todo Dynamically resize the worker pool based upon if commands are
- *       successfully transferred or not (the worker pool will need a
- *       set and a lock).
  */
 
 enum {

@@ -20,8 +20,6 @@
  * @file
  *
  * Generate random numbers.
- *
- * @todo Initialize the random number generator in start.
  */
 
 void linted_random_seed_generator(unsigned seed);

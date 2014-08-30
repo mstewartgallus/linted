@@ -30,6 +30,21 @@
 #define LINTED_RPC_UINT32_SIZE 4U
 #define LINTED_RPC_INT32_SIZE 4U
 
+static inline int_fast32_t linted_rpc_uint32_to_int32(uint_fast32_t positive)
+{
+    /*
+   * Section 6.3.1.2 "Signed and unsigned integers" of the C99
+   * standard specifies that the behaviour is implementation-defined
+   * (or that a signal could be raised) if the new type is signed
+   * and the value can't be represented in it so we do this.
+   */
+    if (positive > (int_fast64_t)INT32_MAX) {
+        return -(uint_fast32_t)((UINT32_MAX - (int_fast64_t)positive) + 1U);
+    }
+
+    return positive;
+}
+
 static inline void linted_rpc_pack_uint32(uint_fast32_t fast, char * buf)
 {
 
@@ -96,7 +111,7 @@ static inline int_fast32_t linted_rpc_unpack(char const * buf)
 
     uint_fast32_t positive = ((uintmax_t) low) | (((uintmax_t) high) << 16U);
 
-    return linted_uint32_to_int32(positive);
+    return linted_rpc_uint32_to_int32(positive);
 }
 
 #endif                          /* LINTED_RPC_H */

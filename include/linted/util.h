@@ -23,18 +23,15 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
 
 /**
  * @file
  *
  * Various utility macroes and functions.
- *
- * @todo Factor this out and clean this up.
  */
 
-#define LINTED_SIZEOF_MEMBER(type, member) (sizeof((type *)0)->member)
+#define LINTED_FIELD_SIZEOF(type, member) (sizeof((type *)0)->member)
 
 #define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
@@ -114,20 +111,5 @@ lazy developer error in file %s, function %s, and line %i:" format_string,     \
         }                                                                      \
     } while (0)
 #endif
-
-static inline int_fast32_t linted_uint32_to_int32(uint_fast32_t positive)
-{
-    /*
-   * Section 6.3.1.2 "Signed and unsigned integers" of the C99
-   * standard specifies that the behaviour is implementation-defined
-   * (or that a signal could be raised) if the new type is signed
-   * and the value can't be represented in it so we do this.
-   */
-    if (positive > (int_fast64_t)INT32_MAX) {
-        return -(uint_fast32_t)((UINT32_MAX - (int_fast64_t)positive) + 1U);
-    }
-
-    return positive;
-}
 
 #endif /* LINTED_UTIL_H */

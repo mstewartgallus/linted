@@ -33,7 +33,7 @@ linted_error linted_updater_create(linted_updater *updaterp,
 
 	attr.maxmsg = 1;
 	attr.msgsize =
-	    LINTED_SIZEOF_MEMBER(struct linted_updater_task_send, message);
+	    LINTED_FIELD_SIZEOF(struct linted_updater_task_send, message);
 
 	return linted_mq_create(updaterp, "/updater", &attr, 0);
 }

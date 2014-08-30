@@ -33,7 +33,7 @@ linted_error linted_controller_create(linted_controller *controllerp,
 
 	attr.maxmsg = 1;
 	attr.msgsize =
-	    LINTED_SIZEOF_MEMBER(struct linted_controller_task_send, message);
+	    LINTED_FIELD_SIZEOF(struct linted_controller_task_send, message);
 
 	return linted_mq_create(controllerp, "/controller", &attr, 0);
 }
