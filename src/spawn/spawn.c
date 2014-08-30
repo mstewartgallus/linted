@@ -92,8 +92,17 @@ struct linted_spawn_attr
 
 static struct sock_fprog const ban_forks_filter;
 
+static void default_signals(linted_ko writer);
+
+static void chroot_process(linted_ko writer, char const *chrootdir,
+                           struct mount_args *mount_args,
+                           size_t mount_args_size);
+
+static void drop_privileges(linted_ko writer, cap_t caps);
+
 static linted_error my_execveat(int dirfd, const char *filename,
                                 char *const argv[], char *const envp[]);
+
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static void pid_to_str(char *buf, pid_t pid);
@@ -312,12 +321,40 @@ void linted_spawn_file_actions_destroy(
 /**
  * @bug assert isn't AS-safe.
  */
+/* Used ways to sandbox:
+ *
+ * - CLONE_NEWNS - Coupled with chrooting is good for sandboxing
+ *                 files.
+ *
+ * - CLONE_NEWIPC - Nobody really uses System V IPC objects anymore
+ *                  but maybe a few applications on the system have
+ *                  some for legacy communication purposes.
+ *
+ * - CLONE_NEWNET - Prevents processes from connecting to open
+ *                  abstract sockets.
+ *
+ * Unused
+ *
+ * - CLONE_NEWUTS - Clones the hostname namespace. Pretty useless.
+ *
+ * - CLONE_NEWUSER - Allows to create one's own users and enable some
+ *                   more sandboxes. Otherwise, it is pretty
+ *                   useless. Not permitted to use under the existing
+ *                   sandbox.
+ *
+ * - CLONE_NEWPID - Prevents processes from ptracing and signalling
+ *                  other processes. Unfortunately, PID 1 can't send
+ *                  itself signals so this is unusable for many
+ *                  applications.
+ *
+ */
 linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
-                          char *const argv[], char *const input_envp[])
+                          char *const argv[], char *const envp[])
 {
 	linted_error errnum = 0;
+	pid_t child = -1;
 	bool is_relative_path = filename[0U] != '/';
 	bool at_fdcwd = AT_FDCWD == dirfd;
 
@@ -355,44 +392,13 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		writer = xx[1U];
 	}
 
-	size_t count = 0U;
-	for (char *const *env = input_envp; *env != NULL; ++env)
-		++count;
-
-	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
-	char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";
-
-	char **envp;
-
-	if (file_actions != NULL && file_actions->action_count > 0U) {
-		{
-			void *xx;
-			errnum = linted_mem_alloc_array(&xx, count + 3U,
-			                                sizeof envp[0U]);
-			if (errnum != 0)
-				goto close_pipes;
-			envp = xx;
-		}
-
-		for (size_t ii = 0U; ii < count; ++ii)
-			envp[ii] = input_envp[ii];
-
-		envp[count] = listen_pid;
-		envp[count + 1U] = listen_fds;
-		envp[count + 2U] = NULL;
-		sprintf(listen_fds, "LISTEN_FDS=%i",
-		        (int)file_actions->action_count - 3U);
-	} else {
-		envp = (char **)input_envp;
-	}
-
 	cap_t caps;
 	if (drop_caps) {
 		caps = cap_get_proc();
 		if (NULL == caps) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto free_env;
+			goto close_pipes;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
@@ -408,7 +414,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 	}
 
-	pid_t child;
+	char **envp_copy = NULL;
+	size_t env_size = 0U;
+	for (char *const *env = envp; *env != NULL; ++env)
+		++env_size;
+
+	if (file_actions != NULL && file_actions->action_count > 0U) {
+		void *xx;
+		errnum =
+		    linted_mem_alloc_array(&xx, env_size + 3U, sizeof envp[0U]);
+		if (errnum != 0)
+			goto free_caps;
+		envp_copy = xx;
+	}
+
 	{
 		/*
 		 * To save stack space reuse the same sigset for the full set
@@ -420,7 +439,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0) {
-			child = -1;
 			goto free_caps;
 		}
 
@@ -432,45 +450,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 
 		if (0 == child) {
-			/*
-			 * Get rid of signal handlers so that they can't be
-			 * called before
-			 * execve.
-			 */
-			for (int ii = 1; ii < NSIG; ++ii) {
-				/* Uncatchable, avoid Valgrind warnings */
-				if (SIGSTOP == ii || SIGKILL == ii) {
-					continue;
-				}
-
-				struct sigaction action;
-				if (-1 == sigaction(ii, NULL, &action)) {
-					linted_error sigerrnum = errno;
-					LINTED_ASSUME(sigerrnum != 0);
-
-					/* If sigerrnum == EINVAL then
-					 * we are trampling on OS
-					 * signals.
-					 */
-					if (sigerrnum != EINVAL)
-						exit_with_error(writer,
-						                sigerrnum);
-
-					/* Skip setting this action */
-					continue;
-				}
-
-				if (SIG_IGN == action.sa_handler)
-					continue;
-
-				action.sa_handler = SIG_DFL;
-
-				if (-1 == sigaction(ii, &action, NULL)) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-					exit_with_error(writer, errnum);
-				}
-			}
+			default_signals(writer);
 		}
 
 		linted_error mask_errnum =
@@ -480,13 +460,11 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
+		linted_mem_free(envp_copy);
+
 	free_caps:
 		if (drop_caps)
 			cap_free(caps);
-
-	free_env:
-		if (envp != input_envp)
-			linted_mem_free(envp);
 
 	close_pipes : {
 		linted_error close_errnum = linted_ko_close(writer);
@@ -532,99 +510,15 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (errnum != 0)
 		exit_with_error(writer, errnum);
 
-	if (file_actions != NULL && file_actions->action_count > 0U)
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
-
 	linted_ko_close(reader);
 
 	if (chrootdir != NULL) {
-		/* Used ways to sandbox:
-		 *
-		 * - CLONE_NEWNS - Coupled with chrooting is good for
-		 *                 sandboxing files.
-		 *
-		 * - CLONE_NEWIPC - Nobody really uses System V IPC
-		 *                  objects anymore but maybe a few
-		 *                  applications on the system have
-		 *                  some for legacy communication
-		 *                  purposes.
-		 *
-		 * - CLONE_NEWNET - Prevents processes from connecting
-		 *                  to open abstract sockets.
-		 *
-		 * Unused
-		 *
-		 * - CLONE_NEWUTS - Clones the hostname
-		 *                  namespace. Pretty useless.
-		 *
-		 * - CLONE_NEWUSER - Allows to create one's own users
-		 *                   and enable some more
-		 *                   sandboxes. Otherwise, it is
-		 *                   pretty useless. Not permitted to
-		 *                   use under the existing sandbox.
-		 *
-		 * - CLONE_NEWPID - Prevents processes from ptracing
-		 *                  and signalling other
-		 *                  processes. Unfortunately, PID 1
-		 *                  can't send itself signals so this
-		 *                  is unusable for many applications.
-		 *
-		 */
-		if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS))
-			exit_with_error(writer, errno);
-
-		if (-1 == mount(NULL, chrootdir, "tmpfs", 0, NULL))
-			exit_with_error(writer, errno);
-
-		if (-1 == chdir(chrootdir))
-			exit_with_error(writer, errno);
-
-		for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-			struct mount_args *mount_arg = &mount_args[ii];
-
-			if (mount_arg->mkdir_flag) {
-				if (-1 == mkdir(mount_arg->target, S_IRWXU))
-					exit_with_error(writer, errno);
-			} else if (mount_arg->touch_flag) {
-				linted_ko xx;
-				errnum = linted_file_create(
-				    &xx, AT_FDCWD, mount_arg->target,
-				    LINTED_FILE_EXCL, S_IRWXU);
-				if (errnum != 0)
-					exit_with_error(writer, errnum);
-				linted_ko_close(xx);
-			}
-
-			unsigned long mountflags = mount_arg->mountflags;
-
-			if (-1 == mount(mount_arg->source, mount_arg->target,
-			                mount_arg->filesystemtype, mountflags,
-			                mount_arg->data))
-				exit_with_error(writer, errno);
-
-			if ((mountflags & MS_BIND) != 0U) {
-				mountflags |= MS_REMOUNT;
-				if (-1 == mount(mount_arg->source,
-				                mount_arg->target,
-				                mount_arg->filesystemtype,
-				                mountflags, mount_arg->data))
-					exit_with_error(writer, errno);
-			}
-		}
-
-		/* Magic incantation that clears up /proc/mounts more
-		 * than mount MS_MOVE
-		 */
-		if (-1 == syscall(__NR_pivot_root, ".", "."))
-			exit_with_error(writer, errno);
-
-		if (-1 == umount2(".", MNT_DETACH))
-			exit_with_error(writer, errno);
+		chroot_process(writer, chrootdir, mount_args, mount_args_size);
 	}
 
 	/* Copy it in case it is overwritten */
 
-	int dirfd_copy;
+	linted_ko dirfd_copy;
 
 	if (at_fdcwd) {
 		dirfd_copy = AT_FDCWD;
@@ -679,46 +573,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (drop_caps) {
-		/* Favor other processes over this process hierarchy.
-		 * Only superuser may lower priorities so this is not
-		 * stoppable. This also makes the process hierarchy
-		 * nicer for the OOM killer.
-		 */
-		errno = 0;
-		int priority = getpriority(PRIO_PROCESS, 0);
-		if (-1 == priority) {
-			errnum = errno;
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-		}
-
-		if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
-			exit_with_error(writer, errno);
-
-		/* We need to use the raw system call because GLibc
-		 * messes around with signals to synchronize the
-		 * permissions of every thread. Of course, after a
-		 * fork there is only one thread and there is no need
-		 * for the synchronization.
-		 *
-		 * See the following for problems related to the
-		 * nonatomic setxid calls.
-		 *
-		 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
-		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
-		 */
-		if (-1 == syscall(__NR_setgroups, 0U, NULL))
-			exit_with_error(writer, errno);
-
-		/* Drop all capabilities I might possibly have. I'm not
-		 * sure I need to do this and I probably can do this
-		 * in a better way. Note that currently we do not use
-		 * PR_SET_KEEPCAPS and do not map our sandboxed user
-		 * to root but if we did in the future we would need
-		 * this.
-		 */
-		if (-1 == cap_set_proc(caps))
-			exit_with_error(writer, errno);
+		drop_privileges(writer, caps);
 	}
 
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
@@ -731,10 +586,173 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	                &ban_forks_filter, 0UL, 0UL))
 		exit_with_error(writer, errno);
 
+	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
+	char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";
+
+	if (file_actions != NULL && file_actions->action_count > 0U) {
+		memcpy(envp_copy, envp, sizeof envp[0U] * env_size);
+
+		envp_copy[env_size] = listen_pid;
+		envp_copy[env_size + 1U] = listen_fds;
+		envp_copy[env_size + 2U] = NULL;
+
+		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
+		           (int)file_actions->action_count - 3U);
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
+
+		envp = envp_copy;
+	}
+
 	errnum = my_execveat(dirfd_copy, filename, argv, (char * const *)envp);
 
 	exit_with_error(writer, errnum);
 	return 0;
+}
+
+static void default_signals(linted_ko writer)
+{
+	linted_error errnum;
+
+	/*
+	 * Get rid of signal handlers so that they can't be called
+	 * before execve.
+	 */
+	for (int ii = 1; ii < NSIG; ++ii) {
+		/* Uncatchable, avoid Valgrind warnings */
+		if (SIGSTOP == ii || SIGKILL == ii) {
+			continue;
+		}
+
+		struct sigaction action;
+		if (-1 == sigaction(ii, NULL, &action)) {
+			linted_error sigerrnum = errno;
+			LINTED_ASSUME(sigerrnum != 0);
+
+			/* If sigerrnum == EINVAL then we are
+			 * trampling on OS signals.
+			 */
+			if (sigerrnum != EINVAL)
+				exit_with_error(writer, sigerrnum);
+
+			/* Skip setting this action */
+			continue;
+		}
+
+		if (SIG_IGN == action.sa_handler)
+			continue;
+
+		action.sa_handler = SIG_DFL;
+
+		if (-1 == sigaction(ii, &action, NULL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			exit_with_error(writer, errnum);
+		}
+	}
+}
+
+static void chroot_process(linted_ko writer, char const *chrootdir,
+                           struct mount_args *mount_args,
+                           size_t mount_args_size)
+{
+	linted_error errnum;
+
+	if (-1 == unshare(CLONE_NEWNS))
+		exit_with_error(writer, errno);
+
+	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, NULL))
+		exit_with_error(writer, errno);
+
+	if (-1 == chdir(chrootdir))
+		exit_with_error(writer, errno);
+
+	for (size_t ii = 0U; ii < mount_args_size; ++ii) {
+		struct mount_args *mount_arg = &mount_args[ii];
+
+		if (mount_arg->mkdir_flag) {
+			if (-1 == mkdir(mount_arg->target, S_IRWXU))
+				exit_with_error(writer, errno);
+		} else if (mount_arg->touch_flag) {
+			linted_ko xx;
+			errnum =
+			    linted_file_create(&xx, AT_FDCWD, mount_arg->target,
+			                       LINTED_FILE_EXCL, S_IRWXU);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+			linted_ko_close(xx);
+		}
+
+		unsigned long mountflags = mount_arg->mountflags;
+
+		if (-1 == mount(mount_arg->source, mount_arg->target,
+		                mount_arg->filesystemtype, mountflags,
+		                mount_arg->data))
+			exit_with_error(writer, errno);
+
+		if ((mountflags & MS_BIND) != 0U) {
+			mountflags |= MS_REMOUNT;
+			if (-1 == mount(mount_arg->source, mount_arg->target,
+			                mount_arg->filesystemtype, mountflags,
+			                mount_arg->data))
+				exit_with_error(writer, errno);
+		}
+	}
+
+	/* Magic incantation that clears up /proc/mounts more than
+	 * mount MS_MOVE
+	 */
+	if (-1 == syscall(__NR_pivot_root, ".", "."))
+		exit_with_error(writer, errno);
+
+	if (-1 == umount2(".", MNT_DETACH))
+		exit_with_error(writer, errno);
+}
+
+static void drop_privileges(linted_ko writer, cap_t caps)
+{
+	linted_error errnum;
+
+	if (-1 == unshare(CLONE_NEWIPC | CLONE_NEWNET))
+		exit_with_error(writer, errno);
+
+	/* Favor other processes over this process hierarchy.  Only
+	 * superuser may lower priorities so this is not
+	 * stoppable. This also makes the process hierarchy nicer for
+	 * the OOM killer.
+	 */
+	errno = 0;
+	int priority = getpriority(PRIO_PROCESS, 0);
+	if (-1 == priority) {
+		errnum = errno;
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+	}
+
+	if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
+		exit_with_error(writer, errno);
+
+	/* We need to use the raw system call because GLibc messes
+	 * around with signals to synchronize the permissions of every
+	 * thread. Of course, after a fork there is only one thread
+	 * and there is no need for the synchronization.
+	 *
+	 * See the following for problems related to the nonatomic
+	 * setxid calls.
+	 *
+	 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
+	 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
+	 */
+	if (-1 == syscall(__NR_setgroups, 0U, NULL))
+		exit_with_error(writer, errno);
+
+	/* Drop all capabilities I might possibly have. I'm not sure I
+	 * need to do this and I probably can do this in a better
+	 * way. Note that currently we do not use PR_SET_KEEPCAPS and
+	 * do not map our sandboxed user to root but if we did in the
+	 * future we would need this.
+	 */
+	if (-1 == cap_set_proc(caps))
+		exit_with_error(writer, errno);
 }
 
 static linted_error my_execveat(int dirfd, const char *filename,

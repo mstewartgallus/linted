@@ -11,7 +11,7 @@
  *
  * Linted -- TODO
  *
- * @todo Get the GCC flag -Wstack-size=500 to pass with no errors and
+ * @todo Get the GCC flag -Wstack-usage=500 to pass with no errors and
  *       then set it as a default.
  *
  * @todo Investigate and explain how to use binary analysis tools
