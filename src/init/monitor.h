@@ -56,6 +56,9 @@
  *
  * @bug Attacking processes can send signals to other processes and
  *      kill them or possibly otherwise cause misbehaviour.
+ *
+ * @todo Connect the /var directories of the processes to real
+ *       locations on disk.
  */
 
 unsigned char linted_init_monitor(linted_ko cwd,

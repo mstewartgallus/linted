@@ -96,6 +96,7 @@ struct service_config_process
 	char const *name;
 	char const *path;
 	char const *fstab;
+	char const *chdir_path;
 	char const *const *arguments;
 	char const *const *environment;
 	struct dup_pairs dup_pairs;
@@ -363,7 +364,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	      { .process = { .name = "logger",
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
-			     .fstab = logger_fstab_path,
+	                     .fstab = logger_fstab_path,
+	                     .chdir_path = "/var",
 			     .path = logger_path,
 			     .arguments =
 				 (char const * const[]) { logger_path, NULL },
@@ -378,7 +380,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
 			     .fstab = simulator_fstab_path,
-			     .path = simulator_path,
+	                     .path = simulator_path,
+	                     .chdir_path = "/var",
 			     .arguments = (char const *
 				           const[]) { simulator_path, NULL },
 			     .environment = (char const * const[]) { NULL },
@@ -394,7 +397,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .type = SERVICE_TYPE_PROCESS,
 			     .halt_after_exit = true,
 			     .dirko = cwd,
-			     .fstab = gui_fstab_path,
+	                     .fstab = gui_fstab_path,
+	                     .chdir_path = "/var",
 			     .path = gui_path,
 			     .arguments =
 				 (char const * const[]) { gui_path, NULL },
@@ -531,6 +535,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		struct dup_pair const *dup_pairs =
 		    proc_config->dup_pairs.dup_pairs;
 		char const *fstab = proc_config->fstab;
+		char const *chdir_path = proc_config->chdir_path;
 		linted_ko dirko = proc_config->dirko;
 		char const *const *environment = proc_config->environment;
 		char const *const *arguments = proc_config->arguments;
@@ -556,6 +561,9 @@ unsigned char linted_init_monitor(linted_ko cwd,
 
 		/* TODO: Close files leading outside of the sandbox  */
 		linted_spawn_attr_drop_caps(attr);
+
+		if (chdir_path != NULL)
+			linted_spawn_attr_setchdir(attr, chdir_path);
 
 		if (fstab != NULL) {
 			linted_spawn_attr_setchrootdir(attr, chrootdir_path);
