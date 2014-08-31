@@ -17,6 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libdb.la
 %C%_libdb_la_SOURCES=%D%/db.c include/linted/db.h
+EXTRA_%C%_libdb_la_SOURCES=%D%/db-linux.c %D%/db-windows.c
 %C%_libdb_la_LIBADD=\
   src/dir/libdir.la\
   src/error/liberror.la\
