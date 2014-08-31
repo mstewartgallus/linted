@@ -36,6 +36,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+static void fd_to_str(char *buf, linted_ko fd);
+
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
 
@@ -149,8 +151,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
                               unsigned long flags)
 {
-	char pathname[sizeof "/proc/self/fd/" + 10U];
-	sprintf(pathname, "/proc/self/fd/%i", koin);
+	char pathname[] = "/proc/self/fd/XXXXXXXXXXX";
+	fd_to_str(pathname + strlen("/proc/self/fd/"), koin);
 	return linted_ko_open(kooutp, AT_FDCWD, pathname, flags);
 }
 
@@ -502,4 +504,27 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
 		errnum = EBADF;
 
 	return errnum;
+}
+
+static void fd_to_str(char *buf, linted_ko fd)
+{
+	size_t strsize = 0U;
+
+	assert(fd >= 0);
+
+	for (;;) {
+		memmove(buf + 1U, buf, strsize);
+
+		linted_ko digit = fd % 10;
+
+		*buf = '0' + digit;
+
+		fd /= 10;
+		++strsize;
+
+		if (0 == fd)
+			break;
+	}
+
+	buf[strsize] = '\0';
 }
