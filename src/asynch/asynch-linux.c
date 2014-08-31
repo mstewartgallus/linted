@@ -76,7 +76,6 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size);
 		if (errnum != 0)
 			return errnum;
-
 		pool = xx;
 	}
 
@@ -93,9 +92,9 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	pool->worker_count = max_tasks;
 
 	{
-		pthread_attr_t worker_attributes;
+		pthread_attr_t worker_attr;
 
-		errnum = pthread_attr_init(&worker_attributes);
+		errnum = pthread_attr_init(&worker_attr);
 		if (errnum != 0) {
 			goto destroy_event_queue;
 		}
@@ -106,27 +105,24 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
 		assert(stack_min != -1);
 
-		errnum =
-		    pthread_attr_setstacksize(&worker_attributes, stack_min);
+		errnum = pthread_attr_setstacksize(&worker_attr, stack_min);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			errnum = pthread_create(&pool->workers[created_threads],
-			                        &worker_attributes,
-			                        worker_routine, pool);
+			errnum =
+			    pthread_create(&pool->workers[created_threads],
+			                   &worker_att, worker_routine, pool);
 			if (errnum != 0)
 				break;
 		}
 
-		{
-			linted_error destroy_errnum =
-			    pthread_attr_destroy(&worker_attributes);
-			if (0 == errnum)
-				errnum = destroy_errnum;
-		}
+		linted_error destroy_errnum =
+		    pthread_attr_destroy(&worker_attr);
+		if (0 == errnum)
+			errnum = destroy_errnum;
 	}
 
 	if (errnum != 0)
@@ -208,9 +204,8 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	if (NULL == pool) {
+	if (NULL == pool)
 		return;
-	}
 
 	int oldstate;
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
