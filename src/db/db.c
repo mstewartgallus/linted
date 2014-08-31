@@ -76,8 +76,8 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 		the_db = xx;
 	} else {
 		linted_dir xx;
-		errnum = linted_ko_open(&xx, cwd, pathname,
-		                        LINTED_KO_DIRECTORY);
+		errnum =
+		    linted_ko_open(&xx, cwd, pathname, LINTED_KO_DIRECTORY);
 		if (errnum != 0)
 			return errnum;
 		the_db = xx;
@@ -116,8 +116,7 @@ try_to_create_lock_file:
 	}
 	goto try_to_open_lock_file;
 
-
-opened_lock_file: {
+opened_lock_file : {
 	errnum = mutex_lock(lock_file);
 	if (errnum != 0)
 		goto close_lock_file;
@@ -125,8 +124,8 @@ opened_lock_file: {
 	/* Sole user of the database now */
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, the_db, "version",
-		                        LINTED_KO_RDONLY);
+		errnum =
+		    linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
 		switch (errnum) {
 		case 0:
 			version_file = xx;
@@ -141,7 +140,7 @@ opened_lock_file: {
 	}
 }
 
-opened_version_file: {
+opened_version_file : {
 	/* Opening a created database */
 	off_t version_file_size;
 	{
@@ -191,13 +190,13 @@ free_version_text:
 }
 
 close_version_file : {
-		linted_error close_errnum = linted_ko_close(version_file);
-		if (0 == errnum)
-			errnum = close_errnum;
-	}
+	linted_error close_errnum = linted_ko_close(version_file);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
 	goto unlock_db;
 
-try_to_create_db: {
+try_to_create_db : {
 	/* Creating the initial database */
 	if (!db_creat) {
 		errnum = EINVAL;
@@ -208,21 +207,18 @@ try_to_create_db: {
 	{
 		linted_ko xx;
 		errnum = linted_file_create(&xx, the_db, "version",
-		                            LINTED_FILE_RDWR |
-		                            LINTED_FILE_SYNC,
+		                            LINTED_FILE_RDWR | LINTED_FILE_SYNC,
 		                            S_IRUSR | S_IWUSR);
 		if (errnum != 0)
 			goto unlock_db;
 		version_file_write = xx;
 	}
 
-	errnum = linted_io_write_all(version_file_write, NULL,
-	                             CURRENT_VERSION,
+	errnum = linted_io_write_all(version_file_write, NULL, CURRENT_VERSION,
 	                             sizeof CURRENT_VERSION - 1U);
 
 	{
-		linted_error close_errnum =
-			linted_ko_close(version_file_write);
+		linted_error close_errnum = linted_ko_close(version_file_write);
 		if (0 == errnum)
 			errnum = close_errnum;
 	}
@@ -243,17 +239,17 @@ try_to_create_db: {
 	}
 }
 
-unlock_db: {
-		linted_error unlock_errnum = mutex_unlock(lock_file);
-		if (0 == errnum)
-			errnum = unlock_errnum;
-	}
+unlock_db : {
+	linted_error unlock_errnum = mutex_unlock(lock_file);
+	if (0 == errnum)
+		errnum = unlock_errnum;
+}
 
-close_lock_file: {
-		linted_error close_errnum = linted_ko_close(lock_file);
-		if (0 == errnum)
-			errnum = close_errnum;
-	}
+close_lock_file : {
+	linted_error close_errnum = linted_ko_close(lock_file);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
 
 	if (errnum != 0)
 		goto close_db;
