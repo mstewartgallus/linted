@@ -84,7 +84,7 @@ struct mount_args
 
 struct linted_spawn_attr
 {
-	char const *chrootdir_path;
+	char const *chrootdir;
 	char const *chdir_path;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
@@ -96,8 +96,7 @@ static struct sock_fprog const ban_forks_filter;
 
 static void default_signals(linted_ko writer);
 
-static void chroot_process(linted_ko writer,
-                           char const *chrootdir_path,
+static void chroot_process(linted_ko writer, char const *chrootdir,
                            struct mount_args *mount_args,
                            size_t mount_args_size);
 
@@ -124,7 +123,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
-	attr->chrootdir_path = NULL;
+	attr->chrootdir = NULL;
 	attr->chdir_path = NULL;
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
@@ -159,13 +158,12 @@ void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags)
 }
 
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
-                                    char const *chrootdir_path)
+                                    char const *chrootdir)
 {
-	attr->chrootdir_path = chrootdir_path;
+	attr->chrootdir = chrootdir;
 }
 
-void linted_spawn_attr_setchdir(struct linted_spawn_attr *attr,
-                                char const *dir)
+void linted_spawn_attr_setchdir(struct linted_spawn_attr *attr, char const *dir)
 {
 	attr->chdir_path = dir;
 }
@@ -378,7 +376,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		return EBADF;
 
 	int clone_flags;
-	char const *chrootdir_path;
+	char const *chrootdir;
 	char const *chdir_path;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
@@ -386,21 +384,21 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if (NULL == attr) {
 		clone_flags = 0;
-		chrootdir_path = NULL;
+		chrootdir = NULL;
 		chdir_path = NULL;
 		mount_args_size = 0U;
 		mount_args = NULL;
 		drop_caps = false;
 	} else {
 		clone_flags = attr->clone_flags;
-		chrootdir_path = attr->chrootdir_path;
+		chrootdir = attr->chrootdir;
 		chdir_path = attr->chdir_path;
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
 	}
 
-	if (chrootdir_path != NULL && !((clone_flags & CLONE_NEWNS) != 0))
+	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
 		return EINVAL;
 
 	/*
@@ -540,9 +538,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (-1 == unshare(clone_flags))
 		exit_with_error(writer, errno);
 
-	if (chrootdir_path != NULL) {
-		chroot_process(writer, chrootdir_path,
-		               mount_args, mount_args_size);
+	if (chrootdir != NULL) {
+		chroot_process(writer, chrootdir, mount_args, mount_args_size);
 	}
 
 	if (chdir_path != NULL) {
@@ -685,16 +682,16 @@ static void default_signals(linted_ko writer)
 	}
 }
 
-static void chroot_process(linted_ko writer, char const *chrootdir_path,
+static void chroot_process(linted_ko writer, char const *chrootdir,
                            struct mount_args *mount_args,
                            size_t mount_args_size)
 {
 	linted_error errnum;
 
-	if (-1 == mount(NULL, chrootdir_path, "tmpfs", 0, NULL))
+	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, NULL))
 		exit_with_error(writer, errno);
 
-	if (-1 == chdir(chrootdir_path))
+	if (-1 == chdir(chrootdir))
 		exit_with_error(writer, errno);
 
 	for (size_t ii = 0U; ii < mount_args_size; ++ii) {

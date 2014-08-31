@@ -204,8 +204,8 @@ static double square(double x);
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
 
-unsigned char linted_start(char const *const process_name,
-                           size_t argc, char const *const argv[const])
+unsigned char linted_start(char const *const process_name, size_t argc,
+                           char const *const argv[const])
 {
 	linted_error errnum = 0;
 

@@ -53,8 +53,8 @@ static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error on_receive_log(struct linted_asynch_task *completed_task);
 
-unsigned char linted_start(char const *const process_name,
-                           size_t argc, char const *const argv[const])
+unsigned char linted_start(char const *const process_name, size_t argc,
+                           char const *const argv[const])
 {
 	linted_log log = kos[0U];
 

@@ -32,7 +32,7 @@ struct linted_start_config
 
 extern struct linted_start_config const linted_start_config;
 
-unsigned char linted_start(char const *const process_name,
-                           size_t argc, char const *const argv[const]);
+unsigned char linted_start(char const *const process_name, size_t argc,
+                           char const *const argv[const]);
 
 #endif /* LINTED_START_H */

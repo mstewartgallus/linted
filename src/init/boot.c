@@ -61,15 +61,16 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
 
-unsigned char linted_start(char const *const process_name,
-                           size_t argc, char const *const argv[const])
+unsigned char linted_start(char const *const process_name, size_t argc,
+                           char const *const argv[const])
 {
 	linted_error errnum;
 
 	linted_ko cwd;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
+		errnum =
+		    linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
@@ -101,7 +102,7 @@ unsigned char linted_start(char const *const process_name,
 	char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
 	char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
 
-	char const *chrootdir_path = CHROOTDIR;
+	char const *chrootdir = CHROOTDIR;
 
 	for (size_t ii = 1U; ii < argc; ++ii) {
 		char const *argument = argv[ii];
@@ -148,7 +149,7 @@ unsigned char linted_start(char const *const process_name,
 			if (argument[strlen(arguments[CHROOTDIR_OPTION])] !=
 			    '=')
 				goto bad_argument;
-			chrootdir_path = argument + strlen("--chrootdir=");
+			chrootdir = argument + strlen("--chrootdir=");
 			break;
 
 		case LOGGER_FSTAB:
@@ -318,7 +319,7 @@ unsigned char linted_start(char const *const process_name,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_init_config config = { .chrootdir_path = chrootdir_path,
+	struct linted_init_config config = { .chrootdir = chrootdir,
 		                             .logger_fstab_path =
 		                                 logger_fstab_path,
 		                             .simulator_fstab_path =

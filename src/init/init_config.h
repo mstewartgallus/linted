@@ -18,7 +18,7 @@
 
 struct linted_init_config
 {
-	char const *chrootdir_path;
+	char const *chrootdir;
 
 	char const *logger_fstab_path;
 	char const *simulator_fstab_path;

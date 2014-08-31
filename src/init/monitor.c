@@ -237,6 +237,12 @@ static char const *const gui_envvars_to_keep[] = {
 	"SVGA_DEBUG",               NULL
 };
 
+static linted_error spawn_process(pid_t *pidp,
+                                  struct service_config_process const *config,
+                                  linted_ko cwd, char const *chrootdir,
+                                  union service const *services,
+                                  size_t services_size);
+
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 
@@ -285,7 +291,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 {
 	linted_error errnum;
 
-	char const *chrootdir_path = init_config->chrootdir_path;
+	char const *chrootdir = init_config->chrootdir;
 
 	char const *logger_fstab_path = init_config->logger_fstab_path;
 	char const *simulator_fstab_path = init_config->simulator_fstab_path;
@@ -366,10 +372,11 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	      { .process = { .name = "logger",
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
-	                     .fstab = logger_fstab_path,
-	                     .chdir_path = "/var",
-	                     .path = logger_path,
-	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
+			     .fstab = logger_fstab_path,
+			     .chdir_path = "/var",
+			     .path = logger_path,
+			     .clone_flags =
+				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
 			     .arguments =
 				 (char const * const[]) { logger_path, NULL },
 			     .environment = (char const * const[]) { NULL },
@@ -383,9 +390,10 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
 			     .fstab = simulator_fstab_path,
-	                     .path = simulator_path,
-	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
-	                     .chdir_path = "/var",
+			     .path = simulator_path,
+			     .clone_flags =
+				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
+			     .chdir_path = "/var",
 			     .arguments = (char const *
 				           const[]) { simulator_path, NULL },
 			     .environment = (char const * const[]) { NULL },
@@ -401,10 +409,11 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .type = SERVICE_TYPE_PROCESS,
 			     .halt_after_exit = true,
 			     .dirko = cwd,
-	                     .fstab = gui_fstab_path,
-	                     .chdir_path = "/var",
-	                     .path = gui_path,
-	                     .clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
+			     .fstab = gui_fstab_path,
+			     .chdir_path = "/var",
+			     .path = gui_path,
+			     .clone_flags =
+				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
 			     .arguments =
 				 (char const * const[]) { gui_path, NULL },
 			     .environment = (char const * const *)gui_envvars,
@@ -536,123 +545,20 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		struct service_config_process const *proc_config =
 		    &config[ii].process;
 
-		size_t dup_pairs_size = proc_config->dup_pairs.size;
-		struct dup_pair const *dup_pairs =
-		    proc_config->dup_pairs.dup_pairs;
-		char const *fstab = proc_config->fstab;
-		char const *chdir_path = proc_config->chdir_path;
-		linted_ko dirko = proc_config->dirko;
-		int clone_flags = proc_config->clone_flags;
-		char const *const *environment = proc_config->environment;
-		char const *const *arguments = proc_config->arguments;
-		char const *path = proc_config->path;
-
-		struct linted_spawn_file_actions *file_actions;
-		struct linted_spawn_attr *attr;
-
+		pid_t process;
 		{
-			struct linted_spawn_file_actions *xx;
-			errnum = linted_spawn_file_actions_init(&xx);
+			pid_t xx;
+			errnum = spawn_process(&xx, proc_config, cwd, chrootdir,
+			                       services, services_size);
 			if (errnum != 0)
 				goto exit_services;
-			file_actions = xx;
+			process = xx;
 		}
 
-		{
-			struct linted_spawn_attr *xx;
-			if ((errnum = linted_spawn_attr_init(&xx)) != 0)
-				goto destroy_file_actions;
-			attr = xx;
-		}
+		service->pid = process;
 
-		/* TODO: Close files leading outside of the sandbox  */
-		if (chdir_path != NULL)
-			linted_spawn_attr_setcloneflags(attr, clone_flags);
-
-		linted_spawn_attr_drop_caps(attr);
-
-		if (chdir_path != NULL)
-			linted_spawn_attr_setchdir(attr, chdir_path);
-
-		if (fstab != NULL) {
-			linted_spawn_attr_setchrootdir(attr, chrootdir_path);
-
-			if ((errnum = parse_fstab(attr, cwd, fstab)) != 0) {
-				errno = errnum;
-				perror("parse_fstab");
-				return EXIT_FAILURE;
-			}
-		}
-
-		linted_ko *proc_kos;
-		{
-			void *xx;
-			errnum = linted_mem_alloc_array(
-			    &xx, sizeof proc_kos[0U], dup_pairs_size);
-			if (errnum != 0)
-				goto destroy_attr;
-			proc_kos = xx;
-		}
-		size_t kos_opened = 0U;
-		for (; kos_opened < dup_pairs_size;) {
-			struct dup_pair const *dup_pair =
-			    &dup_pairs[kos_opened];
-
-			union service const *service = service_for_name(
-			    services, services_size, dup_pair->service_name);
-			if (NULL == service) {
-				errnum = EINVAL;
-				goto destroy_proc_kos;
-			}
-
-			struct service_file const *file = &service->file;
-
-			linted_ko ko;
-			{
-				linted_ko xx;
-				errnum = linted_ko_reopen(&xx, file->ko,
-				                          dup_pair->flags);
-				if (errnum != 0)
-					goto destroy_proc_kos;
-				ko = xx;
-			}
-
-			proc_kos[kos_opened] = ko;
-			++kos_opened;
-
-			errnum = linted_spawn_file_actions_adddup2(
-			    &file_actions, ko, kos_opened - 1U);
-			if (errnum != 0)
-				goto destroy_proc_kos;
-		}
-
-		{
-			pid_t process;
-			errnum = linted_spawn(
-			    &process, dirko, path, file_actions, attr,
-			    (char **)arguments, (char **)environment);
-			if (errnum != 0)
-				goto destroy_attr;
-
-			if (proc_config->halt_after_exit)
-				halt_pid = process;
-
-			service->pid = process;
-		}
-
-	destroy_proc_kos:
-		for (size_t jj = 0; jj < kos_opened; ++jj)
-			linted_ko_close(proc_kos[jj]);
-		linted_mem_free(proc_kos);
-
-	destroy_attr:
-		linted_spawn_attr_destroy(attr);
-
-	destroy_file_actions:
-		linted_spawn_file_actions_destroy(file_actions);
-
-		if (errnum != 0)
-			goto exit_services;
+		if (proc_config->halt_after_exit)
+			halt_pid = process;
 	}
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
@@ -760,6 +666,125 @@ exit_services : {
 		return EXIT_FAILURE;
 
 	return EXIT_SUCCESS;
+}
+
+static linted_error spawn_process(pid_t *pidp,
+                                  struct service_config_process const *config,
+                                  linted_ko cwd, char const *chrootdir,
+                                  union service const *services,
+                                  size_t services_size)
+{
+	linted_error errnum;
+
+	size_t dup_pairs_size = config->dup_pairs.size;
+	struct dup_pair const *dup_pairs = config->dup_pairs.dup_pairs;
+	char const *fstab = config->fstab;
+	char const *chdir_path = config->chdir_path;
+	linted_ko dirko = config->dirko;
+	int clone_flags = config->clone_flags;
+	char const *const *environment = config->environment;
+	char const *const *arguments = config->arguments;
+	char const *path = config->path;
+
+	struct linted_spawn_file_actions *file_actions;
+	struct linted_spawn_attr *attr;
+
+	{
+		struct linted_spawn_file_actions *xx;
+		errnum = linted_spawn_file_actions_init(&xx);
+		if (errnum != 0)
+			return errnum;
+		file_actions = xx;
+	}
+
+	{
+		struct linted_spawn_attr *xx;
+		if ((errnum = linted_spawn_attr_init(&xx)) != 0)
+			goto destroy_file_actions;
+		attr = xx;
+	}
+
+	if (chdir_path != NULL)
+		linted_spawn_attr_setcloneflags(attr, clone_flags);
+
+	linted_spawn_attr_drop_caps(attr);
+
+	if (chdir_path != NULL)
+		linted_spawn_attr_setchdir(attr, chdir_path);
+
+	if (fstab != NULL) {
+		linted_spawn_attr_setchrootdir(attr, chrootdir);
+
+		errnum = parse_fstab(attr, cwd, fstab);
+		if (errnum != 0)
+			goto destroy_attr;
+	}
+
+	linted_ko *proc_kos;
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U],
+		                                dup_pairs_size);
+		if (errnum != 0)
+			goto destroy_attr;
+		proc_kos = xx;
+	}
+	size_t kos_opened = 0U;
+	for (; kos_opened < dup_pairs_size;) {
+		struct dup_pair const *dup_pair = &dup_pairs[kos_opened];
+
+		union service const *service = service_for_name(
+		    services, services_size, dup_pair->service_name);
+		if (NULL == service) {
+			errnum = EINVAL;
+			goto destroy_proc_kos;
+		}
+
+		struct service_file const *file = &service->file;
+
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_reopen(&xx, file->ko, dup_pair->flags);
+			if (errnum != 0)
+				goto destroy_proc_kos;
+			ko = xx;
+		}
+
+		proc_kos[kos_opened] = ko;
+		++kos_opened;
+
+		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko,
+		                                           kos_opened - 1U);
+		if (errnum != 0)
+			goto destroy_proc_kos;
+	}
+
+	pid_t process;
+	{
+		pid_t xx;
+		errnum = linted_spawn(&xx, dirko, path, file_actions, attr,
+		                      (char **)arguments, (char **)environment);
+		if (errnum != 0)
+			goto destroy_attr;
+		process = xx;
+	}
+
+	*pidp = process;
+
+destroy_proc_kos:
+	for (size_t jj = 0; jj < kos_opened; ++jj)
+		linted_ko_close(proc_kos[jj]);
+	linted_mem_free(proc_kos);
+
+destroy_attr:
+	linted_spawn_attr_destroy(attr);
+
+destroy_file_actions:
+	linted_spawn_file_actions_destroy(file_actions);
+
+	return errnum;
 }
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
