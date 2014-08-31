@@ -96,7 +96,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
 	for (; worker_count < max_tasks; ++worker_count) {
 		linted_ko thread =
 		    CreateThread(NULL, 0, worker_routine, pool, 0, NULL);
-		if (NULL == thread) {
+		if (INVALID_HANDLE_VALUE == thread) {
 			DWORD error = GetLastError();
 			errnum = HRESULT_FROM_WIN32(error);
 			goto destroy_threads;
