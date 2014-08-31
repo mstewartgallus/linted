@@ -13,10 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
-#include "random-windows.c"
-#elif defined __linux__
-#include "random-linux.c"
-#else
-#error no random number implementation for this platform
-#endif
+#define UNICODE
+#define _UNICODE
+
+#include "config.h"
+
+#include "linted/random.h"
+
+#include <assert.h>
+#include <windows.h>
+
+static HCRYPTPROV crypto_provider;
+
+void linted_random_seed_generator(unsigned seed)
+{
+	if (!CryptAcquireContext(&crypto_provider, NULL, NULL, PROV_RSA_FULL,
+	                         CRYPT_SILENT)) {
+		assert(0);
+	}
+}
+
+unsigned long linted_random_fast(void)
+{
+	BYTE bytes[sizeof(unsigned long)];
+	if (!CryptGenRandom(crypto_provider, sizeof bytes, bytes)) {
+		assert(0);
+	}
+	unsigned long number;
+	memcpy(&number, bytes, sizeof number);
+	return number;
+}

@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
-#include "random-windows.c"
-#elif defined __linux__
-#include "random-linux.c"
-#else
-#error no random number implementation for this platform
-#endif
+#define _XOPEN_SOURCE 500
+
+#include "config.h"
+
+#include "linted/random.h"
+
+#include <stdlib.h>
+
+void linted_random_seed_generator(unsigned seed)
+{
+	srandom(seed);
+}
+
+long unsigned linted_random_fast(void)
+{
+	return random();
+}

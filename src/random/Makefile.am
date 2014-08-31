@@ -17,3 +17,4 @@
 
 noinst_LTLIBRARIES+=%D%/librandom.la
 %C%_librandom_la_SOURCES=%D%/random.c include/linted/random.h
+EXTRA_%C%_librandom_la_SOURCES=%D%/random-linux.c %D%/random-windows.c
