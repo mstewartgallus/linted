@@ -114,7 +114,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		for (; created_threads < max_tasks; ++created_threads) {
 			errnum =
 			    pthread_create(&pool->workers[created_threads],
-			                   &worker_att, worker_routine, pool);
+			                   &worker_attr, worker_routine, pool);
 			if (errnum != 0)
 				break;
 		}
