@@ -63,6 +63,10 @@ def go():
                              # is useful
                              '--suppress=variableScope',
 
+                             # This warning makes working with arrays
+                             # of pointers annoying
+                             '--suppress=sizeofwithsilentarraypointer',
+
                              '--template={file}:{line}: ({id}) {message}']
 
             if 'D__unix__=1' in define_flags:
