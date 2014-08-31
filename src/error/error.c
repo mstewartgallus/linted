@@ -20,6 +20,10 @@
 #include <errno.h>
 #include <string.h>
 
+/**
+ * @bug This is not thread safe. POSIX states: The strerror() function
+ * need not be thread-safe.
+ */
 char const *linted_error_string(linted_error errnum_to_print)
 {
 	return strerror(errnum_to_print);
