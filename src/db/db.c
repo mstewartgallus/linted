@@ -77,16 +77,14 @@ linted_error linted_db_open(linted_db *dbp, linted_ko cwd, char const *pathname,
 	if (db_creat) {
 		linted_dir xx;
 		errnum = linted_dir_create(&xx, cwd, pathname, 0U, S_IRWXU);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		the_db = xx;
 	} else {
 		linted_dir xx;
 		errnum = linted_ko_open(&xx, cwd, pathname, 0U);
-		if (errnum != 0) {
+		if (errnum != 0)
 			return errnum;
-		}
 		the_db = xx;
 	}
 
@@ -249,71 +247,69 @@ opened_lock_file:
 	linted_ko version_file;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, the_db, "version", LINTED_KO_RDONLY);
-		if (0 == errnum) {
-			version_file = xx;
-		}
+		errnum = linted_ko_open(&xx, the_db, "version",
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0)
+			goto handler_version_open_error;
+		version_file = xx;
 	}
-	switch (errnum) {
-	case 0: {
-		/* Opening a created database */
-		off_t version_file_size;
-		{
-			struct stat stats;
-			if (-1 == fstat(version_file, &stats)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_version_file;
-			}
 
-			version_file_size = stats.st_size;
-		}
-
-		/* Maybe we're a 32 bit binary and opening up a 64 bit file */
-		if ((uintmax_t)version_file_size > (uintmax_t)SIZE_MAX) {
-			errnum = ENOMEM;
+	/* Opening a created database */
+	off_t version_file_size;
+	{
+		struct stat stats;
+		if (-1 == fstat(version_file, &stats)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto close_version_file;
 		}
 
-		char *version_text;
-		{
-			void *xx;
-			errnum = linted_mem_alloc(&xx, version_file_size);
-			if (errnum != 0)
-				goto close_version_file;
-			version_text = xx;
-		}
+		version_file_size = stats.st_size;
+	}
 
-		errnum = linted_io_read_all(version_file, NULL, version_text,
-		                            version_file_size);
+	/* Maybe we're a 32 bit binary and opening up a 64 bit file */
+	if ((uintmax_t)version_file_size > (uintmax_t)SIZE_MAX) {
+		errnum = ENOMEM;
+		goto close_version_file;
+	}
+
+	char *version_text;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, version_file_size);
 		if (errnum != 0)
-			goto free_version_text;
+			goto close_version_file;
+		version_text = xx;
+	}
 
-		if (version_file_size != sizeof CURRENT_VERSION - 1U) {
-			errnum = EINVAL;
-			goto free_version_text;
-		}
+	errnum = linted_io_read_all(version_file, NULL, version_text,
+	                            version_file_size);
+	if (errnum != 0)
+		goto free_version_text;
 
-		if (memcmp(version_text, CURRENT_VERSION,
-		           sizeof CURRENT_VERSION - 1U) != 0) {
-			errnum = EINVAL;
-			goto free_version_text;
-		}
+	if (version_file_size != sizeof CURRENT_VERSION - 1U) {
+		errnum = EINVAL;
+		goto free_version_text;
+	}
 
-	free_version_text:
-		linted_mem_free(version_text);
+	if (memcmp(version_text, CURRENT_VERSION,
+	           sizeof CURRENT_VERSION - 1U) != 0) {
+		errnum = EINVAL;
+		goto free_version_text;
+	}
 
-	close_version_file : {
+free_version_text:
+	linted_mem_free(version_text);
+
+close_version_file : {
 		linted_error close_errnum = linted_ko_close(version_file);
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = close_errnum;
-		}
-		break;
 	}
-	}
+	goto unlock_db;
 
-	case ENOENT: {
+handler_version_open_error:
+	if (ENOENT == errnum) {
 		/* Creating the initial database */
 		if (!db_creat) {
 			errnum = EINVAL;
@@ -357,8 +353,8 @@ opened_lock_file:
 			LINTED_ASSUME(errnum != 0);
 			goto unlock_db;
 		}
-		break;
-	}
+	} else {
+		goto unlock_db;
 	}
 
 unlock_db:
