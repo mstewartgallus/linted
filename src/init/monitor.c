@@ -61,7 +61,6 @@ enum {
 };
 
 enum service_type {
-	SERVICE_TYPE_INIT,
 	SERVICE_TYPE_PROCESS,
 	SERVICE_TYPE_FILE
 };
@@ -85,11 +84,6 @@ struct dup_pairs
 #define DUP_PAIRS(...)                                                         \
 	((struct dup_pairs const) { .size = LINTED_ARRAY_SIZE(__VA_ARGS__),    \
 		                    .dup_pairs = __VA_ARGS__ })
-struct service_config_init
-{
-	enum service_type type;
-	char const *name;
-};
 
 struct service_config_process
 {
@@ -116,16 +110,8 @@ struct service_config_file
 union service_config
 {
 	enum service_type type;
-	struct service_config_init init;
 	struct service_config_process process;
 	struct service_config_file file;
-};
-
-struct service_init
-{
-	enum service_type type;
-	char const *name;
-	pid_t pid;
 };
 
 struct service_process
@@ -146,9 +132,14 @@ struct service_file
 union service
 {
 	enum service_type type;
-	struct service_init init;
 	struct service_process process;
 	struct service_file file;
+};
+
+struct services
+{
+	size_t size;
+	union service list[];
 };
 
 struct wait_service_task
@@ -159,16 +150,15 @@ struct wait_service_task
 	bool time_to_exit : 1U;
 };
 
-struct connection;
-struct connection_pool;
+struct conn;
+struct conn_pool;
 
 struct new_connection_task
 {
 	struct linted_manager_task_accept parent;
 	struct linted_asynch_pool *pool;
-	struct connection_pool *connection_pool;
-	union service const *services;
-	size_t services_size;
+	struct conn_pool *conn_pool;
+	struct services const *services;
 	union service_config const *config;
 };
 
@@ -176,10 +166,9 @@ struct read_conn_task
 {
 	struct linted_manager_task_recv_request parent;
 	struct linted_asynch_pool *pool;
-	struct connection_pool *connection_pool;
-	struct connection *connection;
-	union service const *services;
-	size_t services_size;
+	struct conn_pool *conn_pool;
+	struct conn *conn;
+	struct services const *services;
 	union service_config const *config;
 };
 
@@ -187,20 +176,20 @@ struct write_conn_task
 {
 	struct linted_manager_task_send_reply parent;
 	struct linted_asynch_pool *pool;
-	struct connection_pool *connection_pool;
-	struct connection *connection;
+	struct conn_pool *conn_pool;
+	struct conn *conn;
 };
 
-struct connection
+struct conn
 {
 	struct read_conn_task read_task;
 	struct write_conn_task write_task;
 	linted_ko ko;
 };
 
-struct connection_pool
+struct conn_pool
 {
-	struct connection connections[MAX_MANAGE_CONNECTIONS];
+	struct conn conns[MAX_MANAGE_CONNECTIONS];
 	size_t count;
 };
 
@@ -240,8 +229,7 @@ static char const *const gui_envvars_to_keep[] = {
 static linted_error spawn_process(pid_t *pidp,
                                   struct service_config_process const *config,
                                   linted_ko cwd, char const *chrootdir,
-                                  union service const *services,
-                                  size_t services_size);
+                                  struct services const *services);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -275,13 +263,12 @@ static linted_error drain_on_write_connection(struct linted_asynch_task *task);
 
 static linted_error check_db(linted_ko cwd);
 
-static linted_error connection_pool_create(struct connection_pool **poolp);
-static linted_error connection_pool_destroy(struct connection_pool *pool);
-static linted_error connection_remove(struct connection *connection,
-                                      struct connection_pool *connection_pool);
+static linted_error conn_pool_create(struct conn_pool **poolp);
+static linted_error conn_pool_destroy(struct conn_pool *pool);
+static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
-static union service const *service_for_name(union service const *services,
-                                             size_t size, const char *name);
+static union service const *service_for_name(struct services const *services,
+                                             const char *name);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -347,9 +334,10 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
-	if ((errnum = check_db(cwd)) != 0) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: database: %s\n",
+	errnum = check_db(cwd);
+	if (errnum != 0) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: database: %s\n",
 		                       process_name,
 		                       linted_error_string(errnum));
 		return EXIT_FAILURE;
@@ -368,8 +356,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	}
 
 	union service_config const config[] =
-	    { { .init = { .name = "init", .type = SERVICE_TYPE_INIT } },
-	      { .process = { .name = "logger",
+	    { { .process = { .name = "logger",
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
 			     .fstab = logger_fstab_path,
@@ -444,34 +431,26 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			  .type = SERVICE_TYPE_FILE,
 			  .generator = controller_create } } };
 
-	size_t services_size = 0U;
-	union service *services = NULL;
+	struct services *services;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(
+		    &xx, sizeof *services + sizeof services->list[0U] *
+		                                LINTED_ARRAY_SIZE(config));
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_mem_alloc_array");
+			return EXIT_FAILURE;
+		}
+		services = xx;
+	}
+	services->size = LINTED_ARRAY_SIZE(config);
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(config); ++ii) {
-		size_t new_services_size = services_size + 1U;
-		{
-			void *xx;
-			errnum = linted_mem_realloc_array(&xx, services,
-			                                  new_services_size,
-			                                  sizeof services[0U]);
-			if (errnum != 0) {
-				errno = errnum;
-				perror("linted_mem_alloc_array");
-				return EXIT_FAILURE;
-			}
-			services = xx;
-		}
-		services_size = new_services_size;
-
 		union service_config const *service_config = &config[ii];
-		union service *service = &services[ii];
-		switch (service_config->type) {
-		case SERVICE_TYPE_INIT:
-			service->type = SERVICE_TYPE_INIT;
-			service->init.name = service_config->init.name;
-			service->init.pid = getpid();
-			break;
+		union service *service = &services->list[ii];
 
+		switch (service_config->type) {
 		case SERVICE_TYPE_PROCESS:
 			service->type = SERVICE_TYPE_PROCESS;
 			service->process.name = service_config->process.name;
@@ -486,14 +465,14 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		}
 	}
 
-	struct connection_pool *connection_pool;
+	struct conn_pool *conn_pool;
 
 	{
-		struct connection_pool *xx;
-		errnum = connection_pool_create(&xx);
+		struct conn_pool *xx;
+		errnum = conn_pool_create(&xx);
 		if (errnum != 0)
 			return errnum;
-		connection_pool = xx;
+		conn_pool = xx;
 	}
 
 	struct linted_asynch_pool *pool;
@@ -511,24 +490,24 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	linted_manager_accept(LINTED_UPCAST(&new_connection_task),
 	                      NEW_CONNECTIONS, new_connections);
 	new_connection_task.pool = pool;
-	new_connection_task.connection_pool = connection_pool;
+	new_connection_task.conn_pool = conn_pool;
 	new_connection_task.services = services;
-	new_connection_task.services_size = services_size;
 	new_connection_task.config = config;
 
 	linted_asynch_pool_submit(
 	    pool,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&new_connection_task))));
 
-	for (size_t ii = 0U; ii < services_size; ++ii) {
+	for (size_t ii = 0U; ii < services->size; ++ii) {
 		union service_config const *service_config = &config[ii];
 		if (service_config->type != SERVICE_TYPE_FILE)
 			continue;
 
-		union service *service = &services[ii];
+		union service *service = &services->list[ii];
 
 		linted_ko ko;
-		if ((errnum = service_config->file.generator(&ko)) != 0)
+		errnum = service_config->file.generator(&ko);
+		if (errnum != 0)
 			goto exit_services;
 
 		service->file.ko = ko;
@@ -537,11 +516,11 @@ unsigned char linted_init_monitor(linted_ko cwd,
 
 	pid_t halt_pid = -1;
 
-	for (size_t ii = 0U; ii < services_size; ++ii) {
+	for (size_t ii = 0U; ii < services->size; ++ii) {
 		if (config[ii].type != SERVICE_TYPE_PROCESS)
 			continue;
 
-		struct service_process *service = &services[ii].process;
+		struct service_process *service = &services->list[ii].process;
 		struct service_config_process const *proc_config =
 		    &config[ii].process;
 
@@ -549,7 +528,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		{
 			pid_t xx;
 			errnum = spawn_process(&xx, proc_config, cwd, chrootdir,
-			                       services, services_size);
+			                       services);
 			if (errnum != 0)
 				goto exit_services;
 			process = xx;
@@ -578,7 +557,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0)
+		errnum = dispatch(completed_task);
+		if (errnum != 0)
 			goto drain_dispatches;
 	}
 
@@ -600,13 +580,12 @@ drain_dispatches:
 	}
 
 	{
-		linted_error close_errnum =
-		    connection_pool_destroy(connection_pool);
+		linted_error close_errnum = conn_pool_destroy(conn_pool);
 		if (0 == errnum)
 			errnum = close_errnum;
 	}
 
-exit_services : {
+exit_services:
 	if (-1 == kill(-1, SIGKILL)) {
 		linted_error kill_errnum = errno;
 		LINTED_ASSUME(kill_errnum != 0);
@@ -616,15 +595,14 @@ exit_services : {
 			LINTED_ASSUME_UNREACHABLE();
 		}
 	}
-}
 
-	for (size_t ii = 0U; ii < services_size; ++ii) {
+	for (size_t ii = 0U; ii < services->size; ++ii) {
 		union service_config const *service_config = &config[ii];
 
 		if (service_config->type != SERVICE_TYPE_FILE)
 			continue;
 
-		struct service_file *file = &services[ii].file;
+		struct service_file *file = &services->list[ii].file;
 		if (file->is_open) {
 			if (file->ko == STDERR_FILENO)
 				continue;
@@ -671,8 +649,7 @@ exit_services : {
 static linted_error spawn_process(pid_t *pidp,
                                   struct service_config_process const *config,
                                   linted_ko cwd, char const *chrootdir,
-                                  union service const *services,
-                                  size_t services_size)
+                                  struct services const *services)
 {
 	linted_error errnum;
 
@@ -699,7 +676,8 @@ static linted_error spawn_process(pid_t *pidp,
 
 	{
 		struct linted_spawn_attr *xx;
-		if ((errnum = linted_spawn_attr_init(&xx)) != 0)
+		errnum = linted_spawn_attr_init(&xx);
+		if (errnum != 0)
 			goto destroy_file_actions;
 		attr = xx;
 	}
@@ -733,8 +711,8 @@ static linted_error spawn_process(pid_t *pidp,
 	for (; kos_opened < dup_pairs_size;) {
 		struct dup_pair const *dup_pair = &dup_pairs[kos_opened];
 
-		union service const *service = service_for_name(
-		    services, services_size, dup_pair->service_name);
+		union service const *service =
+		    service_for_name(services, dup_pair->service_name);
 		if (NULL == service) {
 			errnum = EINVAL;
 			goto destroy_proc_kos;
@@ -873,11 +851,9 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 	}
 
 close_file:
-	if (endmntent(fstab) != 1) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
+	if (endmntent(fstab) != 1 && 0 == errnum) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
 	}
 
 	return errnum;
@@ -1132,10 +1108,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		}
 		goto process_exited;
 
-	case CLD_STOPPED:
-		/* Presumably the process was stopped for a reason */
-		break;
-
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
@@ -1163,46 +1135,41 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 	    LINTED_UPCAST(LINTED_UPCAST(new_connection_task));
 
 	struct linted_asynch_pool *pool = new_connection_task->pool;
-	struct connection_pool *connection_pool =
-	    new_connection_task->connection_pool;
+	struct conn_pool *conn_pool = new_connection_task->conn_pool;
 
-	union service const *services = new_connection_task->services;
-	size_t services_size = new_connection_task->services_size;
+	struct services const *services = new_connection_task->services;
 	union service_config const *config = new_connection_task->config;
 
 	linted_manager new_socket = accept_task->returned_ko;
 	linted_asynch_pool_submit(pool, completed_task);
 
-	if (connection_pool->count >= MAX_MANAGE_CONNECTIONS)
-		/* I'm sorry sir but we are full today. */
+	if (conn_pool->count >= MAX_MANAGE_CONNECTIONS)
 		goto close_new_socket;
 
-	struct connection *connection;
+	struct conn *conn;
 
 	size_t ii = 0U;
 	for (; ii < MAX_MANAGE_CONNECTIONS; ++ii) {
-		connection = &connection_pool->connections[ii];
-		if (-1 == connection->ko)
+		conn = &conn_pool->conns[ii];
+		if (-1 == conn->ko)
 			goto got_space;
 	}
 	LINTED_ASSUME_UNREACHABLE();
 got_space:
-	connection->ko = new_socket;
+	conn->ko = new_socket;
 
-	linted_manager_recv_request(LINTED_UPCAST(&connection->read_task),
+	linted_manager_recv_request(LINTED_UPCAST(&conn->read_task),
 	                            READ_CONNECTION, new_socket);
-	connection->read_task.pool = pool;
-	connection->read_task.connection_pool = connection_pool;
-	connection->read_task.connection = connection;
-	connection->read_task.services = services;
-	connection->read_task.services_size = services_size;
-	connection->read_task.config = config;
+	conn->read_task.pool = pool;
+	conn->read_task.conn_pool = conn_pool;
+	conn->read_task.conn = conn;
+	conn->read_task.services = services;
+	conn->read_task.config = config;
 
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(
-	              LINTED_UPCAST(LINTED_UPCAST(&connection->read_task))));
+	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
+	                                    LINTED_UPCAST(&conn->read_task))));
 
-	++connection_pool->count;
+	++conn_pool->count;
 	return 0;
 
 close_new_socket : {
@@ -1221,15 +1188,13 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 	    LINTED_DOWNCAST(struct read_conn_task, task);
 
 	struct linted_asynch_pool *pool = read_conn_task->pool;
-	struct connection_pool *connection_pool =
-	    read_conn_task->connection_pool;
-	struct connection *connection = read_conn_task->connection;
-	union service const *services = read_conn_task->services;
-	size_t services_size = read_conn_task->services_size;
+	struct conn_pool *conn_pool = read_conn_task->conn_pool;
+	struct conn *conn = read_conn_task->conn;
+	struct services const *services = read_conn_task->services;
 
 	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
-		errnum = connection_remove(connection, connection_pool);
+		errnum = conn_remove(conn, conn_pool);
 		if (errnum != 0)
 			return errnum;
 		return 0;
@@ -1245,18 +1210,17 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 	union linted_manager_reply reply;
 
 	switch (request->type) {
-	case LINTED_MANAGER_REBOOT: {
+	case LINTED_MANAGER_REBOOT:
 		if (-1 == reboot(RB_POWER_OFF)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto connection_remove;
+			goto conn_remove;
 		}
 		break;
-	}
 
 	case LINTED_MANAGER_STATUS: {
-		union service const *service = service_for_name(
-		    services, services_size, request->status.service_name);
+		union service const *service =
+		    service_for_name(services, request->status.service_name);
 		if (NULL == service) {
 			reply.status.is_up = false;
 			break;
@@ -1264,10 +1228,6 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 
 		pid_t pid;
 		switch (service->type) {
-		case SERVICE_TYPE_INIT:
-			pid = service->init.pid;
-			goto status_service_process;
-
 		case SERVICE_TYPE_PROCESS:
 			pid = service->process.pid;
 			goto status_service_process;
@@ -1287,7 +1247,7 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 				break;
 
 			default:
-				goto connection_remove;
+				goto conn_remove;
 			}
 			break;
 
@@ -1298,8 +1258,8 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 	}
 
 	case LINTED_MANAGER_STOP: {
-		union service const *service = service_for_name(
-		    services, services_size, request->status.service_name);
+		union service const *service =
+		    service_for_name(services, request->status.service_name);
 		if (NULL == service) {
 			reply.status.is_up = false;
 			break;
@@ -1307,10 +1267,6 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 
 		pid_t pid;
 		switch (service->type) {
-		case SERVICE_TYPE_INIT:
-			pid = service->init.pid;
-			goto stop_service_process;
-
 		case SERVICE_TYPE_PROCESS:
 			pid = service->process.pid;
 			goto stop_service_process;
@@ -1330,7 +1286,7 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 				break;
 
 			default:
-				goto connection_remove;
+				goto conn_remove;
 			}
 			break;
 
@@ -1340,20 +1296,19 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 	}
 	}
 
-	linted_manager_send_reply(LINTED_UPCAST(&connection->write_task),
+	linted_manager_send_reply(LINTED_UPCAST(&conn->write_task),
 	                          WRITE_CONNECTION, ko, &reply);
-	connection->write_task.pool = pool;
-	connection->write_task.connection_pool = connection_pool;
-	connection->write_task.connection = connection;
+	conn->write_task.pool = pool;
+	conn->write_task.conn_pool = conn_pool;
+	conn->write_task.conn = conn;
 
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(
-	              LINTED_UPCAST(LINTED_UPCAST(&connection->write_task))));
+	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
+	                                    LINTED_UPCAST(&conn->write_task))));
 
 	return 0;
 
-connection_remove:
-	connection_remove(connection, connection_pool);
+conn_remove:
+	conn_remove(conn, conn_pool);
 	return errnum;
 }
 
@@ -1363,14 +1318,12 @@ static linted_error on_write_connection(struct linted_asynch_task *task)
 
 	struct write_conn_task *write_conn_task =
 	    LINTED_DOWNCAST(struct write_conn_task, task);
-	struct connection_pool *connection_pool =
-	    write_conn_task->connection_pool;
-	struct connection *connection = write_conn_task->connection;
+	struct conn_pool *conn_pool = write_conn_task->conn_pool;
+	struct conn *conn = write_conn_task->conn;
 
 	errnum = task->errnum;
 
-	linted_error remove_errnum =
-	    connection_remove(connection, connection_pool);
+	linted_error remove_errnum = conn_remove(conn, conn_pool);
 	if (0 == errnum)
 		errnum = remove_errnum;
 
@@ -1441,7 +1394,8 @@ static linted_error check_db(linted_ko cwd)
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, 1U)) != 0)
+		errnum = linted_asynch_pool_create(&xx, 1U);
+		if (errnum != 0)
 			return errnum;
 		pool = xx;
 	}
@@ -1501,17 +1455,16 @@ static linted_error check_db(linted_ko cwd)
 		}
 
 	done_writing:
-		if ((errnum = linted_db_temp_send(my_db, path, "hello")) != 0)
+		errnum = linted_db_temp_send(my_db, path, "hello");
+		if (errnum != 0)
 			goto close_tmp;
 
 	close_tmp:
 		linted_mem_free(path);
 
-		{
-			linted_error close_errnum = linted_ko_close(tmp);
-			if (0 == errnum)
-				errnum = close_errnum;
-		}
+		linted_error close_errnum = linted_ko_close(tmp);
+		if (0 == errnum)
+			errnum = close_errnum;
 	}
 
 close_db : {
@@ -1523,84 +1476,81 @@ close_db : {
 destroy_pool:
 	linted_asynch_pool_stop(pool);
 
-	{
-		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum)
-			errnum = destroy_errnum;
-	}
+	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+	if (0 == errnum)
+		errnum = destroy_errnum;
 
 	return errnum;
 }
 
-static linted_error connection_pool_create(struct connection_pool **poolp)
+static linted_error conn_pool_create(struct conn_pool **poolp)
 {
 	linted_error errnum;
 
-	struct connection_pool *pool;
+	struct conn_pool *pool;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *pool)) != 0)
+		errnum = linted_mem_alloc(&xx, sizeof *pool);
+		if (errnum != 0)
 			return errnum;
 		pool = xx;
 	}
 
 	pool->count = 0U;
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii)
-		pool->connections[ii].ko = -1;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->conns); ++ii)
+		pool->conns[ii].ko = -1;
 
 	*poolp = pool;
 	return 0;
 }
 
-static linted_error connection_pool_destroy(struct connection_pool *pool)
+static linted_error conn_pool_destroy(struct conn_pool *pool)
 {
 	linted_error errnum = 0;
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->connections); ++ii) {
-		struct connection *const connection = &pool->connections[ii];
-		linted_ko const ko = connection->ko;
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pool->conns); ++ii) {
+		struct conn *const conn = &pool->conns[ii];
+		linted_ko const ko = conn->ko;
+
 		if (ko != -1) {
 			linted_error close_errnum = linted_ko_close(ko);
 			if (0 == errnum)
 				errnum = close_errnum;
 		}
 	}
+
 	linted_mem_free(pool);
+
 	return errnum;
 }
 
-static linted_error connection_remove(struct connection *connection,
-                                      struct connection_pool *pool)
+static linted_error conn_remove(struct conn *conn, struct conn_pool *pool)
 {
-	linted_ko ko = connection->ko;
+	linted_ko ko = conn->ko;
 
-	connection->ko = -1;
+	conn->ko = -1;
 	--pool->count;
 
 	return linted_ko_close(ko);
 }
 
-static union service const *service_for_name(union service const *services,
-                                             size_t size, const char *name)
+static union service const *service_for_name(struct services const *services,
+                                             const char *name)
 {
-	for (size_t ii = 0U; ii < size; ++ii) {
-		switch (services[ii].type) {
-		case SERVICE_TYPE_INIT:
-			if (0 == strncmp(services[ii].init.name, name,
-			                 LINTED_SERVICE_NAME_MAX))
-				return &services[ii];
-			break;
-
+	for (size_t ii = 0U; ii < services->size; ++ii) {
+		union service const *service = &services->list[ii];
+		switch (service->type) {
 		case SERVICE_TYPE_PROCESS:
-			if (0 == strncmp(services[ii].process.name, name,
+			if (0 == strncmp(service->process.name, name,
 			                 LINTED_SERVICE_NAME_MAX))
-				return &services[ii];
+				return service;
 			break;
 
 		case SERVICE_TYPE_FILE:
-			if (0 == strncmp(services[ii].file.name, name,
+			if (0 == strncmp(service->file.name, name,
 			                 LINTED_SERVICE_NAME_MAX))
-				return &services[ii];
+				return service;
 			break;
 		}
 	}

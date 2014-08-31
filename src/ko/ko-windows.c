@@ -158,8 +158,24 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		goto free_buffer;
 	}
 
-	linted_ko ko =
-	    CreateFile(buffer, desired_access, 0, NULL, OPEN_EXISTING, 0, NULL);
+	linted_ko ko;
+	{
+		SECURITY_DESCRIPTOR descriptor;
+
+		if (!InitializeSecurityDescriptor(
+		         &descriptor, SECURITY_DESCRIPTOR_REVISION)) {
+			assert(false);
+		}
+
+		SECURITY_ATTRIBUTES attributes = { 0 };
+
+		attributes.nLength = sizeof attributes;
+		attributes.lpSecurityDescriptor = &descriptor;
+		attributes.bInheritHandle = TRUE;
+
+		ko = CreateFile(buffer, desired_access, 0, &attributes,
+		                OPEN_EXISTING, 0, NULL);
+	}
 	if (INVALID_HANDLE_VALUE == ko) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
