@@ -82,8 +82,11 @@ struct dup_pairs
 };
 
 #define DUP_PAIRS(...)                                                         \
-	((struct dup_pairs const) { .size = LINTED_ARRAY_SIZE(__VA_ARGS__),    \
-		                    .dup_pairs = __VA_ARGS__ })
+	((struct dup_pairs const) {                                            \
+		.size = LINTED_ARRAY_SIZE(                                     \
+		    (struct dup_pair const[]) { __VA_ARGS__ }),                \
+		.dup_pairs = (struct dup_pair const[]) { __VA_ARGS__ }         \
+	})
 
 struct service_config_process
 {
@@ -362,12 +365,11 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .arguments =
 				 (char const * const[]) { logger_path, NULL },
 			     .environment = (char const * const[]) { NULL },
-			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
-				     { LINTED_KO_RDONLY, "stdin" },
-				     { LINTED_KO_WRONLY, "stdout" },
-				     { LINTED_KO_WRONLY, "stderr" },
-				     { LINTED_KO_RDONLY, "log" }
-			     }) } },
+			     .dup_pairs =
+				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
+				           { LINTED_KO_WRONLY, "stdout" },
+				           { LINTED_KO_WRONLY, "stderr" },
+				           { LINTED_KO_RDONLY, "log" }) } },
 	      { .process = { .name = "simulator",
 			     .type = SERVICE_TYPE_PROCESS,
 			     .dirko = cwd,
@@ -379,14 +381,13 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .arguments = (char const *
 				           const[]) { simulator_path, NULL },
 			     .environment = (char const * const[]) { NULL },
-			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
-				     { LINTED_KO_RDONLY, "stdin" },
-				     { LINTED_KO_WRONLY, "stdout" },
-				     { LINTED_KO_WRONLY, "stderr" },
-				     { LINTED_KO_WRONLY, "log" },
-				     { LINTED_KO_RDONLY, "controller" },
-				     { LINTED_KO_WRONLY, "updater" }
-			     }) } },
+			     .dup_pairs =
+				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
+				           { LINTED_KO_WRONLY, "stdout" },
+				           { LINTED_KO_WRONLY, "stderr" },
+				           { LINTED_KO_WRONLY, "log" },
+				           { LINTED_KO_RDONLY, "controller" },
+				           { LINTED_KO_WRONLY, "updater" }) } },
 	      { .process = { .name = "gui",
 			     .type = SERVICE_TYPE_PROCESS,
 			     .halt_after_exit = true,
@@ -399,14 +400,13 @@ unsigned char linted_init_monitor(linted_ko cwd,
 			     .arguments =
 				 (char const * const[]) { gui_path, NULL },
 			     .environment = (char const * const *)gui_envvars,
-			     .dup_pairs = DUP_PAIRS((struct dup_pair const[]) {
-				     { LINTED_KO_RDONLY, "stdin" },
-				     { LINTED_KO_WRONLY, "stdout" },
-				     { LINTED_KO_WRONLY, "stderr" },
-				     { LINTED_KO_WRONLY, "log" },
-				     { LINTED_KO_WRONLY, "controller" },
-				     { LINTED_KO_RDONLY, "updater" }
-			     }) } },
+			     .dup_pairs =
+				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
+				           { LINTED_KO_WRONLY, "stdout" },
+				           { LINTED_KO_WRONLY, "stderr" },
+				           { LINTED_KO_WRONLY, "log" },
+				           { LINTED_KO_WRONLY, "controller" },
+				           { LINTED_KO_RDONLY, "updater" }) } },
 	      { .file = { .name = "stdin",
 			  .type = SERVICE_TYPE_FILE,
 			  .generator = find_stdin } },
