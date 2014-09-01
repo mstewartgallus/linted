@@ -744,19 +744,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 	if (-1 == chdir("/"))
 		exit_with_error(writer, errno);
-
-	/* pivot_root() may or may not change the current root and the
-	 * current working directory of any processes or threads which
-	 * use the old root directory.
-	 *
-	 * - http://man7.org/linux/man-pages/man2/pivot_root.2.html
-	 */
-
-	if (-1 == chroot("/"))
-		exit_with_error(writer, errno);
-
-	if (-1 == chdir("/"))
-		exit_with_error(writer, errno);
 }
 
 static void drop_privileges(linted_ko writer, cap_t caps)
