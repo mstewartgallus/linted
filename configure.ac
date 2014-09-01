@@ -62,14 +62,17 @@ AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   dnl Using winelib to build or building on a Windows system.
 ], [
   dnl Building for a typical POSIX system.
-  AC_CHECK_HEADERS([dnl
-       sys/socket.h], [], [
+  AC_CHECK_HEADERS([[inttypes.h]dnl
+                    [mntent.h]dnl
+                    [sys/mount.h]dnl
+                    [sys/socket.h]], [], [
     AC_MSG_ERROR([Unable to find header ${ac_header}])
   ], [])
   dnl
-  AC_CHECK_HEADERS([sys/resource.h])
+  AC_SEARCH_LIBS([clock_gettime], [rt], [], [
+     AC_MSG_ERROR([Unable to find rt library])
+  ])
   dnl
- dnl
   AC_FUNC_STRERROR_R
   AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
    AC_MSG_ERROR([Unable to find strerror_r function])
@@ -85,20 +88,14 @@ AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
   AC_CHECK_FUNCS([[dup2]dnl
                   [mkdir]dnl
                   [memmove]dnl
-                  [memset]dnl
-                  [munmap]dnl
-                  [select]dnl
-                  [sethostname]dnl
-                  [setenv]dnl
                   [socket]dnl
-                  [strchr]dnl
                   [strdup]dnl
+                  [strerror]dnl
                   [strstr]], [], [
    AC_MSG_ERROR([Unable to find function ${ac_func}])
   ])
-  dnl
-  AC_CHECK_FUNCS([environ], [], [
-   AC_MSG_ERROR([Unable to find global variable ${ac_func}])
+  AC_CHECK_FUNCS([[clock_gettime]], [], [
+   AC_MSG_ERROR([Unable to find function ${ac_func}])
   ])
   dnl
   AC_TYPE_MODE_T
