@@ -34,7 +34,6 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -52,7 +51,7 @@
 /**
  * @file
  *
- * @todo Separate the renderer and the input handler into different
+ * @todo Separate the drawer and the input handler into different
  *       threads.
  */
 
@@ -60,8 +59,6 @@
 	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
 	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
 	 XCB_EVENT_MASK_POINTER_MOTION)
-
-#define RENDER_EVENT_MASK XCB_EVENT_MASK_STRUCTURE_NOTIFY
 
 enum {
 	ON_RECEIVE_UPDATE,
@@ -158,6 +155,10 @@ struct linted_start_config const linted_start_config = {
 	.seccomp_bpf = &seccomp_filter
 };
 
+static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
+
+static struct timespec const sleep_time = { .tv_sec = 0, .tv_nsec = 100000000 };
+
 static linted_error on_input_event(XEvent *event,
                                    struct on_input_event_args args);
 static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args);
@@ -182,9 +183,9 @@ static linted_error init_graphics(linted_log log,
                                   struct graphics_state *graphics_state,
                                   struct window_model const *window_model);
 static void destroy_graphics(struct graphics_state *graphics_state);
-static void render_graphics(struct graphics_state const *graphics_state,
-                            struct sim_model const *sim_model,
-                            struct window_model const *window_model);
+static void draw_graphics(struct graphics_state const *graphics_state,
+                          struct sim_model const *sim_model,
+                          struct window_model const *window_model);
 static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
@@ -228,20 +229,20 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return ENOSYS;
 	}
 
-	Display *render_display = XOpenDisplay(NULL);
-	if (NULL == render_display) {
+	Display *draw_display = XOpenDisplay(NULL);
+	if (NULL == draw_display) {
 		errnum = ENOSYS;
 		goto close_input_display;
 	}
 
 	xcb_connection_t *input_conn = XGetXCBConnection(input_display);
-	xcb_connection_t *render_conn = XGetXCBConnection(render_display);
-	unsigned screen_number = XDefaultScreen(render_display);
+	xcb_connection_t *draw_conn = XGetXCBConnection(draw_display);
+	unsigned screen_number = XDefaultScreen(draw_display);
 
 	xcb_screen_t *screen = NULL;
 	{
 		xcb_screen_iterator_t iter =
-		    xcb_setup_roots_iterator(xcb_get_setup(render_conn));
+		    xcb_setup_roots_iterator(xcb_get_setup(draw_conn));
 		for (size_t ii = 0U; ii < screen_number; ++ii) {
 			if (0 == iter.rem)
 				break;
@@ -251,65 +252,61 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 		if (0 == iter.rem) {
 			errnum = EINVAL;
-			goto close_render_display;
+			goto close_draw_display;
 		}
 
 		screen = iter.data;
 	}
 
-	xcb_window_t window = xcb_generate_id(render_conn);
-	errnum = get_xcb_conn_error(render_conn);
+	xcb_window_t window = xcb_generate_id(draw_conn);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
-		goto close_render_display;
+		goto close_draw_display;
 
-	xcb_void_cookie_t create_window_ck;
-	{
-		uint32_t opts[] = { RENDER_EVENT_MASK, 0 };
-		create_window_ck = xcb_create_window_checked(
-		    render_conn, XCB_COPY_FROM_PARENT, window, screen->root, 0,
-		    0, window_model.width, window_model.height, 0,
-		    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
-		    XCB_CW_EVENT_MASK, opts);
-	}
-	errnum = get_xcb_conn_error(render_conn);
+	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
+	    draw_conn, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
+	    window_model.width, window_model.height, 0,
+	    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+	    XCB_CW_EVENT_MASK, window_opts);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
-		goto close_render_display;
+		goto close_draw_display;
 
 	xcb_intern_atom_cookie_t protocols_ck =
-	    xcb_intern_atom(render_conn, 1, 12, "WM_PROTOCOLS");
-	errnum = get_xcb_conn_error(render_conn);
+	    xcb_intern_atom(draw_conn, 1, 12, "WM_PROTOCOLS");
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t delete_ck =
-	    xcb_intern_atom(render_conn, 0, 16, "WM_DELETE_WINDOW");
-	errnum = get_xcb_conn_error(render_conn);
+	    xcb_intern_atom(draw_conn, 0, 16, "WM_DELETE_WINDOW");
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_atom_t wm_delete_window_atom;
 	xcb_atom_t wm_protocols_atom;
 	{
-		xcb_intern_atom_reply_t *protocols_ck_reply;
-		xcb_generic_error_t *protocols_ck_err;
+		xcb_intern_atom_reply_t *proto_reply;
+		xcb_generic_error_t *proto_err;
 		{
 			xcb_generic_error_t *xx = NULL;
-			protocols_ck_reply = xcb_intern_atom_reply(
-			    render_conn, protocols_ck, &xx);
-			protocols_ck_err = xx;
+			proto_reply =
+			    xcb_intern_atom_reply(draw_conn, protocols_ck, &xx);
+			proto_err = xx;
 		}
-		errnum = get_xcb_conn_error(render_conn);
+		errnum = get_xcb_conn_error(draw_conn);
 		if (errnum != 0)
 			goto destroy_window;
 
-		if (protocols_ck_err != NULL) {
-			errnum = get_xcb_error(protocols_ck_err);
-			linted_mem_free(protocols_ck_err);
+		if (proto_err != NULL) {
+			errnum = get_xcb_error(proto_err);
+			linted_mem_free(proto_err);
 			goto destroy_window;
 		}
 
-		wm_protocols_atom = protocols_ck_reply->atom;
-		linted_mem_free(protocols_ck_reply);
+		wm_protocols_atom = proto_reply->atom;
+		linted_mem_free(proto_reply);
 	}
 
 	{
@@ -318,12 +315,12 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		{
 			xcb_generic_error_t *xx = NULL;
 			delete_ck_reply =
-			    xcb_intern_atom_reply(render_conn, delete_ck, &xx);
-			errnum = get_xcb_conn_error(render_conn);
-			if (errnum != 0)
-				goto destroy_window;
+			    xcb_intern_atom_reply(draw_conn, delete_ck, &xx);
 			delete_ck_err = xx;
 		}
+		errnum = get_xcb_conn_error(draw_conn);
+		if (errnum != 0)
+			goto destroy_window;
 
 		if (delete_ck_err != NULL) {
 			errnum = get_xcb_error(delete_ck_err);
@@ -336,32 +333,32 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
-	    render_conn, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4,
-	    32, 1, &wm_delete_window_atom);
-	errnum = get_xcb_conn_error(render_conn);
+	    draw_conn, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
+	    1, &wm_delete_window_atom);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_void_cookie_t map_ck = xcb_map_window(render_conn, window);
-	errnum = get_xcb_conn_error(render_conn);
+	xcb_void_cookie_t map_ck = xcb_map_window(draw_conn, window);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_generic_error_t *create_window_err =
-	    xcb_request_check(render_conn, create_window_ck);
-	if (create_window_err != NULL) {
-		errnum = get_xcb_error(create_window_err);
-		linted_mem_free(create_window_err);
+	xcb_generic_error_t *create_win_err =
+	    xcb_request_check(draw_conn, create_win_ck);
+	if (create_win_err != NULL) {
+		errnum = get_xcb_error(create_win_err);
+		linted_mem_free(create_win_err);
 		goto destroy_window;
 	}
 
-	errnum = get_xcb_conn_error(render_conn);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *ch_prop_err =
-	    xcb_request_check(render_conn, ch_prop_ck);
-	errnum = get_xcb_conn_error(render_conn);
+	    xcb_request_check(draw_conn, ch_prop_ck);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
 	if (ch_prop_err != NULL) {
@@ -370,19 +367,17 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		goto destroy_window;
 	}
 
-	xcb_generic_error_t *map_ck_err =
-	    xcb_request_check(render_conn, map_ck);
-	errnum = get_xcb_conn_error(render_conn);
+	xcb_generic_error_t *map_err = xcb_request_check(draw_conn, map_ck);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		goto destroy_window;
-	if (map_ck_err != NULL) {
-		errnum = get_xcb_error(map_ck_err);
-		linted_mem_free(map_ck_err);
+	if (map_err != NULL) {
+		errnum = get_xcb_error(map_err);
+		linted_mem_free(map_err);
 		goto destroy_window;
 	}
 
-	EGLDisplay egl_display =
-	    eglGetDisplay((EGLNativeDisplayType)render_display);
+	EGLDisplay egl_display = eglGetDisplay(draw_display);
 	if (EGL_NO_DISPLAY == egl_display) {
 		errnum = egl_error();
 		goto destroy_window;
@@ -449,154 +444,151 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
 
-	do {
-		EGLContext egl_context = eglCreateContext(
-		    egl_display, egl_config, EGL_NO_CONTEXT, context_attr);
-		if (EGL_NO_CONTEXT == egl_context) {
-			errnum = egl_error();
-			goto destroy_pool;
+reopen_graphics_context:
+	;
+	EGLContext egl_context = eglCreateContext(egl_display, egl_config,
+	                                          EGL_NO_CONTEXT, context_attr);
+	if (EGL_NO_CONTEXT == egl_context) {
+		errnum = egl_error();
+		goto destroy_pool;
+	}
+
+	if (!eglMakeCurrent(egl_display, egl_surface, egl_surface,
+	                    egl_context)) {
+		errnum = egl_error();
+		goto destroy_egl_context;
+	}
+
+	struct graphics_state graphics_state;
+
+	errnum = init_graphics(log, &graphics_state, &window_model);
+	if (errnum != 0) {
+		errnum = egl_error();
+		goto use_no_egl_context;
+	}
+
+	/* TODO: Detect SIGTERM and exit normally */
+	for (;;) {
+		/* We have to use the Xlib event queue for input
+		 * events XCB isn't quite ready in this respect yet.
+		 */
+		bool had_input_event = XPending(input_display) > 0;
+		if (had_input_event) {
+			XEvent event;
+			XNextEvent(input_display, &event);
+
+			bool time_to_quit;
+			struct on_input_event_args args = {
+				.input_conn = input_conn,
+				.window = window,
+				.window_model = &window_model,
+				.controller_data = &controller_data,
+				.time_to_quit = &time_to_quit
+			};
+			errnum = on_input_event(&event, args);
+			if (errnum != 0)
+				goto cleanup_gl;
+			if (time_to_quit)
+				goto cleanup_gl;
 		}
 
-		if (!eglMakeCurrent(egl_display, egl_surface, egl_surface,
-		                    egl_context)) {
-			errnum = egl_error();
-			goto destroy_egl_context;
+		/* We have to use the Xlib event queue for the drawer
+		 * events because of broken Mesa libraries which abuse
+		 * it.
+		 */
+		bool had_gui_event = XPending(draw_display) > 0;
+		if (had_gui_event) {
+			XEvent event;
+			XNextEvent(draw_display, &event);
+
+			bool time_to_quit;
+			struct on_gui_event_args args = { .window_model =
+				                              &window_model,
+				                          .time_to_quit =
+				                              &time_to_quit };
+			errnum = on_gui_event(&event, args);
+			if (errnum != 0)
+				goto cleanup_gl;
+			if (time_to_quit)
+				goto cleanup_gl;
 		}
 
-		struct graphics_state graphics_state;
+		linted_error poll_errnum;
+		bool had_asynch_event;
+		struct linted_asynch_task *completed_task;
+		{
+			struct linted_asynch_task *xx;
+			poll_errnum = linted_asynch_pool_poll(pool, &xx);
+			switch (poll_errnum) {
+			case EAGAIN:
+				had_asynch_event = false;
+				goto had_no_asynch_event;
 
-		errnum = init_graphics(log, &graphics_state, &window_model);
-		if (errnum != 0) {
-			errnum = egl_error();
-			goto use_no_egl_context;
+			case 0:
+				had_asynch_event = true;
+				completed_task = xx;
+				goto had_asynch_event;
+			}
 		}
+	had_asynch_event:
+		errnum = dispatch(completed_task);
+		if (errnum != 0)
+			goto cleanup_gl;
+	had_no_asynch_event:
 
-		/* TODO: Detect SIGTERM and exit normally */
-		for (;;) {
-			/* We have to use the Xlib event queue for
-			 * input events XCB isn't quite ready in this
-			 * respect yet.
+		/* Only draw or resize if we have time to
+		 * waste */
+		if (had_input_event || had_gui_event || had_asynch_event)
+			continue;
+
+		if (window_model.resize_pending) {
+			resize_graphics(&graphics_state, window_model.width,
+			                window_model.height);
+			window_model.resize_pending = false;
+		} else if (window_model.viewable) {
+			draw_graphics(&graphics_state, &sim_model,
+			              &window_model);
+			eglSwapBuffers(egl_display, egl_surface);
+		} else {
+			/*
+			 * This is an ugly hack and waiting on the X11
+			 * file descriptor should be implemented
+			 * eventually.
 			 */
-			bool had_input_event = XPending(input_display) > 0;
-			if (had_input_event) {
-				XEvent event;
-				XNextEvent(input_display, &event);
-
-				bool time_to_quit;
-				struct on_input_event_args args = {
-					.input_conn = input_conn,
-					.window = window,
-					.window_model = &window_model,
-					.controller_data = &controller_data,
-					.time_to_quit = &time_to_quit
-				};
-				errnum = on_input_event(&event, args);
-				if (errnum != 0)
-					goto cleanup_gl;
-				if (time_to_quit)
-					goto cleanup_gl;
-			}
-
-			/* We have to use the Xlib event queue for the
-			 * renderer events because of broken Mesa
-			 * libraries which abuse it.
-			 */
-			bool had_gui_event = XPending(render_display) > 0;
-			if (had_gui_event) {
-				XEvent event;
-				XNextEvent(render_display, &event);
-
-				bool time_to_quit;
-				struct on_gui_event_args args = {
-					.window_model = &window_model,
-					.time_to_quit = &time_to_quit
-				};
-				errnum = on_gui_event(&event, args);
-				if (errnum != 0)
-					goto cleanup_gl;
-				if (time_to_quit)
-					goto cleanup_gl;
-			}
-
-			linted_error poll_errnum;
-			bool had_asynch_event;
-			{
-				struct linted_asynch_task *completed_task;
-				poll_errnum = linted_asynch_pool_poll(
-				    pool, &completed_task);
-
-				had_asynch_event = poll_errnum != EAGAIN;
-
-				if (had_asynch_event) {
-					errnum = dispatch(completed_task);
-					if (errnum != 0)
-						goto cleanup_gl;
-				}
-			}
-
-			/* Only render or resize if we have time to waste */
-			if (!had_input_event && !had_gui_event &&
-			    !had_asynch_event) {
-				if (window_model.resize_pending) {
-					resize_graphics(&graphics_state,
-					                window_model.width,
-					                window_model.height);
-					window_model.resize_pending = false;
-				} else if (window_model.viewable) {
-					render_graphics(&graphics_state,
-					                &sim_model,
-					                &window_model);
-					eglSwapBuffers(egl_display,
-					               egl_surface);
-				} else {
-					/*
-					 * This is an ugly hack and waiting on
-					 * the X11 file
-					 * descriptor should be implemented
-					 * eventually.
-					 */
-					struct linted_asynch_task_sleep_until
-					sleeper_task;
-					{
-						struct timespec request = {
-							.tv_sec = 0,
-							.tv_nsec = 100000000
-						};
-						linted_asynch_task_sleep_until(
-						    &sleeper_task, 0, 0,
-						    &request);
-					}
-					linted_asynch_pool_submit(
-					    NULL, LINTED_UPCAST(&sleeper_task));
-					errnum = LINTED_UPCAST(&sleeper_task)
-					             ->errnum;
-					if (errnum != 0) {
-						assert(errnum != EINVAL);
-						assert(errnum != EFAULT);
-						goto cleanup_gl;
-					}
-				}
+			struct linted_asynch_task_sleep_until sleeper_task;
+			linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
+			                               &sleep_time);
+			linted_asynch_pool_submit(NULL,
+			                          LINTED_UPCAST(&sleeper_task));
+			errnum = LINTED_UPCAST(&sleeper_task)->errnum;
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(errnum != EFAULT);
+				goto cleanup_gl;
 			}
 		}
+	}
 
-	cleanup_gl:
-		destroy_graphics(&graphics_state);
+cleanup_gl:
+	destroy_graphics(&graphics_state);
 
-	use_no_egl_context:
-		if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-		                    EGL_NO_CONTEXT)) {
-			if (0 == errnum)
-				errnum = egl_error();
-		}
+use_no_egl_context:
+	if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+	                    EGL_NO_CONTEXT)) {
+		if (0 == errnum)
+			errnum = egl_error();
+	}
 
-	destroy_egl_context:
-		if (!eglDestroyContext(egl_display, egl_context)) {
-			if (0 == errnum)
-				errnum = egl_error();
-		}
-	} while (ENOSYS == errnum);
+destroy_egl_context:
+	if (!eglDestroyContext(egl_display, egl_context)) {
+		if (0 == errnum)
+			errnum = egl_error();
+	}
 
-destroy_pool : {
+	if (ENOSYS == errnum)
+		goto reopen_graphics_context;
+
+destroy_pool:
 	linted_asynch_pool_stop(pool);
 
 	for (;;) {
@@ -615,14 +607,15 @@ destroy_pool : {
 			errnum = dispatch_errnum;
 	}
 
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
+	{
+		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+		if (0 == errnum)
+			errnum = destroy_errnum;
+	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)updater_task;
 	(void)controller_task;
-}
 
 destroy_egl_surface:
 	if (!eglDestroySurface(egl_display, egl_surface)) {
@@ -643,15 +636,15 @@ destroy_egl_display:
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
-	    xcb_destroy_window_checked(render_conn, window);
+	    xcb_destroy_window_checked(draw_conn, window);
 
-	linted_error conn_errnum = get_xcb_conn_error(render_conn);
+	linted_error conn_errnum = get_xcb_conn_error(draw_conn);
 	if (0 == errnum)
 		errnum = conn_errnum;
 
 	xcb_generic_error_t *destroy_err =
-	    xcb_request_check(render_conn, destroy_ck);
-	conn_errnum = get_xcb_conn_error(render_conn);
+	    xcb_request_check(draw_conn, destroy_ck);
+	conn_errnum = get_xcb_conn_error(draw_conn);
 	if (0 == errnum)
 		errnum = conn_errnum;
 	if (destroy_err != NULL) {
@@ -663,8 +656,8 @@ destroy_window : {
 	}
 }
 
-close_render_display:
-	XCloseDisplay(render_display);
+close_draw_display:
+	XCloseDisplay(draw_display);
 
 close_input_display:
 	XCloseDisplay(input_display);
@@ -1031,21 +1024,21 @@ static linted_error init_graphics(linted_log log,
 	/* The darkest colour is (0, 0, 0) */
 	/* We want a neutral, middle brightness */
 
-	/* It might be possible to use a physically based model based off
-	 * the energy contained in a ray of light of a certain hue but we
-	 * have chosen to model brightnes as:
+	/* It might be possible to use a physically based model based
+	 * off the energy contained in a ray of light of a certain hue
+	 * but we have chosen to model brightnes as:
 	 */
 	/* brightness = r red + g green + b blue */
 
-	/* Note that this is a crappy approximation that only works for
-	 * some monitors and eyes.
+	/* Note that this is a crappy approximation that only works
+	 * for some monitors and eyes.
 	 */
 
 	/* brightest = r + g + b */
 	/* darkest = 0 */
 
-	/* We calculate a middling brightness taking into account gamma
-	 * and nonlinearity.
+	/* We calculate a middling brightness taking into account
+	 * gamma and nonlinearity.
 	 */
 
 	/* Note that how bright we want our background colour to be is
@@ -1242,9 +1235,9 @@ static void resize_graphics(struct graphics_state *graphics_state,
 	glViewport(0, 0, width, height);
 }
 
-static void render_graphics(struct graphics_state const *graphics_state,
-                            struct sim_model const *sim_model,
-                            struct window_model const *window_model)
+static void draw_graphics(struct graphics_state const *graphics_state,
+                          struct sim_model const *sim_model,
+                          struct window_model const *window_model)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1428,9 +1421,9 @@ static linted_error egl_error(void)
 	}
 }
 
-static linted_error get_xcb_conn_error(xcb_connection_t *render_conn)
+static linted_error get_xcb_conn_error(xcb_connection_t *draw_conn)
 {
-	switch (xcb_connection_has_error(render_conn)) {
+	switch (xcb_connection_has_error(draw_conn)) {
 	case 0:
 		return 0;
 
@@ -1460,21 +1453,21 @@ static linted_error get_xcb_error(xcb_generic_error_t *error)
 	return ENOSYS;
 }
 
-static linted_error get_mouse_position(xcb_connection_t *render_conn,
+static linted_error get_mouse_position(xcb_connection_t *draw_conn,
                                        xcb_window_t window, int *x, int *y)
 {
 	linted_error errnum;
 
 	xcb_query_pointer_cookie_t cookie =
-	    xcb_query_pointer(render_conn, window);
-	errnum = get_xcb_conn_error(render_conn);
+	    xcb_query_pointer(draw_conn, window);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		return errnum;
 
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply =
-	    xcb_query_pointer_reply(render_conn, cookie, &error);
-	errnum = get_xcb_conn_error(render_conn);
+	    xcb_query_pointer_reply(draw_conn, cookie, &error);
+	errnum = get_xcb_conn_error(draw_conn);
 	if (errnum != 0)
 		return errnum;
 
