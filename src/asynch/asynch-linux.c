@@ -92,12 +92,11 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	pool->worker_count = max_tasks;
 
 	{
-		pthread_attr_t worker_attr;
+		pthread_attr_t attr;
 
-		errnum = pthread_attr_init(&worker_attr);
-		if (errnum != 0) {
+		errnum = pthread_attr_init(&attr);
+		if (errnum != 0)
 			goto destroy_event_queue;
-		}
 
 		/*
 		 * Our tasks are only I/O tasks and have extremely tiny stacks.
@@ -105,22 +104,20 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
 		assert(stack_min != -1);
 
-		errnum = pthread_attr_setstacksize(&worker_attr, stack_min);
+		errnum = pthread_attr_setstacksize(&attr, stack_min);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			errnum =
-			    pthread_create(&pool->workers[created_threads],
-			                   &worker_attr, worker_routine, pool);
+			errnum = pthread_create(&pool->workers[created_threads],
+			                        &attr, worker_routine, pool);
 			if (errnum != 0)
 				break;
 		}
 
-		linted_error destroy_errnum =
-		    pthread_attr_destroy(&worker_attr);
+		linted_error destroy_errnum = pthread_attr_destroy(&attr);
 		if (0 == errnum)
 			errnum = destroy_errnum;
 	}
@@ -204,13 +201,29 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
+	linted_error errnum;
+	int oldstate;
+
 	if (NULL == pool)
 		return;
 
-	int oldstate;
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
+	{
+		int xx;
+		errnum = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &xx);
+		if (0 == errnum) {
+			assert(errnum != EINVAL);
+			assert(false);
+		}
+		oldstate = xx;
+	}
+
 	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-	pthread_setcancelstate(oldstate, NULL);
+
+	errnum = pthread_setcancelstate(oldstate, NULL);
+	if (0 == errnum) {
+		assert(errnum != EINVAL);
+		assert(false);
+	}
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
@@ -222,7 +235,7 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 
 	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
-	return 0U;
+	return 0;
 }
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
@@ -363,11 +376,11 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
 	linted_error errnum;
 
 	int flags = task_sleep->flags;
-	struct timespec time_remaining = task_sleep->request;
 
 	do {
 		if (-1 == clock_nanosleep(CLOCK_MONOTONIC, flags,
-		                          &time_remaining, &time_remaining)) {
+		                          &task_sleep->request,
+		                          &task_sleep->request)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 		} else {
