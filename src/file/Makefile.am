@@ -17,3 +17,4 @@
 
 noinst_LTLIBRARIES+=%D%/libfile.la
 %C%_libfile_la_SOURCES=%D%/file.c include/linted/file.h
+EXTRA_%C%_libfile_la_SOURCES=%D%/file-linux.c %D%/file-windows.c

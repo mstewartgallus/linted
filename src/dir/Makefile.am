@@ -17,5 +17,6 @@
 
 noinst_LTLIBRARIES+=%D%/libdir.la
 %C%_libdir_la_SOURCES=%D%/dir.c include/linted/dir.h
+EXTRA_%C%_libdir_la_SOURCES=%D%/dir-linux.c %D%/dir-windows.c
 %C%_linted_LDLIBS=\
   src/ko/libko.la

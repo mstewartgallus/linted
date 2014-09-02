@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
-#include "dir-windows.c"
-#elif defined __linux__
-#include "dir-linux.c"
-#else
-#error no directory creation implementation for this platform
-#endif
+#define UNICODE
+#define _UNICODE
+
+#define WIN32_LEAN_AND_MEAN
+
+#include "config.h"
+
+#include "linted/dir.h"
+
+#include <errno.h>
+
+linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
+                               char const *pathname, unsigned long flags,
+                               mode_t mode)
+{
+	return ENOSYS;
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
-#include "dir-windows.c"
-#elif defined __linux__
-#include "dir-linux.c"
-#else
-#error no directory creation implementation for this platform
-#endif
+#define UNICODE
+#define _UNICODE
+
+#define WIN32_LEAN_AND_MEAN
+
+#include "config.h"
+
+#include "linted/file.h"
+#include "linted/util.h"
+
+#include <errno.h>
+
+linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
+                                char const *pathname, unsigned long flags,
+                                mode_t mode)
+{
+	return ENOSYS;
+}
