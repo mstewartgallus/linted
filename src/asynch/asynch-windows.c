@@ -153,6 +153,15 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 	}
 }
 
+void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task)
+{
+	if (NULL == pool)
+		return;
+
+	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+}
+
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp)
 {
