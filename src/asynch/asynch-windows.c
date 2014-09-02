@@ -60,13 +60,7 @@ static DWORD WINAPI worker_routine(void *arg);
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
 
-static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
-static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task);
-
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
-                                           poolp,
+linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
 {
 	linted_error errnum;
@@ -76,20 +70,19 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
 	size_t workers_size = max_tasks * sizeof pool->workers[0U];
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *pool +
-		                                        workers_size)) != 0) {
+		errnum = linted_mem_alloc(&xx, sizeof *pool + workers_size);
+		if (errnum != 0)
 			return errnum;
-		}
 		pool = xx;
 	}
 
-	if ((errnum = linted_queue_create(&pool->worker_command_queue)) != 0) {
+	errnum = linted_queue_create(&pool->worker_command_queue);
+	if (errnum != 0)
 		goto free_pool;
-	}
 
-	if ((errnum = linted_queue_create(&pool->event_queue)) != 0) {
+	errnum = linted_queue_create(&pool->event_queue);
+	if (errnum != 0)
 		goto destroy_worker_command_queue;
-	}
 
 	pool->worker_count = max_tasks;
 
@@ -108,13 +101,11 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **restrict
 	return 0;
 
 destroy_threads:
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		TerminateThread(pool->workers[ii], 0);
-	}
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		CloseHandle(pool->workers[ii]);
-	}
 
 	linted_queue_destroy(pool->event_queue);
 
@@ -131,20 +122,17 @@ free_pool:
  * @bug The queue isn't safe to terminate. Use an OS queue or list
  *      that isn't corruptible.
  */
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *restrict
-                                            pool)
+linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
 	linted_error errnum = 0;
 
 	size_t worker_count = pool->worker_count;
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		TerminateThread(pool->workers[ii], 0);
-	}
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
+	for (size_t ii = 0U; ii < worker_count; ++ii)
 		CloseHandle(pool->workers[ii]);
-	}
 
 	linted_queue_destroy(pool->worker_command_queue);
 	linted_queue_destroy(pool->event_queue);
@@ -183,9 +171,9 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 	linted_error errnum;
 	struct linted_queue_node *node;
 
-	if ((errnum = linted_queue_try_recv(pool->event_queue, &node)) != 0) {
+	errnum = linted_queue_try_recv(pool->event_queue, &node);
+	if (errnum != 0)
 		return errnum;
-	}
 
 	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
@@ -222,61 +210,31 @@ static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {
 	switch (task->type) {
+	case LINTED_ASYNCH_TASK_POLL:
+		linted_ko_do_poll(pool, task);
+		break;
+
 	case LINTED_ASYNCH_TASK_READ:
-		run_task_read(pool, task);
+		linted_ko_do_read(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_WRITE:
-		run_task_write(pool, task);
+		linted_ko_do_write(pool, task);
+		break;
+
+	case LINTED_ASYNCH_TASK_MQ_RECEIVE:
+		linted_mq_do_receive(pool, task);
+		break;
+
+	case LINTED_ASYNCH_TASK_MQ_SEND:
+		linted_mq_do_send(pool, task);
+		break;
+
+	case LINTED_ASYNCH_TASK_ACCEPT:
+		linted_ko_do_accept(pool, task);
 		break;
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
-static void run_task_read(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
-{
-	struct linted_ko_task_read *task_read =
-	    LINTED_DOWNCAST(struct linted_ko_task_read, task);
-
-	DWORD bytes_read = 0U;
-
-	linted_error errnum = 0;
-	if (!ReadFile(task_read->ko, task_read->buf, task_read->size,
-	              &bytes_read, NULL)) {
-		DWORD error = GetLastError();
-		errnum = HRESULT_FROM_WIN32(error);
-	}
-
-	task->errnum = errnum;
-	task_read->bytes_read = bytes_read;
-
-	if (pool != NULL) {
-		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-	}
-}
-
-static void run_task_write(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task)
-{
-	struct linted_ko_task_write *task_write =
-	    LINTED_DOWNCAST(struct linted_ko_task_write, task);
-
-	DWORD bytes_write = 0U;
-
-	linted_error errnum = 0;
-	if (!WriteFile(task_write->ko, task_write->buf, task_write->size,
-	               &bytes_write, NULL)) {
-		DWORD error = GetLastError();
-		errnum = HRESULT_FROM_WIN32(error);
-	}
-
-	task->errnum = errnum;
-	task_write->bytes_wrote = bytes_write;
-
-	if (pool != NULL) {
-		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
 	}
 }
