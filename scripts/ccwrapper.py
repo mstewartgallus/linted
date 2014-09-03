@@ -67,6 +67,10 @@ def go():
                              # of pointers annoying
                              '--suppress=sizeofwithsilentarraypointer',
 
+                             # This warning is wrong some of the time
+                             # and is worse than Clang
+                             '--suppress=uninitvar',
+
                              '--template={file}:{line}: ({id}) {message}']
 
             if 'D__unix__=1' in define_flags:
