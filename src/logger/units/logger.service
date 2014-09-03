@@ -1,0 +1,13 @@
+# Copyright Steven
+[Unit]
+Description=Linted-Logger Game Logger
+Documentation='man:linted-logger(6)'
+
+[Service]
+ExecStart="${LINTED_LOGGER}"
+
+X-Linted-Files=OPEN:log,rdonly
+
+X-Linted-Fstab="${LINTED_LOGGER_FSTAB}"
+
+X-Linted-Environment-Whitelist=''

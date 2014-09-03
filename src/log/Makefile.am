@@ -20,3 +20,4 @@ noinst_LTLIBRARIES+=%D%/liblog.la
   %D%/log.c\
   include/linted/log.h
 %C%_liblog_la_LIBADD=src/asynch/libasynch.la src/ko/libko.la
+dist_pkgdefaultunits_DATA+=%D%/units/log.socket

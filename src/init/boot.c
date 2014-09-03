@@ -59,16 +59,23 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 {
 	linted_error errnum;
 
+	if (-1 == setenv("LINTED_UNITS_PATH", PKGDEFAULTUNITSDIR, false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+
 	if (-1 == setenv("LINTED_CHROOT", CHROOTDIR, false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
 
-	if (-1 == setenv("LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT, false)) {
+	if (-1 ==
+	    setenv("LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT, false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
-	if (-1 == setenv("LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab", false)) {
+	if (-1 == setenv("LINTED_LOGGER_FSTAB",
+	                 PKGDEFAULTCONFDIR "/logger-fstab", false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
@@ -77,16 +84,19 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
-	if (-1 == setenv("LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab", false)) {
+	if (-1 ==
+	    setenv("LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab", false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
 
-	if (-1 == setenv("LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT, false)) {
+	if (-1 == setenv("LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT,
+	                 false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
-	if (-1 == setenv("LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab", false)) {
+	if (-1 == setenv("LINTED_SIMULATOR_FSTAB",
+	                 PKGDEFAULTCONFDIR "/simulator-fstab", false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
@@ -123,9 +133,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		char const *argument = argv[ii];
 
 		static char const *const arguments[] =
-		    {[HELP] = "--help",
-		     [VERSION_OPTION] = "--version"
-		    };
+		    {[HELP] = "--help", [VERSION_OPTION] = "--version" };
 
 		int arg = -1;
 		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
@@ -285,13 +293,10 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_init_config config = { .chrootdir = getenv("LINTED_CHROOT"),
-	                                     .logger_fstab_path = getenv("LINTED_LOGGER_FSTAB"),
-		                             .simulator_fstab_path = getenv("LINTED_SIMULATOR_FSTAB"),
-		                             .gui_fstab_path = getenv("LINTED_GUI_FSTAB"),
-		                             .logger_path = getenv("LINTED_LOGGER"),
-		                             .simulator_path = getenv("LINTED_SIMULATOR"),
-		                             .gui_path = getenv("LINTED_GUI") };
+	struct linted_init_config config = { .chrootdir =
+		                                 getenv("LINTED_CHROOT"),
+		                             .unit_path =
+		                                 getenv("LINTED_UNIT_PATH") };
 	return linted_init_init(cwd, &config);
 }
 
@@ -333,6 +338,7 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 		return errnum;
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+  LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
   LINTED_CHROOT       the directory the chroot is mounted to\n\
   LINTED_LOGGER_FSTAB the location of the logger fstab\n\
   LINTED_LOGGER       the location of the logger executable\n\

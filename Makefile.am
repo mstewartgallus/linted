@@ -16,6 +16,7 @@
 # limitations under the License.
 pkgconfdir=$(sysconfdir)/linted
 pkgdefaultconfdir=$(pkgdatadir)/defaultetc
+pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 chrootdir=$(pkgdatadir)/chroot
 
 TESTS=
@@ -33,6 +34,7 @@ EXTRA_DIST=
 MOSTLYCLEANFILES=
 
 dist_pkgdefaultconf_DATA=
+dist_pkgdefaultunits_DATA=
 
 uninstall-hook:
 	- rmdir '$(pkgconfdir)'

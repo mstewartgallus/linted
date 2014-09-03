@@ -35,7 +35,10 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <mntent.h>
 #include <sched.h>
 #include <stdbool.h>
@@ -43,6 +46,7 @@
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/prctl.h>
+#include <wordexp.h>
 #include <unistd.h>
 
 #define BACKLOG 20U
@@ -67,54 +71,6 @@ enum service_type {
 
 enum {
 	MAX_TASKS = READ_CONNECTION + MAX_MANAGE_CONNECTIONS
-};
-
-struct dup_pair
-{
-	unsigned long flags;
-	char const *service_name;
-};
-
-struct dup_pairs
-{
-	size_t size;
-	struct dup_pair const *dup_pairs;
-};
-
-#define DUP_PAIRS(...)                                                         \
-	((struct dup_pairs const) {                                            \
-		.size = LINTED_ARRAY_SIZE(                                     \
-		    (struct dup_pair const[]) { __VA_ARGS__ }),                \
-		.dup_pairs = (struct dup_pair const[]) { __VA_ARGS__ }         \
-	})
-
-struct service_config_process
-{
-	enum service_type type;
-	char const *name;
-	char const *path;
-	char const *fstab;
-	char const *chdir_path;
-	char const *const *arguments;
-	char const *const *environment;
-	struct dup_pairs dup_pairs;
-	linted_ko dirko;
-	int clone_flags;
-	bool halt_after_exit : 1U;
-};
-
-struct service_config_file
-{
-	enum service_type type;
-	char const *name;
-	linted_error (*generator)(linted_ko *kop);
-};
-
-union service_config
-{
-	enum service_type type;
-	struct service_config_process process;
-	struct service_config_file file;
 };
 
 struct service_process
@@ -162,7 +118,6 @@ struct new_connection_task
 	struct linted_asynch_pool *pool;
 	struct conn_pool *conn_pool;
 	struct services const *services;
-	union service_config const *config;
 };
 
 struct read_conn_task
@@ -191,42 +146,45 @@ struct conn
 	bool is_free : 1U;
 };
 
-static char const *const gui_envvars_to_keep[] = {
-	"DISPLAY",                  "LD_PRELOAD",
-	"LD_LIBRARY_PATH",          "EGL_DRIVERS_PATH",
-	"EGL_DRIVER",               "EGL_PLATFORM",
-	"EGL_LOG_LEVEL",            "EGL_SOFTWARE",
-	"LIBGL_DEBUG",              "LIBGL_DRIVERS_PATH",
-	"LIBGL_ALWAYS_INDIRECT",    "LIBGL_ALWAYS_SOFTWARE",
-	"LIBGL_NO_DRAWARRAYS",      "LIBGL_SHOW_FPS",
-	"MESA_NO_ASM",              "MESA_NO_MMX",
-	"MESA_NO_3DNOW",            "MESA_NO_SSE",
-	"MESA_DEBUG",               "MESA_LOG_FILE",
-	"MESA_TEX_PROG",            "MESA_TNL_PROG",
-	"MESA_EXTENSION_OVERRIDE",  "MESA_EXTENSION_MAX_YEAR",
-	"MESA_GL_VERSION_OVERRIDE", "MESA_GLSL_VERSION_OVERRIDE",
-	"MESA_GLSL",                "MESA_RGB_VISUAL",
-	"MESA_CI_VISUAL",           "MESA_BACK_BUFFER",
-	"MESA_GAMMA",               "MESA_XSYNC",
-	"MESA_GLX_FORCE_CI",        "MESA_GLX_FORCE_ALPHA",
-	"MESA_GLX_DEPTH_BITS",      "MESA_GLX_ALPHA_BITS",
-	"INTEL_NO_HW",              "INTEL_DEBUG",
-	"RADEON_NO_TCL",            "GALLIUM_HUD",
-	"GALLIUM_LOG_FILE",         "GALLIUM_PRINT_OPTIONS",
-	"GALLIUM_DUMP_CPU",         "TGSI_PRINT_SANITY",
-	"DRAW_FSE",                 "DRAW_NO_FSE",
-	"DRAW_USE_LLVM",            "ST_DEBUG",
-	"SOFTPIPE_DUMP_FS",         "SOFTPIPE_DUMP_GS",
-	"SOFTPIPE_NO_RAST",         "SOFTPIPE_USE_LLVM",
-	"LP_NO_RAST",               "LP_DEBUG",
-	"LP_PERF",                  "LP_NUM_THREADS",
-	"SVGA_FORCE_SWTNL",         "SVGA_NO_SWTNL",
-	"SVGA_DEBUG",               NULL
+enum unit_type {
+	UNIT_TYPE_SOCKET,
+	UNIT_TYPE_SERVICE
 };
 
-static linted_error spawn_process(pid_t *pidp,
-                                  struct service_config_process const *config,
-                                  linted_ko cwd, char const *chrootdir,
+struct unit;
+struct unit_section;
+struct unit_setting;
+
+static linted_error process_units_in_path(char const *unit_path,
+                                          struct unit ***unitsp, size_t *sizep);
+
+static linted_error bool_from_cstring(char const *str, bool *boolp);
+static linted_error long_from_cstring(char const *str, long *longp);
+
+static linted_error parse_unit_file(struct unit **unitp, FILE *unitfile,
+                                    enum unit_type type, char const *name);
+
+static linted_error unit_create(struct unit **unitp, enum unit_type type,
+                                char const *name);
+
+static void unit_put(struct unit *unit);
+
+static enum unit_type unit_type(struct unit *unit);
+static char const *unit_peek_name(struct unit *unit);
+
+static char const *const *
+unit_section_find(struct unit *unit, char const *section, char const *field);
+
+static linted_error unit_add_section(struct unit *unit,
+                                     struct unit_section **sectionp,
+                                     char *section_name);
+
+static linted_error unit_section_add_setting(struct unit_section *section,
+                                             char *field,
+                                             char const *const *value);
+
+static linted_error spawn_process(pid_t *pidp, struct unit *unit, linted_ko cwd,
+                                  char const *chrootdir,
                                   struct services const *services);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -236,14 +194,6 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
                                        bool *touch_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp);
-
-static linted_error find_stdin(linted_ko *kop);
-static linted_error find_stdout(linted_ko *kop);
-static linted_error find_stderr(linted_ko *kop);
-
-static linted_error log_create(linted_ko *kop);
-static linted_error updater_create(linted_ko *kop);
-static linted_error controller_create(linted_ko *kop);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
@@ -277,15 +227,8 @@ unsigned char linted_init_monitor(linted_ko cwd,
 {
 	linted_error errnum;
 
+	char const *unit_path = init_config->unit_path;
 	char const *chrootdir = init_config->chrootdir;
-
-	char const *logger_fstab_path = init_config->logger_fstab_path;
-	char const *simulator_fstab_path = init_config->simulator_fstab_path;
-	char const *gui_fstab_path = init_config->gui_fstab_path;
-
-	char const *logger_path = init_config->logger_path;
-	char const *simulator_path = init_config->simulator_path;
-	char const *gui_path = init_config->gui_path;
 
 	static char const process_name[] = "monitor";
 
@@ -341,120 +284,49 @@ unsigned char linted_init_monitor(linted_ko cwd,
 		return EXIT_FAILURE;
 	}
 
-	char **gui_envvars;
+	struct unit **units;
+	size_t units_size;
 	{
-		char **xx;
-		errnum = filter_envvars(&xx, gui_envvars_to_keep);
+		struct unit **xx;
+		size_t yy;
+		errnum = process_units_in_path(unit_path, &xx, &yy);
 		if (errnum != 0) {
 			errno = errnum;
-			perror("filter_envvars");
+			perror("process_units_in_path");
 			return EXIT_FAILURE;
 		}
-		gui_envvars = xx;
+		units = xx;
+		units_size = yy;
 	}
-
-	union service_config const config[] =
-	    { { .process = { .name = "logger",
-			     .type = SERVICE_TYPE_PROCESS,
-			     .dirko = cwd,
-			     .fstab = logger_fstab_path,
-			     .chdir_path = "/var",
-			     .path = logger_path,
-			     .clone_flags =
-				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
-			     .arguments =
-				 (char const * const[]) { logger_path, NULL },
-			     .environment = (char const * const[]) { NULL },
-			     .dup_pairs =
-				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
-				           { LINTED_KO_WRONLY, "stdout" },
-				           { LINTED_KO_WRONLY, "stderr" },
-				           { LINTED_KO_RDONLY, "log" }) } },
-	      { .process = { .name = "simulator",
-			     .type = SERVICE_TYPE_PROCESS,
-			     .dirko = cwd,
-			     .fstab = simulator_fstab_path,
-			     .path = simulator_path,
-			     .clone_flags =
-				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
-			     .chdir_path = "/var",
-			     .arguments = (char const *
-				           const[]) { simulator_path, NULL },
-			     .environment = (char const * const[]) { NULL },
-			     .dup_pairs =
-				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
-				           { LINTED_KO_WRONLY, "stdout" },
-				           { LINTED_KO_WRONLY, "stderr" },
-				           { LINTED_KO_WRONLY, "log" },
-				           { LINTED_KO_RDONLY, "controller" },
-				           { LINTED_KO_WRONLY, "updater" }) } },
-	      { .process = { .name = "gui",
-			     .type = SERVICE_TYPE_PROCESS,
-			     .halt_after_exit = true,
-			     .dirko = cwd,
-			     .fstab = gui_fstab_path,
-			     .chdir_path = "/var",
-			     .path = gui_path,
-			     .clone_flags =
-				 CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET,
-			     .arguments =
-				 (char const * const[]) { gui_path, NULL },
-			     .environment = (char const * const *)gui_envvars,
-			     .dup_pairs =
-				 DUP_PAIRS({ LINTED_KO_RDONLY, "stdin" },
-				           { LINTED_KO_WRONLY, "stdout" },
-				           { LINTED_KO_WRONLY, "stderr" },
-				           { LINTED_KO_WRONLY, "log" },
-				           { LINTED_KO_WRONLY, "controller" },
-				           { LINTED_KO_RDONLY, "updater" }) } },
-	      { .file = { .name = "stdin",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = find_stdin } },
-	      { .file = { .name = "stdout",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = find_stdout } },
-	      { .file = { .name = "stderr",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = find_stderr } },
-	      { .file = { .name = "log",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = log_create } },
-	      { .file = { .name = "updater",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = updater_create } },
-	      { .file = { .name = "controller",
-			  .type = SERVICE_TYPE_FILE,
-			  .generator = controller_create } } };
 
 	struct services *services;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(
-		    &xx, sizeof *services + sizeof services->list[0U] *
-		                                LINTED_ARRAY_SIZE(config));
+		    &xx,
+		    sizeof *services + units_size * sizeof services->list[0U]);
 		if (errnum != 0) {
 			errno = errnum;
-			perror("linted_mem_alloc_array");
+			perror("linted_mem_alloc");
 			return EXIT_FAILURE;
 		}
 		services = xx;
+		services->size = units_size;
 	}
-	services->size = LINTED_ARRAY_SIZE(config);
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(config); ++ii) {
-		union service_config const *service_config = &config[ii];
+	for (size_t ii = 0U; ii < units_size; ++ii) {
 		union service *service = &services->list[ii];
-
-		switch (service_config->type) {
-		case SERVICE_TYPE_PROCESS:
+		struct unit *unit = units[ii];
+		switch (unit_type(unit)) {
+		case UNIT_TYPE_SERVICE:
 			service->type = SERVICE_TYPE_PROCESS;
-			service->process.name = service_config->process.name;
+			service->process.name = unit_peek_name(unit);
 			service->process.pid = -1;
 			break;
 
-		case SERVICE_TYPE_FILE:
+		case UNIT_TYPE_SOCKET:
 			service->type = SERVICE_TYPE_FILE;
-			service->file.name = service_config->file.name;
+			service->file.name = unit_peek_name(unit);
 			service->file.is_open = false;
 			break;
 		}
@@ -487,23 +359,70 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	new_connection_task.pool = pool;
 	new_connection_task.conn_pool = conn_pool;
 	new_connection_task.services = services;
-	new_connection_task.config = config;
 
 	linted_asynch_pool_submit(
 	    pool,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&new_connection_task))));
 
 	for (size_t ii = 0U; ii < services->size; ++ii) {
-		union service_config const *service_config = &config[ii];
-		if (service_config->type != SERVICE_TYPE_FILE)
+		struct unit *unit = units[ii];
+		if (unit_type(unit) != UNIT_TYPE_SOCKET)
 			continue;
+
+		char const *const *listen_message_queue =
+		    unit_section_find(unit, "Socket", "ListenMessageQueue");
+		char const *const *mq_max_messages = unit_section_find(
+		    unit, "Socket", "MessageQueueMaxMessages");
+		char const *const *mq_message_size = unit_section_find(
+		    unit, "Socket", "MessageQueueMessageSize");
+		char const *const *temporary =
+		    unit_section_find(unit, "Socket", "X-Linted-Temporary");
+
+		if (NULL == listen_message_queue ||
+		    NULL == listen_message_queue[0U] ||
+		    listen_message_queue[1U] != NULL)
+			return EINVAL;
+
+		if (NULL == mq_max_messages || NULL == mq_max_messages[0U] ||
+		    mq_max_messages[1U] != NULL)
+			return EINVAL;
+
+		if (NULL == mq_message_size || NULL == mq_message_size[0U] ||
+		    mq_message_size[1U] != NULL)
+			return EINVAL;
+
+		if (NULL == temporary || NULL == temporary[0U] ||
+		    temporary[1U] != NULL)
+			return EINVAL;
+
+		long mq_max_messages_value;
+		{
+			long xx;
+			errnum = long_from_cstring(mq_max_messages[0U], &xx);
+			if (errnum != 0)
+				return errnum;
+			mq_max_messages_value = xx;
+		}
+
+		long mq_message_size_value;
+		{
+			long xx;
+			errnum = long_from_cstring(mq_message_size[0U], &xx);
+			if (errnum != 0)
+				return errnum;
+			mq_message_size_value = xx;
+		}
 
 		union service *service = &services->list[ii];
 
 		linted_ko ko;
-		errnum = service_config->file.generator(&ko);
-		if (errnum != 0)
-			goto exit_services;
+		{
+			struct linted_mq_attr attr;
+			attr.maxmsg = mq_max_messages_value;
+			attr.msgsize = mq_message_size_value;
+			errnum = linted_mq_create(&ko, listen_message_queue[0U],
+			                          &attr, 0);
+		}
 
 		service->file.ko = ko;
 		service->file.is_open = true;
@@ -512,18 +431,33 @@ unsigned char linted_init_monitor(linted_ko cwd,
 	pid_t halt_pid = -1;
 
 	for (size_t ii = 0U; ii < services->size; ++ii) {
-		if (config[ii].type != SERVICE_TYPE_PROCESS)
+		struct unit *unit = units[ii];
+		if (unit_type(unit) != UNIT_TYPE_SERVICE)
 			continue;
 
 		struct service_process *service = &services->list[ii].process;
-		struct service_config_process const *proc_config =
-		    &config[ii].process;
+
+		char const *const *halt_after_exit = unit_section_find(
+		    unit, "Service", "X-Linted-Halt-After-Exit");
+
+		if (halt_after_exit != NULL && (NULL == halt_after_exit[0U] ||
+		                                halt_after_exit[1U] != NULL))
+			return EINVAL;
+
+		bool halt_after_exit_value = false;
+		if (halt_after_exit != NULL) {
+			bool xx;
+			errnum = bool_from_cstring(halt_after_exit[0U], &xx);
+			if (errnum != 0)
+				return errnum;
+			halt_after_exit_value = xx;
+		}
 
 		pid_t process;
 		{
 			pid_t xx;
-			errnum = spawn_process(&xx, proc_config, cwd, chrootdir,
-			                       services);
+			errnum =
+			    spawn_process(&xx, unit, cwd, chrootdir, services);
 			if (errnum != 0)
 				goto exit_services;
 			process = xx;
@@ -531,7 +465,7 @@ unsigned char linted_init_monitor(linted_ko cwd,
 
 		service->pid = process;
 
-		if (proc_config->halt_after_exit)
+		if (halt_after_exit_value)
 			halt_pid = process;
 	}
 
@@ -592,12 +526,12 @@ exit_services:
 	}
 
 	for (size_t ii = 0U; ii < services->size; ++ii) {
-		union service_config const *service_config = &config[ii];
+		union service *service = &services->list[ii];
 
-		if (service_config->type != SERVICE_TYPE_FILE)
+		if (service->type != SERVICE_TYPE_FILE)
 			continue;
 
-		struct service_file *file = &services->list[ii].file;
+		struct service_file *file = &service->file;
 		if (file->is_open) {
 			if (file->ko == STDERR_FILENO)
 				continue;
@@ -626,6 +560,10 @@ exit_services:
 			errnum = close_errnum;
 	}
 
+	for (size_t ii = 0U; ii < units_size; ++ii)
+		unit_put(units[ii]);
+	free(units);
+
 	if (errnum != 0) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "could not run the game: %s\n",
@@ -641,22 +579,55 @@ exit_services:
 	return EXIT_SUCCESS;
 }
 
-static linted_error spawn_process(pid_t *pidp,
-                                  struct service_config_process const *config,
-                                  linted_ko cwd, char const *chrootdir,
+static linted_error spawn_process(pid_t *pidp, struct unit *unit, linted_ko cwd,
+                                  char const *chrootdir,
                                   struct services const *services)
 {
-	linted_error errnum;
+	linted_error errnum = 0;
 
-	size_t dup_pairs_size = config->dup_pairs.size;
-	struct dup_pair const *dup_pairs = config->dup_pairs.dup_pairs;
-	char const *fstab = config->fstab;
-	char const *chdir_path = config->chdir_path;
-	linted_ko dirko = config->dirko;
-	int clone_flags = config->clone_flags;
-	char const *const *environment = config->environment;
-	char const *const *arguments = config->arguments;
-	char const *path = config->path;
+	char const *const *type = unit_section_find(unit, "Service", "Type");
+	char const *const *exec_start =
+	    unit_section_find(unit, "Service", "ExecStart");
+	char const *const *files =
+	    unit_section_find(unit, "Service", "X-Linted-Files");
+	char const *const *fstab =
+	    unit_section_find(unit, "Service", "X-Linted-Fstab");
+	char const *const *environment_whitelist = unit_section_find(
+	    unit, "Service", "X-Linted-Environment-Whitelist");
+
+	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
+		return EINVAL;
+
+	if (NULL == exec_start)
+		return EINVAL;
+
+	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
+		return EINVAL;
+
+	if (NULL == type) {
+		/* simple type of service */
+	} else if (0 == strcmp("simple", type[0U])) {
+		/* simple type of service */
+	} else {
+		return EINVAL;
+	}
+
+	char *default_envvars[] = { NULL };
+	char **envvars = default_envvars;
+	if (environment_whitelist != NULL) {
+		char **xx;
+		errnum = filter_envvars(&xx, environment_whitelist);
+		if (errnum != 0)
+			return errnum;
+		envvars = xx;
+	}
+
+	char const *chdir_path = "/var";
+	linted_ko dirko = cwd;
+	int clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET;
+	char const *const *environment = (char const * const *)envvars;
+	char const *const *arguments = (char const * const *)exec_start;
+	char const *path = exec_start[0U];
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -688,38 +659,47 @@ static linted_error spawn_process(pid_t *pidp,
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);
 
-		errnum = parse_fstab(attr, cwd, fstab);
+		errnum = parse_fstab(attr, cwd, fstab[0U]);
 		if (errnum != 0)
 			goto destroy_attr;
 	}
 
-	linted_ko *proc_kos;
+	linted_ko *proc_kos = NULL;
+	size_t kos_opened = 0U;
+
+	size_t files_size = 0U;
+	if (files != NULL) {
+		for (size_t ii = 0U;; ++ii) {
+			if (NULL == files[ii]) {
+				files_size = ii;
+				break;
+			}
+		}
+	}
+
 	{
 		void *xx;
 		errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U],
-		                                dup_pairs_size);
+		                                3U + files_size);
 		if (errnum != 0)
 			goto destroy_attr;
 		proc_kos = xx;
 	}
-	size_t kos_opened = 0U;
-	for (; kos_opened < dup_pairs_size;) {
-		struct dup_pair const *dup_pair = &dup_pairs[kos_opened];
 
-		union service const *service =
-		    service_for_name(services, dup_pair->service_name);
-		if (NULL == service) {
-			errnum = EINVAL;
-			goto destroy_proc_kos;
-		}
+	struct
+	{
+		linted_ko ko;
+		unsigned long options;
+	} std[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
+		    { STDOUT_FILENO, LINTED_KO_WRONLY },
+		    { STDERR_FILENO, LINTED_KO_WRONLY } };
 
-		struct service_file const *file = &service->file;
-
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(std); ++ii) {
 		linted_ko ko;
 		{
 			linted_ko xx;
 			errnum =
-			    linted_ko_reopen(&xx, file->ko, dup_pair->flags);
+			    linted_ko_reopen(&xx, std[ii].ko, std[ii].options);
 			if (errnum != 0)
 				goto destroy_proc_kos;
 			ko = xx;
@@ -732,6 +712,131 @@ static linted_error spawn_process(pid_t *pidp,
 		                                           kos_opened - 1U);
 		if (errnum != 0)
 			goto destroy_proc_kos;
+	}
+
+	if (files != NULL) {
+		for (size_t ii = 0U; ii < files_size; ++ii) {
+			char const *open_command = files[ii];
+
+			if (strncmp(open_command, "OPEN:", strlen("OPEN:")) !=
+			    0) {
+				errnum = EINVAL;
+				goto destroy_proc_kos;
+			}
+
+			open_command = open_command + strlen("OPEN:");
+
+			char *filenameend = strchr(open_command, ',');
+			char *filename;
+			if (NULL == filenameend) {
+				filename = strdup(open_command);
+			} else {
+				filename = strndup(open_command,
+				                   filenameend - open_command);
+			}
+			if (NULL == filename) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto destroy_attr;
+			}
+
+			char *opts_buffer =
+			    strdup(open_command + 1U + strlen(filename));
+			if (NULL == opts_buffer) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_filename;
+			}
+
+			enum {
+				RDONLY,
+				WRONLY
+			};
+
+			static char const *const tokens[] =
+			    {[RDONLY] = "rdonly", [WRONLY] = "wronly", NULL };
+
+			bool rdonly = false;
+			bool wronly = false;
+
+			char *opts = opts_buffer;
+			char *value = NULL;
+
+			while (*opts != '\0') {
+				int token;
+				{
+					char *xx = opts;
+					char *yy = value;
+					token = getsubopt(
+					    &xx, (char * const *)tokens, &yy);
+					opts = xx;
+					value = yy;
+				}
+				switch (token) {
+				case RDONLY:
+					rdonly = true;
+					break;
+
+				case WRONLY:
+					wronly = true;
+					break;
+
+				default:
+					errnum = EINVAL;
+					goto free_opts_buffer;
+				}
+			}
+
+		free_opts_buffer:
+			free(opts_buffer);
+			if (errnum != 0)
+				goto free_filename;
+
+			if (wronly && rdonly) {
+				errnum = EINVAL;
+				goto free_filename;
+			}
+
+			unsigned long flags = 0;
+
+			if (rdonly)
+				flags |= LINTED_KO_RDONLY;
+
+			if (wronly)
+				flags |= LINTED_KO_WRONLY;
+
+			union service const *service =
+			    service_for_name(services, filename);
+			if (NULL == service) {
+				errnum = EINVAL;
+				goto free_filename;
+			}
+
+			struct service_file const *file = &service->file;
+
+			linted_ko ko;
+			{
+				linted_ko xx;
+				errnum = linted_ko_reopen(&xx, file->ko, flags);
+				if (errnum != 0)
+					goto free_filename;
+				ko = xx;
+			}
+
+			proc_kos[kos_opened] = ko;
+			++kos_opened;
+
+			errnum = linted_spawn_file_actions_adddup2(
+			    &file_actions, ko, kos_opened - 1U);
+			if (errnum != 0)
+				goto free_filename;
+
+		free_filename:
+			free(filename);
+
+			if (errnum != 0)
+				goto destroy_proc_kos;
+		}
 	}
 
 	pid_t process;
@@ -1008,39 +1113,6 @@ free_subopts_str:
 	return 0;
 }
 
-static linted_error find_stdin(linted_ko *kop)
-{
-	*kop = STDIN_FILENO;
-	return 0;
-}
-
-static linted_error find_stdout(linted_ko *kop)
-{
-	*kop = STDOUT_FILENO;
-	return 0;
-}
-
-static linted_error find_stderr(linted_ko *kop)
-{
-	*kop = STDERR_FILENO;
-	return 0;
-}
-
-static linted_error log_create(linted_ko *kop)
-{
-	return linted_log_create(kop, 0U);
-}
-
-static linted_error updater_create(linted_ko *kop)
-{
-	return linted_updater_create(kop, 0U);
-}
-
-static linted_error controller_create(linted_ko *kop)
-{
-	return linted_controller_create(kop, 0U);
-}
-
 static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (task->task_action) {
@@ -1133,7 +1205,6 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 	struct conn_pool *conn_pool = new_connection_task->conn_pool;
 
 	struct services const *services = new_connection_task->services;
-	union service_config const *config = new_connection_task->config;
 
 	linted_manager new_socket = accept_task->returned_ko;
 	linted_asynch_pool_submit(pool, completed_task);
@@ -1160,7 +1231,6 @@ static linted_error on_new_connection(struct linted_asynch_task *completed_task)
 	conn->read_task.conn_pool = conn_pool;
 	conn->read_task.conn = conn;
 	conn->read_task.services = services;
-	conn->read_task.config = config;
 
 	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
 	                                    LINTED_UPCAST(&conn->read_task))));
@@ -1658,4 +1728,801 @@ free_result_envvars:
 		linted_mem_free(result_envvars[ii]);
 	linted_mem_free(result_envvars);
 	return errnum;
+}
+
+static linted_error process_units_in_path(char const *unit_path,
+                                          struct unit ***unitsp, size_t *sizep)
+{
+	linted_ko errnum = 0;
+
+	struct unit **units = NULL;
+	size_t units_size = 0U;
+
+	char const *dirstart = unit_path;
+	for (;;) {
+		char const *dirend = strchr(dirstart, ':');
+
+		char *dir_name;
+		if (NULL == dirend) {
+			dir_name = strdup(dirstart);
+		} else {
+			dir_name = strndup(dirstart, dirend - dirstart);
+		}
+
+		if (NULL == dir_name) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_units;
+		}
+
+		DIR *units_dir = opendir(dir_name);
+		if (NULL == units_dir) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+
+		free(dir_name);
+
+		if (errnum != 0)
+			goto free_units;
+
+		size_t files_count = 0U;
+		char **files = NULL;
+		for (;;) {
+			errno = 0;
+			struct dirent const *entry = readdir(units_dir);
+			if (NULL == entry) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_file_names;
+			}
+
+			char const *name = entry->d_name;
+
+			if (0 == strcmp(".", name))
+				continue;
+
+			if (0 == strcmp("..", name))
+				continue;
+
+			char *name_copy = strdup(name);
+			if (NULL == name_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_file_names;
+			}
+
+			size_t new_files_count = files_count + 1U;
+			char **new_files =
+			    realloc(files, new_files_count * sizeof files[0U]);
+			if (NULL == new_files) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_file_name;
+			}
+			new_files[files_count] = name_copy;
+
+			files = new_files;
+			files_count = new_files_count;
+
+			if (errnum != 0) {
+			free_file_name:
+				free(name_copy);
+				goto free_file_names;
+			}
+		}
+
+		for (size_t ii = 0U; ii < files_count; ++ii) {
+			char const *file_name = files[ii];
+
+			char const *dot = strchr(file_name, '.');
+			if (NULL == dot) {
+				errnum = EINVAL;
+				goto free_file_names;
+			}
+
+			char *unit_name = strndup(file_name, dot - file_name);
+			if (NULL == unit_name) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_file_names;
+			}
+
+			char const *suffix = dot + 1U;
+
+			enum unit_type unit_type;
+			if (0 == strcmp(suffix, "socket")) {
+				unit_type = UNIT_TYPE_SOCKET;
+			} else if (0 == strcmp(suffix, "service")) {
+				unit_type = UNIT_TYPE_SERVICE;
+			} else {
+				errnum = EINVAL;
+				goto free_unit_name;
+			}
+
+			linted_ko unit_fd =
+			    openat(dirfd(units_dir), file_name, O_RDONLY);
+			if (-1 == unit_fd) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_unit_name;
+			}
+
+			FILE *unit_file = fdopen(unit_fd, "r");
+			if (NULL == unit_file) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+
+				close(unit_fd);
+
+				goto free_unit_name;
+			}
+
+			struct unit *unit = NULL;
+			{
+				struct unit *xx;
+				errnum = parse_unit_file(&xx, unit_file,
+				                         unit_type, unit_name);
+				if (errnum != 0) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+					goto close_unit_file;
+				}
+				unit = xx;
+			}
+
+		close_unit_file:
+			if (EOF == fclose(unit_file)) {
+				if (0 == errnum) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				}
+			}
+
+			if (errnum != 0)
+				goto free_unit;
+
+			size_t new_units_size = units_size + 1U;
+			struct unit **new_units =
+			    realloc(units, new_units_size * sizeof units[0U]);
+			if (NULL == new_units) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_unit;
+			}
+			new_units[units_size] = unit;
+
+			units = new_units;
+			units_size = new_units_size;
+
+		free_unit:
+			if (errnum != 0)
+				unit_put(unit);
+
+		free_unit_name:
+			free(unit_name);
+		}
+
+	free_file_names:
+		for (size_t ii = 0U; ii < files_count; ++ii)
+			free(files[ii]);
+		free(files);
+
+		if (-1 == closedir(units_dir)) {
+			if (0 == errnum) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
+		}
+		if (errnum != 0)
+			goto free_units;
+
+		if (NULL == dirend)
+			break;
+
+		dirstart = dirend + 1U;
+	}
+
+free_units:
+	if (errnum != 0) {
+		for (size_t ii = 0U; ii < units_size; ++ii)
+			unit_put(units[ii]);
+		free(units);
+	} else {
+		*unitsp = units;
+		*sizep = units_size;
+	}
+
+	return errnum;
+}
+
+static linted_error parse_unit_file(struct unit **unitp, FILE *unit_file,
+                                    enum unit_type type, char const *name)
+{
+	linted_error errnum = 0;
+
+	char *line_buffer = NULL;
+	size_t line_capacity = 0U;
+
+	struct unit *unit;
+	{
+		struct unit *xx;
+		errnum = unit_create(&xx, type, name);
+		if (errnum != 0)
+			return errnum;
+		unit = xx;
+	}
+
+	struct unit_section *current_section = NULL;
+
+	for (;;) {
+		size_t line_size;
+		{
+			char *xx = line_buffer;
+			size_t yy = line_capacity;
+			errno = 0;
+			ssize_t zz = getline(&xx, &yy, unit_file);
+			if (-1 == zz) {
+				errnum = errno;
+				/* May be 0 to indicate end of line */
+				break;
+			}
+			line_buffer = xx;
+			line_capacity = yy;
+			line_size = zz;
+		}
+		if (0U == line_size)
+			break;
+
+		if ('\n' == line_buffer[line_size - 1U])
+			--line_size;
+
+		/* Ignore empty lines */
+		if (0U == line_size)
+			continue;
+
+		switch (line_buffer[0U]) {
+		/* Ignore comments */
+		case ';':
+		case '#':
+			continue;
+
+		/* A section start */
+		case '[': {
+			if (line_buffer[line_size - 1U] != ']') {
+				errnum = EINVAL;
+				goto free_line_buffer;
+			}
+
+			char *section_name = malloc(line_size - 1U);
+			if (NULL == section_name) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_line_buffer;
+			}
+			section_name[line_size - 2U] = '\0';
+			memcpy(section_name, line_buffer + 1U, line_size - 2U);
+
+			{
+				struct unit_section *xx;
+				errnum =
+				    unit_add_section(unit, &xx, section_name);
+				if (0 == errnum)
+					current_section = xx;
+			}
+
+			if (errnum != 0) {
+				free(section_name);
+				goto free_line_buffer;
+			}
+			break;
+		}
+
+		default: {
+			if (NULL == current_section) {
+				errnum = EINVAL;
+				goto free_line_buffer;
+			}
+
+			bool has_equals_sign = false;
+			size_t equals_position;
+			for (size_t ii = 0U; ii < line_size; ++ii) {
+				if ('=' == line_buffer[ii]) {
+					has_equals_sign = true;
+					equals_position = ii;
+					break;
+				}
+			}
+
+			if (!has_equals_sign) {
+				errnum = EINVAL;
+				goto free_line_buffer;
+			}
+
+			size_t field_len = equals_position;
+			size_t value_offset = field_len + 1U;
+			size_t value_len = line_size - value_offset;
+
+			char *field = malloc(field_len + 1U);
+			if (NULL == field) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_line_buffer;
+			}
+			memcpy(field, line_buffer, field_len);
+			field[field_len] = '\0';
+
+			char *value = malloc(value_len + 1U);
+			if (NULL == value) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_field;
+			}
+			memcpy(value, line_buffer + value_offset, value_len);
+			value[value_len] = '\0';
+
+			wordexp_t expr;
+			switch (wordexp(value, &expr, WRDE_NOCMD)) {
+			case WRDE_BADCHAR:
+			case WRDE_CMDSUB:
+			case WRDE_SYNTAX:
+				errnum = EINVAL;
+				break;
+
+			case WRDE_NOSPACE:
+				errnum = ENOMEM;
+				break;
+			}
+
+			free(value);
+
+			if (errnum != 0)
+				goto free_field;
+
+			errnum = unit_section_add_setting(
+			    current_section, field,
+			    (char const * const *)expr.we_wordv);
+
+			wordfree(&expr);
+
+		free_field:
+			if (errnum != 0)
+				free(field);
+
+			if (errnum != 0)
+				goto free_line_buffer;
+		}
+		}
+	}
+
+free_line_buffer:
+	free(line_buffer);
+
+	if (errnum != 0)
+		unit_put(unit);
+
+	if (0 == errnum)
+		*unitp = unit;
+
+	return errnum;
+}
+
+struct unit_section_bucket
+{
+	size_t sections_size;
+	struct unit_section *sections;
+};
+
+#define SECTION_BUCKETS_SIZE 1024U
+
+struct unit
+{
+	char *name;
+	enum unit_type type;
+	unsigned long refcount;
+	struct unit_section_bucket buckets[SECTION_BUCKETS_SIZE];
+};
+
+struct unit_setting_buckets;
+
+#define SETTING_BUCKETS_SIZE 1024U
+
+struct unit_setting_bucket
+{
+	size_t settings_size;
+	struct unit_setting *settings;
+};
+
+struct unit_section
+{
+	unsigned long refcount;
+	char *name;
+	struct unit_setting_bucket buckets[SETTING_BUCKETS_SIZE];
+};
+
+struct unit_setting
+{
+	char *field;
+	char **value;
+};
+
+static size_t string_hash(char const *str);
+
+static linted_error unit_create(struct unit **unitp, enum unit_type type,
+                                char const *name)
+{
+	linted_error errnum = 0;
+	struct unit *unit;
+
+	char *name_copy = strdup(name);
+	if (NULL == name_copy) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	unit = malloc(sizeof *unit);
+	if (NULL == unit) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto free_name_copy;
+	}
+
+	unit->type = type;
+	unit->name = name_copy;
+	unit->refcount = 1;
+
+	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
+		struct unit_section_bucket *bucket = &unit->buckets[ii];
+
+		bucket->sections_size = 0U;
+		bucket->sections = NULL;
+	}
+
+free_name_copy:
+	if (errnum != 0) {
+		free(name_copy);
+		return errnum;
+	}
+
+	*unitp = unit;
+
+	return 0;
+}
+
+static void unit_put(struct unit *unit)
+{
+	if (--unit->refcount != 0)
+		return;
+
+	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
+		struct unit_section_bucket const *bucket = &unit->buckets[ii];
+
+		for (size_t jj = 0U; jj < bucket->sections_size; ++jj) {
+			struct unit_section const *section =
+			    &bucket->sections[jj];
+
+			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
+				struct unit_setting_bucket const *
+				setting_bucket = &section->buckets[kk];
+
+				for (size_t ww = 0U;
+				     ww < setting_bucket->settings_size; ++ww) {
+					free(
+					    setting_bucket->settings[ww].field);
+					free(
+					    setting_bucket->settings[ww].value);
+				}
+
+				free(setting_bucket->settings);
+			}
+		}
+
+		free(bucket->sections);
+	}
+	free(unit->name);
+	free(unit);
+}
+
+static enum unit_type unit_type(struct unit *unit)
+{
+	return unit->type;
+}
+
+static char const *unit_peek_name(struct unit *unit)
+{
+	return unit->name;
+}
+
+static linted_error unit_add_section(struct unit *unit,
+                                     struct unit_section **sectionp,
+                                     char *section_name)
+{
+	linted_error errnum;
+
+	struct unit_section_bucket *buckets = unit->buckets;
+
+	struct unit_section_bucket *bucket =
+	    &buckets[string_hash(section_name) % SECTION_BUCKETS_SIZE];
+
+	size_t sections_size = bucket->sections_size;
+	struct unit_section *sections = bucket->sections;
+
+	bool have_found_field = false;
+	size_t found_field;
+	for (size_t ii = 0U; ii < sections_size; ++ii) {
+		if (0 == strcmp(sections[ii].name, section_name)) {
+			have_found_field = true;
+			found_field = ii;
+			break;
+		}
+	}
+
+	if (have_found_field) {
+		free(section_name);
+		*sectionp = &sections[found_field];
+	} else {
+		size_t new_sections_size = sections_size + 1U;
+		struct unit_section *new_sections =
+		    realloc(sections, new_sections_size * sizeof sections[0U]);
+		if (NULL == new_sections) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		struct unit_section *new_section = &new_sections[sections_size];
+
+		new_section->name = section_name;
+
+		for (size_t ii = 0U; ii < SETTING_BUCKETS_SIZE; ++ii) {
+			new_section->buckets[ii].settings_size = 0U;
+			new_section->buckets[ii].settings = NULL;
+		}
+
+		bucket->sections_size = new_sections_size;
+		bucket->sections = new_sections;
+
+		*sectionp = new_section;
+	}
+
+	return 0;
+}
+
+static char const *const *
+unit_section_find(struct unit *unit, char const *section, char const *field)
+{
+	struct unit_section *found_section;
+
+	{
+		struct unit_section_bucket *buckets = unit->buckets;
+		struct unit_section_bucket *bucket =
+		    &buckets[string_hash(section) % SECTION_BUCKETS_SIZE];
+
+		size_t sections_size = bucket->sections_size;
+		struct unit_section *sections = bucket->sections;
+
+		bool have_found_section = false;
+		for (size_t ii = 0U; ii < sections_size; ++ii) {
+			if (0 == strcmp(sections[ii].name, section)) {
+				have_found_section = true;
+				found_section = &sections[ii];
+			}
+		}
+
+		if (!have_found_section)
+			return NULL;
+	}
+
+	struct unit_setting_bucket *buckets = found_section->buckets;
+	struct unit_setting_bucket *bucket =
+	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
+
+	size_t settings_size = bucket->settings_size;
+	struct unit_setting *settings = bucket->settings;
+
+	struct unit_setting *found_setting;
+	bool have_found_setting = false;
+	for (size_t ii = 0U; ii < settings_size; ++ii) {
+		if (0 == strcmp(settings[ii].field, field)) {
+			have_found_setting = true;
+			found_setting = &settings[ii];
+		}
+	}
+
+	if (!have_found_setting)
+		return NULL;
+
+	return (char const * const *)found_setting->value;
+}
+
+static linted_error unit_section_add_setting(struct unit_section *section,
+                                             char *field,
+                                             char const *const *value)
+{
+	linted_error errnum;
+
+	struct unit_setting_bucket *buckets = section->buckets;
+
+	struct unit_setting_bucket *bucket =
+	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
+
+	size_t settings_size = bucket->settings_size;
+	struct unit_setting *settings = bucket->settings;
+
+	bool have_found_field = false;
+	size_t found_field;
+	for (size_t ii = 0U; ii < settings_size; ++ii) {
+		if (0 == strcmp(settings[ii].field, field)) {
+			have_found_field = true;
+			found_field = ii;
+			break;
+		}
+	}
+
+	if (have_found_field) {
+		if (NULL == value[0U]) {
+			free(field);
+			free(settings[found_field].field);
+
+			char **values = settings[found_field].value;
+
+			for (size_t ii = 0U; values[ii] != NULL; ++ii)
+				free(values[ii]);
+
+			free(values);
+
+			bucket->settings_size = settings_size - 1U;
+			memcpy(bucket->settings + found_field,
+			       buckets->settings + found_field + 1U,
+			       (settings_size - 1U - found_field) *
+			           sizeof bucket->settings[0U]);
+		} else {
+			char **old_value = settings[found_field].value;
+
+			size_t old_value_len;
+			for (size_t ii = 0U;; ++ii) {
+				if (NULL == old_value[ii]) {
+					old_value_len = ii;
+					break;
+				}
+			}
+
+			size_t value_len;
+			for (size_t ii = 0U;; ++ii) {
+				if (NULL == value[ii]) {
+					value_len = ii;
+					break;
+				}
+			}
+
+			size_t new_value_len = old_value_len + value_len;
+
+			char **new_value =
+			    malloc((new_value_len + 1U) * sizeof value[0U]);
+			if (NULL == new_value) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				return errnum;
+			}
+
+			for (size_t ii = 0U; ii < old_value_len; ++ii)
+				new_value[ii] = old_value[ii];
+
+			for (size_t ii = 0U; ii < value_len; ++ii) {
+				char *copy = strdup(value[ii]);
+				if (NULL == copy) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+					for (; ii != 0; --ii)
+						free(new_value[ii - 1U]);
+
+					free(new_value);
+					return errnum;
+				}
+				new_value[old_value_len + ii] = copy;
+			}
+
+			new_value[new_value_len] = NULL;
+
+			free(settings[found_field].field);
+			free(old_value);
+
+			settings[found_field].field = field;
+			settings[found_field].value = new_value;
+		}
+	} else {
+		if (NULL == value[0U]) {
+			free(field);
+		} else {
+			size_t new_settings_size = settings_size + 1U;
+			struct unit_setting *new_settings = realloc(
+			    settings, new_settings_size * sizeof settings[0U]);
+			if (NULL == new_settings) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				return errnum;
+			}
+
+			size_t value_len;
+			for (size_t ii = 0U;; ++ii) {
+				if (NULL == value[ii]) {
+					value_len = ii;
+					break;
+				}
+			}
+
+			char **value_copy =
+			    malloc((value_len + 1U) * sizeof value[0U]);
+			for (size_t ii = 0U; ii < value_len; ++ii)
+				value_copy[ii] = strdup(value[ii]);
+			value_copy[value_len] = NULL;
+
+			new_settings[settings_size].field = field;
+			new_settings[settings_size].value = value_copy;
+
+			bucket->settings_size = new_settings_size;
+			bucket->settings = new_settings;
+		}
+	}
+
+	return 0;
+}
+
+static size_t string_hash(char const *str)
+{
+	size_t hash = 0U;
+	for (size_t ii = 0U; str[ii] != '\0'; ++ii)
+		hash = hash * 31 + str[ii];
+	return hash;
+}
+
+static linted_error bool_from_cstring(char const *str, bool *boolp)
+{
+	if (0 == strcmp(str, "1") || 0 == strcmp(str, "yes") ||
+	    0 == strcmp(str, "true") || 0 == strcmp(str, "on")) {
+		*boolp = true;
+		return 0;
+	} else if (0 == strcmp(str, "0") || 0 == strcmp(str, "no") ||
+	           0 == strcmp(str, "false") || 0 == strcmp(str, "off")) {
+		*boolp = false;
+		return 0;
+	} else {
+		return EINVAL;
+	}
+}
+
+static linted_error long_from_cstring(char const *str, long *longp)
+{
+	size_t length = strlen(str);
+	unsigned long position = 1U;
+
+	if ('0' == str[0U] && length != 1U)
+		return EINVAL;
+
+	unsigned long total = 0U;
+	for (; length > 0U; --length) {
+		char const digit = str[length - 1U];
+
+		if ('0' <= digit && digit <= '9') {
+			unsigned long sum =
+			    total + ((unsigned)(digit - '0')) * position;
+			if (sum > LONG_MAX)
+				return ERANGE;
+
+			total = sum;
+		} else {
+			return EINVAL;
+		}
+
+		unsigned long next_position = 10U * position;
+		if (next_position > LONG_MAX)
+			return ERANGE;
+		position = next_position;
+	}
+
+	*longp = total;
+	return 0;
 }

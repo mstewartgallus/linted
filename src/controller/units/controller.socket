@@ -1,0 +1,11 @@
+# Copyright Steven
+[Unit]
+Description=Linted-Controller Game Controller
+Documentation='man:linted.special(6)'
+
+[Socket]
+ListenMessageQueue=/controller
+MessageQueueMaxMessages=1
+MessageQueueMessageSize=9
+
+X-Linted-Temporary=true

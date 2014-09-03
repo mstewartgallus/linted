@@ -161,8 +161,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		goto free_buffer;
 	}
 
-	linted_ko ko = CreateFile(buffer, desired_access, 0, NULL,
-	                          OPEN_EXISTING, 0, NULL);
+	linted_ko ko =
+	    CreateFile(buffer, desired_access, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (INVALID_HANDLE_VALUE == ko) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);

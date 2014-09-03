@@ -24,6 +24,7 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
   src/mq/libmq.la\
   \
   -lm
+dist_pkgdefaultunits_DATA+=%D%/units/updater.socket
 
 TESTS+=%D%/test_updater_angle
 

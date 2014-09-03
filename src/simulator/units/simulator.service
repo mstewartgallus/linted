@@ -1,0 +1,14 @@
+# Copyright Steven
+[Unit]
+Description=Linted-Simulator Game Simulator
+Documentation='man:linted-simulator(6)'
+
+[Service]
+ExecStart="${LINTED_SIMULATOR}"
+
+X-Linted-Files=OPEN:log,wronly OPEN:controller,rdonly OPEN:updater,wronly
+
+X-Linted-Fstab="${LINTED_SIMULATOR_FSTAB}"
+
+X-Linted-Environment-Whitelist=''
+

@@ -68,3 +68,4 @@ MOSTLYCLEANFILES+=%D%/assets.c
 	  --output=$@
 
 dist_pkgdefaultconf_DATA+=%D%/gui-fstab
+dist_pkgdefaultunits_DATA+=%D%/units/gui.service

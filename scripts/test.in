@@ -15,6 +15,14 @@ fi
 
 mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
+export LINTED_UNIT_PATH="\
+${SRCDIR}/src/controller/units\
+:${SRCDIR}/src/gui/units\
+:${SRCDIR}/src/logger/units\
+:${SRCDIR}/src/log/units\
+:${SRCDIR}/src/simulator/units\
+:${SRCDIR}/src/updater/units"
+
 export LINTED_CHROOT="${XDG_RUNTIME_DIR}/linted/chroot"
 
 export LINTED_LOGGER_FSTAB="${SRCDIR}/src/logger/logger-fstab"

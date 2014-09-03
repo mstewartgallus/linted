@@ -28,3 +28,4 @@ pkglibexec_PROGRAMS+=%D%/logger
   src/log/liblog.la
 
 dist_pkgdefaultconf_DATA+=%D%/logger-fstab
+dist_pkgdefaultunits_DATA+=%D%/units/logger.service

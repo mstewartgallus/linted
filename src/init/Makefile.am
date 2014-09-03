@@ -47,5 +47,6 @@ MOSTLYCLEANFILES+=%D%/binaries.h
 	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
 	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
 	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
+	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $(srcdir)/%D%/binaries.h.in > $@

@@ -822,7 +822,6 @@ static linted_error my_execveat(int dirfd, const char *filename,
 
 static void exit_with_error(linted_ko writer, linted_error errnum)
 {
-
 	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
 	_Exit(0);
 }

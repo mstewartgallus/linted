@@ -18,15 +18,9 @@
 
 struct linted_init_config
 {
+	char const *unit_path;
+
 	char const *chrootdir;
-
-	char const *logger_fstab_path;
-	char const *simulator_fstab_path;
-	char const *gui_fstab_path;
-
-	char const *logger_path;
-	char const *simulator_path;
-	char const *gui_path;
 };
 
 #endif /* LINTED_INIT_CONFIG_H */
