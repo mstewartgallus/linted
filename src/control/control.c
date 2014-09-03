@@ -433,7 +433,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	size_t service_name_len = strlen(service_name);
-	if (service_name_len > LINTED_SERVICE_NAME_MAX) {
+	if (service_name_len > LINTED_UNIT_NAME_MAX) {
 		failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"),
 		        EINVAL);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,

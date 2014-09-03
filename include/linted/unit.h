@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_SERVICE_H
-#define LINTED_SERVICE_H
+#ifndef LINTED_UNIT_H
+#define LINTED_UNIT_H
 
 #include "linted/error.h"
 
 /**
  * @file
  *
- * Services.
+ * Units.
  */
 
 enum {
-    LINTED_SERVICE_NAME_MAX = 255
+    LINTED_UNIT_NAME_MAX = 255
 };
-#define LINTED_SERVICE_NAME_MAX ((unsigned)LINTED_SERVICE_NAME_MAX)
+#define LINTED_UNIT_NAME_MAX ((unsigned)LINTED_UNIT_NAME_MAX)
 
-#endif /* LINTED_SERVICE_H */
+#endif /* LINTED_UNIT_H */
