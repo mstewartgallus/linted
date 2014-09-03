@@ -40,14 +40,7 @@
 
 enum {
 	HELP,
-	VERSION_OPTION,
-	CHROOTDIR_OPTION,
-	LOGGER_FSTAB,
-	SIMULATOR_FSTAB,
-	GUI_FSTAB,
-	LOGGER,
-	SIMULATOR,
-	GUI
+	VERSION_OPTION
 };
 
 struct linted_start_config const linted_start_config = {
@@ -65,6 +58,38 @@ unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
 	linted_error errnum;
+
+	if (-1 == setenv("LINTED_CHROOT", CHROOTDIR, false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == setenv("LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT, false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+	if (-1 == setenv("LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab", false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == setenv("LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT, false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+	if (-1 == setenv("LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab", false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == setenv("LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT, false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
+	if (-1 == setenv("LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab", false)) {
+		perror("setenv");
+		return EXIT_FAILURE;
+	}
 
 	linted_ko cwd;
 	{
@@ -94,29 +119,13 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	char const *bad_option = NULL;
 
-	char const *logger_path = PKGLIBEXECDIR "/logger" EXEEXT;
-	char const *simulator_path = PKGLIBEXECDIR "/simulator" EXEEXT;
-	char const *gui_path = PKGLIBEXECDIR "/gui" EXEEXT;
-
-	char const *logger_fstab_path = PKGDEFAULTCONFDIR "/logger-fstab";
-	char const *simulator_fstab_path = PKGDEFAULTCONFDIR "/simulator-fstab";
-	char const *gui_fstab_path = PKGDEFAULTCONFDIR "/gui-fstab";
-
-	char const *chrootdir = CHROOTDIR;
-
 	for (size_t ii = 1U; ii < argc; ++ii) {
 		char const *argument = argv[ii];
 
 		static char const *const arguments[] =
 		    {[HELP] = "--help",
-		     [VERSION_OPTION] = "--version",
-		     [CHROOTDIR_OPTION] = "--chrootdir",
-		     [LOGGER_FSTAB] = "--logger-fstab",
-		     [SIMULATOR_FSTAB] = "--simulator-fstab",
-		     [GUI_FSTAB] = "--gui-fstab",
-		     [LOGGER] = "--logger",
-		     [SIMULATOR] = "--simulator",
-		     [GUI] = "--gui" };
+		     [VERSION_OPTION] = "--version"
+		    };
 
 		int arg = -1;
 		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
@@ -143,49 +152,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			if (argument[strlen(arguments[VERSION_OPTION])] != '\0')
 				goto bad_argument;
 			need_version = true;
-			break;
-
-		case CHROOTDIR_OPTION:
-			if (argument[strlen(arguments[CHROOTDIR_OPTION])] !=
-			    '=')
-				goto bad_argument;
-			chrootdir = argument + strlen("--chrootdir=");
-			break;
-
-		case LOGGER_FSTAB:
-			if (argument[strlen(arguments[LOGGER_FSTAB])] != '=')
-				goto bad_argument;
-			logger_fstab_path =
-			    argument + strlen("--logger-fstab=");
-			break;
-
-		case SIMULATOR_FSTAB:
-			if (argument[strlen(arguments[SIMULATOR_FSTAB])] != '=')
-				goto bad_argument;
-			simulator_fstab_path =
-			    argument + strlen("--simulator-fstab=");
-			break;
-
-		case GUI_FSTAB:
-			if (argument[strlen(arguments[GUI_FSTAB])] != '=')
-				goto bad_argument;
-			gui_fstab_path = argument + strlen("--gui-fstab=");
-			break;
-
-		case LOGGER:
-			if (argument[strlen(arguments[LOGGER])] != '=')
-				goto bad_argument;
-			logger_path = argument + strlen("--logger=");
-			break;
-
-		case SIMULATOR:
-			if (argument[strlen(arguments[SIMULATOR])] != '=')
-				goto bad_argument;
-			simulator_path = argument + strlen("--simulator=");
-			break;
-
-		case GUI:
-			gui_path = argument + strlen("--gui=");
 			break;
 		}
 	}
@@ -319,15 +285,13 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_init_config config = { .chrootdir = chrootdir,
-		                             .logger_fstab_path =
-		                                 logger_fstab_path,
-		                             .simulator_fstab_path =
-		                                 simulator_fstab_path,
-		                             .gui_fstab_path = gui_fstab_path,
-		                             .logger_path = logger_path,
-		                             .simulator_path = simulator_path,
-		                             .gui_path = gui_path };
+	struct linted_init_config config = { .chrootdir = getenv("LINTED_CHROOT"),
+	                                     .logger_fstab_path = getenv("LINTED_LOGGER_FSTAB"),
+		                             .simulator_fstab_path = getenv("LINTED_SIMULATOR_FSTAB"),
+		                             .gui_fstab_path = getenv("LINTED_GUI_FSTAB"),
+		                             .logger_path = getenv("LINTED_LOGGER"),
+		                             .simulator_path = getenv("LINTED_SIMULATOR"),
+		                             .gui_path = getenv("LINTED_GUI") };
 	return linted_init_init(cwd, &config);
 }
 
@@ -369,10 +333,13 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 		return errnum;
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --chrootdir         the directory the chroot is mounted to\n\
-  --fstab             the location of the chroot mount instructions\n\
-  --simulator         the location of the simulator executable\n\
-  --gui               the location of the gui executable\n"));
+  LINTED_CHROOT       the directory the chroot is mounted to\n\
+  LINTED_LOGGER_FSTAB the location of the logger fstab\n\
+  LINTED_LOGGER       the location of the logger executable\n\
+  LINTED_GUI_FSTAB    the location of the GUI fstab\n\
+  LINTED_GUI          the location of the GUI executable\n\
+  LINTED_SIMULATOR_FSTAB the location of the simulator fstab\n\
+  LINTED_SIMULATOR    the location of the simulator executable\n"));
 	if (errnum != 0)
 		return errnum;
 

@@ -15,11 +15,15 @@ fi
 
 mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
-exec "${ROOT}/../src/init/linted"\
-     --chrootdir="${XDG_RUNTIME_DIR}/linted/chroot"\
-     --logger-fstab="${SRCDIR}/src/logger/logger-fstab"\
-     --simulator-fstab="${SRCDIR}/src/simulator/simulator-fstab"\
-     --gui-fstab="${SRCDIR}/src/gui/gui-fstab"\
-     --logger="${ROOT}/../src/logger/logger"\
-     --simulator="${ROOT}/../src/simulator/simulator"\
-     --gui="${ROOT}/../src/gui/gui" "$@"
+export LINTED_CHROOT="${XDG_RUNTIME_DIR}/linted/chroot"
+
+export LINTED_LOGGER_FSTAB="${SRCDIR}/src/logger/logger-fstab"
+export LINTED_LOGGER="${ROOT}/../src/logger/logger"
+
+export LINTED_SIMULATOR_FSTAB="${SRCDIR}/src/simulator/simulator-fstab"
+export LINTED_SIMULATOR="${ROOT}/../src/simulator/simulator"
+
+export LINTED_GUI_FSTAB="${SRCDIR}/src/gui/gui-fstab"
+export LINTED_GUI="${ROOT}/../src/gui/gui"
+
+exec "${ROOT}/../src/init/linted" "$@"
