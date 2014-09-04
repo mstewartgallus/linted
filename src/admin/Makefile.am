@@ -14,12 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/libmanager.la
+noinst_LTLIBRARIES+=%D%/libadmin.la
 
-%C%_libmanager_la_SOURCES=\
-  %D%/manager.c\
-  include/linted/manager.h
-%C%_libmanager_la_LIBADD=\
+%C%_libadmin_la_SOURCES=\
+  %D%/admin.c\
+  include/linted/admin.h
+%C%_libadmin_la_LIBADD=\
   src/asynch/libasynch.la\
   src/io/libio.la\
   src/ko/libko.la\

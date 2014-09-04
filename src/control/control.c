@@ -15,11 +15,11 @@
  */
 #include "config.h"
 
+#include "linted/admin.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
-#include "linted/manager.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
@@ -276,7 +276,7 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	}
 
 	size_t path_len = strlen(path);
-	if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
+	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "%s: LINTED_SOCKET is too long\n",
 		                       process_name);
@@ -284,29 +284,29 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	}
 
 	linted_error errnum;
-	linted_manager linted;
+	linted_admin linted;
 
 	{
-		linted_manager manager;
-		errnum = linted_manager_connect(&manager, path, path_len);
+		linted_admin admin;
+		errnum = linted_admin_connect(&admin, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = manager;
+		linted = admin;
 	}
 
 	{
-		union linted_manager_request request = { 0 };
+		union linted_admin_request request = { 0 };
 
-		request.type = LINTED_MANAGER_REBOOT;
+		request.type = LINTED_ADMIN_REBOOT;
 
 		linted_io_write_format(STDOUT_FILENO, NULL,
 		                       "%s: sending the reboot request\n",
 		                       process_name);
 
-		errnum = linted_manager_send_request(linted, &request);
+		errnum = linted_admin_send_request(linted, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -315,10 +315,10 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	}
 
 	{
-		union linted_manager_reply reply;
+		union linted_admin_reply reply;
 		size_t bytes_read;
 
-		errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
+		errnum = linted_admin_recv_reply(linted, &reply, &bytes_read);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
@@ -415,7 +415,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	size_t path_len = strlen(path);
-	if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
+	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "%s: LINTED_SOCKET is too long\n",
 		                       process_name);
@@ -441,23 +441,23 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_manager linted;
+	linted_admin linted;
 
 	{
-		linted_manager manager;
-		errnum = linted_manager_connect(&manager, path, path_len);
+		linted_admin admin;
+		errnum = linted_admin_connect(&admin, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = manager;
+		linted = admin;
 	}
 
 	{
-		union linted_manager_request request = { 0 };
+		union linted_admin_request request = { 0 };
 
-		request.type = LINTED_MANAGER_STATUS;
+		request.type = LINTED_ADMIN_STATUS;
 		request.status.size = name_len;
 		memcpy(request.status.name, name, name_len);
 
@@ -466,7 +466,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		    "%s: sending the status request for %s\n", process_name,
 		    name);
 
-		errnum = linted_manager_send_request(linted, &request);
+		errnum = linted_admin_send_request(linted, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -475,9 +475,9 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	{
-		union linted_manager_reply reply;
+		union linted_admin_reply reply;
 		size_t bytes_read;
-		errnum = linted_manager_recv_reply(linted, &reply, &bytes_read);
+		errnum = linted_admin_recv_reply(linted, &reply, &bytes_read);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
@@ -579,31 +579,31 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	size_t path_len = strlen(path);
-	if (path_len > LINTED_MANAGER_PATH_MAX - 1U) {
+	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "%s: LINTED_SOCKET is too long\n",
 		                       process_name);
 		return EXIT_FAILURE;
 	}
 
-	linted_manager linted;
+	linted_admin linted;
 
 	{
-		linted_manager manager;
+		linted_admin admin;
 		linted_error errnum =
-		    linted_manager_connect(&manager, path, path_len);
+		    linted_admin_connect(&admin, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = manager;
+		linted = admin;
 	}
 
 	{
-		union linted_manager_request request = { 0 };
+		union linted_admin_request request = { 0 };
 
-		request.type = LINTED_MANAGER_STOP;
+		request.type = LINTED_ADMIN_STOP;
 		request.stop.size = sizeof "gui" - 1U;
 		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
@@ -612,7 +612,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		    "%s: sending the stop request for the gui\n", process_name);
 
 		linted_error errnum =
-		    linted_manager_send_request(linted, &request);
+		    linted_admin_send_request(linted, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can send request"), errnum);
@@ -621,10 +621,10 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	{
-		union linted_manager_reply reply;
+		union linted_admin_reply reply;
 		size_t bytes_read;
 		linted_error errnum =
-		    linted_manager_recv_reply(linted, &reply, &bytes_read);
+		    linted_admin_recv_reply(linted, &reply, &bytes_read);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
@@ -679,7 +679,7 @@ static linted_error ctl_help(linted_ko ko, char const *process_name,
 		goto free_buffer;
 
 	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-Run the manager program.\n"));
+Run the admin program.\n"));
 	if (errnum != 0)
 		goto free_buffer;
 

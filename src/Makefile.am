@@ -40,7 +40,7 @@ include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
 
+include %C%/admin/Makefile.am
 include %C%/controller/Makefile.am
 include %C%/log/Makefile.am
-include %C%/manager/Makefile.am
 include %C%/updater/Makefile.am

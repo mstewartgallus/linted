@@ -32,10 +32,10 @@ bin_PROGRAMS+=%D%/linted
   src/mem/libmem.la\
   src/spawn/libspawn.la\
   \
+  src/admin/libadmin.la\
   src/controller/libcontroller.la\
   src/db/libdb.la\
   src/log/liblog.la\
-  src/manager/libmanager.la\
   src/updater/libupdater.la
 
 BUILT_SOURCES+=%D%/binaries.h
