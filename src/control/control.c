@@ -349,7 +349,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 {
 	bool need_version = false;
 	bool need_add_help = false;
-	char const *service_name = NULL;
+	char const *name = NULL;
 	char const *bad_option = NULL;
 	char const *bad_argument = NULL;
 	size_t last_index = 1U;
@@ -365,11 +365,11 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 				bad_option = argument;
 			}
 		} else {
-			if (service_name != NULL) {
+			if (name != NULL) {
 				bad_argument = argument;
 				break;
 			} else {
-				service_name = argument;
+				name = argument;
 			}
 		}
 	}
@@ -424,7 +424,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 
 	linted_error errnum;
 
-	if (NULL == service_name) {
+	if (NULL == name) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "%s: missing SERVICE\n", process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -432,8 +432,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	size_t service_name_len = strlen(service_name);
-	if (service_name_len > LINTED_UNIT_NAME_MAX) {
+	size_t name_len = strlen(name);
+	if (name_len > LINTED_UNIT_NAME_MAX) {
 		failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"),
 		        EINVAL);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -458,14 +458,13 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		union linted_manager_request request = { 0 };
 
 		request.type = LINTED_MANAGER_STATUS;
-		request.status.size = service_name_len;
-		memcpy(request.status.service_name, service_name,
-		       service_name_len);
+		request.status.size = name_len;
+		memcpy(request.status.name, name, name_len);
 
 		linted_io_write_format(
 		    STDOUT_FILENO, NULL,
 		    "%s: sending the status request for %s\n", process_name,
-		    service_name);
+		    name);
 
 		errnum = linted_manager_send_request(linted, &request);
 		if (errnum != 0) {
@@ -503,11 +502,11 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		if (reply.status.is_up) {
 			linted_io_write_format(STDOUT_FILENO, NULL,
 			                       "%s: %s is up\n", process_name,
-			                       service_name);
+			                       name);
 		} else {
 			linted_io_write_format(STDOUT_FILENO, NULL,
 			                       "%s: %s is down\n", process_name,
-			                       service_name);
+			                       name);
 		}
 	}
 
@@ -606,7 +605,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 
 		request.type = LINTED_MANAGER_STOP;
 		request.stop.size = sizeof "gui" - 1U;
-		memcpy(request.stop.service_name, "gui", sizeof "gui" - 1U);
+		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
 		linted_io_write_format(
 		    STDOUT_FILENO, NULL,

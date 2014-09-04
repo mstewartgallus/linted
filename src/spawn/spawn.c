@@ -100,8 +100,9 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 static void drop_privileges(linted_ko writer, cap_t caps);
 
-static linted_error my_execveat(int dirfd, const char *filename,
-                                char *const argv[], char *const envp[]);
+static linted_error my_execveat(int dirfd, char const *filename,
+                                char const *const argv[],
+                                char const *const envp[]);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -363,7 +364,7 @@ void linted_spawn_file_actions_destroy(
 linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
-                          char *const argv[], char *const envp[])
+                          char const *const argv[], char const *const envp[])
 {
 	linted_error errnum = 0;
 	pid_t child = -1;
@@ -437,7 +438,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	char **envp_copy = NULL;
 	size_t env_size = 0U;
-	for (char *const *env = envp; *env != NULL; ++env)
+	for (char const *const *env = envp; *env != NULL; ++env)
 		++env_size;
 
 	if (file_actions != NULL && file_actions->action_count > 0U) {
@@ -622,10 +623,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		           (int)file_actions->action_count - 3U);
 		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
 
-		envp = envp_copy;
+		envp = (char const * const *)envp_copy;
 	}
 
-	errnum = my_execveat(dirfd_copy, filename, argv, (char * const *)envp);
+	errnum = my_execveat(dirfd_copy, filename, argv, envp);
 
 	exit_with_error(writer, errnum);
 	return 0;
@@ -788,8 +789,9 @@ static void drop_privileges(linted_ko writer, cap_t caps)
 		exit_with_error(writer, errno);
 }
 
-static linted_error my_execveat(int dirfd, const char *filename,
-                                char *const argv[], char *const envp[])
+static linted_error my_execveat(int dirfd, char const *filename,
+                                char const *const argv[],
+                                char const *const envp[])
 {
 	linted_error errnum;
 	bool is_relative_path = filename[0U] != '/';
@@ -810,7 +812,7 @@ static linted_error my_execveat(int dirfd, const char *filename,
 		filename = new_path;
 	}
 
-	execve(filename, argv, envp);
+	execve(filename, (char * const *)argv, (char * const *)envp);
 	errnum = errno;
 
 	linted_mem_free(new_path);

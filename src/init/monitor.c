@@ -524,46 +524,43 @@ static linted_error create_socket(linted_ko *kop, struct unit_conf *unit)
 {
 	linted_error errnum;
 
-	char const *const *listen_message_queue =
+	char const *const *name =
 	    unit_conf_find(unit, "Socket", "ListenMessageQueue");
-	char const *const *mq_max_messages =
+	char const *const *maxmsgs =
 	    unit_conf_find(unit, "Socket", "MessageQueueMaxMessages");
-	char const *const *mq_message_size =
+	char const *const *msgsize =
 	    unit_conf_find(unit, "Socket", "MessageQueueMessageSize");
-	char const *const *temporary =
+	char const *const *temp =
 	    unit_conf_find(unit, "Socket", "X-Linted-Temporary");
 
-	if (NULL == listen_message_queue || NULL == listen_message_queue[0U] ||
-	    listen_message_queue[1U] != NULL)
+	if (NULL == name || NULL == name[0U] || name[1U] != NULL)
 		return EINVAL;
 
-	if (NULL == mq_max_messages || NULL == mq_max_messages[0U] ||
-	    mq_max_messages[1U] != NULL)
+	if (NULL == maxmsgs || NULL == maxmsgs[0U] || maxmsgs[1U] != NULL)
 		return EINVAL;
 
-	if (NULL == mq_message_size || NULL == mq_message_size[0U] ||
-	    mq_message_size[1U] != NULL)
+	if (NULL == msgsize || NULL == msgsize[0U] || msgsize[1U] != NULL)
 		return EINVAL;
 
-	if (NULL == temporary || NULL == temporary[0U] || temporary[1U] != NULL)
+	if (NULL == temp || NULL == temp[0U] || temp[1U] != NULL)
 		return EINVAL;
 
-	long mq_max_messages_value;
+	long maxmsgs_value;
 	{
 		long xx;
-		errnum = long_from_cstring(mq_max_messages[0U], &xx);
+		errnum = long_from_cstring(maxmsgs[0U], &xx);
 		if (errnum != 0)
 			return errnum;
-		mq_max_messages_value = xx;
+		maxmsgs_value = xx;
 	}
 
-	long mq_message_size_value;
+	long msgsize_value;
 	{
 		long xx;
-		errnum = long_from_cstring(mq_message_size[0U], &xx);
+		errnum = long_from_cstring(msgsize[0U], &xx);
 		if (errnum != 0)
 			return errnum;
-		mq_message_size_value = xx;
+		msgsize_value = xx;
 	}
 
 	linted_ko ko;
@@ -571,11 +568,10 @@ static linted_error create_socket(linted_ko *kop, struct unit_conf *unit)
 		struct linted_mq_attr attr;
 		linted_ko xx;
 
-		attr.maxmsg = mq_max_messages_value;
-		attr.msgsize = mq_message_size_value;
+		attr.maxmsg = maxmsgs_value;
+		attr.msgsize = msgsize_value;
 
-		errnum =
-		    linted_mq_create(&xx, listen_message_queue[0U], &attr, 0);
+		errnum = linted_mq_create(&xx, name[0U], &attr, 0);
 		if (errnum != 0)
 			return errnum;
 		ko = xx;
@@ -585,24 +581,34 @@ static linted_error create_socket(linted_ko *kop, struct unit_conf *unit)
 	return 0;
 }
 
+struct pair
+{
+	linted_ko ko;
+	unsigned long options;
+};
+
+static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
+	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
+	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
+
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
-                                  struct unit_conf *unit_conf, linted_ko cwd,
+                                  struct unit_conf *conf, linted_ko cwd,
                                   char const *chrootdir,
                                   struct units const *units)
 {
 	linted_error errnum = 0;
 
-	char const *const *type = unit_conf_find(unit_conf, "Service", "Type");
+	char const *const *type = unit_conf_find(conf, "Service", "Type");
 	char const *const *exec_start =
-	    unit_conf_find(unit_conf, "Service", "ExecStart");
+	    unit_conf_find(conf, "Service", "ExecStart");
 	char const *const *files =
-	    unit_conf_find(unit_conf, "Service", "X-Linted-Files");
+	    unit_conf_find(conf, "Service", "X-Linted-Files");
 	char const *const *fstab =
-	    unit_conf_find(unit_conf, "Service", "X-Linted-Fstab");
-	char const *const *environment_whitelist = unit_conf_find(
-	    unit_conf, "Service", "X-Linted-Environment-Whitelist");
+	    unit_conf_find(conf, "Service", "X-Linted-Fstab");
+	char const *const *env_whitelist =
+	    unit_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 	char const *const *halt_after_exit =
-	    unit_conf_find(unit_conf, "Service", "X-Linted-Halt-After-Exit");
+	    unit_conf_find(conf, "Service", "X-Linted-Halt-After-Exit");
 
 	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
 		return EINVAL;
@@ -627,9 +633,9 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 
 	char *default_envvars[] = { NULL };
 	char **envvars = default_envvars;
-	if (environment_whitelist != NULL) {
+	if (env_whitelist != NULL) {
 		char **xx;
-		errnum = filter_envvars(&xx, environment_whitelist);
+		errnum = filter_envvars(&xx, env_whitelist);
 		if (errnum != 0)
 			return errnum;
 		envvars = xx;
@@ -646,11 +652,7 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 	*halt_after_exitp = halt_after_exit_value;
 
 	char const *chdir_path = "/var";
-	linted_ko dirko = cwd;
 	int clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET;
-	char const *const *environment = (char const * const *)envvars;
-	char const *const *arguments = (char const * const *)exec_start;
-	char const *path = exec_start[0U];
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -709,22 +711,135 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		proc_kos = xx;
 	}
 
-	struct
-	{
-		linted_ko ko;
-		unsigned long options;
-	} std[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
-		    { STDOUT_FILENO, LINTED_KO_WRONLY },
-		    { STDERR_FILENO, LINTED_KO_WRONLY } };
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(defaults); ++ii) {
+		struct pair const *pair = &defaults[ii];
+		linted_ko ko = pair->ko;
+		unsigned long options = pair->options;
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(std); ++ii) {
+		linted_ko copy_ko;
+		{
+			linted_ko xx;
+			errnum = linted_ko_reopen(&xx, ko, options);
+			if (errnum != 0)
+				goto destroy_proc_kos;
+			copy_ko = xx;
+		}
+
+		size_t old_kos_opened = kos_opened;
+		kos_opened = old_kos_opened + 1U;
+
+		proc_kos[old_kos_opened] = copy_ko;
+
+		errnum = linted_spawn_file_actions_adddup2(
+		    &file_actions, copy_ko, old_kos_opened);
+		if (errnum != 0)
+			goto destroy_proc_kos;
+	}
+
+	for (size_t ii = 0U; ii < files_size; ++ii) {
+		char const *open_command = files[ii];
+
+		if (strncmp(open_command, "OPEN:", strlen("OPEN:")) != 0) {
+			errnum = EINVAL;
+			goto destroy_proc_kos;
+		}
+
+		open_command = open_command + strlen("OPEN:");
+
+		char *filenameend = strchr(open_command, ',');
+		char *filename;
+		if (NULL == filenameend) {
+			filename = strdup(open_command);
+		} else {
+			filename =
+			    strndup(open_command, filenameend - open_command);
+		}
+		if (NULL == filename) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_attr;
+		}
+
+		char *opts_buffer =
+		    strdup(open_command + 1U + strlen(filename));
+		if (NULL == opts_buffer) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_filename;
+		}
+
+		enum {
+			RDONLY,
+			WRONLY
+		};
+
+		static char const *const tokens[] = {[RDONLY] = "rdonly",
+			                             [WRONLY] = "wronly",
+			                             NULL };
+
+		bool rdonly = false;
+		bool wronly = false;
+
+		char *opts = opts_buffer;
+		char *value = NULL;
+
+		while (*opts != '\0') {
+			int token;
+			{
+				char *xx = opts;
+				char *yy = value;
+				token =
+				    getsubopt(&xx, (char * const *)tokens, &yy);
+				opts = xx;
+				value = yy;
+			}
+			switch (token) {
+			case RDONLY:
+				rdonly = true;
+				break;
+
+			case WRONLY:
+				wronly = true;
+				break;
+
+			default:
+				errnum = EINVAL;
+				goto free_opts_buffer;
+			}
+		}
+
+	free_opts_buffer:
+		free(opts_buffer);
+		if (errnum != 0)
+			goto free_filename;
+
+		if (wronly && rdonly) {
+			errnum = EINVAL;
+			goto free_filename;
+		}
+
+		unsigned long flags = 0;
+
+		if (rdonly)
+			flags |= LINTED_KO_RDONLY;
+
+		if (wronly)
+			flags |= LINTED_KO_WRONLY;
+
+		union unit const *unit = unit_for_name(units, filename);
+		if (NULL == unit) {
+			errnum = EINVAL;
+			goto free_filename;
+		}
+
+		struct unit_socket const *socket = &unit->socket;
+
 		linted_ko ko;
 		{
 			linted_ko xx;
-			errnum =
-			    linted_ko_reopen(&xx, std[ii].ko, std[ii].options);
+			errnum = linted_ko_reopen(&xx, socket->ko, flags);
 			if (errnum != 0)
-				goto destroy_proc_kos;
+				goto free_filename;
 			ko = xx;
 		}
 
@@ -734,139 +849,21 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko,
 		                                           kos_opened - 1U);
 		if (errnum != 0)
+			goto free_filename;
+
+	free_filename:
+		free(filename);
+
+		if (errnum != 0)
 			goto destroy_proc_kos;
-	}
-
-	if (files != NULL) {
-		for (size_t ii = 0U; ii < files_size; ++ii) {
-			char const *open_command = files[ii];
-
-			if (strncmp(open_command, "OPEN:", strlen("OPEN:")) !=
-			    0) {
-				errnum = EINVAL;
-				goto destroy_proc_kos;
-			}
-
-			open_command = open_command + strlen("OPEN:");
-
-			char *filenameend = strchr(open_command, ',');
-			char *filename;
-			if (NULL == filenameend) {
-				filename = strdup(open_command);
-			} else {
-				filename = strndup(open_command,
-				                   filenameend - open_command);
-			}
-			if (NULL == filename) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto destroy_attr;
-			}
-
-			char *opts_buffer =
-			    strdup(open_command + 1U + strlen(filename));
-			if (NULL == opts_buffer) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_filename;
-			}
-
-			enum {
-				RDONLY,
-				WRONLY
-			};
-
-			static char const *const tokens[] =
-			    {[RDONLY] = "rdonly", [WRONLY] = "wronly", NULL };
-
-			bool rdonly = false;
-			bool wronly = false;
-
-			char *opts = opts_buffer;
-			char *value = NULL;
-
-			while (*opts != '\0') {
-				int token;
-				{
-					char *xx = opts;
-					char *yy = value;
-					token = getsubopt(
-					    &xx, (char * const *)tokens, &yy);
-					opts = xx;
-					value = yy;
-				}
-				switch (token) {
-				case RDONLY:
-					rdonly = true;
-					break;
-
-				case WRONLY:
-					wronly = true;
-					break;
-
-				default:
-					errnum = EINVAL;
-					goto free_opts_buffer;
-				}
-			}
-
-		free_opts_buffer:
-			free(opts_buffer);
-			if (errnum != 0)
-				goto free_filename;
-
-			if (wronly && rdonly) {
-				errnum = EINVAL;
-				goto free_filename;
-			}
-
-			unsigned long flags = 0;
-
-			if (rdonly)
-				flags |= LINTED_KO_RDONLY;
-
-			if (wronly)
-				flags |= LINTED_KO_WRONLY;
-
-			union unit const *unit = unit_for_name(units, filename);
-			if (NULL == unit) {
-				errnum = EINVAL;
-				goto free_filename;
-			}
-
-			struct unit_socket const *socket = &unit->socket;
-
-			linted_ko ko;
-			{
-				linted_ko xx;
-				errnum =
-				    linted_ko_reopen(&xx, socket->ko, flags);
-				if (errnum != 0)
-					goto free_filename;
-				ko = xx;
-			}
-
-			proc_kos[kos_opened] = ko;
-			++kos_opened;
-
-			errnum = linted_spawn_file_actions_adddup2(
-			    &file_actions, ko, kos_opened - 1U);
-			if (errnum != 0)
-				goto free_filename;
-
-		free_filename:
-			free(filename);
-
-			if (errnum != 0)
-				goto destroy_proc_kos;
-		}
 	}
 
 	pid_t process;
 	{
 		pid_t xx;
-		errnum = linted_spawn(&xx, dirko, path, file_actions, attr,
-		                      (char **)arguments, (char **)environment);
+		errnum =
+		    linted_spawn(&xx, cwd, exec_start[0U], file_actions, attr,
+		                 exec_start, (char const * const *)envvars);
 		if (errnum != 0)
 			goto destroy_attr;
 		process = xx;
@@ -1308,7 +1305,7 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 
 	case LINTED_MANAGER_STATUS: {
 		union unit const *unit =
-		    unit_for_name(units, request->status.service_name);
+		    unit_for_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
@@ -1347,7 +1344,7 @@ static linted_error on_read_connection(struct linted_asynch_task *task)
 
 	case LINTED_MANAGER_STOP: {
 		union unit const *unit =
-		    unit_for_name(units, request->status.service_name);
+		    unit_for_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;

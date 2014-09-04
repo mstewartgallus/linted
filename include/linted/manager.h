@@ -44,7 +44,7 @@ struct linted_manager_status_request
 {
 	enum linted_manager_type type;
 	size_t size;
-	char service_name[LINTED_UNIT_NAME_MAX];
+	char name[LINTED_UNIT_NAME_MAX];
 };
 
 struct linted_manager_status_reply
@@ -56,7 +56,7 @@ struct linted_manager_stop_request
 {
 	enum linted_manager_type type;
 	size_t size;
-	char service_name[LINTED_UNIT_NAME_MAX];
+	char name[LINTED_UNIT_NAME_MAX];
 };
 
 struct linted_manager_stop_reply
