@@ -92,8 +92,6 @@ struct linted_spawn_attr
 	bool drop_caps : 1U;
 };
 
-static struct sock_fprog const ban_forks_filter;
-
 static void default_signals(linted_ko writer);
 
 static void chroot_process(linted_ko writer, char const *chrootdir,
@@ -610,13 +608,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
 		exit_with_error(writer, errno);
 
-	/* Ban the process from spawning new ones so that resource
-	 * limits can be enforced properly.
-	 */
-	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
-	                &ban_forks_filter, 0UL, 0UL))
-		exit_with_error(writer, errno);
-
 	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
 	char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";
 
@@ -848,36 +839,3 @@ static void pid_to_str(char *buf, pid_t pid)
 
 	buf[strsize] = '\0';
 }
-
-#define THREAD_CLONE                                                           \
-	(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD |    \
-	 CLONE_SYSVSEM | CLONE_SETTLS | CLONE_PARENT_SETTID |                  \
-	 CLONE_CHILD_CLEARTID)
-
-static struct sock_filter const real_filter[] = {
-	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, nr)),
-
-	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_vfork, 0U, 1U),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
-
-	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_fork, 0U, 1U),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
-
-	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_clone, 1U, 0U),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
-
-	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, args) +
-	                    (sizeof(uint64_t) * 2U)),
-
-	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, THREAD_CLONE, 1U, 0U),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
-
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
-
-static struct sock_fprog const ban_forks_filter = {
-	.len = LINTED_ARRAY_SIZE(real_filter),
-	.filter = (struct sock_filter *)real_filter
-};
