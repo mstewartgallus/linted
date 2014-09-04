@@ -63,7 +63,7 @@ open_directory:
 	int fildes;
 	do {
 		fildes = openat(dirkodup, pathname,
-		                O_CLOEXEC | O_NONBLOCK | O_DIRECTORY, mode);
+		                O_CLOEXEC | O_NONBLOCK | O_DIRECTORY);
 		if (-1 == fildes) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
