@@ -720,10 +720,11 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 	/* Magic incantation that clears up /proc/mounts more than
 	 * mount MS_MOVE
 	 */
-	if (-1 == syscall(__NR_pivot_root, ".", "."))
+	int old_root = open("/", O_DIRECTORY);
+	if (-1 == old_root)
 		exit_with_error(writer, errno);
 
-	if (-1 == umount2(".", MNT_DETACH))
+	if (-1 == syscall(__NR_pivot_root, ".", "."))
 		exit_with_error(writer, errno);
 
 	/* pivot_root() may or may not affect its current working
@@ -732,6 +733,12 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 	 *
 	 * - http://man7.org/linux/man-pages/man2/pivot_root.2.html
 	 */
+
+	if (-1 == fchdir(old_root))
+		exit_with_error(writer, errno);
+
+	if (-1 == umount2(".", MNT_DETACH))
+		exit_with_error(writer, errno);
 
 	if (-1 == chdir("/"))
 		exit_with_error(writer, errno);
