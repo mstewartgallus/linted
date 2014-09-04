@@ -602,9 +602,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 	}
 
-	if (drop_caps) {
+	if (drop_caps)
 		drop_privileges(writer, caps);
-	}
 
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
 		exit_with_error(writer, errno);

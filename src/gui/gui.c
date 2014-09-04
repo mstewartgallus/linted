@@ -528,6 +528,10 @@ reopen_graphics_context:
 				had_asynch_event = true;
 				completed_task = xx;
 				goto had_asynch_event;
+
+			default:
+				errnum = poll_errnum;
+				goto cleanup_gl;
 			}
 		}
 	had_asynch_event:
