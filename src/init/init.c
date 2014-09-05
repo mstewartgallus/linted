@@ -18,7 +18,6 @@
 #include "config.h"
 
 #include "init.h"
-#include "init_config.h"
 #include "monitor.h"
 
 #include "linted/error.h"
@@ -32,8 +31,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-unsigned char linted_init_init(linted_ko cwd,
-                               struct linted_init_config const *config)
+unsigned char linted_init_init(linted_ko cwd, char const *chrootdir,
+                               char const *unit_path)
 {
 	linted_error errnum;
 
@@ -66,7 +65,7 @@ unsigned char linted_init_init(linted_ko cwd,
 		}
 
 		if (0 == child)
-			return linted_init_monitor(cwd, config);
+			return linted_init_monitor(cwd, chrootdir, unit_path);
 	}
 
 	{

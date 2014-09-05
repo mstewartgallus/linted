@@ -14,24 +14,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/init
+bin_PROGRAMS+=%D%/linted
 
-%C%_init_SOURCES=\
-  %D%/boot.c\
-  %D%/init.c %D%/init.h\
-  %D%/monitor.c %D%/monitor.h
-%C%_init_LDADD=\
-  src/start/libstart.la\
-  \
-  src/error/liberror.la\
-  src/ko/libko.la\
+%C%_linted_SOURCES=%D%/linted.c
+%C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
+%C%_linted_LDADD=\
   src/io/libio.la\
   src/locale/liblocale.la\
-  src/mem/libmem.la\
-  src/spawn/libspawn.la\
-  \
-  src/admin/libadmin.la\
-  src/controller/libcontroller.la\
-  src/db/libdb.la\
-  src/log/liblog.la\
-  src/updater/libupdater.la
+  src/start/libstart.la
+
+BUILT_SOURCES+=%D%/binaries.h
+EXTRA_DIST+=%D%/binaries.h.in
+MOSTLYCLEANFILES+=%D%/binaries.h
+%D%/binaries.h: Makefile %D%/binaries.h.in
+	sed \
+	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
+	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
+	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
+	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
+	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
+	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
+	  $(srcdir)/%D%/binaries.h.in > $@

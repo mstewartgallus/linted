@@ -17,8 +17,6 @@
 
 #include "config.h"
 
-#include "init_config.h"
-#include "init.h"
 #include "monitor.h"
 
 #include "linted/admin.h"
@@ -220,13 +218,10 @@ static union unit const *unit_for_name(struct units const *unit,
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-unsigned char linted_init_monitor(linted_ko cwd,
-                                  struct linted_init_config const *init_config)
+unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
+                                  char const *unit_path)
 {
 	linted_error errnum;
-
-	char const *unit_path = init_config->unit_path;
-	char const *chrootdir = init_config->chrootdir;
 
 	static char const process_name[] = "monitor";
 

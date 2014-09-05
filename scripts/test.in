@@ -25,6 +25,8 @@ ${SRCDIR}/src/controller/units\
 
 export LINTED_CHROOT="${XDG_RUNTIME_DIR}/linted/chroot"
 
+export LINTED_INIT="${ROOT}/../src/init/init"
+
 export LINTED_LOGGER_FSTAB="${SRCDIR}/src/logger/logger-fstab"
 export LINTED_LOGGER="${ROOT}/../src/logger/logger"
 
@@ -34,4 +36,4 @@ export LINTED_SIMULATOR="${ROOT}/../src/simulator/simulator"
 export LINTED_GUI_FSTAB="${SRCDIR}/src/gui/gui-fstab"
 export LINTED_GUI="${ROOT}/../src/gui/gui"
 
-exec "${ROOT}/../src/init/linted" "$@"
+exec "${ROOT}/../src/linted/linted" "$@"

@@ -17,12 +17,9 @@
 
 #include "config.h"
 
-#include "binaries.h"
 #include "init.h"
-#include "init_config.h"
 
 #include "linted/io.h"
-#include "linted/locale.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -38,68 +35,19 @@
 
 #include <linux/sched.h>
 
-enum {
-	HELP,
-	VERSION_OPTION
-};
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",
 	.kos_size = 0U,
 	.kos = NULL
 };
 
-static linted_error linted_help(linted_ko ko, char const *process_name,
-                                struct linted_str package_name,
-                                struct linted_str package_url,
-                                struct linted_str package_bugreport);
-
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
 	linted_error errnum;
 
-	if (-1 == setenv("LINTED_UNITS_PATH", PKGDEFAULTUNITSDIR, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_CHROOT", CHROOTDIR, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 ==
-	    setenv("LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 == setenv("LINTED_LOGGER_FSTAB",
-	                 PKGDEFAULTCONFDIR "/logger-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 ==
-	    setenv("LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT,
-	                 false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 == setenv("LINTED_SIMULATOR_FSTAB",
-	                 PKGDEFAULTCONFDIR "/simulator-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
+	char const *chrootdir = getenv("LINTED_CHROOT");
+	char const *unit_path = getenv("LINTED_UNIT_PATH");
 
 	linted_ko cwd;
 	{
@@ -122,67 +70,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		                       process_name,
 		                       linted_error_string(errno));
 		return EXIT_FAILURE;
-	}
-
-	bool need_help = false;
-	bool need_version = false;
-
-	char const *bad_option = NULL;
-
-	for (size_t ii = 1U; ii < argc; ++ii) {
-		char const *argument = argv[ii];
-
-		static char const *const arguments[] =
-		    {[HELP] = "--help", [VERSION_OPTION] = "--version" };
-
-		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
-			if (0 == strncmp(argument, arguments[jj],
-			                 strlen(arguments[jj]))) {
-				arg = jj;
-				break;
-			}
-		}
-
-		switch (arg) {
-		bad_argument:
-		case -1:
-			bad_option = argument;
-			break;
-
-		case HELP:
-			if (argument[strlen(arguments[HELP])] != '\0')
-				goto bad_argument;
-			need_help = true;
-			break;
-
-		case VERSION_OPTION:
-			if (argument[strlen(arguments[VERSION_OPTION])] != '\0')
-				goto bad_argument;
-			need_version = true;
-			break;
-		}
-	}
-
-	if (need_help) {
-		linted_help(STDOUT_FILENO, process_name,
-		            LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
-		            LINTED_STR(PACKAGE_BUGREPORT));
-		return EXIT_SUCCESS;
-	}
-
-	if (bad_option != NULL) {
-		linted_locale_on_bad_option(STDERR_FILENO, process_name,
-		                            bad_option);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
-		                                LINTED_STR("--help"));
-		return EXIT_FAILURE;
-	}
-
-	if (need_version) {
-		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
-		                      LINTED_STR(COPYRIGHT_YEAR));
-		return EXIT_SUCCESS;
 	}
 
 	gid_t gid = getgid();
@@ -292,94 +179,5 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		perror("prctl");
 		return EXIT_FAILURE;
 	}
-
-	struct linted_init_config config = { .chrootdir =
-		                                 getenv("LINTED_CHROOT"),
-		                             .unit_path =
-		                                 getenv("LINTED_UNIT_PATH") };
-	return linted_init_init(cwd, &config);
-}
-
-static linted_error linted_help(linted_ko ko, char const *process_name,
-                                struct linted_str package_name,
-                                struct linted_str package_url,
-                                struct linted_str package_bugreport)
-{
-	linted_error errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_string(ko, NULL, process_name);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Play the game.\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  --help              display this help and exit\n\
-  --version           display version information and exit\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
-  LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
-  LINTED_CHROOT       the directory the chroot is mounted to\n\
-  LINTED_LOGGER_FSTAB the location of the logger fstab\n\
-  LINTED_LOGGER       the location of the logger executable\n\
-  LINTED_GUI_FSTAB    the location of the GUI fstab\n\
-  LINTED_GUI          the location of the GUI executable\n\
-  LINTED_SIMULATOR_FSTAB the location of the simulator fstab\n\
-  LINTED_SIMULATOR    the location of the simulator executable\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, package_bugreport);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, package_name);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, package_url);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
-	if (errnum != 0)
-		return errnum;
-
-	return 0;
+	return linted_init_init(cwd, chrootdir, unit_path);
 }

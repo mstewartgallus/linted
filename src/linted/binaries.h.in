@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_INIT_BINARIES_H
-#define LINTED_INIT_BINARIES_H
+#ifndef LINTED_CONFIG_BINARIES_H
+#define LINTED_CONFIG_BINARIES_H
 
 #define PKGLIBEXECDIR "@pkglibexecdir@"
 #define CHROOTDIR "@chrootdir@"
@@ -23,4 +23,4 @@
 #define PKGDEFAULTUNITSDIR "@pkgdefaultunitsdir@"
 #define EXEEXT "@EXEEXT@"
 
-#endif /* LINTED_INIT_BINARIES_H */
+#endif /* LINTED_CONFIG_BINARIES_H */

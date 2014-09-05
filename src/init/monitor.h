@@ -16,8 +16,6 @@
 #ifndef LINTED_INIT_MONITOR_H
 #define LINTED_INIT_MONITOR_H
 
-#include "init_config.h"
-
 #include "linted/ko.h"
 
 /**
@@ -61,7 +59,7 @@
  *       locations on disk.
  */
 
-unsigned char linted_init_monitor(linted_ko cwd,
-                                  struct linted_init_config const *config);
+unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
+                                  char const *unit_path);
 
 #endif /* LINTED_INIT_INIT_H */
