@@ -57,6 +57,10 @@
  *
  * @todo Connect the /var directories of the processes to real
  *       locations on disk.
+ *
+ * @todo Set the PATH to
+ *  "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" and
+ *  MANAGERPID to getpid().
  */
 
 unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,

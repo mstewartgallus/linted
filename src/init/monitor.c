@@ -635,9 +635,15 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		no_new_privs_value = xx;
 	}
 
-	char *default_envvars[] = { NULL };
-	char **envvars = default_envvars;
-	if (env_whitelist != NULL) {
+	static char const * default_envvars[] = { "LANG", "USER", "LOGNAME", "HOME",
+	                                          "SHELL",
+	                                          "XDG_RUNTIME_DIR"
+	                                          "XDG_SESSION_ID", "XDG_SEAT", "TERM" };
+	if (NULL == env_whitelist)
+		env_whitelist = default_envvars;
+
+	char **envvars;
+	{
 		char **xx;
 		errnum = filter_envvars(&xx, env_whitelist);
 		if (errnum != 0)
@@ -887,11 +893,9 @@ destroy_file_actions:
 	linted_spawn_file_actions_destroy(file_actions);
 
 free_envvars:
-	if (envvars != default_envvars) {
-		for (char **envp = envvars; *envp != NULL; ++envp)
-			free(*envp);
-		free(envvars);
-	}
+	for (char **envp = envvars; *envp != NULL; ++envp)
+		free(*envp);
+	free(envvars);
 
 	return errnum;
 }
