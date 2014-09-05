@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 pkgconfdir=$(sysconfdir)/linted
-pkgdefaultconfdir=$(pkgdatadir)/defaultetc
+pkgdefaultconfdir=$(datadir)/factory/linted/etc
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 chrootdir=$(pkgdatadir)/chroot
 
