@@ -41,10 +41,21 @@ struct linted_start_config const linted_start_config = {
 	.kos = NULL
 };
 
-unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[const])
+unsigned char linted_start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error errnum;
+
+	char const *repl_process_name = getenv("LINTED_PROCESS_NAME");
+	if (repl_process_name != NULL) {
+		process_name = repl_process_name;
+
+		if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL,
+		                0UL, 0UL)) {
+			perror("prctl");
+			return EXIT_FAILURE;
+		}
+	}
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
