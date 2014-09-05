@@ -52,7 +52,7 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	if (-1 == setenv("LINTED_UNITS_PATH", PKGDEFAULTUNITSDIR, false)) {
+	if (-1 == setenv("LINTED_UNIT_PATH", PKGDEFAULTUNITSDIR, false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
@@ -62,7 +62,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (-1 == setenv("LINTED_BOOT", PKGLIBEXECDIR "/boot" EXEEXT, false)) {
+	if (-1 == setenv("LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT, false)) {
 		perror("setenv");
 		return EXIT_FAILURE;
 	}
@@ -100,10 +100,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	char const *init = getenv("LINTED_INIT");
-	if (NULL == init) {
-		fprintf(stderr, "LINTED_INIT was not set!\n");
-		return EXIT_FAILURE;
-	}
 
 	bool need_help = false;
 	bool need_version = false;

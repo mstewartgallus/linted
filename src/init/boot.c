@@ -49,6 +49,22 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
 
+	if (NULL == chrootdir) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_CHROOT is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == unit_path) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
 	linted_ko cwd;
 	{
 		linted_ko xx;

@@ -276,7 +276,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		                       linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
-
 	struct unit_conf **unit_confs;
 	size_t unit_confs_size;
 	{
