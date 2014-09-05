@@ -78,7 +78,7 @@ unsigned char linted_init_init(linted_ko cwd, char const *chrootdir,
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(errnum != ECHILD);
-			assert(false);
+			assert(0);
 		}
 		return info.si_status;
 	}
