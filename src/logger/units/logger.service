@@ -17,6 +17,7 @@ Documentation='man:linted-logger(6)'
 
 [Service]
 ExecStart="${LINTED_LOGGER}"
+NoNewPrivileges=true
 
 X-Linted-Files=OPEN:log,rdonly
 

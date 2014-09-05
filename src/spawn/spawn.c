@@ -90,6 +90,7 @@ struct linted_spawn_attr
 	struct mount_args *mount_args;
 	int clone_flags;
 	bool drop_caps : 1U;
+	bool no_new_privs : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -127,14 +128,10 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
+	attr->no_new_privs = false;
 
 	*attrp = attr;
 	return 0;
-}
-
-void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr)
-{
-	attr->drop_caps = true;
 }
 
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
@@ -149,6 +146,17 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+
+void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b)
+{
+	attr->no_new_privs = b;
+}
+
+void linted_spawn_attr_setdropcaps(struct linted_spawn_attr *attr, _Bool b)
+{
+	attr->drop_caps = b;
 }
 
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags)
@@ -380,6 +388,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	size_t mount_args_size;
 	struct mount_args *mount_args;
 	bool drop_caps;
+	bool no_new_privs;
 
 	if (NULL == attr) {
 		clone_flags = 0;
@@ -388,6 +397,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args_size = 0U;
 		mount_args = NULL;
 		drop_caps = false;
+		no_new_privs = false;
 	} else {
 		clone_flags = attr->clone_flags;
 		chrootdir = attr->chrootdir;
@@ -395,6 +405,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
+		no_new_privs = attr->no_new_privs;
 	}
 
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
@@ -605,8 +616,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (drop_caps)
 		drop_privileges(writer, caps);
 
-	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
-		exit_with_error(writer, errno);
+	if (no_new_privs)
+		if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
+			exit_with_error(writer, errno);
 
 	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
 	char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";

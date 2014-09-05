@@ -31,7 +31,8 @@ struct linted_spawn_attr;
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp);
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-void linted_spawn_attr_drop_caps(struct linted_spawn_attr *attr);
+void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b);
+void linted_spawn_attr_setdropcaps(struct linted_spawn_attr *attr, _Bool b);
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags);
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir);

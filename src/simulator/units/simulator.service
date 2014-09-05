@@ -17,6 +17,7 @@ Documentation='man:linted-simulator(6)'
 
 [Service]
 ExecStart="${LINTED_SIMULATOR}"
+NoNewPrivileges=true
 
 X-Linted-Files=OPEN:log,wronly OPEN:controller,rdonly OPEN:updater,wronly
 

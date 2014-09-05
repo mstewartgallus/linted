@@ -17,6 +17,7 @@ Documentation='man:linted-gui(6)'
 
 [Service]
 ExecStart="${LINTED_GUI}"
+NoNewPrivileges=true
 
 X-Linted-Files=OPEN:log,wronly OPEN:controller,wronly OPEN:updater,rdonly
 

@@ -591,6 +591,8 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 	char const *const *type = unit_conf_find(conf, "Service", "Type");
 	char const *const *exec_start =
 	    unit_conf_find(conf, "Service", "ExecStart");
+	char const *const *no_new_privs =
+	    unit_conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *files =
 	    unit_conf_find(conf, "Service", "X-Linted-Files");
 	char const *const *fstab =
@@ -606,6 +608,9 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 	if (NULL == exec_start)
 		return EINVAL;
 
+	if (no_new_privs != NULL && (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
+		return EINVAL;
+
 	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
 		return EINVAL;
 
@@ -619,6 +624,15 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		/* simple type of service */
 	} else {
 		return EINVAL;
+	}
+
+	bool no_new_privs_value = false;
+	if (no_new_privs != NULL) {
+		bool xx;
+		errnum = bool_from_cstring(no_new_privs[0U], &xx);
+		if (errnum != 0)
+			return errnum;
+		no_new_privs_value = xx;
 	}
 
 	char *default_envvars[] = { NULL };
@@ -642,7 +656,7 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 	*halt_after_exitp = halt_after_exit_value;
 
 	char const *chdir_path = "/var";
-	int clone_flags = CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWNET;
+	int clone_flags = CLONE_NEWIPC | CLONE_NEWNET;
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -663,13 +677,13 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		attr = xx;
 	}
 
-	if (chdir_path != NULL)
-		linted_spawn_attr_setcloneflags(attr, clone_flags);
+	if (fstab != NULL)
+		clone_flags |= CLONE_NEWNS;
 
-	linted_spawn_attr_drop_caps(attr);
-
-	if (chdir_path != NULL)
-		linted_spawn_attr_setchdir(attr, chdir_path);
+	linted_spawn_attr_setnonewprivs(attr, no_new_privs_value);
+	linted_spawn_attr_setdropcaps(attr, true);
+	linted_spawn_attr_setcloneflags(attr, clone_flags);
+	linted_spawn_attr_setchdir(attr, chdir_path);
 
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);
