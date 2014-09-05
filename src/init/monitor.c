@@ -44,7 +44,6 @@
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/prctl.h>
-#include <wordexp.h>
 #include <unistd.h>
 
 #define BACKLOG 20U
@@ -149,8 +148,6 @@ static linted_error process_units_in_path(char const *unit_path,
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 
-static linted_error parse_unit_file(struct conf **unitp, FILE *unitfile,
-                                    char const *file_name);
 static linted_error create_socket(linted_ko *kop, struct conf *unit);
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
                                   struct conf *unit, linted_ko cwd,
@@ -1758,7 +1755,7 @@ static linted_error process_units_in_path(char const *unit_path,
 			{
 				struct conf *xx;
 				errnum =
-				    parse_unit_file(&xx, unit_file, file_name);
+				    conf_parse_file(&xx, unit_file, file_name);
 				if (errnum != 0) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
@@ -1825,177 +1822,6 @@ free_units:
 		*unitsp = units;
 		*sizep = units_size;
 	}
-
-	return errnum;
-}
-
-static linted_error parse_unit_file(struct conf **unitp, FILE *unit_file,
-                                    char const *name)
-{
-	linted_error errnum = 0;
-
-	char *line_buffer = NULL;
-	size_t line_capacity = 0U;
-
-	struct conf *unit;
-	{
-		struct conf *xx;
-		errnum = conf_create(&xx, name);
-		if (errnum != 0)
-			return errnum;
-		unit = xx;
-	}
-
-	struct conf_section *current_section = NULL;
-
-	for (;;) {
-		size_t line_size;
-		{
-			char *xx = line_buffer;
-			size_t yy = line_capacity;
-			errno = 0;
-			ssize_t zz = getline(&xx, &yy, unit_file);
-			if (-1 == zz) {
-				errnum = errno;
-				/* May be 0 to indicate end of line */
-				break;
-			}
-			line_buffer = xx;
-			line_capacity = yy;
-			line_size = zz;
-		}
-		if (0U == line_size)
-			break;
-
-		if ('\n' == line_buffer[line_size - 1U])
-			--line_size;
-
-		/* Ignore empty lines */
-		if (0U == line_size)
-			continue;
-
-		switch (line_buffer[0U]) {
-		/* Ignore comments */
-		case ';':
-		case '#':
-			continue;
-
-		/* A section start */
-		case '[': {
-			if (line_buffer[line_size - 1U] != ']') {
-				errnum = EINVAL;
-				goto free_line_buffer;
-			}
-
-			char *section_name = malloc(line_size - 1U);
-			if (NULL == section_name) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_line_buffer;
-			}
-			section_name[line_size - 2U] = '\0';
-			memcpy(section_name, line_buffer + 1U, line_size - 2U);
-
-			{
-				struct conf_section *xx;
-				errnum =
-				    conf_add_section(unit, &xx, section_name);
-				if (0 == errnum)
-					current_section = xx;
-			}
-
-			if (errnum != 0) {
-				free(section_name);
-				goto free_line_buffer;
-			}
-			break;
-		}
-
-		default: {
-			if (NULL == current_section) {
-				errnum = EINVAL;
-				goto free_line_buffer;
-			}
-
-			bool has_equals_sign = false;
-			size_t equals_position;
-			for (size_t ii = 0U; ii < line_size; ++ii) {
-				if ('=' == line_buffer[ii]) {
-					has_equals_sign = true;
-					equals_position = ii;
-					break;
-				}
-			}
-
-			if (!has_equals_sign) {
-				errnum = EINVAL;
-				goto free_line_buffer;
-			}
-
-			size_t field_len = equals_position;
-			size_t value_offset = field_len + 1U;
-			size_t value_len = line_size - value_offset;
-
-			char *field = malloc(field_len + 1U);
-			if (NULL == field) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_line_buffer;
-			}
-			memcpy(field, line_buffer, field_len);
-			field[field_len] = '\0';
-
-			char *value = malloc(value_len + 1U);
-			if (NULL == value) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_field;
-			}
-			memcpy(value, line_buffer + value_offset, value_len);
-			value[value_len] = '\0';
-
-			wordexp_t expr;
-			switch (wordexp(value, &expr, WRDE_NOCMD)) {
-			case WRDE_BADCHAR:
-			case WRDE_CMDSUB:
-			case WRDE_SYNTAX:
-				errnum = EINVAL;
-				break;
-
-			case WRDE_NOSPACE:
-				errnum = ENOMEM;
-				break;
-			}
-
-			free(value);
-
-			if (errnum != 0)
-				goto free_field;
-
-			errnum = conf_add_setting(
-			    current_section, field,
-			    (char const * const *)expr.we_wordv);
-
-			wordfree(&expr);
-
-		free_field:
-			if (errnum != 0)
-				free(field);
-
-			if (errnum != 0)
-				goto free_line_buffer;
-		}
-		}
-	}
-
-free_line_buffer:
-	free(line_buffer);
-
-	if (errnum != 0)
-		conf_put(unit);
-
-	if (0 == errnum)
-		*unitp = unit;
 
 	return errnum;
 }

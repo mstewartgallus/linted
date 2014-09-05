@@ -18,9 +18,14 @@
 
 #include "linted/error.h"
 
+#include <stdio.h>
+
 struct conf;
 struct conf_section;
 struct conf_setting;
+
+linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
+                             char const *name);
 
 linted_error conf_create(struct conf **unitp, char const *file_name);
 
