@@ -26,10 +26,7 @@
 #include <errno.h>
 #include <stdbool.h>
 
-enum {
-	ON_RECEIVE_LOG,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_LOG, MAX_TASKS };
 
 struct logger_task
 {
@@ -41,11 +38,10 @@ struct logger_task
 
 static linted_ko kos[1U];
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-logger",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = NULL
-};
+    .canonical_process_name = PACKAGE_NAME "-logger",
+    .kos_size = LINTED_ARRAY_SIZE(kos),
+    .kos = kos,
+    .seccomp_bpf = NULL};
 
 static char logger_buffer[LINTED_LOG_MAX];
 

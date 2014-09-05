@@ -48,9 +48,7 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-enum file_action_type {
-	FILE_ACTION_ADDDUP2
-};
+enum file_action_type { FILE_ACTION_ADDDUP2 };
 
 struct adddup2
 {
@@ -633,7 +631,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		           (int)file_actions->action_count - 3U);
 		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
 
-		envp = (char const * const *)envp_copy;
+		envp = (char const *const *)envp_copy;
 	}
 
 	errnum = my_execveat(dirfd_copy, filename, argv, envp);
@@ -822,7 +820,7 @@ static linted_error my_execveat(int dirfd, char const *filename,
 		filename = new_path;
 	}
 
-	execve(filename, (char * const *)argv, (char * const *)envp);
+	execve(filename, (char *const *)argv, (char *const *)envp);
 	errnum = errno;
 
 	linted_mem_free(new_path);

@@ -54,21 +54,14 @@
 #define PR_SET_CHILD_SUBREAPER 36UL
 #endif
 
-enum {
-	WAITER,
-	ADMIN_ACCEPTED_CONNECTION,
-	ADMIN_READ_CONNECTION,
-	ADMIN_WROTE_CONNECTION
-};
+enum { WAITER,
+       ADMIN_ACCEPTED_CONNECTION,
+       ADMIN_READ_CONNECTION,
+       ADMIN_WROTE_CONNECTION };
 
-enum {
-	MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS
-};
+enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
 
-enum unit_type {
-	UNIT_TYPE_SOCKET,
-	UNIT_TYPE_SERVICE
-};
+enum unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
 
 struct unit_service
 {
@@ -559,9 +552,9 @@ struct pair
 	unsigned long options;
 };
 
-static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
-	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
-	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
+static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
+                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
+                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
 
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
                                   struct conf *conf, linted_ko cwd,
@@ -615,11 +608,10 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		no_new_privs_value = xx;
 	}
 
-	static char const *default_envvars[] = { "LANG", "USER", "LOGNAME",
-		                                 "HOME", "SHELL",
-		                                 "XDG_RUNTIME_DIR"
-		                                 "XDG_SESSION_ID",
-		                                 "XDG_SEAT", "TERM" };
+	static char const *default_envvars[] = {
+	    "LANG", "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
+	                                                "XDG_SESSION_ID",
+	    "XDG_SEAT", "TERM"};
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
 
@@ -759,14 +751,10 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 			goto free_filename;
 		}
 
-		enum {
-			RDONLY,
-			WRONLY
-		};
+		enum { RDONLY, WRONLY };
 
 		static char const *const tokens[] = {[RDONLY] = "rdonly",
-			                             [WRONLY] = "wronly",
-			                             NULL };
+		                                     [WRONLY] = "wronly", NULL};
 
 		bool rdonly = false;
 		bool wronly = false;
@@ -780,7 +768,7 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 				char *xx = opts;
 				char *yy = value;
 				token =
-				    getsubopt(&xx, (char * const *)tokens, &yy);
+				    getsubopt(&xx, (char *const *)tokens, &yy);
 				opts = xx;
 				value = yy;
 			}
@@ -854,7 +842,7 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		pid_t xx;
 		errnum =
 		    linted_spawn(&xx, cwd, exec_start[0U], file_actions, attr,
-		                 exec_start, (char const * const *)envvars);
+		                 exec_start, (char const *const *)envvars);
 		if (errnum != 0)
 			goto destroy_attr;
 		process = xx;
@@ -980,18 +968,7 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp)
 {
-	enum {
-		MKDIR,
-		TOUCH,
-		BIND,
-		RBIND,
-		RO,
-		RW,
-		SUID,
-		NOSUID,
-		NODEV,
-		NOEXEC
-	};
+	enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
 
 	linted_error errnum;
 
@@ -999,7 +976,7 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
 	    {[MKDIR] = "mkdir",    [TOUCH] = "touch",        [BIND] = "bind",
 	     [RBIND] = "rbind",    [RO] = MNTOPT_RO,         [RW] = MNTOPT_RW,
 	     [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID, [NODEV] = "nodev",
-	     [NOEXEC] = "noexec",  NULL };
+	     [NOEXEC] = "noexec",  NULL};
 	bool touch_flag = false;
 	bool mkdir_flag = false;
 	bool bind = false;
@@ -1026,7 +1003,7 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
 		{
 			char *xx = subopts;
 			char *yy = value;
-			token = getsubopt(&xx, (char * const *)tokens, &yy);
+			token = getsubopt(&xx, (char *const *)tokens, &yy);
 			subopts = xx;
 			value = yy;
 		}

@@ -54,7 +54,7 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 	}
 
 	{
-		struct sockaddr_un address = { 0 };
+		struct sockaddr_un address = {0};
 
 		address.sun_family = AF_UNIX;
 
@@ -124,7 +124,7 @@ linted_error linted_admin_connect(linted_admin *admin, char const *path,
 	}
 
 	{
-		struct sockaddr_un address = { 0 };
+		struct sockaddr_un address = {0};
 
 		address.sun_family = AF_UNIX;
 		memcpy(address.sun_path, path, path_len);
@@ -152,7 +152,7 @@ linted_error linted_admin_path(linted_admin admin,
                                char buf[static LINTED_ADMIN_PATH_MAX],
                                size_t *len)
 {
-	struct sockaddr_un address = { 0 };
+	struct sockaddr_un address = {0};
 
 	socklen_t addr_len = sizeof address;
 	{

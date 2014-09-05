@@ -27,7 +27,7 @@ linted_error linted_log_create(linted_log *logp, unsigned long flags)
 		return EINVAL;
 	}
 
-	struct linted_mq_attr attr = { 0 };
+	struct linted_mq_attr attr = {0};
 
 	attr.maxmsg = 10;
 	attr.msgsize = LINTED_LOG_MAX;

@@ -212,7 +212,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 
 			errnum = conf_add_setting(
 			    current_section, field,
-			    (char const * const *)expr.we_wordv);
+			    (char const *const *)expr.we_wordv);
 
 			wordfree(&expr);
 
@@ -292,7 +292,7 @@ void conf_put(struct conf *unit)
 
 			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
 				struct conf_setting_bucket const *
-				setting_bucket = &section->buckets[kk];
+				    setting_bucket = &section->buckets[kk];
 
 				for (size_t ww = 0U;
 				     ww < setting_bucket->settings_size; ++ww) {
@@ -312,10 +312,7 @@ void conf_put(struct conf *unit)
 	free(unit);
 }
 
-char const *conf_peek_name(struct conf *unit)
-{
-	return unit->name;
-}
+char const *conf_peek_name(struct conf *unit) { return unit->name; }
 
 linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
                               char *section_name)
@@ -415,7 +412,7 @@ char const *const *conf_find(struct conf *unit, char const *section,
 	if (!have_found_setting)
 		return NULL;
 
-	return (char const * const *)found_setting->value;
+	return (char const *const *)found_setting->value;
 }
 
 linted_error conf_add_setting(struct conf_section *section, char *field,

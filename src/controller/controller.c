@@ -29,7 +29,7 @@ linted_error linted_controller_create(linted_controller *controllerp,
 	if (flags != 0U)
 		return EINVAL;
 
-	struct linted_mq_attr attr = { 0 };
+	struct linted_mq_attr attr = {0};
 
 	attr.maxmsg = 1;
 	attr.msgsize =

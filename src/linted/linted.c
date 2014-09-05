@@ -33,13 +33,10 @@
 
 extern char **environ;
 
-enum {
-	HELP,
-	VERSION_OPTION
-};
+enum { HELP, VERSION_OPTION };
 
 static char const *const argstrs[] = {[HELP] = "--help",
-	                              [VERSION_OPTION] = "--version" };
+                                      [VERSION_OPTION] = "--version"};
 
 struct envvar
 {
@@ -48,23 +45,21 @@ struct envvar
 };
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-linted",
-	.kos_size = 0U,
-	.kos = NULL
-};
+    .canonical_process_name = PACKAGE_NAME "-linted",
+    .kos_size = 0U,
+    .kos = NULL};
 
 static struct envvar const default_envvars[] = {
-	{ "LINTED_PROCESS_NAME", "linted" },
-	{ "LINTED_UNIT_PATH", PKGDEFAULTUNITSDIR },
-	{ "LINTED_CHROOT", CHROOTDIR },
-	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
-	{ "LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT },
-	{ "LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab" },
-	{ "LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT },
-	{ "LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab" },
-	{ "LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT },
-	{ "LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab" }
-};
+    {"LINTED_PROCESS_NAME", "linted"},
+    {"LINTED_UNIT_PATH", PKGDEFAULTUNITSDIR},
+    {"LINTED_CHROOT", CHROOTDIR},
+    {"LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT},
+    {"LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT},
+    {"LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab"},
+    {"LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT},
+    {"LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab"},
+    {"LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT},
+    {"LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab"}};
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
@@ -142,7 +137,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
+	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 
@@ -158,8 +153,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		}
 	}
 
-	char const *const init_argv[] = { init, NULL };
-	execve(init, (char * const *)init_argv, environ);
+	char const *const init_argv[] = {init, NULL};
+	execve(init, (char *const *)init_argv, environ);
 	perror("execve");
 
 	return EXIT_FAILURE;

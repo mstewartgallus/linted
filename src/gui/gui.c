@@ -60,11 +60,7 @@
 	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
 	 XCB_EVENT_MASK_POINTER_MOTION)
 
-enum {
-	ON_RECEIVE_UPDATE,
-	ON_SENT_CONTROL,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_UPDATE, ON_SENT_CONTROL, MAX_TASKS };
 
 struct controller_data
 {
@@ -137,27 +133,26 @@ struct gui_controller_task
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
 
-static EGLint const attr_list[] = { EGL_RED_SIZE,     5,             /*  */
-	                            EGL_GREEN_SIZE,   6,             /*  */
-	                            EGL_BLUE_SIZE,    5,             /*  */
-	                            EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
-	                            EGL_DEPTH_SIZE,   16,            /*  */
-	                            EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
-	                            EGL_NONE,         EGL_NONE };
+static EGLint const attr_list[] = {EGL_RED_SIZE,     5,             /*  */
+                                   EGL_GREEN_SIZE,   6,             /*  */
+                                   EGL_BLUE_SIZE,    5,             /*  */
+                                   EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
+                                   EGL_DEPTH_SIZE,   16,            /*  */
+                                   EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
+                                   EGL_NONE,         EGL_NONE};
 
-static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
-	                               EGL_NONE,                   EGL_NONE };
+static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
+                                      EGL_NONE, EGL_NONE};
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-gui",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = &seccomp_filter
-};
+    .canonical_process_name = PACKAGE_NAME "-gui",
+    .kos_size = LINTED_ARRAY_SIZE(kos),
+    .kos = kos,
+    .seccomp_bpf = &seccomp_filter};
 
-static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
+static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0};
 
-static struct timespec const sleep_time = { .tv_sec = 0, .tv_nsec = 100000000 };
+static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 100000000};
 
 static linted_error on_input_event(XEvent *event,
                                    struct on_input_event_args args);
@@ -214,15 +209,15 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	linted_controller controller = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct window_model window_model = { .width = 640,
-		                             .height = 480,
-		                             .viewable = true,
+	struct window_model window_model = {.width = 640,
+	                                    .height = 480,
+	                                    .viewable = true,
 
-		                             /* Do the initial resize */
-		                             .resize_pending = true };
+	                                    /* Do the initial resize */
+	                                    .resize_pending = true};
 
-	struct controller_data controller_data = { 0 };
-	struct sim_model sim_model = { 0 };
+	struct controller_data controller_data = {0};
+	struct sim_model sim_model = {0};
 
 	Display *input_display = XOpenDisplay(NULL);
 	if (NULL == input_display) {
@@ -479,12 +474,11 @@ reopen_graphics_context:
 
 			bool time_to_quit;
 			struct on_input_event_args args = {
-				.input_conn = input_conn,
-				.window = window,
-				.window_model = &window_model,
-				.controller_data = &controller_data,
-				.time_to_quit = &time_to_quit
-			};
+			    .input_conn = input_conn,
+			    .window = window,
+			    .window_model = &window_model,
+			    .controller_data = &controller_data,
+			    .time_to_quit = &time_to_quit};
 			errnum = on_input_event(&event, args);
 			if (errnum != 0)
 				goto cleanup_gl;
@@ -502,10 +496,9 @@ reopen_graphics_context:
 			XNextEvent(draw_display, &event);
 
 			bool time_to_quit;
-			struct on_gui_event_args args = { .window_model =
-				                              &window_model,
-				                          .time_to_quit =
-				                              &time_to_quit };
+			struct on_gui_event_args args = {
+			    .window_model = &window_model,
+			    .time_to_quit = &time_to_quit};
 			errnum = on_gui_event(&event, args);
 			if (errnum != 0)
 				goto cleanup_gl;
@@ -674,68 +667,66 @@ close_input_display:
 	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
 static struct sock_filter const real_filter[] = {
-	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, nr)),
-	/*  */ ALLOW(access),
-	/*  */ ALLOW(arch_prctl),
-	/*  */ ALLOW(brk),
-	/*  */ ALLOW(chdir),
-	/*  */ ALLOW(clock_nanosleep),
-	/*  */ ALLOW(clone),
-	/*  */ ALLOW(close),
-	/*  */ ALLOW(connect),
-	/*  */ ALLOW(dup2),
-	/*  */ ALLOW(execve),
-	/*  */ ALLOW(exit),
-	/*  */ ALLOW(exit_group),
-	/*  */ ALLOW(fcntl),
-	/*  */ ALLOW(fstat),
-	/*  */ ALLOW(futex),
-	/*  */ ALLOW(getdents),
-	/*  */ ALLOW(getegid),
-	/*  */ ALLOW(geteuid),
-	/*  */ ALLOW(getgid),
-	/*  */ ALLOW(getpeername),
-	/*  */ ALLOW(getpid),
-	/*  */ ALLOW(getrlimit),
-	/*  */ ALLOW(gettid),
-	/*  */ ALLOW(getuid),
-	/*  */ ALLOW(ioctl),
-	/*  */ ALLOW(lseek),
-	/*  */ ALLOW(madvise),
-	/*  */ ALLOW(mincore),
-	/*  */ ALLOW(mmap),
-	/*  */ ALLOW(mprotect),
-	/*  */ ALLOW(mq_timedreceive),
-	/*  */ ALLOW(mq_timedsend),
-	/*  */ ALLOW(munmap),
-	/*  */ ALLOW(open),
-	/*  */ ALLOW(openat),
-	/*  */ ALLOW(poll),
-	/*  */ ALLOW(prctl),
-	/*  */ ALLOW(read),
-	/*  */ ALLOW(recvfrom),
-	/*  */ ALLOW(restart_syscall),
-	/*  */ ALLOW(rt_sigaction),
-	/*  */ ALLOW(rt_sigprocmask),
-	/*  */ ALLOW(sched_getaffinity),
-	/*  */ ALLOW(setrlimit),
-	/*  */ ALLOW(set_robust_list),
-	/*  */ ALLOW(set_tid_address),
-	/*  */ ALLOW(shutdown),
-	/*  */ ALLOW(socket),
-	/*  */ ALLOW(stat),
-	/*  */ ALLOW(tgkill),
-	/*  */ ALLOW(uname),
-	/*  */ ALLOW(write),
-	/*  */ ALLOW(writev),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
+    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                    offsetof(struct seccomp_data, nr)),
+    /*  */ ALLOW(access),
+    /*  */ ALLOW(arch_prctl),
+    /*  */ ALLOW(brk),
+    /*  */ ALLOW(chdir),
+    /*  */ ALLOW(clock_nanosleep),
+    /*  */ ALLOW(clone),
+    /*  */ ALLOW(close),
+    /*  */ ALLOW(connect),
+    /*  */ ALLOW(dup2),
+    /*  */ ALLOW(execve),
+    /*  */ ALLOW(exit),
+    /*  */ ALLOW(exit_group),
+    /*  */ ALLOW(fcntl),
+    /*  */ ALLOW(fstat),
+    /*  */ ALLOW(futex),
+    /*  */ ALLOW(getdents),
+    /*  */ ALLOW(getegid),
+    /*  */ ALLOW(geteuid),
+    /*  */ ALLOW(getgid),
+    /*  */ ALLOW(getpeername),
+    /*  */ ALLOW(getpid),
+    /*  */ ALLOW(getrlimit),
+    /*  */ ALLOW(gettid),
+    /*  */ ALLOW(getuid),
+    /*  */ ALLOW(ioctl),
+    /*  */ ALLOW(lseek),
+    /*  */ ALLOW(madvise),
+    /*  */ ALLOW(mincore),
+    /*  */ ALLOW(mmap),
+    /*  */ ALLOW(mprotect),
+    /*  */ ALLOW(mq_timedreceive),
+    /*  */ ALLOW(mq_timedsend),
+    /*  */ ALLOW(munmap),
+    /*  */ ALLOW(open),
+    /*  */ ALLOW(openat),
+    /*  */ ALLOW(poll),
+    /*  */ ALLOW(prctl),
+    /*  */ ALLOW(read),
+    /*  */ ALLOW(recvfrom),
+    /*  */ ALLOW(restart_syscall),
+    /*  */ ALLOW(rt_sigaction),
+    /*  */ ALLOW(rt_sigprocmask),
+    /*  */ ALLOW(sched_getaffinity),
+    /*  */ ALLOW(setrlimit),
+    /*  */ ALLOW(set_robust_list),
+    /*  */ ALLOW(set_tid_address),
+    /*  */ ALLOW(shutdown),
+    /*  */ ALLOW(socket),
+    /*  */ ALLOW(stat),
+    /*  */ ALLOW(tgkill),
+    /*  */ ALLOW(uname),
+    /*  */ ALLOW(write),
+    /*  */ ALLOW(writev),
+    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)};
 
 static struct sock_fprog const seccomp_filter = {
-	.len = LINTED_ARRAY_SIZE(real_filter),
-	.filter = (struct sock_filter *)real_filter
-};
+    .len = LINTED_ARRAY_SIZE(real_filter),
+    .filter = (struct sock_filter *)real_filter};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
@@ -1260,27 +1251,24 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		/* Rotate the camera */
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
-		GLfloat const y_rotation_matrix[][4U] = {
-			{ 1, 0, 0, 0 },
-			{ 0, cos_y, -sin_y, 0 },
-			{ 0, sin_y, cos_y, 0 },
-			{ 0, 0, 0, 1 }
-		};
+		GLfloat const y_rotation_matrix[][4U] = {{1, 0, 0, 0},
+		                                         {0, cos_y, -sin_y, 0},
+		                                         {0, sin_y, cos_y, 0},
+		                                         {0, 0, 0, 1}};
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		GLfloat const x_rotation_matrix[][4U] = {
-			{ cos_x, 0, sin_x, 0 },
-			{ 0, 1, 0, 0 },
-			{ -sin_x, 0, cos_x, 0 },
-			{ 0, 0, 0, 1 }
-		};
+		GLfloat const x_rotation_matrix[][4U] = {{cos_x, 0, sin_x, 0},
+		                                         {0, 1, 0, 0},
+		                                         {-sin_x, 0, cos_x, 0},
+		                                         {0, 0, 0, 1}};
 
 		/* Translate the camera */
-		GLfloat const camera[][4U] = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
-			                       { 0, 0, 1, 0 },
-			                       { x_position, y_position,
-				                 z_position, 1 } };
+		GLfloat const camera[][4U] = {
+		    {1, 0, 0, 0},
+		    {0, 1, 0, 0},
+		    {0, 0, 1, 0},
+		    {x_position, y_position, z_position, 1}};
 
 		GLfloat aspect =
 		    window_model->width / (GLfloat)window_model->height;
@@ -1290,13 +1278,12 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		double far = 1000;
 		double near = 1;
 
-		GLfloat const projection[][4U] = { { d / aspect, 0, 0, 0 },
-			                           { 0, d, 0, 0 },
-			                           { 0, 0, (far + near) /
-				                               (near - far),
-				                     2 * far * near /
-				                         (near - far) },
-			                           { 0, 0, -1, 0 } };
+		GLfloat const projection[][4U] = {
+		    {d / aspect, 0, 0, 0},
+		    {0, d, 0, 0},
+		    {0, 0, (far + near) / (near - far),
+		     2 * far * near / (near - far)},
+		    {0, 0, -1, 0}};
 
 		GLfloat rotations[4U][4U];
 		GLfloat model_view[4U][4U];
@@ -1489,10 +1476,7 @@ static linted_error get_mouse_position(xcb_connection_t *draw_conn,
 	return 0;
 }
 
-static double square(double x)
-{
-	return x * x;
-}
+static double square(double x) { return x * x; }
 
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *error)

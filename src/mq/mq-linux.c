@@ -269,7 +269,7 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 
 static linted_error poll_one(linted_ko ko, short events, short *revents)
 {
-	struct pollfd pollfd = { .fd = ko, .events = events };
+	struct pollfd pollfd = {.fd = ko, .events = events};
 	if (-1 == poll(&pollfd, 1U, -1)) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
