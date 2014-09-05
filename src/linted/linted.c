@@ -38,10 +38,31 @@ enum {
 	VERSION_OPTION
 };
 
+static char const *const argstrs[] = {[HELP] = "--help",
+	                              [VERSION_OPTION] = "--version" };
+
+struct envvar
+{
+	char const *key;
+	char const *value;
+};
+
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-linted",
 	.kos_size = 0U,
 	.kos = NULL
+};
+
+static struct envvar const default_envvars[] = {
+	{ "LINTED_UNIT_PATH", PKGDEFAULTUNITSDIR },
+	{ "LINTED_CHROOT", CHROOTDIR },
+	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
+	{ "LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT },
+	{ "LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab" },
+	{ "LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT },
+	{ "LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab" },
+	{ "LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT },
+	{ "LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab" }
 };
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
@@ -52,51 +73,12 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	if (-1 == setenv("LINTED_UNIT_PATH", PKGDEFAULTUNITSDIR, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_CHROOT", CHROOTDIR, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 ==
-	    setenv("LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 == setenv("LINTED_LOGGER_FSTAB",
-	                 PKGDEFAULTCONFDIR "/logger-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT, false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 ==
-	    setenv("LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == setenv("LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT,
-	                 false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
-	}
-	if (-1 == setenv("LINTED_SIMULATOR_FSTAB",
-	                 PKGDEFAULTCONFDIR "/simulator-fstab", false)) {
-		perror("setenv");
-		return EXIT_FAILURE;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
+		struct envvar const *envvar = &default_envvars[ii];
+		if (-1 == setenv(envvar->key, envvar->value, false)) {
+			perror("setenv");
+			return EXIT_FAILURE;
+		}
 	}
 
 	char const *init = getenv("LINTED_INIT");
@@ -109,13 +91,10 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	for (size_t ii = 1U; ii < argc; ++ii) {
 		char const *argument = argv[ii];
 
-		static char const *const arguments[] =
-		    {[HELP] = "--help", [VERSION_OPTION] = "--version" };
-
 		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(arguments); ++jj) {
-			if (0 == strncmp(argument, arguments[jj],
-			                 strlen(arguments[jj]))) {
+		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+			if (0 == strncmp(argument, argstrs[jj],
+			                 strlen(argstrs[jj]))) {
 				arg = jj;
 				break;
 			}
@@ -128,13 +107,13 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			break;
 
 		case HELP:
-			if (argument[strlen(arguments[HELP])] != '\0')
+			if (argument[strlen(argstrs[HELP])] != '\0')
 				goto bad_argument;
 			need_help = true;
 			break;
 
 		case VERSION_OPTION:
-			if (argument[strlen(arguments[VERSION_OPTION])] != '\0')
+			if (argument[strlen(argstrs[VERSION_OPTION])] != '\0')
 				goto bad_argument;
 			need_version = true;
 			break;
@@ -162,10 +141,21 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	fcntl(STDIN_FILENO, F_SETFD, 0L);
-	fcntl(STDOUT_FILENO, F_SETFD, 0L);
-	fcntl(STDERR_FILENO, F_SETFD, 0L);
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
+		linted_ko ko = stdfiles[ii];
 
+		int flags = fcntl(ko, F_GETFD);
+		if (-1 == flags) {
+			perror("fcntl");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == fcntl(ko, F_SETFD, (long)flags & !FD_CLOEXEC)) {
+			perror("fcntl");
+			return EXIT_FAILURE;
+		}
+	}
 	execve(init, (char * const *)argv, environ);
 	perror("execve");
 
