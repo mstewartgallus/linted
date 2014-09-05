@@ -210,7 +210,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	{
 		int xx;
 		errnum = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &xx);
-		if (0 == errnum) {
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
@@ -220,7 +220,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
 
 	errnum = pthread_setcancelstate(oldstate, NULL);
-	if (0 == errnum) {
+	if (errnum != 0) {
 		assert(errnum != EINVAL);
 		assert(false);
 	}
