@@ -106,14 +106,11 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return info.si_status;
 	}
 
-	/* Stupidly, uid_map and gid_map aren't writable in these when
-	 * the binary is not dumpable.
+	/* Note that writing to uid_map and gid_map will fail if the
+	 * binary is not dumpable.  DON'T set the process dumpable and
+	 * fail it is nondumpable as presumably the invoker of the
+	 * process had good reasons to have the process nondumpable.
 	 */
-	if (-1 == prctl(PR_SET_DUMPABLE, 1L, 0L, 0L, 0L)) {
-		perror("prctl");
-		return EXIT_FAILURE;
-	}
-
 	{
 		linted_ko file;
 		{
