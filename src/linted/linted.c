@@ -157,7 +157,9 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 	}
-	execve(init, (char * const *)argv, environ);
+
+	char const * const init_argv[] = {init, NULL};
+	execve(init, (char * const *)init_argv, environ);
 	perror("execve");
 
 	return EXIT_FAILURE;
