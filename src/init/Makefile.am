@@ -32,6 +32,5 @@ pkglibexec_PROGRAMS+=%D%/init
   \
   src/admin/libadmin.la\
   src/controller/libcontroller.la\
-  src/db/libdb.la\
   src/log/liblog.la\
   src/updater/libupdater.la

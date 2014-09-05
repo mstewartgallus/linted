@@ -22,7 +22,6 @@
 #include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/controller.h"
-#include "linted/db.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -205,8 +204,6 @@ static linted_error drain_on_accepted_conn(struct linted_asynch_task *task);
 static linted_error drain_on_read_conn(struct linted_asynch_task *task);
 static linted_error drain_on_wrote_conn(struct linted_asynch_task *task);
 
-static linted_error check_db(linted_ko cwd);
-
 static linted_error conn_pool_create(struct conn_pool **poolp);
 static linted_error conn_pool_destroy(struct conn_pool *pool);
 static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
@@ -269,13 +266,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
-	errnum = check_db(cwd);
-	if (errnum != 0) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: database: %s\n", process_name,
-		                       linted_error_string(errnum));
-		return EXIT_FAILURE;
-	}
 	struct unit_conf **unit_confs;
 	size_t unit_confs_size;
 	{
@@ -1483,106 +1473,6 @@ static linted_error drain_on_read_conn(struct linted_asynch_task *task)
 static linted_error drain_on_wrote_conn(struct linted_asynch_task *task)
 {
 	return task->errnum;
-}
-
-static linted_error check_db(linted_ko cwd)
-{
-	enum {
-		TMP_WRITE_FINISHED
-	};
-
-	linted_error errnum;
-
-	struct linted_asynch_pool *pool;
-	{
-		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, 1U);
-		if (errnum != 0)
-			return errnum;
-		pool = xx;
-	}
-
-	linted_db my_db;
-	{
-		/**
-		 * @todo Place the database according to the XDG base
-		 *       directory specification.
-		 */
-		linted_db xx;
-		errnum = linted_db_open(&xx, cwd, "linted-db", LINTED_DB_CREAT);
-		if (errnum != 0)
-			goto destroy_pool;
-		my_db = xx;
-	}
-
-	{
-		linted_ko tmp;
-		char *path;
-		{
-			linted_ko xx;
-			char *yy;
-			errnum = linted_db_temp_file(my_db, &xx, &yy);
-			if (errnum != 0)
-				goto close_db;
-			tmp = xx;
-			path = yy;
-		}
-
-		static char const hello[] = "Hello anybody!";
-		char const *data = hello;
-		size_t data_size = sizeof hello - 1U;
-
-		struct linted_ko_task_write write_task;
-
-		linted_ko_task_write(&write_task, TMP_WRITE_FINISHED, tmp, data,
-		                     data_size);
-		linted_asynch_pool_submit(pool, LINTED_UPCAST(&write_task));
-
-		struct linted_asynch_task *completed_task;
-		{
-			struct linted_asynch_task *xx;
-			linted_asynch_pool_wait(pool, &xx);
-			completed_task = xx;
-		}
-
-		if ((errnum = completed_task->errnum) != 0)
-			goto close_tmp;
-
-		switch (completed_task->task_action) {
-		case TMP_WRITE_FINISHED:
-			goto done_writing;
-
-		default:
-			LINTED_ASSUME_UNREACHABLE();
-		}
-
-	done_writing:
-		errnum = linted_db_temp_send(my_db, path, "hello");
-		if (errnum != 0)
-			goto close_tmp;
-
-	close_tmp:
-		linted_mem_free(path);
-
-		linted_error close_errnum = linted_ko_close(tmp);
-		if (0 == errnum)
-			errnum = close_errnum;
-	}
-
-close_db : {
-	linted_error close_errnum = linted_db_close(my_db);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
-destroy_pool:
-	linted_asynch_pool_stop(pool);
-
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
-
-	return errnum;
 }
 
 struct conn_pool
