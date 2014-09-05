@@ -264,7 +264,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 			return errnum;
 
 		linted_io_write_str(STDOUT_FILENO, NULL,
-		                    LINTED_STR("LINTED_SOCKET="));
+		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
 		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
@@ -608,7 +608,8 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 	if (NULL == exec_start)
 		return EINVAL;
 
-	if (no_new_privs != NULL && (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
+	if (no_new_privs != NULL &&
+	    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
 		return EINVAL;
 
 	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
@@ -635,10 +636,11 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		no_new_privs_value = xx;
 	}
 
-	static char const * default_envvars[] = { "LANG", "USER", "LOGNAME", "HOME",
-	                                          "SHELL",
-	                                          "XDG_RUNTIME_DIR"
-	                                          "XDG_SESSION_ID", "XDG_SEAT", "TERM" };
+	static char const *default_envvars[] = { "LANG", "USER", "LOGNAME",
+		                                 "HOME", "SHELL",
+		                                 "XDG_RUNTIME_DIR"
+		                                 "XDG_SESSION_ID",
+		                                 "XDG_SEAT", "TERM" };
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
 

@@ -265,10 +265,10 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	char const *path = getenv("LINTED_SOCKET");
+	char const *path = getenv("LINTED_ADMIN_SOCKET");
 	if (NULL == path) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: missing LINTED_SOCKET\n",
+		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
 		                                LINTED_STR("--help"));
@@ -278,7 +278,7 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	size_t path_len = strlen(path);
 	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_SOCKET is too long\n",
+		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
 		                       process_name);
 		return EXIT_FAILURE;
 	}
@@ -404,10 +404,10 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	char const *path = getenv("LINTED_SOCKET");
+	char const *path = getenv("LINTED_ADMIN_SOCKET");
 	if (NULL == path) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: missing LINTED_SOCKET\n",
+		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
 		                                LINTED_STR("--help"));
@@ -417,7 +417,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	size_t path_len = strlen(path);
 	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_SOCKET is too long\n",
+		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
 		                       process_name);
 		return EXIT_FAILURE;
 	}
@@ -568,10 +568,10 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	char const *path = getenv("LINTED_SOCKET");
+	char const *path = getenv("LINTED_ADMIN_SOCKET");
 	if (NULL == path) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: missing LINTED_SOCKET\n",
+		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
 		                                LINTED_STR("--help"));
@@ -581,7 +581,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	size_t path_len = strlen(path);
 	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
 		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_SOCKET is too long\n",
+		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
 		                       process_name);
 		return EXIT_FAILURE;
 	}
@@ -760,7 +760,7 @@ static linted_error reboot_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	    ko, NULL, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
 	if (errnum != 0)
 		return errnum;
 
@@ -840,7 +840,7 @@ static linted_error status_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	    ko, NULL, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
 	if (errnum != 0)
 		return errnum;
 
@@ -916,7 +916,7 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-	    ko, NULL, LINTED_STR("Usage: LINTED_SOCKET=SOCKET "));
+	    ko, NULL, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
 	if (errnum != 0)
 		return errnum;
 

@@ -148,7 +148,6 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr);
 }
 
-
 void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b)
 {
 	attr->no_new_privs = b;

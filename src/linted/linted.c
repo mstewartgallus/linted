@@ -158,7 +158,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		}
 	}
 
-	char const * const init_argv[] = {init, NULL};
+	char const *const init_argv[] = { init, NULL };
 	execve(init, (char * const *)init_argv, environ);
 	perror("execve");
 
