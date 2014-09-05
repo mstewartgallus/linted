@@ -128,7 +128,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(errnum != ECHILD);
-			LINTED_ASSUME_UNREACHABLE();
+			assert(false);
 		}
 		return info.si_status;
 	}

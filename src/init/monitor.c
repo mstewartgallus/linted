@@ -459,7 +459,7 @@ exit_services:
 		if (kill_errnum != ESRCH) {
 			assert(kill_errnum != EINVAL);
 			assert(kill_errnum != EPERM);
-			LINTED_ASSUME_UNREACHABLE();
+			assert(false);
 		}
 	}
 

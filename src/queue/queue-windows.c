@@ -123,7 +123,7 @@ void linted_queue_recv(struct linted_queue *queue,
 
 		if (!SleepConditionVariableCS(&queue->gains_member,
 		                              &queue->lock, INFINITE)) {
-			LINTED_ASSUME_UNREACHABLE();
+			assert(false);
 		}
 	}
 
