@@ -312,7 +312,10 @@ void conf_put(struct conf *unit)
 	free(unit);
 }
 
-char const *conf_peek_name(struct conf *unit) { return unit->name; }
+char const *conf_peek_name(struct conf *unit)
+{
+	return unit->name;
+}
 
 linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
                               char *section_name)

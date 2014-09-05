@@ -262,7 +262,10 @@ It is insecure to run a game as root!\n"));
 	return linted_start(process_name, argc, (char const *const *)argv);
 }
 
-static bool is_open(linted_ko ko) { return fcntl(ko, F_GETFD) != -1; }
+static bool is_open(linted_ko ko)
+{
+	return fcntl(ko, F_GETFD) != -1;
+}
 
 static void sort_kos(linted_ko *kos, size_t size)
 {

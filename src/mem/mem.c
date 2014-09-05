@@ -137,4 +137,7 @@ linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
 	return 0;
 }
 
-void linted_mem_free(void *memory) { free(memory); }
+void linted_mem_free(void *memory)
+{
+	free(memory);
+}

@@ -1476,7 +1476,10 @@ static linted_error get_mouse_position(xcb_connection_t *draw_conn,
 	return 0;
 }
 
-static double square(double x) { return x * x; }
+static double square(double x)
+{
+	return x * x;
+}
 
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *error)

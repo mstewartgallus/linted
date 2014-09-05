@@ -81,7 +81,10 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 	return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko *kop) { return ENOSYS; }
+linted_error linted_ko_dummy(linted_ko *kop)
+{
+	return ENOSYS;
+}
 
 /**
  * @bug dirko is not respected.
