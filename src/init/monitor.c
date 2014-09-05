@@ -21,6 +21,7 @@
 
 #include "linted/admin.h"
 #include "linted/asynch.h"
+#include "linted/conf.h"
 #include "linted/controller.h"
 #include "linted/error.h"
 #include "linted/io.h"
@@ -124,7 +125,6 @@ struct read_conn_task
 	struct conn_pool *conn_pool;
 	struct conn *conn;
 	struct units const *units;
-	union unit_config const *config;
 };
 
 struct wrote_conn_task
@@ -143,42 +143,17 @@ struct conn
 	bool is_free : 1U;
 };
 
-struct unit_conf;
-struct unit_conf_section;
-struct unit_conf_setting;
-
 static linted_error process_units_in_path(char const *unit_path,
-                                          struct unit_conf ***unitsp,
-                                          size_t *sizep);
+                                          struct conf ***unitsp, size_t *sizep);
 
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 
-static linted_error parse_unit_file(struct unit_conf **unitp, FILE *unitfile,
-                                    enum unit_type type, char const *name);
-
-static linted_error unit_create(struct unit_conf **unitp, enum unit_type type,
-                                char const *name);
-
-static void unit_conf_put(struct unit_conf *unit);
-
-static enum unit_type unit_conf_type(struct unit_conf *unit);
-static char const *unit_conf_peek_name(struct unit_conf *unit);
-
-static char const *const *
-unit_conf_find(struct unit_conf *unit, char const *section, char const *field);
-
-static linted_error unit_conf_add_section(struct unit_conf *unit,
-                                          struct unit_conf_section **sectionp,
-                                          char *section_name);
-
-static linted_error unit_conf_add_setting(struct unit_conf_section *section,
-                                          char *field,
-                                          char const *const *value);
-
-static linted_error create_socket(linted_ko *kop, struct unit_conf *unit);
+static linted_error parse_unit_file(struct conf **unitp, FILE *unitfile,
+                                    char const *file_name);
+static linted_error create_socket(linted_ko *kop, struct conf *unit);
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
-                                  struct unit_conf *unit, linted_ko cwd,
+                                  struct conf *unit, linted_ko cwd,
                                   char const *chrootdir,
                                   struct units const *units);
 
@@ -266,10 +241,10 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
-	struct unit_conf **unit_confs;
-	size_t unit_confs_size;
+	struct conf **confs;
+	size_t confs_size;
 	{
-		struct unit_conf **xx;
+		struct conf **xx;
 		size_t yy;
 		errnum = process_units_in_path(unit_path, &xx, &yy);
 		if (errnum != 0) {
@@ -277,41 +252,62 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 			perror("process_units_in_path");
 			return EXIT_FAILURE;
 		}
-		unit_confs = xx;
-		unit_confs_size = yy;
+		confs = xx;
+		confs_size = yy;
 	}
 
 	struct units *units;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(
-		    &xx,
-		    sizeof *units + unit_confs_size * sizeof units->list[0U]);
+		    &xx, sizeof *units + confs_size * sizeof units->list[0U]);
 		if (errnum != 0) {
 			errno = errnum;
 			perror("linted_mem_alloc");
 			return EXIT_FAILURE;
 		}
 		units = xx;
-		units->size = unit_confs_size;
+		units->size = confs_size;
 	}
 
-	for (size_t ii = 0U; ii < unit_confs_size; ++ii) {
+	for (size_t ii = 0U; ii < confs_size; ++ii) {
 		union unit *unit = &units->list[ii];
-		struct unit_conf *unit_conf = unit_confs[ii];
+		struct conf *conf = confs[ii];
 
-		enum unit_type type = unit_conf_type(unit_conf);
+		char const *file_name = conf_peek_name(conf);
 
-		unit->type = type;
+		char const *dot = strchr(file_name, '.');
 
-		switch (type) {
+		char const *suffix = dot + 1U;
+
+		char *unit_name = strndup(file_name, dot - file_name);
+		if (NULL == unit_name) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		enum unit_type unit_type;
+		if (0 == strcmp(suffix, "socket")) {
+			unit_type = UNIT_TYPE_SOCKET;
+		} else if (0 == strcmp(suffix, "service")) {
+			unit_type = UNIT_TYPE_SERVICE;
+		} else {
+			linted_io_write_str(
+			    STDOUT_FILENO, NULL,
+			    LINTED_STR("invalid unit file name\n"));
+			return EXIT_FAILURE;
+		}
+
+		unit->type = unit_type;
+		switch (unit_type) {
 		case UNIT_TYPE_SERVICE:
-			unit->service.name = unit_conf_peek_name(unit_conf);
+			unit->service.name = unit_name;
 			unit->service.pid = -1;
 			break;
 
 		case UNIT_TYPE_SOCKET:
-			unit->socket.name = unit_conf_peek_name(unit_conf);
+			unit->socket.name = unit_name;
 			unit->socket.is_open = false;
 			break;
 		}
@@ -350,16 +346,16 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct unit_conf *unit_conf = unit_confs[ii];
-		if (unit_conf_type(unit_conf) != UNIT_TYPE_SOCKET)
-			continue;
-
+		struct conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
+
+		if (unit->type != UNIT_TYPE_SOCKET)
+			continue;
 
 		linted_ko ko;
 		{
 			linted_ko xx;
-			errnum = create_socket(&xx, unit_conf);
+			errnum = create_socket(&xx, conf);
 			if (errnum != 0)
 				goto drain_dispatches;
 			ko = xx;
@@ -372,19 +368,18 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	pid_t halt_pid = -1;
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct unit_conf *unit_conf = unit_confs[ii];
-		if (unit_conf_type(unit_conf) != UNIT_TYPE_SERVICE)
-			continue;
-
+		struct conf *conf = confs[ii];
 		struct unit_service *unit = &units->list[ii].service;
+		if (unit->type != UNIT_TYPE_SERVICE)
+			continue;
 
 		pid_t process;
 		bool halt_after_exit;
 		{
 			pid_t xx;
 			bool yy;
-			errnum = spawn_process(&xx, &yy, unit_conf, cwd,
-			                       chrootdir, units);
+			errnum = spawn_process(&xx, &yy, conf, cwd, chrootdir,
+			                       units);
 			if (errnum != 0)
 				goto exit_services;
 			process = xx;
@@ -485,9 +480,9 @@ exit_services:
 			errnum = close_errnum;
 	}
 
-	for (size_t ii = 0U; ii < unit_confs_size; ++ii)
-		unit_conf_put(unit_confs[ii]);
-	free(unit_confs);
+	for (size_t ii = 0U; ii < confs_size; ++ii)
+		conf_put(confs[ii]);
+	free(confs);
 
 	if (errnum != 0) {
 		linted_io_write_format(STDERR_FILENO, NULL,
@@ -500,18 +495,18 @@ exit_services:
 	return EXIT_SUCCESS;
 }
 
-static linted_error create_socket(linted_ko *kop, struct unit_conf *unit)
+static linted_error create_socket(linted_ko *kop, struct conf *unit)
 {
 	linted_error errnum;
 
 	char const *const *name =
-	    unit_conf_find(unit, "Socket", "ListenMessageQueue");
+	    conf_find(unit, "Socket", "ListenMessageQueue");
 	char const *const *maxmsgs =
-	    unit_conf_find(unit, "Socket", "MessageQueueMaxMessages");
+	    conf_find(unit, "Socket", "MessageQueueMaxMessages");
 	char const *const *msgsize =
-	    unit_conf_find(unit, "Socket", "MessageQueueMessageSize");
+	    conf_find(unit, "Socket", "MessageQueueMessageSize");
 	char const *const *temp =
-	    unit_conf_find(unit, "Socket", "X-Linted-Temporary");
+	    conf_find(unit, "Socket", "X-Linted-Temporary");
 
 	if (NULL == name || NULL == name[0U] || name[1U] != NULL)
 		return EINVAL;
@@ -572,25 +567,22 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
-                                  struct unit_conf *conf, linted_ko cwd,
+                                  struct conf *conf, linted_ko cwd,
                                   char const *chrootdir,
                                   struct units const *units)
 {
 	linted_error errnum = 0;
 
-	char const *const *type = unit_conf_find(conf, "Service", "Type");
-	char const *const *exec_start =
-	    unit_conf_find(conf, "Service", "ExecStart");
+	char const *const *type = conf_find(conf, "Service", "Type");
+	char const *const *exec_start = conf_find(conf, "Service", "ExecStart");
 	char const *const *no_new_privs =
-	    unit_conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *files =
-	    unit_conf_find(conf, "Service", "X-Linted-Files");
-	char const *const *fstab =
-	    unit_conf_find(conf, "Service", "X-Linted-Fstab");
+	    conf_find(conf, "Service", "NoNewPrivileges");
+	char const *const *files = conf_find(conf, "Service", "X-Linted-Files");
+	char const *const *fstab = conf_find(conf, "Service", "X-Linted-Fstab");
 	char const *const *env_whitelist =
-	    unit_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
+	    conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 	char const *const *halt_after_exit =
-	    unit_conf_find(conf, "Service", "X-Linted-Halt-After-Exit");
+	    conf_find(conf, "Service", "X-Linted-Halt-After-Exit");
 
 	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
 		return EINVAL;
@@ -1658,12 +1650,11 @@ free_result_envvars:
 }
 
 static linted_error process_units_in_path(char const *unit_path,
-                                          struct unit_conf ***unitsp,
-                                          size_t *sizep)
+                                          struct conf ***unitsp, size_t *sizep)
 {
 	linted_ko errnum = 0;
 
-	struct unit_conf **units = NULL;
+	struct conf **units = NULL;
 	size_t units_size = 0U;
 
 	char const *dirstart = unit_path;
@@ -1745,37 +1736,12 @@ static linted_error process_units_in_path(char const *unit_path,
 		for (size_t ii = 0U; ii < files_count; ++ii) {
 			char const *file_name = files[ii];
 
-			char const *dot = strchr(file_name, '.');
-			if (NULL == dot) {
-				errnum = EINVAL;
-				goto free_file_names;
-			}
-
-			char *unit_name = strndup(file_name, dot - file_name);
-			if (NULL == unit_name) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_file_names;
-			}
-
-			char const *suffix = dot + 1U;
-
-			enum unit_type unit_conf_type;
-			if (0 == strcmp(suffix, "socket")) {
-				unit_conf_type = UNIT_TYPE_SOCKET;
-			} else if (0 == strcmp(suffix, "service")) {
-				unit_conf_type = UNIT_TYPE_SERVICE;
-			} else {
-				errnum = EINVAL;
-				goto free_unit_name;
-			}
-
 			linted_ko unit_fd =
 			    openat(dirfd(units_dir), file_name, O_RDONLY);
 			if (-1 == unit_fd) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
-				goto free_unit_name;
+				goto free_file_names;
 			}
 
 			FILE *unit_file = fdopen(unit_fd, "r");
@@ -1785,14 +1751,14 @@ static linted_error process_units_in_path(char const *unit_path,
 
 				close(unit_fd);
 
-				goto free_unit_name;
+				goto free_file_names;
 			}
 
-			struct unit_conf *unit = NULL;
+			struct conf *unit = NULL;
 			{
-				struct unit_conf *xx;
-				errnum = parse_unit_file(
-				    &xx, unit_file, unit_conf_type, unit_name);
+				struct conf *xx;
+				errnum =
+				    parse_unit_file(&xx, unit_file, file_name);
 				if (errnum != 0) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
@@ -1813,7 +1779,7 @@ static linted_error process_units_in_path(char const *unit_path,
 				goto free_unit;
 
 			size_t new_units_size = units_size + 1U;
-			struct unit_conf **new_units =
+			struct conf **new_units =
 			    realloc(units, new_units_size * sizeof units[0U]);
 			if (NULL == new_units) {
 				errnum = errno;
@@ -1827,10 +1793,7 @@ static linted_error process_units_in_path(char const *unit_path,
 
 		free_unit:
 			if (errnum != 0)
-				unit_conf_put(unit);
-
-		free_unit_name:
-			free(unit_name);
+				conf_put(unit);
 		}
 
 	free_file_names:
@@ -1856,7 +1819,7 @@ static linted_error process_units_in_path(char const *unit_path,
 free_units:
 	if (errnum != 0) {
 		for (size_t ii = 0U; ii < units_size; ++ii)
-			unit_conf_put(units[ii]);
+			conf_put(units[ii]);
 		free(units);
 	} else {
 		*unitsp = units;
@@ -1866,24 +1829,24 @@ free_units:
 	return errnum;
 }
 
-static linted_error parse_unit_file(struct unit_conf **unitp, FILE *unit_file,
-                                    enum unit_type type, char const *name)
+static linted_error parse_unit_file(struct conf **unitp, FILE *unit_file,
+                                    char const *name)
 {
 	linted_error errnum = 0;
 
 	char *line_buffer = NULL;
 	size_t line_capacity = 0U;
 
-	struct unit_conf *unit;
+	struct conf *unit;
 	{
-		struct unit_conf *xx;
-		errnum = unit_create(&xx, type, name);
+		struct conf *xx;
+		errnum = conf_create(&xx, name);
 		if (errnum != 0)
 			return errnum;
 		unit = xx;
 	}
 
-	struct unit_conf_section *current_section = NULL;
+	struct conf_section *current_section = NULL;
 
 	for (;;) {
 		size_t line_size;
@@ -1934,9 +1897,9 @@ static linted_error parse_unit_file(struct unit_conf **unitp, FILE *unit_file,
 			memcpy(section_name, line_buffer + 1U, line_size - 2U);
 
 			{
-				struct unit_conf_section *xx;
-				errnum = unit_conf_add_section(unit, &xx,
-				                               section_name);
+				struct conf_section *xx;
+				errnum =
+				    conf_add_section(unit, &xx, section_name);
 				if (0 == errnum)
 					current_section = xx;
 			}
@@ -2009,7 +1972,7 @@ static linted_error parse_unit_file(struct unit_conf **unitp, FILE *unit_file,
 			if (errnum != 0)
 				goto free_field;
 
-			errnum = unit_conf_add_setting(
+			errnum = conf_add_setting(
 			    current_section, field,
 			    (char const * const *)expr.we_wordv);
 
@@ -2029,383 +1992,12 @@ free_line_buffer:
 	free(line_buffer);
 
 	if (errnum != 0)
-		unit_conf_put(unit);
+		conf_put(unit);
 
 	if (0 == errnum)
 		*unitp = unit;
 
 	return errnum;
-}
-
-struct unit_conf_section_bucket
-{
-	size_t sections_size;
-	struct unit_conf_section *sections;
-};
-
-#define SECTION_BUCKETS_SIZE 1024U
-
-struct unit_conf
-{
-	char *name;
-	enum unit_type type;
-	unsigned long refcount;
-	struct unit_conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
-};
-
-struct unit_conf_setting_buckets;
-
-#define SETTING_BUCKETS_SIZE 1024U
-
-struct unit_conf_setting_bucket
-{
-	size_t settings_size;
-	struct unit_conf_setting *settings;
-};
-
-struct unit_conf_section
-{
-	unsigned long refcount;
-	char *name;
-	struct unit_conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
-};
-
-struct unit_conf_setting
-{
-	char *field;
-	char **value;
-};
-
-static size_t string_hash(char const *str);
-
-static linted_error unit_create(struct unit_conf **unitp, enum unit_type type,
-                                char const *name)
-{
-	linted_error errnum = 0;
-	struct unit_conf *unit;
-
-	char *name_copy = strdup(name);
-	if (NULL == name_copy) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	unit = malloc(sizeof *unit);
-	if (NULL == unit) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto free_name_copy;
-	}
-
-	unit->type = type;
-	unit->name = name_copy;
-	unit->refcount = 1;
-
-	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct unit_conf_section_bucket *bucket = &unit->buckets[ii];
-
-		bucket->sections_size = 0U;
-		bucket->sections = NULL;
-	}
-
-free_name_copy:
-	if (errnum != 0) {
-		free(name_copy);
-		return errnum;
-	}
-
-	*unitp = unit;
-
-	return 0;
-}
-
-static void unit_conf_put(struct unit_conf *unit)
-{
-	if (--unit->refcount != 0)
-		return;
-
-	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct unit_conf_section_bucket const *bucket =
-		    &unit->buckets[ii];
-
-		for (size_t jj = 0U; jj < bucket->sections_size; ++jj) {
-			struct unit_conf_section const *section =
-			    &bucket->sections[jj];
-
-			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-				struct unit_conf_setting_bucket const *
-				setting_bucket = &section->buckets[kk];
-
-				for (size_t ww = 0U;
-				     ww < setting_bucket->settings_size; ++ww) {
-					free(
-					    setting_bucket->settings[ww].field);
-					free(
-					    setting_bucket->settings[ww].value);
-				}
-
-				free(setting_bucket->settings);
-			}
-		}
-
-		free(bucket->sections);
-	}
-	free(unit->name);
-	free(unit);
-}
-
-static enum unit_type unit_conf_type(struct unit_conf *unit)
-{
-	return unit->type;
-}
-
-static char const *unit_conf_peek_name(struct unit_conf *unit)
-{
-	return unit->name;
-}
-
-static linted_error unit_conf_add_section(struct unit_conf *unit,
-                                          struct unit_conf_section **sectionp,
-                                          char *section_name)
-{
-	linted_error errnum;
-
-	struct unit_conf_section_bucket *buckets = unit->buckets;
-
-	struct unit_conf_section_bucket *bucket =
-	    &buckets[string_hash(section_name) % SECTION_BUCKETS_SIZE];
-
-	size_t sections_size = bucket->sections_size;
-	struct unit_conf_section *sections = bucket->sections;
-
-	bool have_found_field = false;
-	size_t found_field;
-	for (size_t ii = 0U; ii < sections_size; ++ii) {
-		if (0 == strcmp(sections[ii].name, section_name)) {
-			have_found_field = true;
-			found_field = ii;
-			break;
-		}
-	}
-
-	if (have_found_field) {
-		free(section_name);
-		*sectionp = &sections[found_field];
-	} else {
-		size_t new_sections_size = sections_size + 1U;
-		struct unit_conf_section *new_sections =
-		    realloc(sections, new_sections_size * sizeof sections[0U]);
-		if (NULL == new_sections) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		struct unit_conf_section *new_section =
-		    &new_sections[sections_size];
-
-		new_section->name = section_name;
-
-		for (size_t ii = 0U; ii < SETTING_BUCKETS_SIZE; ++ii) {
-			new_section->buckets[ii].settings_size = 0U;
-			new_section->buckets[ii].settings = NULL;
-		}
-
-		bucket->sections_size = new_sections_size;
-		bucket->sections = new_sections;
-
-		*sectionp = new_section;
-	}
-
-	return 0;
-}
-
-static char const *const *unit_conf_find(struct unit_conf *unit,
-                                         char const *section, char const *field)
-{
-	struct unit_conf_section *found_section;
-
-	{
-		struct unit_conf_section_bucket *buckets = unit->buckets;
-		struct unit_conf_section_bucket *bucket =
-		    &buckets[string_hash(section) % SECTION_BUCKETS_SIZE];
-
-		size_t sections_size = bucket->sections_size;
-		struct unit_conf_section *sections = bucket->sections;
-
-		bool have_found_section = false;
-		for (size_t ii = 0U; ii < sections_size; ++ii) {
-			if (0 == strcmp(sections[ii].name, section)) {
-				have_found_section = true;
-				found_section = &sections[ii];
-			}
-		}
-
-		if (!have_found_section)
-			return NULL;
-	}
-
-	struct unit_conf_setting_bucket *buckets = found_section->buckets;
-	struct unit_conf_setting_bucket *bucket =
-	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
-
-	size_t settings_size = bucket->settings_size;
-	struct unit_conf_setting *settings = bucket->settings;
-
-	struct unit_conf_setting *found_setting;
-	bool have_found_setting = false;
-	for (size_t ii = 0U; ii < settings_size; ++ii) {
-		if (0 == strcmp(settings[ii].field, field)) {
-			have_found_setting = true;
-			found_setting = &settings[ii];
-		}
-	}
-
-	if (!have_found_setting)
-		return NULL;
-
-	return (char const * const *)found_setting->value;
-}
-
-static linted_error unit_conf_add_setting(struct unit_conf_section *section,
-                                          char *field, char const *const *value)
-{
-	linted_error errnum;
-
-	struct unit_conf_setting_bucket *buckets = section->buckets;
-
-	struct unit_conf_setting_bucket *bucket =
-	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
-
-	size_t settings_size = bucket->settings_size;
-	struct unit_conf_setting *settings = bucket->settings;
-
-	bool have_found_field = false;
-	size_t found_field;
-	for (size_t ii = 0U; ii < settings_size; ++ii) {
-		if (0 == strcmp(settings[ii].field, field)) {
-			have_found_field = true;
-			found_field = ii;
-			break;
-		}
-	}
-
-	if (have_found_field) {
-		if (NULL == value[0U]) {
-			free(field);
-			free(settings[found_field].field);
-
-			char **values = settings[found_field].value;
-
-			for (size_t ii = 0U; values[ii] != NULL; ++ii)
-				free(values[ii]);
-
-			free(values);
-
-			bucket->settings_size = settings_size - 1U;
-			memcpy(bucket->settings + found_field,
-			       buckets->settings + found_field + 1U,
-			       (settings_size - 1U - found_field) *
-			           sizeof bucket->settings[0U]);
-		} else {
-			char **old_value = settings[found_field].value;
-
-			size_t old_value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == old_value[ii]) {
-					old_value_len = ii;
-					break;
-				}
-			}
-
-			size_t value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == value[ii]) {
-					value_len = ii;
-					break;
-				}
-			}
-
-			size_t new_value_len = old_value_len + value_len;
-
-			char **new_value =
-			    malloc((new_value_len + 1U) * sizeof value[0U]);
-			if (NULL == new_value) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				return errnum;
-			}
-
-			for (size_t ii = 0U; ii < old_value_len; ++ii)
-				new_value[ii] = old_value[ii];
-
-			for (size_t ii = 0U; ii < value_len; ++ii) {
-				char *copy = strdup(value[ii]);
-				if (NULL == copy) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-					for (; ii != 0; --ii)
-						free(new_value[ii - 1U]);
-
-					free(new_value);
-					return errnum;
-				}
-				new_value[old_value_len + ii] = copy;
-			}
-
-			new_value[new_value_len] = NULL;
-
-			free(settings[found_field].field);
-			free(old_value);
-
-			settings[found_field].field = field;
-			settings[found_field].value = new_value;
-		}
-	} else {
-		if (NULL == value[0U]) {
-			free(field);
-		} else {
-			size_t new_settings_size = settings_size + 1U;
-			struct unit_conf_setting *new_settings = realloc(
-			    settings, new_settings_size * sizeof settings[0U]);
-			if (NULL == new_settings) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				return errnum;
-			}
-
-			size_t value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == value[ii]) {
-					value_len = ii;
-					break;
-				}
-			}
-
-			char **value_copy =
-			    malloc((value_len + 1U) * sizeof value[0U]);
-			for (size_t ii = 0U; ii < value_len; ++ii)
-				value_copy[ii] = strdup(value[ii]);
-			value_copy[value_len] = NULL;
-
-			new_settings[settings_size].field = field;
-			new_settings[settings_size].value = value_copy;
-
-			bucket->settings_size = new_settings_size;
-			bucket->settings = new_settings;
-		}
-	}
-
-	return 0;
-}
-
-static size_t string_hash(char const *str)
-{
-	size_t hash = 0U;
-	for (size_t ii = 0U; str[ii] != '\0'; ++ii)
-		hash = hash * 31 + str[ii];
-	return hash;
 }
 
 static linted_error bool_from_cstring(char const *str, bool *boolp)
