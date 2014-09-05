@@ -23,10 +23,10 @@ bin_PROGRAMS+=%D%/linted
   src/locale/liblocale.la\
   src/start/libstart.la
 
-BUILT_SOURCES+=%D%/binaries.h
-EXTRA_DIST+=%D%/binaries.h.in
-MOSTLYCLEANFILES+=%D%/binaries.h
-%D%/binaries.h: Makefile %D%/binaries.h.in
+BUILT_SOURCES+=%D%/settings.h
+EXTRA_DIST+=%D%/settings.h.in
+MOSTLYCLEANFILES+=%D%/settings.h
+%D%/settings.h: Makefile %D%/settings.h.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
 	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
@@ -34,4 +34,4 @@ MOSTLYCLEANFILES+=%D%/binaries.h
 	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
 	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/%D%/binaries.h.in > $@
+	  $(srcdir)/%D%/settings.h.in > $@

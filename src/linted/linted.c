@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "binaries.h"
+#include "settings.h"
 
 #include "linted/io.h"
 #include "linted/locale.h"
