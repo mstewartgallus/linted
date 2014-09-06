@@ -20,6 +20,7 @@ AS_IF([test "x${enable_fast_build}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
         [-pipe]
+        [-fintegrated-as]       dnl Clang's integrated ASM is faster
 ])
 dnl
 ])
