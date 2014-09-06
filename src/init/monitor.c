@@ -64,24 +64,28 @@ enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
 
 enum unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
 
-struct unit_service
+struct unit_common
 {
 	enum unit_type type;
-	char const *name;
+	char *name;
+};
+
+struct unit_service
+{
+	struct unit_common common;
 	pid_t pid;
 };
 
 struct unit_socket
 {
-	enum unit_type type;
-	char const *name;
+	struct unit_common common;
 	linted_ko ko;
 	bool is_open : 1U;
 };
 
 union unit
 {
-	enum unit_type type;
+	struct unit_common common;
 	struct unit_service service;
 	struct unit_socket socket;
 };
@@ -136,6 +140,10 @@ struct conn
 	bool is_free : 1U;
 };
 
+static linted_error set_process_name(char const *name);
+static linted_error set_death_sig(int signum);
+static linted_error set_child_subreaper(bool value);
+
 static linted_error process_units_in_path(char const *unit_path,
                                           struct conf ***unitsp, size_t *sizep);
 
@@ -189,20 +197,24 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	static char const process_name[] = "monitor";
 
 	/* The process monitor and manager */
-	if (-1 ==
-	    prctl(PR_SET_NAME, (unsigned long)process_name, 0UL, 0UL, 0UL)) {
-		perror("prctl");
+	errnum = set_process_name(process_name);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_process_name");
 		return EXIT_FAILURE;
 	}
 
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)SIGKILL, 0UL, 0UL, 0UL)) {
-		perror("prctl");
+	errnum = set_death_sig(SIGKILL);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_death_sig");
 		return EXIT_FAILURE;
 	}
 
-	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, 1UL, 0UL, 0UL, 0UL)) {
-		perror("prctl");
+	errnum = set_child_subreaper(true);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_child_subreaper");
 		return EXIT_FAILURE;
 	}
 
@@ -211,11 +223,8 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	{
 		linted_admin xx;
 		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_admin_bind");
-			return EXIT_FAILURE;
-		}
+		if (errnum != 0)
+			goto exit_monitor;
 		admin = xx;
 	}
 
@@ -238,27 +247,22 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		struct conf **xx;
 		size_t yy;
 		errnum = process_units_in_path(unit_path, &xx, &yy);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("process_units_in_path");
-			return EXIT_FAILURE;
-		}
+		if (errnum != 0)
+			goto close_admin;
 		confs = xx;
 		confs_size = yy;
 	}
 
 	struct units *units;
+	size_t units_mem_size =
+	    sizeof *units + confs_size * sizeof units->list[0U];
 	{
 		void *xx;
-		errnum = linted_mem_alloc(
-		    &xx, sizeof *units + confs_size * sizeof units->list[0U]);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_mem_alloc");
-			return EXIT_FAILURE;
-		}
+		errnum = linted_mem_alloc(&xx, units_mem_size);
+		if (errnum != 0)
+			goto destroy_confs;
 		units = xx;
-		units->size = confs_size;
+		units->size = 0U;
 	}
 
 	for (size_t ii = 0U; ii < confs_size; ++ii) {
@@ -271,37 +275,37 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 
 		char const *suffix = dot + 1U;
 
-		char *unit_name = strndup(file_name, dot - file_name);
-		if (NULL == unit_name) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
 		enum unit_type unit_type;
 		if (0 == strcmp(suffix, "socket")) {
 			unit_type = UNIT_TYPE_SOCKET;
 		} else if (0 == strcmp(suffix, "service")) {
 			unit_type = UNIT_TYPE_SERVICE;
 		} else {
-			linted_io_write_str(
-			    STDOUT_FILENO, NULL,
-			    LINTED_STR("invalid unit file name\n"));
-			return EXIT_FAILURE;
+			errnum = EINVAL;
+			goto destroy_units;
 		}
 
-		unit->type = unit_type;
+		char *unit_name = strndup(file_name, dot - file_name);
+		if (NULL == unit_name) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_units;
+		}
+
+		unit->common.type = unit_type;
+		unit->common.name = unit_name;
+
 		switch (unit_type) {
 		case UNIT_TYPE_SERVICE:
-			unit->service.name = unit_name;
 			unit->service.pid = -1;
 			break;
 
 		case UNIT_TYPE_SOCKET:
-			unit->socket.name = unit_name;
 			unit->socket.is_open = false;
 			break;
 		}
+
+		++units->size;
 	}
 
 	struct conn_pool *conn_pool;
@@ -310,7 +314,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		struct conn_pool *xx;
 		errnum = conn_pool_create(&xx);
 		if (errnum != 0)
-			return errnum;
+			goto destroy_units;
 		conn_pool = xx;
 	}
 
@@ -319,7 +323,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		struct linted_asynch_pool *xx;
 		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
 		if (errnum != 0)
-			return errnum;
+			goto destroy_conn_pool;
 		pool = xx;
 	}
 
@@ -340,7 +344,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		struct conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
 
-		if (unit->type != UNIT_TYPE_SOCKET)
+		if (unit->common.type != UNIT_TYPE_SOCKET)
 			continue;
 
 		linted_ko ko;
@@ -360,9 +364,12 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		struct conf *conf = confs[ii];
-		struct unit_service *unit = &units->list[ii].service;
-		if (unit->type != UNIT_TYPE_SERVICE)
+		union unit *unit = &units->list[ii];
+
+		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
+
+		struct unit_service *unit_service = &unit->service;
 
 		pid_t process;
 		bool halt_after_exit;
@@ -377,7 +384,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 			halt_after_exit = yy;
 		}
 
-		unit->pid = process;
+		unit_service->pid = process;
 
 		if (halt_after_exit)
 			halt_pid = process;
@@ -422,12 +429,6 @@ drain_dispatches:
 			errnum = dispatch_error;
 	}
 
-	{
-		linted_error close_errnum = conn_pool_destroy(conn_pool);
-		if (0 == errnum)
-			errnum = close_errnum;
-	}
-
 exit_services:
 	if (-1 == kill(-1, SIGKILL)) {
 		linted_error kill_errnum = errno;
@@ -442,15 +443,18 @@ exit_services:
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		union unit *unit = &units->list[ii];
 
-		if (unit->type != UNIT_TYPE_SOCKET)
+		if (unit->common.type != UNIT_TYPE_SOCKET)
 			continue;
 
 		struct unit_socket *socket = &unit->socket;
-		if (socket->is_open) {
-			linted_error close_errnum = linted_ko_close(socket->ko);
-			if (0 == errnum)
-				errnum = close_errnum;
-		}
+
+		if (!socket->is_open)
+			continue;
+
+		linted_error close_errnum = linted_ko_close(socket->ko);
+		if (0 == errnum)
+			errnum = close_errnum;
+
 		socket->is_open = false;
 	}
 
@@ -465,16 +469,29 @@ exit_services:
 		(void)accepted_conn_task;
 	}
 
-	{
-		linted_error close_errnum = linted_ko_close(admin);
-		if (0 == errnum)
-			errnum = close_errnum;
-	}
+destroy_conn_pool : {
+	linted_error close_errnum = conn_pool_destroy(conn_pool);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
 
+destroy_units:
+	for (size_t ii = 0U; ii < units->size; ++ii)
+		free(units->list[ii].common.name);
+	free(units);
+
+destroy_confs:
 	for (size_t ii = 0U; ii < confs_size; ++ii)
 		conf_put(confs[ii]);
 	free(confs);
 
+close_admin : {
+	linted_error close_errnum = linted_ko_close(admin);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
+
+exit_monitor:
 	if (errnum != 0) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "could not run the game: %s\n",
@@ -484,6 +501,46 @@ exit_services:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static linted_error set_process_name(char const *name)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+	return 0;
+}
+
+static linted_error set_death_sig(int signum)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_child_subreaper(bool v)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }
 
 static linted_error create_socket(linted_ko *kop, struct conf *unit)
@@ -1286,7 +1343,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task)
 		}
 
 		pid_t pid;
-		switch (unit->type) {
+		switch (unit->common.type) {
 		case UNIT_TYPE_SERVICE:
 			pid = unit->service.pid;
 			goto status_service_process;
@@ -1325,7 +1382,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task)
 		}
 
 		pid_t pid;
-		switch (unit->type) {
+		switch (unit->common.type) {
 		case UNIT_TYPE_SERVICE:
 			pid = unit->service.pid;
 			goto stop_service_process;
@@ -1527,19 +1584,9 @@ static union unit const *unit_for_name(struct units const *units,
 {
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		union unit const *unit = &units->list[ii];
-		switch (unit->type) {
-		case UNIT_TYPE_SERVICE:
-			if (0 == strncmp(unit->service.name, name,
-			                 LINTED_UNIT_NAME_MAX))
-				return unit;
-			break;
 
-		case UNIT_TYPE_SOCKET:
-			if (0 == strncmp(unit->socket.name, name,
-			                 LINTED_UNIT_NAME_MAX))
-				return unit;
-			break;
-		}
+		if (0 == strncmp(unit->common.name, name, LINTED_UNIT_NAME_MAX))
+			return unit;
 	}
 
 	return NULL;
