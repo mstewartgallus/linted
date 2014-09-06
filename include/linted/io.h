@@ -90,7 +90,7 @@ linted_error linted_io_write_string(linted_ko ko,
 
 linted_error linted_io_write_format(linted_ko ko,
                                     size_t *restrict bytes_wrote_out,
-                                    char const *s, ...)
-	; // LINTED_FORMAT_ANNOT(3, 4);
+                                    char const *s,
+                                    ...); // LINTED_FORMAT_ANNOT(3, 4);
 
 #endif /* LINTED_IO_H */
