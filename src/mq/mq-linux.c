@@ -284,14 +284,8 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
 {
 	linted_error errnum = 0;
 
-	if ((revents & POLLNVAL) != 0) {
+	if ((revents & POLLNVAL) != 0)
 		errnum = EBADF;
-	} else if ((revents & POLLHUP) != 0) {
-		errnum = EPIPE;
-	}
-
-	/* Not a socket, can't use getsockopt to get errors */
-	assert(0 == (revents & POLLERR));
 
 	return errnum;
 }
