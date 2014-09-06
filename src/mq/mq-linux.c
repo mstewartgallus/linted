@@ -260,9 +260,9 @@ static void gen_name(char *name, size_t size)
 			 * even
 			 * distribution
 			 */
-		} while ((random_char >= 'a' && random_char <= 'z') ||
-		         (random_char >= 'A' && random_char <= 'Z') ||
-		         (random_char >= '0' && random_char <= '9'));
+		} while (!((random_char >= 'a' && random_char <= 'z') ||
+		           (random_char >= 'A' && random_char <= 'Z') ||
+		           (random_char >= '0' && random_char <= '9')));
 
 		name[ii] = random_char;
 	}
