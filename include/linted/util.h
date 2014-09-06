@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Steven Stewart-Gallus
+ * Copyright 2013, 2014 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,8 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
-#include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-
 #include <assert.h>
 #include <stddef.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 /**
  * @file
@@ -38,57 +32,6 @@
 #define LINTED_UPCAST(X) (&(X)->parent)
 #define LINTED_DOWNCAST(T, X) ((T *)(((char *)(X)) - offsetof(T, parent)))
 
-/**
- * A useful utility macro for exiting a task upon failing to
- * accomplish a function that must be accomplished to proceed.
- *
- * Should be used really, really rarely.
- */
-#define LINTED_FATAL_FAILURE(errnum, format_string, ...)                       \
-    do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-fatal failure in file %s, function %s, and line %i: " format_string,           \
-                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
-        exit(errnum);                                                          \
-    } while (0)
-
-/**
- * A useful utility macro for errors that should never happen.
- *
- * This should only be used for errors that are caused by
- * unrecoverable problems such as memory corruption. The conditions
- * that raise this error should be documented if they are triggerable
- * by a caller of one's function. Think twice before using this macro
- * as aborting a function on invalid input makes that function just
- * that little bit less useful.
- *
- * Permissible errors to use this for may include EINVAL or EBADF.
- *
- * Nonpermissible errors to use this for may include EMFILE, ENFILE
- * and ENOMEM. These cases should be handled properly.
- */
-#define LINTED_IMPOSSIBILITY(format_string, ...)                               \
-    do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-impossible error in file %s, function %s, and line %i: " format_string,        \
-                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
-        abort();                                                               \
-    } while (0)
-
-/**
- * A useful utility macro to abort to the process for errors that the
- * developer is too lazy to handle properly. This macro should only
- * ever be used during development and not during release.
- */
-#define LINTED_LAZY_DEV(format_string, ...)                                    \
-    do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
-lazy developer error in file %s, function %s, and line %i:" format_string,     \
-                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
-        abort();                                                               \
-    } while (0)
-
-/* These are defined to ignore impossible warnings in release builds */
 #ifndef NDEBUG
 
 #define LINTED_ASSUME_UNREACHABLE() assert(0)
@@ -110,6 +53,12 @@ lazy developer error in file %s, function %s, and line %i:" format_string,     \
             LINTED_ASSUME_UNREACHABLE();                                       \
         }                                                                      \
     } while (0)
+#endif
+
+#if defined __GNUC__
+#define LINTED_FORMAT_ANNOT(X, Y) __attribute__ ((format (printf, X, Y)))
+#else
+#define LINTED_FORMAT_ANNOT(X, Y)
 #endif
 
 #endif /* LINTED_UTIL_H */

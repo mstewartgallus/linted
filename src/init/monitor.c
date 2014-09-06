@@ -41,6 +41,7 @@
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/prctl.h>

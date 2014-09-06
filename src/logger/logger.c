@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 enum { ON_RECEIVE_LOG, MAX_TASKS };
 

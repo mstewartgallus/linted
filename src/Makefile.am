@@ -16,7 +16,9 @@
 # limitations under the License.
 
 EXTRA_DIST+=\
-  include/linted/rpc.h
+  include/linted/rpc.h\
+  include/linted/test.h\
+  include/linted/util.h
 
 include %C%/control/Makefile.am
 include %C%/gui/Makefile.am

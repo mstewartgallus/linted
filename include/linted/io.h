@@ -19,6 +19,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/str.h"
+#include "linted/util.h"
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -89,6 +90,7 @@ linted_error linted_io_write_string(linted_ko ko,
 
 linted_error linted_io_write_format(linted_ko ko,
                                     size_t *restrict bytes_wrote_out,
-                                    char const *s, ...);
+                                    char const *s, ...)
+	; // LINTED_FORMAT_ANNOT(3, 4);
 
 #endif /* LINTED_IO_H */

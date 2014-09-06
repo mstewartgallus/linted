@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 struct linted_asynch_pool
 {

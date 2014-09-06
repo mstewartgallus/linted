@@ -27,8 +27,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 #include <linux/filter.h>
 #include <linux/seccomp.h>

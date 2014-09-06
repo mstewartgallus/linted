@@ -16,6 +16,7 @@
 #include "config.h"
 
 #include "linted/mem.h"
+#include "linted/test.h"
 #include "linted/util.h"
 
 #include <stdlib.h>
@@ -27,7 +28,7 @@ int main(void)
 		void *xx;
 		errnum = linted_mem_alloc_array(&xx, 0U, 0U);
 		if (errnum != 0)
-			LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
+			LINTED_TEST_FAILURE("errnum == %i\n", errnum);
 		linted_mem_free(xx);
 	}
 
@@ -35,7 +36,7 @@ int main(void)
 		void *xx;
 		errnum = linted_mem_realloc_array(&xx, NULL, 0U, 0U);
 		if (errnum != 0)
-			LINTED_IMPOSSIBILITY("errnum == %i\n", errnum);
+			LINTED_TEST_FAILURE("errnum == %i\n", errnum);
 		linted_mem_free(xx);
 	}
 
