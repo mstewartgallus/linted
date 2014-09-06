@@ -6,10 +6,10 @@ set -u
 
 SRCDIR="@srcdir@"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-if test "x${XDG_RUNTIME_DIR}" = "x"
+if test "x${XDG_RUNTIME_DIR:+x}" = "x"
 then
     # TODO: Find a fallback
-    echo "Don't have a runtime directory" >2
+    echo "XDG_RUNTIME_DIR is a required environment variable" >&2
     exit 1
 fi
 
