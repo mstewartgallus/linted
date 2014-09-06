@@ -36,6 +36,7 @@
 #define FILE_MAX 255U
 #define RANDOM_BYTES 8U
 
+static void gen_name(char *name, size_t size);
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
 
@@ -73,36 +74,12 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 		random_mq_name[1U + path_size + 1U + RANDOM_BYTES] = '\0';
 
 		do {
-			for (size_t ii = 0U; ii < RANDOM_BYTES; ++ii) {
-				char random_char;
-				for (;;) {
-					/* Normally using the modulus would give
-					 * a bad
-					 * distribution but CHAR_MAX + 1U is a
-					 * power of two
-					 */
-					random_char = linted_random_fast() %
-					              (CHAR_MAX + 1U);
-
-					/* Throw out results and retry for an
-					 * even
-					 * distribution
-					 */
-					if ((random_char >= 'a' &&
-					     random_char <= 'z') ||
-					    (random_char >= 'A' &&
-					     random_char <= 'Z') ||
-					    (random_char >= '0' &&
-					     random_char <= '9'))
-						break;
-				}
-
-				random_mq_name[1U + path_size + 1U + ii] =
-				    random_char;
-			}
+			gen_name(random_mq_name + 1U + path_size + 1U,
+			         RANDOM_BYTES);
 
 			{
 				struct mq_attr mq_attr;
+
 				mq_attr.mq_flags = 0;
 				mq_attr.mq_curmsgs = 0;
 				mq_attr.mq_maxmsg = maxmsg;
@@ -265,6 +242,30 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 	task_send->bytes_wrote = bytes_wrote;
 
 	linted_asynch_pool_complete(pool, task);
+}
+
+static void gen_name(char *name, size_t size)
+{
+	for (size_t ii = 0U; ii < size; ++ii) {
+		char random_char;
+		do {
+			/* Normally using the modulus would give
+			 * a bad
+			 * distribution but CHAR_MAX + 1U is a
+			 * power of two
+			 */
+			random_char = linted_random_fast() % (CHAR_MAX + 1U);
+
+			/* Throw out results and retry for an
+			 * even
+			 * distribution
+			 */
+		} while ((random_char >= 'a' && random_char <= 'z') ||
+		         (random_char >= 'A' && random_char <= 'Z') ||
+		         (random_char >= '0' && random_char <= '9'));
+
+		name[ii] = random_char;
+	}
 }
 
 static linted_error poll_one(linted_ko ko, short events, short *revents)
