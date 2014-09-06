@@ -140,6 +140,42 @@ struct conn
 	bool is_free : 1U;
 };
 
+struct pair
+{
+	linted_ko ko;
+	unsigned long options;
+};
+
+static char const process_name[] = "monitor";
+
+static char const *default_envvars[] = {"LANG", "USER", "LOGNAME", "HOME",
+                                        "SHELL", "XDG_RUNTIME_DIR"
+                                                 "XDG_SESSION_ID",
+                                        "XDG_SEAT", "TERM"};
+
+static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
+                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
+                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
+
+enum { RDONLY, WRONLY };
+
+static char const *const file_options[] = {[RDONLY] = "rdonly",
+                                           [WRONLY] = "wronly", NULL};
+
+enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
+
+static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
+                                            [TOUCH] = "touch",        /*  */
+                                            [BIND] = "bind",          /*  */
+                                            [RBIND] = "rbind",        /*  */
+                                            [RO] = MNTOPT_RO,         /*  */
+                                            [RW] = MNTOPT_RW,         /*  */
+                                            [SUID] = MNTOPT_SUID,     /*  */
+                                            [NOSUID] = MNTOPT_NOSUID, /*  */
+                                            [NODEV] = "nodev",        /*  */
+                                            [NOEXEC] = "noexec",      /*  */
+                                            NULL};
+
 static linted_error set_process_name(char const *name);
 static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
@@ -194,9 +230,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 {
 	linted_error errnum;
 
-	static char const process_name[] = "monitor";
-
-	/* The process monitor and manager */
 	errnum = set_process_name(process_name);
 	if (errnum != 0) {
 		errno = errnum;
@@ -218,7 +251,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		return EXIT_FAILURE;
 	}
 
-	/* Acquire socket before unsharing namespaces */
 	linted_admin admin;
 	{
 		linted_admin xx;
@@ -604,16 +636,6 @@ static linted_error create_socket(linted_ko *kop, struct conf *unit)
 	return 0;
 }
 
-struct pair
-{
-	linted_ko ko;
-	unsigned long options;
-};
-
-static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
-                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
-                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
-
 static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
                                   struct conf *conf, linted_ko cwd,
                                   char const *chrootdir,
@@ -666,10 +688,6 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 		no_new_privs_value = xx;
 	}
 
-	static char const *default_envvars[] = {
-	    "LANG", "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
-	                                                "XDG_SESSION_ID",
-	    "XDG_SEAT", "TERM"};
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
 
@@ -809,11 +827,6 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 			goto free_filename;
 		}
 
-		enum { RDONLY, WRONLY };
-
-		static char const *const tokens[] = {[RDONLY] = "rdonly",
-		                                     [WRONLY] = "wronly", NULL};
-
 		bool rdonly = false;
 		bool wronly = false;
 
@@ -825,8 +838,8 @@ static linted_error spawn_process(pid_t *pidp, bool *halt_after_exitp,
 			{
 				char *xx = opts;
 				char *yy = value;
-				token =
-				    getsubopt(&xx, (char *const *)tokens, &yy);
+				token = getsubopt(
+				    &xx, (char *const *)file_options, &yy);
 				opts = xx;
 				value = yy;
 			}
@@ -1026,15 +1039,8 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
                                        unsigned long *mountflagsp,
                                        char const **leftoversp)
 {
-	enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
-
 	linted_error errnum;
 
-	static char const *const tokens[] =
-	    {[MKDIR] = "mkdir",    [TOUCH] = "touch",        [BIND] = "bind",
-	     [RBIND] = "rbind",    [RO] = MNTOPT_RO,         [RW] = MNTOPT_RW,
-	     [SUID] = MNTOPT_SUID, [NOSUID] = MNTOPT_NOSUID, [NODEV] = "nodev",
-	     [NOEXEC] = "noexec",  NULL};
 	bool touch_flag = false;
 	bool mkdir_flag = false;
 	bool bind = false;
@@ -1061,7 +1067,8 @@ static linted_error get_flags_and_data(char const *opts, bool *mkdir_flagp,
 		{
 			char *xx = subopts;
 			char *yy = value;
-			token = getsubopt(&xx, (char *const *)tokens, &yy);
+			token =
+			    getsubopt(&xx, (char *const *)mount_options, &yy);
 			subopts = xx;
 			value = yy;
 		}
