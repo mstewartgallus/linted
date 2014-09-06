@@ -27,7 +27,7 @@
 #include <string.h>
 
 static linted_error valloc_sprintf(char **strbp, size_t *sizep, const char *fmt,
-                                   va_list ap);
+                                   va_list ap) LINTED_FORMAT_ANNOT(3, 0);
 
 linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
                                size_t *restrict sizep, char const *str,
