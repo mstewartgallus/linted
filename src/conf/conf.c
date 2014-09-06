@@ -18,12 +18,12 @@
 #include "config.h"
 
 #include "linted/conf.h"
+#include "linted/mem.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 #include <wordexp.h>
 
@@ -125,11 +125,13 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 				goto free_line_buffer;
 			}
 
-			char *section_name = malloc(line_size - 1U);
-			if (NULL == section_name) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_line_buffer;
+			char *section_name;
+			{
+				void *xx;
+				errnum = linted_mem_alloc(&xx, line_size - 1U);
+				if (errnum != 0)
+					goto free_line_buffer;
+				section_name = xx;
 			}
 			section_name[line_size - 2U] = '\0';
 			memcpy(section_name, line_buffer + 1U, line_size - 2U);
@@ -143,7 +145,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 			}
 
 			if (errnum != 0) {
-				free(section_name);
+				linted_mem_free(section_name);
 				goto free_line_buffer;
 			}
 			break;
@@ -174,20 +176,24 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 			size_t value_offset = field_len + 1U;
 			size_t value_len = line_size - value_offset;
 
-			char *field = malloc(field_len + 1U);
-			if (NULL == field) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_line_buffer;
+			char *field;
+			{
+				void *xx;
+				errnum = linted_mem_alloc(&xx, field_len + 1U);
+				if (errnum != 0)
+					goto free_line_buffer;
+				field = xx;
 			}
 			memcpy(field, line_buffer, field_len);
 			field[field_len] = '\0';
 
-			char *value = malloc(value_len + 1U);
-			if (NULL == value) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_field;
+			char *value;
+			{
+				void *xx;
+				errnum = linted_mem_alloc(&xx, value_len + 1U);
+				if (errnum != 0)
+					goto free_field;
+				value = xx;
 			}
 			memcpy(value, line_buffer + value_offset, value_len);
 			value[value_len] = '\0';
@@ -205,7 +211,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 				break;
 			}
 
-			free(value);
+			linted_mem_free(value);
 
 			if (errnum != 0)
 				goto free_field;
@@ -218,7 +224,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 
 		free_field:
 			if (errnum != 0)
-				free(field);
+				linted_mem_free(field);
 
 			if (errnum != 0)
 				goto free_line_buffer;
@@ -227,7 +233,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 	}
 
 free_line_buffer:
-	free(line_buffer);
+	linted_mem_free(line_buffer);
 
 	if (errnum != 0)
 		conf_put(unit);
@@ -250,11 +256,12 @@ linted_error conf_create(struct conf **unitp, char const *name)
 		return errnum;
 	}
 
-	unit = malloc(sizeof *unit);
-	if (NULL == unit) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto free_name_copy;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *unit);
+		if (errnum != 0)
+			goto free_name_copy;
+		unit = xx;
 	}
 
 	unit->name = name_copy;
@@ -269,7 +276,7 @@ linted_error conf_create(struct conf **unitp, char const *name)
 
 free_name_copy:
 	if (errnum != 0) {
-		free(name_copy);
+		linted_mem_free(name_copy);
 		return errnum;
 	}
 
@@ -286,30 +293,35 @@ void conf_put(struct conf *unit)
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
 		struct conf_section_bucket const *bucket = &unit->buckets[ii];
 
-		for (size_t jj = 0U; jj < bucket->sections_size; ++jj) {
-			struct conf_section const *section =
-			    &bucket->sections[jj];
+		size_t sections_size = bucket->sections_size;
+		struct conf_section *sections = bucket->sections;
+
+		for (size_t jj = 0U; jj < sections_size; ++jj) {
+			struct conf_section const *section = &sections[jj];
 
 			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
 				struct conf_setting_bucket const *
 				    setting_bucket = &section->buckets[kk];
+				size_t settings_size =
+				    setting_bucket->settings_size;
+				struct conf_setting *settings =
+				    setting_bucket->settings;
 
-				for (size_t ww = 0U;
-				     ww < setting_bucket->settings_size; ++ww) {
-					free(
-					    setting_bucket->settings[ww].field);
-					free(
-					    setting_bucket->settings[ww].value);
+				for (size_t ww = 0U; ww < settings_size; ++ww) {
+					struct conf_setting *setting =
+					    &settings[ww];
+					linted_mem_free(setting->field);
+					linted_mem_free(setting->value);
 				}
 
-				free(setting_bucket->settings);
+				linted_mem_free(settings);
 			}
 		}
 
-		free(bucket->sections);
+		linted_mem_free(sections);
 	}
-	free(unit->name);
-	free(unit);
+	linted_mem_free(unit->name);
+	linted_mem_free(unit);
 }
 
 char const *conf_peek_name(struct conf *unit)
@@ -341,16 +353,19 @@ linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
 	}
 
 	if (have_found_field) {
-		free(section_name);
+		linted_mem_free(section_name);
 		*sectionp = &sections[found_field];
 	} else {
 		size_t new_sections_size = sections_size + 1U;
-		struct conf_section *new_sections =
-		    realloc(sections, new_sections_size * sizeof sections[0U]);
-		if (NULL == new_sections) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+		struct conf_section *new_sections;
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(&xx, sections,
+			                                  new_sections_size,
+			                                  sizeof sections[0U]);
+			if (errnum != 0)
+				return errnum;
+			new_sections = xx;
 		}
 
 		struct conf_section *new_section = &new_sections[sections_size];
@@ -441,24 +456,27 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 		}
 	}
 
-	if (have_found_field) {
-		if (NULL == value[0U]) {
-			free(field);
-			free(settings[found_field].field);
+	if (NULL == value[0U]) {
+		linted_mem_free(field);
+
+		if (have_found_field) {
+			linted_mem_free(settings[found_field].field);
 
 			char **values = settings[found_field].value;
 
 			for (size_t ii = 0U; values[ii] != NULL; ++ii)
-				free(values[ii]);
+				linted_mem_free(values[ii]);
 
-			free(values);
+			linted_mem_free(values);
 
 			bucket->settings_size = settings_size - 1U;
 			memcpy(bucket->settings + found_field,
 			       buckets->settings + found_field + 1U,
 			       (settings_size - 1U - found_field) *
 			           sizeof bucket->settings[0U]);
-		} else {
+		}
+	} else {
+		if (have_found_field) {
 			char **old_value = settings[found_field].value;
 
 			size_t old_value_len;
@@ -479,12 +497,14 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 
 			size_t new_value_len = old_value_len + value_len;
 
-			char **new_value =
-			    malloc((new_value_len + 1U) * sizeof value[0U]);
-			if (NULL == new_value) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				return errnum;
+			char **new_value;
+			{
+				void *xx;
+				errnum = linted_mem_alloc_array(
+				    &xx, new_value_len + 1U, sizeof value[0U]);
+				if (errnum != 0)
+					return errnum;
+				new_value = xx;
 			}
 
 			for (size_t ii = 0U; ii < old_value_len; ++ii)
@@ -496,9 +516,10 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
 					for (; ii != 0; --ii)
-						free(new_value[ii - 1U]);
+						linted_mem_free(
+						    new_value[ii - 1U]);
 
-					free(new_value);
+					linted_mem_free(new_value);
 					return errnum;
 				}
 				new_value[old_value_len + ii] = copy;
@@ -506,23 +527,22 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 
 			new_value[new_value_len] = NULL;
 
-			free(settings[found_field].field);
-			free(old_value);
+			linted_mem_free(settings[found_field].field);
+			linted_mem_free(old_value);
 
 			settings[found_field].field = field;
 			settings[found_field].value = new_value;
-		}
-	} else {
-		if (NULL == value[0U]) {
-			free(field);
 		} else {
 			size_t new_settings_size = settings_size + 1U;
-			struct conf_setting *new_settings = realloc(
-			    settings, new_settings_size * sizeof settings[0U]);
-			if (NULL == new_settings) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				return errnum;
+			struct conf_setting *new_settings;
+			{
+				void *xx;
+				errnum = linted_mem_realloc_array(
+				    &xx, settings, new_settings_size,
+				    sizeof settings[0U]);
+				if (errnum != 0)
+					return errnum;
+				new_settings = xx;
 			}
 
 			size_t value_len;
@@ -533,8 +553,15 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 				}
 			}
 
-			char **value_copy =
-			    malloc((value_len + 1U) * sizeof value[0U]);
+			char **value_copy;
+			{
+				void *xx;
+				errnum = linted_mem_alloc_array(
+				    &xx, value_len + 1U, sizeof value[0U]);
+				if (errnum != 0)
+					return errnum;
+				value_copy = xx;
+			}
 			for (size_t ii = 0U; ii < value_len; ++ii)
 				value_copy[ii] = strdup(value[ii]);
 			value_copy[value_len] = NULL;
