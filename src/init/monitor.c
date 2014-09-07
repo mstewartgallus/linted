@@ -254,12 +254,24 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		return EXIT_FAILURE;
 	}
 
+	struct linted_asynch_pool *pool;
+	{
+		struct linted_asynch_pool *xx;
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0)
+			goto exit_monitor;
+		pool = xx;
+	}
+
+	struct wait_service_task waiter_task;
+	struct accepted_conn_task accepted_conn_task;
+
 	linted_admin admin;
 	{
 		linted_admin xx;
 		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
 		if (errnum != 0)
-			goto exit_monitor;
+			goto drain_asynch_pool;
 		admin = xx;
 	}
 
@@ -276,6 +288,16 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
+	struct conn_pool *conn_pool;
+
+	{
+		struct conn_pool *xx;
+		errnum = conn_pool_create(&xx);
+		if (errnum != 0)
+			goto close_admin;
+		conn_pool = xx;
+	}
+
 	struct conf **confs;
 	size_t confs_size;
 	{
@@ -283,7 +305,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		size_t yy;
 		errnum = confs_from_path(unit_path, &xx, &yy);
 		if (errnum != 0)
-			goto close_admin;
+			goto destroy_conn_pool;
 		confs = xx;
 		confs_size = yy;
 	}
@@ -296,28 +318,6 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 			goto destroy_confs;
 		units = xx;
 	}
-
-	struct conn_pool *conn_pool;
-
-	{
-		struct conn_pool *xx;
-		errnum = conn_pool_create(&xx);
-		if (errnum != 0)
-			goto destroy_units;
-		conn_pool = xx;
-	}
-
-	struct linted_asynch_pool *pool;
-	{
-		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
-			goto destroy_conn_pool;
-		pool = xx;
-	}
-
-	struct wait_service_task waiter_task;
-	struct accepted_conn_task accepted_conn_task;
 
 	linted_admin_accept(LINTED_UPCAST(&accepted_conn_task),
 	                    ADMIN_ACCEPTED_CONNECTION, admin);
@@ -334,7 +334,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		pid_t xx = -1;
 		errnum = units_activate(units, confs, &xx, cwd, chrootdir);
 		if (errnum != 0)
-			goto drain_dispatches;
+			goto destroy_units;
 		halt_pid = xx;
 	}
 
@@ -347,7 +347,7 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	linted_asynch_pool_submit(pool,
 	                          LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
 
-	while (!waiter_task.time_to_exit) {
+	do {
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
@@ -357,26 +357,10 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto drain_dispatches;
-	}
+			goto destroy_conn_pool;
+	} while (!waiter_task.time_to_exit);
 
-drain_dispatches:
-	linted_asynch_pool_stop(pool);
-
-	for (;;) {
-		struct linted_asynch_task *completed_task;
-		{
-			struct linted_asynch_task *xx;
-			if (EAGAIN == linted_asynch_pool_poll(pool, &xx))
-				break;
-			completed_task = xx;
-		}
-
-		linted_error dispatch_error = dispatch_drainers(completed_task);
-		if (0 == errnum)
-			errnum = dispatch_error;
-	}
-
+destroy_units:
 	if (-1 == kill(-1, SIGKILL)) {
 		linted_error kill_errnum = errno;
 		LINTED_ASSUME(kill_errnum != 0);
@@ -405,6 +389,40 @@ drain_dispatches:
 		socket->is_open = false;
 	}
 
+	units_destroy(units);
+
+destroy_confs:
+	confs_destroy(confs, confs_size);
+
+destroy_conn_pool : {
+	linted_error close_errnum = conn_pool_destroy(conn_pool);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
+
+close_admin : {
+	linted_error close_errnum = linted_ko_close(admin);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
+
+drain_asynch_pool:
+	linted_asynch_pool_stop(pool);
+
+	for (;;) {
+		struct linted_asynch_task *completed_task;
+		{
+			struct linted_asynch_task *xx;
+			if (EAGAIN == linted_asynch_pool_poll(pool, &xx))
+				break;
+			completed_task = xx;
+		}
+
+		linted_error dispatch_error = dispatch_drainers(completed_task);
+		if (0 == errnum)
+			errnum = dispatch_error;
+	}
+
 	{
 		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
 		if (0 == errnum)
@@ -415,24 +433,6 @@ drain_dispatches:
 		(void)waiter_task;
 		(void)accepted_conn_task;
 	}
-
-destroy_conn_pool : {
-	linted_error close_errnum = conn_pool_destroy(conn_pool);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
-destroy_units:
-	units_destroy(units);
-
-destroy_confs:
-	confs_destroy(confs, confs_size);
-
-close_admin : {
-	linted_error close_errnum = linted_ko_close(admin);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
 
 exit_monitor:
 	if (errnum != 0) {
