@@ -133,6 +133,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	linted_updater updater = kos[2U];
 
 	linted_error errnum;
+
 	{
 		static char const message[] = "starting simulator";
 		linted_log_write(log, message, sizeof message - 1U);

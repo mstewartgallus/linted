@@ -50,6 +50,8 @@ static bool is_open(linted_ko ko);
 static linted_error find_open_kos(linted_ko **kosp, size_t *size);
 static void sort_kos(linted_ko *ko, size_t size);
 static linted_error get_system_entropy(unsigned *entropyp);
+static linted_error set_no_new_privs(bool v);
+static linted_error set_seccomp(struct sock_fprog const *program);
 
 int main(int argc, char *argv[])
 {
@@ -58,13 +60,13 @@ int main(int argc, char *argv[])
 	/* Check whether basics are open */
 	if (!is_open(STDERR_FILENO))
 		/* Sadly, this is all we can do */
-		return EXIT_FAILURE;
+		return EINVAL;
 
 	if (!is_open(STDOUT_FILENO))
-		return EXIT_FAILURE;
+		return EINVAL;
 
 	if (!is_open(STDIN_FILENO))
-		return EXIT_FAILURE;
+		return EINVAL;
 
 	/* First we check if we are run with proper security */
 	uid_t const uid = getuid();
@@ -73,13 +75,13 @@ int main(int argc, char *argv[])
 		linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
 Bad administrator!\n\
 It is insecure to run a game as root!\n"));
-		return EXIT_FAILURE;
+		return EPERM;
 	}
 
 	if (argc < 1) {
 		linted_locale_missing_process_name(
 		    STDERR_FILENO, linted_start_config.canonical_process_name);
-		return EXIT_FAILURE;
+		return EINVAL;
 	}
 
 	char const *const process_name = argv[0U];
@@ -93,7 +95,7 @@ It is insecure to run a game as root!\n"));
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: need LISTEN_PID\n",
 			                       process_name);
-			return EXIT_FAILURE;
+			return EINVAL;
 		}
 
 		pid_t pid = atoi(listen_pid_string);
@@ -101,7 +103,7 @@ It is insecure to run a game as root!\n"));
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: LISTEN_PID %i != getpid() %i\n",
 			                       process_name, pid, getpid());
-			return EXIT_FAILURE;
+			return EINVAL;
 		}
 
 		char *listen_fds_string = getenv("LISTEN_FDS");
@@ -109,7 +111,7 @@ It is insecure to run a game as root!\n"));
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: need LISTEN_FDS\n",
 			                       process_name);
-			return EXIT_FAILURE;
+			return EINVAL;
 		}
 
 		linted_ko fds_count;
@@ -119,7 +121,7 @@ It is insecure to run a game as root!\n"));
 			if (errnum != 0) {
 				errno = errnum;
 				perror("linted_ko_from_cstring");
-				return EXIT_FAILURE;
+				return errnum;
 			}
 			fds_count = xx;
 		}
@@ -129,7 +131,7 @@ It is insecure to run a game as root!\n"));
 %s: LISTEN_FDS %i != %lu\n",
 			                       process_name, fds_count,
 			                       kos_size);
-			return EXIT_FAILURE;
+			return EINVAL;
 		}
 	}
 
@@ -143,7 +145,7 @@ It is insecure to run a game as root!\n"));
 %s: couldn't find open files: %s\n",
 			                       process_name,
 			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
+			return errnum;
 		}
 		open_kos = xx;
 		open_kos_size = yy;
@@ -153,7 +155,7 @@ It is insecure to run a game as root!\n"));
 		linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: too little files passed in\n",
 		                       process_name);
-		return EXIT_FAILURE;
+		return EINVAL;
 	}
 
 	/* Sort the fds from smallest to largest */
@@ -170,11 +172,12 @@ It is insecure to run a game as root!\n"));
 
 		int oflags = fcntl(fd, F_GETFL);
 		if (-1 == oflags) {
+			errnum = errno;
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: fcntl: F_GETFL: %s\n",
 			                       process_name,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
+			                       linted_error_string(errnum));
+			return errnum;
 		}
 
 		char pathname[sizeof FDS_DIR + 10U];
@@ -196,21 +199,23 @@ It is insecure to run a game as root!\n"));
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: openat: %s\n",
 			                       process_name,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
+			                       linted_error_string(errnum));
+			return errnum;
 		}
 
 		if (-1 == dup2(new_fd, fd)) {
+			errnum = errno;
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: dup2(%i, %i): %s\n",
 			                       process_name, new_fd, fd,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
+			                       linted_error_string(errnum));
+			return errnum;
 		}
 
 		if (-1 == fcntl(fd, F_SETFD, (long)oflags | FD_CLOEXEC)) {
+			errnum = errno;
 			perror("fcntl");
-			return EXIT_FAILURE;
+			return errnum;
 		}
 
 		if ((errnum = linted_ko_close(new_fd)) != 0) {
@@ -218,7 +223,7 @@ It is insecure to run a game as root!\n"));
 %s: linted_ko_close: %s\n",
 			                       process_name,
 			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
+			return errnum;
 		}
 	}
 
@@ -226,24 +231,21 @@ It is insecure to run a game as root!\n"));
 		kos[ii] = open_kos[ii + 3U];
 	linted_mem_free(open_kos);
 
-	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-
-		assert(errnum != EINVAL);
-
+	errnum = set_no_new_privs(true);
+	if (errnum != 0) {
 		linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not drop ability to raise privileges through execve: %s\n",
 		                       process_name,
 		                       linted_error_string(errnum));
-		return EXIT_FAILURE;
+		return errnum;
 	}
 
 	if (linted_start_config.seccomp_bpf != NULL) {
-		if (-1 == prctl(PR_SET_SECCOMP,
-		                (unsigned long)SECCOMP_MODE_FILTER,
-		                linted_start_config.seccomp_bpf, 0UL, 0UL)) {
+		errnum = set_seccomp(linted_start_config.seccomp_bpf);
+		if (errnum != 0) {
+			errno = errnum;
 			perror("prctl");
-			return EXIT_FAILURE;
+			return errnum;
 		}
 	}
 
@@ -254,7 +256,7 @@ It is insecure to run a game as root!\n"));
 %s: can not read a source of system entropy: %s\n",
 			                       process_name,
 			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
+			return errnum;
 		}
 		linted_random_seed_generator(entropy);
 	}
@@ -417,5 +419,36 @@ static linted_error get_system_entropy(unsigned *entropyp)
 		return errnum;
 
 	*entropyp = entropy;
+	return 0;
+}
+
+static linted_error set_no_new_privs(bool v)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		assert(errnum != EINVAL);
+
+		return errnum;
+	}
+	return 0;
+}
+
+static linted_error set_seccomp(struct sock_fprog const *program)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+	                program, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		assert(errnum != EINVAL);
+
+		return errnum;
+	}
 	return 0;
 }
