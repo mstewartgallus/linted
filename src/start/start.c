@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -29,8 +29,10 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <elf.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <link.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +47,8 @@
 #else
 #error no open files directory known for this platform
 #endif
+
+static bool is_privileged(void);
 
 static bool is_open(linted_ko ko);
 static linted_error find_open_kos(linted_ko **kosp, size_t *size);
@@ -68,13 +72,10 @@ int main(int argc, char *argv[])
 	if (!is_open(STDIN_FILENO))
 		return EINVAL;
 
-	/* First we check if we are run with proper security */
-	uid_t const uid = getuid();
-	uid_t const euid = geteuid();
-	if (0 == euid || 0 == uid) {
+	if (is_privileged()) {
 		linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
 Bad administrator!\n\
-It is insecure to run a game as root!\n"));
+It is insecure to run a game with high privileges!\n"));
 		return EPERM;
 	}
 
@@ -262,6 +263,40 @@ It is insecure to run a game as root!\n"));
 	}
 
 	return linted_start(process_name, argc, (char const *const *)argv);
+}
+
+#ifndef __linux__
+#error No privilege checking has been implemented yet
+#endif
+
+extern char **environ;
+
+static bool is_privileged(void)
+{
+	uid_t uid = getuid();
+	if (0 == uid)
+		return true;
+
+	gid_t gid = getgid();
+	if (0 == gid)
+		return true;
+
+	/* environ hasn't been changed yet and so we can still find
+	 * the auxv from it.
+	 */
+	char **envp = environ;
+
+	while (*envp != NULL)
+		++envp;
+
+	ElfW(auxv_t) *vector = (ElfW(auxv_t) *)(envp + 1U);
+	for (; vector->a_type != AT_NULL; ++vector) {
+		if (AT_SECURE == vector->a_type)
+			goto got_vector;
+	}
+	abort();
+got_vector:
+	return vector->a_un.a_val;
 }
 
 static bool is_open(linted_ko ko)
