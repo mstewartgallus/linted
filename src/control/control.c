@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -330,8 +331,8 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 		/* Sent malformed input */
 		if (bytes_read != sizeof reply) {
 			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: reply was too small: %i\n",
-			                       process_name, bytes_read);
+			                       "%s: reply was too small: %" PRIuMAX "\n",
+			                       process_name, (uintmax_t)bytes_read);
 			return EXIT_FAILURE;
 		}
 	}
@@ -489,8 +490,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		/* Sent malformed input */
 		if (bytes_read != sizeof reply) {
 			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: reply was too small: %i\n",
-			                       process_name, bytes_read);
+			                       "%s: reply was too small: %" PRIuMAX "\n",
+			                       process_name, (uintmax_t)bytes_read);
 			return EXIT_FAILURE;
 		}
 
