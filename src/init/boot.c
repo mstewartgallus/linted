@@ -42,6 +42,9 @@ struct linted_start_config const linted_start_config = {
     .kos_size = 0U,
     .kos = NULL};
 
+static linted_error set_process_name(char const *name);
+static linted_error set_dumpable(bool v);
+
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
@@ -51,9 +54,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (repl_process_name != NULL) {
 		process_name = repl_process_name;
 
-		if (-1 == prctl(PR_SET_NAME, (unsigned long)process_name, 0UL,
-		                0UL, 0UL)) {
-			perror("prctl");
+		errnum = set_process_name(process_name);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_process_name");
 			return EXIT_FAILURE;
 		}
 	}
@@ -200,9 +204,35 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 
-	if (-1 == prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)) {
-		perror("prctl");
+	errnum = set_dumpable(false);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_dumpable");
 		return EXIT_FAILURE;
 	}
 	return linted_init_init(cwd, chrootdir, unit_path);
+}
+
+static linted_error set_process_name(char const *name)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+	return 0;
+}
+
+static linted_error set_dumpable(bool v)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_DUMPABLE, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+	return 0;
 }
