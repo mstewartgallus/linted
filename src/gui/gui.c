@@ -162,6 +162,11 @@ static linted_error dispatch(struct linted_asynch_task *completed_task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
+static void maybe_update_controller(struct linted_asynch_pool *pool,
+                                    struct controller_data *controller_data,
+                                    struct controller_task *controller_task,
+                                    linted_controller controller);
+
 static linted_error egl_error(void);
 
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
@@ -806,6 +811,12 @@ static linted_error on_input_event(XEvent *event,
 		is_key_down = false;
 		goto on_key_event;
 
+	case MappingNotify: {
+		XMappingEvent *mapping_event = &event->xmapping;
+		XRefreshKeyboardMapping(mapping_event);
+		break;
+	}
+
 	default:
 		/* Unknown event type, ignore it */
 		break;
@@ -867,22 +878,8 @@ static linted_error on_input_event(XEvent *event,
 		break;
 	}
 
-	if (controller_data->update_pending &&
-	    !controller_data->update_in_progress) {
-		linted_controller_send(LINTED_UPCAST(controller_task),
-		                       ON_SENT_CONTROL, controller,
-		                       &controller_data->update);
-		controller_task->controller_data = controller_data;
-		controller_task->pool = pool;
-		controller_task->controller = controller;
-
-		linted_asynch_pool_submit(
-		    pool, LINTED_UPCAST(
-		              LINTED_UPCAST(LINTED_UPCAST(controller_task))));
-
-		controller_data->update_pending = false;
-		controller_data->update_in_progress = true;
-	}
+	maybe_update_controller(pool, controller_data, controller_task,
+	                        controller);
 
 	*time_to_quitp = time_to_quit;
 	return 0;
@@ -910,11 +907,6 @@ static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 	case MapNotify:
 		window_model->viewable = true;
 		break;
-
-	case MappingNotify: {
-		XMappingEvent *mapping_event = &event->xmapping;
-		XRefreshKeyboardMapping(mapping_event);
-	}
 
 	case ClientMessage:
 		goto quit_application;
@@ -981,17 +973,34 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 
 	controller_data->update_in_progress = false;
 
+	maybe_update_controller(pool, controller_data, controller_task,
+	                        controller);
+
+	return 0;
+}
+
+static void maybe_update_controller(struct linted_asynch_pool *pool,
+                                    struct controller_data *controller_data,
+                                    struct controller_task *controller_task,
+                                    linted_controller controller)
+{
 	if (!controller_data->update_pending)
-		return 0;
+		return;
+
+	if (controller_data->update_in_progress)
+		return;
 
 	linted_controller_send(LINTED_UPCAST(controller_task), ON_SENT_CONTROL,
 	                       controller, &controller_data->update);
-	linted_asynch_pool_submit(pool, task);
+	controller_task->controller_data = controller_data;
+	controller_task->pool = pool;
+	controller_task->controller = controller;
+
+	linted_asynch_pool_submit(
+	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(controller_task))));
 
 	controller_data->update_pending = false;
 	controller_data->update_in_progress = true;
-
-	return 0;
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
