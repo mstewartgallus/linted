@@ -16,7 +16,7 @@
 # limitations under the License.
 bin_PROGRAMS+=%D%/linted-control
 
-%C%_linted_control_SOURCES=%D%/control.c
+%C%_linted_control_SOURCES=%D%/linted-control.c
 %C%_linted_control_LDADD=\
   src/start/libstart.la\
   \
