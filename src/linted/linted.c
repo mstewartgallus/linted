@@ -31,19 +31,18 @@
 #include <string.h>
 #include <unistd.h>
 
-extern char **environ;
-
-enum { HELP, VERSION_OPTION };
-
-static char const *const argstrs[] = {[HELP] = "--help",
-                                      [VERSION_OPTION] = "--version"};
-
 struct envvar
 {
 	char const *key;
 	char const *value;
 };
 
+enum { HELP, VERSION_OPTION };
+
+extern char **environ;
+
+static char const *const argstrs[] = {[HELP] = "--help",
+                                      [VERSION_OPTION] = "--version"};
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
     .kos_size = 0U,
@@ -89,8 +88,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 		int arg = -1;
 		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
-			if (0 == strncmp(argument, argstrs[jj],
-			                 strlen(argstrs[jj]))) {
+			if (0 == strcmp(argument, argstrs[jj])) {
 				arg = jj;
 				break;
 			}
@@ -103,14 +101,10 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			break;
 
 		case HELP:
-			if (argument[strlen(argstrs[HELP])] != '\0')
-				goto bad_argument;
 			need_help = true;
 			break;
 
 		case VERSION_OPTION:
-			if (argument[strlen(argstrs[VERSION_OPTION])] != '\0')
-				goto bad_argument;
 			need_version = true;
 			break;
 		}
