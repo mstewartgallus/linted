@@ -95,12 +95,17 @@ struct sim_model
 	float z_position;
 };
 
+struct controller_task;
+
 struct on_input_event_args
 {
 	xcb_connection_t *input_conn;
 	struct window_model *window_model;
+	struct linted_asynch_pool *pool;
 	struct controller_data *controller_data;
 	bool *time_to_quit;
+	struct controller_task *controller_task;
+	linted_ko controller;
 	xcb_window_t window;
 };
 
@@ -110,19 +115,14 @@ struct on_gui_event_args
 	bool *time_to_quit;
 };
 
-struct gui_controller_task;
-
 struct gui_updater_task
 {
 	struct linted_updater_task_receive parent;
 	struct sim_model *sim_model;
-	struct gui_controller_task *controller_task;
-	struct controller_data *controller_data;
 	struct linted_asynch_pool *pool;
-	linted_ko controller;
 };
 
-struct gui_controller_task
+struct controller_task
 {
 	struct linted_controller_task_send parent;
 	struct controller_data *controller_data;
@@ -219,9 +219,22 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	struct controller_data controller_data = {0};
 	struct sim_model sim_model = {0};
 
+	struct linted_asynch_pool *pool;
+	{
+		struct linted_asynch_pool *xx;
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0)
+			return errnum;
+		pool = xx;
+	}
+
+	struct gui_updater_task updater_task;
+	struct controller_task controller_task;
+
 	Display *input_display = XOpenDisplay(NULL);
 	if (NULL == input_display) {
-		return ENOSYS;
+		errnum = ENOSYS;
+		goto destroy_pool;
 	}
 
 	Display *draw_display = XOpenDisplay(NULL);
@@ -416,25 +429,10 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		goto destroy_egl_surface;
 	}
 
-	struct linted_asynch_pool *pool;
-	{
-		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
-			goto destroy_egl_surface;
-		pool = xx;
-	}
-
-	struct gui_updater_task updater_task;
-	struct gui_controller_task controller_task;
-
 	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
 	                       updater);
 	updater_task.sim_model = &sim_model;
-	updater_task.controller_task = &controller_task;
-	updater_task.controller_data = &controller_data;
 	updater_task.pool = pool;
-	updater_task.controller = controller;
 
 	linted_asynch_pool_submit(
 	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
@@ -477,7 +475,13 @@ reopen_graphics_context:
 			    .input_conn = input_conn,
 			    .window = window,
 			    .window_model = &window_model,
+
+			    .pool = pool,
+
 			    .controller_data = &controller_data,
+			    .controller_task = &controller_task,
+			    .controller = controller,
+
 			    .time_to_quit = &time_to_quit};
 			errnum = on_input_event(&event, args);
 			if (errnum != 0)
@@ -585,35 +589,6 @@ destroy_egl_context:
 	if (ENOSYS == errnum)
 		goto reopen_graphics_context;
 
-destroy_pool:
-	linted_asynch_pool_stop(pool);
-
-	for (;;) {
-		struct linted_asynch_task *completed_task;
-		linted_error poll_errnum;
-		{
-			struct linted_asynch_task *xx;
-			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
-				break;
-			completed_task = xx;
-		}
-
-		linted_error dispatch_errnum = completed_task->errnum;
-		if (0 == errnum)
-			errnum = dispatch_errnum;
-	}
-
-	{
-		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum)
-			errnum = destroy_errnum;
-	}
-	/* Insure that the tasks are in proper scope until they are
-	 * terminated */
-	(void)updater_task;
-	(void)controller_task;
-
 destroy_egl_surface:
 	if (!eglDestroySurface(egl_display, egl_surface)) {
 		if (0 == errnum)
@@ -658,6 +633,35 @@ close_draw_display:
 
 close_input_display:
 	XCloseDisplay(input_display);
+
+destroy_pool:
+	linted_asynch_pool_stop(pool);
+
+	for (;;) {
+		struct linted_asynch_task *completed_task;
+		linted_error poll_errnum;
+		{
+			struct linted_asynch_task *xx;
+			poll_errnum = linted_asynch_pool_poll(pool, &xx);
+			if (EAGAIN == poll_errnum)
+				break;
+			completed_task = xx;
+		}
+
+		linted_error dispatch_errnum = completed_task->errnum;
+		if (0 == errnum)
+			errnum = dispatch_errnum;
+	}
+
+	{
+		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+		if (0 == errnum)
+			errnum = destroy_errnum;
+	}
+	/* Insure that the tasks are in proper scope until they are
+	 * terminated */
+	(void)updater_task;
+	(void)controller_task;
 
 	return errnum;
 }
@@ -750,6 +754,10 @@ static linted_error on_input_event(XEvent *event,
 	struct window_model *window_model = args.window_model;
 	struct controller_data *controller_data = args.controller_data;
 	bool *time_to_quitp = args.time_to_quit;
+
+	struct linted_asynch_pool *pool = args.pool;
+	linted_ko controller = args.controller;
+	struct controller_task *controller_task = args.controller_task;
 
 	linted_error errnum;
 	bool time_to_quit = false;
@@ -859,6 +867,23 @@ static linted_error on_input_event(XEvent *event,
 		break;
 	}
 
+	if (controller_data->update_pending &&
+	    !controller_data->update_in_progress) {
+		linted_controller_send(LINTED_UPCAST(controller_task),
+		                       ON_SENT_CONTROL, controller,
+		                       &controller_data->update);
+		controller_task->controller_data = controller_data;
+		controller_task->pool = pool;
+		controller_task->controller = controller;
+
+		linted_asynch_pool_submit(
+		    pool, LINTED_UPCAST(
+		              LINTED_UPCAST(LINTED_UPCAST(controller_task))));
+
+		controller_data->update_pending = false;
+		controller_data->update_in_progress = true;
+	}
+
 	*time_to_quitp = time_to_quit;
 	return 0;
 }
@@ -918,10 +943,6 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	    LINTED_DOWNCAST(struct gui_updater_task, task);
 
 	struct sim_model *sim_model = updater_task->sim_model;
-	linted_ko controller = updater_task->controller;
-	struct gui_controller_task *controller_task =
-	    updater_task->controller_task;
-	struct controller_data *controller_data = updater_task->controller_data;
 	struct linted_asynch_pool *pool = updater_task->pool;
 
 	{
@@ -940,22 +961,6 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 		sim_model->z_position = update.z_position * (1 / 2048.0);
 	}
 
-	if (!controller_data->update_pending ||
-	    controller_data->update_in_progress)
-		return 0;
-
-	linted_controller_send(LINTED_UPCAST(controller_task), ON_SENT_CONTROL,
-	                       controller, &controller_data->update);
-	controller_task->controller_data = controller_data;
-	controller_task->pool = pool;
-	controller_task->controller = controller;
-
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(controller_task))));
-
-	controller_data->update_pending = false;
-	controller_data->update_in_progress = true;
-
 	return 0;
 }
 
@@ -966,8 +971,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 	if ((errnum = task->errnum) != 0)
 		return errnum;
 
-	struct gui_controller_task *controller_task =
-	    LINTED_DOWNCAST(struct gui_controller_task, task);
+	struct controller_task *controller_task =
+	    LINTED_DOWNCAST(struct controller_task, task);
 
 	struct controller_data *controller_data =
 	    controller_task->controller_data;
