@@ -186,27 +186,24 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	size_t size = attr->mount_args_size;
 
 	size_t new_size = size + 1U;
-	if (new_size < size) {
+	if (new_size < size)
 		return ENOMEM;
-	}
-	size = new_size;
 
-	char *source_copy;
-	char *target_copy;
-	char *filesystemtype_copy;
-	char *data_copy;
+	char *source_copy = NULL;
+	char *target_copy = NULL;
+	char *filesystemtype_copy = NULL;
+	char *data_copy = NULL;
 
-	if (NULL == source) {
-		source_copy = NULL;
-	} else {
+	if (source != NULL) {
 		source_copy = strdup(source);
-		if (NULL == source_copy)
-			return errno;
+		if (NULL == source_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
 	}
 
-	if (NULL == target) {
-		target_copy = NULL;
-	} else {
+	if (target != NULL) {
 		target_copy = strdup(target);
 		if (NULL == target_copy) {
 			errnum = errno;
@@ -215,9 +212,7 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 		}
 	}
 
-	if (NULL == filesystemtype) {
-		filesystemtype_copy = NULL;
-	} else {
+	if (filesystemtype != NULL) {
 		filesystemtype_copy = strdup(filesystemtype);
 		if (NULL == filesystemtype) {
 			errnum = errno;
@@ -226,9 +221,7 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 		}
 	}
 
-	if (NULL == data) {
-		data_copy = NULL;
-	} else {
+	if (data != NULL) {
 		data_copy = strdup(data);
 		if (NULL == data_copy) {
 			errnum = errno;
@@ -239,7 +232,7 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, mount_args, size,
+		errnum = linted_mem_realloc_array(&xx, mount_args, new_size,
 		                                  sizeof mount_args[0U]);
 		if (errnum != 0)
 			goto free_data;
@@ -259,16 +252,16 @@ linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
 	free_source:
 		linted_mem_free(source_copy);
 	} else {
-		mount_args[size - 1U].source = source_copy;
-		mount_args[size - 1U].target = target_copy;
-		mount_args[size - 1U].filesystemtype = filesystemtype_copy;
-		mount_args[size - 1U].mkdir_flag = mkdir_flag;
-		mount_args[size - 1U].touch_flag = touch_flag;
-		mount_args[size - 1U].mountflags = mountflags;
-		mount_args[size - 1U].data = data_copy;
+		mount_args[size].source = source_copy;
+		mount_args[size].target = target_copy;
+		mount_args[size].filesystemtype = filesystemtype_copy;
+		mount_args[size].mkdir_flag = mkdir_flag;
+		mount_args[size].touch_flag = touch_flag;
+		mount_args[size].mountflags = mountflags;
+		mount_args[size].data = data_copy;
 
 		attr->mount_args = mount_args;
-		attr->mount_args_size = size;
+		attr->mount_args_size = new_size;
 	}
 	return errnum;
 }
@@ -381,23 +374,15 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (is_relative_path && !at_fdcwd && dirfd < 0)
 		return EBADF;
 
-	int clone_flags;
-	char const *chrootdir;
-	char const *chdir_path;
-	size_t mount_args_size;
-	struct mount_args *mount_args;
-	bool drop_caps;
-	bool no_new_privs;
+	int clone_flags = 0;
+	char const *chrootdir = NULL;
+	char const *chdir_path = NULL;
+	size_t mount_args_size = 0U;
+	struct mount_args *mount_args = NULL;
+	bool drop_caps = false;
+	bool no_new_privs = false;
 
-	if (NULL == attr) {
-		clone_flags = 0;
-		chrootdir = NULL;
-		chdir_path = NULL;
-		mount_args_size = 0U;
-		mount_args = NULL;
-		drop_caps = false;
-		no_new_privs = false;
-	} else {
+	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
 		chrootdir = attr->chrootdir;
 		chdir_path = attr->chdir_path;
@@ -544,6 +529,45 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(reader);
 
+	/* Copy file descriptors in case they get overridden */
+	if (file_actions != NULL) {
+		int greatest_fd = -1;
+
+		union file_action const *actions = file_actions->actions;
+		size_t action_count = file_actions->action_count;
+		for (size_t ii = 0U; ii < action_count; ++ii) {
+			union file_action const *action = &actions[ii];
+			switch (action->type) {
+			case FILE_ACTION_ADDDUP2: {
+				int newfildes = action->adddup2.newfildes;
+
+				if (newfildes > greatest_fd)
+					greatest_fd = newfildes;
+				break;
+			}
+			}
+		}
+
+		if (!at_fdcwd && is_relative_path) {
+			int dirfd_copy =
+			    fcntl(dirfd, F_DUPFD, (long)greatest_fd);
+			if (-1 == dirfd_copy)
+				exit_with_error(writer, errno);
+
+			linted_ko_close(dirfd);
+
+			dirfd = dirfd_copy;
+		}
+
+		int writer_copy = fcntl(writer, F_DUPFD, (long)greatest_fd);
+		if (-1 == writer_copy)
+			exit_with_error(writer, errno);
+
+		linted_ko_close(writer);
+
+		writer = writer_copy;
+	}
+
 	if (-1 == unshare(clone_flags))
 		exit_with_error(writer, errno);
 
@@ -556,55 +580,17 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(writer, errno);
 	}
 
-	/* Copy it in case it is overwritten */
-
-	linted_ko dirfd_copy;
-
-	if (at_fdcwd) {
-		dirfd_copy = AT_FDCWD;
-	} else if (is_relative_path && at_fdcwd) {
-		dirfd_copy = fcntl(dirfd, F_DUPFD_CLOEXEC, 0L);
-		if (-1 == dirfd_copy) {
-			exit_with_error(writer, errno);
-		}
-	} else {
-		dirfd_copy = -1;
-	}
-
 	if (file_actions != NULL) {
-		for (size_t ii = 0U; ii < file_actions->action_count; ++ii) {
-			union file_action const *action =
-			    &file_actions->actions[ii];
+		union file_action const *actions = file_actions->actions;
+		size_t action_count = file_actions->action_count;
+		for (size_t ii = 0U; ii < action_count; ++ii) {
+			union file_action const *action = &actions[ii];
 			switch (action->type) {
-			case FILE_ACTION_ADDDUP2: {
-				int newfildes = action->adddup2.newfildes;
-
-				if (dirfd_copy >= 0 &&
-				    dirfd_copy == newfildes) {
-					/* We don't need to close the
-					 * old dirfd copy because it
-					 * is closed by the following
-					 * dup2.
-					*/
-					dirfd_copy = fcntl(dirfd_copy,
-					                   F_DUPFD_CLOEXEC, 0L);
-					if (-1 == dirfd_copy)
-						exit_with_error(writer, errno);
-				}
-
-				if (writer == newfildes) {
-					linted_ko new_writer =
-					    fcntl(writer, F_DUPFD_CLOEXEC, 0L);
-					if (-1 == new_writer)
-						exit_with_error(writer, errno);
-					writer = new_writer;
-				}
-
-				if (-1 ==
-				    dup2(action->adddup2.oldfildes, newfildes))
+			case FILE_ACTION_ADDDUP2:
+				if (-1 == dup2(action->adddup2.oldfildes,
+				               action->adddup2.newfildes))
 					exit_with_error(writer, errno);
 				break;
-			}
 
 			default:
 				exit_with_error(writer, EINVAL);
@@ -636,7 +622,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp = (char const *const *)envp_copy;
 	}
 
-	errnum = my_execveat(dirfd_copy, filename, argv, envp);
+	errnum = my_execveat(dirfd, filename, argv, envp);
 
 	exit_with_error(writer, errnum);
 	return 0;
@@ -652,9 +638,8 @@ static void default_signals(linted_ko writer)
 	 */
 	for (int ii = 1; ii < NSIG; ++ii) {
 		/* Uncatchable, avoid Valgrind warnings */
-		if (SIGSTOP == ii || SIGKILL == ii) {
+		if (SIGSTOP == ii || SIGKILL == ii)
 			continue;
-		}
 
 		struct sigaction action;
 		if (-1 == sigaction(ii, NULL, &action)) {
