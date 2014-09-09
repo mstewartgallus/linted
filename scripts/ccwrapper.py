@@ -23,12 +23,12 @@ def go():
     cc = sys.argv[4].split()
     options = sys.argv[5:]
 
-    if '-c' in options:
+    if '-c' in options and (clang != "" or cppcheck != ""):
         filtered_options = options_filter(options)
         define_flags = get_predefined(cc)
         includes = get_includes(cc)
 
-        if clang != "":
+        if clang != "" and host != "none-none-none":
             clang_args = []
             clang_args.extend(clang)
             clang_args.extend(['-target', host,

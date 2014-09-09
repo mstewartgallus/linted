@@ -1,0 +1,17 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+# This is not a real verification because our programs are unbounded
+# and is only a basic double check.
+
+cbmc\
+    --bounds-check\
+    --div-by-zero-check\
+    --nan-check\
+    --pointer-check\
+    --signed-overflow-check\
+    --unwind 100 --depth 200\
+    "$@"

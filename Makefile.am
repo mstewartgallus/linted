@@ -79,19 +79,6 @@ doxygen:
 # We have to undefine certain flags because unfortunately we can't
 # verify these compiler specific changes
 
-.PHONY: json-c-models
-json-c-models:
-	$(MKDIR_P) json-c-models
-	CONFIG=$$($(builddir)/config.status --config) &&\
-	cd json-c-models &&\
-	  (\
-	     echo $${CONFIG} &&\
-	     echo "CPPFLAGS=\"$(CPPFLAGS) -D__frama_c__ -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
-	     echo "--disable-shared"\
-	  ) | xargs\
-	     $(abs_srcdir)/configure &&\
-	  $(MAKE) $(AM_MAKEFLAGS) CC=$(abs_srcdir)/scripts/json-cc
-
 LINTED_FRAMA_C_BINARY=src/simulator/simulator
 .PHONY: frama-c-lint
 frama-c-lint:
@@ -111,38 +98,6 @@ frama-c-lint:
 	   -warn-unsigned-overflow\
 	   -warn-decimal-float none\
 	   -cpp-extra-args='-C'
-
-.PHONY: cbmc-models
-cbmc-models:
-	$(MKDIR_P) cbmc-models
-	CONFIG=$$($(builddir)/config.status --config) &&\
-	cd cbmc-models &&\
-	  (\
-	     echo $${CONFIG} &&\
-	     echo "CPPFLAGS=\"$(CPPFLAGS) -U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__\"" &&\
-	     echo "--disable-shared"\
-	  ) | xargs\
-	     $(abs_srcdir)/configure &&\
-	  $(MAKE) $(AM_MAKEFLAGS) CC=$(GOTO_CC)
-
-
-LINTED_CBMC_FLAGS=\
-     --bounds-check\
-     --div-by-zero-check\
-     --nan-check\
-     --pointer-check\
-     --signed-overflow-check
-
-CBMC_FLAGS=--unwind 100 --depth 200
-
-# This is not a real verification because our programs are unbounded
-# and is only a basic double check.
-.PHONY: cbmc-lint
-cbmc-lint:
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/gui/gui
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/simulator/simulator
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/init/linted
-	$(CBMC) $(LINTED_CBMC_FLAGS) $(CBMC_FLAGS) cbmc-models/src/control/linted-control
 
 linted_CLANG_FORMATFLAGS=-i
 

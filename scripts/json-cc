@@ -22,8 +22,19 @@ def go():
     files, flags, makeflags, linking, output = parse(sys.argv[1:])
 
     if len(makeflags) > 0:
-        subprocess.check_call(['gcc', '-E', '-o', output] + makeflags + flags + files)
+        output_args = []
+        if output != None:
+            output_args = ['-o', output]
+
+        link_args = []
+        if linking:
+            link_args = ['-c']
+
+        subprocess.check_call(['gcc', '-E'] + output_args + makeflags + link_args + flags + files)
         # Fall through
+
+    if '-dM' in flags or '-E' in makeflags:
+        return
 
     if 0 == len(files):
         raise Exception('Some files are needed!')
@@ -109,7 +120,9 @@ def parse(arguments: list):
             makeflags.append(arguments[ii])
         elif argument.startswith('-M') or argument == '-E' or argument == '-C':
             makeflags.append(argument)
-        elif (argument.startswith('-D')
+        elif (argument.startswith('-d')
+              or argument.startswith('-D')
+              or argument.startswith('-v')
               or argument.startswith('-U')
               or argument.startswith('-I')
               or argument.startswith('-i')
@@ -119,6 +132,8 @@ def parse(arguments: list):
                                                or argument.endswith('.o')
                                                or argument.endswith('.a')):
             files.append(argument)
+        elif argument == '-':
+            files.append('-')
 
         ii += 1
     return Arguments(files=files,
