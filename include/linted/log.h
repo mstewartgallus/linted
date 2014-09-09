@@ -18,6 +18,7 @@
 
 #include "linted/error.h"
 #include "linted/mq.h"
+#include "linted/util.h"
 
 #include <stddef.h>
 
@@ -38,6 +39,12 @@ struct linted_log_task
 {
 	struct linted_mq_task_receive parent;
 };
+
+#define LINTED_LOG_UPCAST(X)                                                   \
+	LINTED_MQ_RECEIVE_UPCAST(                                              \
+	    LINTED_UPCAST((struct linted_log_task *)NULL == (X), X))
+#define LINTED_LOG_DOWNCAST(X)                                                 \
+	LINTED_DOWNCAST(struct linted_log_task, LINTED_MQ_RECEIVE_DOWNCAST(X))
 
 linted_error linted_log_create(linted_log *logp, unsigned long flags);
 

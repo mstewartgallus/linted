@@ -18,6 +18,7 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/util.h"
 
 #include <stddef.h>
 
@@ -25,10 +26,6 @@
  * @file
  *
  * Implements message queues.
- *
- * @warning There is a race where a process with equal user and group
- *          but different capabilities can open these while they are
- *          being created.
  */
 
 typedef linted_ko linted_mq;
@@ -57,8 +54,20 @@ struct linted_mq_task_send
 	linted_ko ko;
 };
 
+#define LINTED_MQ_RECEIVE_UPCAST(X) LINTED_UPCAST(X)
+#define LINTED_MQ_RECEIVE_DOWNCAST(X)                                          \
+	LINTED_DOWNCAST(struct linted_mq_task_receive, X)
+
+#define LINTED_MQ_SEND_UPCAST(X) LINTED_UPCAST(X)
+#define LINTED_MQ_SEND_DOWNCAST(X)                                             \
+	LINTED_DOWNCAST(struct linted_mq_task_send, X)
+
 /**
  * The linted_mq_pair call creates an unnamed pair of message queues.
+ *
+ * @warning There is a race where a process with equal user and group
+ *          but different capabilities can open these while they are
+ *          being created.
  *
  * @param mqp Returns a message queue.
  *

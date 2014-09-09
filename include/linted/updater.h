@@ -71,6 +71,17 @@ struct linted_updater_task_receive
 	             LINTED_RPC_UINT32_SIZE];
 };
 
+#define LINTED_UPDATER_SEND_UPCAST(X) LINTED_MQ_SEND_UPCAST(LINTED_UPCAST(X))
+#define LINTED_UPDATER_SEND_DOWNCAST(X)                                        \
+	LINTED_DOWNCAST(struct linted_updater_task_send,                       \
+	                LINTED_MQ_SEND_DOWNCAST(X))
+
+#define LINTED_UPDATER_RECEIVE_UPCAST(X)                                       \
+	LINTED_MQ_RECEIVE_UPCAST(LINTED_UPCAST(X))
+#define LINTED_UPDATER_RECEIVE_DOWNCAST(X)                                     \
+	LINTED_DOWNCAST(struct linted_updater_task_receive,                    \
+	                LINTED_MQ_RECEIVE_DOWNCAST(X))
+
 #define LINTED_UPDATER_UINT_MAX UINT32_MAX
 
 #define LINTED_UPDATER_INT_MAX INT32_MAX

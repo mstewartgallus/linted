@@ -129,8 +129,8 @@ void linted_mq_task_receive(struct linted_mq_task_receive *task,
                             unsigned task_action, linted_ko ko, char *buf,
                             size_t size)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_RECEIVE,
-	                   task_action);
+	linted_asynch_task(LINTED_MQ_RECEIVE_UPCAST(task),
+	                   LINTED_ASYNCH_TASK_MQ_RECEIVE, task_action);
 
 	task->ko = ko;
 	task->buf = buf;
@@ -141,8 +141,8 @@ void linted_mq_task_receive(struct linted_mq_task_receive *task,
 void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
                          linted_ko ko, char const *buf, size_t size)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_MQ_SEND,
-	                   task_action);
+	linted_asynch_task(LINTED_MQ_SEND_UPCAST(task),
+	                   LINTED_ASYNCH_TASK_MQ_SEND, task_action);
 
 	task->ko = ko;
 	task->buf = buf;
@@ -154,7 +154,7 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
 	struct linted_mq_task_receive *task_receive =
-	    LINTED_DOWNCAST(struct linted_mq_task_receive, task);
+	    LINTED_MQ_RECEIVE_DOWNCAST(task);
 	size_t bytes_read = 0U;
 	linted_error errnum = 0;
 
@@ -201,8 +201,7 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 void linted_mq_do_send(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *task)
 {
-	struct linted_mq_task_send *task_send =
-	    LINTED_DOWNCAST(struct linted_mq_task_send, task);
+	struct linted_mq_task_send *task_send = LINTED_MQ_SEND_DOWNCAST(task);
 	size_t bytes_wrote = 0U;
 	linted_error errnum = 0;
 

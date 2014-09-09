@@ -63,6 +63,10 @@ struct linted_asynch_task_waitid
 	id_t id;
 	int options;
 };
+
+#define LINTED_ASYNCH_WAITID_UPCAST(X) LINTED_UPCAST(X)
+#define LINTED_ASYNCH_WAITID_DOWNCAST(X)                                       \
+	LINTED_DOWNCAST(struct linted_asynch_task_waitid, X)
 #endif
 
 #if _POSIX_C_SOURCE >= 199309L
@@ -72,6 +76,10 @@ struct linted_asynch_task_sleep_until
 	int flags;
 	struct timespec request;
 };
+
+#define LINTED_ASYNCH_SLEEP_UNTIL_UPCAST(X) LINTED_UPCAST(X)
+#define LINTED_ASYNCH_SLEEP_UNTIL_DOWNCAST(X)                                  \
+	LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, X)
 #endif
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,

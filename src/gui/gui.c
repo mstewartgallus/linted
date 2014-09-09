@@ -115,12 +115,15 @@ struct on_gui_event_args
 	bool *time_to_quit;
 };
 
-struct gui_updater_task
+struct updater_task
 {
 	struct linted_updater_task_receive parent;
 	struct sim_model *sim_model;
 	struct linted_asynch_pool *pool;
 };
+#define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
+#define UPDATER_DOWNCAST(X)                                                    \
+	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_RECEIVE_DOWNCAST(X))
 
 struct controller_task
 {
@@ -129,6 +132,11 @@ struct controller_task
 	struct linted_asynch_pool *pool;
 	linted_ko controller;
 };
+
+#define CONTROLLER_UPCAST(X) LINTED_CONTROLLER_SEND_UPCAST(LINTED_UPCAST(X))
+#define CONTROLLER_DOWNCAST(X)                                                 \
+	LINTED_DOWNCAST(struct controller_task,                                \
+	                LINTED_CONTROLLER_SEND_DOWNCAST(X))
 
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
@@ -233,7 +241,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct gui_updater_task updater_task;
+	struct updater_task updater_task;
 	struct controller_task controller_task;
 
 	Display *input_display = XOpenDisplay(NULL);
@@ -439,8 +447,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	updater_task.sim_model = &sim_model;
 	updater_task.pool = pool;
 
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&updater_task))));
+	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
 
 reopen_graphics_context:
 	;
@@ -931,8 +938,7 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	if ((errnum = task->errnum) != 0)
 		return errnum;
 
-	struct gui_updater_task *updater_task =
-	    LINTED_DOWNCAST(struct gui_updater_task, task);
+	struct updater_task *updater_task = UPDATER_DOWNCAST(task);
 
 	struct sim_model *sim_model = updater_task->sim_model;
 	struct linted_asynch_pool *pool = updater_task->pool;
@@ -963,8 +969,7 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 	if ((errnum = task->errnum) != 0)
 		return errnum;
 
-	struct controller_task *controller_task =
-	    LINTED_DOWNCAST(struct controller_task, task);
+	struct controller_task *controller_task = CONTROLLER_DOWNCAST(task);
 
 	struct controller_data *controller_data =
 	    controller_task->controller_data;
@@ -996,8 +1001,7 @@ static void maybe_update_controller(struct linted_asynch_pool *pool,
 	controller_task->pool = pool;
 	controller_task->controller = controller;
 
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(controller_task))));
+	linted_asynch_pool_submit(pool, CONTROLLER_UPCAST(controller_task));
 
 	controller_data->update_pending = false;
 	controller_data->update_in_progress = true;

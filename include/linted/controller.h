@@ -56,6 +56,17 @@ struct linted_controller_task_receive
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
+#define LINTED_CONTROLLER_SEND_UPCAST(X) LINTED_MQ_SEND_UPCAST(LINTED_UPCAST(X))
+#define LINTED_CONTROLLER_SEND_DOWNCAST(X)                                     \
+	LINTED_DOWNCAST(struct linted_controller_task_send,                    \
+	                LINTED_MQ_SEND_DOWNCAST(X))
+
+#define LINTED_CONTROLLER_RECEIVE_UPCAST(X)                                    \
+	LINTED_MQ_RECEIVE_UPCAST(LINTED_UPCAST(X))
+#define LINTED_CONTROLLER_RECEIVE_DOWNCAST(X)                                  \
+	LINTED_DOWNCAST(struct linted_controller_task_receive,                 \
+	                LINTED_MQ_RECEIVE_DOWNCAST(X))
+
 linted_error linted_controller_create(linted_controller *controllerp,
                                       unsigned long flags);
 
