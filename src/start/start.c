@@ -186,9 +186,8 @@ It is insecure to run a game with high privileges!\n"));
 
 		int new_fd;
 		do {
-			new_fd =
-			    openat(AT_FDCWD, pathname,
-			           oflags | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
+			new_fd = open(pathname,
+			              oflags | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
 			if (-1 == new_fd) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
@@ -290,6 +289,7 @@ static bool is_privileged(void)
 		++envp;
 
 	ElfW(auxv_t) *vector = (ElfW(auxv_t) *)(envp + 1U);
+
 	for (; vector->a_type != AT_NULL; ++vector) {
 		if (AT_SECURE == vector->a_type)
 			goto got_vector;
@@ -352,11 +352,14 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		if (NULL == result)
 			break;
 
-		char const *const d_name = result->d_name;
-		if (0 == strcmp(d_name, "."))
+		char const * d_name;
+
+		d_name = result->d_name;
+
+		if (0 == strcmp(".", d_name))
 			continue;
 
-		if (0 == strcmp(d_name, ".."))
+		if (0 == strcmp("..", d_name))
 			continue;
 
 		int const fd = atoi(d_name);
