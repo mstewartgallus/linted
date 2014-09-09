@@ -101,10 +101,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 static void drop_privileges(linted_ko writer, cap_t caps);
 
-static linted_error my_execveat(int dirfd, char const *filename,
-                                char const *const argv[],
-                                char const *const envp[]);
-
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static void pid_to_str(char *buf, pid_t pid);
@@ -331,6 +327,8 @@ void linted_spawn_file_actions_destroy(
 	linted_mem_free(file_actions);
 }
 
+static char const fd_str[] = " /proc/self/fd/";
+
 /**
  * @bug assert isn't AS-safe.
  */
@@ -395,18 +393,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
 		return EINVAL;
 
-	/*
-	 * So adddup2 works use memory mapping instead of a pipe to
-	 * communicate an error.
-	 */
-	linted_ko reader;
-	linted_ko writer;
-	{
-		linted_ko xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
-			return errno;
-		reader = xx[0U];
-		writer = xx[1U];
+	size_t fd_len;
+	size_t filename_len;
+	char *relative_filename = NULL;
+	if (is_relative_path && !at_fdcwd) {
+		fd_len = strlen(fd_str);
+		filename_len = strlen(filename);
+
+		size_t relative_size = fd_len + 10U + filename_len + 1U;
+
+		void *xx;
+		errnum = linted_mem_alloc(&xx, relative_size);
+		if (errnum != 0)
+			return errnum;
+		relative_filename = xx;
 	}
 
 	cap_t caps;
@@ -415,7 +415,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (NULL == caps) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto close_pipes;
+			goto free_relative_path;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
@@ -445,6 +445,16 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp_copy = xx;
 	}
 
+	linted_ko reader;
+	linted_ko writer;
+	{
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+			goto free_env;
+		reader = xx[0U];
+		writer = xx[1U];
+	}
+
 	{
 		/*
 		 * To save stack space reuse the same sigset for the full set
@@ -456,7 +466,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0) {
-			goto free_caps;
+			goto close_pipes;
 		}
 
 		child = fork();
@@ -477,12 +487,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
-		linted_mem_free(envp_copy);
-
-	free_caps:
-		if (drop_caps)
-			cap_free(caps);
-
 	close_pipes : {
 		linted_error close_errnum = linted_ko_close(writer);
 		if (0 == errnum)
@@ -516,6 +520,16 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			errnum = close_errnum;
 	}
 
+	free_env:
+		linted_mem_free(envp_copy);
+
+	free_caps:
+		if (drop_caps)
+			cap_free(caps);
+
+	free_relative_path:
+		linted_mem_free(relative_filename);
+
 		if (errnum != 0)
 			return errnum;
 
@@ -531,7 +545,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
-		int greatest_fd = -1;
+		int greatest = -1;
 
 		union file_action const *actions = file_actions->actions;
 		size_t action_count = file_actions->action_count;
@@ -541,25 +555,24 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			case FILE_ACTION_ADDDUP2: {
 				int newfildes = action->adddup2.newfildes;
 
-				if (newfildes > greatest_fd)
-					greatest_fd = newfildes;
+				if (newfildes > greatest)
+					greatest = newfildes;
 				break;
 			}
 			}
 		}
 
 		if (!at_fdcwd && is_relative_path) {
-			int dirfd_copy =
-			    fcntl(dirfd, F_DUPFD, (long)greatest_fd);
-			if (-1 == dirfd_copy)
+			int copy = fcntl(dirfd, F_DUPFD, (long)greatest);
+			if (-1 == copy)
 				exit_with_error(writer, errno);
 
 			linted_ko_close(dirfd);
 
-			dirfd = dirfd_copy;
+			dirfd = copy;
 		}
 
-		int writer_copy = fcntl(writer, F_DUPFD, (long)greatest_fd);
+		int writer_copy = fcntl(writer, F_DUPFD, (long)greatest);
 		if (-1 == writer_copy)
 			exit_with_error(writer, errno);
 
@@ -571,14 +584,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (-1 == unshare(clone_flags))
 		exit_with_error(writer, errno);
 
-	if (chrootdir != NULL) {
+	if (chrootdir != NULL)
 		chroot_process(writer, chrootdir, mount_args, mount_args_size);
-	}
 
-	if (chdir_path != NULL) {
+	if (chdir_path != NULL)
 		if (-1 == chdir(chdir_path))
 			exit_with_error(writer, errno);
-	}
 
 	if (file_actions != NULL) {
 		union file_action const *actions = file_actions->actions;
@@ -622,10 +633,24 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp = (char const *const *)envp_copy;
 	}
 
-	errnum = my_execveat(dirfd, filename, argv, envp);
+	if (relative_filename != NULL) {
+		memcpy(relative_filename, fd_str, fd_len);
 
-	exit_with_error(writer, errnum);
-	return 0;
+		pid_to_str(relative_filename + fd_len, dirfd);
+
+		size_t fd_and_dir_len = strlen(relative_filename);
+
+		memcpy(relative_filename + fd_and_dir_len, filename,
+		       filename_len);
+
+		relative_filename[fd_and_dir_len + filename_len] = '\0';
+
+		filename = relative_filename;
+	}
+
+	execve(filename, (char *const *)argv, (char *const *)envp);
+	exit_with_error(writer, errno);
+	return ENOSYS;
 }
 
 static void default_signals(linted_ko writer)
@@ -688,13 +713,9 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 			if (-1 == mkdir(mount_arg->target, S_IRWXU))
 				exit_with_error(writer, errno);
 		} else if (mount_arg->touch_flag) {
-			linted_ko xx;
-			errnum =
-			    linted_file_create(&xx, AT_FDCWD, mount_arg->target,
-			                       LINTED_FILE_EXCL, S_IRWXU);
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-			linted_ko_close(xx);
+			if (-1 ==
+			    mknod(mount_arg->target, S_IRWXU | S_IFREG, 0))
+				exit_with_error(writer, errno);
 		}
 
 		unsigned long mountflags = mount_arg->mountflags;
@@ -788,41 +809,10 @@ static void drop_privileges(linted_ko writer, cap_t caps)
 		exit_with_error(writer, errno);
 }
 
-static linted_error my_execveat(int dirfd, char const *filename,
-                                char const *const argv[],
-                                char const *const envp[])
-{
-	linted_error errnum;
-	bool is_relative_path = filename[0U] != '/';
-	bool at_fdcwd = AT_FDCWD == dirfd;
-	char *new_path = NULL;
-
-	if (is_relative_path && !at_fdcwd) {
-		{
-			void *xx;
-			errnum = linted_mem_alloc(
-			    &xx, strlen("/proc/self/fd/") + 10U +
-			             strlen(filename) + 1U);
-			if (errnum != 0)
-				return errnum;
-			new_path = xx;
-		}
-		sprintf(new_path, "/proc/self/fd/%i/%s", dirfd, filename);
-		filename = new_path;
-	}
-
-	execve(filename, (char *const *)argv, (char *const *)envp);
-	errnum = errno;
-
-	linted_mem_free(new_path);
-
-	return errnum;
-}
-
 static void exit_with_error(linted_ko writer, linted_error errnum)
 {
 	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
-	_Exit(0);
+	_Exit(EXIT_SUCCESS);
 }
 
 static void pid_to_str(char *buf, pid_t pid)

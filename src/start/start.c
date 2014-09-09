@@ -186,8 +186,8 @@ It is insecure to run a game with high privileges!\n"));
 
 		int new_fd;
 		do {
-			new_fd = open(pathname,
-			              oflags | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
+			new_fd = open(pathname, oflags | O_NONBLOCK | O_NOCTTY |
+			                            O_CLOEXEC);
 			if (-1 == new_fd) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
@@ -352,7 +352,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		if (NULL == result)
 			break;
 
-		char const * d_name;
+		char const *d_name;
 
 		d_name = result->d_name;
 

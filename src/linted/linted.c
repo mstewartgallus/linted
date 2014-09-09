@@ -95,7 +95,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		}
 
 		switch (arg) {
-		bad_argument:
 		case -1:
 			bad_option = argument;
 			break;
