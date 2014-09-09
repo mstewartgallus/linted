@@ -1092,9 +1092,9 @@ static linted_error init_graphics(linted_log log,
 		glAttachShader(program, fragment_shader);
 		glDeleteShader(fragment_shader);
 
-		glShaderSource(fragment_shader, 1U,
-		               (GLchar const **)&linted_assets_fragment_shader,
-		               NULL);
+		glShaderSource(
+		    fragment_shader, 1U,
+		    (GLchar const **)&linted_gui_assets_fragment_shader, NULL);
 		glCompileShader(fragment_shader);
 
 		GLint is_valid;
@@ -1132,9 +1132,9 @@ static linted_error init_graphics(linted_log log,
 		glAttachShader(program, vertex_shader);
 		glDeleteShader(vertex_shader);
 
-		glShaderSource(vertex_shader, 1U,
-		               (GLchar const **)&linted_assets_vertex_shader,
-		               NULL);
+		glShaderSource(
+		    vertex_shader, 1U,
+		    (GLchar const **)&linted_gui_assets_vertex_shader, NULL);
 		glCompileShader(vertex_shader);
 
 		GLint is_valid;
@@ -1186,9 +1186,9 @@ static linted_error init_graphics(linted_log log,
 		goto cleanup_program;
 	}
 
-	GLint model_view_projection_matrix =
+	GLint mvp_matrix =
 	    glGetUniformLocation(program, "model_view_projection_matrix");
-	if (-1 == model_view_projection_matrix) {
+	if (-1 == mvp_matrix) {
 		errnum = EINVAL;
 		goto cleanup_program;
 	}
@@ -1208,16 +1208,15 @@ static linted_error init_graphics(linted_log log,
 	glEnableVertexAttribArray(vertex);
 	glEnableVertexAttribArray(normal);
 
-	glVertexAttribPointer(
-	    vertex, LINTED_ARRAY_SIZE(linted_assets_triangle_vertices[0U]),
-	    GL_FLOAT, false, 0, linted_assets_triangle_vertices);
-	glVertexAttribPointer(
-	    normal, LINTED_ARRAY_SIZE(linted_assets_triangle_normals[0U]),
-	    GL_FLOAT, false, 0, linted_assets_triangle_normals);
+	glVertexAttribPointer(vertex,
+	                      LINTED_ARRAY_SIZE(linted_gui_assets_vertices[0U]),
+	                      GL_FLOAT, false, 0, linted_gui_assets_vertices);
+	glVertexAttribPointer(normal,
+	                      LINTED_ARRAY_SIZE(linted_gui_assets_normals[0U]),
+	                      GL_FLOAT, false, 0, linted_gui_assets_normals);
 
 	graphics_state->program = program;
-	graphics_state->model_view_projection_matrix =
-	    model_view_projection_matrix;
+	graphics_state->model_view_projection_matrix = mvp_matrix;
 
 	glUseProgram(program);
 
@@ -1314,8 +1313,8 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		                   1U, false, model_view_projection[0U]);
 	}
 
-	glDrawElements(GL_TRIANGLES, 3U * linted_assets_triangle_indices_size,
-	               GL_UNSIGNED_BYTE, linted_assets_triangle_indices);
+	glDrawElements(GL_TRIANGLES, 3U * linted_gui_assets_indices_size,
+	               GL_UNSIGNED_BYTE, linted_gui_assets_indices);
 }
 
 static void flush_gl_errors(void)
