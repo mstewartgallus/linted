@@ -716,7 +716,7 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 	/* Magic incantation that clears up /proc/mounts more than
 	 * mount MS_MOVE
 	 */
-	int old_root = open("/", O_DIRECTORY);
+	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
 	if (-1 == old_root)
 		exit_with_error(writer, errno);
 
@@ -732,6 +732,10 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 	if (-1 == fchdir(old_root))
 		exit_with_error(writer, errno);
+
+	errnum = linted_ko_close(old_root);
+	if (errnum != 0)
+		exit_with_error(writer, errnum);
 
 	if (-1 == umount2(".", MNT_DETACH))
 		exit_with_error(writer, errno);
