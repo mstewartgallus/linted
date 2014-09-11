@@ -125,6 +125,11 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task);
 static linted_error on_controller_receive(struct linted_asynch_task *task);
 static linted_error on_sent_update(struct linted_asynch_task *completed_task);
 
+static void maybe_update(linted_updater updater,
+                         struct simulator_state *simulator_state,
+                         struct updater_task *updater_task,
+                         struct linted_asynch_pool *pool);
+
 static void simulate_tick(struct simulator_state *simulator_state,
                           struct action_state const *action_state);
 static void simulate_rotation(linted_updater_angle *rotation,
@@ -163,7 +168,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0)
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0)
 			goto exit;
 		pool = xx;
 	}
@@ -203,7 +209,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0)
+		errnum = dispatch(completed_task);
+		if (errnum != 0)
 			goto destroy_pool;
 	}
 
@@ -341,30 +348,7 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 
 	simulate_tick(simulator_state, action_state);
 
-	if (!simulator_state->update_pending ||
-	    simulator_state->write_in_progress)
-		return 0;
-
-	{
-		struct linted_updater_update update = {
-		    .x_position = simulator_state->position[0U].value,
-		    .y_position = simulator_state->position[1U].value,
-		    .z_position = simulator_state->position[2U].value,
-		    .x_rotation = simulator_state->x_rotation,
-		    .y_rotation = simulator_state->y_rotation};
-
-		linted_updater_send(LINTED_UPCAST(updater_task),
-		                    ON_SENT_UPDATER_EVENT, updater, &update);
-	}
-
-	updater_task->simulator_state = simulator_state;
-	updater_task->pool = pool;
-	updater_task->updater = updater;
-
-	linted_asynch_pool_submit(pool, UPDATER_UPCAST(updater_task));
-
-	simulator_state->update_pending = false;
-	simulator_state->write_in_progress = true;
+	maybe_update(updater, simulator_state, updater_task, pool);
 
 	return 0;
 }
@@ -415,8 +399,21 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 
 	simulator_state->write_in_progress = false;
 
+	maybe_update(updater, simulator_state, updater_task, pool);
+
+	return 0;
+}
+
+static void maybe_update(linted_updater updater,
+                         struct simulator_state *simulator_state,
+                         struct updater_task *updater_task,
+                         struct linted_asynch_pool *pool)
+{
 	if (!simulator_state->update_pending)
-		return 0;
+		return;
+
+	if (simulator_state->write_in_progress)
+		return;
 
 	{
 		struct linted_updater_update update = {
@@ -434,12 +431,10 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 	updater_task->pool = pool;
 	updater_task->updater = updater;
 
-	linted_asynch_pool_submit(pool, completed_task);
+	linted_asynch_pool_submit(pool, UPDATER_UPCAST(updater_task));
 
 	simulator_state->update_pending = false;
 	simulator_state->write_in_progress = true;
-
-	return 0;
 }
 
 static void simulate_tick(struct simulator_state *simulator_state,
@@ -447,6 +442,8 @@ static void simulate_tick(struct simulator_state *simulator_state,
 {
 
 	linted_updater_angle x_rotation = simulator_state->x_rotation;
+	struct differentiable *positions = simulator_state->position;
+	size_t positions_size = LINTED_ARRAY_SIZE(simulator_state->position);
 
 	linted_updater_int const thrusts[3U] = {
 	    -(linted_updater_cos(x_rotation) * action_state->x) / 2 -
@@ -455,12 +452,12 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	    -(linted_updater_cos(x_rotation) * action_state->z) / 2 +
 	        (linted_updater_sin(x_rotation) * action_state->x) / 2};
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(simulator_state->position);
-	     ++ii) {
-		linted_updater_int position =
-		    simulator_state->position[ii].value;
-		linted_updater_int old_position =
-		    simulator_state->position[ii].old;
+	for (size_t ii = 0U; ii < positions_size; ++ii) {
+		struct differentiable *pos = &positions[ii];
+
+		linted_updater_int position = pos->value;
+		linted_updater_int old_position = pos->old;
+
 		linted_updater_int old_velocity = position - old_position;
 		linted_updater_int thrust = thrusts[ii];
 
@@ -479,8 +476,8 @@ static void simulate_tick(struct simulator_state *simulator_state,
 		linted_updater_int new_position =
 		    linted_updater_isatadd(position, new_velocity);
 
-		simulator_state->position[ii].value = new_position;
-		simulator_state->position[ii].old = position;
+		pos->value = new_position;
+		pos->old = position;
 	}
 
 	simulate_rotation(&simulator_state->x_rotation, action_state->x_tilt);
