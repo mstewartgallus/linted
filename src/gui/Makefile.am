@@ -16,7 +16,7 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=%D%/gui
 
-%C%_gui_SOURCES=%D%/gui.c %D%/assets.c
+%C%_gui_SOURCES=%D%/gui.c
 %C%_gui_LDADD=\
   src/start/libstart.la\
   \
@@ -28,44 +28,16 @@ pkglibexec_PROGRAMS+=%D%/gui
   \
   src/controller/libcontroller.la\
   src/log/liblog.la\
-  src/updater/libupdater.la\
+  src/window-notifier/libwindow-notifier.la\
   \
   -lm\
   $(X11_LIBS)\
   $(XCB_LIBS)\
-  $(X11_XCB_LIBS)\
-  $(GLES_LIBS)\
-  $(EGL_LIBS)
+  $(X11_XCB_LIBS)
 
 %C%_gui_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GLES_FLAGS) $(EGL_FLAGS)\
-  -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
-
-EXTRA_DIST+=\
-  %D%/assets.h\
-  \
-  %D%/assets/assets.py\
-  %D%/assets/scene.blend\
-  %D%/assets/shaders/fragment.glsl\
-  %D%/assets/shaders/varying.glsl\
-  %D%/assets/shaders/vertex.glsl\
-  \
-  %D%/assets_generator/linted_assets_generator\
-  %D%/assets_generator/linted_assets_generator.py
-
-MOSTLYCLEANFILES+=%D%/assets.c
-%D%/assets.c:\
-  %D%/assets/assets.py\
-  %D%/assets/scene.blend\
-  %D%/assets/shaders/fragment.glsl\
-  %D%/assets/shaders/varying.glsl\
-  %D%/assets/shaders/vertex.glsl\
-  \
-  %D%/assets_generator/linted_assets_generator\
-  %D%/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
-	  $(srcdir)/%D%/assets/assets.py\
-	  --output=$@
+  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS)\
+  $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/gui-fstab
 dist_pkgdefaultunits_DATA+=%D%/units/gui.service

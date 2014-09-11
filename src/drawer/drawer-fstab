@@ -9,6 +9,7 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec
 
 # Allow connecting to X11\n
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind,noexec,nosuid
+/dev/dri	dev/dri	none	mkdir,rbind
 
 /dev/null	dev/null	none	touch,bind
 /dev/random	dev/random	none	touch,bind

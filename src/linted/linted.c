@@ -58,7 +58,9 @@ static struct envvar const default_envvars[] = {
     {"LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT},
     {"LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab"},
     {"LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT},
-    {"LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab"}};
+    {"LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab"},
+    {"LINTED_DRAWER", PKGLIBEXECDIR "/drawer" EXEEXT},
+    {"LINTED_DRAWER_FSTAB", PKGDEFAULTCONFDIR "/drawer-fstab"}};
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,

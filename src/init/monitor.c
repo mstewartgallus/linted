@@ -100,7 +100,6 @@ struct wait_service_task
 {
 	struct linted_asynch_task_waitid parent;
 	struct linted_asynch_pool *pool;
-	pid_t halt_pid;
 	bool time_to_exit : 1U;
 };
 
@@ -188,8 +187,7 @@ static linted_error units_create(struct units **unitp, struct conf **confs,
                                  size_t size);
 static void units_destroy(struct units *units);
 static linted_error units_activate(struct units *units, struct conf **confs,
-                                   pid_t *halt_pidp, linted_ko cwd,
-                                   char const *chrootdir);
+                                   linted_ko cwd, char const *chrootdir);
 static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
 
@@ -213,8 +211,7 @@ static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
 static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
 static linted_error socket_create(linted_ko *kop, struct conf *unit);
-static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
-                                  struct conf *unit, linted_ko cwd,
+static linted_error service_spawn(pid_t *pidp, struct conf *unit, linted_ko cwd,
                                   char const *chrootdir,
                                   struct units const *units);
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -329,19 +326,13 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	    pool,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
-	pid_t halt_pid;
-	{
-		pid_t xx = -1;
-		errnum = units_activate(units, confs, &xx, cwd, chrootdir);
-		if (errnum != 0)
-			goto destroy_units;
-		halt_pid = xx;
-	}
+	errnum = units_activate(units, confs, cwd, chrootdir);
+	if (errnum != 0)
+		goto destroy_units;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
 	                          -1, WEXITED);
 	waiter_task.pool = pool;
-	waiter_task.halt_pid = halt_pid;
 	waiter_task.time_to_exit = false;
 
 	linted_asynch_pool_submit(pool,
@@ -759,8 +750,7 @@ static void units_destroy(struct units *units)
 }
 
 static linted_error units_activate(struct units *units, struct conf **confs,
-                                   pid_t *halt_pidp, linted_ko cwd,
-                                   char const *chrootdir)
+                                   linted_ko cwd, char const *chrootdir)
 {
 	linted_error errnum;
 
@@ -794,22 +784,17 @@ static linted_error units_activate(struct units *units, struct conf **confs,
 		struct unit_service *unit_service = &unit->service;
 
 		pid_t process;
-		bool halt_after_exit;
 		{
 			pid_t xx;
-			bool yy;
-			errnum = service_spawn(&xx, &yy, conf, cwd, chrootdir,
-			                       units);
+			errnum =
+			    service_spawn(&xx, conf, cwd, chrootdir, units);
 			if (errnum != 0)
 				return errnum;
+
 			process = xx;
-			halt_after_exit = yy;
 		}
 
 		unit_service->pid = process;
-
-		if (halt_after_exit)
-			*halt_pidp = process;
 	}
 
 	return 0;
@@ -876,8 +861,7 @@ static linted_error socket_create(linted_ko *kop, struct conf *unit)
 	return 0;
 }
 
-static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
-                                  struct conf *conf, linted_ko cwd,
+static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
                                   char const *chrootdir,
                                   struct units const *units)
 {
@@ -891,8 +875,6 @@ static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
 	char const *const *fstab = conf_find(conf, "Service", "X-Linted-Fstab");
 	char const *const *env_whitelist =
 	    conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
-	char const *const *halt_after_exit =
-	    conf_find(conf, "Service", "X-Linted-Halt-After-Exit");
 
 	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
 		return EINVAL;
@@ -905,10 +887,6 @@ static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
 		return EINVAL;
 
 	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
-		return EINVAL;
-
-	if (halt_after_exit != NULL &&
-	    (NULL == halt_after_exit[0U] || halt_after_exit[1U] != NULL))
 		return EINVAL;
 
 	if (NULL == type) {
@@ -939,16 +917,6 @@ static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
 			return errnum;
 		envvars = xx;
 	}
-
-	bool halt_after_exit_value = false;
-	if (halt_after_exit != NULL) {
-		bool xx;
-		errnum = bool_from_cstring(halt_after_exit[0U], &xx);
-		if (errnum != 0)
-			goto free_envvars;
-		halt_after_exit_value = xx;
-	}
-	*halt_after_exitp = halt_after_exit_value;
 
 	char const *chdir_path = "/var";
 	int clone_flags = CLONE_NEWIPC | CLONE_NEWNET;
@@ -1072,7 +1040,6 @@ static linted_error service_spawn(pid_t *pidp, bool *halt_after_exitp,
 
 		char *opts = opts_buffer;
 		char *value = NULL;
-
 		while (*opts != '\0') {
 			int token;
 			{
@@ -1443,7 +1410,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	    LINTED_DOWNCAST(struct wait_service_task, task);
 
 	struct linted_asynch_pool *pool = wait_service_task->pool;
-	pid_t halt_pid = wait_service_task->halt_pid;
 
 	int exit_status;
 	int exit_code;
@@ -1452,7 +1418,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
 		exit_status = exit_info->si_status;
 		exit_code = exit_info->si_code;
-		pid = exit_info->si_pid;
 	}
 
 	linted_asynch_pool_submit(pool, task);
@@ -1480,8 +1445,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	return 0;
 
 process_exited:
-	if (pid == halt_pid)
-		wait_service_task->time_to_exit = true;
+	wait_service_task->time_to_exit = true;
 
 	return 0;
 }

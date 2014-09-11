@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 [Unit]
-Description=Linted-Gui Game Interface
-Documentation='man:linted-gui(6)'
+Description=Linted-Window-Notifier Window Notifier
+Documentation='man:linted.special(6)'
 
-[Service]
-ExecStart="${LINTED_GUI}"
-NoNewPrivileges=true
+[Socket]
+ListenMessageQueue=/window-notifier
+MessageQueueMaxMessages=1
+MessageQueueMessageSize=4
 
-X-Linted-Files=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
-
-X-Linted-Fstab="${LINTED_GUI_FSTAB}"
-X-Linted-Halt-After-Exit=yes
-
-X-Linted-Environment-Whitelist=DISPLAY
+X-Linted-Temporary=true

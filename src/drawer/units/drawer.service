@@ -1,0 +1,85 @@
+# Copyright 2014 Steven Stewart-Gallus
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+[Unit]
+Description=Linted-Drawer Game Renderer
+Documentation='man:linted-drawer(6)'
+
+[Service]
+ExecStart="${LINTED_DRAWER}"
+NoNewPrivileges=true
+
+X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,wronly OPEN:updater,rdonly
+
+X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
+X-Linted-Halt-After-Exit=yes
+
+X-Linted-Environment-Whitelist=DISPLAY
+X-Linted-Environment-Whitelist=LD_PRELOAD
+X-Linted-Environment-Whitelist=LD_LIBRARY_PATH
+X-Linted-Environment-Whitelist=EGL_DRIVERS_PATH
+X-Linted-Environment-Whitelist=EGL_DRIVER
+X-Linted-Environment-Whitelist=EGL_PLATFORM
+X-Linted-Environment-Whitelist=EGL_LOG_LEVEL
+X-Linted-Environment-Whitelist=EGL_SOFTWARE
+X-Linted-Environment-Whitelist=LIBGL_DEBUG
+X-Linted-Environment-Whitelist=LIBGL_DRIVERS_PATH
+X-Linted-Environment-Whitelist=LIBGL_ALWAYS_INDIRECT
+X-Linted-Environment-Whitelist=LIBGL_ALWAYS_SOFTWARE
+X-Linted-Environment-Whitelist=LIBGL_NO_DRAWARRAYS
+X-Linted-Environment-Whitelist=LIBGL_SHOW_FPS
+X-Linted-Environment-Whitelist=MESA_NO_ASM
+X-Linted-Environment-Whitelist=MESA_NO_MMX
+X-Linted-Environment-Whitelist=MESA_NO_3DNOW
+X-Linted-Environment-Whitelist=MESA_NO_SSE
+X-Linted-Environment-Whitelist=MESA_DEBUG
+X-Linted-Environment-Whitelist=MESA_LOG_FILE
+X-Linted-Environment-Whitelist=MESA_TEX_PROG
+X-Linted-Environment-Whitelist=MESA_TNL_PROG
+X-Linted-Environment-Whitelist=MESA_EXTENSION_OVERRIDE
+X-Linted-Environment-Whitelist=MESA_EXTENSION_MAX_YEAR
+X-Linted-Environment-Whitelist=MESA_GL_VERSION_OVERRIDE
+X-Linted-Environment-Whitelist=MESA_GLSL_VERSION_OVERRIDE
+X-Linted-Environment-Whitelist=MESA_GLSL
+X-Linted-Environment-Whitelist=MESA_RGB_VISUAL
+X-Linted-Environment-Whitelist=MESA_CI_VISUAL
+X-Linted-Environment-Whitelist=MESA_BACK_BUFFER
+X-Linted-Environment-Whitelist=MESA_GAMMA
+X-Linted-Environment-Whitelist=MESA_XSYNC
+X-Linted-Environment-Whitelist=MESA_GLX_FORCE_CI
+X-Linted-Environment-Whitelist=MESA_GLX_FORCE_ALPHA
+X-Linted-Environment-Whitelist=MESA_GLX_DEPTH_BITS
+X-Linted-Environment-Whitelist=MESA_GLX_ALPHA_BITS
+X-Linted-Environment-Whitelist=INTEL_NO_HW
+X-Linted-Environment-Whitelist=INTEL_DEBUG
+X-Linted-Environment-Whitelist=RADEON_NO_TCL
+X-Linted-Environment-Whitelist=GALLIUM_HUD
+X-Linted-Environment-Whitelist=GALLIUM_LOG_FILE
+X-Linted-Environment-Whitelist=GALLIUM_PRINT_OPTIONS
+X-Linted-Environment-Whitelist=GALLIUM_DUMP_CPU
+X-Linted-Environment-Whitelist=TGSI_PRINT_SANITY
+X-Linted-Environment-Whitelist=DRAW_FSE
+X-Linted-Environment-Whitelist=DRAW_NO_FSE
+X-Linted-Environment-Whitelist=DRAW_USE_LLVM
+X-Linted-Environment-Whitelist=ST_DEBUG
+X-Linted-Environment-Whitelist=SOFTPIPE_DUMP_FS
+X-Linted-Environment-Whitelist=SOFTPIPE_DUMP_GS
+X-Linted-Environment-Whitelist=SOFTPIPE_NO_RAST
+X-Linted-Environment-Whitelist=SOFTPIPE_USE_LLVM
+X-Linted-Environment-Whitelist=LP_NO_RAST
+X-Linted-Environment-Whitelist=LP_DEBUG
+X-Linted-Environment-Whitelist=LP_PERF
+X-Linted-Environment-Whitelist=LP_NUM_THREADS
+X-Linted-Environment-Whitelist=SVGA_FORCE_SWTNL
+X-Linted-Environment-Whitelist=SVGA_NO_SWTNL
+X-Linted-Environment-Whitelist=SVGA_DEBUG

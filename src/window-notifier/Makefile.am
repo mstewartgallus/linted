@@ -1,4 +1,7 @@
-# Copyright 2014 Steven Stewart-Gallus
+# Process this file with automake to produce Makefile.in (in this,
+# and all subdirectories).
+#
+# Copyright 2013, 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,17 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-[Unit]
-Description=Linted-Gui Game Interface
-Documentation='man:linted-gui(6)'
+noinst_LTLIBRARIES+=%D%/libwindow-notifier.la
 
-[Service]
-ExecStart="${LINTED_GUI}"
-NoNewPrivileges=true
-
-X-Linted-Files=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
-
-X-Linted-Fstab="${LINTED_GUI_FSTAB}"
-X-Linted-Halt-After-Exit=yes
-
-X-Linted-Environment-Whitelist=DISPLAY
+%C%_libwindow_notifier_la_SOURCES=\
+  %D%/window-notifier.c\
+  include/linted/window-notifier.h
+%C%_libwindow_notifier_la_LIBADD=src/asynch/libasynch.la src/mq/libmq.la
+dist_pkgdefaultunits_DATA+=%D%/units/window-notifier.socket

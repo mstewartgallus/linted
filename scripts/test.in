@@ -17,11 +17,13 @@ mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
 : ${LINTED_UNIT_PATH:="\
 ${SRCDIR}/src/controller/units\
+:${SRCDIR}/src/drawer/units\
 :${SRCDIR}/src/gui/units\
 :${SRCDIR}/src/logger/units\
 :${SRCDIR}/src/log/units\
 :${SRCDIR}/src/simulator/units\
-:${SRCDIR}/src/updater/units"}
+:${SRCDIR}/src/updater/units\
+:${SRCDIR}/src/window-notifier/units"}
 
 : ${LINTED_CHROOT:="${XDG_RUNTIME_DIR}/linted/chroot"}
 
@@ -36,6 +38,9 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_GUI_FSTAB:="${SRCDIR}/src/gui/gui-fstab"}
 : ${LINTED_GUI:="${ROOT}/../src/gui/gui"}
 
+: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/drawer/drawer-fstab"}
+: ${LINTED_DRAWER:="${ROOT}/../src/drawer/drawer"}
+
 export LINTED_UNIT_PATH
 export LINTED_CHROOT
 export LINTED_INIT
@@ -45,5 +50,7 @@ export LINTED_SIMULATOR_FSTAB
 export LINTED_SIMULATOR
 export LINTED_GUI_FSTAB
 export LINTED_GUI
+export LINTED_DRAWER_FSTAB
+export LINTED_DRAWER
 
 exec "${ROOT}/../src/linted/linted" "$@"
