@@ -30,7 +30,6 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/log/liblog.la\
   src/window-notifier/libwindow-notifier.la\
   \
-  -lm\
   $(X11_LIBS)\
   $(XCB_LIBS)\
   $(X11_XCB_LIBS)
