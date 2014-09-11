@@ -871,6 +871,7 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 	    conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *files = conf_find(conf, "Service", "X-Linted-Files");
 	char const *const *fstab = conf_find(conf, "Service", "X-Linted-Fstab");
+	char const *const *chdir_path = conf_find(conf, "Service", "X-Linted-Chdir");
 	char const *const *env_whitelist =
 	    conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
@@ -885,6 +886,9 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 		return EINVAL;
 
 	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
+		return EINVAL;
+
+	if (chdir_path != NULL && (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
 		return EINVAL;
 
 	if (NULL == type) {
@@ -916,7 +920,6 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 		envvars = xx;
 	}
 
-	char const *chdir_path = "/var";
 	int clone_flags = CLONE_NEWIPC | CLONE_NEWNET;
 
 	struct linted_spawn_file_actions *file_actions;
@@ -944,7 +947,8 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs_value);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
-	linted_spawn_attr_setchdir(attr, chdir_path);
+	if (chdir_path != NULL)
+		linted_spawn_attr_setchdir(attr, chdir_path[0U]);
 
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);
