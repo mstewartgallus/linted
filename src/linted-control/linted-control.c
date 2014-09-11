@@ -44,11 +44,11 @@ struct linted_start_config const linted_start_config = {
     .seccomp_bpf = &seccomp_filter};
 
 static uint_fast8_t run_reboot(char const *process_name, size_t argc,
-                               char const *const argv[const]);
+                               char const *const argv[]);
 static uint_fast8_t run_status(char const *process_name, size_t argc,
-                               char const *const argv[const]);
+                               char const *const argv[]);
 static uint_fast8_t run_stop(char const *process_name, size_t argc,
-                             char const *const argv[const]);
+                             char const *const argv[]);
 
 static linted_error reboot_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
@@ -70,7 +70,7 @@ static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 
 uint_fast8_t linted_start(char const *const process_name, size_t argc,
-                          char const *const argv[const])
+                          char const *const argv[])
 {
 	bool need_help = false;
 	bool need_version = false;
@@ -207,8 +207,9 @@ static struct sock_fprog const seccomp_filter = {
     .filter = (struct sock_filter *)real_filter};
 
 static uint_fast8_t run_reboot(char const *process_name, size_t argc,
-                               char const *const argv[const])
+                               char const *const argv[])
 {
+	linted_error errnum;
 	bool need_version = false;
 	bool need_add_help = false;
 	char const *bad_option = NULL;
@@ -272,37 +273,28 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	}
 
 	size_t path_len = strlen(path);
-	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
-		                       process_name);
-		return EXIT_FAILURE;
-	}
-
-	linted_error errnum;
-	linted_admin linted;
-
+	linted_admin admin;
 	{
-		linted_admin admin;
-		errnum = linted_admin_connect(&admin, path, path_len);
+		linted_admin xx;
+		errnum = linted_admin_connect(&xx, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = admin;
+		admin = xx;
 	}
+
+	linted_io_write_format(STDOUT_FILENO, NULL,
+	                       "%s: sending the reboot request\n",
+	                       process_name);
 
 	{
 		union linted_admin_request request = {0};
 
 		request.type = LINTED_ADMIN_REBOOT;
 
-		linted_io_write_format(STDOUT_FILENO, NULL,
-		                       "%s: sending the reboot request\n",
-		                       process_name);
-
-		errnum = linted_admin_send_request(linted, &request);
+		errnum = linted_admin_send_request(admin, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -310,40 +302,41 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 		}
 	}
 
+	union linted_admin_reply reply;
+	size_t bytes_read;
 	{
-		union linted_admin_reply reply;
-		size_t bytes_read;
-
-		errnum = linted_admin_recv_reply(linted, &reply, &bytes_read);
+		size_t xx;
+		errnum = linted_admin_recv_reply(admin, &reply, &xx);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
+		bytes_read = xx;
+	}
 
-		if (0U == bytes_read) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: socket hung up\n",
-			                       process_name);
-			return EXIT_FAILURE;
-		}
+	if (0U == bytes_read) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: socket hung up\n", process_name);
+		return EXIT_FAILURE;
+	}
 
-		/* Sent malformed input */
-		if (bytes_read != sizeof reply) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL,
-			    "%s: reply was too small: %" PRIuMAX "\n",
-			    process_name, (uintmax_t)bytes_read);
-			return EXIT_FAILURE;
-		}
+	/* Sent malformed input */
+	if (bytes_read != sizeof reply) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: reply was too small: %" PRIuMAX
+		                       "\n",
+		                       process_name, (uintmax_t)bytes_read);
+		return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;
 }
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,
-                               char const *const argv[const])
+                               char const *const argv[])
 {
+	linted_error errnum;
 	bool need_version = false;
 	bool need_add_help = false;
 	char const *name = NULL;
@@ -411,16 +404,6 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	size_t path_len = strlen(path);
-	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
-		                       process_name);
-		return EXIT_FAILURE;
-	}
-
-	linted_error errnum;
-
 	if (NULL == name) {
 		linted_io_write_format(STDERR_FILENO, NULL,
 		                       "%s: missing SERVICE\n", process_name);
@@ -438,18 +421,22 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_admin linted;
-
+	size_t path_len = strlen(path);
+	linted_admin admin;
 	{
-		linted_admin admin;
-		errnum = linted_admin_connect(&admin, path, path_len);
+		linted_admin xx;
+		errnum = linted_admin_connect(&xx, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = admin;
+		admin = xx;
 	}
+
+	linted_io_write_format(STDOUT_FILENO, NULL,
+	                       "%s: sending the status request for %s\n",
+	                       process_name, name);
 
 	{
 		union linted_admin_request request = {0};
@@ -458,12 +445,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		request.status.size = name_len;
 		memcpy(request.status.name, name, name_len);
 
-		linted_io_write_format(
-		    STDOUT_FILENO, NULL,
-		    "%s: sending the status request for %s\n", process_name,
-		    name);
-
-		errnum = linted_admin_send_request(linted, &request);
+		errnum = linted_admin_send_request(admin, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -471,41 +453,40 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		}
 	}
 
+	union linted_admin_reply reply;
+	size_t bytes_read;
 	{
-		union linted_admin_reply reply;
-		size_t bytes_read;
-		errnum = linted_admin_recv_reply(linted, &reply, &bytes_read);
+		size_t xx;
+		errnum = linted_admin_recv_reply(admin, &reply, &xx);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
+		bytes_read = xx;
+	}
 
-		if (0U == bytes_read) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: socket hung up\n",
-			                       process_name);
-			return EXIT_FAILURE;
-		}
+	if (0U == bytes_read) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: socket hung up\n", process_name);
+		return EXIT_FAILURE;
+	}
 
-		/* Sent malformed input */
-		if (bytes_read != sizeof reply) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL,
-			    "%s: reply was too small: %" PRIuMAX "\n",
-			    process_name, (uintmax_t)bytes_read);
-			return EXIT_FAILURE;
-		}
+	/* Sent malformed input */
+	if (bytes_read != sizeof reply) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: reply was too small: %" PRIuMAX
+		                       "\n",
+		                       process_name, (uintmax_t)bytes_read);
+		return EXIT_FAILURE;
+	}
 
-		if (reply.status.is_up) {
-			linted_io_write_format(STDOUT_FILENO, NULL,
-			                       "%s: %s is up\n", process_name,
-			                       name);
-		} else {
-			linted_io_write_format(STDOUT_FILENO, NULL,
-			                       "%s: %s is down\n", process_name,
-			                       name);
-		}
+	if (reply.status.is_up) {
+		linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n",
+		                       process_name, name);
+	} else {
+		linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is down\n",
+		                       process_name, name);
 	}
 
 	return EXIT_SUCCESS;
@@ -514,6 +495,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 static uint_fast8_t run_stop(char const *process_name, size_t argc,
                              char const *const argv[const])
 {
+	linted_error errnum;
 	bool need_version = false;
 	bool need_add_help = false;
 	char const *bad_option = NULL;
@@ -577,26 +559,21 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	size_t path_len = strlen(path);
-	if (path_len > LINTED_ADMIN_PATH_MAX - 1U) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: LINTED_ADMIN_SOCKET is too long\n",
-		                       process_name);
-		return EXIT_FAILURE;
-	}
-
-	linted_admin linted;
-
+	linted_admin admin;
 	{
-		linted_admin admin;
-		linted_error errnum =
-		    linted_admin_connect(&admin, path, path_len);
+		linted_admin xx;
+		errnum = linted_admin_connect(&xx, path, path_len);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		linted = admin;
+		admin = xx;
 	}
+
+	linted_io_write_format(STDOUT_FILENO, NULL,
+	                       "%s: sending the stop request for the gui\n",
+	                       process_name);
 
 	{
 		union linted_admin_request request = {0};
@@ -605,12 +582,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		request.stop.size = sizeof "gui" - 1U;
 		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
-		linted_io_write_format(
-		    STDOUT_FILENO, NULL,
-		    "%s: sending the stop request for the gui\n", process_name);
-
-		linted_error errnum =
-		    linted_admin_send_request(linted, &request);
+		errnum = linted_admin_send_request(admin, &request);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can send request"), errnum);
@@ -618,33 +590,32 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		}
 	}
 
+	union linted_admin_reply reply;
+	size_t bytes_read;
 	{
-		union linted_admin_reply reply;
-		size_t bytes_read;
-		linted_error errnum =
-		    linted_admin_recv_reply(linted, &reply, &bytes_read);
+		size_t xx;
+		errnum = linted_admin_recv_reply(admin, &reply, &xx);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
+		bytes_read = xx;
+	}
 
-		if (0U == bytes_read) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: socket hung up\n",
-			                       process_name);
-			return EXIT_FAILURE;
-		}
+	if (0U == bytes_read) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: socket hung up\n", process_name);
+		return EXIT_FAILURE;
+	}
 
-		if (reply.stop.was_up) {
-			linted_io_write_format(STDOUT_FILENO, NULL,
-			                       "%s: gui was killed\n",
-			                       process_name);
-		} else {
-			linted_io_write_format(STDOUT_FILENO, NULL,
-			                       "%s: the gui was not killed\n",
-			                       process_name);
-		}
+	if (reply.stop.was_up) {
+		linted_io_write_format(STDOUT_FILENO, NULL,
+		                       "%s: gui was killed\n", process_name);
+	} else {
+		linted_io_write_format(STDOUT_FILENO, NULL,
+		                       "%s: the gui was not killed\n",
+		                       process_name);
 	}
 
 	return EXIT_SUCCESS;
@@ -698,7 +669,7 @@ Run the admin program.\n"));
 		goto free_buffer;
 
 	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-  status              request the status of the gui service\n\
+  status              request the status of the service\n\
   stop                stop the gui service\n"));
 	if (errnum != 0)
 		goto free_buffer;
