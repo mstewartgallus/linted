@@ -22,14 +22,12 @@
 #include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/conf.h"
-#include "linted/controller.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/mq.h"
 #include "linted/spawn.h"
-#include "linted/updater.h"
 #include "linted/util.h"
 
 #include <assert.h>

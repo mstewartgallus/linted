@@ -29,9 +29,7 @@ pkglibexec_PROGRAMS+=%D%/init
   src/io/libio.la\
   src/locale/liblocale.la\
   src/mem/libmem.la\
+  src/mq/libmq.la\
   src/spawn/libspawn.la\
   \
-  src/admin/libadmin.la\
-  src/controller/libcontroller.la\
-  src/log/liblog.la\
-  src/updater/libupdater.la
+  src/admin/libadmin.la
