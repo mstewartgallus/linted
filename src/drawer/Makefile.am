@@ -16,10 +16,11 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=%D%/drawer
 
-%C%_drawer_SOURCES=%D%/drawer.c %D%/assets.c
+%C%_drawer_SOURCES=%D%/drawer.c
 %C%_drawer_LDADD=\
   src/start/libstart.la\
   \
+  src/assets/libassets.la\
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/io/libio.la\
@@ -39,33 +40,7 @@ pkglibexec_PROGRAMS+=%D%/drawer
 
 %C%_drawer_CPPFLAGS=\
   $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS) $(GLES_FLAGS) $(EGL_FLAGS)\
-  -I$(srcdir)/%D%/ $(AM_CPPFLAGS)
-
-EXTRA_DIST+=\
-  %D%/assets.h\
-  \
-  %D%/assets/assets.py\
-  %D%/assets/scene.blend\
-  %D%/assets/shaders/fragment.glsl\
-  %D%/assets/shaders/varying.glsl\
-  %D%/assets/shaders/vertex.glsl\
-  \
-  %D%/assets_generator/linted_assets_generator\
-  %D%/assets_generator/linted_assets_generator.py
-
-MOSTLYCLEANFILES+=%D%/assets.c
-%D%/assets.c:\
-  %D%/assets/assets.py\
-  %D%/assets/scene.blend\
-  %D%/assets/shaders/fragment.glsl\
-  %D%/assets/shaders/varying.glsl\
-  %D%/assets/shaders/vertex.glsl\
-  \
-  %D%/assets_generator/linted_assets_generator\
-  %D%/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
-	  $(srcdir)/%D%/assets/assets.py\
-	  --output=$@
+  $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/drawer-fstab
 dist_pkgdefaultunits_DATA+=%D%/units/drawer.service

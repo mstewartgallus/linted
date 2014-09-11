@@ -13,21 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_GUI_ASSETS_H
-#define LINTED_GUI_ASSETS_H
+#ifndef LINTED_ASSETS_H
+#define LINTED_ASSETS_H
 
 #include <stddef.h>
 #include <GLES2/gl2.h>
 
-typedef GLfloat linted_gui_assets_point[3U];
+typedef GLfloat linted_assets_point[3U];
 
-extern linted_gui_assets_point const *const linted_gui_assets_vertices;
-extern linted_gui_assets_point const *const linted_gui_assets_normals;
+extern linted_assets_point const *const linted_assets_vertices;
+extern linted_assets_point const *const linted_assets_normals;
 
-extern GLubyte const *const linted_gui_assets_indices;
-extern size_t const linted_gui_assets_indices_size;
+extern GLubyte const *const linted_assets_indices;
+extern size_t const linted_assets_indices_size;
 
-extern GLchar const *const linted_gui_assets_fragment_shader;
-extern GLchar const *const linted_gui_assets_vertex_shader;
+extern GLchar const *const linted_assets_fragment_shader;
+extern GLchar const *const linted_assets_vertex_shader;
 
-#endif                          /* LINTED_GUI_ASSETS_H */
+#endif /* LINTED_ASSETS_H */

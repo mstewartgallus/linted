@@ -17,8 +17,7 @@
 
 #include "config.h"
 
-#include "assets.h"
-
+#include "linted/assets.h"
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/io.h"
@@ -50,15 +49,15 @@
 
 enum { ON_RECEIVE_UPDATE, ON_SENT_NOTICE, MAX_TASKS };
 
-struct gui_window_model;
+struct window_model;
 
 struct on_gui_event_args
 {
-	struct gui_window_model *window_model;
+	struct window_model *window_model;
 	bool *time_to_quit;
 };
 
-struct gui_window_model
+struct window_model
 {
 	unsigned width;
 	unsigned height;
@@ -134,7 +133,7 @@ static linted_error init_graphics(linted_log log,
 static void destroy_graphics(struct graphics_state *graphics_state);
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct gui_window_model const *window_model);
+                          struct window_model const *window_model);
 static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
@@ -163,12 +162,12 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	linted_window_notifier notifier = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct gui_window_model gui_window_model = {.width = 640,
-	                                            .height = 480,
-	                                            .viewable = true,
+	struct window_model window_model = {.width = 640,
+	                                    .height = 480,
+	                                    .viewable = true,
 
-	                                            /* Do the initial resize */
-	                                            .resize_pending = true};
+	                                    /* Do the initial resize */
+	                                    .resize_pending = true};
 
 	struct sim_model sim_model = {0};
 
@@ -224,7 +223,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
 	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
-	    gui_window_model.width, gui_window_model.height, 0,
+	    window_model.width, window_model.height, 0,
 	    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
 	    XCB_CW_EVENT_MASK, window_opts);
 	errnum = get_xcb_conn_error(connection);
@@ -418,7 +417,7 @@ reopen_graphics_context:
 
 			bool time_to_quit;
 			struct on_gui_event_args args = {
-			    .window_model = &gui_window_model,
+			    .window_model = &window_model,
 			    .time_to_quit = &time_to_quit};
 			errnum = on_gui_event(&event, args);
 			if (errnum != 0)
@@ -459,13 +458,13 @@ reopen_graphics_context:
 		if (had_gui_event || had_asynch_event)
 			continue;
 
-		if (gui_window_model.resize_pending) {
-			resize_graphics(&graphics_state, gui_window_model.width,
-			                gui_window_model.height);
-			gui_window_model.resize_pending = false;
-		} else if (gui_window_model.viewable) {
+		if (window_model.resize_pending) {
+			resize_graphics(&graphics_state, window_model.width,
+			                window_model.height);
+			window_model.resize_pending = false;
+		} else if (window_model.viewable) {
 			draw_graphics(&graphics_state, &sim_model,
-			              &gui_window_model);
+			              &window_model);
 			eglSwapBuffers(egl_display, egl_surface);
 		} else {
 			/*
@@ -656,7 +655,7 @@ static linted_error dispatch(struct linted_asynch_task *task)
 static linted_error on_gui_event(XEvent const *event,
                                  struct on_gui_event_args args)
 {
-	struct gui_window_model *window_model = args.window_model;
+	struct window_model *window_model = args.window_model;
 	bool *time_to_quitp = args.time_to_quit;
 
 	bool time_to_quit = false;
@@ -798,9 +797,9 @@ static linted_error init_graphics(linted_log log,
 		glAttachShader(program, fragment_shader);
 		glDeleteShader(fragment_shader);
 
-		glShaderSource(
-		    fragment_shader, 1U,
-		    (GLchar const **)&linted_gui_assets_fragment_shader, NULL);
+		glShaderSource(fragment_shader, 1U,
+		               (GLchar const **)&linted_assets_fragment_shader,
+		               NULL);
 		glCompileShader(fragment_shader);
 
 		GLint is_valid;
@@ -838,9 +837,9 @@ static linted_error init_graphics(linted_log log,
 		glAttachShader(program, vertex_shader);
 		glDeleteShader(vertex_shader);
 
-		glShaderSource(
-		    vertex_shader, 1U,
-		    (GLchar const **)&linted_gui_assets_vertex_shader, NULL);
+		glShaderSource(vertex_shader, 1U,
+		               (GLchar const **)&linted_assets_vertex_shader,
+		               NULL);
 		glCompileShader(vertex_shader);
 
 		GLint is_valid;
@@ -915,11 +914,11 @@ static linted_error init_graphics(linted_log log,
 	glEnableVertexAttribArray(normal);
 
 	glVertexAttribPointer(vertex,
-	                      LINTED_ARRAY_SIZE(linted_gui_assets_vertices[0U]),
-	                      GL_FLOAT, false, 0, linted_gui_assets_vertices);
+	                      LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
+	                      GL_FLOAT, false, 0, linted_assets_vertices);
 	glVertexAttribPointer(normal,
-	                      LINTED_ARRAY_SIZE(linted_gui_assets_normals[0U]),
-	                      GL_FLOAT, false, 0, linted_gui_assets_normals);
+	                      LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
+	                      GL_FLOAT, false, 0, linted_assets_normals);
 
 	graphics_state->program = program;
 	graphics_state->model_view_projection_matrix = mvp_matrix;
@@ -951,7 +950,7 @@ static void resize_graphics(struct graphics_state *graphics_state,
 
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct gui_window_model const *window_model)
+                          struct window_model const *window_model)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1019,8 +1018,8 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		                   1U, false, model_view_projection[0U]);
 	}
 
-	glDrawElements(GL_TRIANGLES, 3U * linted_gui_assets_indices_size,
-	               GL_UNSIGNED_BYTE, linted_gui_assets_indices);
+	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
+	               GL_UNSIGNED_BYTE, linted_assets_indices);
 }
 
 static void flush_gl_errors(void)

@@ -1413,7 +1413,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 	int exit_status;
 	int exit_code;
-	pid_t pid;
 	{
 		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
 		exit_status = exit_info->si_status;

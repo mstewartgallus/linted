@@ -22,7 +22,6 @@ NoNewPrivileges=true
 X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,wronly OPEN:updater,rdonly
 
 X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
-X-Linted-Halt-After-Exit=yes
 
 X-Linted-Environment-Whitelist=DISPLAY
 X-Linted-Environment-Whitelist=LD_PRELOAD

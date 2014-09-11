@@ -28,6 +28,7 @@ include %C%/linted/Makefile.am
 include %C%/logger/Makefile.am
 include %C%/simulator/Makefile.am
 
+include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am
 include %C%/conf/Makefile.am
 include %C%/dir/Makefile.am

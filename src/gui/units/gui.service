@@ -22,6 +22,5 @@ NoNewPrivileges=true
 X-Linted-Files=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
 
 X-Linted-Fstab="${LINTED_GUI_FSTAB}"
-X-Linted-Halt-After-Exit=yes
 
 X-Linted-Environment-Whitelist=DISPLAY

@@ -76,23 +76,23 @@ def output():
 
     return Template("""#include "config.h"
 
-#include "assets.h"
+#include "linted/assets.h"
 
 #include "linted/util.h"
 
-static linted_gui_assets_point const vertices[] = $vertices;
-linted_gui_assets_point const * const linted_gui_assets_vertices = vertices;
+static linted_assets_point const vertices[] = $vertices;
+linted_assets_point const * const linted_assets_vertices = vertices;
 
-static linted_gui_assets_point const normals[] = $normals;
-linted_gui_assets_point const * const linted_gui_assets_normals = normals;
+static linted_assets_point const normals[] = $normals;
+linted_assets_point const * const linted_assets_normals = normals;
 
 static GLubyte const indices_data[][3u] = $indices;
 
-GLubyte const * const linted_gui_assets_indices = &indices_data[0U][0U];
-size_t const linted_gui_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);
+GLubyte const * const linted_assets_indices = &indices_data[0U][0U];
+size_t const linted_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);
 
-GLchar const * const linted_gui_assets_fragment_shader = $fragment_shader;
-GLchar const * const linted_gui_assets_vertex_shader = $vertex_shader;
+GLchar const * const linted_assets_fragment_shader = $fragment_shader;
+GLchar const * const linted_assets_vertex_shader = $vertex_shader;
 """).substitute(
     normals=StaticArray(Array(3, GLfloat))(normals),
     vertices=StaticArray(Array(3, GLfloat))(vertices),
