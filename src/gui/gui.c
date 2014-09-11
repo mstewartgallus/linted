@@ -58,7 +58,7 @@
 #define INPUT_EVENT_MASK                                                       \
 	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
 	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
-	 XCB_EVENT_MASK_POINTER_MOTION)
+	 XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY)
 
 enum { ON_RECEIVE_UPDATE, ON_SENT_CONTROL, MAX_TASKS };
 
@@ -75,14 +75,19 @@ struct graphics_state
 	GLint model_view_projection_matrix;
 };
 
-struct window_model
+struct input_window_model
+{
+	unsigned width;
+	unsigned height;
+};
+
+struct gui_window_model
 {
 	unsigned width;
 	unsigned height;
 
 	bool resize_pending : 1U;
 	bool viewable : 1U;
-	bool focused : 1U;
 };
 
 struct sim_model
@@ -100,7 +105,7 @@ struct controller_task;
 struct on_input_event_args
 {
 	xcb_connection_t *input_conn;
-	struct window_model *window_model;
+	struct input_window_model *window_model;
 	struct linted_asynch_pool *pool;
 	struct controller_data *controller_data;
 	bool *time_to_quit;
@@ -111,7 +116,7 @@ struct on_input_event_args
 
 struct on_gui_event_args
 {
-	struct window_model *window_model;
+	struct gui_window_model *window_model;
 	bool *time_to_quit;
 };
 
@@ -184,16 +189,16 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y);
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_model const *window_model,
+                    struct input_window_model const *window_model,
                     struct controller_data *controller_data);
 
-static linted_error init_graphics(linted_log log,
-                                  struct graphics_state *graphics_state,
-                                  struct window_model const *window_model);
+static linted_error
+init_graphics(linted_log log, struct graphics_state *graphics_state,
+              struct gui_window_model const *gui_window_model);
 static void destroy_graphics(struct graphics_state *graphics_state);
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct window_model const *window_model);
+                          struct gui_window_model const *gui_window_model);
 static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
@@ -222,15 +227,18 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	linted_controller controller = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct window_model window_model = {.width = 640,
-	                                    .height = 480,
-	                                    .viewable = true,
+	struct gui_window_model gui_window_model = {.width = 640,
+	                                            .height = 480,
+	                                            .viewable = true,
 
-	                                    /* Do the initial resize */
-	                                    .resize_pending = true};
+	                                            /* Do the initial resize */
+	                                            .resize_pending = true};
 
 	struct controller_data controller_data = {0};
 	struct sim_model sim_model = {0};
+
+	struct input_window_model input_window_model = {
+	    .width = gui_window_model.width, .height = gui_window_model.height};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -286,7 +294,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
 	    draw_conn, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
-	    window_model.width, window_model.height, 0,
+	    gui_window_model.width, gui_window_model.height, 0,
 	    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
 	    XCB_CW_EVENT_MASK, window_opts);
 	errnum = get_xcb_conn_error(draw_conn);
@@ -466,7 +474,7 @@ reopen_graphics_context:
 
 	struct graphics_state graphics_state;
 
-	errnum = init_graphics(log, &graphics_state, &window_model);
+	errnum = init_graphics(log, &graphics_state, &gui_window_model);
 	if (errnum != 0) {
 		errnum = egl_error();
 		goto use_no_egl_context;
@@ -486,7 +494,7 @@ reopen_graphics_context:
 			struct on_input_event_args args = {
 			    .input_conn = input_conn,
 			    .window = window,
-			    .window_model = &window_model,
+			    .window_model = &input_window_model,
 
 			    .pool = pool,
 
@@ -513,7 +521,7 @@ reopen_graphics_context:
 
 			bool time_to_quit;
 			struct on_gui_event_args args = {
-			    .window_model = &window_model,
+			    .window_model = &gui_window_model,
 			    .time_to_quit = &time_to_quit};
 			errnum = on_gui_event(&event, args);
 			if (errnum != 0)
@@ -554,13 +562,13 @@ reopen_graphics_context:
 		if (had_input_event || had_gui_event || had_asynch_event)
 			continue;
 
-		if (window_model.resize_pending) {
-			resize_graphics(&graphics_state, window_model.width,
-			                window_model.height);
-			window_model.resize_pending = false;
-		} else if (window_model.viewable) {
+		if (gui_window_model.resize_pending) {
+			resize_graphics(&graphics_state, gui_window_model.width,
+			                gui_window_model.height);
+			gui_window_model.resize_pending = false;
+		} else if (gui_window_model.viewable) {
 			draw_graphics(&graphics_state, &sim_model,
-			              &window_model);
+			              &gui_window_model);
 			eglSwapBuffers(egl_display, egl_surface);
 		} else {
 			/*
@@ -763,7 +771,7 @@ static linted_error on_input_event(XEvent *event,
 {
 	xcb_connection_t *input_conn = args.input_conn;
 	xcb_window_t window = args.window;
-	struct window_model *window_model = args.window_model;
+	struct input_window_model *window_model = args.window_model;
 	struct controller_data *controller_data = args.controller_data;
 	bool *time_to_quitp = args.time_to_quit;
 
@@ -775,6 +783,13 @@ static linted_error on_input_event(XEvent *event,
 	bool time_to_quit = false;
 	bool is_key_down;
 	switch (event->type) {
+	case ConfigureNotify: {
+		XConfigureEvent const *configure_event = &event->xconfigure;
+		window_model->width = configure_event->width;
+		window_model->height = configure_event->height;
+		break;
+	}
+
 	case MotionNotify: {
 		XMotionEvent const *motion_event = &event->xmotion;
 		on_tilt(motion_event->x, motion_event->y, window_model,
@@ -783,8 +798,6 @@ static linted_error on_input_event(XEvent *event,
 	}
 
 	case EnterNotify: {
-		window_model->focused = true;
-
 		int x, y;
 		errnum = get_mouse_position(input_conn, window, &x, &y);
 		if (errnum != 0)
@@ -795,8 +808,6 @@ static linted_error on_input_event(XEvent *event,
 	}
 
 	case LeaveNotify:
-		window_model->focused = false;
-
 		controller_data->update.x_tilt = 0;
 		controller_data->update.y_tilt = 0;
 
@@ -894,7 +905,7 @@ static linted_error on_input_event(XEvent *event,
 
 static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
 {
-	struct window_model *window_model = args.window_model;
+	struct gui_window_model *window_model = args.window_model;
 	bool *time_to_quitp = args.time_to_quit;
 
 	bool time_to_quit = false;
@@ -1008,15 +1019,18 @@ static void maybe_update_controller(struct linted_asynch_pool *pool,
 }
 
 static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
-                    struct window_model const *window_model,
+                    struct input_window_model const *window_model,
                     struct controller_data *controller_data)
 {
-	int32_t x = (2 * mouse_x - (int)window_model->width) / 2;
-	int32_t y = (2 * mouse_y - (int)window_model->height) / 2;
+	unsigned width = window_model->width;
+	unsigned height = window_model->height;
+
+	int32_t x = (2 * mouse_x - (int)width) / 2;
+	int32_t y = (2 * mouse_y - (int)height) / 2;
 
 	/* Normalize and scale up to UINT32_MAX sized screen */
-	x *= INT32_MAX / window_model->width;
-	y *= INT32_MAX / window_model->height;
+	x *= INT32_MAX / width;
+	y *= INT32_MAX / height;
 
 	controller_data->update.x_tilt = x;
 	controller_data->update.y_tilt = y;
@@ -1024,9 +1038,9 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	controller_data->update_pending = true;
 }
 
-static linted_error init_graphics(linted_log log,
-                                  struct graphics_state *graphics_state,
-                                  struct window_model const *window_model)
+static linted_error
+init_graphics(linted_log log, struct graphics_state *graphics_state,
+              struct gui_window_model const *gui_window_model)
 {
 	linted_error errnum = 0;
 
@@ -1249,7 +1263,7 @@ static void resize_graphics(struct graphics_state *graphics_state,
 
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct window_model const *window_model)
+                          struct gui_window_model const *gui_window_model)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1288,7 +1302,7 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		    {x_position, y_position, z_position, 1}};
 
 		GLfloat aspect =
-		    window_model->width / (GLfloat)window_model->height;
+		    gui_window_model->width / (GLfloat)gui_window_model->height;
 		double fov = acos(-1.0) / 4;
 
 		double d = 1 / tan(fov / 2);
