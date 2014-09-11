@@ -36,12 +36,8 @@ MOSTLYCLEANFILES=
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
-uninstall-hook:
-	- rmdir '$(pkgconfdir)'
-	- rmdir '$(chrootdir)'
-
 install-data-hook:
-	$(MKDIR_P) '$(chrootdir)'
+	$(mkinstalldirs) '$(chrootdir)'
 
 EXTRA_DIST+=scripts/ccwrapper.py
 

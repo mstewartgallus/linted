@@ -18,6 +18,7 @@
 EXTRA_DIST+=\
   include/linted/rpc.h\
   include/linted/test.h\
+  include/linted/unit.h\
   include/linted/util.h
 
 include %C%/drawer/Makefile.am
