@@ -142,8 +142,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
                     struct controller_data *controller_data);
 
-unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[const])
+unsigned char linted_start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error errnum = 0;
 
@@ -601,9 +601,41 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	controller_data->update_pending = true;
 }
 
-static linted_error get_xcb_conn_error(xcb_connection_t *draw_conn)
+static linted_error get_mouse_position(xcb_connection_t *connection,
+                                       xcb_window_t window, int *x, int *y)
 {
-	switch (xcb_connection_has_error(draw_conn)) {
+	linted_error errnum;
+
+	xcb_query_pointer_cookie_t cookie =
+	    xcb_query_pointer(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_generic_error_t *error;
+	xcb_query_pointer_reply_t *reply =
+	    xcb_query_pointer_reply(connection, cookie, &error);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	if (error != NULL) {
+		errnum = get_xcb_error(error);
+		linted_mem_free(error);
+		return errnum;
+	}
+
+	*x = reply->win_x;
+	*y = reply->win_y;
+
+	linted_mem_free(reply);
+
+	return 0;
+}
+
+static linted_error get_xcb_conn_error(xcb_connection_t *connection)
+{
+	switch (xcb_connection_has_error(connection)) {
 	case 0:
 		return 0;
 
@@ -631,36 +663,4 @@ static linted_error get_xcb_error(xcb_generic_error_t *error)
 {
 	/* For now just be crappy. */
 	return ENOSYS;
-}
-
-static linted_error get_mouse_position(xcb_connection_t *draw_conn,
-                                       xcb_window_t window, int *x, int *y)
-{
-	linted_error errnum;
-
-	xcb_query_pointer_cookie_t cookie =
-	    xcb_query_pointer(draw_conn, window);
-	errnum = get_xcb_conn_error(draw_conn);
-	if (errnum != 0)
-		return errnum;
-
-	xcb_generic_error_t *error;
-	xcb_query_pointer_reply_t *reply =
-	    xcb_query_pointer_reply(draw_conn, cookie, &error);
-	errnum = get_xcb_conn_error(draw_conn);
-	if (errnum != 0)
-		return errnum;
-
-	if (error != NULL) {
-		errnum = get_xcb_error(error);
-		linted_mem_free(error);
-		return errnum;
-	}
-
-	*x = reply->win_x;
-	*y = reply->win_y;
-
-	linted_mem_free(reply);
-
-	return 0;
 }
