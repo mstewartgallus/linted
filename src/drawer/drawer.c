@@ -505,7 +505,6 @@ destroy_egl_context:
 	if (ENOSYS == errnum)
 		goto reopen_graphics_context;
 
-destroy_egl_surface:
 	if (!eglDestroySurface(egl_display, egl_surface)) {
 		if (0 == errnum)
 			errnum = egl_error();
