@@ -55,25 +55,15 @@
  *       threads.
  */
 
+enum { ON_RECEIVE_UPDATE, ON_SENT_CONTROL, MAX_TASKS };
+
 #define INPUT_EVENT_MASK                                                       \
 	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
 	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
 	 XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY)
 
-enum { ON_RECEIVE_UPDATE, ON_SENT_CONTROL, MAX_TASKS };
-
-struct controller_data
-{
-	struct linted_controller_message update;
-	bool update_pending : 1U;
-	bool update_in_progress : 1U;
-};
-
-struct graphics_state
-{
-	GLuint program;
-	GLint model_view_projection_matrix;
-};
+struct controller_data;
+struct controller_task;
 
 struct input_window_model
 {
@@ -81,54 +71,24 @@ struct input_window_model
 	unsigned height;
 };
 
-struct gui_window_model
-{
-	unsigned width;
-	unsigned height;
-
-	bool resize_pending : 1U;
-	bool viewable : 1U;
-};
-
-struct sim_model
-{
-	float x_rotation;
-	float y_rotation;
-
-	float x_position;
-	float y_position;
-	float z_position;
-};
-
-struct controller_task;
-
 struct on_input_event_args
 {
-	xcb_connection_t *input_conn;
+	bool *time_to_quit;
+	xcb_connection_t *connection;
 	struct input_window_model *window_model;
 	struct linted_asynch_pool *pool;
 	struct controller_data *controller_data;
-	bool *time_to_quit;
 	struct controller_task *controller_task;
 	linted_ko controller;
 	xcb_window_t window;
 };
 
-struct on_gui_event_args
+struct controller_data
 {
-	struct gui_window_model *window_model;
-	bool *time_to_quit;
+	struct linted_controller_message update;
+	bool update_pending : 1U;
+	bool update_in_progress : 1U;
 };
-
-struct updater_task
-{
-	struct linted_updater_task_receive parent;
-	struct sim_model *sim_model;
-	struct linted_asynch_pool *pool;
-};
-#define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
-#define UPDATER_DOWNCAST(X)                                                    \
-	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_RECEIVE_DOWNCAST(X))
 
 struct controller_task
 {
@@ -142,6 +102,49 @@ struct controller_task
 #define CONTROLLER_DOWNCAST(X)                                                 \
 	LINTED_DOWNCAST(struct controller_task,                                \
 	                LINTED_CONTROLLER_SEND_DOWNCAST(X))
+
+struct gui_window_model;
+
+struct on_gui_event_args
+{
+	struct gui_window_model *window_model;
+	bool *time_to_quit;
+};
+
+struct gui_window_model
+{
+	unsigned width;
+	unsigned height;
+
+	bool resize_pending : 1U;
+	bool viewable : 1U;
+};
+
+struct graphics_state
+{
+	GLuint program;
+	GLint model_view_projection_matrix;
+};
+
+struct sim_model
+{
+	float x_rotation;
+	float y_rotation;
+
+	float x_position;
+	float y_position;
+	float z_position;
+};
+
+struct updater_task
+{
+	struct linted_updater_task_receive parent;
+	struct sim_model *sim_model;
+	struct linted_asynch_pool *pool;
+};
+#define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
+#define UPDATER_DOWNCAST(X)                                                    \
+	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_RECEIVE_DOWNCAST(X))
 
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
@@ -169,9 +172,10 @@ static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 100000000};
 
 static linted_error on_input_event(XEvent *event,
                                    struct on_input_event_args args);
-static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args);
+static linted_error on_gui_event(XEvent const *event,
+                                 struct on_gui_event_args args);
 
-static linted_error dispatch(struct linted_asynch_task *completed_task);
+static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
@@ -192,13 +196,12 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct input_window_model const *window_model,
                     struct controller_data *controller_data);
 
-static linted_error
-init_graphics(linted_log log, struct graphics_state *graphics_state,
-              struct gui_window_model const *gui_window_model);
+static linted_error init_graphics(linted_log log,
+                                  struct graphics_state *graphics_state);
 static void destroy_graphics(struct graphics_state *graphics_state);
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct gui_window_model const *gui_window_model);
+                          struct gui_window_model const *window_model);
 static void resize_graphics(struct graphics_state *graphics_state,
                             unsigned width, unsigned height);
 
@@ -474,7 +477,7 @@ reopen_graphics_context:
 
 	struct graphics_state graphics_state;
 
-	errnum = init_graphics(log, &graphics_state, &gui_window_model);
+	errnum = init_graphics(log, &graphics_state);
 	if (errnum != 0) {
 		errnum = egl_error();
 		goto use_no_egl_context;
@@ -492,7 +495,7 @@ reopen_graphics_context:
 
 			bool time_to_quit;
 			struct on_input_event_args args = {
-			    .input_conn = input_conn,
+			    .connection = input_conn,
 			    .window = window,
 			    .window_model = &input_window_model,
 
@@ -629,23 +632,16 @@ destroy_egl_display:
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
 	    xcb_destroy_window_checked(draw_conn, window);
-
-	linted_error conn_errnum = get_xcb_conn_error(draw_conn);
 	if (0 == errnum)
-		errnum = conn_errnum;
+		errnum = get_xcb_conn_error(draw_conn);
 
 	xcb_generic_error_t *destroy_err =
 	    xcb_request_check(draw_conn, destroy_ck);
-	conn_errnum = get_xcb_conn_error(draw_conn);
 	if (0 == errnum)
-		errnum = conn_errnum;
-	if (destroy_err != NULL) {
-		linted_error destroy_errnum = get_xcb_error(destroy_err);
-		linted_mem_free(destroy_err);
-
-		if (0 == destroy_errnum)
-			errnum = destroy_errnum;
-	}
+		errnum = get_xcb_conn_error(draw_conn);
+	if (0 == errnum && destroy_err != NULL)
+		errnum = get_xcb_error(destroy_err);
+	linted_mem_free(destroy_err);
 }
 
 close_draw_display:
@@ -752,14 +748,14 @@ static struct sock_fprog const seccomp_filter = {
     .len = LINTED_ARRAY_SIZE(real_filter),
     .filter = (struct sock_filter *)real_filter};
 
-static linted_error dispatch(struct linted_asynch_task *completed_task)
+static linted_error dispatch(struct linted_asynch_task *task)
 {
-	switch (completed_task->task_action) {
+	switch (task->task_action) {
 	case ON_RECEIVE_UPDATE:
-		return on_receive_update(completed_task);
+		return on_receive_update(task);
 
 	case ON_SENT_CONTROL:
-		return on_sent_control(completed_task);
+		return on_sent_control(task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -769,14 +765,14 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
 static linted_error on_input_event(XEvent *event,
                                    struct on_input_event_args args)
 {
-	xcb_connection_t *input_conn = args.input_conn;
+	xcb_connection_t *connection = args.connection;
 	xcb_window_t window = args.window;
 	struct input_window_model *window_model = args.window_model;
-	struct controller_data *controller_data = args.controller_data;
 	bool *time_to_quitp = args.time_to_quit;
 
 	struct linted_asynch_pool *pool = args.pool;
 	linted_ko controller = args.controller;
+	struct controller_data *controller_data = args.controller_data;
 	struct controller_task *controller_task = args.controller_task;
 
 	linted_error errnum;
@@ -799,7 +795,7 @@ static linted_error on_input_event(XEvent *event,
 
 	case EnterNotify: {
 		int x, y;
-		errnum = get_mouse_position(input_conn, window, &x, &y);
+		errnum = get_mouse_position(connection, window, &x, &y);
 		if (errnum != 0)
 			return errnum;
 
@@ -903,7 +899,8 @@ static linted_error on_input_event(XEvent *event,
 	return 0;
 }
 
-static linted_error on_gui_event(XEvent *event, struct on_gui_event_args args)
+static linted_error on_gui_event(XEvent const *event,
+                                 struct on_gui_event_args args)
 {
 	struct gui_window_model *window_model = args.window_model;
 	bool *time_to_quitp = args.time_to_quit;
@@ -950,25 +947,23 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 		return errnum;
 
 	struct updater_task *updater_task = UPDATER_DOWNCAST(task);
-
 	struct sim_model *sim_model = updater_task->sim_model;
 	struct linted_asynch_pool *pool = updater_task->pool;
 
-	{
-		struct linted_updater_update update;
-		linted_updater_decode(LINTED_UPCAST(updater_task), &update);
+	struct linted_updater_update update;
 
-		linted_asynch_pool_submit(pool, task);
+	linted_updater_decode(LINTED_UPCAST(updater_task), &update);
 
-		sim_model->x_rotation =
-		    linted_updater_angle_to_float(update.x_rotation);
-		sim_model->y_rotation =
-		    linted_updater_angle_to_float(update.y_rotation);
+	linted_asynch_pool_submit(pool, task);
 
-		sim_model->x_position = update.x_position * (1 / 2048.0);
-		sim_model->y_position = update.y_position * (1 / 2048.0);
-		sim_model->z_position = update.z_position * (1 / 2048.0);
-	}
+	sim_model->x_rotation =
+	    linted_updater_angle_to_float(update.x_rotation);
+	sim_model->y_rotation =
+	    linted_updater_angle_to_float(update.y_rotation);
+
+	sim_model->x_position = update.x_position * (1 / 2048.0);
+	sim_model->y_position = update.y_position * (1 / 2048.0);
+	sim_model->z_position = update.z_position * (1 / 2048.0);
 
 	return 0;
 }
@@ -1038,9 +1033,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	controller_data->update_pending = true;
 }
 
-static linted_error
-init_graphics(linted_log log, struct graphics_state *graphics_state,
-              struct gui_window_model const *gui_window_model)
+static linted_error init_graphics(linted_log log,
+                                  struct graphics_state *graphics_state)
 {
 	linted_error errnum = 0;
 
@@ -1263,7 +1257,7 @@ static void resize_graphics(struct graphics_state *graphics_state,
 
 static void draw_graphics(struct graphics_state const *graphics_state,
                           struct sim_model const *sim_model,
-                          struct gui_window_model const *gui_window_model)
+                          struct gui_window_model const *window_model)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1302,7 +1296,7 @@ static void draw_graphics(struct graphics_state const *graphics_state,
 		    {x_position, y_position, z_position, 1}};
 
 		GLfloat aspect =
-		    gui_window_model->width / (GLfloat)gui_window_model->height;
+		    window_model->width / (GLfloat)window_model->height;
 		double fov = acos(-1.0) / 4;
 
 		double d = 1 / tan(fov / 2);
