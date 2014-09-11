@@ -102,6 +102,11 @@ struct notice_task
 	struct linted_window_notifier_task_receive parent;
 	Display *display;
 	struct linted_asynch_pool *pool;
+	xcb_connection_t *connection;
+	struct window_model *window_model;
+	linted_ko controller;
+	struct controller_data *controller_data;
+	struct controller_task *controller_task;
 	uint_fast32_t window;
 };
 #define NOTICE_UPCAST(X) LINTED_WINDOW_NOTIFIER_RECEIVE_UPCAST(LINTED_UPCAST(X))
@@ -135,6 +140,9 @@ static void maybe_update_controller(struct linted_asynch_pool *pool,
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
 static linted_error get_xcb_error(xcb_generic_error_t *error);
 
+static linted_error get_window_size(xcb_connection_t *connection,
+                                    xcb_window_t window, unsigned *width,
+                                    unsigned *height);
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y);
 
@@ -178,6 +186,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	notice_task.window = 0;
 	notice_task.display = display;
 	notice_task.pool = pool;
+	notice_task.window_model = &window_model;
+	notice_task.connection = connection;
+	notice_task.controller = controller;
+	notice_task.controller_data = &controller_data;
+	notice_task.controller_task = &controller_task;
 
 	linted_asynch_pool_submit(pool, NOTICE_UPCAST(&notice_task));
 
@@ -522,15 +535,47 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
 	Display *display = notice_task->display;
 	struct linted_asynch_pool *pool = notice_task->pool;
+	xcb_connection_t *connection = notice_task->connection;
+	struct window_model *window_model = notice_task->window_model;
+	linted_ko controller = notice_task->controller;
+	struct controller_data *controller_data = notice_task->controller_data;
+	struct controller_task *controller_task = notice_task->controller_task;
 
 	uint_fast32_t window =
 	    linted_window_notifier_decode(LINTED_UPCAST(notice_task));
 
 	linted_asynch_pool_submit(pool, task);
 
-	if (-1 == XSelectInput(display, window, INPUT_EVENT_MASK)) {
+	if (-1 == XSelectInput(display, window, INPUT_EVENT_MASK))
 		return ENOSYS;
+
+	unsigned width, height;
+	int x, y;
+	{
+		unsigned xx, yy;
+		errnum = get_window_size(connection, window, &xx, &yy);
+		if (errnum != 0)
+			return errnum;
+		width = xx;
+		height = yy;
 	}
+	{
+		int xx, yy;
+		errnum = get_mouse_position(connection, window, &xx, &yy);
+		if (errnum != 0)
+			return errnum;
+		x = xx;
+		y = yy;
+	}
+
+	window_model->width = width;
+	window_model->height = height;
+
+	on_tilt(x, y, window_model, controller_data);
+
+	maybe_update_controller(pool, controller_data, controller_task,
+	                        controller);
+
 	notice_task->window = window;
 
 	return 0;
@@ -601,6 +646,44 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	controller_data->update_pending = true;
 }
 
+static linted_error get_window_size(xcb_connection_t *connection,
+                                    xcb_window_t window, unsigned *width,
+                                    unsigned *height)
+{
+	linted_error errnum;
+
+	xcb_get_geometry_cookie_t ck = xcb_get_geometry(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_generic_error_t *error;
+	xcb_get_geometry_reply_t *reply;
+	{
+		xcb_generic_error_t *xx;
+		reply = xcb_get_geometry_reply(connection, ck, &xx);
+
+		errnum = get_xcb_conn_error(connection);
+		if (errnum != 0)
+			return errnum;
+
+		error = xx;
+	}
+
+	if (error != NULL) {
+		errnum = get_xcb_error(error);
+		linted_mem_free(error);
+		return errnum;
+	}
+
+	*width = reply->width;
+	*height = reply->height;
+
+	linted_mem_free(reply);
+
+	return 0;
+}
+
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y)
 {
@@ -613,11 +696,17 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 		return errnum;
 
 	xcb_generic_error_t *error;
-	xcb_query_pointer_reply_t *reply =
-	    xcb_query_pointer_reply(connection, cookie, &error);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		return errnum;
+	xcb_query_pointer_reply_t *reply;
+	{
+		xcb_generic_error_t *xx;
+		reply = xcb_query_pointer_reply(connection, cookie, &xx);
+
+		errnum = get_xcb_conn_error(connection);
+		if (errnum != 0)
+			return errnum;
+
+		error = xx;
+	}
 
 	if (error != NULL) {
 		errnum = get_xcb_error(error);
