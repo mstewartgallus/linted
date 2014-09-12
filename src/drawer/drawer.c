@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -47,13 +48,17 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
-enum { ON_RECEIVE_UPDATE, ON_SENT_NOTICE, MAX_TASKS };
+enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
 struct window_model;
 
-struct on_gui_event_args
+struct poll_conn_task
 {
+	struct linted_ko_task_poll parent;
 	struct window_model *window_model;
+	Display *display;
+	xcb_connection_t *connection;
+	struct linted_asynch_pool *pool;
 	bool *time_to_quit;
 };
 
@@ -116,10 +121,8 @@ static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0};
 
 static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 100000000};
 
-static linted_error on_gui_event(XEvent const *event,
-                                 struct on_gui_event_args args);
-
 static linted_error dispatch(struct linted_asynch_task *task);
+static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_sent_notice(struct linted_asynch_task *task);
 
@@ -182,6 +185,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	struct linted_window_notifier_task_send notice_task;
 	struct updater_task updater_task;
+	struct poll_conn_task poll_conn_task;
 
 	Display *display = XOpenDisplay(NULL);
 	if (NULL == display) {
@@ -374,12 +378,25 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto destroy_egl_display;
 	}
 
+	bool time_to_quit;
+
 	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
 	                       updater);
 	updater_task.sim_model = &sim_model;
 	updater_task.pool = pool;
 
 	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
+
+	linted_ko_task_poll(LINTED_UPCAST(&poll_conn_task), ON_POLL_CONN,
+	                    xcb_get_file_descriptor(connection), POLLIN);
+	poll_conn_task.time_to_quit = &time_to_quit;
+	poll_conn_task.window_model = &window_model;
+	poll_conn_task.pool = pool;
+	poll_conn_task.connection = connection;
+	poll_conn_task.display = display;
+
+	linted_asynch_pool_submit(
+	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
 
 reopen_graphics_context:
 	;
@@ -406,57 +423,31 @@ reopen_graphics_context:
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
-		/* We have to use the Xlib event queue for the drawer
-		 * events because of broken Mesa libraries which abuse
-		 * it.
-		 */
-		bool had_gui_event = XPending(display) > 0;
-		if (had_gui_event) {
-			XEvent event;
-			XNextEvent(display, &event);
+		for (;;) {
+			time_to_quit = false;
 
-			bool time_to_quit;
-			struct on_gui_event_args args = {
-			    .window_model = &window_model,
-			    .time_to_quit = &time_to_quit};
-			errnum = on_gui_event(&event, args);
+			struct linted_asynch_task *completed_task;
+			{
+				struct linted_asynch_task *xx;
+				errnum = linted_asynch_pool_poll(pool, &xx);
+				if (EAGAIN == errnum)
+					break;
+
+				if (errnum != 0)
+					goto cleanup_gl;
+
+				completed_task = xx;
+			}
+			errnum = dispatch(completed_task);
 			if (errnum != 0)
 				goto cleanup_gl;
+
 			if (time_to_quit)
 				goto cleanup_gl;
 		}
 
-		linted_error poll_errnum;
-		bool had_asynch_event;
-		struct linted_asynch_task *completed_task;
-		{
-			struct linted_asynch_task *xx;
-			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			switch (poll_errnum) {
-			case EAGAIN:
-				had_asynch_event = false;
-				goto had_no_asynch_event;
-
-			case 0:
-				had_asynch_event = true;
-				completed_task = xx;
-				goto had_asynch_event;
-
-			default:
-				errnum = poll_errnum;
-				goto cleanup_gl;
-			}
-		}
-	had_asynch_event:
-		errnum = dispatch(completed_task);
-		if (errnum != 0)
-			goto cleanup_gl;
-	had_no_asynch_event:
-
 		/* Only draw or resize if we have time to
 		 * waste */
-		if (had_gui_event || had_asynch_event)
-			continue;
 
 		if (window_model.resize_pending) {
 			resize_graphics(&graphics_state, window_model.width,
@@ -467,22 +458,22 @@ reopen_graphics_context:
 			              &window_model);
 			eglSwapBuffers(egl_display, egl_surface);
 		} else {
-			/*
-			 * This is an ugly hack and waiting on the X11
-			 * file descriptor should be implemented
-			 * eventually.
-			 */
-			struct linted_asynch_task_sleep_until sleeper_task;
-			linted_asynch_task_sleep_until(&sleeper_task, 0, 0,
-			                               &sleep_time);
-			linted_asynch_pool_submit(NULL,
-			                          LINTED_UPCAST(&sleeper_task));
-			errnum = LINTED_UPCAST(&sleeper_task)->errnum;
-			if (errnum != 0) {
-				assert(errnum != EINVAL);
-				assert(errnum != EFAULT);
-				goto cleanup_gl;
+			time_to_quit = false;
+
+			struct linted_asynch_task *completed_task;
+			{
+				struct linted_asynch_task *xx;
+				errnum = linted_asynch_pool_wait(pool, &xx);
+				if (errnum != 0)
+					goto cleanup_gl;
+				completed_task = xx;
 			}
+			errnum = dispatch(completed_task);
+			if (errnum != 0)
+				goto cleanup_gl;
+
+			if (time_to_quit)
+				goto cleanup_gl;
 		}
 	}
 
@@ -567,6 +558,7 @@ destroy_pool:
 	 * terminated */
 	(void)updater_task;
 	(void)notice_task;
+	(void)poll_conn_task;
 
 	return errnum;
 }
@@ -643,6 +635,9 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case ON_RECEIVE_UPDATE:
 		return on_receive_update(task);
 
+	case ON_POLL_CONN:
+		return on_poll_conn(task);
+
 	case ON_SENT_NOTICE:
 		return on_sent_notice(task);
 
@@ -651,43 +646,76 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	}
 }
 
-static linted_error on_gui_event(XEvent const *event,
-                                 struct on_gui_event_args args)
+static linted_error on_poll_conn(struct linted_asynch_task *task)
 {
-	struct window_model *window_model = args.window_model;
-	bool *time_to_quitp = args.time_to_quit;
+	linted_error errnum;
 
-	bool time_to_quit = false;
-	switch (event->type) {
-	case ConfigureNotify: {
-		XConfigureEvent const *configure_event = &event->xconfigure;
-		window_model->width = configure_event->width;
-		window_model->height = configure_event->height;
-		window_model->resize_pending = true;
-		break;
+	if ((errnum = task->errnum) != 0)
+		return errnum;
+
+	struct poll_conn_task *poll_conn_task =
+	    LINTED_DOWNCAST(struct poll_conn_task,
+	                    LINTED_DOWNCAST(struct linted_ko_task_poll, task));
+
+	Display *display = poll_conn_task->display;
+	xcb_connection_t *connection = poll_conn_task->connection;
+	struct linted_asynch_pool *pool = poll_conn_task->pool;
+	struct window_model *window_model = poll_conn_task->window_model;
+	bool *time_to_quitp = poll_conn_task->time_to_quit;
+
+	/* We have to use the Xlib event queue for the drawer events
+	 * because of broken Mesa libraries which abuse it.
+	 */
+	while (XPending(display) > 0) {
+		XEvent event;
+		XNextEvent(display, &event);
+
+		bool time_to_quit = false;
+		switch (event.type) {
+		case ConfigureNotify: {
+			XConfigureEvent const *configure_event =
+			    &event.xconfigure;
+			window_model->width = configure_event->width;
+			window_model->height = configure_event->height;
+			window_model->resize_pending = true;
+			break;
+		}
+
+		case UnmapNotify:
+			window_model->viewable = false;
+			break;
+
+		case MapNotify:
+			window_model->viewable = true;
+			break;
+
+		case ClientMessage:
+			goto quit_application;
+
+		default:
+			/* Unknown event type, ignore it */
+			break;
+
+		quit_application:
+			time_to_quit = true;
+			break;
+		}
+
+		*time_to_quitp = time_to_quit;
+		if (time_to_quit)
+			return 0;
 	}
 
-	case UnmapNotify:
-		window_model->viewable = false;
-		break;
+	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
+	                    xcb_get_file_descriptor(connection), POLLIN);
+	poll_conn_task->time_to_quit = time_to_quitp;
+	poll_conn_task->window_model = window_model;
+	poll_conn_task->pool = pool;
+	poll_conn_task->display = display;
+	poll_conn_task->connection = connection;
 
-	case MapNotify:
-		window_model->viewable = true;
-		break;
+	linted_asynch_pool_submit(pool, task);
 
-	case ClientMessage:
-		goto quit_application;
-
-	default:
-		/* Unknown event type, ignore it */
-		break;
-
-	quit_application:
-		time_to_quit = true;
-		break;
-	}
-
-	*time_to_quitp = time_to_quit;
 	return 0;
 }
 
