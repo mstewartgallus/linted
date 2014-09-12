@@ -32,6 +32,7 @@ MOSTLYCLEANFILES+=%D%/settings.h
 	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
 	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
 	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
+	  -e 's|[@]pkgunitsdir[@]|$(pkgunitsdir)|g'\
 	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $(srcdir)/%D%/settings.h.in > $@

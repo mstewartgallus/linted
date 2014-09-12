@@ -508,6 +508,11 @@ static linted_error confs_from_path(char const *unit_path,
 
 		linted_mem_free(dir_name);
 
+		if (ENOENT == errnum) {
+			errnum = 0;
+			goto next_dir;
+		}
+
 		if (errnum != 0)
 			goto free_units;
 
@@ -642,6 +647,7 @@ static linted_error confs_from_path(char const *unit_path,
 		if (errnum != 0)
 			goto free_units;
 
+	next_dir:
 		if (NULL == dirend)
 			break;
 
