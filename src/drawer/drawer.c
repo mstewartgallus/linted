@@ -119,8 +119,6 @@ struct linted_start_config const linted_start_config = {
 
 static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0};
 
-static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 100000000};
-
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
@@ -446,8 +444,7 @@ reopen_graphics_context:
 				goto cleanup_gl;
 		}
 
-		/* Only draw or resize if we have time to
-		 * waste */
+		/* Only draw or resize if we have time to waste */
 
 		if (window_model.resize_pending) {
 			resize_graphics(&graphics_state, window_model.width,
