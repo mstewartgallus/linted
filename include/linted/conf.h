@@ -20,26 +20,28 @@
 
 #include <stdio.h>
 
-struct conf;
-struct conf_section;
-struct conf_setting;
+struct linted_conf;
+struct linted_conf_section;
+struct linted_conf_setting;
 
-linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
-                             char const *name);
+linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
+                                    char const *name);
 
-linted_error conf_create(struct conf **unitp, char const *file_name);
+linted_error linted_conf_create(struct linted_conf **unitp,
+                                char const *file_name);
 
-void conf_put(struct conf *unit);
+void linted_conf_put(struct linted_conf *unit);
 
-char const *conf_peek_name(struct conf *unit);
+char const *linted_conf_peek_name(struct linted_conf *unit);
 
-char const *const *conf_find(struct conf *unit, char const *section,
-                             char const *field);
+char const *const *linted_conf_find(struct linted_conf *unit,
+                                    char const *section, char const *field);
 
-linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
-                              char *section_name);
+linted_error linted_conf_add_section(struct linted_conf *unit,
+                                     struct linted_conf_section **sectionp,
+                                     char *section_name);
 
-linted_error conf_add_setting(struct conf_section *section, char *field,
-                              char const *const *value);
+linted_error linted_conf_add_setting(struct linted_conf_section *section,
+                                     char *field, char const *const *value);
 
-#endif /* LINTED_CONF_H */
+#endif /* LINTED_LINTED_CONF_H */

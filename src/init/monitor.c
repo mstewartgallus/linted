@@ -178,14 +178,16 @@ static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
 
 static linted_error confs_from_path(char const *unit_path,
-                                    struct conf ***unitsp, size_t *sizep);
-void confs_destroy(struct conf **confs, size_t size);
+                                    struct linted_conf ***unitsp,
+                                    size_t *sizep);
+void confs_destroy(struct linted_conf **confs, size_t size);
 
-static linted_error units_create(struct units **unitp, struct conf **confs,
-                                 size_t size);
+static linted_error units_create(struct units **unitp,
+                                 struct linted_conf **confs, size_t size);
 static void units_destroy(struct units *units);
-static linted_error units_activate(struct units *units, struct conf **confs,
-                                   linted_ko cwd, char const *chrootdir);
+static linted_error units_activate(struct units *units,
+                                   struct linted_conf **confs, linted_ko cwd,
+                                   char const *chrootdir);
 static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
 
@@ -208,9 +210,9 @@ static linted_error conn_pool_destroy(struct conn_pool *pool);
 static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
 static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
-static linted_error socket_create(linted_ko *kop, struct conf *unit);
-static linted_error service_spawn(pid_t *pidp, struct conf *unit, linted_ko cwd,
-                                  char const *chrootdir,
+static linted_error socket_create(linted_ko *kop, struct linted_conf *unit);
+static linted_error service_spawn(pid_t *pidp, struct linted_conf *unit,
+                                  linted_ko cwd, char const *chrootdir,
                                   struct units const *units);
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -293,10 +295,10 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 		conn_pool = xx;
 	}
 
-	struct conf **confs;
+	struct linted_conf **confs;
 	size_t confs_size;
 	{
-		struct conf **xx;
+		struct linted_conf **xx;
 		size_t yy;
 		errnum = confs_from_path(unit_path, &xx, &yy);
 		if (errnum != 0)
@@ -476,11 +478,11 @@ static linted_error set_child_subreaper(bool v)
 }
 
 static linted_error confs_from_path(char const *unit_path,
-                                    struct conf ***unitsp, size_t *sizep)
+                                    struct linted_conf ***unitsp, size_t *sizep)
 {
 	linted_ko errnum = 0;
 
-	struct conf **units = NULL;
+	struct linted_conf **units = NULL;
 	size_t units_size = 0U;
 
 	char const *dirstart = unit_path;
@@ -588,11 +590,11 @@ static linted_error confs_from_path(char const *unit_path,
 				goto free_file_names;
 			}
 
-			struct conf *unit = NULL;
+			struct linted_conf *unit = NULL;
 			{
-				struct conf *xx;
-				errnum =
-				    conf_parse_file(&xx, unit_file, file_name);
+				struct linted_conf *xx;
+				errnum = linted_conf_parse_file(&xx, unit_file,
+				                                file_name);
 				if (errnum != 0) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
@@ -613,7 +615,7 @@ static linted_error confs_from_path(char const *unit_path,
 				goto free_unit;
 
 			size_t new_units_size = units_size + 1U;
-			struct conf **new_units;
+			struct linted_conf **new_units;
 			{
 				void *xx;
 				errnum = linted_mem_realloc_array(
@@ -630,7 +632,7 @@ static linted_error confs_from_path(char const *unit_path,
 
 		free_unit:
 			if (errnum != 0)
-				conf_put(unit);
+				linted_conf_put(unit);
 		}
 
 	free_file_names:
@@ -657,7 +659,7 @@ static linted_error confs_from_path(char const *unit_path,
 free_units:
 	if (errnum != 0) {
 		for (size_t ii = 0U; ii < units_size; ++ii)
-			conf_put(units[ii]);
+			linted_conf_put(units[ii]);
 		linted_mem_free(units);
 	} else {
 		*unitsp = units;
@@ -667,15 +669,15 @@ free_units:
 	return errnum;
 }
 
-void confs_destroy(struct conf **confs, size_t size)
+void confs_destroy(struct linted_conf **confs, size_t size)
 {
 	for (size_t ii = 0U; ii < size; ++ii)
-		conf_put(confs[ii]);
+		linted_conf_put(confs[ii]);
 	linted_mem_free(confs);
 }
 
-static linted_error units_create(struct units **unitsp, struct conf **confs,
-                                 size_t size)
+static linted_error units_create(struct units **unitsp,
+                                 struct linted_conf **confs, size_t size)
 {
 	linted_error errnum;
 	struct units *units;
@@ -694,9 +696,9 @@ static linted_error units_create(struct units **unitsp, struct conf **confs,
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		union unit *unit = &units->list[ii];
-		struct conf *conf = confs[ii];
+		struct linted_conf *conf = confs[ii];
 
-		char const *file_name = conf_peek_name(conf);
+		char const *file_name = linted_conf_peek_name(conf);
 
 		char const *dot = strchr(file_name, '.');
 
@@ -753,13 +755,14 @@ static void units_destroy(struct units *units)
 	linted_mem_free(units);
 }
 
-static linted_error units_activate(struct units *units, struct conf **confs,
-                                   linted_ko cwd, char const *chrootdir)
+static linted_error units_activate(struct units *units,
+                                   struct linted_conf **confs, linted_ko cwd,
+                                   char const *chrootdir)
 {
 	linted_error errnum;
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct conf *conf = confs[ii];
+		struct linted_conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
 
 		if (unit->common.type != UNIT_TYPE_SOCKET)
@@ -779,7 +782,7 @@ static linted_error units_activate(struct units *units, struct conf **confs,
 	}
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct conf *conf = confs[ii];
+		struct linted_conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
@@ -804,18 +807,18 @@ static linted_error units_activate(struct units *units, struct conf **confs,
 	return 0;
 }
 
-static linted_error socket_create(linted_ko *kop, struct conf *unit)
+static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
 {
 	linted_error errnum;
 
 	char const *const *name =
-	    conf_find(unit, "Socket", "ListenMessageQueue");
+	    linted_conf_find(unit, "Socket", "ListenMessageQueue");
 	char const *const *maxmsgs =
-	    conf_find(unit, "Socket", "MessageQueueMaxMessages");
+	    linted_conf_find(unit, "Socket", "MessageQueueMaxMessages");
 	char const *const *msgsize =
-	    conf_find(unit, "Socket", "MessageQueueMessageSize");
+	    linted_conf_find(unit, "Socket", "MessageQueueMessageSize");
 	char const *const *temp =
-	    conf_find(unit, "Socket", "X-Linted-Temporary");
+	    linted_conf_find(unit, "Socket", "X-Linted-Temporary");
 
 	if (NULL == name || NULL == name[0U] || name[1U] != NULL)
 		return EINVAL;
@@ -865,22 +868,25 @@ static linted_error socket_create(linted_ko *kop, struct conf *unit)
 	return 0;
 }
 
-static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
-                                  char const *chrootdir,
+static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
+                                  linted_ko cwd, char const *chrootdir,
                                   struct units const *units)
 {
 	linted_error errnum = 0;
 
-	char const *const *type = conf_find(conf, "Service", "Type");
-	char const *const *exec_start = conf_find(conf, "Service", "ExecStart");
+	char const *const *type = linted_conf_find(conf, "Service", "Type");
+	char const *const *exec_start =
+	    linted_conf_find(conf, "Service", "ExecStart");
 	char const *const *no_new_privs =
-	    conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *files = conf_find(conf, "Service", "X-Linted-Files");
-	char const *const *fstab = conf_find(conf, "Service", "X-Linted-Fstab");
+	    linted_conf_find(conf, "Service", "NoNewPrivileges");
+	char const *const *files =
+	    linted_conf_find(conf, "Service", "X-Linted-Files");
+	char const *const *fstab =
+	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
 	char const *const *chdir_path =
-	    conf_find(conf, "Service", "X-Linted-Chdir");
+	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
 	char const *const *env_whitelist =
-	    conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
+	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
 	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
 		return EINVAL;

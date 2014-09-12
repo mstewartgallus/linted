@@ -27,39 +27,39 @@
 #include <string.h>
 #include <wordexp.h>
 
-struct conf_section_bucket
+struct linted_conf_section_bucket
 {
 	size_t sections_size;
-	struct conf_section *sections;
+	struct linted_conf_section *sections;
 };
 
 #define SECTION_BUCKETS_SIZE 1024U
 
-struct conf
+struct linted_conf
 {
 	char *name;
 	unsigned long refcount;
-	struct conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
+	struct linted_conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
 };
 
-struct conf_setting_buckets;
+struct linted_conf_setting_buckets;
 
 #define SETTING_BUCKETS_SIZE 1024U
 
-struct conf_setting_bucket
+struct linted_conf_setting_bucket
 {
 	size_t settings_size;
-	struct conf_setting *settings;
+	struct linted_conf_setting *settings;
 };
 
-struct conf_section
+struct linted_conf_section
 {
 	unsigned long refcount;
 	char *name;
-	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
+	struct linted_conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
 };
 
-struct conf_setting
+struct linted_conf_setting
 {
 	char *field;
 	char **value;
@@ -67,24 +67,24 @@ struct conf_setting
 
 static size_t string_hash(char const *str);
 
-linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
-                             char const *name)
+linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
+                                    char const *name)
 {
 	linted_error errnum = 0;
 
 	char *line_buffer = NULL;
 	size_t line_capacity = 0U;
 
-	struct conf *unit;
+	struct linted_conf *unit;
 	{
-		struct conf *xx;
-		errnum = conf_create(&xx, name);
+		struct linted_conf *xx;
+		errnum = linted_conf_create(&xx, name);
 		if (errnum != 0)
 			return errnum;
 		unit = xx;
 	}
 
-	struct conf_section *current_section = NULL;
+	struct linted_conf_section *current_section = NULL;
 
 	for (;;) {
 		size_t line_size;
@@ -137,9 +137,9 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 			memcpy(section_name, line_buffer + 1U, line_size - 2U);
 
 			{
-				struct conf_section *xx;
-				errnum =
-				    conf_add_section(unit, &xx, section_name);
+				struct linted_conf_section *xx;
+				errnum = linted_conf_add_section(unit, &xx,
+				                                 section_name);
 				if (0 == errnum)
 					current_section = xx;
 			}
@@ -216,7 +216,7 @@ linted_error conf_parse_file(struct conf **unitp, FILE *unit_file,
 			if (errnum != 0)
 				goto free_field;
 
-			errnum = conf_add_setting(
+			errnum = linted_conf_add_setting(
 			    current_section, field,
 			    (char const *const *)expr.we_wordv);
 
@@ -236,7 +236,7 @@ free_line_buffer:
 	linted_mem_free(line_buffer);
 
 	if (errnum != 0)
-		conf_put(unit);
+		linted_conf_put(unit);
 
 	if (0 == errnum)
 		*unitp = unit;
@@ -244,10 +244,10 @@ free_line_buffer:
 	return errnum;
 }
 
-linted_error conf_create(struct conf **unitp, char const *name)
+linted_error linted_conf_create(struct linted_conf **unitp, char const *name)
 {
 	linted_error errnum = 0;
-	struct conf *unit;
+	struct linted_conf *unit;
 
 	char *name_copy = strdup(name);
 	if (NULL == name_copy) {
@@ -268,7 +268,7 @@ linted_error conf_create(struct conf **unitp, char const *name)
 	unit->refcount = 1;
 
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket *bucket = &unit->buckets[ii];
+		struct linted_conf_section_bucket *bucket = &unit->buckets[ii];
 
 		bucket->sections_size = 0U;
 		bucket->sections = NULL;
@@ -285,30 +285,32 @@ free_name_copy:
 	return 0;
 }
 
-void conf_put(struct conf *unit)
+void linted_conf_put(struct linted_conf *unit)
 {
 	if (--unit->refcount != 0)
 		return;
 
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket const *bucket = &unit->buckets[ii];
+		struct linted_conf_section_bucket const *bucket =
+		    &unit->buckets[ii];
 
 		size_t sections_size = bucket->sections_size;
-		struct conf_section *sections = bucket->sections;
+		struct linted_conf_section *sections = bucket->sections;
 
 		for (size_t jj = 0U; jj < sections_size; ++jj) {
-			struct conf_section const *section = &sections[jj];
+			struct linted_conf_section const *section =
+			    &sections[jj];
 
 			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-				struct conf_setting_bucket const *
+				struct linted_conf_setting_bucket const *
 				    setting_bucket = &section->buckets[kk];
 				size_t settings_size =
 				    setting_bucket->settings_size;
-				struct conf_setting *settings =
+				struct linted_conf_setting *settings =
 				    setting_bucket->settings;
 
 				for (size_t ww = 0U; ww < settings_size; ++ww) {
-					struct conf_setting *setting =
+					struct linted_conf_setting *setting =
 					    &settings[ww];
 					linted_mem_free(setting->field);
 					linted_mem_free(setting->value);
@@ -324,23 +326,24 @@ void conf_put(struct conf *unit)
 	linted_mem_free(unit);
 }
 
-char const *conf_peek_name(struct conf *unit)
+char const *linted_conf_peek_name(struct linted_conf *unit)
 {
 	return unit->name;
 }
 
-linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
-                              char *section_name)
+linted_error linted_conf_add_section(struct linted_conf *unit,
+                                     struct linted_conf_section **sectionp,
+                                     char *section_name)
 {
 	linted_error errnum;
 
-	struct conf_section_bucket *buckets = unit->buckets;
+	struct linted_conf_section_bucket *buckets = unit->buckets;
 
-	struct conf_section_bucket *bucket =
+	struct linted_conf_section_bucket *bucket =
 	    &buckets[string_hash(section_name) % SECTION_BUCKETS_SIZE];
 
 	size_t sections_size = bucket->sections_size;
-	struct conf_section *sections = bucket->sections;
+	struct linted_conf_section *sections = bucket->sections;
 
 	bool have_found_field = false;
 	size_t found_field;
@@ -357,7 +360,7 @@ linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
 		*sectionp = &sections[found_field];
 	} else {
 		size_t new_sections_size = sections_size + 1U;
-		struct conf_section *new_sections;
+		struct linted_conf_section *new_sections;
 		{
 			void *xx;
 			errnum = linted_mem_realloc_array(&xx, sections,
@@ -368,7 +371,8 @@ linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
 			new_sections = xx;
 		}
 
-		struct conf_section *new_section = &new_sections[sections_size];
+		struct linted_conf_section *new_section =
+		    &new_sections[sections_size];
 
 		new_section->name = section_name;
 
@@ -386,18 +390,18 @@ linted_error conf_add_section(struct conf *unit, struct conf_section **sectionp,
 	return 0;
 }
 
-char const *const *conf_find(struct conf *unit, char const *section,
-                             char const *field)
+char const *const *linted_conf_find(struct linted_conf *unit,
+                                    char const *section, char const *field)
 {
-	struct conf_section *found_section;
+	struct linted_conf_section *found_section;
 
 	{
-		struct conf_section_bucket *buckets = unit->buckets;
-		struct conf_section_bucket *bucket =
+		struct linted_conf_section_bucket *buckets = unit->buckets;
+		struct linted_conf_section_bucket *bucket =
 		    &buckets[string_hash(section) % SECTION_BUCKETS_SIZE];
 
 		size_t sections_size = bucket->sections_size;
-		struct conf_section *sections = bucket->sections;
+		struct linted_conf_section *sections = bucket->sections;
 
 		bool have_found_section = false;
 		for (size_t ii = 0U; ii < sections_size; ++ii) {
@@ -411,14 +415,14 @@ char const *const *conf_find(struct conf *unit, char const *section,
 			return NULL;
 	}
 
-	struct conf_setting_bucket *buckets = found_section->buckets;
-	struct conf_setting_bucket *bucket =
+	struct linted_conf_setting_bucket *buckets = found_section->buckets;
+	struct linted_conf_setting_bucket *bucket =
 	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
 
 	size_t settings_size = bucket->settings_size;
-	struct conf_setting *settings = bucket->settings;
+	struct linted_conf_setting *settings = bucket->settings;
 
-	struct conf_setting *found_setting;
+	struct linted_conf_setting *found_setting;
 	bool have_found_setting = false;
 	for (size_t ii = 0U; ii < settings_size; ++ii) {
 		if (0 == strcmp(settings[ii].field, field)) {
@@ -433,18 +437,18 @@ char const *const *conf_find(struct conf *unit, char const *section,
 	return (char const *const *)found_setting->value;
 }
 
-linted_error conf_add_setting(struct conf_section *section, char *field,
-                              char const *const *value)
+linted_error linted_conf_add_setting(struct linted_conf_section *section,
+                                     char *field, char const *const *value)
 {
 	linted_error errnum;
 
-	struct conf_setting_bucket *buckets = section->buckets;
+	struct linted_conf_setting_bucket *buckets = section->buckets;
 
-	struct conf_setting_bucket *bucket =
+	struct linted_conf_setting_bucket *bucket =
 	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
 
 	size_t settings_size = bucket->settings_size;
-	struct conf_setting *settings = bucket->settings;
+	struct linted_conf_setting *settings = bucket->settings;
 
 	bool have_found_field = false;
 	size_t found_field;
@@ -534,7 +538,7 @@ linted_error conf_add_setting(struct conf_section *section, char *field,
 			settings[found_field].value = new_value;
 		} else {
 			size_t new_settings_size = settings_size + 1U;
-			struct conf_setting *new_settings;
+			struct linted_conf_setting *new_settings;
 			{
 				void *xx;
 				errnum = linted_mem_realloc_array(
