@@ -22,7 +22,6 @@
 
 struct linted_conf;
 struct linted_conf_section;
-struct linted_conf_setting;
 
 linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
                                     char const *name);
