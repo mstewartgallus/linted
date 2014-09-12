@@ -871,7 +871,8 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 	    conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *files = conf_find(conf, "Service", "X-Linted-Files");
 	char const *const *fstab = conf_find(conf, "Service", "X-Linted-Fstab");
-	char const *const *chdir_path = conf_find(conf, "Service", "X-Linted-Chdir");
+	char const *const *chdir_path =
+	    conf_find(conf, "Service", "X-Linted-Chdir");
 	char const *const *env_whitelist =
 	    conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
@@ -888,7 +889,8 @@ static linted_error service_spawn(pid_t *pidp, struct conf *conf, linted_ko cwd,
 	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
 		return EINVAL;
 
-	if (chdir_path != NULL && (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
+	if (chdir_path != NULL &&
+	    (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
 		return EINVAL;
 
 	if (NULL == type) {
