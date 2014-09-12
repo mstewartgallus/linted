@@ -50,7 +50,7 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
-enum { ON_RECEIVE_NOTICE, ON_POLL_DISPLAY, ON_SENT_CONTROL, MAX_TASKS };
+enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
 #define INPUT_EVENT_MASK                                                       \
 	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
@@ -66,7 +66,7 @@ struct window_model
 	unsigned height;
 };
 
-struct poll_display_task
+struct poll_conn_task
 {
 	struct linted_ko_task_poll parent;
 	bool *time_to_quit;
@@ -103,7 +103,7 @@ struct controller_task
 struct notice_task
 {
 	struct linted_window_notifier_task_receive parent;
-	struct poll_display_task *poll_display_task;
+	struct poll_conn_task *poll_conn_task;
 	bool *time_to_quit;
 	Display *display;
 	struct linted_asynch_pool *pool;
@@ -131,7 +131,7 @@ struct linted_start_config const linted_start_config = {
 static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 10000000};
 
 static linted_error dispatch(struct linted_asynch_task *task);
-static linted_error on_poll_display(struct linted_asynch_task *task);
+static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
@@ -177,7 +177,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	xcb_window_t window = 0;
 	struct notice_task notice_task;
 	struct controller_task controller_task;
-	struct poll_display_task poll_display_task;
+	struct poll_conn_task poll_conn_task;
 
 	Display *display = XOpenDisplay(NULL);
 	if (NULL == display) {
@@ -190,7 +190,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_window_notifier_receive(LINTED_UPCAST(&notice_task),
 	                               ON_RECEIVE_NOTICE, notifier);
 	notice_task.time_to_quit = &time_to_quit;
-	notice_task.poll_display_task = &poll_display_task;
+	notice_task.poll_conn_task = &poll_conn_task;
 	notice_task.window = &window;
 	notice_task.display = display;
 	notice_task.pool = pool;
@@ -254,7 +254,7 @@ destroy_pool:
 	 * terminated */
 	(void)notice_task;
 	(void)controller_task;
-	(void)poll_display_task;
+	(void)poll_conn_task;
 
 	return errnum;
 }
@@ -328,8 +328,8 @@ static struct sock_fprog const seccomp_filter = {
 static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (task->task_action) {
-	case ON_POLL_DISPLAY:
-		return on_poll_display(task);
+	case ON_POLL_CONN:
+		return on_poll_conn(task);
 
 	case ON_RECEIVE_NOTICE:
 		return on_receive_notice(task);
@@ -342,31 +342,31 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	}
 }
 
-static linted_error on_poll_display(struct linted_asynch_task *task)
+static linted_error on_poll_conn(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
 	if ((errnum = task->errnum) != 0)
 		return errnum;
 
-	struct poll_display_task *poll_display_task =
-	    LINTED_DOWNCAST(struct poll_display_task,
+	struct poll_conn_task *poll_conn_task =
+	    LINTED_DOWNCAST(struct poll_conn_task,
 	                    LINTED_DOWNCAST(struct linted_ko_task_poll, task));
-	Display *display = poll_display_task->display;
-	xcb_connection_t *connection = poll_display_task->connection;
-	xcb_window_t *window = poll_display_task->window;
-	struct window_model *window_model = poll_display_task->window_model;
-	bool *time_to_quitp = poll_display_task->time_to_quit;
+	Display *display = poll_conn_task->display;
+	xcb_connection_t *connection = poll_conn_task->connection;
+	xcb_window_t *window = poll_conn_task->window;
+	struct window_model *window_model = poll_conn_task->window_model;
+	bool *time_to_quitp = poll_conn_task->time_to_quit;
 
-	struct linted_asynch_pool *pool = poll_display_task->pool;
-	linted_ko controller = poll_display_task->controller;
+	struct linted_asynch_pool *pool = poll_conn_task->pool;
+	linted_ko controller = poll_conn_task->controller;
 	struct controller_data *controller_data =
-	    poll_display_task->controller_data;
+	    poll_conn_task->controller_data;
 	struct controller_task *controller_task =
-	    poll_display_task->controller_task;
+	    poll_conn_task->controller_task;
 
-	/* We have to use the Xlib event queue for input
-	 * events XCB isn't quite ready in this respect yet.
+	/* We have to use the Xlib event queue for input events as XCB
+	 * isn't quite ready in this respect yet.
 	 */
 	while (XPending(display) > 0) {
 		XEvent event;
@@ -498,17 +498,17 @@ static linted_error on_poll_display(struct linted_asynch_task *task)
 			return 0;
 	}
 
-	linted_ko_task_poll(LINTED_UPCAST(poll_display_task), ON_POLL_DISPLAY,
+	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
 	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_display_task->time_to_quit = time_to_quitp;
-	poll_display_task->window = window;
-	poll_display_task->pool = pool;
-	poll_display_task->window_model = window_model;
-	poll_display_task->display = display;
-	poll_display_task->connection = connection;
-	poll_display_task->controller = controller;
-	poll_display_task->controller_data = controller_data;
-	poll_display_task->controller_task = controller_task;
+	poll_conn_task->time_to_quit = time_to_quitp;
+	poll_conn_task->window = window;
+	poll_conn_task->pool = pool;
+	poll_conn_task->window_model = window_model;
+	poll_conn_task->display = display;
+	poll_conn_task->connection = connection;
+	poll_conn_task->controller = controller;
+	poll_conn_task->controller_data = controller_data;
+	poll_conn_task->controller_task = controller_task;
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -523,8 +523,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		return errnum;
 
 	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
-	struct poll_display_task *poll_display_task =
-	    notice_task->poll_display_task;
+	struct poll_conn_task *poll_conn_task = notice_task->poll_conn_task;
 	Display *display = notice_task->display;
 	struct linted_asynch_pool *pool = notice_task->pool;
 	xcb_connection_t *connection = notice_task->connection;
@@ -572,20 +571,20 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	*windowp = window;
 
 	/* TODO: Check if this is in progress */
-	linted_ko_task_poll(LINTED_UPCAST(poll_display_task), ON_POLL_DISPLAY,
+	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
 	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_display_task->time_to_quit = notice_task->time_to_quit;
-	poll_display_task->window = windowp;
-	poll_display_task->pool = pool;
-	poll_display_task->window_model = window_model;
-	poll_display_task->display = display;
-	poll_display_task->connection = connection;
-	poll_display_task->controller = controller;
-	poll_display_task->controller_data = controller_data;
-	poll_display_task->controller_task = controller_task;
+	poll_conn_task->time_to_quit = notice_task->time_to_quit;
+	poll_conn_task->window = windowp;
+	poll_conn_task->pool = pool;
+	poll_conn_task->window_model = window_model;
+	poll_conn_task->display = display;
+	poll_conn_task->connection = connection;
+	poll_conn_task->controller = controller;
+	poll_conn_task->controller_data = controller_data;
+	poll_conn_task->controller_task = controller_task;
 
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(poll_display_task)));
+	linted_asynch_pool_submit(pool,
+	                          LINTED_UPCAST(LINTED_UPCAST(poll_conn_task)));
 
 	return 0;
 }
