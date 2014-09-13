@@ -43,4 +43,4 @@ linted_error linted_conf_add_section(struct linted_conf *unit,
 linted_error linted_conf_add_setting(struct linted_conf_section *section,
                                      char *field, char const *const *value);
 
-#endif /* LINTED_LINTED_CONF_H */
+#endif /* LINTED_CONF_H */
