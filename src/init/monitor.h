@@ -63,7 +63,6 @@
  *  MANAGERPID to getpid().
  */
 
-unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
-                                  char const *unit_path);
+unsigned char linted_init_monitor(void);
 
 #endif /* LINTED_INIT_INIT_H */

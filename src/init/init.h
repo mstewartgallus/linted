@@ -16,9 +16,6 @@
 #ifndef LINTED_INIT_INIT_H
 #define LINTED_INIT_INIT_H
 
-#include "linted/ko.h"
-
-unsigned char linted_init_init(linted_ko cwd, char const *chrootdir,
-                               char const *unit_path);
+unsigned char linted_init_init(void);
 
 #endif /* LINTED_INIT_INIT_H */

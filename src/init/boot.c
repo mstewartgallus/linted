@@ -26,10 +26,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
@@ -43,7 +41,6 @@ struct linted_start_config const linted_start_config = {
     .kos = NULL};
 
 static linted_error set_process_name(char const *name);
-static linted_error set_dumpable(bool v);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -60,48 +57,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			perror("set_process_name");
 			return EXIT_FAILURE;
 		}
-	}
-
-	char const *chrootdir = getenv("LINTED_CHROOT");
-	char const *unit_path = getenv("LINTED_UNIT_PATH");
-
-	if (NULL == chrootdir) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: LINTED_CHROOT is a required environment variable\n",
-		    process_name);
-		return EXIT_FAILURE;
-	}
-
-	if (NULL == unit_path) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
-		    process_name);
-		return EXIT_FAILURE;
-	}
-
-	linted_ko cwd;
-	{
-		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not open the current working directory: %s\n",
-			                       process_name,
-			                       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-		cwd = xx;
-	}
-
-	if (-1 == chdir("/")) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not change to the root directory: %s\n",
-		                       process_name,
-		                       linted_error_string(errno));
-		return EXIT_FAILURE;
 	}
 
 	gid_t gid = getgid();
@@ -124,6 +79,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	if (child != 0) {
+		if (-1 == chdir("/")) {
+			perror("chdir");
+			return EXIT_FAILURE;
+		}
+
 		siginfo_t info;
 		do {
 			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
@@ -140,8 +100,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	/* Note that writing to uid_map and gid_map will fail if the
 	 * binary is not dumpable.  DON'T set the process dumpable and
-	 * fail it is nondumpable as presumably the invoker of the
-	 * process had good reasons to have the process nondumpable.
+	 * fail if the process is nondumpable as presumably the
+	 * invoker of the process had good reasons to have the process
+	 * nondumpable.
 	 */
 	{
 		linted_ko file;
@@ -204,13 +165,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 
-	errnum = set_dumpable(false);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_dumpable");
-		return EXIT_FAILURE;
-	}
-	return linted_init_init(cwd, chrootdir, unit_path);
+	return linted_init_init();
 }
 
 static linted_error set_process_name(char const *name)
@@ -218,18 +173,6 @@ static linted_error set_process_name(char const *name)
 	linted_error errnum;
 
 	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-	return 0;
-}
-
-static linted_error set_dumpable(bool v)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_DUMPABLE, (unsigned long)v, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

@@ -176,6 +176,7 @@ static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
 static linted_error set_process_name(char const *name);
 static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
+static linted_error set_dumpable(bool v);
 
 static linted_error confs_from_path(char const *unit_path,
                                     struct linted_conf ***unitsp,
@@ -225,10 +226,43 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
-                                  char const *unit_path)
+unsigned char linted_init_monitor(void)
 {
 	linted_error errnum;
+
+	char const *chrootdir = getenv("LINTED_CHROOT");
+	char const *unit_path = getenv("LINTED_UNIT_PATH");
+
+	if (NULL == chrootdir) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_CHROOT is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == unit_path) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	linted_ko cwd;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: can not open the current working directory: %s\n",
+			                       process_name,
+			                       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		cwd = xx;
+	}
 
 	errnum = set_process_name(process_name);
 	if (errnum != 0) {
@@ -248,6 +282,15 @@ unsigned char linted_init_monitor(linted_ko cwd, char const *chrootdir,
 	if (errnum != 0) {
 		errno = errnum;
 		perror("set_child_subreaper");
+		return EXIT_FAILURE;
+	}
+
+	/* Protect this process and it's children from ptracing each
+	 * other */
+	errnum = set_dumpable(true);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_dumpable");
 		return EXIT_FAILURE;
 	}
 
@@ -474,6 +517,18 @@ static linted_error set_child_subreaper(bool v)
 		return errnum;
 	}
 
+	return 0;
+}
+
+static linted_error set_dumpable(bool v)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_DUMPABLE, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 	return 0;
 }
 
