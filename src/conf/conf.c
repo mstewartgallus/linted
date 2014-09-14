@@ -158,22 +158,64 @@ linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
 			}
 
 			bool has_equals_sign = false;
+			bool has_whitespace = false;
 			size_t equals_position;
+			size_t whitespace_position;
+			size_t field_len;
 			for (size_t ii = 0U; ii < line_size; ++ii) {
-				if ('=' == line_buffer[ii]) {
+				switch (line_buffer[ii]) {
+				case '=':
 					has_equals_sign = true;
 					equals_position = ii;
-					break;
+					field_len = ii;
+					goto exit_whitespace_or_equals_search;
+
+				case ' ':
+				case '\t':
+					if (0U == ii) {
+						errnum = EINVAL;
+						goto free_line_buffer;
+					}
+
+					has_whitespace = true;
+					whitespace_position = ii;
+					field_len = ii;
+					goto exit_whitespace_or_equals_search;
+
+				case '\n':
+					errnum = EINVAL;
+					goto free_line_buffer;
 				}
 			}
+		exit_whitespace_or_equals_search:
+
+			if (has_whitespace) {
+				for (size_t ii = whitespace_position + 1U;
+				     ii < line_size; ++ii) {
+					switch (line_buffer[ii]) {
+					case '=':
+						has_equals_sign = true;
+						equals_position = ii;
+						goto exit_equals_search;
+
+					case ' ':
+					case '\t':
+						break;
+
+					default:
+						errnum = EINVAL;
+						goto free_line_buffer;
+					}
+				}
+			}
+		exit_equals_search:
 
 			if (!has_equals_sign) {
 				errnum = EINVAL;
 				goto free_line_buffer;
 			}
 
-			size_t field_len = equals_position;
-			size_t value_offset = field_len + 1U;
+			size_t value_offset = equals_position + 1U;
 			size_t value_len = line_size - value_offset;
 
 			char *field;
@@ -287,6 +329,9 @@ free_name_copy:
 
 void linted_conf_put(struct linted_conf *conf)
 {
+	if (NULL == conf)
+		return;
+
 	if (--conf->refcount != 0)
 		return;
 

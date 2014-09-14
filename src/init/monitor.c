@@ -650,11 +650,8 @@ static linted_error confs_from_path(char const *unit_path,
 				struct linted_conf *xx;
 				errnum = linted_conf_parse_file(&xx, unit_file,
 				                                file_name);
-				if (errnum != 0) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
+				if (errnum != 0)
 					goto close_unit_file;
-				}
 				unit = xx;
 			}
 
