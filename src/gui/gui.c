@@ -128,8 +128,6 @@ struct linted_start_config const linted_start_config = {
     .kos = kos,
     .seccomp_bpf = &seccomp_filter};
 
-static struct timespec const sleep_time = {.tv_sec = 0, .tv_nsec = 10000000};
-
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
@@ -368,6 +366,21 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	/* We have to use the Xlib event queue for input events as XCB
 	 * isn't quite ready in this respect yet.
 	 */
+	unsigned events = 0;
+
+	bool had_enter_or_leave = false;
+	bool is_entering;
+
+	bool had_motion = false;
+	int motion_x;
+	int motion_y;
+
+	bool had_resize = false;
+	unsigned resize_width;
+	unsigned resize_height;
+
+	bool have_new_mapping = false;
+
 	while (XPending(display) > 0) {
 		XEvent event;
 		XNextEvent(display, &event);
@@ -377,42 +390,31 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		switch (event.type) {
 		case ConfigureNotify: {
 			XConfigureEvent const *configure_event =
-			    &event.xconfigure;
-			window_model->width = configure_event->width;
-			window_model->height = configure_event->height;
+				&event.xconfigure;
+
+			resize_width = configure_event->width;
+			resize_height = configure_event->height;
+			had_resize = true;
 			break;
 		}
 
 		case MotionNotify: {
 			XMotionEvent const *motion_event = &event.xmotion;
-			on_tilt(motion_event->x, motion_event->y, window_model,
-			        controller_data);
+
+			motion_x = motion_event->x;
+			motion_y = motion_event->y;
+			had_motion = true;
 			break;
 		}
 
-		case EnterNotify: {
-			int x, y;
-			errnum =
-			    get_mouse_position(connection, *window, &x, &y);
-			if (errnum != 0)
-				return errnum;
-
-			on_tilt(x, y, window_model, controller_data);
+		case EnterNotify:
+			is_entering = true;
+			had_enter_or_leave = true;
 			break;
-		}
 
 		case LeaveNotify:
-			controller_data->update.x_tilt = 0;
-			controller_data->update.y_tilt = 0;
-
-			controller_data->update.left = 0;
-			controller_data->update.right = 0;
-			controller_data->update.forward = 0;
-			controller_data->update.back = 0;
-
-			controller_data->update.jumping = 0;
-
-			controller_data->update_pending = true;
+			is_entering = true;
+			had_enter_or_leave = false;
 			break;
 
 		case KeyPress:
@@ -490,13 +492,45 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 		}
 
-		maybe_update_controller(pool, controller_data, controller_task,
-		                        controller);
-
 		*time_to_quitp = time_to_quit;
 		if (time_to_quit)
 			return 0;
 	}
+
+	if (had_resize) {
+		window_model->width = resize_width;
+		window_model->height = resize_height;
+	}
+
+	if (had_motion)
+		on_tilt(motion_x, motion_y, window_model,
+		        controller_data);
+
+	if (had_enter_or_leave) {
+		if (is_entering) {
+			int x, y;
+			errnum = get_mouse_position(connection, *window, &x, &y);
+			if (errnum != 0)
+				return errnum;
+
+			on_tilt(x, y, window_model, controller_data);
+		} else {
+			controller_data->update.x_tilt = 0;
+			controller_data->update.y_tilt = 0;
+
+			controller_data->update.left = 0;
+			controller_data->update.right = 0;
+			controller_data->update.forward = 0;
+			controller_data->update.back = 0;
+
+			controller_data->update.jumping = 0;
+
+			controller_data->update_pending = true;
+		}
+	}
+
+	maybe_update_controller(pool, controller_data, controller_task,
+	                        controller);
 
 	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
 	                    xcb_get_file_descriptor(connection), POLLIN);
