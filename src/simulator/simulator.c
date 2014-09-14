@@ -30,7 +30,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
@@ -118,7 +117,7 @@ struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
     .kos_size = LINTED_ARRAY_SIZE(kos),
     .kos = kos,
-    .seccomp_bpf = NULL}; // &seccomp_filter};
+    .seccomp_bpf = &seccomp_filter};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
@@ -138,13 +137,12 @@ static void simulate_rotation(linted_updater_angle *rotation,
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
                                       linted_updater_int tilt);
 
-static linted_updater_int circle(linted_updater_int x, linted_updater_int y);
 static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
 
 unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[const])
+                           char const *const argv[])
 {
 	linted_log log = kos[0U];
 	linted_controller controller = kos[1U];
@@ -538,12 +536,6 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
 	}
 
 	*rotation = new_rotation;
-}
-
-static linted_updater_int circle(linted_updater_int x, linted_updater_int y)
-{
-	/* Just cheat and use the double sqrt for now */
-	return sqrt(((intmax_t)x) * x + ((intmax_t)y) * y);
 }
 
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y)
