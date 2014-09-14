@@ -53,7 +53,7 @@
 enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
 #define INPUT_EVENT_MASK                                                       \
-	(XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |           \
+	(XCB_EVENT_MASK_FOCUS_CHANGE | \
 	 XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |               \
 	 XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY)
 
@@ -363,8 +363,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	struct controller_task *controller_task =
 	    poll_conn_task->controller_task;
 
-	bool had_enter_or_leave = false;
-	bool is_entering;
+	bool had_focus_change = false;
+	bool focused;
 
 	bool had_motion = false;
 	int motion_x;
@@ -403,14 +403,14 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 		}
 
-		case EnterNotify:
-			is_entering = true;
-			had_enter_or_leave = true;
+		case FocusIn:
+			focused = true;
+			had_focus_change = true;
 			break;
 
-		case LeaveNotify:
-			is_entering = false;
-			had_enter_or_leave = true;
+		case FocusOut:
+			focused = false;
+			had_focus_change = true;
 			break;
 
 		case KeyPress:
@@ -501,8 +501,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	if (had_motion)
 		on_tilt(motion_x, motion_y, window_model, controller_data);
 
-	if (had_enter_or_leave) {
-		if (is_entering) {
+	if (had_focus_change) {
+		if (focused) {
 			int x, y;
 			errnum =
 			    get_mouse_position(connection, *window, &x, &y);
