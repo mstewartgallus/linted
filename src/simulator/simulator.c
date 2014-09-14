@@ -459,29 +459,19 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	linted_updater_int cos_x = linted_updater_cos(x_rotation);
 	linted_updater_int sin_x = linted_updater_sin(x_rotation);
 
-	linted_updater_int forward_thrusts[3U] = {
-		-resolve(sin_x * z),
-		0,
-		-resolve(cos_x * z)
-	};
+	linted_updater_int forward_thrusts[3U] = {-resolve(sin_x * z), 0,
+	                                          -resolve(cos_x * z)};
 
-	linted_updater_int strafe_thrusts[3U] = {
-		-resolve(cos_x * x),
-		0,
-		resolve(sin_x * x)
-	};
+	linted_updater_int strafe_thrusts[3U] = {-resolve(cos_x * x), 0,
+	                                         resolve(sin_x * x)};
 
 	linted_updater_int jump_thrusts[3U] = {
-		0,
-		resolve(-LINTED_UPDATER_INT_MAX * action_state->jumping),
-		0
-	};
+	    0, resolve(-LINTED_UPDATER_INT_MAX * action_state->jumping), 0};
 
 	linted_updater_int thrusts[3U];
 	for (size_t ii = 0U; ii < positions_size; ++ii) {
-		thrusts[ii] = strafe_thrusts[ii]
-			+ forward_thrusts[ii]
-			+ jump_thrusts[ii];
+		thrusts[ii] =
+		    strafe_thrusts[ii] + forward_thrusts[ii] + jump_thrusts[ii];
 	}
 
 	for (size_t ii = 0U; ii < positions_size; ++ii) {
