@@ -409,8 +409,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 
 		case LeaveNotify:
-			is_entering = true;
-			had_enter_or_leave = false;
+			is_entering = false;
+			had_enter_or_leave = true;
 			break;
 
 		case KeyPress:
