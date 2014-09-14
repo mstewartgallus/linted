@@ -401,6 +401,9 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 		}
 
+		case DestroyNotify:
+			goto quit_application;
+
 		case MotionNotify: {
 			XMotionEvent const *motion_event = &event.xmotion;
 
