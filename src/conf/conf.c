@@ -67,7 +67,7 @@ struct conf_setting
 
 static size_t string_hash(char const *str);
 
-linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
+linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
                                     char const *name)
 {
 	linted_error errnum = 0;
@@ -75,13 +75,13 @@ linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
 	char *line_buffer = NULL;
 	size_t line_capacity = 0U;
 
-	struct linted_conf *unit;
+	struct linted_conf *conf;
 	{
 		struct linted_conf *xx;
 		errnum = linted_conf_create(&xx, name);
 		if (errnum != 0)
 			return errnum;
-		unit = xx;
+		conf = xx;
 	}
 
 	struct linted_conf_section *current_section = NULL;
@@ -92,7 +92,7 @@ linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
 			char *xx = line_buffer;
 			size_t yy = line_capacity;
 			errno = 0;
-			ssize_t zz = getline(&xx, &yy, unit_file);
+			ssize_t zz = getline(&xx, &yy, conf_file);
 			if (-1 == zz) {
 				errnum = errno;
 				/* May be 0 to indicate end of line */
@@ -138,7 +138,7 @@ linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
 
 			{
 				struct linted_conf_section *xx;
-				errnum = linted_conf_add_section(unit, &xx,
+				errnum = linted_conf_add_section(conf, &xx,
 				                                 section_name);
 				if (0 == errnum)
 					current_section = xx;
@@ -236,18 +236,18 @@ free_line_buffer:
 	linted_mem_free(line_buffer);
 
 	if (errnum != 0)
-		linted_conf_put(unit);
+		linted_conf_put(conf);
 
 	if (0 == errnum)
-		*unitp = unit;
+		*confp = conf;
 
 	return errnum;
 }
 
-linted_error linted_conf_create(struct linted_conf **unitp, char const *name)
+linted_error linted_conf_create(struct linted_conf **confp, char const *name)
 {
 	linted_error errnum = 0;
-	struct linted_conf *unit;
+	struct linted_conf *conf;
 
 	char *name_copy = strdup(name);
 	if (NULL == name_copy) {
@@ -258,17 +258,17 @@ linted_error linted_conf_create(struct linted_conf **unitp, char const *name)
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *unit);
+		errnum = linted_mem_alloc(&xx, sizeof *conf);
 		if (errnum != 0)
 			goto free_name_copy;
-		unit = xx;
+		conf = xx;
 	}
 
-	unit->name = name_copy;
-	unit->refcount = 1;
+	conf->name = name_copy;
+	conf->refcount = 1;
 
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket *bucket = &unit->buckets[ii];
+		struct conf_section_bucket *bucket = &conf->buckets[ii];
 
 		bucket->sections_size = 0U;
 		bucket->sections = NULL;
@@ -280,18 +280,18 @@ free_name_copy:
 		return errnum;
 	}
 
-	*unitp = unit;
+	*confp = conf;
 
 	return 0;
 }
 
-void linted_conf_put(struct linted_conf *unit)
+void linted_conf_put(struct linted_conf *conf)
 {
-	if (--unit->refcount != 0)
+	if (--conf->refcount != 0)
 		return;
 
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket const *bucket = &unit->buckets[ii];
+		struct conf_section_bucket const *bucket = &conf->buckets[ii];
 
 		size_t sections_size = bucket->sections_size;
 		struct linted_conf_section *sections = bucket->sections;
@@ -321,22 +321,22 @@ void linted_conf_put(struct linted_conf *unit)
 
 		linted_mem_free(sections);
 	}
-	linted_mem_free(unit->name);
-	linted_mem_free(unit);
+	linted_mem_free(conf->name);
+	linted_mem_free(conf);
 }
 
-char const *linted_conf_peek_name(struct linted_conf *unit)
+char const *linted_conf_peek_name(struct linted_conf *conf)
 {
-	return unit->name;
+	return conf->name;
 }
 
-linted_error linted_conf_add_section(struct linted_conf *unit,
+linted_error linted_conf_add_section(struct linted_conf *conf,
                                      struct linted_conf_section **sectionp,
                                      char *section_name)
 {
 	linted_error errnum;
 
-	struct conf_section_bucket *buckets = unit->buckets;
+	struct conf_section_bucket *buckets = conf->buckets;
 
 	struct conf_section_bucket *bucket =
 	    &buckets[string_hash(section_name) % SECTION_BUCKETS_SIZE];
@@ -389,13 +389,13 @@ linted_error linted_conf_add_section(struct linted_conf *unit,
 	return 0;
 }
 
-char const *const *linted_conf_find(struct linted_conf *unit,
+char const *const *linted_conf_find(struct linted_conf *conf,
                                     char const *section, char const *field)
 {
 	struct linted_conf_section *found_section;
 
 	{
-		struct conf_section_bucket *buckets = unit->buckets;
+		struct conf_section_bucket *buckets = conf->buckets;
 		struct conf_section_bucket *bucket =
 		    &buckets[string_hash(section) % SECTION_BUCKETS_SIZE];
 
@@ -407,6 +407,7 @@ char const *const *linted_conf_find(struct linted_conf *unit,
 			if (0 == strcmp(sections[ii].name, section)) {
 				have_found_section = true;
 				found_section = &sections[ii];
+				break;
 			}
 		}
 
@@ -427,6 +428,7 @@ char const *const *linted_conf_find(struct linted_conf *unit,
 		if (0 == strcmp(settings[ii].field, field)) {
 			have_found_setting = true;
 			found_setting = &settings[ii];
+			break;
 		}
 	}
 
