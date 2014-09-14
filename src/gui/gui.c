@@ -363,11 +363,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	struct controller_task *controller_task =
 	    poll_conn_task->controller_task;
 
-	/* We have to use the Xlib event queue for input events as XCB
-	 * isn't quite ready in this respect yet.
-	 */
-	unsigned events = 0;
-
 	bool had_enter_or_leave = false;
 	bool is_entering;
 
@@ -379,8 +374,9 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	unsigned resize_width;
 	unsigned resize_height;
 
-	bool have_new_mapping = false;
-
+	/* We have to use the Xlib event queue for input events as XCB
+	 * isn't quite ready in this respect yet.
+	 */
 	while (XPending(display) > 0) {
 		XEvent event;
 		XNextEvent(display, &event);
@@ -390,7 +386,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		switch (event.type) {
 		case ConfigureNotify: {
 			XConfigureEvent const *configure_event =
-				&event.xconfigure;
+			    &event.xconfigure;
 
 			resize_width = configure_event->width;
 			resize_height = configure_event->height;
@@ -503,13 +499,13 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	}
 
 	if (had_motion)
-		on_tilt(motion_x, motion_y, window_model,
-		        controller_data);
+		on_tilt(motion_x, motion_y, window_model, controller_data);
 
 	if (had_enter_or_leave) {
 		if (is_entering) {
 			int x, y;
-			errnum = get_mouse_position(connection, *window, &x, &y);
+			errnum =
+			    get_mouse_position(connection, *window, &x, &y);
 			if (errnum != 0)
 				return errnum;
 
