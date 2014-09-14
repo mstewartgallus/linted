@@ -163,10 +163,9 @@ linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool)
 	for (size_t ii = 0U; ii < worker_count; ++ii)
 		pthread_cancel(pool->workers[ii]);
 
-	for (size_t ii = 0U; ii < worker_count; ++ii)
-		pthread_join(pool->workers[ii], NULL);
-
-	linted_queue_destroy(pool->worker_command_queue);
+	/* After this point a few workers can still be left hanging
+	 * waiting to return completed tasks and users should clean
+	 * those up by polling after here. */
 
 	return errnum;
 }
@@ -177,6 +176,15 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 
 	if (!pool->stopped)
 		return EBUSY;
+
+	/* All workers should have had their results retrieved by
+	 * now. */
+	size_t worker_count = pool->worker_count;
+
+	for (size_t ii = 0U; ii < worker_count; ++ii)
+		pthread_join(pool->workers[ii], NULL);
+
+	linted_queue_destroy(pool->worker_command_queue);
 
 	linted_queue_destroy(pool->event_queue);
 

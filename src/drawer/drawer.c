@@ -34,6 +34,7 @@
 #include <math.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/syscall.h>
