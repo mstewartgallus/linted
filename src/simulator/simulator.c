@@ -467,10 +467,18 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	    0, resolve(-LINTED_UPDATER_INT_MAX * action_state->jumping), 0};
 
 	linted_updater_int thrusts[3U];
-	for (size_t ii = 0U; ii < positions_size; ++ii) {
+	for (size_t ii = 0U; ii < positions_size; ++ii)
 		thrusts[ii] =
 		    strafe_thrusts[ii] + forward_thrusts[ii] + jump_thrusts[ii];
-	}
+
+	linted_updater_int gravity[3U] = {0, 10, 0};
+
+	linted_updater_int normal_force[3U] = {
+	    0, (positions[1U].value >= 0) * -20, 0};
+
+	linted_updater_int forces[3U];
+	for (size_t ii = 0U; ii < positions_size; ++ii)
+		forces[ii] = gravity[ii] + normal_force[ii] + thrusts[ii];
 
 	for (size_t ii = 0U; ii < positions_size; ++ii) {
 		struct differentiable *pos = &positions[ii];
@@ -479,10 +487,10 @@ static void simulate_tick(struct simulator_state *simulator_state,
 		linted_updater_int old_position = pos->old;
 
 		linted_updater_int old_velocity = position - old_position;
-		linted_updater_int thrust = thrusts[ii];
+		linted_updater_int force = forces[ii];
 
 		linted_updater_int guess_velocity =
-		    linted_updater_isatadd(thrust, old_velocity);
+		    linted_updater_isatadd(force, old_velocity);
 
 		linted_updater_int friction =
 		    min_int(absolute(guess_velocity), 5 /* = μ Fₙ */) *
