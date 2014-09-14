@@ -58,10 +58,11 @@
 
 enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
-#define INPUT_EVENT_MASK                                                       \
-	(XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_KEY_PRESS |              \
-	 XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |          \
-	 XCB_EVENT_MASK_STRUCTURE_NOTIFY)
+static uint32_t const window_opts[] = {
+    XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_KEY_PRESS |
+        XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |
+        XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+    0};
 
 struct controller_data;
 struct controller_task;
@@ -578,8 +579,19 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	if (-1 == XSelectInput(display, window, INPUT_EVENT_MASK))
-		return ENOSYS;
+	xcb_void_cookie_t chattr_ck = xcb_change_window_attributes_checked(
+	    connection, window, XCB_CW_EVENT_MASK, window_opts);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_generic_error_t *chattr_err =
+	    xcb_request_check(connection, chattr_ck);
+	if (chattr_err != NULL) {
+		errnum = get_xcb_error(chattr_err);
+		linted_mem_free(chattr_err);
+		return errnum;
+	}
 
 	unsigned width, height;
 	int x, y;
