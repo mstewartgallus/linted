@@ -17,17 +17,16 @@
 #define LINTED_ASSETS_H
 
 #include <stddef.h>
-#include <GLES2/gl2.h>
 
-typedef GLfloat linted_assets_point[3U];
+typedef float linted_assets_point[3U];
 
 extern linted_assets_point const *const linted_assets_vertices;
 extern linted_assets_point const *const linted_assets_normals;
 
-extern GLubyte const *const linted_assets_indices;
+extern unsigned char const *const linted_assets_indices;
 extern size_t const linted_assets_indices_size;
 
-extern GLchar const *const linted_assets_fragment_shader;
-extern GLchar const *const linted_assets_vertex_shader;
+extern char const *const linted_assets_fragment_shader;
+extern char const *const linted_assets_vertex_shader;
 
 #endif /* LINTED_ASSETS_H */

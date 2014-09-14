@@ -16,9 +16,7 @@
 #ifndef LINTED_ERROR_H
 #define LINTED_ERROR_H
 
-#if defined _WIN32 || defined _WIN64
-#include <windows.h>
-#endif
+#include <stdint.h>
 
 /**
  * @file
@@ -27,7 +25,7 @@
  */
 
 #if defined __WIN32 || defined _WIN64
-typedef HRESULT linted_error;
+typedef uint_fast32_t linted_error;
 #elif defined __linux__
 typedef int linted_error;
 #else
