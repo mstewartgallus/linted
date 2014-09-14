@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
@@ -117,7 +118,7 @@ struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
     .kos_size = LINTED_ARRAY_SIZE(kos),
     .kos = kos,
-    .seccomp_bpf = &seccomp_filter};
+    .seccomp_bpf = NULL}; // &seccomp_filter};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
@@ -136,6 +137,8 @@ static void simulate_rotation(linted_updater_angle *rotation,
                               linted_updater_int tilt);
 static void simulate_clamped_rotation(linted_updater_angle *rotation,
                                       linted_updater_int tilt);
+
+static linted_updater_int circle(linted_updater_int x, linted_updater_int y);
 static linted_updater_uint absolute(linted_updater_int x);
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y);
 static linted_updater_int sign(linted_updater_int x);
@@ -437,6 +440,11 @@ static void maybe_update(linted_updater updater,
 	simulator_state->write_in_progress = true;
 }
 
+static linted_updater_int resolve(linted_updater_int x)
+{
+	return (INTMAX_C(16) * x) / LINTED_UPDATER_INT_MAX;
+}
+
 static void simulate_tick(struct simulator_state *simulator_state,
                           struct action_state const *action_state)
 {
@@ -445,12 +453,36 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	struct differentiable *positions = simulator_state->position;
 	size_t positions_size = LINTED_ARRAY_SIZE(simulator_state->position);
 
-	linted_updater_int const thrusts[3U] = {
-	    -(linted_updater_cos(x_rotation) * action_state->x) / 2 -
-	        (linted_updater_sin(x_rotation) * action_state->z) / 2,
-	    -LINTED_UPDATER_INT_MAX * action_state->jumping,
-	    -(linted_updater_cos(x_rotation) * action_state->z) / 2 +
-	        (linted_updater_sin(x_rotation) * action_state->x) / 2};
+	linted_updater_int x = action_state->x;
+	linted_updater_int z = action_state->z;
+
+	linted_updater_int cos_x = linted_updater_cos(x_rotation);
+	linted_updater_int sin_x = linted_updater_sin(x_rotation);
+
+	linted_updater_int forward_thrusts[3U] = {
+		-resolve(sin_x * z),
+		0,
+		-resolve(cos_x * z)
+	};
+
+	linted_updater_int strafe_thrusts[3U] = {
+		-resolve(cos_x * x),
+		0,
+		resolve(sin_x * x)
+	};
+
+	linted_updater_int jump_thrusts[3U] = {
+		0,
+		resolve(-LINTED_UPDATER_INT_MAX * action_state->jumping),
+		0
+	};
+
+	linted_updater_int thrusts[3U];
+	for (size_t ii = 0U; ii < positions_size; ++ii) {
+		thrusts[ii] = strafe_thrusts[ii]
+			+ forward_thrusts[ii]
+			+ jump_thrusts[ii];
+	}
 
 	for (size_t ii = 0U; ii < positions_size; ++ii) {
 		struct differentiable *pos = &positions[ii];
@@ -461,13 +493,11 @@ static void simulate_tick(struct simulator_state *simulator_state,
 		linted_updater_int old_velocity = position - old_position;
 		linted_updater_int thrust = thrusts[ii];
 
-		intmax_t a = (INTMAX_C(16) * thrust) / LINTED_UPDATER_INT_MAX;
-
 		linted_updater_int guess_velocity =
-		    linted_updater_isatadd(a, old_velocity);
+		    linted_updater_isatadd(thrust, old_velocity);
 
 		linted_updater_int friction =
-		    min_int(absolute(guess_velocity), 3 /* = μ Fₙ */) *
+		    min_int(absolute(guess_velocity), 5 /* = μ Fₙ */) *
 		    -sign(guess_velocity);
 
 		linted_updater_int new_velocity =
@@ -518,6 +548,12 @@ static void simulate_clamped_rotation(linted_updater_angle *rotation,
 	}
 
 	*rotation = new_rotation;
+}
+
+static linted_updater_int circle(linted_updater_int x, linted_updater_int y)
+{
+	/* Just cheat and use the double sqrt for now */
+	return sqrt(((intmax_t)x) * x + ((intmax_t)y) * y);
 }
 
 static linted_updater_int min_int(linted_updater_int x, linted_updater_int y)
