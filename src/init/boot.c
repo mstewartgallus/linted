@@ -68,9 +68,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 */
 	pid_t child;
 	{
-		child = fork();
-		/* child = syscall(__NR_clone, */
-		/*                 SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL); */
+		child = syscall(__NR_clone,
+		                SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
 		if (-1 == child) {
 			linted_io_write_format(
 			    STDERR_FILENO, NULL,
@@ -106,66 +105,66 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 * invoker of the process had good reasons to have the process
 	 * nondumpable.
 	 */
-	/* { */
-	/* 	linted_ko file; */
-	/* 	{ */
-	/* 		linted_ko xx; */
-	/* 		errnum = */
-	/* 		    linted_ko_open(&xx, AT_FDCWD, "/proc/self/uid_map", */
-	/* 		                   LINTED_KO_WRONLY); */
-	/* 		if (errnum != 0) { */
-	/* 			errno = errnum; */
-	/* 			perror("linted_ko_open"); */
-	/* 			return EXIT_FAILURE; */
-	/* 		} */
-	/* 		file = xx; */
-	/* 	} */
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/uid_map",
+			                   LINTED_KO_WRONLY);
+			if (errnum != 0) {
+				errno = errnum;
+				perror("linted_ko_open");
+				return EXIT_FAILURE;
+			}
+			file = xx;
+		}
 
-	/* 	errnum = */
-	/* 	    linted_io_write_format(file, NULL, "%i %i 1\n", uid, uid); */
-	/* 	if (errnum != 0) { */
-	/* 		errno = errnum; */
-	/* 		perror("linted_io_write_format"); */
-	/* 		return EXIT_FAILURE; */
-	/* 	} */
+		errnum =
+		    linted_io_write_format(file, NULL, "%i %i 1\n", uid, uid);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_io_write_format");
+			return EXIT_FAILURE;
+		}
 
-	/* 	errnum = linted_ko_close(file); */
-	/* 	if (errnum != 0) { */
-	/* 		errno = errnum; */
-	/* 		perror("linted_ko_close"); */
-	/* 		return EXIT_FAILURE; */
-	/* 	} */
-	/* } */
+		errnum = linted_ko_close(file);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_ko_close");
+			return EXIT_FAILURE;
+		}
+	}
 
-	/* { */
-	/* 	linted_ko file; */
-	/* 	{ */
-	/* 		linted_ko xx; */
-	/* 		errnum = */
-	/* 		    linted_ko_open(&xx, AT_FDCWD, "/proc/self/gid_map", */
-	/* 		                   LINTED_KO_WRONLY); */
-	/* 		if (errnum != 0) { */
-	/* 			errno = errnum; */
-	/* 			perror("linted_ko_open"); */
-	/* 			return EXIT_FAILURE; */
-	/* 		} */
-	/* 		file = xx; */
-	/* 	} */
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/gid_map",
+			                   LINTED_KO_WRONLY);
+			if (errnum != 0) {
+				errno = errnum;
+				perror("linted_ko_open");
+				return EXIT_FAILURE;
+			}
+			file = xx;
+		}
 
-	/* 	errnum = */
-	/* 	    linted_io_write_format(file, NULL, "%i %i 1\n", gid, gid); */
-	/* 	if (errnum != 0) { */
-	/* 		errno = errnum; */
-	/* 		perror("linted_io_write_format"); */
-	/* 		return EXIT_FAILURE; */
-	/* 	} */
+		errnum =
+		    linted_io_write_format(file, NULL, "%i %i 1\n", gid, gid);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_io_write_format");
+			return EXIT_FAILURE;
+		}
 
-	/* 	errnum = linted_ko_close(file); */
-	/* 	if (errnum != 0) { */
-	/* 		perror("linted_ko_close"); */
-	/* 		return EXIT_FAILURE; */
-	/* 	} */
-	/* } */
+		errnum = linted_ko_close(file);
+		if (errnum != 0) {
+			perror("linted_ko_close");
+			return EXIT_FAILURE;
+		}
+	}
 
 	return linted_init_init();
 }

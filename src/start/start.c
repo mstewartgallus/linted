@@ -162,10 +162,10 @@ It is insecure to run a game with high privileges!\n"));
 	/* Sort the fds from smallest to largest */
 	sort_kos(open_kos, open_kos_size);
 
-	/* for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) */
-	/* 	/\* Don't check for errors, could just be a leaked /dev/full */
-	/* 	 * handle *\/ */
-	/* 	linted_ko_close(open_kos[ii]); */
+	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
+		/* Don't check for errors, could just be a leaked /dev/full
+		 * handle */
+		linted_ko_close(open_kos[ii]);
 
 	/* Sanitize the fds */
 	for (size_t ii = 0U; ii < 3U + kos_size; ++ii) {
@@ -240,14 +240,14 @@ It is insecure to run a game with high privileges!\n"));
 		return errnum;
 	}
 
-	/* if (linted_start_config.seccomp_bpf != NULL) { */
-	/* 	errnum = set_seccomp(linted_start_config.seccomp_bpf); */
-	/* 	if (errnum != 0) { */
-	/* 		errno = errnum; */
-	/* 		perror("prctl"); */
-	/* 		return errnum; */
-	/* 	} */
-	/* } */
+	if (linted_start_config.seccomp_bpf != NULL) {
+		errnum = set_seccomp(linted_start_config.seccomp_bpf);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("prctl");
+			return errnum;
+		}
+	}
 
 	{
 		unsigned entropy;
