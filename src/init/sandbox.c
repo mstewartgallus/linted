@@ -157,8 +157,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (0 == child)
 		return linted_init_init();
 
-	/* Drop resources that this thread uses because now it is just
-	 * a stub. */
+	/* Drop unneeded resources */
 	if (-1 == chdir("/")) {
 		perror("chdir");
 		return EXIT_FAILURE;

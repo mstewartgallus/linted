@@ -84,52 +84,48 @@ unsigned char linted_init_init(void)
 		return EXIT_FAILURE;
 	}
 
-	pid_t child;
-	{
-		child = fork();
-		if (-1 == child) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL,
-			    "%s: can't clone unprivileged process: %s\n",
-			    process_name, linted_error_string(errno));
+	/* We need to fork so that we can use signals as init can't be
+	 * signalled. */
+	pid_t child = fork();
+	if (-1 == child) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: can't clone unprivileged process: %s\n", process_name,
+		    linted_error_string(errno));
+		return EXIT_FAILURE;
+	}
+
+	if (0 == child) {
+		/* Reset the dumpable status to dumpable unless some
+		 * paranoid person wanted to run this program as not
+		 * dumpable.
+		 */
+		errnum = set_dumpable(dumpable);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_dumpable");
 			return EXIT_FAILURE;
 		}
 
-		if (0 == child) {
-			/* Reset the dumpable status to dumpable
-			 * unless some paranoid person wanted to run
-			 * this program as not dumpable.
-			 */
-			errnum = set_dumpable(dumpable);
-			if (errnum != 0) {
-				errno = errnum;
-				perror("set_dumpable");
-				return EXIT_FAILURE;
-			}
-
-			return linted_init_monitor();
-		}
+		return linted_init_monitor();
 	}
 
+	/* Drop unneeded resources. */
 	if (-1 == chdir("/")) {
 		perror("chdir");
 		return EXIT_FAILURE;
 	}
 
-	{
-		siginfo_t info;
-		do {
-			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
-			             ? errno
-			             : 0;
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(errnum != ECHILD);
-			assert(0);
-		}
-		return info.si_status;
+	siginfo_t info;
+	do {
+		errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+	} while (EINTR == errnum);
+	if (errnum != 0) {
+		assert(errnum != EINVAL);
+		assert(errnum != ECHILD);
+		assert(0);
 	}
+	return info.si_status;
 }
 
 static linted_error set_process_name(char const *name)
