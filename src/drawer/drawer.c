@@ -50,6 +50,7 @@
 #include <linux/seccomp.h>
 
 enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
+enum renderer_state { BUFFER_COMMANDS, SWAP_BUFFERS };
 
 struct window_model;
 
@@ -421,6 +422,7 @@ reopen_graphics_context:
 	}
 
 	/* TODO: Detect SIGTERM and exit normally */
+	enum renderer_state renderer_state = BUFFER_COMMANDS;
 	for (;;) {
 		for (;;) {
 			time_to_quit = false;
@@ -437,6 +439,7 @@ reopen_graphics_context:
 
 				completed_task = xx;
 			}
+
 			errnum = dispatch(completed_task);
 			if (errnum != 0)
 				goto cleanup_gl;
@@ -452,9 +455,19 @@ reopen_graphics_context:
 			                window_model.height);
 			window_model.resize_pending = false;
 		} else if (window_model.viewable) {
-			draw_graphics(&graphics_state, &sim_model,
-			              &window_model);
-			eglSwapBuffers(egl_display, egl_surface);
+			switch (renderer_state) {
+			case BUFFER_COMMANDS:
+				draw_graphics(&graphics_state, &sim_model,
+				              &window_model);
+				glFlush();
+				renderer_state = SWAP_BUFFERS;
+				break;
+
+			case SWAP_BUFFERS:
+				eglSwapBuffers(egl_display, egl_surface);
+				renderer_state = BUFFER_COMMANDS;
+				break;
+			}
 		} else {
 			time_to_quit = false;
 
