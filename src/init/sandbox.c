@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,40 +64,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	gid_t gid = getgid();
 	uid_t uid = getuid();
 
-	/* Clone off a child in a new PID namespace. CLONE_NEWUSER is
-	 * needed to allow the permissions to work.
-	 */
-	pid_t child;
-	{
-		child = syscall(__NR_clone,
-		                SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
-		if (-1 == child) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL,
-			    "%s: can't clone unprivileged process: %s\n",
-			    process_name, linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
+	gid_t mapped_gid = gid;
+	uid_t mapped_uid = uid;
 
-	if (child != 0) {
-		if (-1 == chdir("/")) {
-			perror("chdir");
-			return EXIT_FAILURE;
-		}
+	/* Create a new user namespace and gain pseudo
+	 * capabilities. */
 
-		siginfo_t info;
-		do {
-			errnum = -1 == waitid(P_PID, child, &info, WEXITED)
-			             ? errno
-			             : 0;
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(errnum != ECHILD);
-			assert(false);
-		}
-		return info.si_status;
+	if (-1 == unshare(CLONE_NEWUSER)) {
+		perror("unshare");
+		return EXIT_FAILURE;
 	}
 
 	/* Note that writing to uid_map and gid_map will fail if the
@@ -120,8 +96,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			file = xx;
 		}
 
-		errnum =
-		    linted_io_write_format(file, NULL, "%i %i 1\n", uid, uid);
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_uid, uid);
 		if (errnum != 0) {
 			errno = errnum;
 			perror("linted_io_write_format");
@@ -151,8 +127,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			file = xx;
 		}
 
-		errnum =
-		    linted_io_write_format(file, NULL, "%i %i 1\n", gid, gid);
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_gid, gid);
 		if (errnum != 0) {
 			errno = errnum;
 			perror("linted_io_write_format");
@@ -166,7 +142,38 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 
-	return linted_init_init();
+	/* Clone off a child in a new PID namespace. This can't be
+	 * unshared because we want to use threads in the child and
+	 * want the child to be the init and not this one. */
+	pid_t child = syscall(__NR_clone, SIGCHLD | CLONE_NEWPID, NULL);
+	if (-1 == child) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: can't clone unprivileged process: %s\n", process_name,
+		    linted_error_string(errno));
+		return EXIT_FAILURE;
+	}
+
+	if (0 == child)
+		return linted_init_init();
+
+	/* Drop resources that this thread uses because now it is just
+	 * a stub. */
+	if (-1 == chdir("/")) {
+		perror("chdir");
+		return EXIT_FAILURE;
+	}
+
+	siginfo_t info;
+	do {
+		errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
+	} while (EINTR == errnum);
+	if (errnum != 0) {
+		assert(errnum != EINVAL);
+		assert(errnum != ECHILD);
+		assert(false);
+	}
+	return info.si_status;
 }
 
 static linted_error set_process_name(char const *name)

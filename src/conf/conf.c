@@ -358,7 +358,8 @@ void linted_conf_put(struct linted_conf *conf)
 					    &settings[ww];
 					linted_mem_free(setting->field);
 
-					for (char **value = setting->value; *value != NULL; ++value)
+					for (char **value = setting->value;
+					     *value != NULL; ++value)
 						linted_mem_free(*value);
 					linted_mem_free(setting->value);
 				}

@@ -17,7 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/init
 
 %C%_init_SOURCES=\
-  %D%/boot.c\
+  %D%/sandbox.c\
   %D%/init.c %D%/init.h\
   %D%/monitor.c %D%/monitor.h
 %C%_init_LDADD=\

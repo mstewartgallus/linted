@@ -563,8 +563,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 
 		if (!at_fdcwd && is_relative_path) {
-			int copy = fcntl(dirfd, F_DUPFD_CLOEXEC,
-			                 (long)greatest);
+			int copy =
+			    fcntl(dirfd, F_DUPFD_CLOEXEC, (long)greatest);
 			if (-1 == copy)
 				exit_with_error(writer, errno);
 
@@ -573,8 +573,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			dirfd = copy;
 		}
 
-		int writer_copy = fcntl(writer, F_DUPFD_CLOEXEC,
-		                        (long)greatest);
+		int writer_copy =
+		    fcntl(writer, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == writer_copy)
 			exit_with_error(writer, errno);
 
