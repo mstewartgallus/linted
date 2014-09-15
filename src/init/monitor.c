@@ -287,12 +287,12 @@ unsigned char linted_init_monitor(void)
 
 	/* Protect this process and it's children from ptracing each
 	 * other */
-	errnum = set_dumpable(true);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_dumpable");
-		return EXIT_FAILURE;
-	}
+	/* errnum = set_dumpable(true); */
+	/* if (errnum != 0) { */
+	/* 	errno = errnum; */
+	/* 	perror("set_dumpable"); */
+	/* 	return EXIT_FAILURE; */
+	/* } */
 
 	struct linted_asynch_pool *pool;
 	{
@@ -395,15 +395,15 @@ unsigned char linted_init_monitor(void)
 	} while (!waiter_task.time_to_exit);
 
 destroy_units:
-	if (-1 == kill(-1, SIGKILL)) {
-		linted_error kill_errnum = errno;
-		LINTED_ASSUME(kill_errnum != 0);
-		if (kill_errnum != ESRCH) {
-			assert(kill_errnum != EINVAL);
-			assert(kill_errnum != EPERM);
-			assert(false);
-		}
-	}
+	/* if (-1 == kill(-1, SIGKILL)) { */
+	/* 	linted_error kill_errnum = errno; */
+	/* 	LINTED_ASSUME(kill_errnum != 0); */
+	/* 	if (kill_errnum != ESRCH) { */
+	/* 		assert(kill_errnum != EINVAL); */
+	/* 		assert(kill_errnum != EPERM); */
+	/* 		assert(false); */
+	/* 	} */
+	/* } */
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		union unit *unit = &units->list[ii];
@@ -1010,19 +1010,19 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
 
-	linted_spawn_attr_setnonewprivs(attr, no_new_privs_value);
-	linted_spawn_attr_setdropcaps(attr, true);
-	linted_spawn_attr_setcloneflags(attr, clone_flags);
-	if (chdir_path != NULL)
-		linted_spawn_attr_setchdir(attr, chdir_path[0U]);
+	/* linted_spawn_attr_setnonewprivs(attr, no_new_privs_value); */
+	/* linted_spawn_attr_setdropcaps(attr, true); */
+	/* linted_spawn_attr_setcloneflags(attr, clone_flags); */
+	/* if (chdir_path != NULL) */
+	/* 	linted_spawn_attr_setchdir(attr, chdir_path[0U]); */
 
-	if (fstab != NULL) {
-		linted_spawn_attr_setchrootdir(attr, chrootdir);
+	/* if (fstab != NULL) { */
+	/* 	linted_spawn_attr_setchrootdir(attr, chrootdir); */
 
-		errnum = parse_fstab(attr, cwd, fstab[0U]);
-		if (errnum != 0)
-			goto destroy_attr;
-	}
+	/* 	errnum = parse_fstab(attr, cwd, fstab[0U]); */
+	/* 	if (errnum != 0) */
+	/* 		goto destroy_attr; */
+	/* } */
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;

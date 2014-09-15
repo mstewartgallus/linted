@@ -357,11 +357,15 @@ void linted_conf_put(struct linted_conf *conf)
 					struct conf_setting *setting =
 					    &settings[ww];
 					linted_mem_free(setting->field);
+
+					for (char **value = setting->value; *value != NULL; ++value)
+						linted_mem_free(*value);
 					linted_mem_free(setting->value);
 				}
 
 				linted_mem_free(settings);
 			}
+			linted_mem_free(section->name);
 		}
 
 		linted_mem_free(sections);
