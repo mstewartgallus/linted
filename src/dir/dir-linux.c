@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
 #include "linted/dir.h"
 #include "linted/ko.h"
+#include "linted/mem.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -38,31 +41,50 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	if (flags != 0UL)
 		return EINVAL;
 
-	/* Guard against potential concurrency issues by making a private
-	 * copy */
-	linted_ko dirkodup;
+	char *pathnamedir_buffer = strdup(pathname);
+	if (NULL == pathnamedir_buffer) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	char *pathnamebase_buffer = strdup(pathname);
+	if (NULL == pathnamebase_buffer) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto free_pathnamedir_buffer;
+	}
+
+	char *pathnamedir = dirname(pathnamedir_buffer);
+	char *pathnamebase = basename(pathnamebase_buffer);
+
+	/* To prevent concurrency issues with the directory pointed to
+	 * by pathnamedir being deleted or mounted over We need to be
+	 * able to open a file descriptor to it.
+	 */
+	linted_ko realdir;
 	{
 		linted_ko xx;
-		errnum = linted_ko_reopen(&xx, dirko, LINTED_KO_DIRECTORY);
+		errnum = linted_ko_open(&xx, dirko, pathnamedir, LINTED_KO_DIRECTORY);
 		if (errnum != 0)
-			return errnum;
-		dirkodup = xx;
+			goto free_pathnamebase_buffer;
+		realdir = xx;
 	}
 
 make_directory:
-	if (-1 == mkdirat(dirkodup, pathname, mode)) {
+	if (-1 == mkdirat(realdir, pathnamebase, mode)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		if (EEXIST == errnum)
 			goto open_directory;
-		goto close_dirkodup;
+		goto close_realdir;
 	}
 
 open_directory:
 	;
 	int fildes;
 	do {
-		fildes = openat(dirkodup, pathname,
+		fildes = openat(realdir, pathnamebase,
 		                O_CLOEXEC | O_NONBLOCK | O_DIRECTORY);
 		if (-1 == fildes) {
 			errnum = errno;
@@ -75,12 +97,18 @@ open_directory:
 	if (ENOENT == errnum)
 		goto make_directory;
 
-close_dirkodup : {
-	linted_error close_errnum = linted_ko_close(dirkodup);
+close_realdir : {
+	linted_error close_errnum = linted_ko_close(realdir);
 	assert(close_errnum != EBADF);
 	if (0 == errnum)
 		errnum = close_errnum;
 }
+
+free_pathnamebase_buffer:
+	linted_mem_free(pathnamebase_buffer);
+
+free_pathnamedir_buffer:
+	linted_mem_free(pathnamedir_buffer);
 
 	if (errnum != 0)
 		return errnum;
