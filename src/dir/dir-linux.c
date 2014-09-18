@@ -24,13 +24,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <libgen.h>
-#include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                char const *pathname, unsigned long flags,
