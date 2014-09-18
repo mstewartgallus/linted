@@ -48,12 +48,16 @@
 #error no open files directory known for this platform
 #endif
 
-static bool is_privileged(void);
-
 static bool is_open(linted_ko ko);
+
+static bool is_privileged(void);
+static bool was_privileged(void);
+
 static linted_error find_open_kos(linted_ko **kosp, size_t *size);
 static void sort_kos(linted_ko *ko, size_t size);
+
 static linted_error get_system_entropy(unsigned *entropyp);
+
 static linted_error set_no_new_privs(bool v);
 static linted_error set_seccomp(struct sock_fprog const *program);
 
@@ -264,10 +268,6 @@ It is insecure to run a game with high privileges!\n"));
 	return linted_start(process_name, argc, (char const *const *)argv);
 }
 
-#ifndef __linux__
-#error No privilege checking has been implemented yet
-#endif
-
 static bool is_privileged(void)
 {
 	uid_t uid = getuid();
@@ -278,8 +278,15 @@ static bool is_privileged(void)
 	if (0 == gid)
 		return true;
 
-	/* environ hasn't been changed yet and so we can still find
-	 * the auxv from it.
+	return was_privileged();
+}
+
+
+#ifdef __linux__
+static bool was_privileged(void)
+{
+	/* At startup, environ hasn't been changed yet and so we can
+	 * still find the auxv from it.
 	 */
 	char **envp = environ;
 
@@ -296,6 +303,9 @@ static bool is_privileged(void)
 got_vector:
 	return vector->a_un.a_val;
 }
+#else
+#error "was privileged" check has not been implemented for this system yet
+#endif
 
 static bool is_open(linted_ko ko)
 {
