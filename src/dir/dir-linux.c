@@ -65,7 +65,8 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	linted_ko realdir;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, dirko, pathnamedir, LINTED_KO_DIRECTORY);
+		errnum = linted_ko_open(&xx, dirko, pathnamedir,
+		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0)
 			goto free_pathnamebase_buffer;
 		realdir = xx;
@@ -82,20 +83,17 @@ make_directory:
 
 open_directory:
 	;
-	int fildes;
-	do {
-		fildes = openat(realdir, pathnamebase,
-		                O_CLOEXEC | O_NONBLOCK | O_DIRECTORY);
-		if (-1 == fildes) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
-
-	if (ENOENT == errnum)
-		goto make_directory;
+	linted_ko fildes;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, realdir, pathnamebase,
+		                        LINTED_KO_DIRECTORY);
+		if (ENOENT == errnum)
+			goto make_directory;
+		if (errnum != 0)
+			goto free_pathnamebase_buffer;
+		fildes = xx;
+	}
 
 close_realdir : {
 	linted_error close_errnum = linted_ko_close(realdir);
