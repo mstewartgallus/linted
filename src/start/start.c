@@ -268,8 +268,6 @@ It is insecure to run a game with high privileges!\n"));
 #error No privilege checking has been implemented yet
 #endif
 
-extern char **environ;
-
 static bool is_privileged(void)
 {
 	uid_t uid = getuid();
