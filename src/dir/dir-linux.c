@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
+#include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -34,6 +35,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                mode_t mode)
 {
 	linted_error errnum;
+	bool have_fildes = false;
 
 	if (flags != 0UL)
 		return EINVAL;
@@ -90,6 +92,7 @@ open_directory:
 		if (errnum != 0)
 			goto free_pathnamebase_buffer;
 		fildes = xx;
+		have_fildes = true;
 	}
 
 close_realdir : {
@@ -107,6 +110,11 @@ free_pathnamedir_buffer:
 
 	if (errnum != 0)
 		return errnum;
+
+	if (errnum != 0 && have_fildes) {
+		linted_error close_errnum = linted_ko_close(fildes);
+		assert(close_errnum != EBADF);
+	}
 
 	*kop = fildes;
 	return 0;
