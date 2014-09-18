@@ -58,7 +58,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	char *pathnamebase = basename(pathnamebase_buffer);
 
 	/* To prevent concurrency issues with the directory pointed to
-	 * by pathnamedir being deleted or mounted over We need to be
+	 * by pathnamedir being deleted or mounted over we need to be
 	 * able to open a file descriptor to it.
 	 */
 	linted_ko realdir;
