@@ -281,7 +281,6 @@ static bool is_privileged(void)
 	return was_privileged();
 }
 
-
 #ifdef __linux__
 static bool was_privileged(void)
 {
