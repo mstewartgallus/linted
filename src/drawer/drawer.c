@@ -17,6 +17,8 @@
 
 #include "config.h"
 
+#include "drawer.h"
+
 #include "linted/assets.h"
 #include "linted/asynch.h"
 #include "linted/error.h"
@@ -40,8 +42,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
@@ -50,9 +50,6 @@
 #include <linux/seccomp.h>
 
 enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
-enum renderer_state { BUFFER_COMMANDS, SWAP_BUFFERS };
-
-struct window_model;
 
 struct poll_conn_task
 {
@@ -62,31 +59,6 @@ struct poll_conn_task
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
 	bool *time_to_quit;
-};
-
-struct window_model
-{
-	unsigned width;
-	unsigned height;
-
-	bool resize_pending : 1U;
-	bool viewable : 1U;
-};
-
-struct graphics_state
-{
-	GLuint program;
-	GLint model_view_projection_matrix;
-};
-
-struct sim_model
-{
-	float x_rotation;
-	float y_rotation;
-
-	float x_position;
-	float y_position;
-	float z_position;
 };
 
 struct updater_task
@@ -102,17 +74,6 @@ struct updater_task
 static linted_ko kos[3U];
 static struct sock_fprog const seccomp_filter;
 
-static EGLint const attr_list[] = {EGL_RED_SIZE,     5,             /*  */
-                                   EGL_GREEN_SIZE,   6,             /*  */
-                                   EGL_BLUE_SIZE,    5,             /*  */
-                                   EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
-                                   EGL_DEPTH_SIZE,   16,            /*  */
-                                   EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
-                                   EGL_NONE,         EGL_NONE};
-
-static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
-                                      EGL_NONE, EGL_NONE};
-
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-drawer",
     .kos_size = LINTED_ARRAY_SIZE(kos),
@@ -126,35 +87,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_sent_notice(struct linted_asynch_task *task);
 
-static linted_error egl_error(void);
-
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
 static linted_error get_xcb_error(xcb_generic_error_t *error);
-
-static linted_error init_graphics(linted_log log,
-                                  struct graphics_state *graphics_state);
-static void destroy_graphics(struct graphics_state *graphics_state);
-static void draw_graphics(struct graphics_state const *graphics_state,
-                          struct sim_model const *sim_model,
-                          struct window_model const *window_model);
-static void resize_graphics(struct graphics_state *graphics_state,
-                            unsigned width, unsigned height);
-
-static void flush_gl_errors(void);
-static void matrix_multiply(GLfloat const a[restrict 4U][4U],
-                            GLfloat const b[restrict 4U][4U],
-                            GLfloat result[restrict 4U][4U]);
-
-/**
- * @todo get_gl_error's use of glGetError is incorrect. Multiple error
- *       flags may be set and returned by a single function.
- */
-static linted_error get_gl_error(void);
-
-static double square(double x);
-
-static linted_error log_str(linted_log log, struct linted_str start,
-                            char const *str);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -339,45 +273,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto destroy_window;
 	}
 
-	EGLDisplay egl_display = eglGetDisplay(display);
-	if (EGL_NO_DISPLAY == egl_display) {
-		errnum = egl_error();
-		goto destroy_window;
-	}
-
-	if (!eglInitialize(egl_display, NULL, NULL)) {
-		errnum = egl_error();
-		goto destroy_window;
-	}
-
-	EGLint num_configs;
-	{
-		EGLint xx;
-		if (!eglGetConfigs(egl_display, NULL, 0, &xx)) {
-			errnum = egl_error();
-			goto destroy_egl_display;
-		}
-		num_configs = xx;
-	}
-
-	EGLConfig egl_config;
-	{
-		EGLConfig xx;
-		EGLint yy = num_configs;
-		if (!eglChooseConfig(egl_display, attr_list, &xx, 1U, &yy)) {
-			errnum = egl_error();
-			goto destroy_egl_display;
-		}
-		egl_config = xx;
-	}
-
-	EGLSurface egl_surface =
-	    eglCreateWindowSurface(egl_display, egl_config, window, NULL);
-	if (EGL_NO_SURFACE == egl_surface) {
-		errnum = egl_error();
-		goto destroy_egl_display;
-	}
-
 	bool time_to_quit;
 
 	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
@@ -398,31 +293,17 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
 
-reopen_graphics_context:
-	;
-	EGLContext egl_context = eglCreateContext(egl_display, egl_config,
-	                                          EGL_NO_CONTEXT, context_attr);
-	if (EGL_NO_CONTEXT == egl_context) {
-		errnum = egl_error();
-		goto destroy_pool;
-	}
+	struct graphics_state *graphics_state;
 
-	if (!eglMakeCurrent(egl_display, egl_surface, egl_surface,
-	                    egl_context)) {
-		errnum = egl_error();
-		goto destroy_egl_context;
-	}
-
-	struct graphics_state graphics_state;
-
-	errnum = init_graphics(log, &graphics_state);
-	if (errnum != 0) {
-		errnum = egl_error();
-		goto use_no_egl_context;
+	{
+		struct graphics_state *xx;
+		errnum = linted_drawer_3d_create(display, window, &xx, log);
+		if (errnum != 0)
+			goto destroy_window;
+		graphics_state = xx;
 	}
 
 	/* TODO: Detect SIGTERM and exit normally */
-	enum renderer_state renderer_state = BUFFER_COMMANDS;
 	for (;;) {
 		for (;;) {
 			time_to_quit = false;
@@ -435,39 +316,29 @@ reopen_graphics_context:
 					break;
 
 				if (errnum != 0)
-					goto cleanup_gl;
+					goto cleanup_3d;
 
 				completed_task = xx;
 			}
 
 			errnum = dispatch(completed_task);
 			if (errnum != 0)
-				goto cleanup_gl;
+				goto cleanup_3d;
 
 			if (time_to_quit)
-				goto cleanup_gl;
+				goto cleanup_3d;
 		}
 
 		/* Only draw or resize if we have time to waste */
 
 		if (window_model.resize_pending) {
-			resize_graphics(&graphics_state, window_model.width,
-			                window_model.height);
+			linted_drawer_3d_resize(graphics_state,
+			                        window_model.width,
+			                        window_model.height, log);
 			window_model.resize_pending = false;
 		} else if (window_model.viewable) {
-			switch (renderer_state) {
-			case BUFFER_COMMANDS:
-				draw_graphics(&graphics_state, &sim_model,
-				              &window_model);
-				glFlush();
-				renderer_state = SWAP_BUFFERS;
-				break;
-
-			case SWAP_BUFFERS:
-				eglSwapBuffers(egl_display, egl_surface);
-				renderer_state = BUFFER_COMMANDS;
-				break;
-			}
+			linted_drawer_3d_draw(graphics_state, &sim_model,
+			                      &window_model, log);
 		} else {
 			time_to_quit = false;
 
@@ -476,52 +347,20 @@ reopen_graphics_context:
 				struct linted_asynch_task *xx;
 				errnum = linted_asynch_pool_wait(pool, &xx);
 				if (errnum != 0)
-					goto cleanup_gl;
+					goto cleanup_3d;
 				completed_task = xx;
 			}
 			errnum = dispatch(completed_task);
 			if (errnum != 0)
-				goto cleanup_gl;
+				goto cleanup_3d;
 
 			if (time_to_quit)
-				goto cleanup_gl;
+				goto cleanup_3d;
 		}
 	}
 
-cleanup_gl:
-	destroy_graphics(&graphics_state);
-
-use_no_egl_context:
-	if (!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-	                    EGL_NO_CONTEXT)) {
-		if (0 == errnum)
-			errnum = egl_error();
-	}
-
-destroy_egl_context:
-	if (!eglDestroyContext(egl_display, egl_context)) {
-		if (0 == errnum)
-			errnum = egl_error();
-	}
-
-	if (ENOSYS == errnum)
-		goto reopen_graphics_context;
-
-	if (!eglDestroySurface(egl_display, egl_surface)) {
-		if (0 == errnum)
-			errnum = egl_error();
-	}
-
-destroy_egl_display:
-	if (!eglTerminate(egl_display)) {
-		if (0 == errnum)
-			errnum = egl_error();
-	}
-
-	if (!eglReleaseThread()) {
-		if (0 == errnum)
-			errnum = egl_error();
-	}
+cleanup_3d:
+	linted_drawer_3d_destroy(graphics_state);
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
@@ -764,410 +603,6 @@ static linted_error on_sent_notice(struct linted_asynch_task *task)
 	return task->errnum;
 }
 
-static linted_error init_graphics(linted_log log,
-                                  struct graphics_state *graphics_state)
-{
-	linted_error errnum = 0;
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-
-	/* The brightest colour is (1, 1, 1) */
-	/* The darkest colour is (0, 0, 0) */
-	/* We want a neutral, middle brightness */
-
-	/* It might be possible to use a physically based model based
-	 * off the energy contained in a ray of light of a certain hue
-	 * but we have chosen to model brightnes as:
-	 */
-	/* brightness = r red + g green + b blue */
-
-	/* Note that this is a crappy approximation that only works
-	 * for some monitors and eyes.
-	 */
-
-	/* brightest = r + g + b */
-	/* darkest = 0 */
-
-	/* We calculate a middling brightness taking into account
-	 * gamma and nonlinearity.
-	 */
-
-	/* Note that how bright we want our background colour to be is
-	 * really a matter of taste and not math. The halfway point is
-	 * simply a good starting point.
-	 */
-	double r = 0.2126;
-	double g = 0.7152;
-	double b = 0.0722;
-
-	double brightness = (r + g + b) * square(0.5);
-
-	/* We can then carve off some red and green to make room for more
-	 * blue but still keep the same amount of brightness.
-	 */
-	/* brightness = r red + g green + b blue */
-	/* red = green = x */
-	/* brightness = (r + g) x + b blue */
-	/* brightness - b blue = (r + g) x */
-	/* (brightness - b blue) / (r + g) = x */
-
-	/* adjust blue to taste */
-	double blue = square(0.75);
-	double x = (brightness - b * blue) / (r + g);
-	double red = x;
-	double green = x;
-
-	glClearColor(red, green, blue, 1);
-
-	flush_gl_errors();
-	GLuint program = glCreateProgram();
-	if (0 == program)
-		return get_gl_error();
-
-	{
-		flush_gl_errors();
-		GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-		if (0 == fragment_shader) {
-			errnum = get_gl_error();
-			goto cleanup_program;
-		}
-		glAttachShader(program, fragment_shader);
-		glDeleteShader(fragment_shader);
-
-		glShaderSource(fragment_shader, 1U,
-		               (GLchar const **)&linted_assets_fragment_shader,
-		               NULL);
-		glCompileShader(fragment_shader);
-
-		GLint is_valid;
-		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
-		if (!is_valid) {
-			errnum = EINVAL;
-
-			GLint info_log_length;
-			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
-			              &info_log_length);
-
-			void *xx;
-			linted_error mem_errnum =
-			    linted_mem_alloc(&xx, info_log_length);
-			if (0 == mem_errnum) {
-				GLchar *info_log = xx;
-				glGetShaderInfoLog(fragment_shader,
-				                   info_log_length, NULL,
-				                   info_log);
-				log_str(log, LINTED_STR("Invalid shader: "),
-				        info_log);
-				linted_mem_free(info_log);
-			}
-			goto cleanup_program;
-		}
-	}
-
-	{
-		flush_gl_errors();
-		GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		if (0 == vertex_shader) {
-			errnum = get_gl_error();
-			goto cleanup_program;
-		}
-		glAttachShader(program, vertex_shader);
-		glDeleteShader(vertex_shader);
-
-		glShaderSource(vertex_shader, 1U,
-		               (GLchar const **)&linted_assets_vertex_shader,
-		               NULL);
-		glCompileShader(vertex_shader);
-
-		GLint is_valid;
-		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
-		if (!is_valid) {
-			errnum = EINVAL;
-
-			GLint info_log_length;
-			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH,
-			              &info_log_length);
-
-			void *xx;
-			linted_error mem_errnum =
-			    linted_mem_alloc(&xx, info_log_length);
-			if (0 == mem_errnum) {
-				GLchar *info_log = xx;
-				glGetShaderInfoLog(vertex_shader,
-				                   info_log_length, NULL,
-				                   info_log);
-				log_str(log, LINTED_STR("Invalid shader: "),
-				        info_log);
-				linted_mem_free(info_log);
-			}
-			goto cleanup_program;
-		}
-	}
-	glLinkProgram(program);
-
-	glValidateProgram(program);
-
-	GLint is_valid;
-	glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
-	if (!is_valid) {
-		errnum = EINVAL;
-
-		GLint info_log_length;
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
-
-		void *xx;
-		linted_error mem_errnum =
-		    linted_mem_alloc(&xx, info_log_length);
-		if (0 == mem_errnum) {
-			GLchar *info_log = xx;
-			glGetProgramInfoLog(program, info_log_length, NULL,
-			                    info_log);
-			log_str(log, LINTED_STR("Invalid program: "), info_log);
-			linted_mem_free(info_log);
-		}
-		goto cleanup_program;
-	}
-
-	GLint mvp_matrix =
-	    glGetUniformLocation(program, "model_view_projection_matrix");
-	if (-1 == mvp_matrix) {
-		errnum = EINVAL;
-		goto cleanup_program;
-	}
-
-	GLint vertex = glGetAttribLocation(program, "vertex");
-	if (-1 == vertex) {
-		errnum = EINVAL;
-		goto cleanup_program;
-	}
-
-	GLint normal = glGetAttribLocation(program, "normal");
-	if (-1 == normal) {
-		errnum = EINVAL;
-		goto cleanup_program;
-	}
-
-	glEnableVertexAttribArray(vertex);
-	glEnableVertexAttribArray(normal);
-
-	glVertexAttribPointer(vertex,
-	                      LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	                      GL_FLOAT, false, 0, linted_assets_vertices);
-	glVertexAttribPointer(normal,
-	                      LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	                      GL_FLOAT, false, 0, linted_assets_normals);
-
-	graphics_state->program = program;
-	graphics_state->model_view_projection_matrix = mvp_matrix;
-
-	glUseProgram(program);
-
-	return 0;
-
-cleanup_program:
-	glDeleteProgram(program);
-
-	return errnum;
-}
-
-static void destroy_graphics(struct graphics_state *graphics_state)
-{
-	glUseProgram(0);
-	glDeleteProgram(graphics_state->program);
-
-	graphics_state->program = 0;
-	graphics_state->model_view_projection_matrix = 0;
-}
-
-static void resize_graphics(struct graphics_state *graphics_state,
-                            unsigned width, unsigned height)
-{
-	glViewport(0, 0, width, height);
-}
-
-static void draw_graphics(struct graphics_state const *graphics_state,
-                          struct sim_model const *sim_model,
-                          struct window_model const *window_model)
-{
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	/* X, Y, Z, W coords of the resultant vector are the
-	 * sums of the columns (row major order).
-	 */
-
-	{
-		GLfloat x_rotation = sim_model->x_rotation;
-		GLfloat y_rotation = sim_model->y_rotation;
-
-		GLfloat x_position = sim_model->x_position;
-		GLfloat y_position = sim_model->y_position;
-		GLfloat z_position = sim_model->z_position;
-
-		/* Rotate the camera */
-		GLfloat cos_y = cosf(y_rotation);
-		GLfloat sin_y = sinf(y_rotation);
-		GLfloat const y_rotation_matrix[][4U] = {{1, 0, 0, 0},
-		                                         {0, cos_y, -sin_y, 0},
-		                                         {0, sin_y, cos_y, 0},
-		                                         {0, 0, 0, 1}};
-
-		GLfloat cos_x = cosf(x_rotation);
-		GLfloat sin_x = sinf(x_rotation);
-		GLfloat const x_rotation_matrix[][4U] = {{cos_x, 0, sin_x, 0},
-		                                         {0, 1, 0, 0},
-		                                         {-sin_x, 0, cos_x, 0},
-		                                         {0, 0, 0, 1}};
-
-		/* Translate the camera */
-		GLfloat const camera[][4U] = {
-		    {1, 0, 0, 0},
-		    {0, 1, 0, 0},
-		    {0, 0, 1, 0},
-		    {x_position, y_position, z_position, 1}};
-
-		GLfloat aspect =
-		    window_model->width / (GLfloat)window_model->height;
-		double fov = acos(-1.0) / 4;
-
-		double d = 1 / tan(fov / 2);
-		double far = 1000;
-		double near = 1;
-
-		GLfloat const projection[][4U] = {
-		    {d / aspect, 0, 0, 0},
-		    {0, d, 0, 0},
-		    {0, 0, (far + near) / (near - far),
-		     2 * far * near / (near - far)},
-		    {0, 0, -1, 0}};
-
-		GLfloat rotations[4U][4U];
-		GLfloat model_view[4U][4U];
-		GLfloat model_view_projection[4U][4U];
-
-		matrix_multiply(x_rotation_matrix, y_rotation_matrix,
-		                rotations);
-		matrix_multiply((const GLfloat(*)[4U])camera,
-		                (const GLfloat(*)[4U])rotations, model_view);
-		matrix_multiply((const GLfloat(*)[4U])model_view, projection,
-		                model_view_projection);
-
-		glUniformMatrix4fv(graphics_state->model_view_projection_matrix,
-		                   1U, false, model_view_projection[0U]);
-	}
-
-	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	               GL_UNSIGNED_BYTE, linted_assets_indices);
-}
-
-static void flush_gl_errors(void)
-{
-	GLenum error;
-	do {
-		error = glGetError();
-	} while (error != GL_NO_ERROR);
-}
-
-static linted_error get_gl_error(void)
-{
-	/* Get the first error. Note that a single OpenGL call may return
-       * multiple errors so this only gives the first of many possible
-       * errors.
-       */
-	switch (glGetError()) {
-	case GL_NO_ERROR:
-		return 0;
-
-	case GL_INVALID_ENUM:
-	case GL_INVALID_VALUE:
-	case GL_INVALID_OPERATION:
-	case GL_INVALID_FRAMEBUFFER_OPERATION:
-		return EINVAL;
-
-	case GL_OUT_OF_MEMORY:
-		return ENOMEM;
-
-	default:
-		return ENOSYS;
-	}
-}
-
-static void matrix_multiply(GLfloat const a[restrict 4U][4U],
-                            GLfloat const b[restrict 4U][4U],
-                            GLfloat result[restrict 4U][4U])
-{
-	result[0U][0U] = a[0U][0U] * b[0U][0U] + a[0U][1U] * b[1U][0U] +
-	                 a[0U][2U] * b[2U][0U] + a[0U][3U] * b[3U][0U];
-	result[1U][0U] = a[1U][0U] * b[0U][0U] + a[1U][1U] * b[1U][0U] +
-	                 a[1U][2U] * b[2U][0U] + a[1U][3U] * b[3U][0U];
-	result[2U][0U] = a[2U][0U] * b[0U][0U] + a[2U][1U] * b[1U][0U] +
-	                 a[2U][2U] * b[2U][0U] + a[2U][3U] * b[3U][0U];
-	result[3U][0U] = a[3U][0U] * b[0U][0U] + a[3U][1U] * b[1U][0U] +
-	                 a[3U][2U] * b[2U][0U] + a[3U][3U] * b[3U][0U];
-
-	result[0U][1U] = a[0U][0U] * b[0U][1U] + a[0U][1U] * b[1U][1U] +
-	                 a[0U][2U] * b[2U][1U] + a[0U][3U] * b[3U][1U];
-	result[1U][1U] = a[1U][0U] * b[0U][1U] + a[1U][1U] * b[1U][1U] +
-	                 a[1U][2U] * b[2U][1U] + a[1U][3U] * b[3U][1U];
-	result[2U][1U] = a[2U][0U] * b[0U][1U] + a[2U][1U] * b[1U][1U] +
-	                 a[2U][2U] * b[2U][1U] + a[2U][3U] * b[3U][1U];
-	result[3U][1U] = a[3U][0U] * b[0U][1U] + a[3U][1U] * b[1U][1U] +
-	                 a[3U][2U] * b[2U][1U] + a[3U][3U] * b[3U][1U];
-
-	result[0U][2U] = a[0U][0U] * b[0U][2U] + a[0U][1U] * b[1U][2U] +
-	                 a[0U][2U] * b[2U][2U] + a[0U][3U] * b[3U][2U];
-	result[1U][2U] = a[1U][0U] * b[0U][2U] + a[1U][1U] * b[1U][2U] +
-	                 a[1U][2U] * b[2U][2U] + a[1U][3U] * b[3U][2U];
-	result[2U][2U] = a[2U][0U] * b[0U][2U] + a[2U][1U] * b[1U][2U] +
-	                 a[2U][2U] * b[2U][2U] + a[2U][3U] * b[3U][2U];
-	result[3U][2U] = a[3U][0U] * b[0U][2U] + a[3U][1U] * b[1U][2U] +
-	                 a[3U][2U] * b[2U][2U] + a[3U][3U] * b[3U][2U];
-
-	result[0U][3U] = a[0U][0U] * b[0U][3U] + a[0U][1U] * b[1U][3U] +
-	                 a[0U][2U] * b[2U][3U] + a[0U][3U] * b[3U][3U];
-	result[1U][3U] = a[1U][0U] * b[0U][3U] + a[1U][1U] * b[1U][3U] +
-	                 a[1U][2U] * b[2U][3U] + a[1U][3U] * b[3U][3U];
-	result[2U][3U] = a[2U][0U] * b[0U][3U] + a[2U][1U] * b[1U][3U] +
-	                 a[2U][2U] * b[2U][3U] + a[2U][3U] * b[3U][3U];
-	result[3U][3U] = a[3U][0U] * b[0U][3U] + a[3U][1U] * b[1U][3U] +
-	                 a[3U][2U] * b[2U][3U] + a[3U][3U] * b[3U][3U];
-}
-
-static linted_error egl_error(void)
-{
-	switch (eglGetError()) {
-	case EGL_SUCCESS:
-		return 0;
-
-	case EGL_NOT_INITIALIZED:
-		return ENOSYS;
-
-	case EGL_BAD_ACCESS:
-		return EAGAIN;
-
-	case EGL_BAD_ALLOC:
-		return ENOMEM;
-
-	case EGL_BAD_ATTRIBUTE:
-	case EGL_BAD_CONTEXT:
-	case EGL_BAD_CONFIG:
-	case EGL_BAD_CURRENT_SURFACE:
-	case EGL_BAD_DISPLAY:
-	case EGL_BAD_SURFACE:
-	case EGL_BAD_MATCH:
-	case EGL_BAD_PARAMETER:
-	case EGL_BAD_NATIVE_PIXMAP:
-	case EGL_BAD_NATIVE_WINDOW:
-		return EINVAL;
-
-	case EGL_CONTEXT_LOST:
-		return ENOSYS;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
 static linted_error get_xcb_conn_error(xcb_connection_t *connection)
 {
 	switch (xcb_connection_has_error(connection)) {
@@ -1198,35 +633,4 @@ static linted_error get_xcb_error(xcb_generic_error_t *error)
 {
 	/* For now just be crappy. */
 	return ENOSYS;
-}
-
-static double square(double x)
-{
-	return x * x;
-}
-
-static linted_error log_str(linted_log log, struct linted_str start,
-                            char const *error)
-{
-	linted_error errnum;
-	size_t error_size = strlen(error);
-
-	char *full_string;
-	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, error_size + start.size);
-		if (errnum != 0)
-			/* Silently drop log */
-			return errnum;
-		full_string = xx;
-	}
-
-	memcpy(full_string, start.bytes, start.size);
-	memcpy(full_string + start.size, error, error_size);
-
-	errnum = linted_log_write(log, full_string, start.size + error_size);
-
-	linted_mem_free(full_string);
-
-	return errnum;
 }

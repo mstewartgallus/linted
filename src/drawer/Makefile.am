@@ -16,7 +16,7 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=%D%/drawer
 
-%C%_drawer_SOURCES=%D%/drawer.c
+%C%_drawer_SOURCES=%D%/drawer.c %D%/3d.c %D%/drawer.h
 %C%_drawer_LDADD=\
   src/start/libstart.la\
   \
