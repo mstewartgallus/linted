@@ -51,6 +51,15 @@
 
 enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
+struct window_model
+{
+	unsigned width;
+	unsigned height;
+
+	_Bool resize_pending : 1U;
+	_Bool viewable : 1U;
+};
+
 struct poll_conn_task
 {
 	struct linted_ko_task_poll parent;
@@ -338,7 +347,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			window_model.resize_pending = false;
 		} else if (window_model.viewable) {
 			linted_drawer_3d_draw(graphics_state, &sim_model,
-			                      &window_model, log);
+			                      window_model.width,
+			                      window_model.height, log);
 		} else {
 			time_to_quit = false;
 

@@ -77,8 +77,8 @@ static linted_error assure_gl_context(struct graphics_state *graphics_state,
                                       linted_log log);
 
 static void real_draw(struct graphics_state const *graphics_state,
-                      struct sim_model const *sim_model,
-                      struct window_model const *window_model);
+                      struct sim_model const *sim_model, unsigned width,
+                      unsigned height);
 
 static void flush_gl_errors(void);
 static void matrix_multiply(GLfloat const a[restrict 4U][4U],
@@ -223,9 +223,8 @@ void linted_drawer_3d_resize(struct graphics_state *graphics_state,
 }
 
 void linted_drawer_3d_draw(struct graphics_state *graphics_state,
-                           struct sim_model const *sim_model,
-                           struct window_model const *window_model,
-                           linted_log log)
+                           struct sim_model const *sim_model, unsigned width,
+                           unsigned height, linted_log log)
 {
 	linted_error errnum;
 
@@ -238,7 +237,7 @@ void linted_drawer_3d_draw(struct graphics_state *graphics_state,
 
 	switch (graphics_state->state) {
 	case BUFFER_COMMANDS:
-		real_draw(graphics_state, sim_model, window_model);
+		real_draw(graphics_state, sim_model, width, height);
 		glFlush();
 		graphics_state->state = SWAP_BUFFERS;
 		break;
@@ -516,8 +515,8 @@ destroy_context:
 }
 
 static void real_draw(struct graphics_state const *graphics_state,
-                      struct sim_model const *sim_model,
-                      struct window_model const *window_model)
+                      struct sim_model const *sim_model, unsigned width,
+                      unsigned height)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -555,8 +554,7 @@ static void real_draw(struct graphics_state const *graphics_state,
 		    {0, 0, 1, 0},
 		    {x_position, y_position, z_position, 1}};
 
-		GLfloat aspect =
-		    window_model->width / (GLfloat)window_model->height;
+		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
 
 		double d = 1 / tan(fov / 2);

@@ -22,15 +22,6 @@
 
 struct graphics_state;
 
-struct window_model
-{
-	unsigned width;
-	unsigned height;
-
-	_Bool resize_pending : 1U;
-	_Bool viewable : 1U;
-};
-
 struct sim_model
 {
 	float x_rotation;
@@ -48,9 +39,8 @@ linted_error linted_drawer_3d_create(EGLNativeDisplayType native_display,
 linted_error linted_drawer_3d_destroy(struct graphics_state *graphics_state);
 
 void linted_drawer_3d_draw(struct graphics_state *graphics_state,
-                           struct sim_model const *sim_model,
-                           struct window_model const *window_model,
-                           linted_log log);
+                           struct sim_model const *sim_model, unsigned width,
+                           unsigned height, linted_log log);
 void linted_drawer_3d_resize(struct graphics_state *graphics_state,
                              unsigned width, unsigned height, linted_log log);
 
