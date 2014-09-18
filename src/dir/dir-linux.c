@@ -108,12 +108,12 @@ free_pathnamebase_buffer:
 free_pathnamedir_buffer:
 	linted_mem_free(pathnamedir_buffer);
 
-	if (errnum != 0)
+	if (errnum != 0) {
+		if (have_fildes) {
+			linted_error close_errnum = linted_ko_close(fildes);
+			assert(close_errnum != EBADF);
+		}
 		return errnum;
-
-	if (errnum != 0 && have_fildes) {
-		linted_error close_errnum = linted_ko_close(fildes);
-		assert(close_errnum != EBADF);
 	}
 
 	*kop = fildes;
