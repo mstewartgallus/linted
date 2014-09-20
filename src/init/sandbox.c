@@ -85,9 +85,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_ko file;
 		{
 			linted_ko xx;
-			errnum =
-			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/uid_map",
-			                   LINTED_KO_WRONLY);
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/uid_map",
+			                        LINTED_KO_WRONLY);
 			if (errnum != 0) {
 				errno = errnum;
 				perror("linted_ko_open");
@@ -116,9 +116,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_ko file;
 		{
 			linted_ko xx;
-			errnum =
-			    linted_ko_open(&xx, AT_FDCWD, "/proc/self/gid_map",
-			                   LINTED_KO_WRONLY);
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/gid_map",
+			                        LINTED_KO_WRONLY);
 			if (errnum != 0) {
 				errno = errnum;
 				perror("linted_ko_open");

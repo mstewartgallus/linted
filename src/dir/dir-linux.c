@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <stdbool.h>
 #include <string.h>
@@ -36,6 +37,12 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 {
 	linted_error errnum;
 	bool have_fildes = false;
+
+	if (LINTED_KO_CWD == dirko) {
+		dirko = AT_FDCWD;
+	} else if (dirko < 0) {
+		return EINVAL;
+	}
 
 	if (flags != 0UL)
 		return EINVAL;

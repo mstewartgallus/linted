@@ -249,7 +249,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 	}
 
 	if (gpu_context->update_pending) {
-		struct linted_gpu_update const * update = &gpu_context->update;
+		struct linted_gpu_update const *update = &gpu_context->update;
 
 		unsigned width = gpu_context->width;
 		unsigned height = gpu_context->height;
@@ -282,10 +282,10 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 
 		/* Translate the camera */
 		GLfloat const camera[][4U] = {
-			{1, 0, 0, 0},
-			{0, 1, 0, 0},
-			{0, 0, 1, 0},
-			{x_position, y_position, z_position, 1}};
+		    {1, 0, 0, 0},
+		    {0, 1, 0, 0},
+		    {0, 0, 1, 0},
+		    {x_position, y_position, z_position, 1}};
 
 		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
@@ -295,11 +295,11 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 		double near = 1;
 
 		GLfloat const projection[][4U] = {
-			{d / aspect, 0, 0, 0},
-			{0, d, 0, 0},
-			{0, 0, (far + near) / (near - far),
-			 2 * far * near / (near - far)},
-			{0, 0, -1, 0}};
+		    {d / aspect, 0, 0, 0},
+		    {0, d, 0, 0},
+		    {0, 0, (far + near) / (near - far),
+		     2 * far * near / (near - far)},
+		    {0, 0, -1, 0}};
 
 		GLfloat rotations[4U][4U];
 		GLfloat model_view[4U][4U];

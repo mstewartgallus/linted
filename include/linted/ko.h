@@ -27,10 +27,14 @@
 
 #if defined _WIN32 || defined _WIN64
 typedef void *linted_ko;
+
+#define LINTED_KO_CWD ((linted_ko)-1)
 #elif defined __linux__
 typedef int linted_ko;
+
+#define LINTED_KO_CWD (-1)
 #else
-#error no known most primitive platform kernel object type
+#error kernel object support has not beeen implemented for this platform
 #endif
 
 #define LINTED_KO_RDONLY 1UL

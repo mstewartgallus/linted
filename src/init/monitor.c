@@ -49,10 +49,6 @@
 
 #define MAX_MANAGE_CONNECTIONS 10U
 
-#ifndef PR_SET_CHILD_SUBREAPER
-#define PR_SET_CHILD_SUBREAPER 36UL
-#endif
-
 enum { WAITER,
        ADMIN_ACCEPTED_CONNECTION,
        ADMIN_READ_CONNECTION,
@@ -145,34 +141,6 @@ struct pair
 
 static char const process_name[] = "monitor";
 
-static char const *default_envvars[] = {"LANG", "USER", "LOGNAME", "HOME",
-                                        "SHELL", "XDG_RUNTIME_DIR"
-                                                 "XDG_SESSION_ID",
-                                        "XDG_SEAT", "TERM"};
-
-static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
-                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
-                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
-
-enum { RDONLY, WRONLY };
-
-static char const *const file_options[] = {[RDONLY] = "rdonly",
-                                           [WRONLY] = "wronly", NULL};
-
-enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
-
-static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
-                                            [TOUCH] = "touch",        /*  */
-                                            [BIND] = "bind",          /*  */
-                                            [RBIND] = "rbind",        /*  */
-                                            [RO] = MNTOPT_RO,         /*  */
-                                            [RW] = MNTOPT_RW,         /*  */
-                                            [SUID] = MNTOPT_SUID,     /*  */
-                                            [NOSUID] = MNTOPT_NOSUID, /*  */
-                                            [NODEV] = "nodev",        /*  */
-                                            [NOEXEC] = "noexec",      /*  */
-                                            NULL};
-
 static linted_error set_process_name(char const *name);
 static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
@@ -252,8 +220,8 @@ unsigned char linted_init_monitor(void)
 	linted_ko cwd;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, AT_FDCWD, ".", LINTED_KO_DIRECTORY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
+		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not open the current working directory: %s\n",
@@ -262,6 +230,11 @@ unsigned char linted_init_monitor(void)
 			return EXIT_FAILURE;
 		}
 		cwd = xx;
+	}
+
+	if (-1 == chdir("/")) {
+		perror("chdir");
+		return EXIT_FAILURE;
 	}
 
 	errnum = set_process_name(process_name);
@@ -287,7 +260,7 @@ unsigned char linted_init_monitor(void)
 
 	/* Protect this process and it's children from ptracing each
 	 * other */
-	errnum = set_dumpable(true);
+	errnum = set_dumpable(false);
 	if (errnum != 0) {
 		errno = errnum;
 		perror("set_dumpable");
@@ -329,7 +302,6 @@ unsigned char linted_init_monitor(void)
 	}
 
 	struct conn_pool *conn_pool;
-
 	{
 		struct conn_pool *xx;
 		errnum = conn_pool_create(&xx);
@@ -505,13 +477,19 @@ static linted_error set_death_sig(int signum)
 
 	return 0;
 }
-
 static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
 
-	if (-1 ==
-	    prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL, 0UL, 0UL)) {
+	unsigned long set_child_subreaper;
+
+#ifdef PR_SET_CHILD_SUBREAPER
+	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
+#else
+	set_child_subreaper = 36UL;
+#endif
+
+	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -904,13 +882,9 @@ static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
 
 	linted_ko ko;
 	{
-		struct linted_mq_attr attr;
 		linted_ko xx;
-
-		attr.maxmsg = maxmsgs_value;
-		attr.msgsize = msgsize_value;
-
-		errnum = linted_mq_create(&xx, name[0U], &attr, 0);
+		errnum = linted_mq_create(&xx, name[0U], maxmsgs_value,
+		                          msgsize_value, 0);
 		if (errnum != 0)
 			return errnum;
 		ko = xx;
@@ -919,6 +893,20 @@ static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
 	*kop = ko;
 	return 0;
 }
+
+enum { RDONLY, WRONLY };
+
+static char const *const file_options[] = {[RDONLY] = "rdonly",
+                                           [WRONLY] = "wronly", NULL};
+
+static char const *const default_envvars[] = {"LANG", "USER", "LOGNAME", "HOME",
+                                              "SHELL", "XDG_RUNTIME_DIR"
+                                                       "XDG_SESSION_ID",
+                                              "XDG_SEAT", "TERM"};
+
+static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
+                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
+                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
 
 static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
                                   linted_ko cwd, char const *chrootdir,
@@ -986,8 +974,6 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		envvars = xx;
 	}
 
-	int clone_flags = CLONE_NEWIPC | CLONE_NEWNET;
-
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
 
@@ -1006,6 +992,8 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 			goto destroy_file_actions;
 		attr = xx;
 	}
+
+	int clone_flags = CLONE_NEWIPC | CLONE_NEWNET;
 
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
@@ -1237,9 +1225,8 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 	FILE *fstab = setmntent(abspath, "re");
 	errnum = errno;
 
-	if (abspath != fstab_path) {
+	if (abspath != fstab_path)
 		linted_mem_free((char *)abspath);
-	}
 
 	if (NULL == fstab) {
 		LINTED_ASSUME(errnum != 0);
@@ -1262,13 +1249,11 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 		char const *type = entry->mnt_type;
 		char const *opts = entry->mnt_opts;
 
-		if (0 == strcmp("none", fsname)) {
+		if (0 == strcmp("none", fsname))
 			fsname = NULL;
-		}
 
-		if (0 == strcmp("none", opts)) {
+		if (0 == strcmp("none", opts))
 			opts = NULL;
-		}
 
 		bool mkdir_flag;
 		bool touch_flag;
@@ -1308,6 +1293,20 @@ close_file:
 
 	return errnum;
 }
+
+enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
+
+static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
+                                            [TOUCH] = "touch",        /*  */
+                                            [BIND] = "bind",          /*  */
+                                            [RBIND] = "rbind",        /*  */
+                                            [RO] = MNTOPT_RO,         /*  */
+                                            [RW] = MNTOPT_RW,         /*  */
+                                            [SUID] = MNTOPT_SUID,     /*  */
+                                            [NOSUID] = MNTOPT_NOSUID, /*  */
+                                            [NODEV] = "nodev",        /*  */
+                                            [NOEXEC] = "noexec",      /*  */
+                                            NULL};
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
@@ -1470,9 +1469,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0) {
+	if ((errnum = task->errnum) != 0)
 		return errnum;
-	}
 
 	struct wait_service_task *wait_service_task =
 	    LINTED_DOWNCAST(struct wait_service_task, task);

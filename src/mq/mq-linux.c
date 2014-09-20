@@ -44,7 +44,7 @@ static linted_error check_for_poll_error(linted_ko ko, short revents);
  * Implemented using POSIX message queues.
  */
 linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
-                              struct linted_mq_attr const *attr,
+                              size_t maxmsg, size_t msgsize,
                               unsigned long flags)
 {
 	linted_error errnum;
@@ -61,9 +61,6 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 
 	if (path_size > FILE_MAX - 1U - RANDOM_BYTES)
 		return ENAMETOOLONG;
-
-	size_t maxmsg = attr->maxmsg;
-	size_t msgsize = attr->msgsize;
 
 	{
 		char random_mq_name[FILE_MAX + 1U];

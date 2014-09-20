@@ -29,13 +29,9 @@ linted_error linted_updater_create(linted_updater *updaterp,
 	if (flags != 0U)
 		return EINVAL;
 
-	struct linted_mq_attr attr = {0};
-
-	attr.maxmsg = 1;
-	attr.msgsize =
-	    LINTED_FIELD_SIZEOF(struct linted_updater_task_send, message);
-
-	return linted_mq_create(updaterp, "/updater", &attr, 0);
+	return linted_mq_create(
+	    updaterp, "/updater", 1U,
+	    LINTED_FIELD_SIZEOF(struct linted_updater_task_send, message), 0);
 }
 
 void linted_updater_send(struct linted_updater_task_send *task,

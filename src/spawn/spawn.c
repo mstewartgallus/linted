@@ -367,7 +367,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	linted_error errnum = 0;
 	pid_t child = -1;
 	bool is_relative_path = filename[0U] != '/';
-	bool at_fdcwd = AT_FDCWD == dirfd;
+	bool at_fdcwd = LINTED_KO_CWD == dirfd;
 
 	if (is_relative_path && !at_fdcwd && dirfd < 0)
 		return EBADF;

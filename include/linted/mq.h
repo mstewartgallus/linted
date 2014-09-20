@@ -30,12 +30,6 @@
 
 typedef linted_ko linted_mq;
 
-struct linted_mq_attr
-{
-	size_t maxmsg;
-	size_t msgsize;
-};
-
 struct linted_mq_task_receive
 {
 	struct linted_asynch_task parent;
@@ -91,7 +85,7 @@ struct linted_mq_task_send
  * @error ENOSPC Insufficient space.
  */
 linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
-                              struct linted_mq_attr const *attr,
+                              size_t maxmsg, size_t msgsize,
                               unsigned long flags);
 
 void linted_mq_task_receive(struct linted_mq_task_receive *task,

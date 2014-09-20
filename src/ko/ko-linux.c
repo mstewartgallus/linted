@@ -76,13 +76,20 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 
 linted_error linted_ko_dummy(linted_ko *kop)
 {
-	return linted_ko_open(kop, AT_FDCWD, "/dev/null", LINTED_KO_RDONLY);
+	return linted_ko_open(kop, LINTED_KO_CWD, "/dev/null",
+	                      LINTED_KO_RDONLY);
 }
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
 	linted_error errnum;
+
+	if (LINTED_KO_CWD == dirko) {
+		dirko = AT_FDCWD;
+	} else if (dirko < 0) {
+		return EINVAL;
+	}
 
 	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR &
 	     ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
@@ -153,7 +160,7 @@ linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
 {
 	char pathname[] = "/proc/self/fd/XXXXXXXXXXX";
 	fd_to_str(pathname + strlen("/proc/self/fd/"), koin);
-	return linted_ko_open(kooutp, AT_FDCWD, pathname, flags);
+	return linted_ko_open(kooutp, LINTED_KO_CWD, pathname, flags);
 }
 
 linted_error linted_ko_close(linted_ko ko)

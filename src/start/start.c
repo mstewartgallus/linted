@@ -445,7 +445,7 @@ static linted_error get_system_entropy(unsigned *entropyp)
 
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, AT_FDCWD, "/dev/random",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/random",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0)
 			return errnum;

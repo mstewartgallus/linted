@@ -157,9 +157,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    pool, LINTED_WINDOW_NOTIFIER_SEND_UPCAST(&notice_task));
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
-	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
-	    640, 480, 0,
-	    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640,
+	    480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
 	    XCB_CW_EVENT_MASK, window_opts);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
@@ -519,8 +518,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			XConfigureEvent const *configure_event =
 			    &event.xconfigure;
 
-			linted_gpu_resize(gpu_context,
-			                  configure_event->width,
+			linted_gpu_resize(gpu_context, configure_event->width,
 			                  configure_event->height);
 			break;
 		}
@@ -583,9 +581,9 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	struct linted_gpu_update gpu_update;
 
 	gpu_update.x_rotation =
-		linted_updater_angle_to_float(update.x_rotation);
+	    linted_updater_angle_to_float(update.x_rotation);
 	gpu_update.y_rotation =
-		linted_updater_angle_to_float(update.y_rotation);
+	    linted_updater_angle_to_float(update.y_rotation);
 
 	gpu_update.x_position = update.x_position * (1 / 2048.0);
 	gpu_update.y_position = update.y_position * (1 / 2048.0);

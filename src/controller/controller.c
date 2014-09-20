@@ -29,13 +29,10 @@ linted_error linted_controller_create(linted_controller *controllerp,
 	if (flags != 0U)
 		return EINVAL;
 
-	struct linted_mq_attr attr = {0};
-
-	attr.maxmsg = 1;
-	attr.msgsize =
-	    LINTED_FIELD_SIZEOF(struct linted_controller_task_send, message);
-
-	return linted_mq_create(controllerp, "/controller", &attr, 0);
+	return linted_mq_create(
+	    controllerp, "/controller", 1U,
+	    LINTED_FIELD_SIZEOF(struct linted_controller_task_send, message),
+	    0);
 }
 
 void linted_controller_send(struct linted_controller_task_send *task,

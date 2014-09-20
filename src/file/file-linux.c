@@ -31,6 +31,12 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 {
 	linted_error errnum;
 
+	if (LINTED_KO_CWD == dirko) {
+		dirko = AT_FDCWD;
+	} else if (dirko < 0) {
+		return EINVAL;
+	}
+
 	if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY &
 	     ~LINTED_FILE_RDWR & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0U)
 		return EINVAL;

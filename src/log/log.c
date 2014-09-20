@@ -23,16 +23,10 @@
 
 linted_error linted_log_create(linted_log *logp, unsigned long flags)
 {
-	if (flags != 0U) {
+	if (flags != 0U)
 		return EINVAL;
-	}
 
-	struct linted_mq_attr attr = {0};
-
-	attr.maxmsg = 10;
-	attr.msgsize = LINTED_LOG_MAX;
-
-	return linted_mq_create(logp, "/log", &attr, 0);
+	return linted_mq_create(logp, "/log", 10U, LINTED_LOG_MAX, 0);
 }
 
 /**
