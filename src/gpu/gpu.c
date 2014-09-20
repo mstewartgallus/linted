@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200112L
-
 #include "config.h"
 
 #include "linted/assets.h"
@@ -78,7 +76,6 @@ static void matrix_multiply(GLfloat const a[restrict 4U][4U],
  *       flags may be set and returned by a single function.
  */
 static linted_error get_gl_error(void);
-
 static linted_error get_egl_error(void);
 
 static double square(double x);
@@ -588,10 +585,10 @@ static void flush_gl_errors(void)
 
 static linted_error get_gl_error(void)
 {
-	/* Get the first error. Note that a single OpenGL call may return
-       * multiple errors so this only gives the first of many possible
-       * errors.
-       */
+	/* Get the first error. Note that a single OpenGL call may
+	 * return multiple errors so this only gives the first of many
+	 * possible errors.
+	 */
 	switch (glGetError()) {
 	case GL_NO_ERROR:
 		return 0;
