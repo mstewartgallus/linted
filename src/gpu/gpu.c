@@ -40,12 +40,19 @@ struct linted_gpu_context
 	EGLSurface surface;
 	EGLConfig config;
 
+	unsigned width;
+	unsigned height;
+
+	struct linted_gpu_update update;
+
 	EGLContext context;
 	GLuint program;
 	GLint model_view_projection_matrix;
 	enum renderer_state state;
 
 	bool has_gl_context : 1U;
+	bool resize_pending : 1U;
+	bool update_pending : 1U;
 };
 
 static EGLint const attr_list[] = {EGL_RED_SIZE,     5,             /*  */
@@ -63,9 +70,7 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
 static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
                                       linted_log log);
 
-static void real_draw(struct linted_gpu_context const *gpu_context,
-                      struct linted_gpu_state const *gpu_state, unsigned width,
-                      unsigned height);
+static void real_draw(struct linted_gpu_context const *gpu_context);
 
 static void flush_gl_errors(void);
 static void matrix_multiply(GLfloat const a[restrict 4U][4U],
@@ -142,6 +147,19 @@ linted_error linted_gpu_create(linted_gpu_native_display native_display,
 		goto destroy_display;
 	}
 
+	gpu_context->update.x_rotation = 0;
+	gpu_context->update.y_rotation = 0;
+
+	gpu_context->update.x_position = 0;
+	gpu_context->update.y_position = 0;
+	gpu_context->update.z_position = 0;
+
+	gpu_context->update_pending = false;
+
+	gpu_context->width = 1U;
+	gpu_context->height = 1U;
+	gpu_context->resize_pending = true;
+
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = surface;
@@ -198,21 +216,23 @@ linted_error linted_gpu_destroy(struct linted_gpu_context *gpu_context)
 	return errnum;
 }
 
-void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
-                       unsigned height, linted_log log)
+void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
+                             struct linted_gpu_update const *gpu_update)
 {
-	linted_error errnum;
-
-	errnum = assure_gl_context(gpu_context, log);
-	if (errnum != 0)
-		return;
-
-	glViewport(0, 0, width, height);
+	gpu_context->update = *gpu_update;
+	gpu_context->update_pending = true;
 }
 
-void linted_gpu_draw(struct linted_gpu_context *gpu_context,
-                     struct linted_gpu_state const *gpu_state, unsigned width,
-                     unsigned height, linted_log log)
+void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
+                       unsigned height)
+{
+	gpu_context->width = width;
+	gpu_context->height = height;
+
+	gpu_context->resize_pending = true;
+}
+
+void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 {
 	linted_error errnum;
 
@@ -223,9 +243,84 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context,
 	if (errnum != 0)
 		return;
 
+	if (gpu_context->resize_pending) {
+		glViewport(0, 0, gpu_context->width, gpu_context->height);
+		gpu_context->resize_pending = false;
+	}
+
+	if (gpu_context->update_pending) {
+		struct linted_gpu_update const * update = &gpu_context->update;
+
+		unsigned width = gpu_context->width;
+		unsigned height = gpu_context->height;
+
+		/* X, Y, Z, W coords of the resultant vector are the
+		 * sums of the columns (row major order).
+		 */
+
+		GLfloat x_rotation = update->x_rotation;
+		GLfloat y_rotation = update->y_rotation;
+
+		GLfloat x_position = update->x_position;
+		GLfloat y_position = update->y_position;
+		GLfloat z_position = update->z_position;
+
+		/* Rotate the camera */
+		GLfloat cos_y = cosf(y_rotation);
+		GLfloat sin_y = sinf(y_rotation);
+		GLfloat const y_rotation_matrix[][4U] = {{1, 0, 0, 0},
+		                                         {0, cos_y, -sin_y, 0},
+		                                         {0, sin_y, cos_y, 0},
+		                                         {0, 0, 0, 1}};
+
+		GLfloat cos_x = cosf(x_rotation);
+		GLfloat sin_x = sinf(x_rotation);
+		GLfloat const x_rotation_matrix[][4U] = {{cos_x, 0, sin_x, 0},
+		                                         {0, 1, 0, 0},
+		                                         {-sin_x, 0, cos_x, 0},
+		                                         {0, 0, 0, 1}};
+
+		/* Translate the camera */
+		GLfloat const camera[][4U] = {
+			{1, 0, 0, 0},
+			{0, 1, 0, 0},
+			{0, 0, 1, 0},
+			{x_position, y_position, z_position, 1}};
+
+		GLfloat aspect = width / (GLfloat)height;
+		double fov = acos(-1.0) / 4;
+
+		double d = 1 / tan(fov / 2);
+		double far = 1000;
+		double near = 1;
+
+		GLfloat const projection[][4U] = {
+			{d / aspect, 0, 0, 0},
+			{0, d, 0, 0},
+			{0, 0, (far + near) / (near - far),
+			 2 * far * near / (near - far)},
+			{0, 0, -1, 0}};
+
+		GLfloat rotations[4U][4U];
+		GLfloat model_view[4U][4U];
+		GLfloat model_view_projection[4U][4U];
+
+		matrix_multiply(x_rotation_matrix, y_rotation_matrix,
+		                rotations);
+		matrix_multiply((const GLfloat(*)[4U])camera,
+		                (const GLfloat(*)[4U])rotations, model_view);
+		matrix_multiply((const GLfloat(*)[4U])model_view, projection,
+		                model_view_projection);
+
+		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
+		                   1U, false, model_view_projection[0U]);
+
+		gpu_context->update_pending = false;
+	}
+
 	switch (gpu_context->state) {
 	case BUFFER_COMMANDS:
-		real_draw(gpu_context, gpu_state, width, height);
+		real_draw(gpu_context);
 		glFlush();
 		gpu_context->state = SWAP_BUFFERS;
 		break;
@@ -488,6 +583,9 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	gpu_context->state = BUFFER_COMMANDS;
 	gpu_context->has_gl_context = true;
 
+	gpu_context->update_pending = true;
+	gpu_context->resize_pending = true;
+
 	return 0;
 
 cleanup_program:
@@ -502,75 +600,9 @@ destroy_context:
 	return errnum;
 }
 
-static void real_draw(struct linted_gpu_context const *gpu_context,
-                      struct linted_gpu_state const *gpu_state, unsigned width,
-                      unsigned height)
+static void real_draw(struct linted_gpu_context const *gpu_context)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	/* X, Y, Z, W coords of the resultant vector are the
-	 * sums of the columns (row major order).
-	 */
-
-	{
-		GLfloat x_rotation = gpu_state->x_rotation;
-		GLfloat y_rotation = gpu_state->y_rotation;
-
-		GLfloat x_position = gpu_state->x_position;
-		GLfloat y_position = gpu_state->y_position;
-		GLfloat z_position = gpu_state->z_position;
-
-		/* Rotate the camera */
-		GLfloat cos_y = cosf(y_rotation);
-		GLfloat sin_y = sinf(y_rotation);
-		GLfloat const y_rotation_matrix[][4U] = {{1, 0, 0, 0},
-		                                         {0, cos_y, -sin_y, 0},
-		                                         {0, sin_y, cos_y, 0},
-		                                         {0, 0, 0, 1}};
-
-		GLfloat cos_x = cosf(x_rotation);
-		GLfloat sin_x = sinf(x_rotation);
-		GLfloat const x_rotation_matrix[][4U] = {{cos_x, 0, sin_x, 0},
-		                                         {0, 1, 0, 0},
-		                                         {-sin_x, 0, cos_x, 0},
-		                                         {0, 0, 0, 1}};
-
-		/* Translate the camera */
-		GLfloat const camera[][4U] = {
-		    {1, 0, 0, 0},
-		    {0, 1, 0, 0},
-		    {0, 0, 1, 0},
-		    {x_position, y_position, z_position, 1}};
-
-		GLfloat aspect = width / (GLfloat)height;
-		double fov = acos(-1.0) / 4;
-
-		double d = 1 / tan(fov / 2);
-		double far = 1000;
-		double near = 1;
-
-		GLfloat const projection[][4U] = {
-		    {d / aspect, 0, 0, 0},
-		    {0, d, 0, 0},
-		    {0, 0, (far + near) / (near - far),
-		     2 * far * near / (near - far)},
-		    {0, 0, -1, 0}};
-
-		GLfloat rotations[4U][4U];
-		GLfloat model_view[4U][4U];
-		GLfloat model_view_projection[4U][4U];
-
-		matrix_multiply(x_rotation_matrix, y_rotation_matrix,
-		                rotations);
-		matrix_multiply((const GLfloat(*)[4U])camera,
-		                (const GLfloat(*)[4U])rotations, model_view);
-		matrix_multiply((const GLfloat(*)[4U])model_view, projection,
-		                model_view_projection);
-
-		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
-		                   1U, false, model_view_projection[0U]);
-	}
-
 	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
 	               GL_UNSIGNED_BYTE, linted_assets_indices);
 }

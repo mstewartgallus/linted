@@ -26,7 +26,7 @@
 
 struct linted_gpu_context;
 
-struct linted_gpu_state
+struct linted_gpu_update
 {
 	float x_rotation;
 	float y_rotation;
@@ -38,14 +38,14 @@ struct linted_gpu_state
 
 linted_error linted_gpu_create(linted_gpu_native_display native_display,
                                linted_gpu_native_window native_window,
-                               struct linted_gpu_context **cleanup_gpup,
+                               struct linted_gpu_context **gpu_contextp,
                                linted_log log);
-linted_error linted_gpu_destroy(struct linted_gpu_context *cleanup_gpu);
+linted_error linted_gpu_destroy(struct linted_gpu_context *gpu_context);
 
-void linted_gpu_draw(struct linted_gpu_context *cleanup_gpu,
-                     struct linted_gpu_state const *gpu_state, unsigned width,
-                     unsigned height, linted_log log);
-void linted_gpu_resize(struct linted_gpu_context *cleanup_gpu, unsigned width,
-                       unsigned height, linted_log log);
+void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
+                             struct linted_gpu_update const *gpu_update);
+void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log);
+void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
+                       unsigned height);
 
 #endif /* LINTED_GPU_H */

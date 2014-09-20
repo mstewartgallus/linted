@@ -51,10 +51,6 @@ enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
 struct window_model
 {
-	unsigned width;
-	unsigned height;
-
-	bool resize_pending : 1U;
 	bool viewable : 1U;
 };
 
@@ -62,6 +58,7 @@ struct poll_conn_task
 {
 	struct linted_ko_task_poll parent;
 	struct window_model *window_model;
+	struct linted_gpu_context *gpu_context;
 	Display *display;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
@@ -71,7 +68,7 @@ struct poll_conn_task
 struct updater_task
 {
 	struct linted_updater_task_receive parent;
-	struct linted_gpu_state *gpu_state;
+	struct linted_gpu_context *gpu_context;
 	struct linted_asynch_pool *pool;
 };
 #define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
@@ -106,14 +103,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_window_notifier notifier = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct window_model window_model = {.width = 640,
-	                                    .height = 480,
-	                                    .viewable = true,
-
-	                                    /* Do the initial resize */
-	                                    .resize_pending = true};
-
-	struct linted_gpu_state gpu_state = {0};
+	struct window_model window_model = {.viewable = true};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -168,7 +158,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
 	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0,
-	    window_model.width, window_model.height, 0,
+	    640, 480, 0,
 	    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
 	    XCB_CW_EVENT_MASK, window_opts);
 	errnum = get_xcb_conn_error(connection);
@@ -282,24 +272,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	bool time_to_quit;
 
-	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
-	                       updater);
-	updater_task.gpu_state = &gpu_state;
-	updater_task.pool = pool;
-
-	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
-
-	linted_ko_task_poll(LINTED_UPCAST(&poll_conn_task), ON_POLL_CONN,
-	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_conn_task.time_to_quit = &time_to_quit;
-	poll_conn_task.window_model = &window_model;
-	poll_conn_task.pool = pool;
-	poll_conn_task.connection = connection;
-	poll_conn_task.display = display;
-
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
-
 	struct linted_gpu_context *gpu_context;
 
 	{
@@ -309,6 +281,25 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			goto destroy_window;
 		gpu_context = xx;
 	}
+
+	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
+	                       updater);
+	updater_task.gpu_context = gpu_context;
+	updater_task.pool = pool;
+
+	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
+
+	linted_ko_task_poll(LINTED_UPCAST(&poll_conn_task), ON_POLL_CONN,
+	                    xcb_get_file_descriptor(connection), POLLIN);
+	poll_conn_task.time_to_quit = &time_to_quit;
+	poll_conn_task.window_model = &window_model;
+	poll_conn_task.gpu_context = gpu_context;
+	poll_conn_task.pool = pool;
+	poll_conn_task.connection = connection;
+	poll_conn_task.display = display;
+
+	linted_asynch_pool_submit(
+	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -338,14 +329,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 		/* Only draw or resize if we have time to waste */
 
-		if (window_model.resize_pending) {
-			linted_gpu_resize(gpu_context, window_model.width,
-			                  window_model.height, log);
-			window_model.resize_pending = false;
-		} else if (window_model.viewable) {
-			linted_gpu_draw(gpu_context, &gpu_state,
-			                window_model.width, window_model.height,
-			                log);
+		if (window_model.viewable) {
+			linted_gpu_draw(gpu_context, log);
 		} else {
 			time_to_quit = false;
 
@@ -518,6 +503,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	xcb_connection_t *connection = poll_conn_task->connection;
 	struct linted_asynch_pool *pool = poll_conn_task->pool;
 	struct window_model *window_model = poll_conn_task->window_model;
+	struct linted_gpu_context *gpu_context = poll_conn_task->gpu_context;
 	bool *time_to_quitp = poll_conn_task->time_to_quit;
 
 	/* We have to use the Xlib event queue for the drawer events
@@ -532,9 +518,10 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		case ConfigureNotify: {
 			XConfigureEvent const *configure_event =
 			    &event.xconfigure;
-			window_model->width = configure_event->width;
-			window_model->height = configure_event->height;
-			window_model->resize_pending = true;
+
+			linted_gpu_resize(gpu_context,
+			                  configure_event->width,
+			                  configure_event->height);
 			break;
 		}
 
@@ -584,7 +571,7 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 		return errnum;
 
 	struct updater_task *updater_task = UPDATER_DOWNCAST(task);
-	struct linted_gpu_state *gpu_state = updater_task->gpu_state;
+	struct linted_gpu_context *gpu_context = updater_task->gpu_context;
 	struct linted_asynch_pool *pool = updater_task->pool;
 
 	struct linted_updater_update update;
@@ -593,14 +580,18 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	gpu_state->x_rotation =
-	    linted_updater_angle_to_float(update.x_rotation);
-	gpu_state->y_rotation =
-	    linted_updater_angle_to_float(update.y_rotation);
+	struct linted_gpu_update gpu_update;
 
-	gpu_state->x_position = update.x_position * (1 / 2048.0);
-	gpu_state->y_position = update.y_position * (1 / 2048.0);
-	gpu_state->z_position = update.z_position * (1 / 2048.0);
+	gpu_update.x_rotation =
+		linted_updater_angle_to_float(update.x_rotation);
+	gpu_update.y_rotation =
+		linted_updater_angle_to_float(update.y_rotation);
+
+	gpu_update.x_position = update.x_position * (1 / 2048.0);
+	gpu_update.y_position = update.y_position * (1 / 2048.0);
+	gpu_update.z_position = update.z_position * (1 / 2048.0);
+
+	linted_gpu_update_state(gpu_context, &gpu_update);
 
 	return 0;
 }
