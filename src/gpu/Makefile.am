@@ -14,31 +14,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/drawer
+noinst_LTLIBRARIES+=%D%/libgpu.la
 
-%C%_drawer_SOURCES=%D%/drawer.c
-%C%_drawer_LDADD=\
-  src/start/libstart.la\
-  \
+%C%_libgpu_la_SOURCES=%D%/gpu.c include/linted/gpu.h include/linted/gpu-x11.h
+%C%_libgpu_la_LIBADD=\
   src/assets/libassets.la\
-  src/asynch/libasynch.la\
-  src/error/liberror.la\
-  src/gpu/libgpu.la\
-  src/io/libio.la\
-  src/ko/libko.la\
   src/mem/libmem.la\
   \
-  src/log/liblog.la\
-  src/updater/libupdater.la\
-  src/window-notifier/libwindow-notifier.la\
-  \
-  $(X11_LIBS)\
-  $(XCB_LIBS)\
-  $(X11_XCB_LIBS)
+  -lm\
+  $(GLES_LIBS)\
+  $(EGL_LIBS)
 
-%C%_drawer_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS)\
+%C%_libgpu_la_CPPFLAGS=\
+  $(GLES_FLAGS) $(EGL_FLAGS)\
   $(AM_CPPFLAGS)
-
-dist_pkgdefaultconf_DATA+=%D%/drawer-fstab
-dist_pkgdefaultunits_DATA+=%D%/units/drawer.service

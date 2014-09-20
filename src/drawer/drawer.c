@@ -17,11 +17,10 @@
 
 #include "config.h"
 
-#include "drawer.h"
-
 #include "linted/assets.h"
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/gpu.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -33,7 +32,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <math.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -56,8 +54,8 @@ struct window_model
 	unsigned width;
 	unsigned height;
 
-	_Bool resize_pending : 1U;
-	_Bool viewable : 1U;
+	bool resize_pending : 1U;
+	bool viewable : 1U;
 };
 
 struct poll_conn_task
@@ -73,7 +71,7 @@ struct poll_conn_task
 struct updater_task
 {
 	struct linted_updater_task_receive parent;
-	struct sim_model *sim_model;
+	struct linted_gpu_state *gpu_state;
 	struct linted_asynch_pool *pool;
 };
 #define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
@@ -115,7 +113,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	                                    /* Do the initial resize */
 	                                    .resize_pending = true};
 
-	struct sim_model sim_model = {0};
+	struct linted_gpu_state gpu_state = {0};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -286,7 +284,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
 	                       updater);
-	updater_task.sim_model = &sim_model;
+	updater_task.gpu_state = &gpu_state;
 	updater_task.pool = pool;
 
 	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
@@ -302,14 +300,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
 
-	struct graphics_state *graphics_state;
+	struct linted_gpu_context *gpu_context;
 
 	{
-		struct graphics_state *xx;
-		errnum = linted_drawer_3d_create(display, window, &xx, log);
+		struct linted_gpu_context *xx;
+		errnum = linted_gpu_create(display, window, &xx, log);
 		if (errnum != 0)
 			goto destroy_window;
-		graphics_state = xx;
+		gpu_context = xx;
 	}
 
 	/* TODO: Detect SIGTERM and exit normally */
@@ -325,30 +323,29 @@ unsigned char linted_start(char const *process_name, size_t argc,
 					break;
 
 				if (errnum != 0)
-					goto cleanup_3d;
+					goto cleanup_gpu;
 
 				completed_task = xx;
 			}
 
 			errnum = dispatch(completed_task);
 			if (errnum != 0)
-				goto cleanup_3d;
+				goto cleanup_gpu;
 
 			if (time_to_quit)
-				goto cleanup_3d;
+				goto cleanup_gpu;
 		}
 
 		/* Only draw or resize if we have time to waste */
 
 		if (window_model.resize_pending) {
-			linted_drawer_3d_resize(graphics_state,
-			                        window_model.width,
-			                        window_model.height, log);
+			linted_gpu_resize(gpu_context, window_model.width,
+			                  window_model.height, log);
 			window_model.resize_pending = false;
 		} else if (window_model.viewable) {
-			linted_drawer_3d_draw(graphics_state, &sim_model,
-			                      window_model.width,
-			                      window_model.height, log);
+			linted_gpu_draw(gpu_context, &gpu_state,
+			                window_model.width, window_model.height,
+			                log);
 		} else {
 			time_to_quit = false;
 
@@ -357,20 +354,20 @@ unsigned char linted_start(char const *process_name, size_t argc,
 				struct linted_asynch_task *xx;
 				errnum = linted_asynch_pool_wait(pool, &xx);
 				if (errnum != 0)
-					goto cleanup_3d;
+					goto cleanup_gpu;
 				completed_task = xx;
 			}
 			errnum = dispatch(completed_task);
 			if (errnum != 0)
-				goto cleanup_3d;
+				goto cleanup_gpu;
 
 			if (time_to_quit)
-				goto cleanup_3d;
+				goto cleanup_gpu;
 		}
 	}
 
-cleanup_3d:
-	linted_drawer_3d_destroy(graphics_state);
+cleanup_gpu:
+	linted_gpu_destroy(gpu_context);
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
@@ -587,7 +584,7 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 		return errnum;
 
 	struct updater_task *updater_task = UPDATER_DOWNCAST(task);
-	struct sim_model *sim_model = updater_task->sim_model;
+	struct linted_gpu_state *gpu_state = updater_task->gpu_state;
 	struct linted_asynch_pool *pool = updater_task->pool;
 
 	struct linted_updater_update update;
@@ -596,14 +593,14 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	sim_model->x_rotation =
+	gpu_state->x_rotation =
 	    linted_updater_angle_to_float(update.x_rotation);
-	sim_model->y_rotation =
+	gpu_state->y_rotation =
 	    linted_updater_angle_to_float(update.y_rotation);
 
-	sim_model->x_position = update.x_position * (1 / 2048.0);
-	sim_model->y_position = update.y_position * (1 / 2048.0);
-	sim_model->z_position = update.z_position * (1 / 2048.0);
+	gpu_state->x_position = update.x_position * (1 / 2048.0);
+	gpu_state->y_position = update.y_position * (1 / 2048.0);
+	gpu_state->z_position = update.z_position * (1 / 2048.0);
 
 	return 0;
 }
