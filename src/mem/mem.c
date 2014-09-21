@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -146,31 +147,56 @@ void linted_mem_free(void *memory)
 
 static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
-	size_t xx;
+	size_t result;
 
 	size_t mul_no_overflow = 1UL << (sizeof(size_t) * 4U);
 	if (0U == size) {
-		xx = 1U;
-		/*@ assert xx >= size; */
-		/*@ assert xx >= nmemb * size; */
+		result = 1U;
+		/*@ assert result >= size; */
+		/*@ assert result >= nmemb * size; */
 	} else if (0U == nmemb) {
-		xx = 1U;
-		/*@ assert xx >= nmemb; */
-		/*@ assert xx >= nmemb * size; */
-	} else if (nmemb > mul_no_overflow) {
-		if (SIZE_MAX / nmemb >= size)
-			return ENOMEM;
-
-		xx = nmemb * size;
-	} else if (size > mul_no_overflow) {
-		if (SIZE_MAX / nmemb >= size)
-			return ENOMEM;
-
-		xx = nmemb * size;
+		result = 1U;
+		/*@ assert result >= nmemb; */
+		/*@ assert result >= nmemb * size; */
 	} else {
-		xx = nmemb * size;
+		size_t xx;
+		size_t yy;
+
+		if (nmemb >= mul_no_overflow)
+			goto nmemb_greater;
+
+		if (size >= mul_no_overflow)
+			goto size_greater;
+
+		goto none_greater;
+
+		switch (0) {
+		nmemb_greater:
+			if (size >= mul_no_overflow)
+				return ENOMEM;
+
+			xx = size;
+			yy = nmemb;
+			goto check_mul;
+
+		size_greater:
+			xx = nmemb;
+			yy = size;
+			goto check_mul;
+
+		check_mul:
+			if (SIZE_MAX / xx >= yy)
+				return ENOMEM;
+
+			result = xx * yy;
+			break;
+
+		none_greater:
+			result = nmemb * size;
+			break;
+		}
 	}
 
-	*resultp = xx;
+	*resultp = result;
 	return 0;
 }
