@@ -700,12 +700,9 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 			GLfloat b_XX_jj[4U];
 			memcpy(b_XX_jj, b_inverted[jj], sizeof b_XX_jj);
 
-			GLfloat result_ii_jj = 0;
-
-			for (size_t kk = 0U; kk < 4U; ++kk)
-				result_ii_jj += a_ii[kk] * b_XX_jj[kk];
-
-			result_ii[jj] = result_ii_jj;
+			result_ii[jj] =
+			    (a_ii[0U] * b_XX_jj[0U] + a_ii[1U] * b_XX_jj[1U]) +
+			    (a_ii[2U] * b_XX_jj[2U] + a_ii[3U] * b_XX_jj[3U]);
 		}
 
 		memcpy(result.x[ii], result_ii, sizeof result_ii);
