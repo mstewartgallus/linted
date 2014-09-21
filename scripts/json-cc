@@ -68,6 +68,10 @@ def go():
             if output == None:
                 output = input_file.replace('.c', '.o')
 
+            exit_status = subprocess.call(['gcc', '-std=gnu99'] + flags + [input_file, '-o/dev/null'])
+            if exit_status != 0:
+                sys.exit(exit_status)
+
             with open(output, 'w') as outputfile:
                 outputfile.write(json.dumps({
                     'flags': flags,
@@ -102,6 +106,7 @@ def parse(arguments: list):
 
         if argument == '-c':
             linking = False
+            flags.append(argument)
         elif argument == '-o':
             ii += 1
 
@@ -126,7 +131,8 @@ def parse(arguments: list):
               or argument.startswith('-U')
               or argument.startswith('-I')
               or argument.startswith('-i')
-              or argument.startswith('-I')):
+              or argument.startswith('-I')
+              or argument.startswith('-std=')):
             flags.append(argument)
         elif not argument.startswith('-') and (argument.endswith('.c')
                                                or argument.endswith('.o')

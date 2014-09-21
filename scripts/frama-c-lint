@@ -35,4 +35,5 @@ source_files() {
     -warn-decimal-float none\
     -cpp-extra-args='-C'\
     $(source_cflags)\
+    $(frama_c_stdlib)\
     $(source_files)

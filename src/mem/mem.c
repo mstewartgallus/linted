@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp);
+
 linted_error linted_mem_alloc(void **memp, size_t size)
 {
 	if (0U == size)
@@ -41,16 +43,16 @@ linted_error linted_mem_alloc(void **memp, size_t size)
 
 linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 {
-	if (size != 0U && SIZE_MAX / size < nmemb)
-		return ENOMEM;
+	linted_error errnum;
 
-	size_t total = size * nmemb;
-	if (0U == total)
-		total = 1U;
+	size_t total;
+	errnum = safe_multiply(nmemb, size, &total);
+	if (errnum != 0)
+		return errnum;
 
 	void *memory = malloc(total);
 	if (NULL == memory) {
-		linted_error errnum = errno;
+		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
@@ -140,4 +142,30 @@ linted_error linted_mem_realloc_array(void **memp, void *memory, size_t nmemb,
 void linted_mem_free(void *memory)
 {
 	free(memory);
+}
+
+
+static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp)
+{
+	size_t xx;
+	if (0U == size || 0U == nmemb) {
+		xx = 1U;
+	} else {
+		xx = size;
+		size_t yy = nmemb;
+		do {
+			if (xx > SIZE_MAX / 2U)
+				return ENOMEM;
+
+			xx *= 2U;
+			yy /= 2U;
+		} while (yy > 0U);
+	}
+	/*@
+	  ensures xx >= nmemb;
+	  ensures xx >= size;
+	  ensures xx == nmemb * size;
+	*/
+	*resultp = xx;
+	return 0;
 }
