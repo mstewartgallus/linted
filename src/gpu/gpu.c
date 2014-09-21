@@ -79,9 +79,8 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 static void real_draw(struct linted_gpu_context *gpu_context);
 
 static void flush_gl_errors(void);
-static void matrix_multiply(struct matrix const *restrict a,
-                            struct matrix const *restrict b,
-                            struct matrix *restrict result);
+static struct matrix matrix_multiply(struct matrix a, struct matrix b);
+
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
  *       flags may be set and returned by a single function.
@@ -594,15 +593,11 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		      2 * far * near / (near - far)},
 		     {0, 0, -1, 0}}};
 
-		struct matrix rotations;
-		struct matrix model_view;
-		struct matrix model_view_projection;
-
-		matrix_multiply(&x_rotation_matrix, &y_rotation_matrix,
-		                &rotations);
-		matrix_multiply(&camera, &rotations, &model_view);
-		matrix_multiply(&model_view, &projection,
-		                &model_view_projection);
+		struct matrix rotations =
+		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);
+		struct matrix model_view = matrix_multiply(camera, rotations);
+		struct matrix model_view_projection =
+		    matrix_multiply(model_view, projection);
 
 		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
 		                   1U, false, model_view_projection.x[0U]);
@@ -682,61 +677,41 @@ static linted_error get_egl_error(void)
 	}
 }
 
-static void matrix_multiply(struct matrix const *restrict a,
-                            struct matrix const *restrict b,
-                            struct matrix *restrict result)
+static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 {
-	result->x[0U][0U] =
-	    a->x[0U][0U] * b->x[0U][0U] + a->x[0U][1U] * b->x[1U][0U] +
-	    a->x[0U][2U] * b->x[2U][0U] + a->x[0U][3U] * b->x[3U][0U];
-	result->x[1U][0U] =
-	    a->x[1U][0U] * b->x[0U][0U] + a->x[1U][1U] * b->x[1U][0U] +
-	    a->x[1U][2U] * b->x[2U][0U] + a->x[1U][3U] * b->x[3U][0U];
-	result->x[2U][0U] =
-	    a->x[2U][0U] * b->x[0U][0U] + a->x[2U][1U] * b->x[1U][0U] +
-	    a->x[2U][2U] * b->x[2U][0U] + a->x[2U][3U] * b->x[3U][0U];
-	result->x[3U][0U] =
-	    a->x[3U][0U] * b->x[0U][0U] + a->x[3U][1U] * b->x[1U][0U] +
-	    a->x[3U][2U] * b->x[2U][0U] + a->x[3U][3U] * b->x[3U][0U];
+	GLfloat b_inverted[4U][4U];
 
-	result->x[0U][1U] =
-	    a->x[0U][0U] * b->x[0U][1U] + a->x[0U][1U] * b->x[1U][1U] +
-	    a->x[0U][2U] * b->x[2U][1U] + a->x[0U][3U] * b->x[3U][1U];
-	result->x[1U][1U] =
-	    a->x[1U][0U] * b->x[0U][1U] + a->x[1U][1U] * b->x[1U][1U] +
-	    a->x[1U][2U] * b->x[2U][1U] + a->x[1U][3U] * b->x[3U][1U];
-	result->x[2U][1U] =
-	    a->x[2U][0U] * b->x[0U][1U] + a->x[2U][1U] * b->x[1U][1U] +
-	    a->x[2U][2U] * b->x[2U][1U] + a->x[2U][3U] * b->x[3U][1U];
-	result->x[3U][1U] =
-	    a->x[3U][0U] * b->x[0U][1U] + a->x[3U][1U] * b->x[1U][1U] +
-	    a->x[3U][2U] * b->x[2U][1U] + a->x[3U][3U] * b->x[3U][1U];
+	for (size_t ii = 0U; ii < 4U; ++ii) {
+		GLfloat b_ii[4U];
+		memcpy(b_ii, b.x[ii], sizeof b_ii);
 
-	result->x[0U][2U] =
-	    a->x[0U][0U] * b->x[0U][2U] + a->x[0U][1U] * b->x[1U][2U] +
-	    a->x[0U][2U] * b->x[2U][2U] + a->x[0U][3U] * b->x[3U][2U];
-	result->x[1U][2U] =
-	    a->x[1U][0U] * b->x[0U][2U] + a->x[1U][1U] * b->x[1U][2U] +
-	    a->x[1U][2U] * b->x[2U][2U] + a->x[1U][3U] * b->x[3U][2U];
-	result->x[2U][2U] =
-	    a->x[2U][0U] * b->x[0U][2U] + a->x[2U][1U] * b->x[1U][2U] +
-	    a->x[2U][2U] * b->x[2U][2U] + a->x[2U][3U] * b->x[3U][2U];
-	result->x[3U][2U] =
-	    a->x[3U][0U] * b->x[0U][2U] + a->x[3U][1U] * b->x[1U][2U] +
-	    a->x[3U][2U] * b->x[2U][2U] + a->x[3U][3U] * b->x[3U][2U];
+		for (size_t jj = 0U; jj < 4U; ++jj)
+			b_inverted[jj][ii] = b_ii[jj];
+	}
 
-	result->x[0U][3U] =
-	    a->x[0U][0U] * b->x[0U][3U] + a->x[0U][1U] * b->x[1U][3U] +
-	    a->x[0U][2U] * b->x[2U][3U] + a->x[0U][3U] * b->x[3U][3U];
-	result->x[1U][3U] =
-	    a->x[1U][0U] * b->x[0U][3U] + a->x[1U][1U] * b->x[1U][3U] +
-	    a->x[1U][2U] * b->x[2U][3U] + a->x[1U][3U] * b->x[3U][3U];
-	result->x[2U][3U] =
-	    a->x[2U][0U] * b->x[0U][3U] + a->x[2U][1U] * b->x[1U][3U] +
-	    a->x[2U][2U] * b->x[2U][3U] + a->x[2U][3U] * b->x[3U][3U];
-	result->x[3U][3U] =
-	    a->x[3U][0U] * b->x[0U][3U] + a->x[3U][1U] * b->x[1U][3U] +
-	    a->x[3U][2U] * b->x[2U][3U] + a->x[3U][3U] * b->x[3U][3U];
+	struct matrix result;
+
+	for (size_t ii = 0U; ii < 4U; ++ii) {
+		GLfloat a_ii[4U];
+		memcpy(a_ii, a.x[ii], sizeof a_ii);
+
+		GLfloat result_ii[4U];
+		for (size_t jj = 0U; jj < 4U; ++jj) {
+			GLfloat b_XX_jj[4U];
+			memcpy(b_XX_jj, b_inverted[jj], sizeof b_XX_jj);
+
+			GLfloat result_ii_jj = 0;
+
+			for (size_t kk = 0U; kk < 4U; ++kk)
+				result_ii_jj += a_ii[kk] * b_XX_jj[kk];
+
+			result_ii[jj] = result_ii_jj;
+		}
+
+		memcpy(result.x[ii], result_ii, sizeof result_ii);
+	}
+
+	return result;
 }
 
 static double square(double x)
