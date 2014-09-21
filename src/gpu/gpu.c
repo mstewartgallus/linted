@@ -56,6 +56,11 @@ struct linted_gpu_context
 	bool update_pending : 1U;
 };
 
+struct matrix
+{
+	GLfloat x[4U][4U];
+};
+
 static EGLint const attr_list[] = {EGL_RED_SIZE,     5,             /*  */
                                    EGL_GREEN_SIZE,   6,             /*  */
                                    EGL_BLUE_SIZE,    5,             /*  */
@@ -74,9 +79,9 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 static void real_draw(struct linted_gpu_context *gpu_context);
 
 static void flush_gl_errors(void);
-static void matrix_multiply(GLfloat const a[restrict 4U][4U],
-                            GLfloat const b[restrict 4U][4U],
-                            GLfloat result[restrict 4U][4U]);
+static void matrix_multiply(struct matrix const *restrict a,
+                            struct matrix const *restrict b,
+                            struct matrix *restrict result);
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
  *       flags may be set and returned by a single function.
@@ -555,24 +560,25 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		/* Rotate the camera */
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
-		GLfloat const y_rotation_matrix[][4U] = {{1, 0, 0, 0},
-		                                         {0, cos_y, -sin_y, 0},
-		                                         {0, sin_y, cos_y, 0},
-		                                         {0, 0, 0, 1}};
+
+		struct matrix const y_rotation_matrix = {{{1, 0, 0, 0},
+		                                          {0, cos_y, -sin_y, 0},
+		                                          {0, sin_y, cos_y, 0},
+		                                          {0, 0, 0, 1}}};
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		GLfloat const x_rotation_matrix[][4U] = {{cos_x, 0, sin_x, 0},
-		                                         {0, 1, 0, 0},
-		                                         {-sin_x, 0, cos_x, 0},
-		                                         {0, 0, 0, 1}};
+		struct matrix const x_rotation_matrix = {{{cos_x, 0, sin_x, 0},
+		                                          {0, 1, 0, 0},
+		                                          {-sin_x, 0, cos_x, 0},
+		                                          {0, 0, 0, 1}}};
 
 		/* Translate the camera */
-		GLfloat const camera[][4U] = {
-		    {1, 0, 0, 0},
-		    {0, 1, 0, 0},
-		    {0, 0, 1, 0},
-		    {x_position, y_position, z_position, 1}};
+		struct matrix const camera = {
+		    {{1, 0, 0, 0},
+		     {0, 1, 0, 0},
+		     {0, 0, 1, 0},
+		     {x_position, y_position, z_position, 1}}};
 
 		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
@@ -581,26 +587,25 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		GLfloat const projection[][4U] = {
-		    {d / aspect, 0, 0, 0},
-		    {0, d, 0, 0},
-		    {0, 0, (far + near) / (near - far),
-		     2 * far * near / (near - far)},
-		    {0, 0, -1, 0}};
+		struct matrix const projection = {
+		    {{d / aspect, 0, 0, 0},
+		     {0, d, 0, 0},
+		     {0, 0, (far + near) / (near - far),
+		      2 * far * near / (near - far)},
+		     {0, 0, -1, 0}}};
 
-		GLfloat rotations[4U][4U];
-		GLfloat model_view[4U][4U];
-		GLfloat model_view_projection[4U][4U];
+		struct matrix rotations;
+		struct matrix model_view;
+		struct matrix model_view_projection;
 
-		matrix_multiply(x_rotation_matrix, y_rotation_matrix,
-		                rotations);
-		matrix_multiply((const GLfloat(*)[4U])camera,
-		                (const GLfloat(*)[4U])rotations, model_view);
-		matrix_multiply((const GLfloat(*)[4U])model_view, projection,
-		                model_view_projection);
+		matrix_multiply(&x_rotation_matrix, &y_rotation_matrix,
+		                &rotations);
+		matrix_multiply(&camera, &rotations, &model_view);
+		matrix_multiply(&model_view, &projection,
+		                &model_view_projection);
 
 		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
-		                   1U, false, model_view_projection[0U]);
+		                   1U, false, model_view_projection.x[0U]);
 
 		gpu_context->update_pending = false;
 	}
@@ -677,45 +682,61 @@ static linted_error get_egl_error(void)
 	}
 }
 
-static void matrix_multiply(GLfloat const a[restrict 4U][4U],
-                            GLfloat const b[restrict 4U][4U],
-                            GLfloat result[restrict 4U][4U])
+static void matrix_multiply(struct matrix const *restrict a,
+                            struct matrix const *restrict b,
+                            struct matrix *restrict result)
 {
-	result[0U][0U] = a[0U][0U] * b[0U][0U] + a[0U][1U] * b[1U][0U] +
-	                 a[0U][2U] * b[2U][0U] + a[0U][3U] * b[3U][0U];
-	result[1U][0U] = a[1U][0U] * b[0U][0U] + a[1U][1U] * b[1U][0U] +
-	                 a[1U][2U] * b[2U][0U] + a[1U][3U] * b[3U][0U];
-	result[2U][0U] = a[2U][0U] * b[0U][0U] + a[2U][1U] * b[1U][0U] +
-	                 a[2U][2U] * b[2U][0U] + a[2U][3U] * b[3U][0U];
-	result[3U][0U] = a[3U][0U] * b[0U][0U] + a[3U][1U] * b[1U][0U] +
-	                 a[3U][2U] * b[2U][0U] + a[3U][3U] * b[3U][0U];
+	result->x[0U][0U] =
+	    a->x[0U][0U] * b->x[0U][0U] + a->x[0U][1U] * b->x[1U][0U] +
+	    a->x[0U][2U] * b->x[2U][0U] + a->x[0U][3U] * b->x[3U][0U];
+	result->x[1U][0U] =
+	    a->x[1U][0U] * b->x[0U][0U] + a->x[1U][1U] * b->x[1U][0U] +
+	    a->x[1U][2U] * b->x[2U][0U] + a->x[1U][3U] * b->x[3U][0U];
+	result->x[2U][0U] =
+	    a->x[2U][0U] * b->x[0U][0U] + a->x[2U][1U] * b->x[1U][0U] +
+	    a->x[2U][2U] * b->x[2U][0U] + a->x[2U][3U] * b->x[3U][0U];
+	result->x[3U][0U] =
+	    a->x[3U][0U] * b->x[0U][0U] + a->x[3U][1U] * b->x[1U][0U] +
+	    a->x[3U][2U] * b->x[2U][0U] + a->x[3U][3U] * b->x[3U][0U];
 
-	result[0U][1U] = a[0U][0U] * b[0U][1U] + a[0U][1U] * b[1U][1U] +
-	                 a[0U][2U] * b[2U][1U] + a[0U][3U] * b[3U][1U];
-	result[1U][1U] = a[1U][0U] * b[0U][1U] + a[1U][1U] * b[1U][1U] +
-	                 a[1U][2U] * b[2U][1U] + a[1U][3U] * b[3U][1U];
-	result[2U][1U] = a[2U][0U] * b[0U][1U] + a[2U][1U] * b[1U][1U] +
-	                 a[2U][2U] * b[2U][1U] + a[2U][3U] * b[3U][1U];
-	result[3U][1U] = a[3U][0U] * b[0U][1U] + a[3U][1U] * b[1U][1U] +
-	                 a[3U][2U] * b[2U][1U] + a[3U][3U] * b[3U][1U];
+	result->x[0U][1U] =
+	    a->x[0U][0U] * b->x[0U][1U] + a->x[0U][1U] * b->x[1U][1U] +
+	    a->x[0U][2U] * b->x[2U][1U] + a->x[0U][3U] * b->x[3U][1U];
+	result->x[1U][1U] =
+	    a->x[1U][0U] * b->x[0U][1U] + a->x[1U][1U] * b->x[1U][1U] +
+	    a->x[1U][2U] * b->x[2U][1U] + a->x[1U][3U] * b->x[3U][1U];
+	result->x[2U][1U] =
+	    a->x[2U][0U] * b->x[0U][1U] + a->x[2U][1U] * b->x[1U][1U] +
+	    a->x[2U][2U] * b->x[2U][1U] + a->x[2U][3U] * b->x[3U][1U];
+	result->x[3U][1U] =
+	    a->x[3U][0U] * b->x[0U][1U] + a->x[3U][1U] * b->x[1U][1U] +
+	    a->x[3U][2U] * b->x[2U][1U] + a->x[3U][3U] * b->x[3U][1U];
 
-	result[0U][2U] = a[0U][0U] * b[0U][2U] + a[0U][1U] * b[1U][2U] +
-	                 a[0U][2U] * b[2U][2U] + a[0U][3U] * b[3U][2U];
-	result[1U][2U] = a[1U][0U] * b[0U][2U] + a[1U][1U] * b[1U][2U] +
-	                 a[1U][2U] * b[2U][2U] + a[1U][3U] * b[3U][2U];
-	result[2U][2U] = a[2U][0U] * b[0U][2U] + a[2U][1U] * b[1U][2U] +
-	                 a[2U][2U] * b[2U][2U] + a[2U][3U] * b[3U][2U];
-	result[3U][2U] = a[3U][0U] * b[0U][2U] + a[3U][1U] * b[1U][2U] +
-	                 a[3U][2U] * b[2U][2U] + a[3U][3U] * b[3U][2U];
+	result->x[0U][2U] =
+	    a->x[0U][0U] * b->x[0U][2U] + a->x[0U][1U] * b->x[1U][2U] +
+	    a->x[0U][2U] * b->x[2U][2U] + a->x[0U][3U] * b->x[3U][2U];
+	result->x[1U][2U] =
+	    a->x[1U][0U] * b->x[0U][2U] + a->x[1U][1U] * b->x[1U][2U] +
+	    a->x[1U][2U] * b->x[2U][2U] + a->x[1U][3U] * b->x[3U][2U];
+	result->x[2U][2U] =
+	    a->x[2U][0U] * b->x[0U][2U] + a->x[2U][1U] * b->x[1U][2U] +
+	    a->x[2U][2U] * b->x[2U][2U] + a->x[2U][3U] * b->x[3U][2U];
+	result->x[3U][2U] =
+	    a->x[3U][0U] * b->x[0U][2U] + a->x[3U][1U] * b->x[1U][2U] +
+	    a->x[3U][2U] * b->x[2U][2U] + a->x[3U][3U] * b->x[3U][2U];
 
-	result[0U][3U] = a[0U][0U] * b[0U][3U] + a[0U][1U] * b[1U][3U] +
-	                 a[0U][2U] * b[2U][3U] + a[0U][3U] * b[3U][3U];
-	result[1U][3U] = a[1U][0U] * b[0U][3U] + a[1U][1U] * b[1U][3U] +
-	                 a[1U][2U] * b[2U][3U] + a[1U][3U] * b[3U][3U];
-	result[2U][3U] = a[2U][0U] * b[0U][3U] + a[2U][1U] * b[1U][3U] +
-	                 a[2U][2U] * b[2U][3U] + a[2U][3U] * b[3U][3U];
-	result[3U][3U] = a[3U][0U] * b[0U][3U] + a[3U][1U] * b[1U][3U] +
-	                 a[3U][2U] * b[2U][3U] + a[3U][3U] * b[3U][3U];
+	result->x[0U][3U] =
+	    a->x[0U][0U] * b->x[0U][3U] + a->x[0U][1U] * b->x[1U][3U] +
+	    a->x[0U][2U] * b->x[2U][3U] + a->x[0U][3U] * b->x[3U][3U];
+	result->x[1U][3U] =
+	    a->x[1U][0U] * b->x[0U][3U] + a->x[1U][1U] * b->x[1U][3U] +
+	    a->x[1U][2U] * b->x[2U][3U] + a->x[1U][3U] * b->x[3U][3U];
+	result->x[2U][3U] =
+	    a->x[2U][0U] * b->x[0U][3U] + a->x[2U][1U] * b->x[1U][3U] +
+	    a->x[2U][2U] * b->x[2U][3U] + a->x[2U][3U] * b->x[3U][3U];
+	result->x[3U][3U] =
+	    a->x[3U][0U] * b->x[0U][3U] + a->x[3U][1U] * b->x[1U][3U] +
+	    a->x[3U][2U] * b->x[2U][3U] + a->x[3U][3U] * b->x[3U][3U];
 }
 
 static double square(double x)
