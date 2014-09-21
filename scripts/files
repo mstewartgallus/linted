@@ -56,7 +56,7 @@ def go():
     for data in files_json:
         recurse(data)
 
-    print(' '.join(['\'' + ii + '\'' for ii in unique(c_files)]))
+    print('\n'.join([ii for ii in unique(c_files)]))
 
 def unique(l):
     newl = []

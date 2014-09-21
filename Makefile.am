@@ -72,29 +72,4 @@ doxygen:
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
 	  $(srcdir)/Doxyfile.in | doxygen -
 
-# We have to undefine certain flags because unfortunately we can't
-# verify these compiler specific changes
-
-LINTED_FRAMA_C_BINARY=src/simulator/simulator
-.PHONY: frama-c-lint
-frama-c-lint:
-	BINARY=$(LINTED_FRAMA_C_BINARY) &&\
-	(echo -cpp-extra-args="-I`frama-c -print-share-path`/libc" &&\
-	  for II in $$($(srcdir)/scripts/flags json-c-models/$${BINARY}); do\
-	    echo -cpp-extra-args="$${II}";\
-	  done && $(srcdir)/scripts/files json-c-models/$${BINARY}\
-	) | xargs\
-	  $(FRAMA_C)\
-	   -quiet\
-	   -journal-disable\
-	   -pp-annot\
-	   -machdep x86_64\
-	   -warn-signed-downcast\
-	   -warn-unsigned-downcast\
-	   -warn-unsigned-overflow\
-	   -warn-decimal-float none\
-	   -cpp-extra-args='-C'
-
-linted_CLANG_FORMATFLAGS=-i
-
 include src/Makefile.am
