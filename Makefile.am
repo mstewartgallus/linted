@@ -64,6 +64,8 @@ dist-hook:
 indent: $(SOURCES)
 	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^
 
+linted_CLANG_FORMATFLAGS=-i
+
 .PHONY: doxygen
 doxygen:
 	sed \
