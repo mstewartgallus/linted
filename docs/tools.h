@@ -11,6 +11,15 @@
  *
  * Linted -- Tools
  *
+ * @section
+ * <ul>
+ *
+ * <li> Valgrind
+ *
+ * - You have to comment out and disable the seccomp sandboxing.
+ * - You have to make sure every unit has a /tmp directory.
+ * </li>
+ *
  * @section rejected Rejected Tools
  *
  * <ul>
