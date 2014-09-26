@@ -390,6 +390,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		no_new_privs = attr->no_new_privs;
 	}
 
+	gid_t gid = getgid();
+	uid_t uid = getuid();
+
+	gid_t mapped_gid = gid;
+	uid_t mapped_uid = uid;
+
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
 		return EINVAL;
 
@@ -469,8 +475,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto close_pipes;
 		}
 
-		child = fork();
-
+		child = syscall(__NR_clone,
+		                SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
 		if (-1 == child) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
@@ -543,6 +549,63 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(reader);
 
+	/**
+	 * @todo writer to the uid and gid maps in an
+	 * async-signal-safe way.
+	 */
+	/* Note that writing to uid_map and gid_map will fail if the
+	 * binary is not dumpable.  DON'T set the process dumpable and
+	 * fail if the process is nondumpable as presumably the
+	 * invoker of the process had good reasons to have the process
+	 * nondumpable.
+	 */
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/uid_map",
+			                        LINTED_KO_WRONLY);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+			file = xx;
+		}
+
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_uid, uid);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+	}
+
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/gid_map",
+			                        LINTED_KO_WRONLY);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+			file = xx;
+		}
+
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_gid, gid);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+	}
+
+	if (-1 == unshare(clone_flags))
+		exit_with_error(writer, errno);
+
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
 		int greatest = -1;
@@ -582,9 +645,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		writer = writer_copy;
 	}
-
-	if (-1 == unshare(clone_flags))
-		exit_with_error(writer, errno);
 
 	if (chrootdir != NULL)
 		chroot_process(writer, chrootdir, mount_args, mount_args_size);
@@ -630,7 +690,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
 		           (int)file_actions->action_count - 3U);
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), 2);
 
 		envp = (char const *const *)envp_copy;
 	}
@@ -650,9 +710,33 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		filename = relative_filename;
 	}
 
-	execve(filename, (char *const *)argv, (char *const *)envp);
-	exit_with_error(writer, errno);
-	return ENOSYS;
+	pid_t grandchild = fork();
+	if (-1 == grandchild)
+		exit_with_error(writer, errno);
+
+	if (0 == grandchild) {
+		execve(filename, (char *const *)argv, (char *const *)envp);
+		exit_with_error(writer, errno);
+	}
+
+	errnum = linted_ko_close(writer);
+	if (errnum != 0)
+		_Exit(errnum);
+
+	/**
+	 * @todo execve a dedicated waiter process
+	 */
+	siginfo_t info;
+	do {
+		errnum =
+		    -1 == waitid(P_PID, grandchild, &info, WEXITED) ? errno : 0;
+	} while (EINTR == errnum);
+	if (errnum != 0) {
+		assert(errnum != EINVAL);
+		assert(errnum != ECHILD);
+		assert(false);
+	}
+	_Exit(info.si_status);
 }
 
 static void default_signals(linted_ko writer)

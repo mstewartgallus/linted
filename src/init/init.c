@@ -13,121 +13,101 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
-#include "init.h"
-#include "monitor.h"
-
-#include "linted/error.h"
 #include "linted/io.h"
+#include "linted/start.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
-#include <sys/types.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-static char const process_name[] = "init";
+#include <linux/sched.h>
 
-static linted_error set_process_name(char const *name);
+struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME "-init",
+    .kos_size = 0U,
+    .kos = NULL};
+
 static linted_error set_death_sig(int signum);
-static linted_error set_dumpable(bool v);
-static linted_error get_dumpable(bool *v);
+static linted_error set_child_subreaper(bool value);
 
-/**
- * @todo Reap all processes and monitor the process monitor to restart
- *       it if it dies.
- */
-unsigned char linted_init_init(void)
+unsigned char linted_start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error errnum;
 
-	errnum = set_process_name(process_name);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_process_name");
-		return EXIT_FAILURE;
-	}
-	errnum = set_death_sig(SIGKILL);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_death_sig");
+	char const *monitor = getenv("LINTED_MONITOR");
+	if (NULL == monitor) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: need LINTED_MONITOR\n",
+		                       process_name);
 		return EXIT_FAILURE;
 	}
 
-	bool dumpable;
-	{
-		bool xx;
-		errnum = get_dumpable(&xx);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_dumpable");
-			return EXIT_FAILURE;
-		}
-		dumpable = xx;
-	}
-
-	/* Guard against processes ptracing init. This should probably
-	 * not be needed anyways by the special properties of init but
-	 * whatever. */
-	errnum = set_dumpable(false);
+	errnum = set_child_subreaper(true);
 	if (errnum != 0) {
 		errno = errnum;
-		perror("set_dumpable");
+		perror("set_child_subreaper");
 		return EXIT_FAILURE;
 	}
 
 	for (;;) {
-		/* Init should remain super simple. */
-
-		/* Fork a priviliged, monitor process to do the real
-		 * work.
-		 *
-		 * Unfortunately, we can't execve a new process for
-		 * monitor because that removes special capabilities
-		 * but we still try to remain modular.
-		 */
 		pid_t child = fork();
 		if (-1 == child) {
-			/* TODO: Possibly attempt to free up memory
-			 * and kill tasks.
-			 */
 			linted_io_write_format(
-			    STDERR_FILENO, NULL,
-			    "%s: can't clone unprivileged process: %s\n",
+			    STDERR_FILENO, NULL, "%s: can't fork process: %s\n",
 			    process_name, linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (0 == child) {
-			/* Reset the dumpable status to dumpable
-			 * unless some paranoid person wanted to run
-			 * this program as not dumpable.
-			 */
-			errnum = set_dumpable(dumpable);
+			errnum = set_death_sig(SIGKILL);
 			if (errnum != 0) {
 				errno = errnum;
-				perror("set_dumpable");
+				perror("set_death_sig");
 				return EXIT_FAILURE;
 			}
 
-			return linted_init_monitor();
+			linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO,
+			                        STDERR_FILENO};
+			for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles);
+			     ++ii) {
+				linted_ko ko = stdfiles[ii];
+
+				int flags = fcntl(ko, F_GETFD);
+				if (-1 == flags) {
+					perror("fcntl");
+					return EXIT_FAILURE;
+				}
+
+				if (-1 == fcntl(ko, F_SETFD,
+				                (long)flags & !FD_CLOEXEC)) {
+					perror("fcntl");
+					return EXIT_FAILURE;
+				}
+			}
+
+			execve(monitor, (char *const *)(char const *const[]){
+			                    monitor, NULL},
+			       environ);
+			return EXIT_FAILURE;
 		}
 
-		/* All init should do is reap processes and restart
-		 * the monitor.
-		 */
-
-		/* Reap all tasks until our monitor dies */
 		siginfo_t info;
 		do {
+
 			do {
 				errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
 				             ? errno
@@ -136,32 +116,20 @@ unsigned char linted_init_init(void)
 			if (errnum != 0) {
 				assert(errnum != EINVAL);
 				assert(errnum != ECHILD);
-				assert(0);
+				assert(false);
 			}
 		} while (info.si_pid != child);
+
+		/**
+		 * @todo log errors
+		 */
 
 		if (CLD_EXITED == info.si_code &&
 		    EXIT_SUCCESS == info.si_status)
 			break;
-
-		/**
-		 * @TODO Report failure on improper exit and log it
-		 */
 	}
 
 	return EXIT_SUCCESS;
-}
-
-static linted_error set_process_name(char const *name)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-	return 0;
 }
 
 static linted_error set_death_sig(int signum)
@@ -178,29 +146,23 @@ static linted_error set_death_sig(int signum)
 	return 0;
 }
 
-static linted_error set_dumpable(bool v)
+static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
 
-	if (-1 == prctl(PR_SET_DUMPABLE, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-	return 0;
-}
+	unsigned long set_child_subreaper;
 
-static linted_error get_dumpable(bool *v)
-{
-	linted_error errnum;
+#ifdef PR_SET_CHILD_SUBREAPER
+	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
+#else
+	set_child_subreaper = 36UL;
+#endif
 
-	int result = prctl(PR_GET_DUMPABLE, 0UL, 0UL, 0UL, 0UL);
-	if (-1 == result) {
+	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
 
-	*v = result;
 	return 0;
 }

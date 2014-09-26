@@ -17,8 +17,6 @@
 
 #include "config.h"
 
-#include "monitor.h"
-
 #include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/conf.h"
@@ -28,6 +26,7 @@
 #include "linted/mem.h"
 #include "linted/mq.h"
 #include "linted/spawn.h"
+#include "linted/start.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -139,15 +138,6 @@ struct pair
 	unsigned long options;
 };
 
-static char const process_name[] = "monitor";
-
-static void halt_and_exit(void);
-
-static linted_error set_process_name(char const *name);
-static linted_error set_death_sig(int signum);
-static linted_error set_child_subreaper(bool value);
-static linted_error set_dumpable(bool v);
-
 static linted_error confs_from_path(char const *unit_path,
                                     struct linted_conf ***unitsp,
                                     size_t *sizep);
@@ -196,7 +186,13 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-unsigned char linted_init_monitor(void)
+struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME "-monitor",
+    .kos_size = 0U,
+    .kos = NULL};
+
+unsigned char linted_start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error errnum;
 
@@ -213,7 +209,7 @@ unsigned char linted_init_monitor(void)
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_CHROOT is a required environment variable\n",
 		    process_name);
-		halt_and_exit();
+		return EXIT_FAILURE;
 	}
 
 	if (NULL == unit_path) {
@@ -221,7 +217,7 @@ unsigned char linted_init_monitor(void)
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
 		    process_name);
-		halt_and_exit();
+		return EXIT_FAILURE;
 	}
 
 	linted_ko cwd;
@@ -241,36 +237,6 @@ unsigned char linted_init_monitor(void)
 
 	if (-1 == chdir("/")) {
 		perror("chdir");
-		return EXIT_FAILURE;
-	}
-
-	errnum = set_process_name(process_name);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_process_name");
-		return EXIT_FAILURE;
-	}
-
-	errnum = set_death_sig(SIGKILL);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_death_sig");
-		return EXIT_FAILURE;
-	}
-
-	errnum = set_child_subreaper(true);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_child_subreaper");
-		return EXIT_FAILURE;
-	}
-
-	/* Protect this process and it's children from ptracing each
-	 * other */
-	errnum = set_dumpable(false);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_dumpable");
 		return EXIT_FAILURE;
 	}
 
@@ -351,7 +317,9 @@ unsigned char linted_init_monitor(void)
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	units_activate(units, confs, cwd, chrootdir);
+	errnum = units_activate(units, confs, cwd, chrootdir);
+	if (errnum != 0)
+		goto kill_procs;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
 	                          -1, WEXITED);
@@ -375,13 +343,25 @@ unsigned char linted_init_monitor(void)
 	} while (!waiter_task.time_to_exit);
 
 kill_procs:
-	if (-1 == kill(-1, SIGKILL)) {
-		linted_error kill_errnum = errno;
-		LINTED_ASSUME(kill_errnum != 0);
-		if (kill_errnum != ESRCH) {
-			assert(kill_errnum != EINVAL);
-			assert(kill_errnum != EPERM);
-			assert(false);
+	for (size_t ii = 0U; ii < units->size; ++ii) {
+		union unit *unit = &units->list[ii];
+
+		if (unit->common.type != UNIT_TYPE_SERVICE)
+			continue;
+
+		struct unit_service *service = &unit->service;
+
+		if (service->pid <= 1)
+			continue;
+
+		if (-1 == kill(service->pid, SIGKILL)) {
+			linted_error kill_errnum = errno;
+			LINTED_ASSUME(kill_errnum != 0);
+			if (kill_errnum != ESRCH) {
+				assert(kill_errnum != EINVAL);
+				assert(kill_errnum != EPERM);
+				assert(false);
+			}
 		}
 	}
 
@@ -458,77 +438,6 @@ exit_monitor:
 	}
 
 	return EXIT_SUCCESS;
-}
-
-static void halt_and_exit(void)
-{
-	volatile unsigned char dummy;
-
-	reboot(RB_POWER_OFF);
-
-	/* The volatile variable is technically needed by the C
-	 * standard although not in practise.
-	 */
-	for (;;)
-		dummy = 0U;
-}
-
-static linted_error set_process_name(char const *name)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-	return 0;
-}
-
-static linted_error set_death_sig(int signum)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-static linted_error set_child_subreaper(bool v)
-{
-	linted_error errnum;
-
-	unsigned long set_child_subreaper;
-
-#ifdef PR_SET_CHILD_SUBREAPER
-	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
-#else
-	set_child_subreaper = 36UL;
-#endif
-
-	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error set_dumpable(bool v)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_DUMPABLE, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-	return 0;
 }
 
 static linted_error confs_from_path(char const *unit_path,

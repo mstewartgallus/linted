@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/init
+pkglibexec_PROGRAMS+=%D%/monitor
 
-%C%_init_SOURCES=%D%/init.c
-%C%_init_LDADD=\
+%C%_monitor_SOURCES=%D%/monitor.c
+%C%_monitor_LDADD=\
   src/start/libstart.la\
   \
   src/conf/libconf.la\
