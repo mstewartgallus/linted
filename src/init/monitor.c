@@ -141,6 +141,8 @@ struct pair
 
 static char const process_name[] = "monitor";
 
+static void halt_and_exit(void);
+
 static linted_error set_process_name(char const *name);
 static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
@@ -198,6 +200,11 @@ unsigned char linted_init_monitor(void)
 {
 	linted_error errnum;
 
+	/**
+	 * @TODO Make the monitor not rely upon being basically PID 1
+	 * and recover from being restarted suddenly.
+	 */
+
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
 
@@ -206,7 +213,7 @@ unsigned char linted_init_monitor(void)
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_CHROOT is a required environment variable\n",
 		    process_name);
-		return EXIT_FAILURE;
+		halt_and_exit();
 	}
 
 	if (NULL == unit_path) {
@@ -214,7 +221,7 @@ unsigned char linted_init_monitor(void)
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
 		    process_name);
-		return EXIT_FAILURE;
+		halt_and_exit();
 	}
 
 	linted_ko cwd;
@@ -341,9 +348,10 @@ unsigned char linted_init_monitor(void)
 	    pool,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
-	errnum = units_activate(units, confs, cwd, chrootdir);
-	if (errnum != 0)
-		goto destroy_units;
+	/**
+	 * @todo Warn about unactivated units.
+	 */
+	units_activate(units, confs, cwd, chrootdir);
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
 	                          -1, WEXITED);
@@ -363,10 +371,10 @@ unsigned char linted_init_monitor(void)
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto destroy_conn_pool;
+			goto kill_procs;
 	} while (!waiter_task.time_to_exit);
 
-destroy_units:
+kill_procs:
 	if (-1 == kill(-1, SIGKILL)) {
 		linted_error kill_errnum = errno;
 		LINTED_ASSUME(kill_errnum != 0);
@@ -450,6 +458,19 @@ exit_monitor:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static void halt_and_exit(void)
+{
+	volatile unsigned char dummy;
+
+	reboot(RB_POWER_OFF);
+
+	/* The volatile variable is technically needed by the C
+	 * standard although not in practise.
+	 */
+	for (;;)
+		dummy = 0U;
 }
 
 static linted_error set_process_name(char const *name)
@@ -1467,10 +1488,14 @@ static linted_error dispatch(struct linted_asynch_task *task)
 
 static linted_error on_process_wait(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error errnum = 0;
 
-	if ((errnum = task->errnum) != 0)
-		return errnum;
+	if (task->errnum != 0)
+		return 0;
+
+	/**
+	 * @todo Warn on bad process wait.
+	 */
 
 	struct wait_service_task *wait_service_task =
 	    LINTED_DOWNCAST(struct wait_service_task, task);
@@ -1501,16 +1526,11 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
 		}
-		goto process_exited;
+		break;
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
-
-	return 0;
-
-process_exited:
-	wait_service_task->time_to_exit = true;
 
 	return 0;
 }
@@ -1744,7 +1764,7 @@ static linted_error dispatch_drainers(struct linted_asynch_task *task)
 
 static linted_error drain_on_process_wait(struct linted_asynch_task *task)
 {
-	return task->errnum;
+	return 0;
 }
 
 static linted_error drain_on_accepted_conn(struct linted_asynch_task *task)

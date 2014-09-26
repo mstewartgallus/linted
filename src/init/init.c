@@ -84,48 +84,72 @@ unsigned char linted_init_init(void)
 		return EXIT_FAILURE;
 	}
 
-	/* We need to fork so that we can use signals as init can't be
-	 * signalled. */
-	pid_t child = fork();
-	if (-1 == child) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: can't clone unprivileged process: %s\n", process_name,
-		    linted_error_string(errno));
-		return EXIT_FAILURE;
-	}
+	for (;;) {
+		/* Init should remain super simple. */
 
-	if (0 == child) {
-		/* Reset the dumpable status to dumpable unless some
-		 * paranoid person wanted to run this program as not
-		 * dumpable.
+		/* Fork a priviliged, monitor process to do the real
+		 * work.
+		 *
+		 * Unfortunately, we can't execve a new process for
+		 * monitor because that removes special capabilities
+		 * but we still try to remain modular.
 		 */
-		errnum = set_dumpable(dumpable);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_dumpable");
+		pid_t child = fork();
+		if (-1 == child) {
+			/* TODO: Possibly attempt to free up memory
+			 * and kill tasks.
+			 */
+			linted_io_write_format(
+			    STDERR_FILENO, NULL,
+			    "%s: can't clone unprivileged process: %s\n",
+			    process_name, linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
-		return linted_init_monitor();
+		if (0 == child) {
+			/* Reset the dumpable status to dumpable
+			 * unless some paranoid person wanted to run
+			 * this program as not dumpable.
+			 */
+			errnum = set_dumpable(dumpable);
+			if (errnum != 0) {
+				errno = errnum;
+				perror("set_dumpable");
+				return EXIT_FAILURE;
+			}
+
+			return linted_init_monitor();
+		}
+
+		/* All init should do is reap processes and restart
+		 * the monitor.
+		 */
+
+		/* Reap all tasks until our monitor dies */
+		siginfo_t info;
+		do {
+			do {
+				errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
+				             ? errno
+				             : 0;
+			} while (EINTR == errnum);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(errnum != ECHILD);
+				assert(0);
+			}
+		} while (info.si_pid != child);
+
+		if (CLD_EXITED == info.si_code &&
+		    EXIT_SUCCESS == info.si_status)
+			break;
+
+		/**
+		 * @TODO Report failure on improper exit and log it
+		 */
 	}
 
-	/* Drop unneeded resources. */
-	if (-1 == chdir("/")) {
-		perror("chdir");
-		return EXIT_FAILURE;
-	}
-
-	siginfo_t info;
-	do {
-		errnum = -1 == waitid(P_PID, child, &info, WEXITED) ? errno : 0;
-	} while (EINTR == errnum);
-	if (errnum != 0) {
-		assert(errnum != EINVAL);
-		assert(errnum != ECHILD);
-		assert(0);
-	}
-	return info.si_status;
+	return EXIT_SUCCESS;
 }
 
 static linted_error set_process_name(char const *name)
