@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
+#include <sys/stat.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
@@ -269,10 +270,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	/**
-	 * @todo Create process exclusive runtime directory. Not sure
-	 *       how to properly do this as this would mean creating
-	 *       and opening a directory atomically and rejecting
-	 *       opening other process's directories.
+	 * @todo Move process exclusive runtime directory creation to
+	 *       init so that when the monitor is reinvoked it uses
+	 *       the same runtime directory.
 	 */
 	linted_ko package_runtime_dir;
 	{
@@ -290,6 +290,59 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	linted_ko_close(runtime_dir);
+
+	linted_ko process_runtime_dir;
+	{
+		char piddir[] = "XXXXXXXXXXXXXXX";
+		if (-1 == sprintf(piddir, "%i", getpid())) {
+			perror("sprintf");
+			return EXIT_FAILURE;
+		}
+
+		linted_ko xx;
+		errnum = linted_dir_create(&xx, package_runtime_dir, piddir, 0,
+		                           S_IRWXU);
+		if (errnum != 0) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
+			    process_name, runtime_dir_name, PACKAGE_TARNAME,
+			    linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		process_runtime_dir = xx;
+	}
+
+	linted_ko_close(package_runtime_dir);
+
+	{
+		struct stat buf;
+		if (-1 == fstat(process_runtime_dir, &buf)) {
+			perror("fstat");
+			return EXIT_FAILURE;
+		}
+
+		uid_t uid = getuid();
+
+		if ((uid_t)-1 == uid) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: unmapped uid\n",
+			                       process_name);
+			return EXIT_FAILURE;
+		}
+
+		/*
+		 * Just a note, one might not want to be too cocky
+		 * with these directories because our directories are
+		 * still attackable by other processes of the same UID
+		 * but different groups and cabalities..
+		 */
+		if (uid != buf.st_uid) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: attacker owned directory\n",
+			                       process_name);
+			return EXIT_FAILURE;
+		}
+	}
 
 	struct linted_asynch_pool *pool;
 	{
@@ -369,7 +422,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 * @todo Warn about unactivated units.
 	 */
 	errnum =
-	    units_activate(units, confs, cwd, chrootdir, package_runtime_dir);
+	    units_activate(units, confs, cwd, chrootdir, process_runtime_dir);
 	if (errnum != 0)
 		goto kill_procs;
 
