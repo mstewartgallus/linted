@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
@@ -29,11 +29,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
-#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <linux/sched.h>
+extern char **environ;
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
