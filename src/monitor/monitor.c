@@ -20,6 +20,7 @@
 #include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/conf.h"
+#include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -148,7 +149,8 @@ static linted_error units_create(struct units **unitp,
 static void units_destroy(struct units *units);
 static linted_error units_activate(struct units *units,
                                    struct linted_conf **confs, linted_ko cwd,
-                                   char const *chrootdir);
+                                   char const *chrootdir,
+                                   linted_ko package_runtime_dir);
 static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
 
@@ -203,6 +205,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
+	char const *runtime_dir_name = getenv("XDG_RUNTIME_DIR");
 
 	if (NULL == chrootdir) {
 		linted_io_write_format(
@@ -217,6 +220,16 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
 		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	/**
+	 * @todo Use fallback runtime directory
+	 */
+	if (NULL == runtime_dir_name) {
+		linted_io_write_format(STDERR_FILENO, NULL,
+		                       "%s: need XDG_RUNTIME_DIR\n",
+		                       process_name);
 		return EXIT_FAILURE;
 	}
 
@@ -239,6 +252,44 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		perror("chdir");
 		return EXIT_FAILURE;
 	}
+
+	linted_ko runtime_dir;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, cwd, runtime_dir_name,
+		                        LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: can't open %s: %s\n",
+			                       process_name, runtime_dir_name,
+			                       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		runtime_dir = xx;
+	}
+
+	/**
+	 * @todo Create process exclusive runtime directory. Not sure
+	 *       how to properly do this as this would mean creating
+	 *       and opening a directory atomically and rejecting
+	 *       opening other process's directories.
+	 */
+	linted_ko package_runtime_dir;
+	{
+		linted_ko xx;
+		errnum = linted_dir_create(&xx, runtime_dir, PACKAGE_TARNAME, 0,
+		                           S_IRWXU);
+		if (errnum != 0) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
+			    process_name, runtime_dir_name, PACKAGE_TARNAME,
+			    linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		package_runtime_dir = xx;
+	}
+
+	linted_ko_close(runtime_dir);
 
 	struct linted_asynch_pool *pool;
 	{
@@ -317,7 +368,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = units_activate(units, confs, cwd, chrootdir);
+	errnum =
+	    units_activate(units, confs, cwd, chrootdir, package_runtime_dir);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -717,7 +769,8 @@ static void units_destroy(struct units *units)
 
 static linted_error units_activate(struct units *units,
                                    struct linted_conf **confs, linted_ko cwd,
-                                   char const *chrootdir)
+                                   char const *chrootdir,
+                                   linted_ko package_runtime_dir)
 {
 	linted_error errnum;
 
@@ -747,6 +800,17 @@ static linted_error units_activate(struct units *units,
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
+
+		{
+			linted_ko xx;
+			errnum =
+			    linted_dir_create(&xx, package_runtime_dir,
+			                      unit->common.name, 0, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+
+			linted_ko_close(xx);
+		}
 
 		struct unit_service *unit_service = &unit->service;
 
