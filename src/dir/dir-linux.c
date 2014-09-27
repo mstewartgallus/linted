@@ -82,6 +82,12 @@ make_directory:
 	if (-1 == mkdirat(realdir, pathnamebase, mode)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
+
+		/* We can't simply turn this test into an error so we
+		 * can add a LINTED_DIR_EXCL flag because the
+		 * directory could be removed by a privileged tmp
+		 * cleaner style program and then created by an enemy.
+		 */
 		if (EEXIST == errnum)
 			goto open_directory;
 		goto close_realdir;
