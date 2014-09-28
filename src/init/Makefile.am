@@ -20,7 +20,6 @@ pkglibexec_PROGRAMS+=%D%/init
 %C%_init_LDADD=\
   src/start/libstart.la\
   \
-  src/dir/libdir.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/spawn/libspawn.la

@@ -149,8 +149,7 @@ static linted_error units_create(struct units **unitp,
 static void units_destroy(struct units *units);
 static linted_error units_activate(struct units *units,
                                    struct linted_conf **confs, linted_ko cwd,
-                                   char const *chrootdir,
-                                   linted_ko package_runtime_dir);
+                                   char const *chrootdir);
 static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
 
@@ -188,19 +187,15 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos};
+    .kos_size = 0U,
+    .kos = NULL};
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
-
-	linted_ko process_runtime_dir = kos[0U];
 
 	/**
 	 * @TODO Make the monitor not rely upon being basically PID 1
@@ -324,9 +319,67 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 * @todo Warn about unactivated units.
 	 */
 	errnum =
-	    units_activate(units, confs, cwd, chrootdir, process_runtime_dir);
+	    units_activate(units, confs, cwd, chrootdir);
 	if (errnum != 0)
 		goto kill_procs;
+
+	{
+		linted_dir init_children;
+		{
+			pid_t ppid = getppid();
+
+			char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+			sprintf(path, "/proc/%i/task/%i/children", ppid, ppid);
+
+			linted_dir xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+			if (errnum != 0)
+				goto kill_procs;
+			init_children = xx;
+		}
+
+		FILE *init_children_file = fdopen(init_children, "r");
+		if (NULL == init_children_file) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			linted_ko_close(init_children);
+
+			goto kill_procs;
+		}
+
+		char *buf = NULL;
+		size_t buf_size = 0U;
+
+		for (;;) {
+			{
+				char *xx = buf;
+				size_t yy = buf_size;
+
+				errno = 0;
+				ssize_t zz = getdelim(&xx, &yy, ' ', init_children_file);
+				if (-1 == zz) {
+					errnum = errno;
+					if (0 == errnum)
+						break;
+
+					goto free_buf;
+				}
+				buf = xx;
+				buf_size = yy;
+			}
+
+			fprintf(stderr, "pid: %i\n", (pid_t)strtol(buf, NULL, 10));
+		}
+
+	free_buf:
+		linted_mem_free(buf);
+
+		fclose(init_children_file);
+
+		if (errnum != 0)
+			goto kill_procs;
+	}
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
 	                          -1, WEXITED);
@@ -724,8 +777,7 @@ static void units_destroy(struct units *units)
 
 static linted_error units_activate(struct units *units,
                                    struct linted_conf **confs, linted_ko cwd,
-                                   char const *chrootdir,
-                                   linted_ko package_runtime_dir)
+                                   char const *chrootdir)
 {
 	linted_error errnum;
 
@@ -755,17 +807,6 @@ static linted_error units_activate(struct units *units,
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
-
-		{
-			linted_ko xx;
-			errnum =
-			    linted_dir_create(&xx, package_runtime_dir,
-			                      unit->common.name, 0, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
-
-			linted_ko_close(xx);
-		}
 
 		struct unit_service *unit_service = &unit->service;
 
