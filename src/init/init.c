@@ -41,7 +41,6 @@ struct linted_start_config const linted_start_config = {
     .kos = NULL};
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor);
-static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
 
 unsigned char linted_start(char const *process_name, size_t argc,
@@ -71,8 +70,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			errnum = spawn_monitor(&xx, monitor);
 			if (errnum != 0) {
 				linted_io_write_format(
-					STDERR_FILENO, NULL, "%s: can't fork process: %s\n",
-					process_name, linted_error_string(errnum));
+				    STDERR_FILENO, NULL,
+				    "%s: can't fork process: %s\n",
+				    process_name, linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 			child = xx;
@@ -133,18 +133,19 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor)
 	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
-		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko, ko);
+		errnum =
+		    linted_spawn_file_actions_adddup2(&file_actions, ko, ko);
 		if (errnum != 0)
 			goto destroy_attr;
 	}
 
-
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions, NULL,
-			             (char const *const[]){
-			                      monitor, NULL}, (char const*const*)environ);
+		errnum =
+		    linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions,
+		                 NULL, (char const *const[]){monitor, NULL},
+		                 (char const *const *)environ);
 		if (0 == errnum)
 			child = xx;
 	}

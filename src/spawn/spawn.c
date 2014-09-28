@@ -95,18 +95,19 @@ struct linted_spawn_attr
 };
 
 static void default_signals(linted_ko writer);
-
+static void set_id_maps(linted_ko writer, uid_t mapped_uid, uid_t uid,
+                        gid_t mapped_gid, gid_t gid);
 static void chroot_process(linted_ko writer, char const *chrootdir,
                            struct mount_args *mount_args,
                            size_t mount_args_size);
-
 static void drop_privileges(linted_ko writer, cap_t caps);
-
-static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static void pid_to_str(char *buf, pid_t pid);
 
+static linted_error set_no_new_privs(bool b);
 static linted_error set_death_sig(int signum);
+
+static void exit_with_error(linted_ko writer, linted_error errnum);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -496,9 +497,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			LINTED_ASSUME(errnum != 0);
 		}
 
-		if (0 == child) {
+		if (0 == child)
 			default_signals(writer);
-		}
 
 		linted_error mask_errnum =
 		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
@@ -563,62 +563,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(reader);
 
-	if ((clone_flags & CLONE_NEWUSER) != 0) {
-		/**
-		 * @todo writer to the uid and gid maps in an
-		 * async-signal-safe way.
-		 */
-		/* Note that writing to uid_map and gid_map will fail
-		 * if the binary is not dumpable.  DON'T set the
-		 * process dumpable and fail if the process is
-		 * nondumpable as presumably the invoker of the
-		 * process had good reasons to have the process
-		 * nondumpable.
-		 */
-		{
-			linted_ko file;
-			{
-				linted_ko xx;
-				errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-				                        "/proc/self/uid_map",
-				                        LINTED_KO_WRONLY);
-				if (errnum != 0)
-					exit_with_error(writer, errnum);
-				file = xx;
-			}
-
-			errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-			                                mapped_uid, uid);
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-
-			errnum = linted_ko_close(file);
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-		}
-
-		{
-			linted_ko file;
-			{
-				linted_ko xx;
-				errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-				                        "/proc/self/gid_map",
-				                        LINTED_KO_WRONLY);
-				if (errnum != 0)
-					exit_with_error(writer, errnum);
-				file = xx;
-			}
-
-			errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-			                                mapped_gid, gid);
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-
-			errnum = linted_ko_close(file);
-			if (errnum != 0)
-				exit_with_error(writer, errnum);
-		}
-	}
+	if ((clone_flags & CLONE_NEWUSER) != 0)
+		set_id_maps(writer, mapped_uid, uid, mapped_gid, gid);
 
 	errnum = set_death_sig(deathsig);
 	if (errnum != 0)
@@ -688,7 +634,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 				if (-1 == dup2(oldfd, newfd))
 					exit_with_error(writer, errno);
 
-				if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
+				if (-1 ==
+				    fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
 					exit_with_error(writer, errno);
 				break;
 			}
@@ -703,7 +650,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		drop_privileges(writer, caps);
 
 	if (no_new_privs)
-		if (-1 == prctl(PR_SET_NO_NEW_PRIVS, 1UL, 0UL, 0UL, 0UL))
+		if (-1 == set_no_new_privs(true))
 			exit_with_error(writer, errno);
 
 	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
@@ -815,6 +762,66 @@ static void default_signals(linted_ko writer)
 			LINTED_ASSUME(errnum != 0);
 			exit_with_error(writer, errnum);
 		}
+	}
+}
+
+static void set_id_maps(linted_ko writer, uid_t mapped_uid, uid_t uid,
+                        gid_t mapped_gid, gid_t gid)
+{
+	linted_error errnum;
+
+	/**
+	 * @todo write to the uid and gid maps in an async-signal-safe
+	 *       way.
+	 */
+	/* Note that writing to uid_map and gid_map will fail if the
+	 * binary is not dumpable.  DON'T set the process dumpable and
+	 * fail if the process is nondumpable as presumably the
+	 * invoker of the process had good reasons to have the process
+	 * nondumpable.
+	 */
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/uid_map",
+			                        LINTED_KO_WRONLY);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+			file = xx;
+		}
+
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_uid, uid);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+	}
+
+	{
+		linted_ko file;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        "/proc/self/gid_map",
+			                        LINTED_KO_WRONLY);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+			file = xx;
+		}
+
+		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+		                                mapped_gid, gid);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
+
+		errnum = linted_ko_close(file);
+		if (errnum != 0)
+			exit_with_error(writer, errnum);
 	}
 }
 
@@ -968,6 +975,19 @@ static linted_error set_death_sig(int signum)
 
 	if (-1 ==
 	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_no_new_privs(bool b)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
