@@ -396,6 +396,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
 
+	if (!((clone_flags & CLONE_NEWUSER) != 0) &
+	    (chrootdir != NULL || mount_args != NULL))
+		return EINVAL;
+
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
 		return EINVAL;
 
@@ -475,8 +479,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto close_pipes;
 		}
 
-		child = syscall(__NR_clone,
-		                SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID, NULL);
+		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
 		if (-1 == child) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
@@ -603,9 +606,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(writer, errnum);
 	}
 
-	if (-1 == unshare(clone_flags))
-		exit_with_error(writer, errno);
-
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
 		int greatest = -1;
@@ -710,33 +710,43 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		filename = relative_filename;
 	}
 
-	pid_t grandchild = fork();
-	if (-1 == grandchild)
-		exit_with_error(writer, errno);
+	if ((clone_flags & CLONE_NEWPID) != 0) {
+		pid_t grandchild = fork();
+		if (-1 == grandchild)
+			exit_with_error(writer, errno);
 
-	if (0 == grandchild) {
-		execve(filename, (char *const *)argv, (char *const *)envp);
-		exit_with_error(writer, errno);
+		if (0 == grandchild) {
+			execve(filename, (char *const *)argv,
+			       (char *const *)envp);
+			exit_with_error(writer, errno);
+		}
+
+		errnum = linted_ko_close(writer);
+		if (errnum != 0)
+			_Exit(errnum);
+
+		/**
+		 * @todo execve a dedicated waiter process
+		 */
+		siginfo_t info;
+		do {
+			errnum = -1 == waitid(P_PID, grandchild, &info, WEXITED)
+			             ? errno
+			             : 0;
+		} while (EINTR == errnum);
+		if (errnum != 0) {
+			assert(errnum != EINVAL);
+			assert(errnum != ECHILD);
+			assert(false);
+		}
+		_Exit(info.si_status);
 	}
 
-	errnum = linted_ko_close(writer);
-	if (errnum != 0)
-		_Exit(errnum);
+	execve(filename, (char *const *)argv, (char *const *)envp);
+	exit_with_error(writer, errno);
 
-	/**
-	 * @todo execve a dedicated waiter process
-	 */
-	siginfo_t info;
-	do {
-		errnum =
-		    -1 == waitid(P_PID, grandchild, &info, WEXITED) ? errno : 0;
-	} while (EINTR == errnum);
-	if (errnum != 0) {
-		assert(errnum != EINVAL);
-		assert(errnum != ECHILD);
-		assert(false);
-	}
-	_Exit(info.si_status);
+	/* Impossible */
+	return 0;
 }
 
 static void default_signals(linted_ko writer)
