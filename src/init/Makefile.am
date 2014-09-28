@@ -21,4 +21,5 @@ pkglibexec_PROGRAMS+=%D%/init
   src/start/libstart.la\
   \
   src/error/liberror.la\
-  src/io/libio.la
+  src/io/libio.la\
+  src/spawn/libspawn.la

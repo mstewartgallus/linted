@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/io.h"
+#include "linted/spawn.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -39,6 +40,7 @@ struct linted_start_config const linted_start_config = {
     .kos_size = 0U,
     .kos = NULL};
 
+static linted_error spawn_monitor(pid_t *childp, char const *monitor);
 static linted_error set_death_sig(int signum);
 static linted_error set_child_subreaper(bool value);
 
@@ -63,45 +65,17 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		pid_t child = fork();
-		if (-1 == child) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL, "%s: can't fork process: %s\n",
-			    process_name, linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-
-		if (0 == child) {
-			errnum = set_death_sig(SIGKILL);
+		pid_t child;
+		{
+			pid_t xx;
+			errnum = spawn_monitor(&xx, monitor);
 			if (errnum != 0) {
-				errno = errnum;
-				perror("set_death_sig");
+				linted_io_write_format(
+					STDERR_FILENO, NULL, "%s: can't fork process: %s\n",
+					process_name, linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
-
-			linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO,
-			                        STDERR_FILENO};
-			for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles);
-			     ++ii) {
-				linted_ko ko = stdfiles[ii];
-
-				int flags = fcntl(ko, F_GETFD);
-				if (-1 == flags) {
-					perror("fcntl");
-					return EXIT_FAILURE;
-				}
-
-				if (-1 == fcntl(ko, F_SETFD,
-				                (long)flags & !FD_CLOEXEC)) {
-					perror("fcntl");
-					return EXIT_FAILURE;
-				}
-			}
-
-			execve(monitor, (char *const *)(char const *const[]){
-			                    monitor, NULL},
-			       environ);
-			return EXIT_FAILURE;
+			child = xx;
 		}
 
 		siginfo_t info;
@@ -131,18 +105,60 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	return EXIT_SUCCESS;
 }
 
-static linted_error set_death_sig(int signum)
+static linted_error spawn_monitor(pid_t *childp, char const *monitor)
 {
-	linted_error errnum;
+	linted_error errnum = 0;
 
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+	struct linted_spawn_file_actions *file_actions;
+	struct linted_spawn_attr *attr;
+
+	{
+		struct linted_spawn_file_actions *xx;
+		errnum = linted_spawn_file_actions_init(&xx);
+		if (errnum != 0)
+			return errnum;
+		file_actions = xx;
 	}
 
-	return 0;
+	{
+		struct linted_spawn_attr *xx;
+		errnum = linted_spawn_attr_init(&xx);
+		if (errnum != 0)
+			goto destroy_file_actions;
+		attr = xx;
+	}
+
+	linted_spawn_attr_setdeathsig(attr, SIGKILL);
+
+	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
+		linted_ko ko = stdfiles[ii];
+		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko, ko);
+		if (errnum != 0)
+			goto destroy_attr;
+	}
+
+
+	pid_t child;
+	{
+		pid_t xx;
+		errnum = linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions, NULL,
+			             (char const *const[]){
+			                      monitor, NULL}, (char const*const*)environ);
+		if (0 == errnum)
+			child = xx;
+	}
+
+destroy_attr:
+	linted_spawn_attr_destroy(attr);
+
+destroy_file_actions:
+	linted_spawn_file_actions_destroy(file_actions);
+
+	if (0 == errnum)
+		*childp = child;
+
+	return errnum;
 }
 
 static linted_error set_child_subreaper(bool v)

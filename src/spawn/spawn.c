@@ -89,6 +89,7 @@ struct linted_spawn_attr
 	size_t mount_args_size;
 	struct mount_args *mount_args;
 	int clone_flags;
+	int deathsig;
 	bool drop_caps : 1U;
 	bool no_new_privs : 1U;
 };
@@ -105,6 +106,8 @@ static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static void pid_to_str(char *buf, pid_t pid);
 
+static linted_error set_death_sig(int signum);
+
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
 	linted_error errnum;
@@ -119,6 +122,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
+	attr->deathsig = 0;
 	attr->chrootdir = NULL;
 	attr->chdir_path = NULL;
 	attr->mount_args_size = 0U;
@@ -142,6 +146,11 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
+{
+	attr->deathsig = signo;
 }
 
 void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b)
@@ -373,6 +382,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		return EBADF;
 
 	int clone_flags = 0;
+	int deathsig = 0;
 	char const *chrootdir = NULL;
 	char const *chdir_path = NULL;
 	size_t mount_args_size = 0U;
@@ -382,6 +392,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
+		deathsig = attr->deathsig;
 		chrootdir = attr->chrootdir;
 		chdir_path = attr->chdir_path;
 		mount_args_size = attr->mount_args_size;
@@ -552,59 +563,66 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(reader);
 
-	/**
-	 * @todo writer to the uid and gid maps in an
-	 * async-signal-safe way.
-	 */
-	/* Note that writing to uid_map and gid_map will fail if the
-	 * binary is not dumpable.  DON'T set the process dumpable and
-	 * fail if the process is nondumpable as presumably the
-	 * invoker of the process had good reasons to have the process
-	 * nondumpable.
-	 */
-	{
-		linted_ko file;
+	if ((clone_flags & CLONE_NEWUSER) != 0) {
+		/**
+		 * @todo writer to the uid and gid maps in an
+		 * async-signal-safe way.
+		 */
+		/* Note that writing to uid_map and gid_map will fail
+		 * if the binary is not dumpable.  DON'T set the
+		 * process dumpable and fail if the process is
+		 * nondumpable as presumably the invoker of the
+		 * process had good reasons to have the process
+		 * nondumpable.
+		 */
 		{
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-			                        "/proc/self/uid_map",
-			                        LINTED_KO_WRONLY);
+			linted_ko file;
+			{
+				linted_ko xx;
+				errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+				                        "/proc/self/uid_map",
+				                        LINTED_KO_WRONLY);
+				if (errnum != 0)
+					exit_with_error(writer, errnum);
+				file = xx;
+			}
+
+			errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+			                                mapped_uid, uid);
 			if (errnum != 0)
 				exit_with_error(writer, errnum);
-			file = xx;
-		}
 
-		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-		                                mapped_uid, uid);
-		if (errnum != 0)
-			exit_with_error(writer, errnum);
-
-		errnum = linted_ko_close(file);
-		if (errnum != 0)
-			exit_with_error(writer, errnum);
-	}
-
-	{
-		linted_ko file;
-		{
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-			                        "/proc/self/gid_map",
-			                        LINTED_KO_WRONLY);
+			errnum = linted_ko_close(file);
 			if (errnum != 0)
 				exit_with_error(writer, errnum);
-			file = xx;
 		}
 
-		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-		                                mapped_gid, gid);
-		if (errnum != 0)
-			exit_with_error(writer, errnum);
+		{
+			linted_ko file;
+			{
+				linted_ko xx;
+				errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+				                        "/proc/self/gid_map",
+				                        LINTED_KO_WRONLY);
+				if (errnum != 0)
+					exit_with_error(writer, errnum);
+				file = xx;
+			}
 
-		errnum = linted_ko_close(file);
-		if (errnum != 0)
-			exit_with_error(writer, errnum);
+			errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
+			                                mapped_gid, gid);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+
+			errnum = linted_ko_close(file);
+			if (errnum != 0)
+				exit_with_error(writer, errnum);
+		}
 	}
+
+	errnum = set_death_sig(deathsig);
+	if (errnum != 0)
+		exit_with_error(writer, errnum);
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
@@ -659,11 +677,21 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		for (size_t ii = 0U; ii < action_count; ++ii) {
 			union file_action const *action = &actions[ii];
 			switch (action->type) {
-			case FILE_ACTION_ADDDUP2:
-				if (-1 == dup2(action->adddup2.oldfildes,
-				               action->adddup2.newfildes))
+			case FILE_ACTION_ADDDUP2: {
+				linted_ko oldfd = action->adddup2.oldfildes;
+				linted_ko newfd = action->adddup2.newfildes;
+
+				int flags = fcntl(oldfd, F_GETFD);
+				if (-1 == flags)
+					exit_with_error(writer, errno);
+
+				if (-1 == dup2(oldfd, newfd))
+					exit_with_error(writer, errno);
+
+				if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
 					exit_with_error(writer, errno);
 				break;
+			}
 
 			default:
 				exit_with_error(writer, EINVAL);
@@ -932,4 +960,18 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+static linted_error set_death_sig(int signum)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }
