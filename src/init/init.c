@@ -155,8 +155,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = spawn_monitor(&xx, monitor,
-			                       process_runtime_dir);
+			errnum =
+			    spawn_monitor(&xx, monitor, process_runtime_dir);
 			if (errnum != 0) {
 				linted_io_write_format(
 				    STDERR_FILENO, NULL,
@@ -195,7 +195,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 }
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor,
-	linted_ko process_runtime_dir)
+                                  linted_ko process_runtime_dir)
 {
 	linted_error errnum = 0;
 

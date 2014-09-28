@@ -92,6 +92,7 @@ struct linted_spawn_attr
 	int deathsig;
 	bool drop_caps : 1U;
 	bool no_new_privs : 1U;
+	bool deparent : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -132,6 +133,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
 	attr->no_new_privs = false;
+	attr->deparent = false;
 
 	*attrp = attr;
 	return 0;
@@ -149,6 +151,11 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, _Bool b)
+{
+	attr->deparent = b;
 }
 
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
@@ -392,6 +399,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
 	bool no_new_privs = false;
+	bool deparent = false;
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
@@ -402,6 +410,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
 		no_new_privs = attr->no_new_privs;
+		deparent = attr->deparent;
 	}
 
 	gid_t gid = getgid();
@@ -469,14 +478,28 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp_copy = xx;
 	}
 
-	linted_ko reader;
-	linted_ko writer;
+	linted_ko err_reader;
+	linted_ko err_writer;
 	{
 		linted_ko xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
 			goto free_env;
-		reader = xx[0U];
-		writer = xx[1U];
+		err_reader = xx[0U];
+		err_writer = xx[1U];
+	}
+
+	linted_ko pid_reader;
+	linted_ko pid_writer;
+	bool pid_pipes_init = false;
+
+	if (deparent) {
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+			goto close_err_pipes;
+		pid_reader = xx[0U];
+		pid_writer = xx[1U];
+
+		pid_pipes_init = true;
 	}
 
 	{
@@ -490,17 +513,22 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0) {
-			goto close_pipes;
+			goto close_pid_pipes;
 		}
 
-		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+		if (deparent) {
+			child = fork();
+		} else {
+			child =
+			    syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+		}
 		if (-1 == child) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 		}
 
 		if (0 == child)
-			default_signals(writer);
+			default_signals(err_writer);
 
 		linted_error mask_errnum =
 		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
@@ -509,38 +537,60 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
-	close_pipes : {
-		linted_error close_errnum = linted_ko_close(writer);
+	close_pid_pipes:
+		if (pid_pipes_init) {
+			linted_error close_errnum = linted_ko_close(pid_writer);
+			if (0 == errnum)
+				errnum = close_errnum;
+		}
+
+	close_err_pipes : {
+		linted_error close_errnum = linted_ko_close(err_writer);
 		if (0 == errnum)
 			errnum = close_errnum;
 	}
 
 		if (errnum != 0)
-			goto close_reader;
+			goto close_err_reader;
 
-		linted_error spawn_error;
-		size_t bytes_read;
+		if (pid_pipes_init) {
+			size_t xx;
+			pid_t yy;
+			errnum =
+			    linted_io_read_all(pid_reader, &xx, &yy, sizeof yy);
+			if (errnum != 0)
+				goto close_err_reader;
+
+			/* If bytes_read is zero then an error occured */
+			if (xx == sizeof yy)
+				child = yy;
+		}
+
 		{
 			size_t xx;
 			linted_error yy;
-			errnum = linted_io_read_all(reader, &xx, &yy,
-			                            sizeof spawn_error);
+			errnum =
+			    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
 			if (errnum != 0)
-				goto close_reader;
-			bytes_read = xx;
-			spawn_error = yy;
+				goto close_err_reader;
+
+			/* If bytes_read is zero then a succesful exec
+			 * occured */
+			if (xx == sizeof yy)
+				errnum = yy;
 		}
 
-		/* If bytes_read is zero then a succesful exec
-		 * occured */
-		if (bytes_read == sizeof spawn_error)
-			errnum = spawn_error;
-
-	close_reader : {
-		linted_error close_errnum = linted_ko_close(reader);
+	close_err_reader : {
+		linted_error close_errnum = linted_ko_close(err_reader);
 		if (0 == errnum)
 			errnum = close_errnum;
 	}
+
+		if (pid_pipes_init) {
+			linted_error close_errnum = linted_ko_close(pid_reader);
+			if (0 == errnum)
+				errnum = close_errnum;
+		}
 
 	free_env:
 		linted_mem_free(envp_copy);
@@ -560,17 +610,30 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		return 0;
 	}
 
-	if (errnum != 0)
-		exit_with_error(writer, errnum);
+	linted_ko_close(err_reader);
 
-	linted_ko_close(reader);
+	if (deparent) {
+		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+		if (-1 == child)
+			exit_with_error(err_writer, errno);
+
+		if (child != 0) {
+			linted_io_write_all(pid_writer, NULL, &child,
+			                    sizeof child);
+			_Exit(0);
+		}
+		linted_ko_close(pid_writer);
+	}
+
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
 
 	if ((clone_flags & CLONE_NEWUSER) != 0)
-		set_id_maps(writer, mapped_uid, uid, mapped_gid, gid);
+		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
 
 	errnum = set_death_sig(deathsig);
 	if (errnum != 0)
-		exit_with_error(writer, errnum);
+		exit_with_error(err_writer, errnum);
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
@@ -595,29 +658,30 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			int copy =
 			    fcntl(dirfd, F_DUPFD_CLOEXEC, (long)greatest);
 			if (-1 == copy)
-				exit_with_error(writer, errno);
+				exit_with_error(err_writer, errno);
 
 			linted_ko_close(dirfd);
 
 			dirfd = copy;
 		}
 
-		int writer_copy =
-		    fcntl(writer, F_DUPFD_CLOEXEC, (long)greatest);
-		if (-1 == writer_copy)
-			exit_with_error(writer, errno);
+		int err_writer_copy =
+		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
+		if (-1 == err_writer_copy)
+			exit_with_error(err_writer, errno);
 
-		linted_ko_close(writer);
+		linted_ko_close(err_writer);
 
-		writer = writer_copy;
+		err_writer = err_writer_copy;
 	}
 
 	if (chrootdir != NULL)
-		chroot_process(writer, chrootdir, mount_args, mount_args_size);
+		chroot_process(err_writer, chrootdir, mount_args,
+		               mount_args_size);
 
 	if (chdir_path != NULL)
 		if (-1 == chdir(chdir_path))
-			exit_with_error(writer, errno);
+			exit_with_error(err_writer, errno);
 
 	if (file_actions != NULL) {
 		union file_action const *actions = file_actions->actions;
@@ -631,29 +695,29 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 				int flags = fcntl(oldfd, F_GETFD);
 				if (-1 == flags)
-					exit_with_error(writer, errno);
+					exit_with_error(err_writer, errno);
 
 				if (-1 == dup2(oldfd, newfd))
-					exit_with_error(writer, errno);
+					exit_with_error(err_writer, errno);
 
 				if (-1 ==
 				    fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
-					exit_with_error(writer, errno);
+					exit_with_error(err_writer, errno);
 				break;
 			}
 
 			default:
-				exit_with_error(writer, EINVAL);
+				exit_with_error(err_writer, EINVAL);
 			}
 		}
 	}
 
 	if (drop_caps)
-		drop_privileges(writer, caps);
+		drop_privileges(err_writer, caps);
 
 	if (no_new_privs)
 		if (-1 == set_no_new_privs(true))
-			exit_with_error(writer, errno);
+			exit_with_error(err_writer, errno);
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
@@ -694,15 +758,15 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if ((clone_flags & CLONE_NEWPID) != 0) {
 		pid_t grandchild = fork();
 		if (-1 == grandchild)
-			exit_with_error(writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (0 == grandchild) {
 			execve(filename, (char *const *)argv,
 			       (char *const *)envp);
-			exit_with_error(writer, errno);
+			exit_with_error(err_writer, errno);
 		}
 
-		errnum = linted_ko_close(writer);
+		errnum = linted_ko_close(err_writer);
 		if (errnum != 0)
 			_Exit(errnum);
 
@@ -724,7 +788,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	execve(filename, (char *const *)argv, (char *const *)envp);
-	exit_with_error(writer, errno);
+	exit_with_error(err_writer, errno);
 
 	/* Impossible */
 	return 0;
