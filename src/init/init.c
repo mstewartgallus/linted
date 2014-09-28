@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -30,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -40,7 +42,8 @@ struct linted_start_config const linted_start_config = {
     .kos_size = 0U,
     .kos = NULL};
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor);
+static linted_error spawn_monitor(pid_t *childp, char const *monitor,
+                                  linted_ko process_runtime_dir);
 static linted_error set_child_subreaper(bool value);
 
 unsigned char linted_start(char const *process_name, size_t argc,
@@ -49,12 +52,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	char const *monitor = getenv("LINTED_MONITOR");
-	if (NULL == monitor) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: need LINTED_MONITOR\n",
-		                       process_name);
-		return EXIT_FAILURE;
-	}
+	char const *runtime_dir_name = getenv("XDG_RUNTIME_DIR");
 
 	errnum = set_child_subreaper(true);
 	if (errnum != 0) {
@@ -63,11 +61,102 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
+	linted_ko runtime_dir;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, runtime_dir_name,
+		                        LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: can't open %s: %s\n",
+			                       process_name, runtime_dir_name,
+			                       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		runtime_dir = xx;
+	}
+
+	/**
+	 * @todo Move process exclusive runtime directory creation to
+	 *       init so that when the monitor is reinvoked it uses
+	 *       the same runtime directory.
+	 */
+	linted_ko package_runtime_dir;
+	{
+		linted_ko xx;
+		errnum = linted_dir_create(&xx, runtime_dir, PACKAGE_TARNAME, 0,
+		                           S_IRWXU);
+		if (errnum != 0) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
+			    process_name, runtime_dir_name, PACKAGE_TARNAME,
+			    linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		package_runtime_dir = xx;
+	}
+
+	linted_ko_close(runtime_dir);
+
+	linted_ko process_runtime_dir;
+	{
+		char piddir[] = "XXXXXXXXXXXXXXX";
+		if (-1 == sprintf(piddir, "%i", getpid())) {
+			perror("sprintf");
+			return EXIT_FAILURE;
+		}
+
+		linted_ko xx;
+		errnum = linted_dir_create(&xx, package_runtime_dir, piddir, 0,
+		                           S_IRWXU);
+		if (errnum != 0) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
+			    process_name, runtime_dir_name, PACKAGE_TARNAME,
+			    linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		process_runtime_dir = xx;
+	}
+
+	linted_ko_close(package_runtime_dir);
+
+	{
+		struct stat buf;
+		if (-1 == fstat(process_runtime_dir, &buf)) {
+			perror("fstat");
+			return EXIT_FAILURE;
+		}
+
+		uid_t uid = getuid();
+
+		if ((uid_t)-1 == uid) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: unmapped uid\n",
+			                       process_name);
+			return EXIT_FAILURE;
+		}
+
+		/*
+		 * Just a note, one might not want to be too cocky
+		 * with these directories because our directories are
+		 * still attackable by other processes of the same UID
+		 * but different groups and cabalities..
+		 */
+		if (uid != buf.st_uid) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: attacker owned directory\n",
+			                       process_name);
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (;;) {
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = spawn_monitor(&xx, monitor);
+			errnum = spawn_monitor(&xx, monitor,
+			                       process_runtime_dir);
 			if (errnum != 0) {
 				linted_io_write_format(
 				    STDERR_FILENO, NULL,
@@ -105,7 +194,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	return EXIT_SUCCESS;
 }
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor)
+static linted_error spawn_monitor(pid_t *childp, char const *monitor,
+	linted_ko process_runtime_dir)
 {
 	linted_error errnum = 0;
 
@@ -130,11 +220,12 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor)
 
 	linted_spawn_attr_setdeathsig(attr, SIGKILL);
 
-	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
+	                        process_runtime_dir};
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 		errnum =
-		    linted_spawn_file_actions_adddup2(&file_actions, ko, ko);
+		    linted_spawn_file_actions_adddup2(&file_actions, ko, ii);
 		if (errnum != 0)
 			goto destroy_attr;
 	}

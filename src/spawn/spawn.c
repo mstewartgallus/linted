@@ -109,6 +109,8 @@ static linted_error set_death_sig(int signum);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
+static pid_t real_getpid();
+
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
 	linted_error errnum;
@@ -653,8 +655,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == set_no_new_privs(true))
 			exit_with_error(writer, errno);
 
-	char listen_pid[] = "LISTEN_PID=XXXXXXXXXX";
-	char listen_fds[] = "LISTEN_FDS=XXXXXXXXXX";
+	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
+	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
 
 	if (file_actions != NULL && file_actions->action_count > 0U) {
 		memcpy(envp_copy, envp, sizeof envp[0U] * env_size);
@@ -665,7 +667,11 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
 		           (int)file_actions->action_count - 3U);
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), 2);
+
+		pid_t child_pid = real_getpid();
+		if ((clone_flags & CLONE_NEWPID) != 0)
+			child_pid = 2;
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), child_pid);
 
 		envp = (char const *const *)envp_copy;
 	}
@@ -994,4 +1000,9 @@ static linted_error set_no_new_privs(bool b)
 	}
 
 	return 0;
+}
+
+static pid_t real_getpid()
+{
+	return syscall(__NR_getpid);
 }

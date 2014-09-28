@@ -42,7 +42,6 @@
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
-#include <sys/stat.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
@@ -189,15 +188,19 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
+static linted_ko kos[1U];
+
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
-    .kos_size = 0U,
-    .kos = NULL};
+    .kos_size = LINTED_ARRAY_SIZE(kos),
+    .kos = kos};
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
+
+	linted_ko process_runtime_dir = kos[0U];
 
 	/**
 	 * @TODO Make the monitor not rely upon being basically PID 1
@@ -206,7 +209,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
-	char const *runtime_dir_name = getenv("XDG_RUNTIME_DIR");
 
 	if (NULL == chrootdir) {
 		linted_io_write_format(
@@ -221,16 +223,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
 		    process_name);
-		return EXIT_FAILURE;
-	}
-
-	/**
-	 * @todo Use fallback runtime directory
-	 */
-	if (NULL == runtime_dir_name) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: need XDG_RUNTIME_DIR\n",
-		                       process_name);
 		return EXIT_FAILURE;
 	}
 
@@ -252,96 +244,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (-1 == chdir("/")) {
 		perror("chdir");
 		return EXIT_FAILURE;
-	}
-
-	linted_ko runtime_dir;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, cwd, runtime_dir_name,
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: can't open %s: %s\n",
-			                       process_name, runtime_dir_name,
-			                       linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		runtime_dir = xx;
-	}
-
-	/**
-	 * @todo Move process exclusive runtime directory creation to
-	 *       init so that when the monitor is reinvoked it uses
-	 *       the same runtime directory.
-	 */
-	linted_ko package_runtime_dir;
-	{
-		linted_ko xx;
-		errnum = linted_dir_create(&xx, runtime_dir, PACKAGE_TARNAME, 0,
-		                           S_IRWXU);
-		if (errnum != 0) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
-			    process_name, runtime_dir_name, PACKAGE_TARNAME,
-			    linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		package_runtime_dir = xx;
-	}
-
-	linted_ko_close(runtime_dir);
-
-	linted_ko process_runtime_dir;
-	{
-		char piddir[] = "XXXXXXXXXXXXXXX";
-		if (-1 == sprintf(piddir, "%i", getpid())) {
-			perror("sprintf");
-			return EXIT_FAILURE;
-		}
-
-		linted_ko xx;
-		errnum = linted_dir_create(&xx, package_runtime_dir, piddir, 0,
-		                           S_IRWXU);
-		if (errnum != 0) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL, "%s: can't open %s/%s: %s\n",
-			    process_name, runtime_dir_name, PACKAGE_TARNAME,
-			    linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		process_runtime_dir = xx;
-	}
-
-	linted_ko_close(package_runtime_dir);
-
-	{
-		struct stat buf;
-		if (-1 == fstat(process_runtime_dir, &buf)) {
-			perror("fstat");
-			return EXIT_FAILURE;
-		}
-
-		uid_t uid = getuid();
-
-		if ((uid_t)-1 == uid) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: unmapped uid\n",
-			                       process_name);
-			return EXIT_FAILURE;
-		}
-
-		/*
-		 * Just a note, one might not want to be too cocky
-		 * with these directories because our directories are
-		 * still attackable by other processes of the same UID
-		 * but different groups and cabalities..
-		 */
-		if (uid != buf.st_uid) {
-			linted_io_write_format(STDERR_FILENO, NULL,
-			                       "%s: attacker owned directory\n",
-			                       process_name);
-			return EXIT_FAILURE;
-		}
 	}
 
 	struct linted_asynch_pool *pool;
