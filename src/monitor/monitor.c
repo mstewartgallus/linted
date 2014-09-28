@@ -943,7 +943,7 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 	}
 
 	int clone_flags =
-	    CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWIPC | CLONE_NEWNET;
+	    CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWIPC | CLONE_NEWNET | CLONE_PARENT;
 
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
