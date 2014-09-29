@@ -46,8 +46,6 @@
 #include <sys/ptrace.h>
 #include <unistd.h>
 
-#define BACKLOG 20U
-
 #define MAX_MANAGE_CONNECTIONS 10U
 
 enum { WAITER,
@@ -188,10 +186,12 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
+static linted_ko kos[1U];
+
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
-    .kos_size = 0U,
-    .kos = NULL};
+    .kos_size = LINTED_ARRAY_SIZE(kos),
+    .kos = kos};
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -199,6 +199,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	pid_t ppid = getppid();
+	linted_admin admin = kos[0U];
 
 	/**
 	 * @TODO Make the monitor not rely upon being basically PID 1
@@ -256,34 +257,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct wait_service_task waiter_task;
 	struct accepted_conn_task accepted_conn_task;
 
-	linted_admin admin;
-	{
-		linted_admin xx;
-		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
-		if (errnum != 0)
-			goto drain_asynch_pool;
-		admin = xx;
-	}
-
-	{
-		char buf[LINTED_ADMIN_PATH_MAX];
-		size_t len;
-		errnum = linted_admin_path(admin, buf, &len);
-		if (errnum != 0)
-			return errnum;
-
-		linted_io_write_str(STDOUT_FILENO, NULL,
-		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
-		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
-		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-	}
-
 	struct conn_pool *conn_pool;
 	{
 		struct conn_pool *xx;
 		errnum = conn_pool_create(&xx);
 		if (errnum != 0)
-			goto close_admin;
+			goto drain_asynch_pool;
 		conn_pool = xx;
 	}
 
@@ -411,12 +390,6 @@ destroy_confs:
 
 destroy_conn_pool : {
 	linted_error close_errnum = conn_pool_destroy(conn_pool);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
-close_admin : {
-	linted_error close_errnum = linted_ko_close(admin);
 	if (0 == errnum)
 		errnum = close_errnum;
 }

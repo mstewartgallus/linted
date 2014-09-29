@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/admin.h"
 #include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/spawn.h"
@@ -35,6 +36,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define BACKLOG 20U
+
 extern char **environ;
 
 struct linted_start_config const linted_start_config = {
@@ -42,7 +45,8 @@ struct linted_start_config const linted_start_config = {
     .kos_size = 0U,
     .kos = NULL};
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor);
+static linted_error spawn_monitor(pid_t *childp, char const *monitor,
+                                  linted_admin admin);
 static linted_error set_child_subreaper(bool value);
 static linted_error set_ptracer(pid_t pid);
 
@@ -60,11 +64,36 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
+	linted_admin admin;
+	{
+		linted_admin xx;
+		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_admin_bind");
+			return EXIT_FAILURE;
+		}
+		admin = xx;
+	}
+
+	{
+		char buf[LINTED_ADMIN_PATH_MAX];
+		size_t len;
+		errnum = linted_admin_path(admin, buf, &len);
+		if (errnum != 0)
+			return errnum;
+
+		linted_io_write_str(STDOUT_FILENO, NULL,
+		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
+		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
+		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+	}
+
 	for (;;) {
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = spawn_monitor(&xx, monitor);
+			errnum = spawn_monitor(&xx, monitor, admin);
 			if (errnum != 0) {
 				linted_io_write_format(
 				    STDERR_FILENO, NULL,
@@ -110,7 +139,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	return EXIT_SUCCESS;
 }
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor)
+static linted_error spawn_monitor(pid_t *childp, char const *monitor,
+                                  linted_admin admin)
 {
 	linted_error errnum = 0;
 
@@ -135,7 +165,8 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor)
 
 	linted_spawn_attr_setdeathsig(attr, SIGKILL);
 
-	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
+	                        admin};
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 		errnum =

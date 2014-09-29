@@ -175,58 +175,78 @@ It is insecure to run a game with high privileges!\n"));
 	for (size_t ii = 0U; ii < 3U + kos_size; ++ii) {
 		linted_ko fd = open_kos[ii];
 
-		int oflags = fcntl(fd, F_GETFL);
-		if (-1 == oflags) {
-			errnum = errno;
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFL: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return errnum;
-		}
-
-		char pathname[sizeof FDS_DIR + 10U];
-		sprintf(pathname, FDS_DIR "/%i", fd);
-
-		int new_fd;
-		do {
-			new_fd = open(pathname, oflags | O_NONBLOCK | O_NOCTTY |
-			                            O_CLOEXEC);
-			if (-1 == new_fd) {
+		linted_ko new_fd;
+		{
+			int oflags = fcntl(fd, F_GETFL);
+			if (-1 == oflags) {
 				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
+				linted_io_write_format(
+				    STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFL: %s\n",
+				    process_name, linted_error_string(errnum));
+				return errnum;
 			}
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
+
+			char pathname[sizeof FDS_DIR + 10U];
+			sprintf(pathname, FDS_DIR "/%i", fd);
+
+			do {
+				new_fd =
+				    open(pathname, oflags | O_NONBLOCK |
+				                       O_NOCTTY | O_CLOEXEC);
+				if (-1 == new_fd) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				} else {
+					errnum = 0;
+				}
+			} while (EINTR == errnum);
+		}
+
+		/**
+		 * @bug Sockets don't get O_NONBLOCK set.
+		 */
+		if (errnum != ENXIO) {
+			if (errnum != 0) {
+				linted_io_write_format(
+				    STDERR_FILENO, NULL, "\
 %s: openat: %s\n",
+				    process_name, linted_error_string(errnum));
+				return errnum;
+			}
+
+			if (-1 == dup2(new_fd, fd)) {
+				errnum = errno;
+				linted_io_write_format(
+				    STDERR_FILENO, NULL, "\
+%s: dup2(%i, %i): %s\n",
+				    process_name, new_fd, fd,
+				    linted_error_string(errnum));
+				return errnum;
+			}
+
+			if ((errnum = linted_ko_close(new_fd)) != 0) {
+				linted_io_write_format(
+				    STDERR_FILENO, NULL, "\
+%s: linted_ko_close: %s\n",
+				    process_name, linted_error_string(errnum));
+				return errnum;
+			}
+		}
+
+		int dflags = fcntl(fd, F_GETFD);
+		if (-1 == dflags) {
+			errnum = errno;
+			linted_io_write_format(STDERR_FILENO, NULL, "\
+%s: fcntl: F_GETFD: %s\n",
 			                       process_name,
 			                       linted_error_string(errnum));
 			return errnum;
 		}
 
-		if (-1 == dup2(new_fd, fd)) {
-			errnum = errno;
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: dup2(%i, %i): %s\n",
-			                       process_name, new_fd, fd,
-			                       linted_error_string(errnum));
-			return errnum;
-		}
-
-		if (-1 == fcntl(fd, F_SETFD, (long)oflags | FD_CLOEXEC)) {
+		if (-1 == fcntl(fd, F_SETFD, (long)dflags | FD_CLOEXEC)) {
 			errnum = errno;
 			perror("fcntl");
-			return errnum;
-		}
-
-		if ((errnum = linted_ko_close(new_fd)) != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: linted_ko_close: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
 			return errnum;
 		}
 	}
