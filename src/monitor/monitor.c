@@ -964,6 +964,38 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		envvars = xx;
 	}
 
+	char * service_name;
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", linted_conf_peek_name(conf))) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_envvars;
+		}
+		service_name = xx;
+	}
+
+	{
+		size_t envvars_size;
+		for (size_t ii = 0U;; ++ii) {
+			if (NULL == envvars[ii]) {
+				envvars_size = ii;
+				break;
+			}
+		}
+
+		void *xx;
+		errnum = linted_mem_realloc_array(&xx, envvars, envvars_size + 1U, sizeof envvars[0U]);
+		if (errnum != 0) {
+			linted_mem_free(service_name);
+			goto free_envvars;
+		}
+		envvars = xx;
+
+		envvars[envvars_size] = service_name;
+		envvars[envvars_size + 1U] = NULL;
+	}
+
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
 
