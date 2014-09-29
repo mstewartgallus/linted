@@ -90,6 +90,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
+		linted_io_write_str(STDOUT_FILENO, NULL,
+		                    LINTED_STR("spawning monitor\n"));
+
 		pid_t child;
 		{
 			pid_t xx;
