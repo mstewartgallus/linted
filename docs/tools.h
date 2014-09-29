@@ -48,25 +48,15 @@
  *
  * </li>
  *
- * <li> Flawfinder
+ * <li> Flawfinder or RATS
  *
  * - Seems to be defunct right now.
  *
  * - Gives many false positives.
  *
  * - Did give a nice tip about how InitializeCriticalSection can throw
- *   an exception however.
- *
- * </li>
- *
- * <li> RATS
- *
- * - Seems to be defunct right now.
- *
- * - Gives many false positives.
- *
- * - Did give a nice tip about how InitializeCriticalSection can throw
- *   an exception however.
+ * an exception however. Note that this only applies to Window XP and
+ * lower.
  *
  * </li>
  *
