@@ -44,6 +44,7 @@ struct linted_start_config const linted_start_config = {
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor);
 static linted_error set_child_subreaper(bool value);
+static linted_error set_ptracer(pid_t pid);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -72,6 +73,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 				return EXIT_FAILURE;
 			}
 			child = xx;
+		}
+
+		errnum = set_ptracer(child);
+		if (errnum != 0) {
+			linted_io_write_format(
+			    STDERR_FILENO, NULL, "%s: set_ptracer: %s\n",
+			    process_name, linted_error_string(errnum));
+			return EXIT_FAILURE;
 		}
 
 		siginfo_t info;
@@ -171,6 +180,19 @@ static linted_error set_child_subreaper(bool v)
 #endif
 
 	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_ptracer(pid_t pid)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)pid, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

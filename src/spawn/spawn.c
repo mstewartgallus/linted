@@ -537,6 +537,22 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
+		if (pid_pipes_init) {
+			linted_error wait_errnum;
+			siginfo_t info;
+			do {
+				wait_errnum =
+				    -1 == waitid(P_PID, child, &info, WEXITED)
+				        ? errno
+				        : 0;
+			} while (EINTR == wait_errnum);
+			if (wait_errnum != 0) {
+				assert(wait_errnum != EINVAL);
+				assert(wait_errnum != ECHILD);
+				assert(false);
+			}
+		}
+
 	close_pid_pipes:
 		if (pid_pipes_init) {
 			linted_error close_errnum = linted_ko_close(pid_writer);

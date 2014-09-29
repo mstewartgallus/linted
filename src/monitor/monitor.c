@@ -43,6 +43,7 @@
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <unistd.h>
 
 #define BACKLOG 20U
@@ -197,6 +198,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
+	pid_t ppid = getppid();
+
 	/**
 	 * @TODO Make the monitor not rely upon being basically PID 1
 	 * and recover from being restarted suddenly.
@@ -315,74 +318,32 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    pool,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
+	for (;;) {
+		if (-1 ==
+		    ptrace(PTRACE_ATTACH, ppid, (void *)NULL, (void *)NULL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+		if (errnum != EPERM)
+			break;
+
+		sched_yield();
+	}
+
+	if (errnum != 0)
+		goto destroy_confs;
+
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum =
-	    units_activate(units, confs, cwd, chrootdir);
+	errnum = units_activate(units, confs, cwd, chrootdir);
 	if (errnum != 0)
 		goto kill_procs;
 
-	{
-		linted_dir init_children;
-		{
-			pid_t ppid = getppid();
-
-			char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-			sprintf(path, "/proc/%i/task/%i/children", ppid, ppid);
-
-			linted_dir xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-			if (errnum != 0)
-				goto kill_procs;
-			init_children = xx;
-		}
-
-		FILE *init_children_file = fdopen(init_children, "r");
-		if (NULL == init_children_file) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-
-			linted_ko_close(init_children);
-
-			goto kill_procs;
-		}
-
-		char *buf = NULL;
-		size_t buf_size = 0U;
-
-		for (;;) {
-			{
-				char *xx = buf;
-				size_t yy = buf_size;
-
-				errno = 0;
-				ssize_t zz = getdelim(&xx, &yy, ' ', init_children_file);
-				if (-1 == zz) {
-					errnum = errno;
-					if (0 == errnum)
-						break;
-
-					goto free_buf;
-				}
-				buf = xx;
-				buf_size = yy;
-			}
-
-			fprintf(stderr, "pid: %i\n", (pid_t)strtol(buf, NULL, 10));
-		}
-
-	free_buf:
-		linted_mem_free(buf);
-
-		fclose(init_children_file);
-
-		if (errnum != 0)
-			goto kill_procs;
-	}
-
-	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-	                          -1, WEXITED);
+	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_PID,
+	                          ppid, WEXITED | WSTOPPED);
 	waiter_task.pool = pool;
 	waiter_task.time_to_exit = false;
 
@@ -964,10 +925,11 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		envvars = xx;
 	}
 
-	char * service_name;
+	char *service_name;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", linted_conf_peek_name(conf))) {
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s",
+		                   linted_conf_peek_name(conf))) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_envvars;
@@ -985,7 +947,8 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		}
 
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, envvars, envvars_size + 1U, sizeof envvars[0U]);
+		errnum = linted_mem_realloc_array(
+		    &xx, envvars, envvars_size + 1U, sizeof envvars[0U]);
 		if (errnum != 0) {
 			linted_mem_free(service_name);
 			goto free_envvars;
@@ -1505,10 +1468,12 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 	struct linted_asynch_pool *pool = wait_service_task->pool;
 
+	pid_t pid;
 	int exit_status;
 	int exit_code;
 	{
 		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
+		pid = exit_info->si_pid;
 		exit_status = exit_info->si_status;
 		exit_code = exit_info->si_code;
 	}
@@ -1531,11 +1496,83 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		}
 		break;
 
+	case CLD_TRAPPED: {
+		/* Ignore SIGCHLD for example */
+		if (exit_status != SIGSTOP)
+			goto restart_init;
+
+		fprintf(stderr, "started tracing init!\n");
+
+		linted_dir init_children;
+		{
+			char path[] =
+			    "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+			sprintf(path, "/proc/%i/task/%i/children", pid, pid);
+
+			linted_dir xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
+			                        LINTED_KO_RDONLY);
+			if (errnum != 0)
+				goto restart_init;
+			init_children = xx;
+		}
+
+		FILE *init_children_file = fdopen(init_children, "r");
+		if (NULL == init_children_file) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			linted_ko_close(init_children);
+
+			goto restart_init;
+		}
+
+		char *buf = NULL;
+		size_t buf_size = 0U;
+
+		for (;;) {
+			{
+				char *xx = buf;
+				size_t yy = buf_size;
+
+				errno = 0;
+				ssize_t zz =
+				    getdelim(&xx, &yy, ' ', init_children_file);
+				if (-1 == zz) {
+					errnum = errno;
+					if (0 == errnum)
+						break;
+
+					goto free_buf;
+				}
+				buf = xx;
+				buf_size = yy;
+			}
+
+			fprintf(stderr, "pid: %i\n",
+			        (pid_t)strtol(buf, NULL, 10));
+		}
+
+	free_buf:
+		linted_mem_free(buf);
+
+		fclose(init_children_file);
+
+	restart_init:
+		if (-1 ==
+		    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		break;
+	}
+
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 
-	return 0;
+	return errnum;
 }
 
 static linted_error on_accepted_conn(struct linted_asynch_task *completed_task)
