@@ -41,6 +41,13 @@
  *
  * </li>
  *
+ * <li> Clang's -Wthread-safety flags
+ *
+ * This tool is okay but cannot handle thread cancellation which is
+ * needed to kill worker threads that are taking too long.
+ *
+ * </li>
+ *
  * <li> Flawfinder
  *
  * - Seems to be defunct right now.
