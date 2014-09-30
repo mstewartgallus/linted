@@ -93,6 +93,7 @@ struct wait_service_task
 {
 	struct linted_asynch_task_waitid parent;
 	struct linted_asynch_pool *pool;
+	pid_t parent_process;
 	bool time_to_exit : 1U;
 };
 
@@ -158,6 +159,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_accepted_conn(struct linted_asynch_task *task);
 static linted_error on_read_conn(struct linted_asynch_task *task);
 static linted_error on_wrote_conn(struct linted_asynch_task *task);
+
+linted_error ptrace_children(pid_t parent);
 
 static linted_error dispatch_drainers(struct linted_asynch_task *task);
 
@@ -318,9 +321,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto kill_procs;
 
-	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_PID,
-	                          ppid, WEXITED | WSTOPPED);
+	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
+	                          -1, WSTOPPED);
 	waiter_task.pool = pool;
+	waiter_task.parent_process = ppid;
 	waiter_task.time_to_exit = false;
 
 	linted_asynch_pool_submit(pool,
@@ -1435,8 +1439,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 	struct wait_service_task *wait_service_task =
 	    LINTED_DOWNCAST(struct wait_service_task, task);
-
 	struct linted_asynch_pool *pool = wait_service_task->pool;
+	pid_t parent_process = wait_service_task->parent_process;
 
 	pid_t pid;
 	int exit_status;
@@ -1475,71 +1479,91 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 		restart_signal = 0;
 
-		fprintf(stderr, "started tracing init!\n");
+		fprintf(stderr, "started tracing %i!\n", pid);
 
-		linted_dir init_children;
-		{
-			char path[] =
-			    "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-			sprintf(path, "/proc/%i/task/%i/children", pid, pid);
+		if (pid == parent_process)
+			errnum = ptrace_children(parent_process);
 
-			linted_dir xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
-			                        LINTED_KO_RDONLY);
-			if (errnum != 0)
-				goto restart_init;
-			init_children = xx;
-		}
-
-		FILE *init_children_file = fdopen(init_children, "r");
-		if (NULL == init_children_file) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-
-			linted_ko_close(init_children);
-
-			goto restart_init;
-		}
-
-		char *buf = NULL;
-		size_t buf_size = 0U;
-
-		for (;;) {
-			{
-				char *xx = buf;
-				size_t yy = buf_size;
-
-				errno = 0;
-				ssize_t zz =
-				    getdelim(&xx, &yy, ' ', init_children_file);
-				if (-1 == zz) {
-					errnum = errno;
-					if (0 == errnum)
-						break;
-
-					goto free_buf;
-				}
-				buf = xx;
-				buf_size = yy;
-			}
-
-			fprintf(stderr, "pid: %i\n",
-			        (pid_t)strtol(buf, NULL, 10));
-		}
-
-	free_buf:
-		linted_mem_free(buf);
-
-		fclose(init_children_file);
-
-	restart_init:
-		errnum = ptrace_cont(pid, restart_signal);
+	restart_init: {
+		linted_error cont_errnum = ptrace_cont(pid, restart_signal);
+		if (0 == errnum)
+			errnum = cont_errnum;
+	}
 		break;
 	}
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+
+	return errnum;
+}
+
+linted_error ptrace_children(pid_t parent)
+{
+	linted_error errnum;
+
+	linted_dir init_children;
+	{
+		char path[] =
+			"/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+		sprintf(path, "/proc/%i/task/%i/children", parent, parent);
+
+		linted_dir xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0)
+			return errnum;
+		init_children = xx;
+	}
+
+	FILE *init_children_file = fdopen(init_children, "r");
+	if (NULL == init_children_file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(init_children);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz =
+				getdelim(&xx, &yy, ' ', init_children_file);
+			if (-1 == zz) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_buf;
+			}
+			buf = xx;
+			buf_size = yy;
+		}
+
+		pid_t child = strtol(buf, NULL, 10);
+		if (getpid() == child)
+			continue;
+
+		fprintf(stderr, "pid: %i\n", child);
+
+		errnum = ptrace_attach(child);
+		if (errnum != 0)
+			break;
+	}
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(init_children_file);
 
 	return errnum;
 }
