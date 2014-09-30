@@ -186,6 +186,9 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
+static linted_error ptrace_attach(pid_t pid);
+static linted_error ptrace_cont(pid_t pid, int signo);
+
 static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
@@ -298,13 +301,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
 	for (;;) {
-		if (-1 ==
-		    ptrace(PTRACE_ATTACH, ppid, (void *)NULL, (void *)NULL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
+		errnum = ptrace_attach(ppid);
 		if (errnum != EPERM)
 			break;
 
@@ -1470,9 +1467,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		break;
 
 	case CLD_TRAPPED: {
+		int restart_signal = exit_status;
+
 		/* Ignore SIGCHLD for example */
 		if (exit_status != SIGSTOP)
 			goto restart_init;
+
+		restart_signal = 0;
 
 		fprintf(stderr, "started tracing init!\n");
 
@@ -1532,12 +1533,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		fclose(init_children_file);
 
 	restart_init:
-		if (-1 ==
-		    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)NULL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
+		errnum = ptrace_cont(pid, restart_signal);
 		break;
 	}
 
@@ -2025,5 +2021,32 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	}
 
 	*longp = total;
+	return 0;
+}
+
+static linted_error ptrace_attach(pid_t pid)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_ATTACH, pid, (void *)NULL, (void *)NULL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_cont(pid_t pid, int signo)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t) signo, (void *)NULL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
 	return 0;
 }
