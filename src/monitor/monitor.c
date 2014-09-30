@@ -1484,12 +1484,11 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		if (pid == parent_process)
 			errnum = ptrace_children(parent_process);
 
-	restart_init: {
+	restart_init : {
 		linted_error cont_errnum = ptrace_cont(pid, restart_signal);
 		if (0 == errnum)
 			errnum = cont_errnum;
-	}
-		break;
+	} break;
 	}
 
 	default:
@@ -1505,13 +1504,12 @@ linted_error ptrace_children(pid_t parent)
 
 	linted_dir init_children;
 	{
-		char path[] =
-			"/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
 		sprintf(path, "/proc/%i/task/%i/children", parent, parent);
 
 		linted_dir xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                        LINTED_KO_RDONLY);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 		if (errnum != 0)
 			return errnum;
 		init_children = xx;
@@ -1537,7 +1535,7 @@ linted_error ptrace_children(pid_t parent)
 
 			errno = 0;
 			ssize_t zz =
-				getdelim(&xx, &yy, ' ', init_children_file);
+			    getdelim(&xx, &yy, ' ', init_children_file);
 			if (-1 == zz) {
 				errnum = errno;
 				if (0 == errnum)
