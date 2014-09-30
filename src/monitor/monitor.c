@@ -922,7 +922,7 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 
 		void *xx;
 		errnum = linted_mem_realloc_array(
-		    &xx, envvars, envvars_size + 1U, sizeof envvars[0U]);
+		    &xx, envvars, envvars_size + 2U, sizeof envvars[0U]);
 		if (errnum != 0) {
 			linted_mem_free(service_name);
 			goto free_envvars;
