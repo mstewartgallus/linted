@@ -44,6 +44,7 @@
 #include <sys/reboot.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define MAX_MANAGE_CONNECTIONS 10U
@@ -160,6 +161,7 @@ static linted_error on_accepted_conn(struct linted_asynch_task *task);
 static linted_error on_read_conn(struct linted_asynch_task *task);
 static linted_error on_wrote_conn(struct linted_asynch_task *task);
 
+linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp);
 linted_error ptrace_children(pid_t parent);
 
 static linted_error dispatch_drainers(struct linted_asynch_task *task);
@@ -191,6 +193,7 @@ static linted_error filter_envvars(char ***resultsp,
 
 static linted_error ptrace_attach(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
+static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
 
 static linted_ko kos[1U];
 
@@ -322,7 +325,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto kill_procs;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-	                          -1, WSTOPPED);
+	                          -1, WEXITED | WSTOPPED | WNOWAIT);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
 	waiter_task.time_to_exit = false;
@@ -1443,13 +1446,41 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	pid_t parent_process = wait_service_task->parent_process;
 
 	pid_t pid;
-	int exit_status;
-	int exit_code;
 	{
 		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
 		pid = exit_info->si_pid;
-		exit_status = exit_info->si_status;
-		exit_code = exit_info->si_code;
+	}
+
+	if (pid != parent_process) {
+		bool is_child;
+		errnum = is_child_of(parent_process, pid, &is_child);
+		if (errnum != 0)
+			return errnum;
+
+		if (!is_child) {
+			linted_asynch_pool_submit(pool, task);
+
+			fprintf(stderr, "not child %i\n", pid);
+			return 0;
+		}
+	}
+
+	int exit_status;
+	int exit_code;
+	{
+		siginfo_t exit_info;
+		do {
+			if (-1 == waitid(P_PID, pid, &exit_info,
+			                 WEXITED | WSTOPPED)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			} else {
+				errnum = 0;
+			}
+		} while (EINTR == errnum);
+
+		exit_status = exit_info.si_status;
+		exit_code = exit_info.si_code;
 	}
 
 	linted_asynch_pool_submit(pool, task);
@@ -1457,21 +1488,19 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	switch (exit_code) {
 	case CLD_DUMPED:
 	case CLD_KILLED:
-		raise(exit_status);
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		fprintf(stderr, "%i killed due to signal %s\n", pid,
+		        strsignal(exit_status));
+		break;
 
 	case CLD_EXITED:
-		if (exit_status != 0) {
-			errnum = exit_status;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
+		fprintf(stderr, "%i exited with %i\n", pid, exit_status);
 		break;
 
 	case CLD_TRAPPED: {
 		int restart_signal = exit_status;
+
+		fprintf(stderr, "trapped signal %s for %i!\n",
+		        strsignal(exit_status), pid);
 
 		/* Ignore SIGCHLD for example */
 		if (exit_status != SIGSTOP)
@@ -1479,7 +1508,9 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 		restart_signal = 0;
 
-		fprintf(stderr, "started tracing %i!\n", pid);
+		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+		if (errnum != 0)
+			goto restart_init;
 
 		if (pid == parent_process)
 			errnum = ptrace_children(parent_process);
@@ -1493,6 +1524,77 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
+	}
+
+	return errnum;
+}
+
+linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
+{
+	linted_error errnum;
+
+	bool is_child = false;
+
+	linted_dir init_children;
+	{
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+		sprintf(path, "/proc/%i/task/%i/children", parent, parent);
+
+		linted_dir xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		if (errnum != 0)
+			return errnum;
+		init_children = xx;
+	}
+
+	FILE *init_children_file = fdopen(init_children, "r");
+	if (NULL == init_children_file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(init_children);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz =
+			    getdelim(&xx, &yy, ' ', init_children_file);
+			if (-1 == zz) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_buf;
+			}
+			buf = xx;
+			buf_size = yy;
+		}
+
+		pid_t child = strtol(buf, NULL, 10);
+
+		if (child == maybe_child) {
+			is_child = true;
+			break;
+		}
+	}
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(init_children_file);
+
+	if (0 == errnum) {
+		*childp = is_child;
 	}
 
 	return errnum;
@@ -1550,8 +1652,6 @@ linted_error ptrace_children(pid_t parent)
 		pid_t child = strtol(buf, NULL, 10);
 		if (getpid() == child)
 			continue;
-
-		fprintf(stderr, "pid: %i\n", child);
 
 		errnum = ptrace_attach(child);
 		if (errnum != 0)
@@ -2065,6 +2165,19 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 
 	if (-1 ==
 	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t) signo, (void *)NULL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)flags, (void *)NULL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
