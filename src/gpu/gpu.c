@@ -191,7 +191,7 @@ release_thread:
 	return errnum;
 }
 
-linted_error linted_gpu_destroy(struct linted_gpu_context *gpu_context)
+linted_error linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 {
 	linted_error errnum = 0;
 
