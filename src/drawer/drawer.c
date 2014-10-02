@@ -275,7 +275,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	{
 		struct linted_gpu_context *xx;
-		errnum = linted_gpu_create(display, window, &xx, log);
+		errnum = linted_gpu_context_create(display, window, &xx, log);
 		if (errnum != 0)
 			goto destroy_window;
 		gpu_context = xx;
