@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 
 linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
-                              struct linted_mq_attr const *attr,
+                              size_t maxmsg, size_t msgsize,
                               unsigned long flags)
 {
 	return ENOSYS;
