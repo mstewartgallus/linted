@@ -1,4 +1,4 @@
-#! /usr/bin/env python3.2
+#! /usr/bin/env python3.3
 # Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,12 @@ def go():
     cc = sys.argv[4].split()
     options = sys.argv[5:]
 
-    if '-c' in options and (clang != "" or cppcheck != ""):
+    if '-c' in options and (clang != [] or cppcheck != ""):
         filtered_options = options_filter(options)
         define_flags = get_predefined(cc)
         includes = get_includes(cc)
 
-        if clang != "" and host != "none-none-none":
+        if clang != [] and host != "none-none-none":
             clang_args = []
             clang_args.extend(clang)
             clang_args.extend(['-target', host,

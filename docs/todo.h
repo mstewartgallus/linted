@@ -11,8 +11,12 @@
  *
  * Linted -- TODO
  *
+ * @todo Add libcap check
+ *
+ * @todo Add blender check
+ *
  * @todo Eventually reduce -Wstack-usage to 500.
-
+ *
  * @todo Review and criticize use binary analysis tools like dwarves.
  *
  * @todo Review and criticize several static analysers.

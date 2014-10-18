@@ -14,9 +14,10 @@
  * permissions and limitations under the License.
  */
 #version 100
-#pragma linted include("shaders/varying.glsl")
 
 precision highp float;
+
+#pragma linted include("shaders/varying.glsl")
 
 attribute vec3 vertex;
 attribute vec3 normal;

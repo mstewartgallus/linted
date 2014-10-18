@@ -14,9 +14,10 @@
  * permissions and limitations under the License.
  */
 #version 100
-#pragma linted include("shaders/varying.glsl")
 
 precision highp float;
+
+#pragma linted include("shaders/varying.glsl")
 
 const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);

@@ -20,7 +20,6 @@ proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
 /etc	etc	none	mkdir,ro,nosuid,nodev,noexec,bind
 
 /lib	lib	none	mkdir,ro,nosuid,nodev,bind
-/lib32	lib32	none	mkdir,ro,nosuid,nodev,bind
 /lib64	lib64	none	mkdir,ro,nosuid,nodev,bind 
 
 /usr	usr	none	mkdir,ro,nosuid,nodev,bind 

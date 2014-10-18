@@ -39,8 +39,10 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -110,7 +112,7 @@ static linted_error set_death_sig(int signum);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
-static pid_t real_getpid();
+static pid_t real_getpid(void);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -1082,7 +1084,7 @@ static linted_error set_no_new_privs(bool b)
 	return 0;
 }
 
-static pid_t real_getpid()
+static pid_t real_getpid(void)
 {
 	return syscall(__NR_getpid);
 }
