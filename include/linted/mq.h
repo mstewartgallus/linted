@@ -68,7 +68,9 @@ struct linted_mq_task_send
  * @param debugpath A name to associate with the queue that is used
  *                  for debugging.  Must start with /.
  *
- * @param attr The attributes for the created message queue.
+ * @param maxmsg The maximum amount of messages.
+ *
+ * @param msgsize The maximum size of a message.
  *
  * @param flags Must be zero.
  *

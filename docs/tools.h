@@ -11,7 +11,7 @@
  *
  * Linted -- Tools
  *
- * @section
+ * @section Useful tools
  * <ul>
  *
  * <li> Valgrind

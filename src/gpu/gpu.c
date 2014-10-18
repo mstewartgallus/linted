@@ -93,10 +93,10 @@ static double square(double x);
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
 
-linted_error linted_gpu_create(linted_gpu_native_display native_display,
-                               linted_gpu_native_window native_window,
-                               struct linted_gpu_context **gpu_contextp,
-                               linted_log log)
+linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
+                                       linted_gpu_native_window native_window,
+                                       struct linted_gpu_context **gpu_contextp,
+                                       linted_log log)
 {
 	linted_error errnum = 0;
 
@@ -191,7 +191,7 @@ release_thread:
 	return errnum;
 }
 
-linted_error linted_gpu_destroy(struct linted_gpu_context *gpu_context)
+linted_error linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 {
 	linted_error errnum = 0;
 

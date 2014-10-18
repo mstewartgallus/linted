@@ -149,7 +149,7 @@ static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
 	size_t result;
 
-	size_t mul_no_overflow = 1UL << (sizeof(size_t) * 4U);
+	size_t mul_no_overflow = UINTMAX_C(1) << (sizeof(size_t) * 4U);
 	if (0U == size) {
 		result = 1U;
 		/*@ assert result >= size; */
