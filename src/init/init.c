@@ -118,7 +118,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 		siginfo_t info;
 		do {
-
 			do {
 				errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
 				             ? errno
