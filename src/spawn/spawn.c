@@ -52,7 +52,9 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-enum file_action_type { FILE_ACTION_ADDDUP2 };
+enum file_action_type {
+	FILE_ACTION_ADDDUP2
+};
 
 struct adddup2
 {
@@ -755,7 +757,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			child_pid = 2;
 		pid_to_str(listen_pid + strlen("LISTEN_PID="), child_pid);
 
-		envp = (char const *const *)envp_copy;
+		envp = (char const * const *)envp_copy;
 	}
 
 	if (relative_filename != NULL) {
@@ -779,8 +781,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(err_writer, errno);
 
 		if (0 == grandchild) {
-			execve(filename, (char *const *)argv,
-			       (char *const *)envp);
+			execve(filename, (char * const *)argv,
+			       (char * const *)envp);
 			exit_with_error(err_writer, errno);
 		}
 
@@ -805,7 +807,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		_Exit(info.si_status);
 	}
 
-	execve(filename, (char *const *)argv, (char *const *)envp);
+	execve(filename, (char * const *)argv, (char * const *)envp);
 	exit_with_error(err_writer, errno);
 
 	/* Impossible */

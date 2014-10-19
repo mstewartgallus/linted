@@ -41,9 +41,10 @@
 extern char **environ;
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-init",
-    .kos_size = 0U,
-    .kos = NULL};
+	.canonical_process_name = PACKAGE_NAME "-init",
+	.kos_size = 0U,
+	.kos = NULL
+};
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor,
                                   linted_admin admin);
@@ -168,8 +169,8 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor,
 
 	linted_spawn_attr_setdeathsig(attr, SIGKILL);
 
-	linted_ko stdfiles[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
-	                        admin};
+	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
+		                 STDERR_FILENO, admin };
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 		errnum =
@@ -183,8 +184,8 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor,
 		pid_t xx;
 		errnum =
 		    linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions,
-		                 NULL, (char const *const[]){monitor, NULL},
-		                 (char const *const *)environ);
+		                 NULL, (char const * const[]) { monitor, NULL },
+		                 (char const * const *)environ);
 		if (0 == errnum)
 			child = xx;
 	}

@@ -4,5 +4,4 @@ UseTab: ForIndentation
 IndentWidth: 8
 ColumnLimit: 80
 AllowShortIfStatementsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
 BreakBeforeBraces: Linux

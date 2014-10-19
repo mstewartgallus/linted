@@ -47,7 +47,12 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
-enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
+enum {
+	ON_RECEIVE_UPDATE,
+	ON_POLL_CONN,
+	ON_SENT_NOTICE,
+	MAX_TASKS
+};
 
 struct window_model
 {
@@ -78,12 +83,13 @@ struct updater_task
 static linted_ko kos[3U];
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-drawer",
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos,
-    .seccomp_bpf = NULL};
+	.canonical_process_name = PACKAGE_NAME "-drawer",
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos,
+	.seccomp_bpf = NULL
+};
 
-static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0};
+static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
@@ -102,7 +108,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_window_notifier notifier = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct window_model window_model = {.viewable = true};
+	struct window_model window_model = { .viewable = true };
 
 	struct linted_asynch_pool *pool;
 	{

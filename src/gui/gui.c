@@ -56,13 +56,19 @@
  * @bug Window destruction by the drawer thread isn't handled properly.
  */
 
-enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
+enum {
+	ON_RECEIVE_NOTICE,
+	ON_POLL_CONN,
+	ON_SENT_CONTROL,
+	MAX_TASKS
+};
 
-static uint32_t const window_opts[] = {
-    XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_KEY_PRESS |
-        XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |
-        XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-    0};
+static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
+	                                    XCB_EVENT_MASK_KEY_PRESS |
+	                                    XCB_EVENT_MASK_KEY_RELEASE |
+	                                    XCB_EVENT_MASK_POINTER_MOTION |
+	                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+	                                0 };
 
 struct controller_data;
 struct controller_task;
@@ -129,10 +135,11 @@ struct notice_task
 static linted_ko kos[3U];
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-gui",
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos,
-    .seccomp_bpf = NULL};
+	.canonical_process_name = PACKAGE_NAME "-gui",
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos,
+	.seccomp_bpf = NULL
+};
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
@@ -165,8 +172,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_controller controller = kos[1U];
 	linted_window_notifier notifier = kos[2U];
 
-	struct controller_data controller_data = {0};
-	struct window_model window_model = {.width = 1, .height = 1};
+	struct controller_data controller_data = { 0 };
+	struct window_model window_model = { .width = 1, .height = 1 };
 
 	struct linted_asynch_pool *pool;
 	{

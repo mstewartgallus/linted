@@ -28,7 +28,7 @@
 #if defined _WIN32 || defined _WIN64
 typedef void *linted_ko;
 
-#define LINTED_KO_CWD ((linted_ko)-1)
+#define LINTED_KO_CWD ((linted_ko) - 1)
 #elif defined __linux__
 typedef int linted_ko;
 

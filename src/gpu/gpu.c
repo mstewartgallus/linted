@@ -33,7 +33,10 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-enum renderer_state { BUFFER_COMMANDS, SWAP_BUFFERS };
+enum renderer_state {
+	BUFFER_COMMANDS,
+	SWAP_BUFFERS
+};
 
 struct linted_gpu_context
 {
@@ -61,16 +64,16 @@ struct matrix
 	GLfloat x[4U][4U];
 };
 
-static EGLint const attr_list[] = {EGL_RED_SIZE,     5,             /*  */
-                                   EGL_GREEN_SIZE,   6,             /*  */
-                                   EGL_BLUE_SIZE,    5,             /*  */
-                                   EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
-                                   EGL_DEPTH_SIZE,   16,            /*  */
-                                   EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
-                                   EGL_NONE,         EGL_NONE};
+static EGLint const attr_list[] = { EGL_RED_SIZE,     5,             /*  */
+	                            EGL_GREEN_SIZE,   6,             /*  */
+	                            EGL_BLUE_SIZE,    5,             /*  */
+	                            EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
+	                            EGL_DEPTH_SIZE,   16,            /*  */
+	                            EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
+	                            EGL_NONE,         EGL_NONE };
 
-static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
-                                      EGL_NONE, EGL_NONE};
+static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
+	                               EGL_NONE,                   EGL_NONE };
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
 static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
@@ -560,24 +563,27 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
 
-		struct matrix const y_rotation_matrix = {{{1, 0, 0, 0},
-		                                          {0, cos_y, -sin_y, 0},
-		                                          {0, sin_y, cos_y, 0},
-		                                          {0, 0, 0, 1}}};
+		struct matrix const y_rotation_matrix = {
+			{ { 1, 0, 0, 0 },
+			  { 0, cos_y, -sin_y, 0 },
+			  { 0, sin_y, cos_y, 0 },
+			  { 0, 0, 0, 1 } }
+		};
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		struct matrix const x_rotation_matrix = {{{cos_x, 0, sin_x, 0},
-		                                          {0, 1, 0, 0},
-		                                          {-sin_x, 0, cos_x, 0},
-		                                          {0, 0, 0, 1}}};
+		struct matrix const x_rotation_matrix = {
+			{ { cos_x, 0, sin_x, 0 },
+			  { 0, 1, 0, 0 },
+			  { -sin_x, 0, cos_x, 0 },
+			  { 0, 0, 0, 1 } }
+		};
 
 		/* Translate the camera */
-		struct matrix const camera = {
-		    {{1, 0, 0, 0},
-		     {0, 1, 0, 0},
-		     {0, 0, 1, 0},
-		     {x_position, y_position, z_position, 1}}};
+		struct matrix const camera = { { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
+				                 { 0, 0, 1, 0 },
+				                 { x_position, y_position,
+					           z_position, 1 } } };
 
 		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
@@ -586,12 +592,13 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		struct matrix const projection = {
-		    {{d / aspect, 0, 0, 0},
-		     {0, d, 0, 0},
-		     {0, 0, (far + near) / (near - far),
-		      2 * far * near / (near - far)},
-		     {0, 0, -1, 0}}};
+		struct matrix const projection = { { { d / aspect, 0, 0, 0 },
+				                     { 0, d, 0, 0 },
+				                     { 0, 0, (far + near) /
+					                         (near - far),
+					               2 * far * near /
+					                   (near - far) },
+				                     { 0, 0, -1, 0 } } };
 
 		struct matrix rotations =
 		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);

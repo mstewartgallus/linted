@@ -49,14 +49,21 @@
 
 #define MAX_MANAGE_CONNECTIONS 10U
 
-enum { WAITER,
-       ADMIN_ACCEPTED_CONNECTION,
-       ADMIN_READ_CONNECTION,
-       ADMIN_WROTE_CONNECTION };
+enum {
+	WAITER,
+	ADMIN_ACCEPTED_CONNECTION,
+	ADMIN_READ_CONNECTION,
+	ADMIN_WROTE_CONNECTION
+};
 
-enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
+enum {
+	MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS
+};
 
-enum unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
+enum unit_type {
+	UNIT_TYPE_SOCKET,
+	UNIT_TYPE_SERVICE
+};
 
 struct unit_common
 {
@@ -198,9 +205,10 @@ static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
 static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-monitor",
-    .kos_size = LINTED_ARRAY_SIZE(kos),
-    .kos = kos};
+	.canonical_process_name = PACKAGE_NAME "-monitor",
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos
+};
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -822,19 +830,23 @@ static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
 	return 0;
 }
 
-enum { RDONLY, WRONLY };
+enum {
+	RDONLY,
+	WRONLY
+};
 
 static char const *const file_options[] = {[RDONLY] = "rdonly",
-                                           [WRONLY] = "wronly", NULL};
+	                                   [WRONLY] = "wronly", NULL };
 
-static char const *const default_envvars[] = {"LANG", "USER", "LOGNAME", "HOME",
-                                              "SHELL", "XDG_RUNTIME_DIR"
-                                                       "XDG_SESSION_ID",
-                                              "XDG_SEAT", "TERM"};
+static char const *const default_envvars[] = { "LANG", "USER", "LOGNAME",
+	                                       "HOME", "SHELL",
+	                                       "XDG_RUNTIME_DIR"
+	                                       "XDG_SESSION_ID",
+	                                       "XDG_SEAT", "TERM" };
 
-static struct pair const defaults[] = {{STDIN_FILENO, LINTED_KO_RDONLY},
-                                       {STDOUT_FILENO, LINTED_KO_WRONLY},
-                                       {STDERR_FILENO, LINTED_KO_WRONLY}};
+static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
+	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
+	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
 static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
                                   linted_ko cwd, char const *chrootdir,
@@ -1066,7 +1078,7 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 				char *xx = opts;
 				char *yy = value;
 				token = getsubopt(
-				    &xx, (char *const *)file_options, &yy);
+				    &xx, (char * const *)file_options, &yy);
 				opts = xx;
 				value = yy;
 			}
@@ -1140,7 +1152,7 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		pid_t xx;
 		errnum =
 		    linted_spawn(&xx, cwd, exec_start[0U], file_actions, attr,
-		                 exec_start, (char const *const *)envvars);
+		                 exec_start, (char const * const *)envvars);
 		if (errnum != 0)
 			goto destroy_attr;
 		process = xx;
@@ -1258,19 +1270,30 @@ close_file:
 	return errnum;
 }
 
-enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
+enum {
+	MKDIR,
+	TOUCH,
+	BIND,
+	RBIND,
+	RO,
+	RW,
+	SUID,
+	NOSUID,
+	NODEV,
+	NOEXEC
+};
 
 static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
-                                            [TOUCH] = "touch",        /*  */
-                                            [BIND] = "bind",          /*  */
-                                            [RBIND] = "rbind",        /*  */
-                                            [RO] = MNTOPT_RO,         /*  */
-                                            [RW] = MNTOPT_RW,         /*  */
-                                            [SUID] = MNTOPT_SUID,     /*  */
-                                            [NOSUID] = MNTOPT_NOSUID, /*  */
-                                            [NODEV] = "nodev",        /*  */
-                                            [NOEXEC] = "noexec",      /*  */
-                                            NULL};
+	                                    [TOUCH] = "touch",        /*  */
+	                                    [BIND] = "bind",          /*  */
+	                                    [RBIND] = "rbind",        /*  */
+	                                    [RO] = MNTOPT_RO,         /*  */
+	                                    [RW] = MNTOPT_RW,         /*  */
+	                                    [SUID] = MNTOPT_SUID,     /*  */
+	                                    [NOSUID] = MNTOPT_NOSUID, /*  */
+	                                    [NODEV] = "nodev",        /*  */
+	                                    [NOEXEC] = "noexec",      /*  */
+	                                    NULL };
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
@@ -1306,7 +1329,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 			char *xx = subopts;
 			char *yy = value;
 			token =
-			    getsubopt(&xx, (char *const *)mount_options, &yy);
+			    getsubopt(&xx, (char * const *)mount_options, &yy);
 			subopts = xx;
 			value = yy;
 		}
@@ -2164,7 +2187,7 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t) signo, (void *)NULL)) {
+	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t)signo, (void *)NULL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

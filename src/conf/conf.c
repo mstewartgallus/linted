@@ -260,7 +260,7 @@ linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
 
 			errnum = linted_conf_add_setting(
 			    current_section, field,
-			    (char const *const *)expr.we_wordv);
+			    (char const * const *)expr.we_wordv);
 
 			wordfree(&expr);
 
@@ -347,7 +347,7 @@ void linted_conf_put(struct linted_conf *conf)
 
 			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
 				struct conf_setting_bucket const *
-				    setting_bucket = &section->buckets[kk];
+				setting_bucket = &section->buckets[kk];
 				size_t settings_size =
 				    setting_bucket->settings_size;
 				struct conf_setting *settings =
@@ -485,7 +485,7 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 	if (!have_found_setting)
 		return NULL;
 
-	return (char const *const *)found_setting->value;
+	return (char const * const *)found_setting->value;
 }
 
 linted_error linted_conf_add_setting(struct linted_conf_section *section,

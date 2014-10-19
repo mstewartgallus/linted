@@ -285,7 +285,7 @@ It is insecure to run a game with high privileges!\n"));
 		linted_random_seed_generator(entropy);
 	}
 
-	return linted_start(process_name, argc, (char const *const *)argv);
+	return linted_start(process_name, argc, (char const * const *)argv);
 }
 
 static bool is_privileged(void)

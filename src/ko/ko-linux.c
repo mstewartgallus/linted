@@ -397,7 +397,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
 		linted_error wait_errnum;
 		do {
-			struct timespec timeout = {0};
+			struct timespec timeout = { 0 };
 
 			if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
 				wait_errnum = errno;
@@ -492,7 +492,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 
 static linted_error poll_one(linted_ko ko, short events, short *revents)
 {
-	struct pollfd pollfd = {.fd = ko, .events = events};
+	struct pollfd pollfd = { .fd = ko, .events = events };
 	if (-1 == poll(&pollfd, 1U, -1)) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);

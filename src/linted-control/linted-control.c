@@ -38,10 +38,11 @@
 
 static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-control",
-    .kos_size = 0U,
-    .kos = NULL,
-    .seccomp_bpf = &seccomp_filter};
+	.canonical_process_name = PACKAGE_NAME "-control",
+	.kos_size = 0U,
+	.kos = NULL,
+	.seccomp_bpf = &seccomp_filter
+};
 
 static uint_fast8_t run_reboot(char const *process_name, size_t argc,
                                char const *const argv[]);
@@ -125,11 +126,15 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	enum { REBOOT, STATUS, STOP };
+	enum {
+		REBOOT,
+		STATUS,
+		STOP
+	};
 
 	static char const *const commands[] = {[REBOOT] = "reboot",
-	                                       [STATUS] = "status",
-	                                       [STOP] = "stop"};
+		                               [STATUS] = "status",
+		                               [STOP] = "stop" };
 
 	int arg = -1;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(commands); ++ii) {
@@ -165,46 +170,48 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
 static struct sock_filter const real_filter[] = {
-    /*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-                    offsetof(struct seccomp_data, nr)),
-    /*  */ ALLOW(access),
-    /*  */ ALLOW(arch_prctl),
-    /*  */ ALLOW(brk),
-    /*  */ ALLOW(chdir),
-    /*  */ ALLOW(close),
-    /*  */ ALLOW(connect),
-    /*  */ ALLOW(dup2),
-    /*  */ ALLOW(execve),
-    /*  */ ALLOW(exit_group),
-    /*  */ ALLOW(fcntl),
-    /*  */ ALLOW(fstat),
-    /*  */ ALLOW(futex),
-    /*  */ ALLOW(getdents),
-    /*  */ ALLOW(geteuid),
-    /*  */ ALLOW(getrlimit),
-    /*  */ ALLOW(getuid),
-    /*  */ ALLOW(lseek),
-    /*  */ ALLOW(mmap),
-    /*  */ ALLOW(mprotect),
-    /*  */ ALLOW(munmap),
-    /*  */ ALLOW(open),
-    /*  */ ALLOW(openat),
-    /*  */ ALLOW(prctl),
-    /*  */ ALLOW(read),
-    /*  */ ALLOW(restart_syscall),
-    /*  */ ALLOW(rt_sigaction),
-    /*  */ ALLOW(rt_sigprocmask),
-    /*  */ ALLOW(rt_sigtimedwait),
-    /*  */ ALLOW(set_robust_list),
-    /*  */ ALLOW(set_tid_address),
-    /*  */ ALLOW(socket),
-    /*  */ ALLOW(stat),
-    /*  */ ALLOW(write),
-    /*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)};
+	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+	                offsetof(struct seccomp_data, nr)),
+	/*  */ ALLOW(access),
+	/*  */ ALLOW(arch_prctl),
+	/*  */ ALLOW(brk),
+	/*  */ ALLOW(chdir),
+	/*  */ ALLOW(close),
+	/*  */ ALLOW(connect),
+	/*  */ ALLOW(dup2),
+	/*  */ ALLOW(execve),
+	/*  */ ALLOW(exit_group),
+	/*  */ ALLOW(fcntl),
+	/*  */ ALLOW(fstat),
+	/*  */ ALLOW(futex),
+	/*  */ ALLOW(getdents),
+	/*  */ ALLOW(geteuid),
+	/*  */ ALLOW(getrlimit),
+	/*  */ ALLOW(getuid),
+	/*  */ ALLOW(lseek),
+	/*  */ ALLOW(mmap),
+	/*  */ ALLOW(mprotect),
+	/*  */ ALLOW(munmap),
+	/*  */ ALLOW(open),
+	/*  */ ALLOW(openat),
+	/*  */ ALLOW(prctl),
+	/*  */ ALLOW(read),
+	/*  */ ALLOW(restart_syscall),
+	/*  */ ALLOW(rt_sigaction),
+	/*  */ ALLOW(rt_sigprocmask),
+	/*  */ ALLOW(rt_sigtimedwait),
+	/*  */ ALLOW(set_robust_list),
+	/*  */ ALLOW(set_tid_address),
+	/*  */ ALLOW(socket),
+	/*  */ ALLOW(stat),
+	/*  */ ALLOW(write),
+	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
+};
 
 static struct sock_fprog const seccomp_filter = {
-    .len = LINTED_ARRAY_SIZE(real_filter),
-    .filter = (struct sock_filter *)real_filter};
+	.len = LINTED_ARRAY_SIZE(real_filter),
+	.filter = (struct sock_filter *)real_filter
+};
 
 static uint_fast8_t run_reboot(char const *process_name, size_t argc,
                                char const *const argv[])
@@ -290,7 +297,7 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 	                       process_name);
 
 	{
-		union linted_admin_request request = {0};
+		union linted_admin_request request = { 0 };
 
 		request.type = LINTED_ADMIN_REBOOT;
 
@@ -439,7 +446,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	                       process_name, name);
 
 	{
-		union linted_admin_request request = {0};
+		union linted_admin_request request = { 0 };
 
 		request.type = LINTED_ADMIN_STATUS;
 		request.status.size = name_len;
@@ -576,7 +583,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	                       process_name);
 
 	{
-		union linted_admin_request request = {0};
+		union linted_admin_request request = { 0 };
 
 		request.type = LINTED_ADMIN_STOP;
 		request.stop.size = sizeof "gui" - 1U;
