@@ -854,6 +854,8 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 {
 	linted_error errnum = 0;
 
+	char const *service_name = linted_conf_peek_name(conf);
+
 	char const *const *type = linted_conf_find(conf, "Service", "Type");
 	char const *const *exec_start =
 	    linted_conf_find(conf, "Service", "ExecStart");
@@ -914,16 +916,16 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		envvars = xx;
 	}
 
-	char *service_name;
+	char *service_name_setting;
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s",
-		                   linted_conf_peek_name(conf))) {
+		                   service_name)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_envvars;
 		}
-		service_name = xx;
+		service_name_setting = xx;
 	}
 
 	{
@@ -939,12 +941,12 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		errnum = linted_mem_realloc_array(
 		    &xx, envvars, envvars_size + 2U, sizeof envvars[0U]);
 		if (errnum != 0) {
-			linted_mem_free(service_name);
+			linted_mem_free(service_name_setting);
 			goto free_envvars;
 		}
 		envvars = xx;
 
-		envvars[envvars_size] = service_name;
+		envvars[envvars_size] = service_name_setting;
 		envvars[envvars_size + 1U] = NULL;
 	}
 
@@ -973,6 +975,7 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
 
+	linted_spawn_attr_setname(attr, service_name);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs_value);
 	linted_spawn_attr_setdropcaps(attr, true);

@@ -92,6 +92,7 @@ struct linted_spawn_attr
 	char const *chdir_path;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
+	char const *name;
 	int clone_flags;
 	int deathsig;
 	bool drop_caps : 1U;
@@ -132,6 +133,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
+	attr->name = NULL;
 	attr->deathsig = 0;
 	attr->chrootdir = NULL;
 	attr->chdir_path = NULL;
@@ -157,6 +159,12 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_setname(struct linted_spawn_attr *attr,
+			       char const *name)
+{
+	attr->name = name;
 }
 
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, _Bool b)
@@ -401,6 +409,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	int deathsig = 0;
 	char const *chrootdir = NULL;
 	char const *chdir_path = NULL;
+	char const *name = NULL;
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
@@ -408,6 +417,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool deparent = false;
 
 	if (attr != NULL) {
+		name = attr->name;
 		clone_flags = attr->clone_flags;
 		deathsig = attr->deathsig;
 		chrootdir = attr->chrootdir;
@@ -752,11 +762,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		/**
 		 * @todo execve a dedicated waiter process
-		 *
-		 * @todo Give each sandbox an unit specific name
 		 */
 
-		errnum = set_name("sandbox");
+		errnum = set_name(name);
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 
