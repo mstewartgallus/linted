@@ -109,6 +109,8 @@ static void drop_privileges(linted_ko writer, cap_t caps);
 
 static void pid_to_str(char *buf, pid_t pid);
 
+static linted_error set_child_subreaper(bool v);
+static linted_error set_name(char const *name);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_death_sig(int signum);
 
@@ -739,6 +741,50 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == set_no_new_privs(true))
 			exit_with_error(err_writer, errno);
 
+	if (deparent) {
+		/*
+		 * This isn't needed if ((clone_flags & CLONE_NEWPID) != 0)
+		 * but doesn't hurt,
+		 */
+		errnum = set_child_subreaper(true);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+
+		/**
+		 * @todo execve a dedicated waiter process
+		 *
+		 * @todo Give each sandbox an unit specific name
+		 */
+
+		errnum = set_name("sandbox");
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+
+		pid_t grandchild = fork();
+		if (-1 == grandchild)
+			exit_with_error(err_writer, errno);
+
+		if (grandchild != 0) {
+			errnum = linted_ko_close(err_writer);
+			if (errnum != 0)
+				_Exit(errnum);
+
+			for (;;) {
+				siginfo_t info;
+				do {
+					errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
+						? errno
+						: 0;
+				} while (EINTR == errnum);
+				if (errnum != 0) {
+					assert(errnum != EINVAL);
+					break;
+				}
+			}
+			_Exit(errnum);
+		}
+	}
+
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
 
@@ -750,12 +796,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp_copy[env_size + 2U] = NULL;
 
 		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
-		           (int)file_actions->action_count - 3U);
+			   (int)file_actions->action_count - 3U);
 
-		pid_t child_pid = real_getpid();
-		if ((clone_flags & CLONE_NEWPID) != 0)
-			child_pid = 2;
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), child_pid);
+		pid_to_str(listen_pid + strlen("LISTEN_PID="),
+			   real_getpid());
 
 		envp = (char const * const *)envp_copy;
 	}
@@ -775,41 +819,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		filename = relative_filename;
 	}
 
-	if ((clone_flags & CLONE_NEWPID) != 0) {
-		pid_t grandchild = fork();
-		if (-1 == grandchild)
-			exit_with_error(err_writer, errno);
-
-		if (0 == grandchild) {
-			execve(filename, (char * const *)argv,
-			       (char * const *)envp);
-			exit_with_error(err_writer, errno);
-		}
-
-		errnum = linted_ko_close(err_writer);
-		if (errnum != 0)
-			_Exit(errnum);
-
-		/**
-		 * @todo execve a dedicated waiter process
-		 */
-		siginfo_t info;
-		do {
-			errnum = -1 == waitid(P_PID, grandchild, &info, WEXITED)
-			             ? errno
-			             : 0;
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(errnum != ECHILD);
-			assert(false);
-		}
-		_Exit(info.si_status);
-	}
-
-	execve(filename, (char * const *)argv, (char * const *)envp);
+	execve(filename, (char * const *)argv,
+	       (char * const *)envp);
 	exit_with_error(err_writer, errno);
-
 	/* Impossible */
 	return 0;
 }
@@ -1057,6 +1069,40 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+static linted_error set_child_subreaper(bool v)
+{
+	linted_error errnum;
+
+	unsigned long set_child_subreaper;
+
+#ifdef PR_SET_CHILD_SUBREAPER
+	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
+#else
+	set_child_subreaper = 36UL;
+#endif
+
+	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_name(char const *name)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }
 
 static linted_error set_death_sig(int signum)
