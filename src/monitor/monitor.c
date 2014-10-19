@@ -75,6 +75,15 @@ struct unit_service
 {
 	struct unit_common common;
 	pid_t pid;
+
+	char *name;
+
+	char const *const *exec_start;
+	char const *const *files;
+	char const *fstab;
+	char const *chdir_path;
+	char const *const *env_whitelist;
+	bool no_new_privs : 1U;
 };
 
 struct unit_socket
@@ -184,7 +193,7 @@ static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
 static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
 static linted_error socket_create(linted_ko *kop, struct linted_conf *unit);
-static linted_error service_spawn(pid_t *pidp, struct linted_conf *unit,
+static linted_error service_spawn(pid_t *pidp, union unit *unit,
                                   linted_ko cwd, char const *chrootdir,
                                   struct units const *units);
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -691,9 +700,76 @@ static linted_error units_create(struct units **unitsp,
 		unit->common.name = unit_name;
 
 		switch (unit_type) {
-		case UNIT_TYPE_SERVICE:
+		case UNIT_TYPE_SERVICE: {
 			unit->service.pid = -1;
+
+			char const *const *type = linted_conf_find(conf, "Service", "Type");
+			char const *const *exec_start =
+				linted_conf_find(conf, "Service", "ExecStart");
+			char const *const *no_new_privs =
+				linted_conf_find(conf, "Service", "NoNewPrivileges");
+			char const *const *files =
+				linted_conf_find(conf, "Service", "X-Linted-Files");
+			char const *const *fstab =
+				linted_conf_find(conf, "Service", "X-Linted-Fstab");
+			char const *const *chdir_path =
+				linted_conf_find(conf, "Service", "X-Linted-Chdir");
+			char const *const *env_whitelist =
+				linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
+
+			if (type != NULL && (NULL == type[0U] || type[1U] != NULL)) {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			if (NULL == exec_start) {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			if (no_new_privs != NULL &&
+			    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL)) {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL)) {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			if (chdir_path != NULL &&
+			    (NULL == chdir_path[0U] || chdir_path[1U] != NULL)) {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			if (NULL == type) {
+				/* simple type of service */
+			} else if (0 == strcmp("simple", type[0U])) {
+				/* simple type of service */
+			} else {
+				errnum = EINVAL;
+				goto destroy_units;
+			}
+
+			bool no_new_privs_value = false;
+			if (no_new_privs != NULL) {
+				bool xx;
+				errnum = bool_from_cstring(no_new_privs[0U], &xx);
+				if (errnum != 0)
+					goto destroy_units;
+				no_new_privs_value = xx;
+			}
+
+			unit->service.exec_start = exec_start;
+			unit->service.no_new_privs = no_new_privs_value;
+			unit->service.files = files;
+			unit->service.fstab = NULL == fstab ? NULL : fstab[0U];
+			unit->service.chdir_path = NULL == chdir_path ? NULL : chdir_path[0U];
+			unit->service.env_whitelist = env_whitelist;
 			break;
+		}
 
 		case UNIT_TYPE_SOCKET:
 			unit->socket.is_open = false;
@@ -748,7 +824,6 @@ static linted_error units_activate(struct units *units,
 	}
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct linted_conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
@@ -759,8 +834,8 @@ static linted_error units_activate(struct units *units,
 		pid_t process;
 		{
 			pid_t xx;
-			errnum =
-			    service_spawn(&xx, conf, cwd, chrootdir, units);
+			errnum = service_spawn(&xx, unit, cwd,
+					       chrootdir, units);
 			if (errnum != 0)
 				return errnum;
 
@@ -848,61 +923,19 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
 	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
-static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
+static linted_error service_spawn(pid_t *pidp, union unit *unit,
                                   linted_ko cwd, char const *chrootdir,
                                   struct units const *units)
 {
 	linted_error errnum = 0;
 
-	char const *service_name = linted_conf_peek_name(conf);
-
-	char const *const *type = linted_conf_find(conf, "Service", "Type");
-	char const *const *exec_start =
-	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privs =
-	    linted_conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *files =
-	    linted_conf_find(conf, "Service", "X-Linted-Files");
-	char const *const *fstab =
-	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
-	char const *const *chdir_path =
-	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
-	char const *const *env_whitelist =
-	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
-
-	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
-		return EINVAL;
-
-	if (NULL == exec_start)
-		return EINVAL;
-
-	if (no_new_privs != NULL &&
-	    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
-		return EINVAL;
-
-	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
-		return EINVAL;
-
-	if (chdir_path != NULL &&
-	    (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
-		return EINVAL;
-
-	if (NULL == type) {
-		/* simple type of service */
-	} else if (0 == strcmp("simple", type[0U])) {
-		/* simple type of service */
-	} else {
-		return EINVAL;
-	}
-
-	bool no_new_privs_value = false;
-	if (no_new_privs != NULL) {
-		bool xx;
-		errnum = bool_from_cstring(no_new_privs[0U], &xx);
-		if (errnum != 0)
-			return errnum;
-		no_new_privs_value = xx;
-	}
+	char const *service_name = unit->common.name;
+	char const *const *exec_start = unit->service.exec_start;
+	bool no_new_privs = unit->service.no_new_privs;
+	char const *const *files = unit->service.files;
+	char const *fstab = unit->service.fstab;
+	char const *chdir_path = unit->service.chdir_path;
+	char const *const *env_whitelist = unit->service.env_whitelist;
 
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
@@ -977,16 +1010,16 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 
 	linted_spawn_attr_setname(attr, service_name);
 	linted_spawn_attr_setdeparent(attr, true);
-	linted_spawn_attr_setnonewprivs(attr, no_new_privs_value);
+	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
 	if (chdir_path != NULL)
-		linted_spawn_attr_setchdir(attr, chdir_path[0U]);
+		linted_spawn_attr_setchdir(attr, chdir_path);
 
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);
 
-		errnum = parse_fstab(attr, cwd, fstab[0U]);
+		errnum = parse_fstab(attr, cwd, fstab);
 		if (errnum != 0)
 			goto destroy_attr;
 	}
@@ -1118,13 +1151,13 @@ static linted_error service_spawn(pid_t *pidp, struct linted_conf *conf,
 		if (wronly)
 			flags |= LINTED_KO_WRONLY;
 
-		union unit const *unit = unit_for_name(units, filename);
-		if (NULL == unit) {
+		union unit const *socket_unit = unit_for_name(units, filename);
+		if (NULL == socket_unit) {
 			errnum = EINVAL;
 			goto free_filename;
 		}
 
-		struct unit_socket const *socket = &unit->socket;
+		struct unit_socket const *socket = &socket_unit->socket;
 
 		linted_ko ko;
 		{
