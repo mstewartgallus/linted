@@ -81,12 +81,13 @@ char const *linted_error_string(linted_error errnum_to_print)
 	}
 }
 
-void linted_error_string_free(char const *str) {
+void linted_error_string_free(char const *str)
+{
 	if (invalid_error_string == str)
 		return;
 
 	if (out_of_memory_string == str)
 		return;
 
-	linted_mem_free((char*)str);
+	linted_mem_free((char *)str);
 }

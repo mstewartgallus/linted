@@ -161,8 +161,7 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr);
 }
 
-void linted_spawn_attr_setname(struct linted_spawn_attr *attr,
-			       char const *name)
+void linted_spawn_attr_setname(struct linted_spawn_attr *attr, char const *name)
 {
 	attr->name = name;
 }
@@ -780,9 +779,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			for (;;) {
 				siginfo_t info;
 				do {
-					errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
-						? errno
-						: 0;
+					errnum = -1 == waitid(P_ALL, -1, &info,
+					                      WEXITED)
+					             ? errno
+					             : 0;
 				} while (EINTR == errnum);
 				if (errnum != 0) {
 					assert(errnum != EINVAL);
@@ -804,10 +804,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		envp_copy[env_size + 2U] = NULL;
 
 		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
-			   (int)file_actions->action_count - 3U);
+		           (int)file_actions->action_count - 3U);
 
-		pid_to_str(listen_pid + strlen("LISTEN_PID="),
-			   real_getpid());
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), real_getpid());
 
 		envp = (char const * const *)envp_copy;
 	}
@@ -827,8 +826,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		filename = relative_filename;
 	}
 
-	execve(filename, (char * const *)argv,
-	       (char * const *)envp);
+	execve(filename, (char * const *)argv, (char * const *)envp);
 	exit_with_error(err_writer, errno);
 	/* Impossible */
 	return 0;

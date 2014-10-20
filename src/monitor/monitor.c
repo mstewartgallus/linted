@@ -90,6 +90,9 @@ struct unit_socket
 {
 	struct unit_common common;
 	linted_ko ko;
+	char const *path;
+	long maxmsgs;
+	long msgsize;
 	bool is_open : 1U;
 };
 
@@ -164,8 +167,7 @@ void confs_destroy(struct linted_conf **confs, size_t size);
 static linted_error units_create(struct units **unitp,
                                  struct linted_conf **confs, size_t size);
 static void units_destroy(struct units *units);
-static linted_error units_activate(struct units *units,
-                                   struct linted_conf **confs, linted_ko cwd,
+static linted_error units_activate(struct units *units, linted_ko cwd,
                                    char const *chrootdir);
 static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
@@ -192,10 +194,16 @@ static linted_error conn_pool_destroy(struct conn_pool *pool);
 static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
 static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
-static linted_error socket_create(linted_ko *kop, struct linted_conf *unit);
-static linted_error service_spawn(pid_t *pidp, union unit *unit,
-                                  linted_ko cwd, char const *chrootdir,
-                                  struct units const *units);
+static linted_error service_create(struct unit_service *unit,
+                                   struct linted_conf *conf);
+static linted_error socket_create(struct unit_socket *unit,
+                                  struct linted_conf *conf);
+
+static linted_error socket_activate(struct unit_socket *unit);
+static linted_error service_activate(union unit *unit, linted_ko cwd,
+                                     char const *chrootdir,
+                                     struct units const *units);
+
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
@@ -337,7 +345,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = units_activate(units, confs, cwd, chrootdir);
+	errnum = units_activate(units, cwd, chrootdir);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -703,77 +711,20 @@ static linted_error units_create(struct units **unitsp,
 		case UNIT_TYPE_SERVICE: {
 			unit->service.pid = -1;
 
-			char const *const *type = linted_conf_find(conf, "Service", "Type");
-			char const *const *exec_start =
-				linted_conf_find(conf, "Service", "ExecStart");
-			char const *const *no_new_privs =
-				linted_conf_find(conf, "Service", "NoNewPrivileges");
-			char const *const *files =
-				linted_conf_find(conf, "Service", "X-Linted-Files");
-			char const *const *fstab =
-				linted_conf_find(conf, "Service", "X-Linted-Fstab");
-			char const *const *chdir_path =
-				linted_conf_find(conf, "Service", "X-Linted-Chdir");
-			char const *const *env_whitelist =
-				linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
-
-			if (type != NULL && (NULL == type[0U] || type[1U] != NULL)) {
-				errnum = EINVAL;
+			errnum = service_create(&unit->service, conf);
+			if (errnum != 0)
 				goto destroy_units;
-			}
-
-			if (NULL == exec_start) {
-				errnum = EINVAL;
-				goto destroy_units;
-			}
-
-			if (no_new_privs != NULL &&
-			    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL)) {
-				errnum = EINVAL;
-				goto destroy_units;
-			}
-
-			if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL)) {
-				errnum = EINVAL;
-				goto destroy_units;
-			}
-
-			if (chdir_path != NULL &&
-			    (NULL == chdir_path[0U] || chdir_path[1U] != NULL)) {
-				errnum = EINVAL;
-				goto destroy_units;
-			}
-
-			if (NULL == type) {
-				/* simple type of service */
-			} else if (0 == strcmp("simple", type[0U])) {
-				/* simple type of service */
-			} else {
-				errnum = EINVAL;
-				goto destroy_units;
-			}
-
-			bool no_new_privs_value = false;
-			if (no_new_privs != NULL) {
-				bool xx;
-				errnum = bool_from_cstring(no_new_privs[0U], &xx);
-				if (errnum != 0)
-					goto destroy_units;
-				no_new_privs_value = xx;
-			}
-
-			unit->service.exec_start = exec_start;
-			unit->service.no_new_privs = no_new_privs_value;
-			unit->service.files = files;
-			unit->service.fstab = NULL == fstab ? NULL : fstab[0U];
-			unit->service.chdir_path = NULL == chdir_path ? NULL : chdir_path[0U];
-			unit->service.env_whitelist = env_whitelist;
 			break;
 		}
 
-		case UNIT_TYPE_SOCKET:
+		case UNIT_TYPE_SOCKET: {
 			unit->socket.is_open = false;
+
+			errnum = socket_create(&unit->socket, conf);
+			if (errnum != 0)
+				goto destroy_units;
 			break;
+		}
 		}
 
 		++units->size;
@@ -797,30 +748,20 @@ static void units_destroy(struct units *units)
 	linted_mem_free(units);
 }
 
-static linted_error units_activate(struct units *units,
-                                   struct linted_conf **confs, linted_ko cwd,
+static linted_error units_activate(struct units *units, linted_ko cwd,
                                    char const *chrootdir)
 {
 	linted_error errnum;
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct linted_conf *conf = confs[ii];
 		union unit *unit = &units->list[ii];
 
 		if (unit->common.type != UNIT_TYPE_SOCKET)
 			continue;
 
-		linted_ko ko;
-		{
-			linted_ko xx;
-			errnum = socket_create(&xx, conf);
-			if (errnum != 0)
-				return errnum;
-			ko = xx;
-		}
-
-		unit->socket.ko = ko;
-		unit->socket.is_open = true;
+		errnum = socket_activate(&unit->socket);
+		if (errnum != 0)
+			return errnum;
 	}
 
 	for (size_t ii = 0U; ii < units->size; ++ii) {
@@ -829,39 +770,92 @@ static linted_error units_activate(struct units *units,
 		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
 
-		struct unit_service *unit_service = &unit->service;
-
-		pid_t process;
-		{
-			pid_t xx;
-			errnum = service_spawn(&xx, unit, cwd,
-					       chrootdir, units);
-			if (errnum != 0)
-				return errnum;
-
-			process = xx;
-		}
-
-		unit_service->pid = process;
+		errnum = service_activate(unit, cwd, chrootdir, units);
+		if (errnum != 0)
+			return errnum;
 	}
 
 	return 0;
 }
 
-static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
+static linted_error service_create(struct unit_service *unit,
+                                   struct linted_conf *conf)
 {
 	linted_error errnum;
 
-	char const *const *name =
-	    linted_conf_find(unit, "Socket", "ListenMessageQueue");
-	char const *const *maxmsgs =
-	    linted_conf_find(unit, "Socket", "MessageQueueMaxMessages");
-	char const *const *msgsize =
-	    linted_conf_find(unit, "Socket", "MessageQueueMessageSize");
-	char const *const *temp =
-	    linted_conf_find(unit, "Socket", "X-Linted-Temporary");
+	char const *const *type = linted_conf_find(conf, "Service", "Type");
+	char const *const *exec_start =
+	    linted_conf_find(conf, "Service", "ExecStart");
+	char const *const *no_new_privs =
+	    linted_conf_find(conf, "Service", "NoNewPrivileges");
+	char const *const *files =
+	    linted_conf_find(conf, "Service", "X-Linted-Files");
+	char const *const *fstab =
+	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
+	char const *const *chdir_path =
+	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
+	char const *const *env_whitelist =
+	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
-	if (NULL == name || NULL == name[0U] || name[1U] != NULL)
+	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
+		return EINVAL;
+
+	if (NULL == exec_start)
+		return EINVAL;
+
+	if (no_new_privs != NULL &&
+	    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
+		return EINVAL;
+
+	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
+		return EINVAL;
+
+	if (chdir_path != NULL &&
+	    (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
+		return EINVAL;
+
+	if (NULL == type) {
+		/* simple type of service */
+	} else if (0 == strcmp("simple", type[0U])) {
+		/* simple type of service */
+	} else {
+		return EINVAL;
+	}
+
+	bool no_new_privs_value = false;
+	if (no_new_privs != NULL) {
+		bool xx;
+		errnum = bool_from_cstring(no_new_privs[0U], &xx);
+		if (errnum != 0)
+			return errnum;
+		no_new_privs_value = xx;
+	}
+
+	unit->exec_start = exec_start;
+	unit->no_new_privs = no_new_privs_value;
+	unit->files = files;
+	unit->fstab = NULL == fstab ? NULL : fstab[0U];
+	unit->chdir_path = NULL == chdir_path ? NULL : chdir_path[0U];
+	unit->env_whitelist = env_whitelist;
+
+	return 0;
+}
+
+static linted_error socket_create(struct unit_socket *unit,
+                                  struct linted_conf *conf)
+{
+	linted_error errnum;
+
+	char const *const *path =
+	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
+	char const *const *maxmsgs =
+	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
+	char const *const *msgsize =
+	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
+	char const *const *temp =
+	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
+
+	if (NULL == path || NULL == path[0U] || path[1U] != NULL)
 		return EINVAL;
 
 	if (NULL == maxmsgs || NULL == maxmsgs[0U] || maxmsgs[1U] != NULL)
@@ -891,17 +885,29 @@ static linted_error socket_create(linted_ko *kop, struct linted_conf *unit)
 		msgsize_value = xx;
 	}
 
+	unit->path = path[0U];
+	unit->maxmsgs = maxmsgs_value;
+	unit->msgsize = msgsize_value;
+
+	return 0;
+}
+
+static linted_error socket_activate(struct unit_socket *unit)
+{
+	linted_error errnum;
 	linted_ko ko;
 	{
 		linted_ko xx;
-		errnum = linted_mq_create(&xx, name[0U], maxmsgs_value,
-		                          msgsize_value, 0);
+		errnum = linted_mq_create(&xx, unit->path, unit->maxmsgs,
+		                          unit->msgsize, 0);
 		if (errnum != 0)
 			return errnum;
 		ko = xx;
 	}
 
-	*kop = ko;
+	unit->ko = ko;
+	unit->is_open = true;
+
 	return 0;
 }
 
@@ -923,9 +929,9 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
 	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
-static linted_error service_spawn(pid_t *pidp, union unit *unit,
-                                  linted_ko cwd, char const *chrootdir,
-                                  struct units const *units)
+static linted_error service_activate(union unit *unit, linted_ko cwd,
+                                     char const *chrootdir,
+                                     struct units const *units)
 {
 	linted_error errnum = 0;
 
@@ -952,8 +958,7 @@ static linted_error service_spawn(pid_t *pidp, union unit *unit,
 	char *service_name_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s",
-		                   service_name)) {
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", service_name)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_envvars;
@@ -1194,7 +1199,7 @@ static linted_error service_spawn(pid_t *pidp, union unit *unit,
 		process = xx;
 	}
 
-	*pidp = process;
+	unit->service.pid = process;
 
 destroy_proc_kos:
 	for (size_t jj = 0; jj < kos_opened; ++jj)
