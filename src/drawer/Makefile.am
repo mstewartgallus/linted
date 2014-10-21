@@ -20,11 +20,9 @@ pkglibexec_PROGRAMS+=%D%/drawer
 %C%_drawer_LDADD=\
   src/start/libstart.la\
   \
-  src/assets/libassets.la\
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/gpu/libgpu.la\
-  src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
   \
