@@ -152,45 +152,45 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 {
 	struct linted_mq_task_receive *task_receive =
 	    LINTED_MQ_RECEIVE_DOWNCAST(task);
-	size_t bytes_read = 0U;
 	linted_error errnum = 0;
 
 	linted_ko ko = task_receive->ko;
 	char *buf = task_receive->buf;
 	size_t size = task_receive->size;
 
-	for (;;) {
-		do {
-			ssize_t result = mq_receive(ko, buf, size, NULL);
-			if (-1 == result) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				continue;
-			}
+	ssize_t result = mq_receive(ko, buf, size, NULL);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-			bytes_read = result;
-		} while (EINTR == errnum);
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
-		if (errnum != EAGAIN) {
-			break;
-		}
-
+	if (EAGAIN == errnum) {
 		short revents = 0;
-		do {
+		{
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
 			if (0 == errnum)
 				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
+		}
+		if (EINTR == errnum) {
+			linted_asynch_pool_submit(pool, task);
+			return;
+		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
-			break;
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(ko, revents);
 	}
 
+complete_task:
 	task->errnum = errnum;
-	task_receive->bytes_read = bytes_read;
+	task_receive->bytes_read = result;
 
 	linted_asynch_pool_complete(pool, task);
 }
@@ -206,34 +206,37 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 	char const *buf = task_send->buf;
 	size_t size = task_send->size;
 
-	for (;;) {
-		do {
-			if (-1 == mq_send(ko, buf, size, 0)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				continue;
-			}
+	if (-1 == mq_send(ko, buf, size, 0)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-			bytes_wrote = size;
-		} while (EINTR == errnum);
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
-		if (errnum != EAGAIN)
-			break;
-
+	if (EAGAIN == errnum) {
 		short revents = 0;
-		do {
+		{
 			short xx;
 			errnum = poll_one(task_send->ko, POLLOUT, &xx);
 			if (0 == errnum)
 				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
+		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
-			break;
+		if (EINTR == errnum) {
+			linted_asynch_pool_submit(pool, task);
+			return;
+		}
+
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(ko, revents);
 	}
 
+complete_task:
 	task->errnum = errnum;
 	task_send->bytes_wrote = bytes_wrote;
 

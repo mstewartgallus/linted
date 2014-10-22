@@ -209,8 +209,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	linted_error errnum;
 	int oldstate;
 
-	if (NULL == pool)
-		return;
+	assert(pool != NULL);
 
 	{
 		int xx;
@@ -353,20 +352,21 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 {
 	struct linted_asynch_task_waitid *task_wait =
 	    LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
-	linted_error errnum;
+	linted_error errnum = 0;
 
 	idtype_t idtype = task_wait->idtype;
 	id_t id = task_wait->id;
 	int options = task_wait->options;
 
-	do {
-		if (-1 == waitid(idtype, id, &task_wait->info, options)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
+	if (-1 == waitid(idtype, id, &task_wait->info, options)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
 	task->errnum = errnum;
 
@@ -378,20 +378,20 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
 {
 	struct linted_asynch_task_sleep_until *restrict task_sleep =
 	    LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);
-	linted_error errnum;
+	linted_error errnum = 0;
 
 	int flags = task_sleep->flags;
 
-	do {
-		if (-1 == clock_nanosleep(CLOCK_MONOTONIC, flags,
-		                          &task_sleep->request,
-		                          &task_sleep->request)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
+	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, flags, &task_sleep->request,
+	                          &task_sleep->request)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
 	task->errnum = errnum;
 

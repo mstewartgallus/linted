@@ -48,7 +48,8 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 	linted_error errnum = 0;
 	for (;;) {
 		for (;;) {
-			ssize_t result = read(ko, (char*)buf + bytes_read, bytes_left);
+			ssize_t result =
+			    read(ko, (char *)buf + bytes_read, bytes_left);
 			if (-1 == result) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
@@ -111,7 +112,7 @@ linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
 	for (;;) {
 		for (;;) {
 			ssize_t result =
-				write(ko, (char*)buf + bytes_wrote, bytes_left);
+			    write(ko, (char *)buf + bytes_wrote, bytes_left);
 			if (-1 == result) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);

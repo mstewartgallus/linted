@@ -254,12 +254,17 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	short events = task_poll->events;
 
 	short revents = 0;
-	do {
+	{
 		short xx;
 		errnum = poll_one(ko, events, &xx);
 		if (0 == errnum)
 			revents = xx;
-	} while (EINTR == errnum);
+	}
+
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
 	task_poll->revents = revents;
 	task->errnum = errnum;
@@ -279,46 +284,57 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	char *buf = task_read->buf;
 
 	linted_error errnum = 0;
-	for (;;) {
-		for (;;) {
-			ssize_t result = read(ko, buf + bytes_read, bytes_left);
-			if (-1 == result) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
 
-				if (EINTR == errnum)
-					continue;
+	ssize_t result = read(ko, buf + bytes_read, bytes_left);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-				break;
-			}
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
-			size_t bytes_read_delta = result;
-			if (0U == bytes_read_delta)
-				break;
-
-			bytes_read += bytes_read_delta;
-			bytes_left -= bytes_read_delta;
-			if (0U == bytes_left)
-				break;
-		}
-
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
-			break;
-
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
 		short revents = 0;
-		do {
+		{
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
 			if (0 == errnum)
 				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
+		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
-			break;
+		if (EINTR == errnum) {
+			linted_asynch_pool_submit(pool, task);
+			return;
+		}
+
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(ko, revents);
 	}
 
+	if (errnum != 0)
+		goto complete_task;
+
+	size_t bytes_read_delta = result;
+	if (0U == bytes_read_delta)
+		goto complete_task;
+
+	bytes_read += bytes_read_delta;
+	bytes_left -= bytes_read_delta;
+	if (0U == bytes_left)
+		goto complete_task;
+
+	task->errnum = 0;
+	task_read->bytes_read = bytes_read;
+	task_read->current_position = bytes_read;
+	linted_asynch_pool_submit(pool, task);
+	return;
+
+complete_task:
 	task->errnum = errnum;
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = 0U;
@@ -347,45 +363,12 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	sigaddset(&oldset, SIGPIPE);
 
 	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0)
-		goto return_reply;
+		goto complete_task;
 
-	for (;;) {
-		for (;;) {
-			ssize_t result =
-			    write(ko, buf + bytes_wrote, bytes_left);
-			if (-1 == result) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-
-				if (EINTR == errnum)
-					continue;
-
-				break;
-			}
-
-			size_t bytes_wrote_delta = result;
-
-			bytes_wrote += bytes_wrote_delta;
-			bytes_left -= bytes_wrote_delta;
-			if (0U == bytes_left)
-				break;
-		}
-
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
-			break;
-
-		short revents = 0;
-		do {
-			short xx;
-			errnum = poll_one(ko, POLLOUT, &xx);
-			if (0 == errnum)
-				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
-
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
-			break;
+	ssize_t result = write(ko, buf + bytes_wrote, bytes_left);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
 	}
 
 	/* Consume SIGPIPEs */
@@ -419,7 +402,48 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 			errnum = mask_errnum;
 	}
 
-return_reply:
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
+
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
+		short revents = 0;
+		{
+			short xx;
+			errnum = poll_one(ko, POLLOUT, &xx);
+			if (0 == errnum)
+				revents = xx;
+		}
+
+		if (EINTR == errnum) {
+			linted_asynch_pool_submit(pool, task);
+			return;
+		}
+
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(ko, revents);
+	}
+
+	if (errnum != 0)
+		goto complete_task;
+
+	size_t bytes_wrote_delta = result;
+
+	bytes_wrote += bytes_wrote_delta;
+	bytes_left -= bytes_wrote_delta;
+	if (0U == bytes_left)
+		goto complete_task;
+
+	task_write->bytes_wrote = bytes_wrote;
+	task_write->current_position = bytes_wrote;
+
+	linted_asynch_pool_submit(pool, task);
+	return;
+
+complete_task:
 	task->errnum = errnum;
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = 0U;
@@ -434,56 +458,57 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	    LINTED_DOWNCAST(struct linted_ko_task_accept, task);
 
 	linted_ko new_ko = -1;
-	linted_error errnum;
+	linted_error errnum = 0;
 	linted_ko ko = task_accept->ko;
 
-	for (;;) {
-		new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
-		if (-1 == new_ko) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
+	new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+	if (-1 == new_ko) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-		/**
-		 * @bug On BSD accept returns the same file description as
-		 * passed into connect so this file descriptor shares NONBLOCK
-		 * status with the connector. I'm not sure of a way to sever
-		 * shared file descriptions on BSD.
-		 */
+	/**
+	 * @bug On BSD accept returns the same file description as
+	 * passed into connect so this file descriptor shares NONBLOCK
+	 * status with the connector. I'm not sure of a way to sever
+	 * shared file descriptions on BSD.
+	 */
 
-		/* Retry on network error */
-		switch (errnum) {
-		case EINTR:
-		case ENETDOWN:
-		case EPROTO:
-		case ENOPROTOOPT:
-		case EHOSTDOWN:
-		case ENONET:
-		case EHOSTUNREACH:
-		case EOPNOTSUPP:
-		case ENETUNREACH:
-			continue;
-		}
+	/* Retry on network error */
+	switch (errnum) {
+	case EINTR:
+	case ENETDOWN:
+	case EPROTO:
+	case ENOPROTOOPT:
+	case EHOSTDOWN:
+	case ENONET:
+	case EHOSTUNREACH:
+	case EOPNOTSUPP:
+	case ENETUNREACH:
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
 
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
-			break;
-
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
 		short revents = 0;
-		do {
+		{
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
 			if (0 == errnum)
 				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
+		}
+		if (EINTR == errnum) {
+			linted_asynch_pool_submit(pool, task);
+			return;
+		}
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
-			break;
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(ko, revents);
 	}
 
+complete_task:
 	task->errnum = errnum;
 	task_accept->returned_ko = new_ko;
 
