@@ -196,15 +196,11 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-	if (NULL == pool) {
-		run_task(NULL, task);
-	} else {
-		assert(!pool->stopped);
+	assert(pool != NULL);
+	assert(!pool->stopped);
 
-		task->errnum = EINPROGRESS;
-		linted_queue_send(pool->worker_command_queue,
-		                  LINTED_UPCAST(task));
-	}
+	task->errnum = EINPROGRESS;
+	linted_queue_send(pool->worker_command_queue, LINTED_UPCAST(task));
 }
 
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,

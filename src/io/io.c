@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _POSIX_C_SOURCE 200809L
+
 #include "config.h"
 
 #include "linted/io.h"
@@ -25,33 +27,160 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <pthread.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/poll.h>
+#include <unistd.h>
+
+static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error check_for_poll_error(linted_ko ko, short revents);
 
 linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
                                 size_t size)
 {
-	struct linted_ko_task_read read_task;
-	linted_ko_task_read(&read_task, 0, ko, buf, size);
-	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&read_task));
+	size_t bytes_read = 0U;
+	size_t bytes_left = size;
+
+	linted_error errnum = 0;
+	for (;;) {
+		for (;;) {
+			ssize_t result = read(ko, (char*)buf + bytes_read, bytes_left);
+			if (-1 == result) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+
+				if (EINTR == errnum)
+					continue;
+
+				break;
+			}
+
+			size_t bytes_read_delta = result;
+			if (0U == bytes_read_delta)
+				break;
+
+			bytes_read += bytes_read_delta;
+			bytes_left -= bytes_read_delta;
+			if (0U == bytes_left)
+				break;
+		}
+
+		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
+			break;
+
+		short revents = 0;
+		do {
+			short xx;
+			errnum = poll_one(ko, POLLIN, &xx);
+			if (0 == errnum)
+				revents = xx;
+		} while (EINTR == errnum);
+		if (errnum != 0)
+			break;
+
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
+			break;
+	}
 
 	if (bytes_read_out != NULL)
-		*bytes_read_out = read_task.bytes_read;
-	return LINTED_UPCAST(&read_task)->errnum;
+		*bytes_read_out = bytes_read;
+	return errnum;
 }
 
 linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
                                  void const *buf, size_t size)
 {
-	struct linted_ko_task_write write_task;
-	linted_ko_task_write(&write_task, 0, ko, buf, size);
-	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&write_task));
+	linted_error errnum = 0;
+	size_t bytes_wrote = 0U;
+	size_t bytes_left = size;
+
+	sigset_t oldset;
+	/* Get EPIPEs */
+	/* SIGPIPE may not be blocked already */
+	/* Reuse oldset to save on stack space */
+	sigemptyset(&oldset);
+	sigaddset(&oldset, SIGPIPE);
+
+	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0)
+		return errnum;
+
+	for (;;) {
+		for (;;) {
+			ssize_t result =
+				write(ko, (char*)buf + bytes_wrote, bytes_left);
+			if (-1 == result) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+
+				if (EINTR == errnum)
+					continue;
+
+				break;
+			}
+
+			size_t bytes_wrote_delta = result;
+
+			bytes_wrote += bytes_wrote_delta;
+			bytes_left -= bytes_wrote_delta;
+			if (0U == bytes_left)
+				break;
+		}
+
+		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
+			break;
+
+		short revents = 0;
+		do {
+			short xx;
+			errnum = poll_one(ko, POLLOUT, &xx);
+			if (0 == errnum)
+				revents = xx;
+		} while (EINTR == errnum);
+		if (errnum != 0)
+			break;
+
+		if ((errnum = check_for_poll_error(ko, revents)) != 0)
+			break;
+	}
+
+	/* Consume SIGPIPEs */
+	{
+		sigset_t sigpipeset;
+
+		sigemptyset(&sigpipeset);
+		sigaddset(&sigpipeset, SIGPIPE);
+
+		linted_error wait_errnum;
+		do {
+			struct timespec timeout = { 0 };
+
+			if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
+				wait_errnum = errno;
+				LINTED_ASSUME(wait_errnum != 0);
+			} else {
+				wait_errnum = 0;
+			}
+		} while (EINTR == wait_errnum);
+		if (wait_errnum != 0 && wait_errnum != EAGAIN) {
+			if (0 == errnum)
+				errnum = wait_errnum;
+		}
+	}
+
+	{
+		linted_error mask_errnum =
+		    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+		if (0 == errnum)
+			errnum = mask_errnum;
+	}
 
 	if (bytes_wrote_out != NULL)
-		*bytes_wrote_out = write_task.bytes_wrote;
-	return LINTED_UPCAST(&write_task)->errnum;
+		*bytes_wrote_out = bytes_wrote;
+	return errnum;
 }
 
 linted_error linted_io_write_str(linted_ko ko, size_t *restrict bytes_wrote,
@@ -113,6 +242,29 @@ linted_error linted_io_write_format(linted_ko ko,
 free_va_lists:
 	va_end(ap);
 	va_end(ap_copy);
+
+	return errnum;
+}
+
+static linted_error poll_one(linted_ko ko, short events, short *revents)
+{
+	struct pollfd pollfd = { .fd = ko, .events = events };
+	if (-1 == poll(&pollfd, 1U, -1)) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	*revents = pollfd.revents;
+	return 0;
+}
+
+static linted_error check_for_poll_error(linted_ko ko, short revents)
+{
+	linted_error errnum = 0;
+
+	if ((revents & POLLNVAL) != 0)
+		errnum = EBADF;
 
 	return errnum;
 }

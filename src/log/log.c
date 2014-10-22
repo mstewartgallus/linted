@@ -20,6 +20,11 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <mqueue.h>
+#include <sys/poll.h>
+
+static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error check_for_poll_error(linted_ko ko, short revents);
 
 linted_error linted_log_create(linted_log *logp, unsigned long flags)
 {
@@ -35,12 +40,34 @@ linted_error linted_log_create(linted_log *logp, unsigned long flags)
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
                               size_t msg_len)
 {
-	struct linted_mq_task_send send_task;
+	linted_error errnum = 0;
 
-	linted_mq_task_send(&send_task, 0, log, msg_ptr, msg_len);
-	linted_asynch_pool_submit(NULL, LINTED_UPCAST(&send_task));
+	for (;;) {
+		do {
+			if (-1 == mq_send(log, msg_ptr, msg_len, 0)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
+		} while (EINTR == errnum);
 
-	return LINTED_UPCAST(&send_task)->errnum;
+		if (errnum != EAGAIN)
+			break;
+
+		short revents = 0;
+		do {
+			short xx;
+			errnum = poll_one(log, POLLOUT, &xx);
+			if (0 == errnum)
+				revents = xx;
+		} while (EINTR == errnum);
+		if (errnum != 0)
+			break;
+
+		if ((errnum = check_for_poll_error(log, revents)) != 0)
+			break;
+	}
+
+	return errnum;
 }
 
 void linted_log_receive(struct linted_log_task *task, unsigned task_id,
@@ -48,4 +75,27 @@ void linted_log_receive(struct linted_log_task *task, unsigned task_id,
 {
 	linted_mq_task_receive(LINTED_UPCAST(task), task_id, log, msg_ptr,
 	                       LINTED_LOG_MAX);
+}
+
+static linted_error check_for_poll_error(linted_ko ko, short revents)
+{
+	linted_error errnum = 0;
+
+	if ((revents & POLLNVAL) != 0)
+		errnum = EBADF;
+
+	return errnum;
+}
+
+static linted_error poll_one(linted_ko ko, short events, short *revents)
+{
+	struct pollfd pollfd = { .fd = ko, .events = events };
+	if (-1 == poll(&pollfd, 1U, -1)) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	*revents = pollfd.revents;
+	return 0;
 }
