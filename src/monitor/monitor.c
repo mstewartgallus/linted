@@ -153,12 +153,6 @@ struct conn
 	bool is_free : 1U;
 };
 
-struct pair
-{
-	linted_ko ko;
-	unsigned long options;
-};
-
 static linted_error confs_from_path(char const *unit_path,
                                     struct linted_conf ***unitsp,
                                     size_t *sizep);
@@ -173,16 +167,16 @@ static union unit const *unit_for_name(struct units const *unit,
                                        const char *name);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
-			     bool time_to_quit);
+                             bool time_to_quit);
 
 static linted_error on_process_wait(struct linted_asynch_task *task,
-				    bool time_to_quit);
+                                    bool time_to_quit);
 static linted_error on_accepted_conn(struct linted_asynch_task *task,
-				    bool time_to_quit);
+                                     bool time_to_quit);
 static linted_error on_read_conn(struct linted_asynch_task *task,
-				    bool time_to_quit);
+                                 bool time_to_quit);
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
-				    bool time_to_quit);
+                                  bool time_to_quit);
 
 linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp);
 linted_error ptrace_children(pid_t parent);
@@ -216,6 +210,8 @@ static linted_error filter_envvars(char ***resultsp,
 static linted_error ptrace_attach(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
+
+static size_t null_list_size(char const *const *list);
 
 static linted_ko kos[1U];
 
@@ -502,6 +498,8 @@ static linted_error confs_from_path(char const *unit_path,
 		if (errnum != 0)
 			goto free_units;
 
+		linted_ko dirko = dirfd(units_dir);
+
 		size_t files_count = 0U;
 		char **files = NULL;
 		for (;;) {
@@ -556,12 +554,14 @@ static linted_error confs_from_path(char const *unit_path,
 		for (size_t ii = 0U; ii < files_count; ++ii) {
 			char const *file_name = files[ii];
 
-			linted_ko unit_fd =
-			    openat(dirfd(units_dir), file_name, O_RDONLY);
-			if (-1 == unit_fd) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_file_names;
+			linted_ko unit_fd;
+			{
+				linted_ko xx;
+				errnum = linted_ko_open(&xx, dirko, file_name,
+				                        LINTED_KO_RDONLY);
+				if (errnum != 0)
+					goto free_file_names;
+				unit_fd = xx;
 			}
 
 			FILE *unit_file = fdopen(unit_fd, "r");
@@ -569,7 +569,7 @@ static linted_error confs_from_path(char const *unit_path,
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 
-				close(unit_fd);
+				linted_ko_close(unit_fd);
 
 				goto free_file_names;
 			}
@@ -914,6 +914,12 @@ enum {
 	WRONLY
 };
 
+struct pair
+{
+	linted_ko ko;
+	unsigned long options;
+};
+
 static char const *const file_options[] = {[RDONLY] = "rdonly",
 	                                   [WRONLY] = "wronly", NULL };
 
@@ -965,13 +971,8 @@ static linted_error service_activate(union unit *unit, linted_ko cwd,
 	}
 
 	{
-		size_t envvars_size;
-		for (size_t ii = 0U;; ++ii) {
-			if (NULL == envvars[ii]) {
-				envvars_size = ii;
-				break;
-			}
-		}
+		size_t envvars_size =
+		    null_list_size((char const * const *)envvars);
 
 		void *xx;
 		errnum = linted_mem_realloc_array(
@@ -1031,14 +1032,8 @@ static linted_error service_activate(union unit *unit, linted_ko cwd,
 	size_t kos_opened = 0U;
 
 	size_t files_size = 0U;
-	if (files != NULL) {
-		for (size_t ii = 0U;; ++ii) {
-			if (NULL == files[ii]) {
-				files_size = ii;
-				break;
-			}
-		}
-	}
+	if (files != NULL)
+		files_size = null_list_size(files);
 
 	{
 		void *xx;
@@ -1471,8 +1466,7 @@ free_subopts_str:
 	return 0;
 }
 
-static linted_error dispatch(struct linted_asynch_task *task,
-			     bool time_to_quit)
+static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
 {
 	switch (task->task_action) {
 	case WAITER:
@@ -1493,7 +1487,7 @@ static linted_error dispatch(struct linted_asynch_task *task,
 }
 
 static linted_error on_process_wait(struct linted_asynch_task *task,
-				    bool time_to_quit)
+                                    bool time_to_quit)
 {
 	if (time_to_quit)
 		return 0;
@@ -1597,7 +1591,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 }
 
 static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
-				     bool time_to_quit)
+                                     bool time_to_quit)
 {
 	linted_error errnum;
 
@@ -1659,7 +1653,7 @@ close_new_socket : {
 }
 
 static linted_error on_read_conn(struct linted_asynch_task *task,
-				 bool time_to_quit)
+                                 bool time_to_quit)
 {
 	linted_error errnum;
 
@@ -1795,7 +1789,7 @@ conn_remove:
 }
 
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
-				  bool time_to_quit)
+                                  bool time_to_quit)
 {
 	linted_error errnum;
 
@@ -1835,8 +1829,8 @@ linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
 		init_children = xx;
 	}
 
-	FILE *init_children_file = fdopen(init_children, "r");
-	if (NULL == init_children_file) {
+	FILE *file = fdopen(init_children, "r");
+	if (NULL == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
@@ -1854,8 +1848,7 @@ linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
 			size_t yy = buf_size;
 
 			errno = 0;
-			ssize_t zz =
-			    getdelim(&xx, &yy, ' ', init_children_file);
+			ssize_t zz = getdelim(&xx, &yy, ' ', file);
 			if (-1 == zz) {
 				errnum = errno;
 				if (0 == errnum)
@@ -1878,11 +1871,10 @@ linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
 free_buf:
 	linted_mem_free(buf);
 
-	fclose(init_children_file);
+	fclose(file);
 
-	if (0 == errnum) {
+	if (0 == errnum)
 		*childp = is_child;
-	}
 
 	return errnum;
 }
@@ -1904,8 +1896,8 @@ linted_error ptrace_children(pid_t parent)
 		init_children = xx;
 	}
 
-	FILE *init_children_file = fdopen(init_children, "r");
-	if (NULL == init_children_file) {
+	FILE *file = fdopen(init_children, "r");
+	if (NULL == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
@@ -1923,8 +1915,7 @@ linted_error ptrace_children(pid_t parent)
 			size_t yy = buf_size;
 
 			errno = 0;
-			ssize_t zz =
-			    getdelim(&xx, &yy, ' ', init_children_file);
+			ssize_t zz = getdelim(&xx, &yy, ' ', file);
 			if (-1 == zz) {
 				errnum = errno;
 				if (0 == errnum)
@@ -1948,7 +1939,7 @@ linted_error ptrace_children(pid_t parent)
 free_buf:
 	linted_mem_free(buf);
 
-	fclose(init_children_file);
+	fclose(file);
 
 	return errnum;
 }
@@ -2049,16 +2040,10 @@ static union unit const *unit_for_name(struct units const *units,
 static linted_error filter_envvars(char ***result_envvarsp,
                                    char const *const *allowed_envvars)
 {
-	size_t allowed_envvars_size;
 	char **result_envvars;
 	linted_error errnum;
 
-	for (size_t ii = 0U;; ++ii) {
-		if (NULL == allowed_envvars[ii]) {
-			allowed_envvars_size = ii;
-			break;
-		}
-	}
+	size_t allowed_envvars_size = null_list_size(allowed_envvars);
 
 	{
 		void *xx;
@@ -2127,17 +2112,30 @@ free_result_envvars:
 
 static linted_error bool_from_cstring(char const *str, bool *boolp)
 {
-	if (0 == strcmp(str, "1") || 0 == strcmp(str, "yes") ||
-	    0 == strcmp(str, "true") || 0 == strcmp(str, "on")) {
-		*boolp = true;
-		return 0;
-	} else if (0 == strcmp(str, "0") || 0 == strcmp(str, "no") ||
-	           0 == strcmp(str, "false") || 0 == strcmp(str, "off")) {
-		*boolp = false;
-		return 0;
-	} else {
-		return EINVAL;
+	static char const *const yes_strs[] = { "1", "yes", "true", "on" };
+	static char const *const no_strs[] = { "0", "no", "false", "off" };
+
+	bool result;
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
+		if (0 == strcmp(str, yes_strs[ii])) {
+			result = true;
+			goto return_result;
+		}
 	}
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
+		if (0 == strcmp(str, yes_strs[ii])) {
+			result = false;
+			goto return_result;
+		}
+	}
+
+	return EINVAL;
+
+return_result:
+	*boolp = result;
+	return 0;
 }
 
 static linted_error long_from_cstring(char const *str, long *longp)
@@ -2152,16 +2150,15 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	for (; length > 0U; --length) {
 		char const digit = str[length - 1U];
 
-		if ('0' <= digit && digit <= '9') {
-			unsigned long sum =
-			    total + ((unsigned)(digit - '0')) * position;
-			if (sum > LONG_MAX)
-				return ERANGE;
-
-			total = sum;
-		} else {
+		if (digit < '0' || digit > '9')
 			return EINVAL;
-		}
+
+		unsigned long sum =
+		    total + ((unsigned)(digit - '0')) * position;
+		if (sum > LONG_MAX)
+			return ERANGE;
+
+		total = sum;
 
 		unsigned long next_position = 10U * position;
 		if (next_position > LONG_MAX)
@@ -2211,4 +2208,11 @@ static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags)
 	}
 
 	return 0;
+}
+
+static size_t null_list_size(char const *const *list)
+{
+	for (size_t ii = 0U;; ++ii)
+		if (NULL == list[ii])
+			return ii;
 }
