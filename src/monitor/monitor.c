@@ -1936,6 +1936,11 @@ linted_error ptrace_children(pid_t parent)
 			continue;
 
 		errnum = ptrace_seize(child);
+
+		/* Child already exited */
+		if (EPERM == errnum)
+			continue;
+
 		if (errnum != 0)
 			break;
 
