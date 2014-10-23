@@ -207,7 +207,8 @@ static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 
-static linted_error ptrace_attach(pid_t pid);
+static linted_error ptrace_interrupt(pid_t pid);
+static linted_error ptrace_seize(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
 
@@ -326,13 +327,16 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
 	for (;;) {
-		errnum = ptrace_attach(ppid);
+		errnum = ptrace_seize(ppid);
 		if (errnum != EPERM)
 			break;
 
 		sched_yield();
 	}
+	if (errnum != 0)
+		goto destroy_confs;
 
+	errnum = ptrace_interrupt(ppid);
 	if (errnum != 0)
 		goto destroy_confs;
 
@@ -1560,23 +1564,23 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	case CLD_TRAPPED: {
 		int restart_signal = exit_status;
 
-		fprintf(stderr, "trapped signal %s for %i!\n",
-		        strsignal(exit_status), pid);
+		if (128 == exit_status >> 8U) {
+			fprintf(stderr, "started ptracing process %i!\n", pid);
 
-		/* Ignore SIGCHLD for example */
-		if (exit_status != SIGSTOP)
-			goto restart_init;
+			restart_signal = 0;
 
-		restart_signal = 0;
+			errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+			if (errnum != 0)
+				goto restart_process;
 
-		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
-		if (errnum != 0)
-			goto restart_init;
+			if (pid == parent_process)
+				errnum = ptrace_children(parent_process);
+		} else {
+			fprintf(stderr, "%i received signal %s\n", pid,
+			        strsignal(exit_status));
+		}
 
-		if (pid == parent_process)
-			errnum = ptrace_children(parent_process);
-
-	restart_init : {
+	restart_process : {
 		linted_error cont_errnum = ptrace_cont(pid, restart_signal);
 		if (0 == errnum)
 			errnum = cont_errnum;
@@ -1931,7 +1935,11 @@ linted_error ptrace_children(pid_t parent)
 		if (getpid() == child)
 			continue;
 
-		errnum = ptrace_attach(child);
+		errnum = ptrace_seize(child);
+		if (errnum != 0)
+			break;
+
+		errnum = ptrace_interrupt(child);
 		if (errnum != 0)
 			break;
 	}
@@ -2170,11 +2178,24 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	return 0;
 }
 
-static linted_error ptrace_attach(pid_t pid)
+static linted_error ptrace_interrupt(pid_t pid)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_ATTACH, pid, (void *)NULL, (void *)NULL)) {
+	if (-1 == ptrace(PTRACE_INTERRUPT, pid, (void *)NULL, (void *)NULL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_seize(pid_t pid)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)NULL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
