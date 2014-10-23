@@ -156,7 +156,7 @@ struct conn
 static linted_error confs_from_path(char const *unit_path,
                                     struct linted_conf ***unitsp,
                                     size_t *sizep);
-void confs_destroy(struct linted_conf **confs, size_t size);
+static void confs_destroy(struct linted_conf **confs, size_t size);
 
 static linted_error units_create(struct units **unitp,
                                  struct linted_conf **confs, size_t size);
@@ -178,8 +178,8 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
                                   bool time_to_quit);
 
-linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp);
-linted_error ptrace_children(pid_t parent);
+static linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp);
+static linted_error ptrace_children(pid_t parent);
 
 static linted_error conn_pool_create(struct conn_pool **poolp);
 static linted_error conn_pool_destroy(struct conn_pool *pool);
@@ -206,13 +206,16 @@ static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
+static size_t null_list_size(char const *const *list);
+
+static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
+                                   char const *filename, char const *type);
+static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
 static linted_error ptrace_interrupt(pid_t pid);
 static linted_error ptrace_seize(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
-
-static size_t null_list_size(char const *const *list);
 
 static linted_ko kos[1U];
 
@@ -654,7 +657,7 @@ free_units:
 	return errnum;
 }
 
-void confs_destroy(struct linted_conf **confs, size_t size)
+static void confs_destroy(struct linted_conf **confs, size_t size)
 {
 	for (size_t ii = 0U; ii < size; ++ii)
 		linted_conf_put(confs[ii]);
@@ -1222,29 +1225,13 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 {
 	linted_error errnum = 0;
 
-	char const *abspath;
-	if (fstab_path[0U] != '/') {
-		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "/proc/self/fd/%i/%s", cwd, fstab_path)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+	FILE *fstab;
+	{
+		FILE *xx;
+		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
+		if (errnum != 0)
 			return errnum;
-		}
-		abspath = xx;
-	} else {
-		abspath = fstab_path;
-	}
-
-	FILE *fstab = setmntent(abspath, "re");
-	errnum = errno;
-
-	if (abspath != fstab_path)
-		linted_mem_free((char *)abspath);
-
-	if (NULL == fstab) {
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		fstab = xx;
 	}
 
 	for (;;) {
@@ -1814,20 +1801,16 @@ static linted_error on_wrote_conn(struct linted_asynch_task *task,
 	return errnum;
 }
 
-linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
+static linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
 {
 	linted_error errnum;
 
 	bool is_child = false;
 
-	linted_dir init_children;
+	linted_ko init_children;
 	{
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-		sprintf(path, "/proc/%i/task/%i/children", parent, parent);
-
-		linted_dir xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		linted_ko xx;
+		errnum = get_process_children(&xx, parent);
 		if (errnum != 0)
 			return errnum;
 		init_children = xx;
@@ -1883,18 +1866,14 @@ free_buf:
 	return errnum;
 }
 
-linted_error ptrace_children(pid_t parent)
+static linted_error ptrace_children(pid_t parent)
 {
 	linted_error errnum;
 
-	linted_dir init_children;
+	linted_ko init_children;
 	{
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-		sprintf(path, "/proc/%i/task/%i/children", parent, parent);
-
-		linted_dir xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		linted_ko xx;
+		errnum = get_process_children(&xx, parent);
 		if (errnum != 0)
 			return errnum;
 		init_children = xx;
@@ -2123,6 +2102,13 @@ free_result_envvars:
 	return errnum;
 }
 
+static size_t null_list_size(char const *const *list)
+{
+	for (size_t ii = 0U;; ++ii)
+		if (NULL == list[ii])
+			return ii;
+}
+
 static linted_error bool_from_cstring(char const *str, bool *boolp)
 {
 	static char const *const yes_strs[] = { "1", "yes", "true", "on" };
@@ -2183,6 +2169,47 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	return 0;
 }
 
+static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
+                                   char const *filename, char const *type)
+{
+	linted_error errnum;
+
+	char const *abspath;
+	if (filename[0U] != '/') {
+		char *xx;
+		if (-1 == asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		abspath = xx;
+	} else {
+		abspath = filename;
+	}
+
+	FILE *file = setmntent(abspath, type);
+	errnum = errno;
+
+	if (abspath != filename)
+		linted_mem_free((char *)abspath);
+
+	if (NULL == file) {
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	*filep = file;
+	return 0;
+}
+
+static linted_error get_process_children(linted_ko *kop, pid_t pid)
+{
+	char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+	sprintf(path, "/proc/%i/task/%i/children", pid, pid);
+
+	return linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+}
+
 static linted_error ptrace_interrupt(pid_t pid)
 {
 	linted_error errnum;
@@ -2234,11 +2261,4 @@ static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags)
 	}
 
 	return 0;
-}
-
-static size_t null_list_size(char const *const *list)
-{
-	for (size_t ii = 0U;; ++ii)
-		if (NULL == list[ii])
-			return ii;
 }
