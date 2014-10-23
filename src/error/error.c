@@ -27,10 +27,6 @@
 static char const invalid_error_string[] = "invalid error number";
 static char const out_of_memory_string[] = "cannot print error, out of memory";
 
-/**
- * @bug This is not thread safe. POSIX states: The strerror() function
- * need not be thread-safe.
- */
 char const *linted_error_string(linted_error errnum_to_print)
 {
 	linted_error errnum;
