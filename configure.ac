@@ -40,15 +40,15 @@ dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
 dnl
-AC_CHECK_HEADERS([dnl
-        limits.h dnl
-        fcntl.h dnl
-        float.h dnl
-        stddef.h dnl
-        stdint.h dnl
-        stdlib.h dnl
-        string.h dnl
-        unistd.h], [], [
+AC_CHECK_HEADERS([[fcntl.h]dnl
+                  [limits.h]dnl
+                  [mntent.h]dnl
+                  [stddef.h]dnl
+                  [stdint.h]dnl
+                  [string.h]dnl
+                  [sys/mount.h]dnl
+                  [sys/socket.h]dnl
+                  [unistd.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
@@ -57,60 +57,65 @@ AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
 ])
 dnl
-AC_CHECK_HEADERS([windows.h])
-AS_IF([test "x${ac_cv_header_windows_h}" = "xyes"],[
-  dnl Using winelib to build or building on a Windows system.
-], [
-  dnl Building for a typical POSIX system.
-  AC_CHECK_HEADERS([[inttypes.h]dnl
-                    [mntent.h]dnl
-                    [sys/mount.h]dnl
-                    [sys/socket.h]], [], [
-    AC_MSG_ERROR([Unable to find header ${ac_header}])
-  ], [])
-  dnl
-  AC_SEARCH_LIBS([clock_gettime], [rt], [], [
-     AC_MSG_ERROR([Unable to find rt library])
-  ])
-  dnl
-  AC_FUNC_STRERROR_R
-  AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
-   AC_MSG_ERROR([Unable to find strerror_r function])
-  ])
-  AC_FUNC_FORK
-  AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
-   AC_MSG_ERROR([Unable to find good fork function])
-  ])
-  AC_FUNC_GETMNTENT
-  AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
-   AC_MSG_ERROR([Unable to find getmntent function])
-  ])
-  AC_CHECK_FUNCS([[dup2]dnl
-                  [mkdir]dnl
-                  [memmove]dnl
-                  [socket]dnl
-                  [strdup]dnl
-                  [strerror]dnl
-                  [strstr]], [], [
-   AC_MSG_ERROR([Unable to find function ${ac_func}])
-  ])
-  AC_CHECK_FUNCS([[clock_gettime]], [], [
-   AC_MSG_ERROR([Unable to find function ${ac_func}])
-  ])
-  dnl
-  AC_TYPE_MODE_T
-  dnl
-  AC_TYPE_INT32_T
-  AC_TYPE_UINT32_T
-  AC_TYPE_UINT64_T
-  dnl
-  AC_TYPE_OFF_T
-  dnl
-  AC_TYPE_SSIZE_T
-  AC_TYPE_SIZE_T
-  AC_TYPE_PID_T
-  AC_TYPE_UID_T
+AC_CHECK_HEADERS([[inttypes.h]dnl
+                  [mntent.h]dnl
+                  [sys/mount.h]dnl
+                  [sys/socket.h]], [], [
+  AC_MSG_ERROR([Unable to find header ${ac_header}])
+], [])
+dnl
+AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
+   AC_MSG_ERROR([Unable to find a POSIX capabilities library])
 ])
+AC_SEARCH_LIBS([sin], [m], [], [
+   AC_MSG_ERROR([Unable to find a math library])
+])
+AC_SEARCH_LIBS([clock_gettime], [rt], [], [
+   AC_MSG_ERROR([Unable to find a realtime functions library])
+])
+dnl
+AC_FUNC_STRERROR_R
+AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+ AC_MSG_ERROR([Unable to find strerror_r function])
+])
+AC_FUNC_FORK
+AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+ AC_MSG_ERROR([Unable to find good fork function])
+])
+AC_FUNC_GETMNTENT
+AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
+ AC_MSG_ERROR([Unable to find getmntent function])
+])
+AC_CHECK_FUNCS([[dup2]dnl
+                [fchdir]dnl
+                [getdelim]dnl
+                [getmntent]dnl
+                [memmove]dnl
+                [mkdir]dnl
+                [setenv]dnl
+                [socket]dnl
+                [strdup]dnl
+                [strndup]dnl
+                [strstr]dnl
+                [strtol]], [], [
+ AC_MSG_ERROR([Unable to find function ${ac_func}])
+])
+AC_CHECK_FUNCS([[clock_gettime]], [], [
+ AC_MSG_ERROR([Unable to find function ${ac_func}])
+])
+dnl
+AC_TYPE_MODE_T
+dnl
+AC_TYPE_INT32_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+dnl
+AC_TYPE_OFF_T
+dnl
+AC_TYPE_SSIZE_T
+AC_TYPE_SIZE_T
+AC_TYPE_PID_T
+AC_TYPE_UID_T
 dnl
 PKG_CHECK_MODULES(X11, x11, [], [
  AC_MSG_ERROR([Unable to find an X11 library])
