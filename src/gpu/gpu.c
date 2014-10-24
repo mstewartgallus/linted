@@ -64,16 +64,22 @@ struct matrix
 	GLfloat x[4U][4U];
 };
 
-static EGLint const attr_list[] = { EGL_RED_SIZE,     5,             /*  */
-	                            EGL_GREEN_SIZE,   6,             /*  */
-	                            EGL_BLUE_SIZE,    5,             /*  */
-	                            EGL_ALPHA_SIZE,   EGL_DONT_CARE, /*  */
-	                            EGL_DEPTH_SIZE,   16,            /*  */
-	                            EGL_STENCIL_SIZE, EGL_DONT_CARE, /*  */
-	                            EGL_NONE,         EGL_NONE };
+static EGLint const attr_list[] = {
+	EGL_CONFORMANT, EGL_OPENGL_ES2_BIT, /**/
+	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, /**/
+
+	EGL_DEPTH_SIZE, 16, /**/
+
+	EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER, /**/
+	EGL_RED_SIZE, 5, /**/
+	EGL_GREEN_SIZE, 5, /**/
+	EGL_BLUE_SIZE, 3, /**/
+
+	EGL_NONE
+};
 
 static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
-	                               EGL_NONE,                   EGL_NONE };
+	                               EGL_NONE };
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
 static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
@@ -126,20 +132,10 @@ linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
 		goto destroy_display;
 	}
 
-	EGLint num_configs;
-	{
-		EGLint xx;
-		if (EGL_FALSE == eglGetConfigs(display, NULL, 0, &xx)) {
-			errnum = get_egl_error();
-			goto destroy_display;
-		}
-		num_configs = xx;
-	}
-
 	EGLConfig config;
 	{
 		EGLConfig xx;
-		EGLint yy = num_configs;
+		EGLint yy;
 		if (EGL_FALSE ==
 		    eglChooseConfig(display, attr_list, &xx, 1U, &yy)) {
 			errnum = get_egl_error();
