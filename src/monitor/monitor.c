@@ -215,6 +215,7 @@ static linted_error ptrace_interrupt(pid_t pid);
 static linted_error ptrace_seize(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
+static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_ko kos[1U];
 
@@ -1562,8 +1563,39 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 			if (pid == parent_process)
 				errnum = ptrace_children(parent_process);
 		} else {
-			fprintf(stderr, "%i received signal %s\n", pid,
-			        strsignal(exit_status));
+			if (SIGCHLD == exit_status) {
+				pid_t sandboxed_pid;
+				int status;
+				{
+					siginfo_t info = {0};
+					errnum = ptrace_getsiginfo(pid, &info);
+					if (errnum != 0)
+						goto restart_process;
+
+					sandboxed_pid = info.si_pid;
+					status = info.si_status;
+				}
+
+				if (WIFEXITED(status)) {
+					fprintf(stderr,
+						"sandboxed process %i exited with %i\n",
+						sandboxed_pid,
+						WEXITSTATUS(status));
+				} else if (WIFSIGNALED(status)) {
+					fprintf(stderr,
+						"sandboxed process %i killed by %s\n",
+						sandboxed_pid,
+						strsignal(WTERMSIG(status)));
+				} else if (WIFSTOPPED(status)) {
+					fprintf(stderr,
+						"sandboxed process %i stopped by %s\n",
+						sandboxed_pid,
+						strsignal(WSTOPSIG(status)));
+				}
+			} else {
+				fprintf(stderr, "%i received signal %s\n", pid,
+					strsignal(exit_status));
+			}
 		}
 
 	restart_process : {
@@ -2254,6 +2286,19 @@ static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags)
 	linted_error errnum;
 
 	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)flags, (void *)NULL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL, (void *)siginfo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
