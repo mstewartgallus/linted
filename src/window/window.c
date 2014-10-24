@@ -132,11 +132,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto close_display;
 
-	linted_window_notifier_send(LINTED_UPCAST(&notice_task), ON_SENT_NOTICE,
-	                            notifier, window);
-	notice_task.pool = pool;
-	linted_asynch_pool_submit(pool, NOTICE_UPCAST(&notice_task));
-
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
 	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640,
 	    480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
@@ -249,6 +244,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_mem_free(map_err);
 		goto destroy_window;
 	}
+
+	linted_window_notifier_send(LINTED_UPCAST(&notice_task), ON_SENT_NOTICE,
+	                            notifier, window);
+	notice_task.pool = pool;
+	linted_asynch_pool_submit(pool, NOTICE_UPCAST(&notice_task));
 
 	bool time_to_quit;
 
