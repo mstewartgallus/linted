@@ -23,7 +23,8 @@ ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/log/units\
 :${SRCDIR}/src/simulator/units\
 :${SRCDIR}/src/updater/units\
-:${SRCDIR}/src/window-notifier/units"}
+:${SRCDIR}/src/window-notifier/units\
+:${SRCDIR}/src/window/units"}
 
 : ${LINTED_CHROOT:="${XDG_RUNTIME_DIR}/linted/chroot"}
 
@@ -42,6 +43,9 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/drawer/drawer-fstab"}
 : ${LINTED_DRAWER:="${ROOT}/../src/drawer/drawer"}
 
+: ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/window/window-fstab"}
+: ${LINTED_WINDOW:="${ROOT}/../src/window/window"}
+
 export LINTED_UNIT_PATH
 export LINTED_CHROOT
 export LINTED_INIT
@@ -54,5 +58,7 @@ export LINTED_GUI_FSTAB
 export LINTED_GUI
 export LINTED_DRAWER_FSTAB
 export LINTED_DRAWER
+export LINTED_WINDOW_FSTAB
+export LINTED_WINDOW
 
 exec "${ROOT}/../src/linted/linted" "$@"

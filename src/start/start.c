@@ -170,7 +170,7 @@ It is insecure to run a game with high privileges!\n"));
 		if (open_kos[ii] != (linted_ko)ii) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: files passed in aren't in strict order\n",
-					       process_name);
+			                       process_name);
 			return EINVAL;
 		}
 	}
@@ -179,10 +179,10 @@ It is insecure to run a game with high privileges!\n"));
 
 	errnum = sanitize_kos(3U + kos_size);
 	if (errnum != 0) {
-		linted_io_write_format(
-			STDERR_FILENO, NULL, "\
+		linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: sanitize_kos: %s\n",
-			process_name, linted_error_string(errnum));
+		                       process_name,
+		                       linted_error_string(errnum));
 		return errnum;
 	}
 
@@ -424,8 +424,9 @@ static linted_error sanitize_kos(size_t kos_size)
 			sprintf(pathname, "%i", fd);
 
 			do {
-				new_fd = openat(fds_dir_ko, pathname, oflags | O_NONBLOCK |
-				                       O_NOCTTY | O_CLOEXEC);
+				new_fd = openat(fds_dir_ko, pathname,
+				                oflags | O_NONBLOCK | O_NOCTTY |
+				                    O_CLOEXEC);
 				if (-1 == new_fd) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
@@ -508,7 +509,7 @@ static linted_error get_system_entropy(unsigned *entropyp)
 static linted_error open_fds_dir(linted_ko *kop)
 {
 	return linted_ko_open(kop, LINTED_KO_CWD, "/proc/self/fd",
-			      LINTED_KO_DIRECTORY);
+	                      LINTED_KO_DIRECTORY);
 }
 #else
 #error no open files directory known for this platform

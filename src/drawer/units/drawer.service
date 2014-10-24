@@ -19,10 +19,10 @@ Documentation='man:linted-drawer(6)'
 ExecStart="${LINTED_DRAWER}"
 NoNewPrivileges=true
 
-X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,wronly OPEN:updater,rdonly
+X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,rdonly OPEN:updater,rdonly
 
-X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
-X-Linted-Chdir=/var
+# X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
+X-Linted-Chdir=/home/sstewartgallus/root/home/temp/linted/clang
 
 X-Linted-Environment-Whitelist=DISPLAY
 

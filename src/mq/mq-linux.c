@@ -164,10 +164,8 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 		LINTED_ASSUME(errnum != 0);
 	}
 
-	if (EINTR == errnum) {
-		linted_asynch_pool_submit(pool, task);
-		return;
-	}
+	if (EINTR == errnum)
+		goto submit_retry;
 
 	if (EAGAIN == errnum) {
 		short revents = 0;
@@ -177,15 +175,15 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 			if (0 == errnum)
 				revents = xx;
 		}
-		if (EINTR == errnum) {
-			linted_asynch_pool_submit(pool, task);
-			return;
-		}
+		if (EINTR == errnum)
+			goto submit_retry;
 
 		if (errnum != 0)
 			goto complete_task;
 
 		errnum = check_for_poll_error(ko, revents);
+		if (0 == errnum)
+			goto submit_retry;
 	}
 
 complete_task:
@@ -193,6 +191,11 @@ complete_task:
 	task_receive->bytes_read = result;
 
 	linted_asynch_pool_complete(pool, task);
+	return;
+
+submit_retry:
+	linted_asynch_pool_submit(pool, task);
+	return;
 }
 
 void linted_mq_do_send(struct linted_asynch_pool *pool,
@@ -211,10 +214,8 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 		LINTED_ASSUME(errnum != 0);
 	}
 
-	if (EINTR == errnum) {
-		linted_asynch_pool_submit(pool, task);
-		return;
-	}
+	if (EINTR == errnum)
+		goto submit_retry;
 
 	if (EAGAIN == errnum) {
 		short revents = 0;
@@ -225,15 +226,15 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 				revents = xx;
 		}
 
-		if (EINTR == errnum) {
-			linted_asynch_pool_submit(pool, task);
-			return;
-		}
+		if (EINTR == errnum)
+			goto submit_retry;
 
 		if (errnum != 0)
 			goto complete_task;
 
 		errnum = check_for_poll_error(ko, revents);
+		if (0 == errnum)
+			goto submit_retry;
 	}
 
 complete_task:
@@ -241,6 +242,10 @@ complete_task:
 	task_send->bytes_wrote = bytes_wrote;
 
 	linted_asynch_pool_complete(pool, task);
+	return;
+
+submit_retry:
+	linted_asynch_pool_submit(pool, task);
 }
 
 static void gen_name(char *name, size_t size)

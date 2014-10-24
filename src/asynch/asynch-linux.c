@@ -105,11 +105,11 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
 		assert(stack_min != -1);
 
-		errnum = pthread_attr_setstacksize(&attr, stack_min);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(false);
-		}
+		/* errnum = pthread_attr_setstacksize(&attr, stack_min); */
+		/* if (errnum != 0) { */
+		/* 	assert(errnum != EINVAL); */
+		/* 	assert(false); */
+		/* } */
 
 		for (; created_threads < max_tasks; ++created_threads) {
 			errnum = pthread_create(&pool->workers[created_threads],

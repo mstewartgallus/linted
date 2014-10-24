@@ -65,16 +65,13 @@ struct matrix
 };
 
 static EGLint const attr_list[] = {
-	EGL_CONFORMANT, EGL_OPENGL_ES2_BIT, /**/
-	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, /**/
-
-	EGL_DEPTH_SIZE, 16, /**/
-
-	EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER, /**/
-	EGL_RED_SIZE, 5, /**/
-	EGL_GREEN_SIZE, 5, /**/
-	EGL_BLUE_SIZE, 3, /**/
-
+	EGL_CONFORMANT,        EGL_OPENGL_ES2_BIT, /**/
+	EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT, /**/
+	EGL_DEPTH_SIZE,        16,                 /**/
+	EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,     /**/
+	EGL_RED_SIZE,          5,                  /**/
+	EGL_GREEN_SIZE,        5,                  /**/
+	EGL_BLUE_SIZE,         3,                  /**/
 	EGL_NONE
 };
 

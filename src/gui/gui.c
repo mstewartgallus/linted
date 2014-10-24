@@ -500,7 +500,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = task->errnum;
+	if (errnum != 0)
 		return errnum;
 
 	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
@@ -516,8 +517,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	uint_fast32_t window =
 	    linted_window_notifier_decode(LINTED_UPCAST(notice_task));
-
-	linted_asynch_pool_submit(pool, task);
 
 	xcb_void_cookie_t chattr_ck = xcb_change_window_attributes_checked(
 	    connection, window, XCB_CW_EVENT_MASK, window_opts);

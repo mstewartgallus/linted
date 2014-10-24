@@ -32,6 +32,7 @@
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
@@ -40,7 +41,7 @@
 enum {
 	ON_RECEIVE_UPDATE,
 	ON_POLL_CONN,
-	ON_SENT_NOTICE,
+	ON_RECEIVE_NOTICE,
 	MAX_TASKS
 };
 
@@ -52,11 +53,13 @@ struct window_model
 struct poll_conn_task
 {
 	struct linted_ko_task_poll parent;
-	struct window_model *window_model;
+
 	struct linted_gpu_context *gpu_context;
 	Display *display;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
+
+	struct window_model *window_model;
 	bool *time_to_quit;
 };
 
@@ -69,6 +72,29 @@ struct updater_task
 #define UPDATER_UPCAST(X) LINTED_UPDATER_RECEIVE_UPCAST(LINTED_UPCAST(X))
 #define UPDATER_DOWNCAST(X)                                                    \
 	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_RECEIVE_DOWNCAST(X))
+
+struct notice_task
+{
+	struct linted_window_notifier_task_receive parent;
+
+	struct poll_conn_task *poll_conn_task;
+	struct updater_task *updater_task;
+
+	struct linted_asynch_pool *pool;
+	xcb_connection_t *connection;
+	Display *display;
+	linted_ko updater;
+	linted_log log;
+
+	struct window_model *window_model;
+	bool *time_to_quit;
+	struct linted_gpu_context **gpu_context;
+	xcb_window_t *window;
+};
+#define NOTICE_UPCAST(X) LINTED_WINDOW_NOTIFIER_RECEIVE_UPCAST(LINTED_UPCAST(X))
+#define NOTICE_DOWNCAST(X)                                                     \
+	LINTED_DOWNCAST(struct notice_task,                                    \
+	                LINTED_WINDOW_NOTIFIER_RECEIVE_DOWNCAST(X))
 
 static linted_ko kos[3U];
 
@@ -84,10 +110,14 @@ static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
-static linted_error on_sent_notice(struct linted_asynch_task *task);
+static linted_error on_receive_notice(struct linted_asynch_task *task);
 
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
 static linted_error get_xcb_error(xcb_generic_error_t *error);
+
+static linted_error get_window_size(xcb_connection_t *connection,
+                                    xcb_window_t window, unsigned *width,
+                                    unsigned *height);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -98,7 +128,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_window_notifier notifier = kos[1U];
 	linted_updater updater = kos[2U];
 
-	struct window_model window_model = { .viewable = true };
+	struct window_model window_model = { .viewable = false };
 
 	struct linted_asynch_pool *pool;
 	{
@@ -109,7 +139,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct linted_window_notifier_task_send notice_task;
+	bool time_to_quit;
+	xcb_window_t window;
+	struct linted_gpu_context *gpu_context = NULL;
+	struct notice_task notice_task;
 	struct updater_task updater_task;
 	struct poll_conn_task poll_conn_task;
 
@@ -120,180 +153,24 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	xcb_connection_t *connection = XGetXCBConnection(display);
-	unsigned screen_number = XDefaultScreen(display);
 
-	xcb_screen_t *screen = NULL;
-	{
-		xcb_screen_iterator_t iter =
-		    xcb_setup_roots_iterator(xcb_get_setup(connection));
-		for (size_t ii = 0U; ii < screen_number; ++ii) {
-			if (0 == iter.rem)
-				break;
+	linted_window_notifier_receive(LINTED_UPCAST(&notice_task),
+	                               ON_RECEIVE_NOTICE, notifier);
+	notice_task.poll_conn_task = &poll_conn_task;
+	notice_task.updater_task = &updater_task;
 
-			xcb_screen_next(&iter);
-		}
+	notice_task.pool = pool;
+	notice_task.connection = connection;
+	notice_task.display = display;
+	notice_task.updater = updater;
+	notice_task.log = log;
 
-		if (0 == iter.rem) {
-			errnum = EINVAL;
-			goto close_display;
-		}
+	notice_task.window_model = &window_model;
+	notice_task.time_to_quit = &time_to_quit;
+	notice_task.gpu_context = &gpu_context;
+	notice_task.window = &window;
 
-		screen = iter.data;
-	}
-
-	xcb_window_t window = xcb_generate_id(connection);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto close_display;
-
-	linted_window_notifier_send(&notice_task, ON_SENT_NOTICE, notifier,
-	                            window);
-	linted_asynch_pool_submit(
-	    pool, LINTED_WINDOW_NOTIFIER_SEND_UPCAST(&notice_task));
-
-	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
-	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640,
-	    480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
-	    XCB_CW_EVENT_MASK, window_opts);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto close_display;
-
-	xcb_intern_atom_cookie_t protocols_ck =
-	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_intern_atom_cookie_t delete_ck =
-	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_atom_t wm_delete_window_atom;
-	xcb_atom_t wm_protocols_atom;
-	{
-		xcb_intern_atom_reply_t *proto_reply;
-		xcb_generic_error_t *proto_err;
-		{
-			xcb_generic_error_t *xx = NULL;
-			proto_reply = xcb_intern_atom_reply(connection,
-			                                    protocols_ck, &xx);
-			proto_err = xx;
-		}
-		errnum = get_xcb_conn_error(connection);
-		if (errnum != 0)
-			goto destroy_window;
-
-		if (proto_err != NULL) {
-			errnum = get_xcb_error(proto_err);
-			linted_mem_free(proto_err);
-			goto destroy_window;
-		}
-
-		wm_protocols_atom = proto_reply->atom;
-		linted_mem_free(proto_reply);
-	}
-
-	{
-		xcb_intern_atom_reply_t *delete_ck_reply;
-		xcb_generic_error_t *delete_ck_err;
-		{
-			xcb_generic_error_t *xx = NULL;
-			delete_ck_reply =
-			    xcb_intern_atom_reply(connection, delete_ck, &xx);
-			delete_ck_err = xx;
-		}
-		errnum = get_xcb_conn_error(connection);
-		if (errnum != 0)
-			goto destroy_window;
-
-		if (delete_ck_err != NULL) {
-			errnum = get_xcb_error(delete_ck_err);
-			linted_mem_free(delete_ck_err);
-			goto destroy_window;
-		}
-
-		wm_delete_window_atom = delete_ck_reply->atom;
-		linted_mem_free(delete_ck_reply);
-	}
-
-	xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
-	    connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
-	    1, &wm_delete_window_atom);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_generic_error_t *create_win_err =
-	    xcb_request_check(connection, create_win_ck);
-	if (create_win_err != NULL) {
-		errnum = get_xcb_error(create_win_err);
-		linted_mem_free(create_win_err);
-		goto destroy_window;
-	}
-
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_generic_error_t *ch_prop_err =
-	    xcb_request_check(connection, ch_prop_ck);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-	if (ch_prop_err != NULL) {
-		errnum = get_xcb_error(ch_prop_err);
-		linted_mem_free(ch_prop_err);
-		goto destroy_window;
-	}
-
-	xcb_generic_error_t *map_err = xcb_request_check(connection, map_ck);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-	if (map_err != NULL) {
-		errnum = get_xcb_error(map_err);
-		linted_mem_free(map_err);
-		goto destroy_window;
-	}
-
-	bool time_to_quit;
-
-	struct linted_gpu_context *gpu_context;
-
-	{
-		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(display, window, &xx, log);
-		if (errnum != 0)
-			goto destroy_window;
-		gpu_context = xx;
-	}
-
-	linted_updater_receive(LINTED_UPCAST(&updater_task), ON_RECEIVE_UPDATE,
-	                       updater);
-	updater_task.gpu_context = gpu_context;
-	updater_task.pool = pool;
-
-	linted_asynch_pool_submit(pool, UPDATER_UPCAST(&updater_task));
-
-	linted_ko_task_poll(LINTED_UPCAST(&poll_conn_task), ON_POLL_CONN,
-	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_conn_task.time_to_quit = &time_to_quit;
-	poll_conn_task.window_model = &window_model;
-	poll_conn_task.gpu_context = gpu_context;
-	poll_conn_task.pool = pool;
-	poll_conn_task.connection = connection;
-	poll_conn_task.display = display;
-
-	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
+	linted_asynch_pool_submit(pool, NOTICE_UPCAST(&notice_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -346,24 +223,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 cleanup_gpu:
-	linted_gpu_context_destroy(gpu_context);
+	if (gpu_context != NULL)
+		linted_gpu_context_destroy(gpu_context);
 
-destroy_window : {
-	xcb_void_cookie_t destroy_ck =
-	    xcb_destroy_window_checked(connection, window);
-	if (0 == errnum)
-		errnum = get_xcb_conn_error(connection);
-
-	xcb_generic_error_t *destroy_err =
-	    xcb_request_check(connection, destroy_ck);
-	if (0 == errnum)
-		errnum = get_xcb_conn_error(connection);
-	if (0 == errnum && destroy_err != NULL)
-		errnum = get_xcb_error(destroy_err);
-	linted_mem_free(destroy_err);
-}
-
-close_display:
 	XCloseDisplay(display);
 
 destroy_pool:
@@ -408,8 +270,8 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
-	case ON_SENT_NOTICE:
-		return on_sent_notice(task);
+	case ON_RECEIVE_NOTICE:
+		return on_receive_notice(task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -420,7 +282,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = task->errnum;
+	if (errnum != 0)
 		return errnum;
 
 	struct poll_conn_task *poll_conn_task =
@@ -460,7 +323,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			window_model->viewable = true;
 			break;
 
-		case ClientMessage:
+		case DestroyNotify:
 			goto quit_application;
 
 		default:
@@ -523,9 +386,128 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	return 0;
 }
 
-static linted_error on_sent_notice(struct linted_asynch_task *task)
+static linted_error on_receive_notice(struct linted_asynch_task *task)
 {
-	return task->errnum;
+	linted_error errnum;
+
+	errnum = task->errnum;
+	if (errnum != 0)
+		return errnum;
+
+	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
+	struct poll_conn_task *poll_conn_task = notice_task->poll_conn_task;
+	Display *display = notice_task->display;
+	struct linted_asynch_pool *pool = notice_task->pool;
+
+	xcb_connection_t *connection = notice_task->connection;
+	struct window_model *window_model = notice_task->window_model;
+
+	linted_ko log = notice_task->log;
+	linted_ko updater = notice_task->updater;
+	struct updater_task *updater_task = notice_task->updater_task;
+
+	bool *time_to_quitp = notice_task->time_to_quit;
+	xcb_window_t *windowp = notice_task->window;
+	struct linted_gpu_context **gpu_contextp = notice_task->gpu_context;
+
+	uint_fast32_t window =
+	    linted_window_notifier_decode(LINTED_UPCAST(notice_task));
+
+	xcb_void_cookie_t chattr_ck = xcb_change_window_attributes_checked(
+	    connection, window, XCB_CW_EVENT_MASK, window_opts);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_generic_error_t *chattr_err =
+	    xcb_request_check(connection, chattr_ck);
+	if (chattr_err != NULL) {
+		errnum = get_xcb_error(chattr_err);
+		linted_mem_free(chattr_err);
+		return errnum;
+	}
+
+	unsigned width, height;
+	{
+		unsigned xx, yy;
+		errnum = get_window_size(connection, window, &xx, &yy);
+		if (errnum != 0)
+			return errnum;
+		width = xx;
+		height = yy;
+	}
+
+	window_model->viewable = true;
+	*windowp = window;
+
+	struct linted_gpu_context *gpu_context;
+	{
+		struct linted_gpu_context *xx;
+		errnum = linted_gpu_context_create(display, window, &xx, log);
+		if (errnum != 0)
+			return errnum;
+		gpu_context = xx;
+	}
+	*gpu_contextp = gpu_context;
+
+	linted_gpu_resize(gpu_context, width, height);
+
+	linted_updater_receive(LINTED_UPCAST(updater_task), ON_RECEIVE_UPDATE,
+	                       updater);
+	updater_task->gpu_context = gpu_context;
+	updater_task->pool = pool;
+	linted_asynch_pool_submit(pool, UPDATER_UPCAST(updater_task));
+
+	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
+	                    xcb_get_file_descriptor(connection), POLLIN);
+	poll_conn_task->time_to_quit = time_to_quitp;
+	poll_conn_task->window_model = window_model;
+	poll_conn_task->gpu_context = gpu_context;
+	poll_conn_task->pool = pool;
+	poll_conn_task->connection = connection;
+	poll_conn_task->display = display;
+	linted_asynch_pool_submit(pool,
+	                          LINTED_UPCAST(LINTED_UPCAST(poll_conn_task)));
+
+	return 0;
+}
+
+static linted_error get_window_size(xcb_connection_t *connection,
+                                    xcb_window_t window, unsigned *width,
+                                    unsigned *height)
+{
+	linted_error errnum;
+
+	xcb_get_geometry_cookie_t ck = xcb_get_geometry(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_generic_error_t *error;
+	xcb_get_geometry_reply_t *reply;
+	{
+		xcb_generic_error_t *xx;
+		reply = xcb_get_geometry_reply(connection, ck, &xx);
+
+		errnum = get_xcb_conn_error(connection);
+		if (errnum != 0)
+			return errnum;
+
+		error = xx;
+	}
+
+	if (error != NULL) {
+		errnum = get_xcb_error(error);
+		linted_mem_free(error);
+		return errnum;
+	}
+
+	*width = reply->width;
+	*height = reply->height;
+
+	linted_mem_free(reply);
+
+	return 0;
 }
 
 static linted_error get_xcb_conn_error(xcb_connection_t *connection)

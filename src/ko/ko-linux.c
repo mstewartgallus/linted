@@ -262,7 +262,7 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	}
 
 	if (EINTR == errnum)
-		goto resubmit_task;
+		goto submit_retry;
 
 	task_poll->revents = revents;
 	task->errnum = errnum;
@@ -270,7 +270,7 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	linted_asynch_pool_complete(pool, task);
 	return;
 
-resubmit_task:
+submit_retry:
 	linted_asynch_pool_submit(pool, task);
 }
 
@@ -294,7 +294,7 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	}
 
 	if (EINTR == errnum)
-		goto resubmit_task;
+		goto submit_retry;
 
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
 		short revents = 0;
@@ -306,12 +306,14 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 		}
 
 		if (EINTR == errnum)
-			goto resubmit_task;
+			goto submit_retry;
 
 		if (errnum != 0)
 			goto complete_task;
 
 		errnum = check_for_poll_error(revents);
+		if (0 == errnum)
+			goto submit_retry;
 	}
 
 	if (errnum != 0)
@@ -323,7 +325,7 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	bytes_left -= bytes_read_delta;
 
 	if (bytes_read_delta != 0U && bytes_left != 0U)
-		goto resubmit_task;
+		goto submit_retry;
 
 complete_task:
 	task->errnum = errnum;
@@ -333,7 +335,7 @@ complete_task:
 	linted_asynch_pool_complete(pool, task);
 	return;
 
-resubmit_task:
+submit_retry:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = bytes_read;
 	linted_asynch_pool_submit(pool, task);
@@ -400,7 +402,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	}
 
 	if (EINTR == errnum)
-		goto resubmit_task;
+		goto submit_retry;
 
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
 		short revents = 0;
@@ -412,12 +414,14 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 		}
 
 		if (EINTR == errnum)
-			goto resubmit_task;
+			goto submit_retry;
 
 		if (errnum != 0)
 			goto complete_task;
 
 		errnum = check_for_poll_error(revents);
+		if (0 == errnum)
+			goto submit_retry;
 	}
 
 	if (errnum != 0)
@@ -428,7 +432,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	bytes_wrote += bytes_wrote_delta;
 	bytes_left -= bytes_wrote_delta;
 	if (bytes_left != 0U)
-		goto resubmit_task;
+		goto submit_retry;
 
 complete_task:
 	task->errnum = errnum;
@@ -438,7 +442,7 @@ complete_task:
 	linted_asynch_pool_complete(pool, task);
 	return;
 
-resubmit_task:
+submit_retry:
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = bytes_wrote;
 
@@ -479,7 +483,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	case EHOSTUNREACH:
 	case EOPNOTSUPP:
 	case ENETUNREACH:
-		goto resubmit_task;
+		goto submit_retry;
 	}
 
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
@@ -491,12 +495,14 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 				revents = xx;
 		}
 		if (EINTR == errnum)
-			goto resubmit_task;
+			goto submit_retry;
 
 		if (errnum != 0)
 			goto complete_task;
 
 		errnum = check_for_poll_error(revents);
+		if (0 == errnum)
+			goto submit_retry;
 	}
 
 complete_task:
@@ -506,7 +512,7 @@ complete_task:
 	linted_asynch_pool_complete(pool, task);
 	return;
 
-resubmit_task:
+submit_retry:
 	linted_asynch_pool_submit(pool, task);
 }
 
