@@ -42,12 +42,6 @@
 
 #include <linux/seccomp.h>
 
-#if defined __linux__
-#define FDS_DIR "/proc/self/fd"
-#else
-#error no open files directory known for this platform
-#endif
-
 static bool is_open(linted_ko ko);
 
 static bool is_privileged(void);
@@ -55,8 +49,10 @@ static bool was_privileged(void);
 
 static linted_error find_open_kos(linted_ko **kosp, size_t *size);
 static void sort_kos(linted_ko *ko, size_t size);
+static linted_error sanitize_kos(size_t kos_size);
 
 static linted_error get_system_entropy(unsigned *entropyp);
+static linted_error open_fds_dir(linted_ko *kop);
 
 static linted_error set_no_new_privs(bool v);
 static linted_error set_seccomp(struct sock_fprog const *program);
@@ -162,98 +158,36 @@ It is insecure to run a game with high privileges!\n"));
 		                       process_name);
 		return EINVAL;
 	}
-
 	/* Sort the fds from smallest to largest */
 	sort_kos(open_kos, open_kos_size);
 
+	/* Close leaked files over and don't check for errors as they
+	 * could just be leaked /dev/full handles or similar. */
 	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
-		/* Don't check for errors, could just be a leaked /dev/full
-		 * handle */
 		linted_ko_close(open_kos[ii]);
 
-	/* Sanitize the fds */
-	for (size_t ii = 0U; ii < 3U + kos_size; ++ii) {
-		linted_ko fd = open_kos[ii];
-
-		linted_ko new_fd;
-		{
-			int oflags = fcntl(fd, F_GETFL);
-			if (-1 == oflags) {
-				errnum = errno;
-				linted_io_write_format(
-				    STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFL: %s\n",
-				    process_name, linted_error_string(errnum));
-				return errnum;
-			}
-
-			char pathname[sizeof FDS_DIR + 10U];
-			sprintf(pathname, FDS_DIR "/%i", fd);
-
-			do {
-				new_fd =
-				    open(pathname, oflags | O_NONBLOCK |
-				                       O_NOCTTY | O_CLOEXEC);
-				if (-1 == new_fd) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-				} else {
-					errnum = 0;
-				}
-			} while (EINTR == errnum);
-		}
-
-		/**
-		 * @bug Sockets don't get O_NONBLOCK set.
-		 */
-		if (errnum != ENXIO) {
-			if (errnum != 0) {
-				linted_io_write_format(
-				    STDERR_FILENO, NULL, "\
-%s: openat: %s\n",
-				    process_name, linted_error_string(errnum));
-				return errnum;
-			}
-
-			if (-1 == dup2(new_fd, fd)) {
-				errnum = errno;
-				linted_io_write_format(
-				    STDERR_FILENO, NULL, "\
-%s: dup2(%i, %i): %s\n",
-				    process_name, new_fd, fd,
-				    linted_error_string(errnum));
-				return errnum;
-			}
-
-			if ((errnum = linted_ko_close(new_fd)) != 0) {
-				linted_io_write_format(
-				    STDERR_FILENO, NULL, "\
-%s: linted_ko_close: %s\n",
-				    process_name, linted_error_string(errnum));
-				return errnum;
-			}
-		}
-
-		int dflags = fcntl(fd, F_GETFD);
-		if (-1 == dflags) {
-			errnum = errno;
+	for (size_t ii = 0U; ii < kos_size + 3U; ++ii) {
+		if (open_kos[ii] != (linted_ko)ii) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: fcntl: F_GETFD: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return errnum;
-		}
-
-		if (-1 == fcntl(fd, F_SETFD, (long)dflags | FD_CLOEXEC)) {
-			errnum = errno;
-			perror("fcntl");
-			return errnum;
+%s: files passed in aren't in strict order\n",
+					       process_name);
+			return EINVAL;
 		}
 	}
 
-	for (size_t ii = 0U; ii < kos_size; ++ii)
-		kos[ii] = open_kos[ii + 3U];
 	linted_mem_free(open_kos);
+
+	errnum = sanitize_kos(3U + kos_size);
+	if (errnum != 0) {
+		linted_io_write_format(
+			STDERR_FILENO, NULL, "\
+%s: sanitize_kos: %s\n",
+			process_name, linted_error_string(errnum));
+		return errnum;
+	}
+
+	for (size_t ii = 0U; ii < kos_size; ++ii)
+		kos[ii] = (linted_ko)(ii + 3U);
 
 	errnum = set_no_new_privs(true);
 	if (errnum != 0) {
@@ -353,18 +287,26 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 	linted_ko *fds = NULL;
 
 	/*
-	 * Use readdir because this function isn't thread safe anyways and
-	 * readdir_r has a very broken interface.
-	 */
-	/*
-	 * This is Linux specific code so we can rely on dirfd to not
-	 * return ENOTSUP here.
+	 * Use readdir because this function isn't thread safe anyways
+	 * and readdir_r has a very broken interface.
 	 */
 
-	DIR *const fds_dir = opendir(FDS_DIR);
+	linted_ko fds_dir_ko;
+	{
+		linted_ko xx;
+		errnum = open_fds_dir(&xx);
+		if (errnum != 0)
+			return errnum;
+		fds_dir_ko = xx;
+	}
+
+	DIR *const fds_dir = fdopendir(fds_dir_ko);
 	if (NULL == fds_dir) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(fds_dir_ko);
+
 		return errnum;
 	}
 
@@ -389,8 +331,8 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		if (0 == strcmp("..", d_name))
 			continue;
 
-		int const fd = atoi(d_name);
-		if (fd == dirfd(fds_dir))
+		linted_ko const fd = atoi(d_name);
+		if (fd == fds_dir_ko)
 			continue;
 
 		++size;
@@ -453,6 +395,81 @@ close_fds_dir:
 	return errnum;
 }
 
+static linted_error sanitize_kos(size_t kos_size)
+{
+	linted_error errnum;
+
+	linted_ko fds_dir_ko;
+	{
+		linted_ko xx;
+		errnum = open_fds_dir(&xx);
+		if (errnum != 0)
+			return errnum;
+		fds_dir_ko = xx;
+	}
+
+	for (size_t ii = 0U; ii < kos_size; ++ii) {
+		linted_ko fd = (linted_ko)ii;
+
+		int oflags = fcntl(fd, F_GETFL);
+		if (-1 == oflags) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		linted_ko new_fd;
+		{
+			char pathname[10U];
+			sprintf(pathname, "%i", fd);
+
+			do {
+				new_fd = openat(fds_dir_ko, pathname, oflags | O_NONBLOCK |
+				                       O_NOCTTY | O_CLOEXEC);
+				if (-1 == new_fd) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				} else {
+					errnum = 0;
+				}
+			} while (EINTR == errnum);
+		}
+
+		/**
+		 * @bug Sockets don't get O_NONBLOCK set.
+		 */
+		if (errnum != ENXIO) {
+			if (errnum != 0)
+				return errnum;
+
+			if (-1 == dup2(new_fd, fd)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				return errnum;
+			}
+
+			errnum = linted_ko_close(new_fd);
+			if (errnum != 0)
+				return errnum;
+		}
+
+		int dflags = fcntl(fd, F_GETFD);
+		if (-1 == dflags) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		if (-1 == fcntl(fd, F_SETFD, (long)dflags | FD_CLOEXEC)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+	}
+
+	return linted_ko_close(fds_dir_ko);
+}
+
 static linted_error get_system_entropy(unsigned *entropyp)
 {
 	/*
@@ -486,6 +503,16 @@ static linted_error get_system_entropy(unsigned *entropyp)
 	*entropyp = entropy;
 	return 0;
 }
+
+#if defined __linux__
+static linted_error open_fds_dir(linted_ko *kop)
+{
+	return linted_ko_open(kop, LINTED_KO_CWD, "/proc/self/fd",
+			      LINTED_KO_DIRECTORY);
+}
+#else
+#error no open files directory known for this platform
+#endif
 
 static linted_error set_no_new_privs(bool v)
 {
