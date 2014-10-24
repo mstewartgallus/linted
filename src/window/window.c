@@ -34,8 +34,6 @@
 #include <stdio.h>
 
 #include <xcb/xcb.h>
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 
 enum {
 	ON_POLL_CONN,
@@ -46,7 +44,6 @@ enum {
 struct poll_conn_task
 {
 	struct linted_ko_task_poll parent;
-	Display *display;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
 	bool *time_to_quit;
@@ -99,14 +96,18 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct notice_task notice_task;
 	struct poll_conn_task poll_conn_task;
 
-	Display *display = XOpenDisplay(NULL);
-	if (NULL == display) {
-		errnum = ENOSYS;
-		goto destroy_pool;
+	/* Open the connection to the X server */
+	unsigned screen_number;
+	xcb_connection_t *connection;
+	{
+		int xx;
+		connection = xcb_connect(NULL, &xx);
+		if (NULL == connection) {
+			errnum = ENOSYS;
+			goto destroy_pool;
+		}
+		screen_number = (unsigned)xx;
 	}
-
-	xcb_connection_t *connection = XGetXCBConnection(display);
-	unsigned screen_number = XDefaultScreen(display);
 
 	xcb_screen_t *screen = NULL;
 	{
@@ -257,7 +258,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	poll_conn_task.time_to_quit = &time_to_quit;
 	poll_conn_task.pool = pool;
 	poll_conn_task.connection = connection;
-	poll_conn_task.display = display;
 
 	linted_asynch_pool_submit(
 	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
@@ -298,7 +298,7 @@ destroy_window : {
 }
 
 close_display:
-	XCloseDisplay(display);
+	xcb_disconnect(connection);
 
 destroy_pool:
 	linted_asynch_pool_stop(pool);
@@ -357,21 +357,18 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	    LINTED_DOWNCAST(struct poll_conn_task,
 	                    LINTED_DOWNCAST(struct linted_ko_task_poll, task));
 
-	Display *display = poll_conn_task->display;
 	xcb_connection_t *connection = poll_conn_task->connection;
 	struct linted_asynch_pool *pool = poll_conn_task->pool;
 	bool *time_to_quitp = poll_conn_task->time_to_quit;
 
-	/* We have to use the Xlib event queue for the drawer events
-	 * because of broken Mesa libraries which abuse it.
-	 */
-	while (XPending(display) > 0) {
-		XEvent event;
-		XNextEvent(display, &event);
+	for (;;) {
+		xcb_generic_event_t *event = xcb_wait_for_event(connection);
+		if (NULL == event)
+			break;
 
 		bool time_to_quit = false;
-		switch (event.type) {
-		case ClientMessage:
+		switch (event->response_type & ~0x80) {
+		case XCB_CLIENT_MESSAGE:
 			goto quit_application;
 
 		default:
@@ -382,6 +379,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			time_to_quit = true;
 			break;
 		}
+		linted_mem_free(event);
 
 		*time_to_quitp = time_to_quit;
 		if (time_to_quit)
@@ -392,7 +390,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	                    xcb_get_file_descriptor(connection), POLLIN);
 	poll_conn_task->time_to_quit = time_to_quitp;
 	poll_conn_task->pool = pool;
-	poll_conn_task->display = display;
 	poll_conn_task->connection = connection;
 
 	linted_asynch_pool_submit(pool, task);

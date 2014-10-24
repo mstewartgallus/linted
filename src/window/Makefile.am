@@ -28,12 +28,10 @@ pkglibexec_PROGRAMS+=%D%/window
   src/log/liblog.la\
   src/window-notifier/libwindow-notifier.la\
   \
-  $(X11_LIBS)\
-  $(XCB_LIBS)\
-  $(X11_XCB_LIBS)
+  $(XCB_LIBS)
 
 %C%_window_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS)\
+  $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/window-fstab
