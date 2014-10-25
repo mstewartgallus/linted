@@ -788,40 +788,66 @@ static linted_error service_create(struct unit_service *unit,
 {
 	linted_error errnum;
 
-	char const *const *type = linted_conf_find(conf, "Service", "Type");
+	char const *const *types = linted_conf_find(conf, "Service", "Type");
 	char const *const *exec_start =
 	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privs =
+	char const *const *no_new_privss =
 	    linted_conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *files =
 	    linted_conf_find(conf, "Service", "X-Linted-Files");
-	char const *const *fstab =
+	char const *const *fstabs =
 	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
-	char const *const *chdir_path =
+	char const *const *chdir_paths =
 	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
 	char const *const *env_whitelist =
 	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
-	if (type != NULL && (NULL == type[0U] || type[1U] != NULL))
-		return EINVAL;
+	char const *type;
+	if (NULL == types) {
+		type = NULL;
+	} else {
+		type = types[0U];
+
+		if (types[1U] != NULL)
+			return EINVAL;
+	}
 
 	if (NULL == exec_start)
 		return EINVAL;
 
-	if (no_new_privs != NULL &&
-	    (NULL == no_new_privs[0U] || no_new_privs[1U] != NULL))
-		return EINVAL;
+	char const *no_new_privs;
+	if (NULL == no_new_privss) {
+		no_new_privs = NULL;
+	} else {
+		no_new_privs = no_new_privss[0U];
 
-	if (fstab != NULL && (NULL == fstab[0U] || fstab[1U] != NULL))
-		return EINVAL;
+		if (no_new_privss[1U] != NULL)
+			return EINVAL;
+	}
 
-	if (chdir_path != NULL &&
-	    (NULL == chdir_path[0U] || chdir_path[1U] != NULL))
-		return EINVAL;
+	char const *fstab;
+	if (NULL == fstabs) {
+		fstab = NULL;
+	} else {
+		fstab = fstabs[0U];
+
+		if (fstabs[1U] != NULL)
+			return EINVAL;
+	}
+
+	char const *chdir_path;
+	if (NULL == chdir_paths) {
+		chdir_path = NULL;
+	} else {
+		chdir_path = chdir_paths[0U];
+
+		if (chdir_paths[1U] != NULL)
+			return EINVAL;
+	}
 
 	if (NULL == type) {
 		/* simple type of service */
-	} else if (0 == strcmp("simple", type[0U])) {
+	} else if (0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
 		return EINVAL;
@@ -830,7 +856,7 @@ static linted_error service_create(struct unit_service *unit,
 	bool no_new_privs_value = false;
 	if (no_new_privs != NULL) {
 		bool xx;
-		errnum = bool_from_cstring(no_new_privs[0U], &xx);
+		errnum = bool_from_cstring(no_new_privs, &xx);
 		if (errnum != 0)
 			return errnum;
 		no_new_privs_value = xx;
@@ -839,8 +865,8 @@ static linted_error service_create(struct unit_service *unit,
 	unit->exec_start = exec_start;
 	unit->no_new_privs = no_new_privs_value;
 	unit->files = files;
-	unit->fstab = NULL == fstab ? NULL : fstab[0U];
-	unit->chdir_path = NULL == chdir_path ? NULL : chdir_path[0U];
+	unit->fstab = fstab;
+	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
 
 	return 0;
@@ -851,31 +877,59 @@ static linted_error socket_create(struct unit_socket *unit,
 {
 	linted_error errnum;
 
-	char const *const *path =
+	char const *const *paths =
 	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
-	char const *const *maxmsgs =
+	char const *const *maxmsgss =
 	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
-	char const *const *msgsize =
+	char const *const *msgsizes =
 	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
-	char const *const *temp =
+	char const *const *temps =
 	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
 
-	if (NULL == path || NULL == path[0U] || path[1U] != NULL)
-		return EINVAL;
+	char const *path;
+	if (NULL == paths) {
+		path = NULL;
+	} else {
+		path = paths[0U];
 
-	if (NULL == maxmsgs || NULL == maxmsgs[0U] || maxmsgs[1U] != NULL)
-		return EINVAL;
+		if (paths[1U] != NULL)
+			return EINVAL;
+	}
 
-	if (NULL == msgsize || NULL == msgsize[0U] || msgsize[1U] != NULL)
-		return EINVAL;
+	char const *maxmsgs;
+	if (NULL == maxmsgss) {
+		maxmsgs = NULL;
+	} else {
+		maxmsgs = maxmsgss[0U];
 
-	if (NULL == temp || NULL == temp[0U] || temp[1U] != NULL)
-		return EINVAL;
+		if (maxmsgss[1U] != NULL)
+			return EINVAL;
+	}
+
+	char const *msgsize;
+	if (NULL == msgsizes) {
+		msgsize = NULL;
+	} else {
+		msgsize = msgsizes[0U];
+
+		if (msgsizes[1U] != NULL)
+			return EINVAL;
+	}
+
+	char const *temp;
+	if (NULL == temps) {
+		temp = NULL;
+	} else {
+		temp = temps[0U];
+
+		if (temps[1U] != NULL)
+			return EINVAL;
+	}
 
 	long maxmsgs_value;
 	{
 		long xx;
-		errnum = long_from_cstring(maxmsgs[0U], &xx);
+		errnum = long_from_cstring(maxmsgs, &xx);
 		if (errnum != 0)
 			return errnum;
 		maxmsgs_value = xx;
@@ -884,13 +938,25 @@ static linted_error socket_create(struct unit_socket *unit,
 	long msgsize_value;
 	{
 		long xx;
-		errnum = long_from_cstring(msgsize[0U], &xx);
+		errnum = long_from_cstring(msgsize, &xx);
 		if (errnum != 0)
 			return errnum;
 		msgsize_value = xx;
 	}
 
-	unit->path = path[0U];
+	bool temp_value;
+	{
+		bool xx;
+		errnum = bool_from_cstring(temp, &xx);
+		if (errnum != 0)
+			return errnum;
+		temp_value = xx;
+	}
+
+	if (!temp_value)
+		return EINVAL;
+
+	unit->path = path;
 	unit->maxmsgs = maxmsgs_value;
 	unit->msgsize = msgsize_value;
 
@@ -1174,10 +1240,12 @@ static linted_error service_activate(union unit *unit, linted_ko cwd,
 		}
 
 		proc_kos[kos_opened] = ko;
+
+		size_t old_kos_opened = kos_opened;
 		++kos_opened;
 
 		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko,
-		                                           kos_opened - 1U);
+		                                           old_kos_opened);
 		if (errnum != 0)
 			goto free_filename;
 
