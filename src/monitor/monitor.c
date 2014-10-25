@@ -46,6 +46,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <linux/ptrace.h>
+
 #define MAX_MANAGE_CONNECTIONS 10U
 
 enum {
@@ -214,7 +216,7 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid);
 static linted_error ptrace_interrupt(pid_t pid);
 static linted_error ptrace_seize(pid_t pid);
 static linted_error ptrace_cont(pid_t pid, int signo);
-static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags);
+static linted_error ptrace_listen(pid_t pid);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_ko kos[1U];
@@ -351,7 +353,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto kill_procs;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-	                          -1, WEXITED | WSTOPPED | WNOWAIT);
+	                          -1, WEXITED | WNOWAIT);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
 	waiter_task.time_to_exit = false;
@@ -1590,8 +1592,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	{
 		siginfo_t exit_info;
 		do {
-			if (-1 == waitid(P_PID, pid, &exit_info,
-			                 WEXITED | WSTOPPED)) {
+			if (-1 == waitid(P_PID, pid, &exit_info, WEXITED)) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 			} else {
@@ -1617,19 +1618,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		break;
 
 	case CLD_TRAPPED: {
-		int restart_signal = exit_status;
-
-		if (pid == parent_process) {
-			errnum = ptrace_children(parent_process);
-		} else if (128 == exit_status >> 8U) {
-			fprintf(stderr, "started ptracing process %i!\n", pid);
-
-			restart_signal = 0;
-
-			errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
-			if (errnum != 0)
+		int event = exit_status >> 8U;
+		switch (event) {
+		/* Trap a signal */
+		case 0: {
+			if (exit_status != SIGCHLD)
 				goto restart_process;
-		} else if (SIGCHLD == exit_status) {
+
 			pid_t sandboxed_pid;
 			int status;
 			{
@@ -1660,16 +1655,44 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 				    sandboxed_pid, pid,
 				    strsignal(WSTOPSIG(status)));
 			}
-		} else {
-			fprintf(stderr, "%i received signal %s\n", pid,
-			        strsignal(exit_status));
+
+		restart_process : {
+			linted_error cont_errnum =
+			    ptrace_cont(pid, exit_status);
+			if (0 == errnum)
+				errnum = cont_errnum;
+			break;
+		}
 		}
 
-	restart_process : {
-		linted_error cont_errnum = ptrace_cont(pid, restart_signal);
-		if (0 == errnum)
-			errnum = cont_errnum;
-	} break;
+		case PTRACE_EVENT_STOP:
+			fprintf(stderr, "started ptracing process %i!\n", pid);
+
+			if (pid == parent_process)
+				errnum = ptrace_children(parent_process);
+
+			int stop_sig = exit_status & 0xFF;
+			switch (stop_sig) {
+			case SIGTRAP: {
+				linted_error cont_errnum = ptrace_cont(pid, 0);
+				if (0 == errnum)
+					errnum = cont_errnum;
+				break;
+			}
+
+			default: {
+				linted_error cont_errnum = ptrace_listen(pid);
+				if (0 == errnum)
+					errnum = cont_errnum;
+				break;
+			}
+			}
+			break;
+
+		default:
+			LINTED_ASSUME_UNREACHABLE();
+		}
+		break;
 	}
 
 	default:
@@ -2348,11 +2371,11 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	return 0;
 }
 
-static linted_error ptrace_setoptions(pid_t pid, uintptr_t flags)
+static linted_error ptrace_listen(pid_t pid)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)flags, (void *)NULL)) {
+	if (-1 == ptrace(PTRACE_LISTEN, pid, (void *)NULL, (void *)NULL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
