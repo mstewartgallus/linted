@@ -214,7 +214,7 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
 static linted_error ptrace_interrupt(pid_t pid);
-static linted_error ptrace_seize(pid_t pid);
+static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_listen(pid_t pid);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
@@ -332,7 +332,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&accepted_conn_task))));
 
 	for (;;) {
-		errnum = ptrace_seize(ppid);
+		errnum = ptrace_seize(ppid, 0U);
 		if (errnum != EPERM)
 			break;
 
@@ -2035,7 +2035,7 @@ static linted_error ptrace_children(pid_t parent)
 		if (getpid() == child)
 			continue;
 
-		errnum = ptrace_seize(child);
+		errnum = ptrace_seize(child, 0U);
 
 		/* Child already exited */
 		if (EPERM == errnum)
@@ -2344,11 +2344,11 @@ static linted_error ptrace_interrupt(pid_t pid)
 	return 0;
 }
 
-static linted_error ptrace_seize(pid_t pid)
+static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)NULL)) {
+	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
