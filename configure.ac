@@ -42,12 +42,9 @@ AC_C_INLINE
 dnl
 AC_CHECK_HEADERS([[fcntl.h]dnl
                   [limits.h]dnl
-                  [mntent.h]dnl
                   [stddef.h]dnl
                   [stdint.h]dnl
                   [string.h]dnl
-                  [sys/mount.h]dnl
-                  [sys/socket.h]dnl
                   [unistd.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
@@ -57,16 +54,16 @@ AS_IF([test "x${ac_cv_header_stdbool_h}" = "xno"],[
  AC_MSG_ERROR([Unable to find header stdbool.h (conforming to C99)])
 ])
 dnl
-AC_CHECK_HEADERS([[inttypes.h]dnl
-                  [mntent.h]dnl
-                  [sys/mount.h]dnl
-                  [sys/socket.h]], [], [
+AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
-   AC_MSG_ERROR([Unable to find a POSIX capabilities library])
-])
+AC_CHECK_HEADERS([[mntent.h]dnl
+                  [sys/mount.h]dnl
+                  [sys/socket.h]], [], [
+  AC_MSG_WARN([Unable to find header ${ac_header}])
+], [])
+dnl
 AC_SEARCH_LIBS([sin], [m], [], [
    AC_MSG_ERROR([Unable to find a math library])
 ])
@@ -74,34 +71,42 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [], [
    AC_MSG_ERROR([Unable to find a realtime functions library])
 ])
 dnl
-AC_FUNC_STRERROR_R
-AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
- AC_MSG_ERROR([Unable to find strerror_r function])
+AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
+   AC_MSG_WARN([Unable to find a POSIX capabilities library])
 ])
-AC_FUNC_FORK
-AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
- AC_MSG_ERROR([Unable to find good fork function])
-])
-AC_FUNC_GETMNTENT
-AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
- AC_MSG_ERROR([Unable to find getmntent function])
-])
+dnl
 AC_CHECK_FUNCS([[dup2]dnl
-                [fchdir]dnl
-                [getdelim]dnl
-                [getmntent]dnl
                 [memmove]dnl
                 [mkdir]dnl
-                [setenv]dnl
-                [socket]dnl
                 [strdup]dnl
-                [strndup]dnl
                 [strstr]dnl
                 [strtol]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 AC_CHECK_FUNCS([[clock_gettime]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
+])
+dnl
+AC_FUNC_GETMNTENT
+AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
+ AC_MSG_WARN([Unable to find getmntent function])
+])
+AC_FUNC_STRERROR_R
+AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+ AC_MSG_WARN([Unable to find strerror_r function])
+])
+AC_FUNC_FORK
+AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+ AC_MSG_WARN([Unable to find good fork function])
+])
+dnl
+AC_CHECK_FUNCS([[fchdir]dnl
+                [getdelim]dnl
+                [getmntent]dnl
+                [setenv]dnl
+                [socket]dnl
+                [strndup]], [], [
+ AC_MSG_WARN([Unable to find function ${ac_func}])
 ])
 dnl
 AC_TYPE_MODE_T
