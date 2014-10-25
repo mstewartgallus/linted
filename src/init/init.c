@@ -185,8 +185,9 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor,
 		    linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions,
 		                 NULL, (char const * const[]) { monitor, NULL },
 		                 (char const * const *)environ);
-		if (0 == errnum)
-			child = xx;
+		if (errnum != 0)
+			goto destroy_attr;
+		child = xx;
 	}
 
 destroy_attr:

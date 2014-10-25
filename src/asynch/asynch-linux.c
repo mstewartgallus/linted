@@ -304,6 +304,8 @@ static void *worker_routine(void *arg)
 
 		run_task(pool, task);
 	}
+
+	LINTED_ASSUME_UNREACHABLE();
 }
 
 static void run_task(struct linted_asynch_pool *pool,

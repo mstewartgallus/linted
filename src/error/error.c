@@ -19,6 +19,7 @@
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -73,7 +74,7 @@ char const *linted_error_string(linted_error errnum_to_print)
 		return out_of_memory_string;
 
 	default:
-		assert(0);
+		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 

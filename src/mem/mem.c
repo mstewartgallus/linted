@@ -159,41 +159,31 @@ static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 		/*@ assert result >= nmemb; */
 		/*@ assert result >= nmemb * size; */
 	} else {
-		if (nmemb >= mul_no_overflow)
-			goto nmemb_greater;
+		bool check_mul;
+		size_t xx;
+		size_t yy;
 
-		if (size >= mul_no_overflow)
-			goto size_greater;
-
-		goto none_greater;
-
-		switch (0) {
-			size_t xx;
-			size_t yy;
-
-		nmemb_greater:
+		if (nmemb >= mul_no_overflow) {
 			if (size >= mul_no_overflow)
 				return ENOMEM;
 
 			xx = size;
 			yy = nmemb;
-			goto check_mul;
-
-		size_greater:
+			check_mul = true;
+		} else if (size >= mul_no_overflow) {
 			xx = nmemb;
 			yy = size;
-			goto check_mul;
+			check_mul = true;
+		} else {
+			result = nmemb * size;
+			check_mul = false;
+		}
 
-		check_mul:
+		if (check_mul) {
 			if (SIZE_MAX / yy >= xx)
 				return ENOMEM;
 
 			result = xx * yy;
-			break;
-
-		none_greater:
-			result = nmemb * size;
-			break;
 		}
 	}
 
