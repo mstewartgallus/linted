@@ -1622,6 +1622,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		switch (event) {
 		/* Trap a signal */
 		case 0: {
+			fprintf(stderr,
+				"sandbox %i received signal %s\n",
+				pid, strsignal(exit_status));
+
 			if (exit_status != SIGCHLD)
 				goto restart_process;
 
@@ -1665,13 +1669,14 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		}
 		}
 
-		case PTRACE_EVENT_STOP:
-			fprintf(stderr, "started ptracing process %i!\n", pid);
+		case PTRACE_EVENT_STOP: {
+			int stop_sig = exit_status & 0xFF;
+
+			fprintf(stderr, "ptracing %i!\n", pid);
 
 			if (pid == parent_process)
 				errnum = ptrace_children(parent_process);
 
-			int stop_sig = exit_status & 0xFF;
 			switch (stop_sig) {
 			case SIGTRAP: {
 				linted_error cont_errnum = ptrace_cont(pid, 0);
@@ -1688,6 +1693,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 			}
 			}
 			break;
+		}
 
 		default:
 			LINTED_ASSUME_UNREACHABLE();
