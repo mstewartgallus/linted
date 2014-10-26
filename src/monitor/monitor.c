@@ -1631,6 +1631,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 
 			pid_t sandboxed_pid;
 			int status;
+			int code;
 			{
 				siginfo_t info = { 0 };
 				errnum = ptrace_getsiginfo(pid, &info);
@@ -1639,25 +1640,36 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 
 				sandboxed_pid = info.si_pid;
 				status = info.si_status;
+				code = info.si_code;
 			}
 
-			if (WIFEXITED(status)) {
+			switch (code) {
+			case CLD_EXITED:
 				fprintf(
 				    stderr,
 				    "process %i in sandbox %i exited with %i\n",
-				    sandboxed_pid, pid, WEXITSTATUS(status));
-			} else if (WIFSIGNALED(status)) {
+				    sandboxed_pid, pid, status);
+				break;
+
+			case CLD_DUMPED:
+			case CLD_KILLED:
 				fprintf(
 				    stderr,
 				    "process %i in sandbox %i killed by %s\n",
 				    sandboxed_pid, pid,
-				    strsignal(WTERMSIG(status)));
-			} else if (WIFSTOPPED(status)) {
+				    strsignal(status));
+				break;
+
+			case CLD_STOPPED:
 				fprintf(
 				    stderr,
 				    "process %i in sandbox %i stopped by %s\n",
 				    sandboxed_pid, pid,
-				    strsignal(WSTOPSIG(status)));
+				    strsignal(status));
+				break;
+
+			default:
+				LINTED_ASSUME_UNREACHABLE();
 			}
 
 		restart_process : {
