@@ -15,9 +15,17 @@
  * <ul>
  *
  * <li> Valgrind
- *
  * - You have to comment out and disable the seccomp sandboxing.
- * - You have to make sure every unit has a /tmp directory.
+ * - You have to make sure every running service has a /tmp directory.
+ * - You have to use the latest version from SVN (version 11) to
+ *   handle system calls like pivot_root.
+ * - It's a bit buggy with sandboxing but works fine.
+ * - memcheck works fine.
+ * - helgrind can't cope with asynchronous cancellation well.
+ * </li>
+ *
+ * <li> Address Sanitizer
+ * - It works great without any changes.
  * </li>
  *
  * @section rejected Rejected Tools
