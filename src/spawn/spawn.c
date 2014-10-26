@@ -799,14 +799,25 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (file_actions != NULL && file_actions->action_count > 0U) {
 		memcpy(envp_copy, envp, sizeof envp[0U] * env_size);
 
-		envp_copy[env_size] = listen_pid;
-		envp_copy[env_size + 1U] = listen_fds;
-		envp_copy[env_size + 2U] = NULL;
-
 		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
 		           (int)file_actions->action_count - 3U);
 
 		pid_to_str(listen_pid + strlen("LISTEN_PID="), real_getpid());
+
+		for (size_t ii = 0U; ii < env_size; ++ii) {
+			if (0 == strncmp(envp_copy[ii], "LISTEN_PID=",
+					 strlen("LISTEN_PID=")))
+				envp_copy[ii] = listen_fds;
+
+			if (0 == strncmp(envp_copy[ii], "LISTEN_FDS=",
+					 strlen("LISTEN_FDS=")))
+				envp_copy[ii] = listen_fds;
+		}
+
+
+		envp_copy[env_size] = listen_pid;
+		envp_copy[env_size + 1U] = listen_fds;
+		envp_copy[env_size + 2U] = NULL;
 
 		envp = (char const * const *)envp_copy;
 	}

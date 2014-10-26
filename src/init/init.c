@@ -17,7 +17,6 @@
 
 #include "config.h"
 
-#include "linted/admin.h"
 #include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/spawn.h"
@@ -36,18 +35,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define BACKLOG 20U
-
 extern char **environ;
+
+static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",
-	.kos_size = 0U,
-	.kos = NULL
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos
 };
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor,
-                                  linted_admin admin);
+                                  linted_ko admin);
 static linted_error set_child_subreaper(bool value);
 static linted_error set_ptracer(pid_t pid);
 
@@ -65,30 +64,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_admin admin;
-	{
-		linted_admin xx;
-		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_admin_bind");
-			return EXIT_FAILURE;
-		}
-		admin = xx;
-	}
-
-	{
-		char buf[LINTED_ADMIN_PATH_MAX];
-		size_t len;
-		errnum = linted_admin_path(admin, buf, &len);
-		if (errnum != 0)
-			return errnum;
-
-		linted_io_write_str(STDOUT_FILENO, NULL,
-		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
-		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
-		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
-	}
+	linted_ko admin = kos[0U];
 
 	for (;;) {
 		linted_io_write_str(STDOUT_FILENO, NULL,
@@ -143,7 +119,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 }
 
 static linted_error spawn_monitor(pid_t *childp, char const *monitor,
-                                  linted_admin admin)
+                                  linted_ko admin)
 {
 	linted_error errnum = 0;
 

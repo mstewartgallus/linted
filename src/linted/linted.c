@@ -19,17 +19,23 @@
 
 #include "settings.h"
 
+#include "linted/admin.h"
 #include "linted/io.h"
 #include "linted/locale.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
+
+#define BACKLOG 20U
 
 struct envvar
 {
@@ -138,7 +144,54 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
+	linted_error errnum;
+
+	linted_admin admin;
+	{
+		linted_admin xx;
+		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_admin_bind");
+			return EXIT_FAILURE;
+		}
+		admin = xx;
+	}
+
+	{
+		char buf[LINTED_ADMIN_PATH_MAX];
+		size_t len;
+		errnum = linted_admin_path(admin, buf, &len);
+		if (errnum != 0)
+			return errnum;
+
+		linted_io_write_str(STDOUT_FILENO, NULL,
+		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
+		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
+		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+	}
+
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, admin };
+	{
+		char listen_pid[] = INT_STRING_PADDING;
+		sprintf(listen_pid, "%i", getpid());
+
+		if (-1 == setenv("LISTEN_PID", listen_pid, true)) {
+			perror("setenv");
+			return EXIT_FAILURE;
+		}
+	}
+
+	{
+		char listen_fds[] = INT_STRING_PADDING;
+		sprintf(listen_fds, "%i", (int)LINTED_ARRAY_SIZE(stdfiles) - 3U);
+
+		if (-1 == setenv("LISTEN_FDS", listen_fds, true)) {
+			perror("setenv");
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 
