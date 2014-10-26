@@ -179,7 +179,6 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
                                   bool time_to_quit);
 
-static linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp);
 static linted_error ptrace_children(pid_t parent);
 
 static linted_error conn_pool_create(struct conn_pool **poolp);
@@ -353,7 +352,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto kill_procs;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-	                          -1, WEXITED | WNOWAIT);
+	                          -1, WEXITED);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
 	waiter_task.time_to_exit = false;
@@ -1568,40 +1567,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	pid_t parent_process = wait_service_task->parent_process;
 
 	pid_t pid;
-	{
-		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
-		pid = exit_info->si_pid;
-	}
-
-	if (pid != parent_process) {
-		bool is_child;
-		errnum = is_child_of(parent_process, pid, &is_child);
-		if (errnum != 0)
-			return errnum;
-
-		if (!is_child) {
-			linted_asynch_pool_submit(pool, task);
-
-			fprintf(stderr, "not child %i\n", pid);
-			return 0;
-		}
-	}
-
 	int exit_status;
 	int exit_code;
 	{
-		siginfo_t exit_info;
-		do {
-			if (-1 == waitid(P_PID, pid, &exit_info, WEXITED)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
-			}
-		} while (EINTR == errnum);
-
-		exit_status = exit_info.si_status;
-		exit_code = exit_info.si_code;
+		siginfo_t *exit_info = &LINTED_UPCAST(wait_service_task)->info;
+		pid = exit_info->si_pid;
+		exit_status = exit_info->si_status;
+		exit_code = exit_info->si_code;
 	}
 
 	linted_asynch_pool_submit(pool, task);
@@ -1935,71 +1907,6 @@ static linted_error on_wrote_conn(struct linted_asynch_task *task,
 	linted_error remove_errnum = conn_remove(conn, conn_pool);
 	if (0 == errnum)
 		errnum = remove_errnum;
-
-	return errnum;
-}
-
-static linted_error is_child_of(pid_t parent, pid_t maybe_child, bool *childp)
-{
-	linted_error errnum;
-
-	bool is_child = false;
-
-	linted_ko init_children;
-	{
-		linted_ko xx;
-		errnum = get_process_children(&xx, parent);
-		if (errnum != 0)
-			return errnum;
-		init_children = xx;
-	}
-
-	FILE *file = fdopen(init_children, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(init_children);
-
-		return errnum;
-	}
-
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_buf;
-			}
-			buf = xx;
-			buf_size = yy;
-		}
-
-		pid_t child = strtol(buf, NULL, 10);
-
-		if (child == maybe_child) {
-			is_child = true;
-			break;
-		}
-	}
-
-free_buf:
-	linted_mem_free(buf);
-
-	fclose(file);
-
-	if (0 == errnum)
-		*childp = is_child;
 
 	return errnum;
 }
