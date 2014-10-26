@@ -1622,10 +1622,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		switch (event) {
 		/* Trap a signal */
 		case 0: {
-			fprintf(stderr,
-				"sandbox %i received signal %s\n",
-				pid, strsignal(exit_status));
-
 			if (exit_status != SIGCHLD)
 				goto restart_process;
 
