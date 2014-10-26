@@ -1625,18 +1625,23 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 			if (exit_status != SIGCHLD)
 				goto restart_process;
 
+			int code;
 			pid_t sandboxed_pid;
 			int status;
-			int code;
 			{
 				siginfo_t info = { 0 };
 				errnum = ptrace_getsiginfo(pid, &info);
 				if (errnum != 0)
 					goto restart_process;
 
+				code = info.si_code;
+
+				/* User generated signal */
+				if (code < 0)
+					goto restart_process;
+
 				sandboxed_pid = info.si_pid;
 				status = info.si_status;
-				code = info.si_code;
 			}
 
 			switch (code) {
@@ -1652,16 +1657,14 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 				fprintf(
 				    stderr,
 				    "process %i in sandbox %i killed by %s\n",
-				    sandboxed_pid, pid,
-				    strsignal(status));
+				    sandboxed_pid, pid, strsignal(status));
 				break;
 
 			case CLD_STOPPED:
 				fprintf(
 				    stderr,
 				    "process %i in sandbox %i stopped by %s\n",
-				    sandboxed_pid, pid,
-				    strsignal(status));
+				    sandboxed_pid, pid, strsignal(status));
 				break;
 
 			default:
