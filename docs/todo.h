@@ -15,24 +15,6 @@
  *
  * @todo Eventually reduce -Wstack-usage to 500.
  *
- * @todo Review and criticize binary analysis tools like dwarves.
- *
- * @todo Review and criticize several static analysers.
- * - If they don't work out write detailed reasons why.
- * - The tools:
- *   - SPLINT
- *   - Cqual
- *   - Smatch
- *   - MOPS
- *   - BLAST
- *   - BOON "Buffer Overrun detectiON"
- *   - ggcc
- *   - Stanse
- *   - Sparse
- *   - Oink
- *   - Yasca
- *   - RTL-check
- *
  * @todo Investigate security projects
  * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project
  * - The Open Source Quality Project at Berkeley is investigating

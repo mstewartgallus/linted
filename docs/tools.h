@@ -11,10 +11,26 @@
  *
  * Linted -- Tools
  *
- * @section Useful tools
+ * @section potential Potential tools
+ * - [joern](https://github.com/fabsx00/joern)
+ * - [SPLINT](http://www.splint.org/)
+ * - [Cqual](http://www.cs.umd.edu/~jfoster/cqual/)
+ * - [Smatch](http://smatch.sourceforge.net/)
+ * - [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/)
+ * - [BLAST](http://mtc.epfl.ch/software-tools/blast/index-epfl.php)
+ * - [CPAchecker](http://cpachecker.sosy-lab.org/)
+ * - [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/)
+ * - [Stanse](http://stanse.fi.muni.cz/)
+ * - [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
+ * - [Oink](http://daniel-wilkerson.appspot.com/oink/index.html)
+ * - [Yasca](http://sourceforge.net/projects/yasca/)
+ * - [RTL-check](http://rtlcheck.sourceforge.net/)
+ * - ggcc
+ *
+ * @section useful Useful tools
  * <ul>
  *
- * <li> Valgrind
+ * <li> [Valgrind](http://valgrind.org/)
  * - You have to comment out and disable the seccomp sandboxing.
  * - You have to make sure every running service has a /tmp directory.
  * - You have to use the latest version from SVN (version 11) to
@@ -24,11 +40,11 @@
  * - helgrind can't cope with asynchronous cancellation well.
  * </li>
  *
- * <li> Address Sanitizer
+ * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
  * - It works great without any changes.
  * </li>
  *
- * <li> Linux Perf Utils
+ * <li> [Linux Perf Utils](https://git.kernel.org/cgit/linux/kernel/git/namhyung/linux-perf.git/)
  * - It works great without any changes and handles multiple processes
  *   well.
  * - It does not handle a few internal functions in some libraries,
@@ -118,16 +134,14 @@
  *
  * <ul>
  *
- * <li> Linux Dwarves tools
- *
- * - dwarves
- *   - codiff       Diffs changes in binaries
- *   - dtagnames    Lists tag names
- *   - pahole       Finds holes in structures
- *   - pdwtags      Dwarf information pretty printer
- *   - pfunct       Displays information about functions
- *   - pglobal      Displays information about global variables
- *   - prefcnt      Tries to find unreferenced tags
+ * <li> [Linux Dwarves tools](https://git.kernel.org/cgit/devel/pahole/pahole.git/)
+ * - codiff       Diffs changes in binaries
+ * - dtagnames    Lists tag names
+ * - pahole       Finds holes in structures
+ * - pdwtags      Dwarf information pretty printer
+ * - pfunct       Displays information about functions
+ * - pglobal      Displays information about global variables
+ * - prefcnt      Tries to find unreferenced tags
  *
  * These tools would be extremely useful if they worked on a wider
  * range of types. So far, they all seem to break and not handle any
@@ -135,7 +149,7 @@
  *
  * </li>
  *
- * <li> Clang's -Wthread-safety flags
+ * <li> [Clang's -Wthread-safety flag](http://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
  *
  * This tool is okay but cannot handle thread cancellation which is
  * needed to kill worker threads that are taking too long.
