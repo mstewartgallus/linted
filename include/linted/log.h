@@ -46,8 +46,6 @@ struct linted_log_task
 #define LINTED_LOG_DOWNCAST(X)                                                 \
 	LINTED_DOWNCAST(struct linted_log_task, LINTED_MQ_RECEIVE_DOWNCAST(X))
 
-linted_error linted_log_create(linted_log *logp, unsigned long flags);
-
 linted_error linted_log_close(linted_log log);
 
 linted_error linted_log_write(linted_log log, char const *msg_ptr,

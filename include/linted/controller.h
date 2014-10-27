@@ -67,9 +67,6 @@ struct linted_controller_task_receive
 	LINTED_DOWNCAST(struct linted_controller_task_receive,                 \
 	                LINTED_MQ_RECEIVE_DOWNCAST(X))
 
-linted_error linted_controller_create(linted_controller *controllerp,
-                                      unsigned long flags);
-
 void linted_controller_send(struct linted_controller_task_send *task,
                             unsigned task_id, linted_controller controller,
                             struct linted_controller_message const *message);

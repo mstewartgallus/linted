@@ -23,17 +23,6 @@
 #include <errno.h>
 #include <stddef.h>
 
-linted_error linted_updater_create(linted_updater *updaterp,
-                                   unsigned long flags)
-{
-	if (flags != 0U)
-		return EINVAL;
-
-	return linted_mq_create(
-	    updaterp, "/updater", 1U,
-	    LINTED_FIELD_SIZEOF(struct linted_updater_task_send, message), 0);
-}
-
 void linted_updater_send(struct linted_updater_task_send *task,
                          unsigned task_id, linted_updater updater,
                          struct linted_updater_update const *update)

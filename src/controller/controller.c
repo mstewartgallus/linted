@@ -23,18 +23,6 @@
 #include <errno.h>
 #include <string.h>
 
-linted_error linted_controller_create(linted_controller *controllerp,
-                                      unsigned long flags)
-{
-	if (flags != 0U)
-		return EINVAL;
-
-	return linted_mq_create(
-	    controllerp, "/controller", 1U,
-	    LINTED_FIELD_SIZEOF(struct linted_controller_task_send, message),
-	    0);
-}
-
 void linted_controller_send(struct linted_controller_task_send *task,
                             unsigned task_id, linted_controller controller,
                             struct linted_controller_message const *message)

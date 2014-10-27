@@ -26,14 +26,6 @@
 static linted_error poll_one(linted_ko ko, short events, short *revents);
 static linted_error check_for_poll_error(linted_ko ko, short revents);
 
-linted_error linted_log_create(linted_log *logp, unsigned long flags)
-{
-	if (flags != 0U)
-		return EINVAL;
-
-	return linted_mq_create(logp, "/log", 10U, LINTED_LOG_MAX, 0);
-}
-
 /**
  * @todo Make asynchronous
  */

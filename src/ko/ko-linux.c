@@ -469,11 +469,10 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	struct linted_ko_task_accept *task_accept =
 	    LINTED_DOWNCAST(struct linted_ko_task_accept, task);
 
-	linted_ko new_ko = -1;
 	linted_error errnum = 0;
 	linted_ko ko = task_accept->ko;
 
-	new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+	linted_ko new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
 	if (-1 == new_ko) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
