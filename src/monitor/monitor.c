@@ -202,8 +202,11 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
                                      unsigned long *mountflagsp,
                                      char const **leftoversp);
+
+static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
+
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 static size_t null_list_size(char const *const *list);
@@ -804,46 +807,42 @@ static linted_error service_create(struct unit_service *unit,
 	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 
 	char const *type;
-	if (NULL == types) {
-		type = NULL;
-	} else {
-		type = types[0U];
-
-		if (types[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(types, &xx);
+		if (errnum != 0)
+			return errnum;
+		type = xx;
 	}
 
 	if (NULL == exec_start)
 		return EINVAL;
 
 	char const *no_new_privs;
-	if (NULL == no_new_privss) {
-		no_new_privs = NULL;
-	} else {
-		no_new_privs = no_new_privss[0U];
-
-		if (no_new_privss[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(no_new_privss, &xx);
+		if (errnum != 0)
+			return errnum;
+		no_new_privs = xx;
 	}
 
 	char const *fstab;
-	if (NULL == fstabs) {
-		fstab = NULL;
-	} else {
-		fstab = fstabs[0U];
-
-		if (fstabs[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(fstabs, &xx);
+		if (errnum != 0)
+			return errnum;
+		fstab = xx;
 	}
 
 	char const *chdir_path;
-	if (NULL == chdir_paths) {
-		chdir_path = NULL;
-	} else {
-		chdir_path = chdir_paths[0U];
-
-		if (chdir_paths[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(chdir_paths, &xx);
+		if (errnum != 0)
+			return errnum;
+		chdir_path = xx;
 	}
 
 	if (NULL == type) {
@@ -888,43 +887,39 @@ static linted_error socket_create(struct unit_socket *unit,
 	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
 
 	char const *path;
-	if (NULL == paths) {
-		path = NULL;
-	} else {
-		path = paths[0U];
-
-		if (paths[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(paths, &xx);
+		if (errnum != 0)
+			return errnum;
+		path = xx;
 	}
 
 	char const *maxmsgs;
-	if (NULL == maxmsgss) {
-		maxmsgs = NULL;
-	} else {
-		maxmsgs = maxmsgss[0U];
-
-		if (maxmsgss[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(maxmsgss, &xx);
+		if (errnum != 0)
+			return errnum;
+		maxmsgs = xx;
 	}
 
 	char const *msgsize;
-	if (NULL == msgsizes) {
-		msgsize = NULL;
-	} else {
-		msgsize = msgsizes[0U];
-
-		if (msgsizes[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(msgsizes, &xx);
+		if (errnum != 0)
+			return errnum;
+		msgsize = xx;
 	}
 
 	char const *temp;
-	if (NULL == temps) {
-		temp = NULL;
-	} else {
-		temp = temps[0U];
-
-		if (temps[1U] != NULL)
-			return EINVAL;
+	{
+		char const *xx;
+		errnum = str_from_strs(temps, &xx);
+		if (errnum != 0)
+			return errnum;
+		temp = xx;
 	}
 
 	long maxmsgs_value;
@@ -2152,6 +2147,22 @@ static size_t null_list_size(char const *const *list)
 	for (size_t ii = 0U;; ++ii)
 		if (NULL == list[ii])
 			return ii;
+}
+
+static linted_error str_from_strs(char const *const *strs, char const **strp)
+{
+	char const *str;
+	if (NULL == strs) {
+		str = NULL;
+	} else {
+		str = strs[0U];
+
+		if (strs[1U] != NULL)
+			return EINVAL;
+	}
+
+	*strp = str;
+	return 0;
 }
 
 static linted_error bool_from_cstring(char const *str, bool *boolp)
