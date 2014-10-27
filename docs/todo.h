@@ -13,11 +13,9 @@
  *
  * @todo Add libcap check
  *
- * @todo Add blender check
- *
  * @todo Eventually reduce -Wstack-usage to 500.
  *
- * @todo Review and criticize use binary analysis tools like dwarves.
+ * @todo Review and criticize binary analysis tools like dwarves.
  *
  * @todo Review and criticize several static analysers.
  * - If they don't work out write detailed reasons why.

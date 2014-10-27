@@ -142,6 +142,10 @@ PKG_CHECK_MODULES(EGL, egl, [], [
 ])
 dnl
 LINTED_PROG_BLENDER
+AS_IF([test -z "${BLENDER}"],[
+ AC_MSG_ERROR([Unable to find a Blender executable])
+])
+dnl
 LINTED_PROG_CLANG
 LINTED_PROG_CLANG_FORMAT
 LINTED_PROG_CPPCHECK
