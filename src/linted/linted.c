@@ -171,7 +171,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, admin };
+	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
+		                 STDERR_FILENO, admin };
 	{
 		char listen_pid[] = INT_STRING_PADDING;
 		sprintf(listen_pid, "%i", getpid());
@@ -184,7 +185,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	{
 		char listen_fds[] = INT_STRING_PADDING;
-		sprintf(listen_fds, "%i", (int)LINTED_ARRAY_SIZE(stdfiles) - 3U);
+		sprintf(listen_fds, "%i",
+		        (int)LINTED_ARRAY_SIZE(stdfiles) - 3U);
 
 		if (-1 == setenv("LISTEN_FDS", listen_fds, true)) {
 			perror("setenv");

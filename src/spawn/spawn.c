@@ -806,14 +806,13 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		for (size_t ii = 0U; ii < env_size; ++ii) {
 			if (0 == strncmp(envp_copy[ii], "LISTEN_PID=",
-					 strlen("LISTEN_PID=")))
+			                 strlen("LISTEN_PID=")))
 				envp_copy[ii] = listen_fds;
 
 			if (0 == strncmp(envp_copy[ii], "LISTEN_FDS=",
-					 strlen("LISTEN_FDS=")))
+			                 strlen("LISTEN_FDS=")))
 				envp_copy[ii] = listen_fds;
 		}
-
 
 		envp_copy[env_size] = listen_pid;
 		envp_copy[env_size + 1U] = listen_fds;

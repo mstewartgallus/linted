@@ -36,6 +36,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+static void pipe_set_init(void);
+static sigset_t const *get_pipe_set(void);
+static linted_error eat_sigpipes(void);
+
 static void fd_to_str(char *buf, linted_ko fd);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
@@ -354,52 +358,34 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	linted_ko ko = task_write->ko;
 	char const *buf = task_write->buf;
 
-	sigset_t oldset;
-	/* Get EPIPEs */
-	/* SIGPIPE may not be blocked already */
-	/* Reuse oldset to save on stack space */
-	sigemptyset(&oldset);
-	sigaddset(&oldset, SIGPIPE);
+	char const *buf_offset = buf + bytes_wrote;
 
-	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0)
-		goto complete_task;
-
-	ssize_t result = write(ko, buf + bytes_wrote, bytes_left);
-	if (-1 == result) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	/* Consume SIGPIPEs */
+	ssize_t result;
+	linted_error mask_errnum;
 	{
-		sigset_t sigpipeset;
+		/* Get EPIPEs */
+		/* SIGPIPE may not be blocked already */
+		sigset_t oldset;
+		errnum = pthread_sigmask(SIG_BLOCK, get_pipe_set(), &oldset);
+		if (errnum != 0)
+			goto complete_task;
 
-		sigemptyset(&sigpipeset);
-		sigaddset(&sigpipeset, SIGPIPE);
-
-		linted_error wait_errnum;
-		do {
-			struct timespec timeout = { 0 };
-
-			if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
-				wait_errnum = errno;
-				LINTED_ASSUME(wait_errnum != 0);
-			} else {
-				wait_errnum = 0;
-			}
-		} while (EINTR == wait_errnum);
-		if (wait_errnum != 0 && wait_errnum != EAGAIN) {
-			if (0 == errnum)
-				errnum = wait_errnum;
+		result = write(ko, buf_offset, bytes_left);
+		if (-1 == result) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto reset_sigmask;
 		}
-	}
 
-	{
-		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+		linted_error eat_errnum = eat_sigpipes();
 		if (0 == errnum)
-			errnum = mask_errnum;
+			errnum = eat_errnum;
+
+	reset_sigmask:
+		mask_errnum = pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	}
+	if (0 == errnum)
+		errnum = mask_errnum;
 
 	if (EINTR == errnum)
 		goto submit_retry;
@@ -447,6 +433,34 @@ submit_retry:
 	task_write->current_position = bytes_wrote;
 
 	linted_asynch_pool_submit(pool, task);
+}
+
+static struct timespec const zero_timeout = { 0 };
+
+static linted_error eat_sigpipes(void)
+{
+	linted_error errnum = 0;
+
+	for (;;) {
+		int wait_status =
+		    sigtimedwait(get_pipe_set(), NULL, &zero_timeout);
+		if (wait_status != -1)
+			continue;
+
+		linted_error wait_errnum = errno;
+		LINTED_ASSUME(wait_errnum != 0);
+
+		if (EAGAIN == wait_errnum)
+			break;
+
+		if (wait_errnum != EINTR) {
+			if (0 == errnum)
+				errnum = wait_errnum;
+			break;
+		}
+	}
+
+	return errnum;
 }
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,
@@ -514,6 +528,25 @@ complete_task:
 
 submit_retry:
 	linted_asynch_pool_submit(pool, task);
+}
+
+static sigset_t pipeset;
+static pthread_once_t pipe_set_once_control = PTHREAD_ONCE_INIT;
+
+static sigset_t const *get_pipe_set(void)
+{
+	linted_error errnum;
+
+	errnum = pthread_once(&pipe_set_once_control, pipe_set_init);
+	assert(0 == errnum);
+
+	return &pipeset;
+}
+
+static void pipe_set_init(void)
+{
+	sigemptyset(&pipeset);
+	sigaddset(&pipeset, SIGPIPE);
 }
 
 static linted_error poll_one(linted_ko ko, short events, short *revents)
