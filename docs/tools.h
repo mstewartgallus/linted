@@ -130,6 +130,21 @@
  *     - /lib/x86_64-linux-gnu/libz.so.1.2.8
  * </li>
  *
+ * <li> [Cppcheck](http://cppcheck.sourceforge.net/)
+ * - It's okay but mostly just catches bad style.
+ * </li>
+ *
+ * <li> [CBMC](http://www.cprover.org/cbmc/)
+ * - It's a bit fiddly to setup but works okay.
+ * - Theoretically it should be able to handle nondeterminism and
+ *   concurrency but only if I add a bunch of annotations manually.
+ * </li>
+ *
+ * <li> [Frama-C](http://frama-c.com/)
+ * - It's a bit fiddly to get working.
+ * - It can't handle concurrency or function pointers in some cases.
+ * </li>
+ *
  * @section rejected Rejected Tools
  *
  * <ul>
