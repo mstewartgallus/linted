@@ -19,7 +19,8 @@ import json
 from collections import namedtuple
 
 def go():
-    files, flags, makeflags, linking, output = parse(sys.argv[1:])
+    cc = sys.argv[1]
+    files, flags, makeflags, linking, output = parse(sys.argv[2:])
 
     if len(makeflags) > 0:
         output_args = []
@@ -30,7 +31,7 @@ def go():
         if linking:
             link_args = ['-c']
 
-        subprocess.check_call(['gcc', '-E'] + output_args + makeflags + link_args + flags + files)
+        subprocess.check_call([cc, '-E'] + output_args + makeflags + link_args + flags + files)
         # Fall through
 
     if '-dM' in flags or '-E' in makeflags:
@@ -68,7 +69,7 @@ def go():
             if output == None:
                 output = input_file.replace('.c', '.o')
 
-            exit_status = subprocess.call(['gcc', '-std=gnu99'] + flags + [input_file, '-o/dev/null'])
+            exit_status = subprocess.call([cc, '-std=gnu99'] + flags + [input_file, '-o/dev/null'])
             if exit_status != 0:
                 sys.exit(exit_status)
 

@@ -157,6 +157,12 @@
  *
  * <ul>
  *
+ * <li> [Build EAR](https://github.com/rizsotto/Bear)
+ * - It works perfectly except each time it is rerun it overwrites the
+ *   previous compile_commands.json and doesn't take into account the
+ *   old commands.
+ * </li>
+ *
  * <li> [Linux Dwarves tools](https://git.kernel.org/cgit/devel/pahole/pahole.git/)
  * - codiff       Diffs changes in binaries
  * - dtagnames    Lists tag names

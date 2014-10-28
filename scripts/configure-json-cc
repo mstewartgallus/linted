@@ -5,11 +5,15 @@ set -C
 set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+SRC="${ROOT}/.."
+JSON_CC="${ROOT}/json-cc.py"
 
-exec "${ROOT}/../configure"\
-     --build="$("${ROOT}/../build-aux/config.guess")"\
+: ${CC:=gcc}
+
+exec "${SRC}/configure"\
+     --build="$("${SRC}/build-aux/config.guess")"\
      --host=none-none-none\
      --disable-shared\
      --enable-debug\
-     CC="${ROOT}/json-cc"\
+     CC="${JSON_CC} ${CC}"\
      $@

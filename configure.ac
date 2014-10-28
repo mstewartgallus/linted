@@ -163,8 +163,7 @@ CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([scripts/build
-                 scripts/test
+AC_CONFIG_FILES([scripts/test
                  scripts/check-cbmc
                  scripts/check-clang-analysis
                  scripts/check-clang-check

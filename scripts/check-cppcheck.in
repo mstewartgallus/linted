@@ -10,11 +10,11 @@ BINARY="$1"
 : ${LINTED_CPPCHECK:=cppcheck}
 
 source_cflags() {
-    "${SCRIPTS}/json-cc-flags" "${BINARY}"
+    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
 }
 
 source_files() {
-    "${SCRIPTS}/json-cc-files" "${BINARY}"
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
 "${LINTED_CPPCHECK}"\

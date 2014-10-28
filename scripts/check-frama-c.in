@@ -10,7 +10,7 @@ BINARY="$1"
 : ${LINTED_FRAMA_C:=frama-c}
 
 source_cflags() {
-    for II in $("${SCRIPTS}/json-cc-flags" "${BINARY}"); do
+    for II in $("${SCRIPTS}/json-cc-flags.py" "${BINARY}"); do
         echo -cpp-extra-args="${II}"
     done
 }
@@ -20,7 +20,7 @@ frama_c_stdlib() {
 }
 
 source_files() {
-    "${SCRIPTS}/json-cc-files" "${BINARY}"
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
 
