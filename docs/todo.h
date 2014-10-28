@@ -11,6 +11,9 @@
  *
  * Linted -- TODO
  *
+ * @todo Use bear and compile_commands.json instead of the home-brew
+ *       json-cc.
+ *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *

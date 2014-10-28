@@ -47,14 +47,6 @@ AM_LDFLAGS=\
 
 AM_CPPFLAGS=-I$(srcdir)/include
 
-EXTRA_DIST+=scripts/test.in
-scripts/test: Makefile scripts/test.in
-	$(MKDIR_P) scripts
-	sed \
-	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
-	  $(srcdir)/scripts/test.in > $@
-	chmod u+x $@
-
 .PHONY: indent
 indent: $(SOURCES)
 	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^

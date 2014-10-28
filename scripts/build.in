@@ -1,0 +1,7 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+exec bear -- make $@

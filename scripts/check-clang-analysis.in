@@ -4,7 +4,7 @@ set -e
 set -C
 set -u
 
-SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
+SCRIPTS="@srcdir@"
 BINARY="$1"
 
 : ${LINTED_CLANG:=clang}

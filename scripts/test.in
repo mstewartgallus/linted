@@ -4,7 +4,7 @@ set -e
 set -C
 set -u
 
-SRCDIR="@srcdir@"
+SRCDIR="@top_srcdir@"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 if test "x${XDG_RUNTIME_DIR:+x}" = "x"
 then

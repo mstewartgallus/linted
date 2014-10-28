@@ -163,5 +163,14 @@ CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([scripts/build
+                 scripts/test
+                 scripts/check-cbmc
+                 scripts/check-clang-analysis
+                 scripts/check-clang-check
+                 scripts/check-cppcheck
+                 scripts/check-frama-c],[
+                 chmod u+x "${ac_file}"
+])
 dnl
 AC_OUTPUT
