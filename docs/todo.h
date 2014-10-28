@@ -11,6 +11,9 @@
  *
  * Linted -- TODO
  *
+ * @todo Add platform specific information and defines to static
+ *       analysis tooling.
+ *
  * @todo Add libcap check
  *
  * @todo Eventually reduce -Wstack-usage to 500.
