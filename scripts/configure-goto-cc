@@ -10,6 +10,7 @@ exec "${ROOT}/../configure"\
      --build="$("${ROOT}/../build-aux/config.guess")"\
      --host=none-none-none\
      --disable-shared\
+     --enable-debug\
      CC=goto-cc\
      CPPFLAGS="-U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__"\
      $@

@@ -10,5 +10,6 @@ exec "${ROOT}/../configure"\
      --build="$("${ROOT}/../build-aux/config.guess")"\
      --host=none-none-none\
      --disable-shared\
+     --enable-debug\
      CC="${ROOT}/json-cc"\
      $@
