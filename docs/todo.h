@@ -14,8 +14,6 @@
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
- * @todo Add libcap check
- *
  * @todo Eventually reduce -Wstack-usage to 500.
  *
  * @todo Investigate security projects
@@ -37,6 +35,7 @@
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
  *
- * @todo Check the configuration directory before checking the default
- *       configuration directory.
+ * @todo For units check the configuration directory (eg /etc) before
+ *       checking the default configuration directory (eg
+ *       /usr/local/share/factory/linted/etc).
  */
