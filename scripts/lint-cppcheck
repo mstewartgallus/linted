@@ -9,16 +9,21 @@ BINARY="$1"
 
 : ${LINTED_CPPCHECK:=cppcheck}
 
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags" "${BINARY}"
+}
+
 source_files() {
     "${SCRIPTS}/json-cc-files" "${BINARY}"
 }
 
 "${LINTED_CPPCHECK}"\
-    '--quiet'\
-    '--enable=all'\
-    '--suppress=resourceLeak'\
-    '--suppress=variableScope'\
-    '--suppress=sizeofwithsilentarraypointer'\
-    '--suppress=uninitvar'\
-    '--template={file}:{line}: ({id}) {message}'\
+    --quiet\
+    --enable=all\
+    --suppress=resourceLeak\
+    --suppress=variableScope\
+    --suppress=sizeofwithsilentarraypointer\
+    --suppress=uninitvar\
+    --template='{file}:{line}: ({id}) {message}'\
+    $(source_cflags)\
     $(source_files)
