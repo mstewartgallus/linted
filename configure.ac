@@ -22,8 +22,6 @@ dnl
 AC_PREREQ([2.62])
 AC_CONFIG_SRCDIR([src/linted/linted.c])
 dnl
-AC_ARG_VAR([CLANG], [The clang compiler used for static analysis])
-dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']
 ])
@@ -146,11 +144,7 @@ AS_IF([test -z "${BLENDER}"],[
  AC_MSG_ERROR([Unable to find a Blender executable])
 ])
 dnl
-LINTED_PROG_CLANG
 LINTED_PROG_CLANG_FORMAT
-LINTED_PROG_CPPCHECK
-LINTED_PROG_FRAMA_C_GUI
-LINTED_PROG_FRAMA_C
 dnl
 LINTED_C_RESTRICT
 LINTED_LANGUAGE
@@ -166,10 +160,6 @@ CC="${CC} ${linted_CFLAGS_HARDEN}"
 CC="${CC} ${linted_CFLAGS_MINOR_DEBUG}"
 CC="${CC} ${linted_CFLAGS_DEBUG}"
 CC="${CC} ${linted_CFLAGS_WARNINGS}"]
-dnl
-AM_CONDITIONAL([HAS_FRAMA_C], [test "x${FRAMA_C}" != "x"])
-AM_CONDITIONAL([HAS_CLANG], [test "x${CLANG}" != "x"])
-AM_CONDITIONAL([HAS_CPPCHECK], [test "x${CPPCHECK}" != "x"])
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])

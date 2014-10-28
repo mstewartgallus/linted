@@ -39,8 +39,6 @@ dist_pkgdefaultunits_DATA=
 install-data-hook:
 	$(mkinstalldirs) '$(chrootdir)'
 
-EXTRA_DIST+=scripts/ccwrapper.py
-
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
@@ -56,9 +54,6 @@ scripts/test: Makefile scripts/test.in
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  $(srcdir)/scripts/test.in > $@
 	chmod u+x $@
-
-dist-hook:
-	rm -rf $$(find $(distdir)/libs/glloadgen-reloaded -type d -name .git)
 
 .PHONY: indent
 indent: $(SOURCES)
