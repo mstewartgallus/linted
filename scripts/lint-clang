@@ -1,0 +1,67 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
+BINARY="$1"
+
+: ${LINTED_CLANG:=clang}
+
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags" "${BINARY}"
+}
+
+source_files() {
+    "${SCRIPTS}/json-cc-files" "${BINARY}"
+}
+
+"${LINTED_CLANG}"\
+    --analyze\
+    \
+    -w\
+    -Qunused-arguments\
+    -Wno-unknown-warning-option\
+    -Xclang -analyzer-output=text\
+    -Xclang -o-\
+    \
+    -Xanalyzer -analyzer-checker=core.CallAndMessage\
+    -Xanalyzer -analyzer-checker=core.DivideZero\
+    -Xanalyzer -analyzer-checker=core.DynamicTypePropagation\
+    -Xanalyzer -analyzer-checker=core.NonNullParamChecker\
+    -Xanalyzer -analyzer-checker=core.NullDereference\
+    -Xanalyzer -analyzer-checker=core.StackAddressEscape\
+    -Xanalyzer -analyzer-checker=core.UndefinedBinaryOperatorResult\
+    -Xanalyzer -analyzer-checker=core.VLASize\
+    -Xanalyzer -analyzer-checker=core.builtin.BuiltinFunctions\
+    -Xanalyzer -analyzer-checker=core.builtin.NoReturnFunctions\
+    -Xanalyzer -analyzer-checker=core.uninitialized.ArraySubscript\
+    -Xanalyzer -analyzer-checker=core.uninitialized.Assign\
+    -Xanalyzer -analyzer-checker=core.uninitialized.Branch\
+    -Xanalyzer -analyzer-checker=core.uninitialized.CapturedBlockVariable\
+    -Xanalyzer -analyzer-checker=core.uninitialized.UndefReturn\
+    \
+    -Xanalyzer -analyzer-checker=deadcode.DeadStores\
+    \
+    -Xanalyzer -analyzer-checker=security.FloatLoopCounter\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.UncheckedReturn\
+    \
+    -Xanalyzer -analyzer-checker=security.insecureAPI.getpw\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.gets\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.mkstemp\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.mktemp\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.rand\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.strcpy\
+    -Xanalyzer -analyzer-checker=security.insecureAPI.vfork\
+    \
+    -Xanalyzer -analyzer-checker=unix.API\
+    -Xanalyzer -analyzer-checker=unix.Malloc\
+    -Xanalyzer -analyzer-checker=unix.MallocSizeof\
+    -Xanalyzer -analyzer-checker=unix.MismatchedDeallocator\
+    -Xanalyzer -analyzer-checker=unix.cstring.BadSizeArg\
+    -Xanalyzer -analyzer-checker=unix.cstring.NullArg\
+    \
+    $(source_cflags)\
+    --\
+    $(source_files)

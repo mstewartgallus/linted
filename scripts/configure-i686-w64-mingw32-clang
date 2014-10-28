@@ -9,4 +9,5 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 exec "${ROOT}/../configure"\
      --build="$("${ROOT}/../build-aux/config.guess")"\
      --host=i686-w64-mingw32\
-     CC=i686-w64-mingw32-clang
+     CC=i686-w64-mingw32-clang\
+     $@

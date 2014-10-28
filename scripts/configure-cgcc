@@ -8,6 +8,8 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 exec "${ROOT}/../configure"\
      --build="$("${ROOT}/../build-aux/config.guess")"\
-     --host=i686-w64-mingw32\
-     CC=i686-w64-mingw32-gcc\
+     --host=none-none-none\
+     --disable-shared\
+     CC='cgcc -std=c99'\
+     CPPFLAGS="-U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__"\
      $@

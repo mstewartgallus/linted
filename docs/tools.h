@@ -12,20 +12,28 @@
  * Linted -- Tools
  *
  * @section potential Potential tools
- * - [joern](https://github.com/fabsx00/joern)
- * - [SPLINT](http://www.splint.org/)
- * - [Cqual](http://www.cs.umd.edu/~jfoster/cqual/)
- * - [Smatch](http://smatch.sourceforge.net/)
- * - [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/)
- * - [BLAST](http://mtc.epfl.ch/software-tools/blast/index-epfl.php)
- * - [CPAchecker](http://cpachecker.sosy-lab.org/)
- * - [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/)
- * - [Stanse](http://stanse.fi.muni.cz/)
- * - [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
- * - [Oink](http://daniel-wilkerson.appspot.com/oink/index.html)
- * - [Yasca](http://sourceforge.net/projects/yasca/)
- * - [RTL-check](http://rtlcheck.sourceforge.net/)
- * - ggcc
+ * <ul>
+ *
+ * <li> [Smatch](http://smatch.sourceforge.net/)
+ * - Does not handle shared object linking (which makes sense as it
+ *   was developed for the Linux kernel primarily.)
+ * </li>
+ *
+ * <li> [joern](https://github.com/fabsx00/joern) </li>
+ * <li> [SPLINT](http://www.splint.org/) </li>
+ * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
+ * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
+ * <li> [BLAST](http://mtc.epfl.ch/software-tools/blast/index-epfl.php) </li>
+ * <li> [CPAchecker](http://cpachecker.sosy-lab.org/) </li>
+ * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
+ * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
+ * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git) </li>
+ * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
+ * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
+ * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
+ * <li> ggcc </li>
+ *
+ * </li>
  *
  * @section useful Useful tools
  * <ul>

@@ -11,4 +11,5 @@ exec "${ROOT}/../configure"\
      --host=none-none-none\
      --disable-shared\
      CC=goto-cc\
-     CPPFLAGS="-U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__"
+     CPPFLAGS="-U_FORTIFY_SOURCE -U__OPTIMIZE__ -U_OPTIMIZE_SIZE__"\
+     $@
