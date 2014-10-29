@@ -174,52 +174,36 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
-		for (;;) {
-			time_to_quit = false;
+		time_to_quit = false;
 
-			struct linted_asynch_task *completed_task;
-			{
-				struct linted_asynch_task *xx;
+		struct linted_asynch_task *completed_task;
+		{
+			struct linted_asynch_task *xx;
+
+			if (window_model.viewable) {
 				errnum = linted_asynch_pool_poll(pool, &xx);
-				if (EAGAIN == errnum)
-					break;
-
-				if (errnum != 0)
-					goto cleanup_gpu;
-
-				completed_task = xx;
-			}
-
-			errnum = dispatch(completed_task);
-			if (errnum != 0)
-				goto cleanup_gpu;
-
-			if (time_to_quit)
-				goto cleanup_gpu;
-		}
-
-		/* Only draw or resize if we have time to waste */
-
-		if (window_model.viewable) {
-			linted_gpu_draw(gpu_context, log);
-		} else {
-			time_to_quit = false;
-
-			struct linted_asynch_task *completed_task;
-			{
-				struct linted_asynch_task *xx;
+			} else {
 				errnum = linted_asynch_pool_wait(pool, &xx);
-				if (errnum != 0)
-					goto cleanup_gpu;
-				completed_task = xx;
 			}
-			errnum = dispatch(completed_task);
+			if (EAGAIN == errnum)
+				goto draw_frame;
 			if (errnum != 0)
 				goto cleanup_gpu;
-
-			if (time_to_quit)
-				goto cleanup_gpu;
+			completed_task = xx;
 		}
+
+		errnum = dispatch(completed_task);
+		if (errnum != 0)
+			goto cleanup_gpu;
+
+		if (time_to_quit)
+			goto cleanup_gpu;
+
+		continue;
+
+	draw_frame:
+		/* Draw or resize if we have time to waste */
+		linted_gpu_draw(gpu_context, log);
 	}
 
 cleanup_gpu:
