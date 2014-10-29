@@ -47,8 +47,11 @@ CHECKERS="${CHECKERS} alpha.core.BoolAssignment"
 # Check when casting a malloc'ed type T, whether the size is a
 # multiple of the size of T
 CHECKERS="${CHECKERS} alpha.core.CastSize"
-# Check for cast from non-struct pointer to struct pointer
-CHECKERS="${CHECKERS} alpha.core.CastToStruct"
+# Way too many false positives
+if false; then
+    # Check for cast from non-struct pointer to struct pointer
+    CHECKERS="${CHECKERS} alpha.core.CastToStruct"
+fi
 # Check for assignment of a fixed address to a pointer
 CHECKERS="${CHECKERS} alpha.core.FixedAddr"
 # Warn about unintended use of identical expressions in operators
@@ -64,10 +67,16 @@ CHECKERS="${CHECKERS} alpha.core.SizeofPtr"
 CHECKERS="${CHECKERS} alpha.cplusplus.NewDeleteLeaks"
 # Check virtual function calls during construction or destruction
 CHECKERS="${CHECKERS} alpha.cplusplus.VirtualCall"
-# Warn about idempotent operations
-CHECKERS="${CHECKERS} alpha.deadcode.IdempotentOperations"
-# Check unreachable code
-CHECKERS="${CHECKERS} alpha.deadcode.UnreachableCode"
+# Can cause segfaults in the checker
+if false; then
+    # Warn about idempotent operations
+    CHECKERS="${CHECKERS} alpha.deadcode.IdempotentOperations"
+fi
+# Way too many false positives
+if false; then
+    # Check unreachable code
+    CHECKERS="${CHECKERS} alpha.deadcode.UnreachableCode"
+fi
 # Warn about Objective-C classes that lack a correct implementation of
 # -dealloc
 CHECKERS="${CHECKERS} alpha.osx.cocoa.Dealloc"
@@ -90,7 +99,7 @@ CHECKERS="${CHECKERS} alpha.security.ArrayBound"
 CHECKERS="${CHECKERS} alpha.security.ArrayBoundV2"
 # Check for overflows in the arguments to malloc()
 CHECKERS="${CHECKERS} alpha.security.MallocOverflow"
-#   Check for an out-of-bound pointer being returned to callers
+# Check for an out-of-bound pointer being returned to callers
 CHECKERS="${CHECKERS} alpha.security.ReturnPtrRange"
 # Generate taint information used by other checkers
 CHECKERS="${CHECKERS} alpha.security.taint.TaintPropagation"
