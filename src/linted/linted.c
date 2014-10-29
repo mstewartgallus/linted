@@ -74,6 +74,8 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_DRAWER_FSTAB", PKGDEFAULTCONFDIR "/drawer-fstab" }
 };
 
+static linted_error exec_init(char const *init, linted_admin admin);
+
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
@@ -171,27 +173,47 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
 	}
 
+	errnum = exec_init(init, admin);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("exec_init");
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
+}
+
+static linted_error exec_init(char const *init, linted_admin admin)
+{
+	linted_error errnum;
+
 	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
 		                 STDERR_FILENO, admin };
+
+	pid_t myself = getpid();
+	int setenv_pid_status;
 	{
 		char listen_pid[] = INT_STRING_PADDING;
-		sprintf(listen_pid, "%i", getpid());
-
-		if (-1 == setenv("LISTEN_PID", listen_pid, true)) {
-			perror("setenv");
-			return EXIT_FAILURE;
-		}
+		sprintf(listen_pid, "%i", myself);
+		setenv_pid_status = setenv("LISTEN_PID", listen_pid, true);
+	}
+	if (-1 == setenv_pid_status) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
 	}
 
+	int setenv_fd_status;
 	{
 		char listen_fds[] = INT_STRING_PADDING;
 		sprintf(listen_fds, "%i",
 		        (int)LINTED_ARRAY_SIZE(stdfiles) - 3U);
 
-		if (-1 == setenv("LISTEN_FDS", listen_fds, true)) {
-			perror("setenv");
-			return EXIT_FAILURE;
-		}
+		setenv_fd_status = setenv("LISTEN_FDS", listen_fds, true);
+	}
+	if (-1 == setenv_fd_status) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
 	}
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
@@ -199,21 +221,24 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 		int flags = fcntl(ko, F_GETFD);
 		if (-1 == flags) {
-			perror("fcntl");
-			return EXIT_FAILURE;
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
 		}
 
 		if (-1 == fcntl(ko, F_SETFD, (long)flags & !FD_CLOEXEC)) {
-			perror("fcntl");
-			return EXIT_FAILURE;
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
 		}
 	}
 
 	char const *const init_argv[] = { init, NULL };
 	execve(init, (char * const *)init_argv, environ);
-	perror("execve");
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
 
-	return EXIT_FAILURE;
+	return errnum;
 }
 
 static linted_error linted_help(linted_ko ko, char const *process_name,

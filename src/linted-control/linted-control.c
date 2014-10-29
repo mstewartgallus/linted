@@ -298,15 +298,13 @@ static uint_fast8_t run_reboot(char const *process_name, size_t argc,
 
 	{
 		union linted_admin_request request = { 0 };
-
 		request.type = LINTED_ADMIN_REBOOT;
-
 		errnum = linted_admin_send_request(admin, &request);
-		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
-			        LINTED_STR("can not send request"), errnum);
-			return EXIT_FAILURE;
-		}
+	}
+	if (errnum != 0) {
+		failure(STDERR_FILENO, process_name,
+		        LINTED_STR("can not send request"), errnum);
+		return EXIT_FAILURE;
 	}
 
 	union linted_admin_reply reply;
@@ -590,33 +588,37 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
 		errnum = linted_admin_send_request(admin, &request);
-		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
-			        LINTED_STR("can send request"), errnum);
-			return EXIT_FAILURE;
-		}
+	}
+	if (errnum != 0) {
+		failure(STDERR_FILENO, process_name,
+		        LINTED_STR("can send request"), errnum);
+		return EXIT_FAILURE;
 	}
 
-	union linted_admin_reply reply;
+	bool was_up;
 	size_t bytes_read;
 	{
-		size_t xx;
-		errnum = linted_admin_recv_reply(admin, &reply, &xx);
+		union linted_admin_reply xx;
+		size_t yy;
+		errnum = linted_admin_recv_reply(admin, &xx, &yy);
 		if (errnum != 0) {
 			failure(STDERR_FILENO, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
-		bytes_read = xx;
+		bytes_read = yy;
+
+		if (0U == bytes_read) {
+			linted_io_write_format(STDERR_FILENO, NULL,
+			                       "%s: socket hung up\n",
+			                       process_name);
+			return EXIT_FAILURE;
+		}
+
+		was_up = xx.stop.was_up;
 	}
 
-	if (0U == bytes_read) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: socket hung up\n", process_name);
-		return EXIT_FAILURE;
-	}
-
-	if (reply.stop.was_up) {
+	if (was_up) {
 		linted_io_write_format(STDOUT_FILENO, NULL,
 		                       "%s: gui was killed\n", process_name);
 	} else {
@@ -636,95 +638,88 @@ static linted_error ctl_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	size_t size = 0U;
-	size_t capacity = 0U;
-	char *buffer = NULL;
+	size_t cap = 0U;
+	char *buf = NULL;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               LINTED_STR("Usage: "));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
+Usage: "));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
+	errnum = linted_str_append_cstring(&buf, &cap, &size, process_name);
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
  [OPTIONS]\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
 Run the admin program.\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
   status              request the status of the service\n\
   stop                stop the gui service\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\n"));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
 Report bugs to <"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, package_bugreport);
+	errnum = linted_str_append_str(&buf, &cap, &size, package_bugreport);
 	if (errnum)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR(">\n"));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR(">\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, package_name);
+	errnum = linted_str_append_str(&buf, &cap, &size, package_name);
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
  home page: <"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, package_url);
+	errnum = linted_str_append_str(&buf, &cap, &size, package_url);
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR(">\n"));
+	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR(">\n"));
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-	errnum = linted_io_write_all(ko, NULL, buffer, size);
+	errnum = linted_io_write_all(ko, NULL, buf, size);
 	if (errnum != 0)
-		goto free_buffer;
+		goto free_buf;
 
-free_buffer:
-	linted_mem_free(buffer);
+free_buf:
+	linted_mem_free(buf);
 	return errnum;
 }
 

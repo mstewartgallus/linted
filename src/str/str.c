@@ -93,27 +93,30 @@ linted_error linted_str_append_format(char **restrict bufp,
 	size_t strsize;
 	char *str;
 
-	va_list ap;
-	va_start(ap, fmt);
-
 	{
-		char *xx;
-		size_t yy;
-		if ((errnum = valloc_sprintf(&xx, &yy, fmt, ap)) != 0)
-			goto free_ap;
-		str = xx;
-		strsize = yy;
+		va_list ap;
+		va_start(ap, fmt);
+
+		{
+			char *xx;
+			size_t yy;
+			errnum = valloc_sprintf(&xx, &yy, fmt, ap);
+			if (errnum != 0)
+				goto free_ap;
+			str = xx;
+			strsize = yy;
+		}
+
+	free_ap:
+		va_end(ap);
+
+		if (errnum != 0)
+			return errnum;
 	}
 
 	errnum = linted_str_append(bufp, capp, sizep, str, strsize);
-	if (errnum != 0)
-		goto free_str;
 
-free_str:
 	linted_mem_free(str);
-
-free_ap:
-	va_end(ap);
 
 	return errnum;
 }
