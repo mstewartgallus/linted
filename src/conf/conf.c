@@ -67,7 +67,8 @@ struct conf_setting
 	char **value;
 };
 
-struct linted_conf_db {
+struct linted_conf_db
+{
 	struct linted_conf **confs;
 	size_t size;
 };
@@ -75,7 +76,7 @@ struct linted_conf_db {
 static size_t string_hash(char const *str);
 
 linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
-					     char const *path)
+                                             char const *path)
 {
 	linted_ko errnum = 0;
 
@@ -295,7 +296,7 @@ size_t linted_conf_db_size(struct linted_conf_db *db)
 }
 
 struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
-						   size_t ii)
+                                            size_t ii)
 {
 	return db->confs[ii];
 }

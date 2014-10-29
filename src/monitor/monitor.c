@@ -65,6 +65,8 @@ enum unit_type {
 	UNIT_TYPE_SERVICE
 };
 
+struct unit_db;
+
 struct unit_common
 {
 	enum unit_type type;
@@ -103,12 +105,6 @@ union unit
 	struct unit_socket socket;
 };
 
-struct units
-{
-	size_t size;
-	union unit list[];
-};
-
 struct wait_service_task
 {
 	struct linted_asynch_task_waitid parent;
@@ -125,7 +121,7 @@ struct accepted_conn_task
 	struct linted_admin_task_accept parent;
 	struct linted_asynch_pool *pool;
 	struct conn_pool *conn_pool;
-	struct units const *units;
+	struct unit_db const *units;
 };
 
 struct read_conn_task
@@ -134,7 +130,7 @@ struct read_conn_task
 	struct linted_asynch_pool *pool;
 	struct conn_pool *conn_pool;
 	struct conn *conn;
-	struct units const *units;
+	struct unit_db const *units;
 };
 
 struct wrote_conn_task
@@ -153,13 +149,15 @@ struct conn
 	bool is_free : 1U;
 };
 
-static linted_error units_create(struct units **unitsp,
-				 struct linted_conf_db *confs);
-static void units_destroy(struct units *units);
-static linted_error units_activate(struct units *units, linted_ko cwd,
-                                   char const *chrootdir);
-static union unit const *unit_for_name(struct units const *unit,
-                                       const char *name);
+static linted_error unit_db_create(struct unit_db **unitsp,
+                                   struct linted_conf_db *confs);
+static void unit_db_destroy(struct unit_db *units);
+static size_t unit_db_size(struct unit_db *units);
+static union unit *unit_db_get_unit(struct unit_db *units, size_t ii);
+static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
+                                     char const *chrootdir);
+static union unit const *units_get_unit_by_name(struct unit_db const *unit,
+                                                const char *name);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -188,7 +186,7 @@ static linted_error socket_create(struct unit_socket *unit,
 static linted_error socket_activate(struct unit_socket *unit);
 static linted_error service_activate(union unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct units const *units);
+                                     struct unit_db const *units);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -305,10 +303,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		conf_db = xx;
 	}
 
-	struct units *units;
+	struct unit_db *units;
 	{
-		struct units *xx;
-		errnum = units_create(&xx, conf_db);
+		struct unit_db *xx;
+		errnum = unit_db_create(&xx, conf_db);
 		if (errnum != 0)
 			goto destroy_confs;
 		units = xx;
@@ -341,7 +339,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = units_activate(units, cwd, chrootdir);
+	errnum = unit_db_activate(units, cwd, chrootdir);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -368,8 +366,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	} while (!waiter_task.time_to_exit);
 
 kill_procs:
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		union unit *unit = &units->list[ii];
+	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
+		union unit *unit = unit_db_get_unit(units, ii);
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
@@ -390,8 +388,8 @@ kill_procs:
 		}
 	}
 
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		union unit *unit = &units->list[ii];
+	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
+		union unit *unit = unit_db_get_unit(units, ii);
 
 		if (unit->common.type != UNIT_TYPE_SOCKET)
 			continue;
@@ -408,7 +406,7 @@ kill_procs:
 		socket->is_open = false;
 	}
 
-	units_destroy(units);
+	unit_db_destroy(units);
 
 destroy_confs:
 	linted_conf_db_destroy(conf_db);
@@ -459,11 +457,17 @@ exit_monitor:
 	return EXIT_SUCCESS;
 }
 
-static linted_error units_create(struct units **unitsp,
-				 struct linted_conf_db *conf_db)
+struct unit_db
+{
+	size_t size;
+	union unit list[];
+};
+
+static linted_error unit_db_create(struct unit_db **unitsp,
+                                   struct linted_conf_db *conf_db)
 {
 	linted_error errnum;
-	struct units *units;
+	struct unit_db *units;
 
 	size_t size = linted_conf_db_size(conf_db);
 
@@ -535,12 +539,12 @@ static linted_error units_create(struct units **unitsp,
 	return 0;
 
 destroy_units:
-	units_destroy(units);
+	unit_db_destroy(units);
 
 	return errnum;
 }
 
-static void units_destroy(struct units *units)
+static void unit_db_destroy(struct unit_db *units)
 {
 	size_t size = units->size;
 	union unit *list = units->list;
@@ -550,13 +554,23 @@ static void units_destroy(struct units *units)
 	linted_mem_free(units);
 }
 
-static linted_error units_activate(struct units *units, linted_ko cwd,
-                                   char const *chrootdir)
+static size_t unit_db_size(struct unit_db *units)
+{
+	return units->size;
+}
+
+static union unit *unit_db_get_unit(struct unit_db *units, size_t ii)
+{
+	return &units->list[ii];
+}
+
+static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
+                                     char const *chrootdir)
 {
 	linted_error errnum;
 
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		union unit *unit = &units->list[ii];
+	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
+		union unit *unit = unit_db_get_unit(units, ii);
 
 		if (unit->common.type != UNIT_TYPE_SOCKET)
 			continue;
@@ -566,8 +580,8 @@ static linted_error units_activate(struct units *units, linted_ko cwd,
 			return errnum;
 	}
 
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		union unit *unit = &units->list[ii];
+	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
+		union unit *unit = unit_db_get_unit(units, ii);
 
 		if (unit->common.type != UNIT_TYPE_SERVICE)
 			continue;
@@ -797,7 +811,7 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 
 static linted_error service_activate(union unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct units const *units)
+                                     struct unit_db const *units)
 {
 	linted_error errnum = 0;
 
@@ -1011,7 +1025,8 @@ static linted_error service_activate(union unit *unit, linted_ko cwd,
 		if (wronly)
 			flags |= LINTED_KO_WRONLY;
 
-		union unit const *socket_unit = unit_for_name(units, filename);
+		union unit const *socket_unit =
+		    units_get_unit_by_name(units, filename);
 		if (NULL == socket_unit) {
 			errnum = EINVAL;
 			goto free_filename;
@@ -1496,7 +1511,7 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	struct linted_asynch_pool *pool = accepted_conn_task->pool;
 	struct conn_pool *conn_pool = accepted_conn_task->conn_pool;
 
-	struct units const *units = accepted_conn_task->units;
+	struct unit_db const *units = accepted_conn_task->units;
 
 	linted_admin new_socket = accept_task->returned_ko;
 
@@ -1552,7 +1567,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	struct linted_asynch_pool *pool = read_conn_task->pool;
 	struct conn_pool *conn_pool = read_conn_task->conn_pool;
 	struct conn *conn = read_conn_task->conn;
-	struct units const *units = read_conn_task->units;
+	struct unit_db const *units = read_conn_task->units;
 
 	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
@@ -1585,7 +1600,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	case LINTED_ADMIN_STATUS: {
 		union unit const *unit =
-		    unit_for_name(units, request->status.name);
+		    units_get_unit_by_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
@@ -1624,7 +1639,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	case LINTED_ADMIN_STOP: {
 		union unit const *unit =
-		    unit_for_name(units, request->status.name);
+		    units_get_unit_by_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
@@ -1849,8 +1864,8 @@ static linted_error conn_remove(struct conn *conn, struct conn_pool *pool)
 	return linted_ko_close(ko);
 }
 
-static union unit const *unit_for_name(struct units const *units,
-                                       const char *name)
+static union unit const *units_get_unit_by_name(struct unit_db const *units,
+                                                const char *name)
 {
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		union unit const *unit = &units->list[ii];

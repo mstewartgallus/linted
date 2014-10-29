@@ -339,7 +339,7 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		{
 			void *xx;
 			errnum = linted_mem_realloc_array(&xx, fds, size + 1U,
-							  sizeof fds[0]);
+			                                  sizeof fds[0]);
 			if (errnum != 0)
 				goto free_fds;
 			fds = xx;
