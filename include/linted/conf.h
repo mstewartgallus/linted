@@ -20,8 +20,19 @@
 
 #include <stdio.h>
 
+struct linted_conf_db;
 struct linted_conf;
 struct linted_conf_section;
+
+struct linted_conf_db;
+
+linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
+						    char const *path);
+void linted_conf_db_destroy(struct linted_conf_db *db);
+
+size_t linted_conf_db_size(struct linted_conf_db *db);
+struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
+					    size_t ii);
 
 linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
                                     char const *name);

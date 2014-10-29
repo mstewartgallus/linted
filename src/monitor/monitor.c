@@ -30,7 +30,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -154,13 +153,8 @@ struct conn
 	bool is_free : 1U;
 };
 
-static linted_error confs_from_path(char const *unit_path,
-                                    struct linted_conf ***unitsp,
-                                    size_t *sizep);
-static void confs_destroy(struct linted_conf **confs, size_t size);
-
-static linted_error units_create(struct units **unitp,
-                                 struct linted_conf **confs, size_t size);
+static linted_error units_create(struct units **unitsp,
+				 struct linted_conf_db *confs);
 static void units_destroy(struct units *units);
 static linted_error units_activate(struct units *units, linted_ko cwd,
                                    char const *chrootdir);
@@ -302,22 +296,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		conn_pool = xx;
 	}
 
-	struct linted_conf **confs;
-	size_t confs_size;
+	struct linted_conf_db *conf_db;
 	{
-		struct linted_conf **xx;
-		size_t yy;
-		errnum = confs_from_path(unit_path, &xx, &yy);
+		struct linted_conf_db *xx;
+		errnum = linted_conf_db_create_from_path(&xx, unit_path);
 		if (errnum != 0)
 			goto destroy_conn_pool;
-		confs = xx;
-		confs_size = yy;
+		conf_db = xx;
 	}
 
 	struct units *units;
 	{
 		struct units *xx;
-		errnum = units_create(&xx, confs, confs_size);
+		errnum = units_create(&xx, conf_db);
 		if (errnum != 0)
 			goto destroy_confs;
 		units = xx;
@@ -420,7 +411,7 @@ kill_procs:
 	units_destroy(units);
 
 destroy_confs:
-	confs_destroy(confs, confs_size);
+	linted_conf_db_destroy(conf_db);
 
 destroy_conn_pool : {
 	linted_error close_errnum = conn_pool_destroy(conn_pool);
@@ -468,211 +459,13 @@ exit_monitor:
 	return EXIT_SUCCESS;
 }
 
-static linted_error confs_from_path(char const *unit_path,
-                                    struct linted_conf ***unitsp, size_t *sizep)
-{
-	linted_ko errnum = 0;
-
-	struct linted_conf **units = NULL;
-	size_t units_size = 0U;
-
-	char const *dirstart = unit_path;
-	for (;;) {
-		char const *dirend = strchr(dirstart, ':');
-
-		char *dir_name;
-		if (NULL == dirend) {
-			dir_name = strdup(dirstart);
-		} else {
-			dir_name = strndup(dirstart, dirend - dirstart);
-		}
-
-		if (NULL == dir_name) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_units;
-		}
-
-		DIR *units_dir = opendir(dir_name);
-		if (NULL == units_dir) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
-
-		linted_mem_free(dir_name);
-
-		if (ENOENT == errnum) {
-			errnum = 0;
-			goto next_dir;
-		}
-
-		if (errnum != 0)
-			goto free_units;
-
-		linted_ko dirko = dirfd(units_dir);
-
-		size_t files_count = 0U;
-		char **files = NULL;
-		for (;;) {
-			errno = 0;
-			struct dirent const *entry = readdir(units_dir);
-			if (NULL == entry) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_file_names;
-			}
-
-			char const *name = entry->d_name;
-
-			if (0 == strcmp(".", name))
-				continue;
-
-			if (0 == strcmp("..", name))
-				continue;
-
-			char *name_copy = strdup(name);
-			if (NULL == name_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_file_names;
-			}
-
-			size_t new_files_count = files_count + 1U;
-			char **new_files;
-			{
-				void *xx;
-				errnum = linted_mem_realloc_array(
-				    &xx, files, new_files_count,
-				    sizeof files[0U]);
-				if (errnum != 0)
-					goto free_file_name;
-				new_files = xx;
-			}
-			new_files[files_count] = name_copy;
-
-			files = new_files;
-			files_count = new_files_count;
-
-			if (errnum != 0) {
-			free_file_name:
-				linted_mem_free(name_copy);
-				goto free_file_names;
-			}
-		}
-
-		for (size_t ii = 0U; ii < files_count; ++ii) {
-			char const *file_name = files[ii];
-
-			linted_ko unit_fd;
-			{
-				linted_ko xx;
-				errnum = linted_ko_open(&xx, dirko, file_name,
-				                        LINTED_KO_RDONLY);
-				if (errnum != 0)
-					goto free_file_names;
-				unit_fd = xx;
-			}
-
-			FILE *unit_file = fdopen(unit_fd, "r");
-			if (NULL == unit_file) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-
-				linted_ko_close(unit_fd);
-
-				goto free_file_names;
-			}
-
-			struct linted_conf *unit = NULL;
-			{
-				struct linted_conf *xx;
-				errnum = linted_conf_parse_file(&xx, unit_file,
-				                                file_name);
-				if (errnum != 0)
-					goto close_unit_file;
-				unit = xx;
-			}
-
-		close_unit_file:
-			if (EOF == fclose(unit_file)) {
-				if (0 == errnum) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-				}
-			}
-
-			if (errnum != 0)
-				goto free_unit;
-
-			size_t new_units_size = units_size + 1U;
-			struct linted_conf **new_units;
-			{
-				void *xx;
-				errnum = linted_mem_realloc_array(
-				    &xx, units, new_units_size,
-				    sizeof units[0U]);
-				if (errnum != 0)
-					goto free_unit;
-				new_units = xx;
-			}
-			new_units[units_size] = unit;
-
-			units = new_units;
-			units_size = new_units_size;
-
-		free_unit:
-			if (errnum != 0)
-				linted_conf_put(unit);
-		}
-
-	free_file_names:
-		for (size_t ii = 0U; ii < files_count; ++ii)
-			linted_mem_free(files[ii]);
-		linted_mem_free(files);
-
-		if (-1 == closedir(units_dir)) {
-			if (0 == errnum) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			}
-		}
-		if (errnum != 0)
-			goto free_units;
-
-	next_dir:
-		if (NULL == dirend)
-			break;
-
-		dirstart = dirend + 1U;
-	}
-
-free_units:
-	if (errnum != 0) {
-		for (size_t ii = 0U; ii < units_size; ++ii)
-			linted_conf_put(units[ii]);
-		linted_mem_free(units);
-	} else {
-		*unitsp = units;
-		*sizep = units_size;
-	}
-
-	return errnum;
-}
-
-static void confs_destroy(struct linted_conf **confs, size_t size)
-{
-	for (size_t ii = 0U; ii < size; ++ii)
-		linted_conf_put(confs[ii]);
-	linted_mem_free(confs);
-}
-
 static linted_error units_create(struct units **unitsp,
-                                 struct linted_conf **confs, size_t size)
+				 struct linted_conf_db *conf_db)
 {
 	linted_error errnum;
 	struct units *units;
+
+	size_t size = linted_conf_db_size(conf_db);
 
 	size_t mem_size = sizeof *units + size * sizeof units->list[0U];
 	{
@@ -688,7 +481,7 @@ static linted_error units_create(struct units **unitsp,
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		union unit *unit = &units->list[ii];
-		struct linted_conf *conf = confs[ii];
+		struct linted_conf *conf = linted_conf_db_get_conf(conf_db, ii);
 
 		char const *file_name = linted_conf_peek_name(conf);
 
