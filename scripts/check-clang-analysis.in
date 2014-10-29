@@ -4,19 +4,7 @@ set -e
 set -C
 set -u
 
-SCRIPTS="@srcdir@"
-BINARY="$1"
-
-: ${LINTED_CLANG:=clang}
-
-source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
-}
-
-source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
-}
-
+go() {
 "${LINTED_CLANG}"\
     --analyze\
     \
@@ -26,42 +14,251 @@ source_files() {
     -Xclang -analyzer-output=text\
     -Xclang -o-\
     \
-    -Xanalyzer -analyzer-checker=core.CallAndMessage\
-    -Xanalyzer -analyzer-checker=core.DivideZero\
-    -Xanalyzer -analyzer-checker=core.DynamicTypePropagation\
-    -Xanalyzer -analyzer-checker=core.NonNullParamChecker\
-    -Xanalyzer -analyzer-checker=core.NullDereference\
-    -Xanalyzer -analyzer-checker=core.StackAddressEscape\
-    -Xanalyzer -analyzer-checker=core.UndefinedBinaryOperatorResult\
-    -Xanalyzer -analyzer-checker=core.VLASize\
-    -Xanalyzer -analyzer-checker=core.builtin.BuiltinFunctions\
-    -Xanalyzer -analyzer-checker=core.builtin.NoReturnFunctions\
-    -Xanalyzer -analyzer-checker=core.uninitialized.ArraySubscript\
-    -Xanalyzer -analyzer-checker=core.uninitialized.Assign\
-    -Xanalyzer -analyzer-checker=core.uninitialized.Branch\
-    -Xanalyzer -analyzer-checker=core.uninitialized.CapturedBlockVariable\
-    -Xanalyzer -analyzer-checker=core.uninitialized.UndefReturn\
-    \
-    -Xanalyzer -analyzer-checker=deadcode.DeadStores\
-    \
-    -Xanalyzer -analyzer-checker=security.FloatLoopCounter\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.UncheckedReturn\
-    \
-    -Xanalyzer -analyzer-checker=security.insecureAPI.getpw\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.gets\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.mkstemp\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.mktemp\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.rand\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.strcpy\
-    -Xanalyzer -analyzer-checker=security.insecureAPI.vfork\
-    \
-    -Xanalyzer -analyzer-checker=unix.API\
-    -Xanalyzer -analyzer-checker=unix.Malloc\
-    -Xanalyzer -analyzer-checker=unix.MallocSizeof\
-    -Xanalyzer -analyzer-checker=unix.MismatchedDeallocator\
-    -Xanalyzer -analyzer-checker=unix.cstring.BadSizeArg\
-    -Xanalyzer -analyzer-checker=unix.cstring.NullArg\
+    $(checkers)\
     \
     $(source_cflags)\
     --\
     $(source_files)
+}
+
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+}
+
+source_files() {
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
+}
+
+checkers() {
+    for II in ${CHECKERS}; do
+	echo -Xanalyzer -analyzer-checker="${II}"
+    done
+ }
+
+go
+
+SCRIPTS="@srcdir@"
+BINARY="$1"
+
+: ${LINTED_CLANG:=clang}
+
+CHECKERS=
+
+# Warn about assigning non-{0,1} values to Boolean variables
+CHECKERS="${CHECKERS}" alpha.core.BoolAssignment
+# Check when casting a malloc'ed type T, whether the size is a
+# multiple of the size of T
+CHECKERS="${CHECKERS}" alpha.core.CastSize
+# Check for cast from non-struct pointer to struct pointer
+CHECKERS="${CHECKERS}" alpha.core.CastToStruct
+# Check for assignment of a fixed address to a pointer
+CHECKERS="${CHECKERS}" alpha.core.FixedAddr
+# Warn about unintended use of identical expressions in operators
+CHECKERS="${CHECKERS}" alpha.core.IdenticalExpr
+# Check for pointer arithmetic on locations other than array elements
+CHECKERS="${CHECKERS}" alpha.core.PointerArithm
+# Check for pointer subtractions on two pointers pointing to different
+# memory chunks
+CHECKERS="${CHECKERS}" alpha.core.PointerSub
+# Warn about unintended use of sizeof() on pointer expressions
+CHECKERS="${CHECKERS}" alpha.core.SizeofPtr
+# Check for memory leaks. Traces memory managed by new/delete.
+CHECKERS="${CHECKERS}" alpha.cplusplus.NewDeleteLeaks
+# Check virtual function calls during construction or destruction
+CHECKERS="${CHECKERS}" alpha.cplusplus.VirtualCall
+# Warn about idempotent operations
+CHECKERS="${CHECKERS}" alpha.deadcode.IdempotentOperations
+# Check unreachable code
+CHECKERS="${CHECKERS}" alpha.deadcode.UnreachableCode
+# Warn about Objective-C classes that lack a correct implementation of
+# -dealloc
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.Dealloc
+# Check for direct assignments to instance variables
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.DirectIvarAssignment
+# Check for direct assignments to instance variables in the methods
+# annotated with objc_no_direct_instance_variable_assignment
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.DirectIvarAssignmentForAnnotatedFunctions
+# Check that the invalidatable instance variables are invalidated in
+# the methods annotated with objc_instance_variable_invalidator
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.InstanceVariableInvalidation
+# Check that the invalidation methods are present in classes that
+# contain invalidatable instance variables
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.MissingInvalidationMethod
+# Warn about Objective-C methods that lack a necessary call to super
+CHECKERS="${CHECKERS}" alpha.osx.cocoa.MissingSuperCall
+# Warn about buffer overflows (older checker)
+CHECKERS="${CHECKERS}" alpha.security.ArrayBound
+# Warn about buffer overflows (newer checker)
+CHECKERS="${CHECKERS}" alpha.security.ArrayBoundV2
+# Check for overflows in the arguments to malloc()
+CHECKERS="${CHECKERS}" alpha.security.MallocOverflow
+#   Check for an out-of-bound pointer being returned to callers
+CHECKERS="${CHECKERS}" alpha.security.ReturnPtrRange
+# Generate taint information used by other checkers
+CHECKERS="${CHECKERS}" alpha.security.taint.TaintPropagation
+# Check improper use of chroot
+CHECKERS="${CHECKERS}" alpha.unix.Chroot
+# Check for memory leaks, double free, and use-after-free
+# problems. Traces memory managed by malloc()/free(). Assumes that all
+# user-defined functions which might free a pointer are annotated.
+CHECKERS="${CHECKERS}" alpha.unix.MallocWithAnnotations
+# Simple lock -> unlock checker
+CHECKERS="${CHECKERS}" alpha.unix.PthreadLock
+# Check for misuses of stream APIs
+CHECKERS="${CHECKERS}" alpha.unix.SimpleStream
+# Check stream handling functions
+CHECKERS="${CHECKERS}" alpha.unix.Stream
+# Checks for overlap in two buffer arguments
+CHECKERS="${CHECKERS}" alpha.unix.cstring.BufferOverlap
+# Check for arguments which are not null-terminating strings
+CHECKERS="${CHECKERS}" alpha.unix.cstring.NotNullTerminated
+# Check for out-of-bounds access in string functions
+CHECKERS="${CHECKERS}" alpha.unix.cstring.OutOfBounds
+
+# Check for logical errors for function calls and Objective-C message
+# expressions (e.g., uninitialized arguments, null function pointers)
+CHECKERS="${CHECKERS}" core.CallAndMessage
+# Check for division by zero
+CHECKERS="${CHECKERS}" core.DivideZero
+# Generate dynamic type information
+CHECKERS="${CHECKERS}" core.DynamicTypePropagation
+# Check for null pointers passed as arguments to a function whose
+# arguments are references or marked with the 'nonnull' attribute
+CHECKERS="${CHECKERS}" core.NonNullParamChecker
+# Check for dereferences of null pointers
+CHECKERS="${CHECKERS}" core.NullDereference
+# Check that addresses to stack memory do not escape the function
+CHECKERS="${CHECKERS}" core.StackAddressEscape
+# Check for undefined results of binary operators
+CHECKERS="${CHECKERS}" core.UndefinedBinaryOperatorResult
+# Check for declarations of VLA of undefined or zero size
+CHECKERS="${CHECKERS}" core.VLASize
+# Evaluate compiler builtin functions (e.g., alloca())
+CHECKERS="${CHECKERS}" core.builtin.BuiltinFunctions
+# Evaluate "panic" functions that are known to not return to the caller
+CHECKERS="${CHECKERS}" core.builtin.NoReturnFunctions
+# Check for uninitialized values used as array subscripts
+CHECKERS="${CHECKERS}" core.uninitialized.ArraySubscript
+# Check for assigning uninitialized values
+CHECKERS="${CHECKERS}" core.uninitialized.Assign
+# Check for uninitialized values used as branch conditions
+CHECKERS="${CHECKERS}" core.uninitialized.Branch
+# Check for blocks that capture uninitialized values
+CHECKERS="${CHECKERS}" core.uninitialized.CapturedBlockVariable
+# Check for uninitialized values being returned to the caller
+CHECKERS="${CHECKERS}" core.uninitialized.UndefReturn
+
+# Check for double-free and use-after-free problems. Traces memory
+# managed by new/delete.
+CHECKERS="${CHECKERS}" cplusplus.NewDelete
+
+# Check for values stored to variables that are never read afterwards
+CHECKERS="${CHECKERS}" deadcode.DeadStores
+
+if false; do
+    # Dump config table
+    CHECKERS="${CHECKERS}" debug.ConfigDumper
+    # Display Control-Flow Graphs
+    CHECKERS="${CHECKERS}" debug.DumpCFG
+    # Display Call Graph
+    CHECKERS="${CHECKERS}" debug.DumpCallGraph
+    # Print calls as they are traversed by the engine
+    CHECKERS="${CHECKERS}" debug.DumpCalls
+    # Print the dominance tree for a given CFG
+    CHECKERS="${CHECKERS}" debug.DumpDominators
+    # Print results of live variable analysis
+    CHECKERS="${CHECKERS}" debug.DumpLiveVars
+    # Print branch conditions as they are traversed by the engine
+    CHECKERS="${CHECKERS}" debug.DumpTraversal
+    # Check the analyzer's understanding of expressions
+    CHECKERS="${CHECKERS}" debug.ExprInspection
+    # Emit warnings with analyzer statistics
+    CHECKERS="${CHECKERS}" debug.Stats
+    # Mark tainted symbols as such.
+    CHECKERS="${CHECKERS}" debug.TaintTest
+    # View Control-Flow Graphs using GraphViz
+    CHECKERS="${CHECKERS}" debug.ViewCFG
+    # View Call Graph using GraphViz
+    CHECKERS="${CHECKERS}" debug.ViewCallGraph
+    # View Exploded Graphs using GraphViz
+    CHECKERS="${CHECKERS}" debug.ViewExplodedGraph
+    # Check code for LLVM codebase conventions
+    CHECKERS="${CHECKERS}" llvm.Conventions
+done
+
+# Check for proper uses of various Apple APIs
+CHECKERS="${CHECKERS}" osx.API
+# Check for proper uses of Secure Keychain APIs
+CHECKERS="${CHECKERS}" osx.SecKeychainAPI
+# Check for nil pointers used as mutexes for @synchronized
+CHECKERS="${CHECKERS}" osx.cocoa.AtSync
+# Check for sending 'retain', 'release', or 'autorelease' directly to a Class
+CHECKERS="${CHECKERS}" osx.cocoa.ClassRelease
+# Warn about Objective-C method signatures with type incompatibilities
+CHECKERS="${CHECKERS}" osx.cocoa.IncompatibleMethodTypes
+# Improved modeling of loops using Cocoa collection types
+CHECKERS="${CHECKERS}" osx.cocoa.Loops
+# Warn for suboptimal uses of NSAutoreleasePool in Objective-C GC mode
+CHECKERS="${CHECKERS}" osx.cocoa.NSAutoreleasePool
+# Check usage of NSError** parameters
+CHECKERS="${CHECKERS}" osx.cocoa.NSError
+# Check for prohibited nil arguments to ObjC method calls
+CHECKERS="${CHECKERS}" osx.cocoa.NilArg
+# Model the APIs that are guaranteed to return a non-nil value
+CHECKERS="${CHECKERS}" osx.cocoa.NonNilReturnValue
+# Check for leaks and improper reference count managementModel the
+# APIs that are guaranteed to return a non-nil value
+CHECKERS="${CHECKERS}" osx.cocoa.RetainCount
+# Check that 'self' is properly initialized inside an initializer method
+CHECKERS="${CHECKERS}" osx.cocoa.SelfInit
+# Warn about private ivars that are never used
+CHECKERS="${CHECKERS}" osx.cocoa.UnusedIvars
+# Check for passing non-Objective-C types to variadic collection
+# initialization methods that expect only Objective-C types
+CHECKERS="${CHECKERS}" osx.cocoa.VariadicMethodTypes
+# Check usage of CFErrorRef* parameters
+CHECKERS="${CHECKERS}" osx.coreFoundation.CFError
+# Check for proper uses of CFNumberCreate
+CHECKERS="${CHECKERS}" osx.coreFoundation.CFNumber
+# Check for null arguments to CFRetain/CFRelease/CFMakeCollectable
+CHECKERS="${CHECKERS}" osx.coreFoundation.CFRetainRelease
+# Checks for index out-of-bounds when using 'CFArray' API
+CHECKERS="${CHECKERS}" osx.coreFoundation.containers.OutOfBounds
+# Warns if 'CFArray', 'CFDictionary', 'CFSet' are created with
+# non-pointer-size values
+CHECKERS="${CHECKERS}" osx.coreFoundation.containers.PointerSizedValues
+
+# Warn on using a floating point value as a loop counter (CERT:
+# FLP30-C, FLP30-CPP)
+CHECKERS="${CHECKERS}" security.FloatLoopCounter
+# Warn on uses of functions whose return values must be always checked
+CHECKERS="${CHECKERS}" security.insecureAPI.UncheckedReturn
+# Warn on uses of the 'getpw' function
+CHECKERS="${CHECKERS}" security.insecureAPI.getpw
+# Warn on uses of the 'gets' function
+CHECKERS="${CHECKERS}" security.insecureAPI.gets
+# Warn when 'mkstemp' is passed fewer than 6 X's in the format string
+CHECKERS="${CHECKERS}" security.insecureAPI.mkstemp
+# Warn on uses of the 'mktemp' function
+CHECKERS="${CHECKERS}" security.insecureAPI.mktemp
+# Warn on uses of the 'rand', 'random', and related functions
+CHECKERS="${CHECKERS}" security.insecureAPI.rand
+# Warn on uses of the 'strcpy' and 'strcat' functions
+CHECKERS="${CHECKERS}" security.insecureAPI.strcpy
+# Warn on uses of the 'vfork' function
+CHECKERS="${CHECKERS}" security.insecureAPI.vfork
+
+# Check calls to various UNIX/Posix functions
+CHECKERS="${CHECKERS}" unix.API
+# Check for memory leaks, double free, and use-after-free
+# problems. Traces memory managed by malloc()/free().
+CHECKERS="${CHECKERS}" unix.Malloc
+# Check for dubious malloc arguments involving sizeof
+CHECKERS="${CHECKERS}" unix.MallocSizeof
+# Check for mismatched deallocators.
+CHECKERS="${CHECKERS}" unix.MismatchedDeallocator
+# Check the size argument passed into C string functions for common
+# erroneous patterns
+CHECKERS="${CHECKERS}" unix.cstring.BadSizeArg
+# Check for null pointers being passed as arguments to C string functions
+CHECKERS="${CHECKERS}" unix.cstring.NullArg
