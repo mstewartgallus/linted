@@ -189,9 +189,10 @@ if false; then
     CHECKERS="${CHECKERS} debug.ViewCallGraph"
     # View Exploded Graphs using GraphViz
     CHECKERS="${CHECKERS} debug.ViewExplodedGraph"
-    # Check code for LLVM codebase conventions
-    CHECKERS="${CHECKERS} llvm.Conventions"
 fi
+
+# Check code for LLVM codebase conventions
+CHECKERS="${CHECKERS} llvm.Conventions"
 
 # Check for proper uses of various Apple APIs
 CHECKERS="${CHECKERS} osx.API"
