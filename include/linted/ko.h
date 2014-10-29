@@ -115,9 +115,6 @@ void linted_ko_task_poll(struct linted_ko_task_poll *task, unsigned task_action,
 void linted_ko_task_read(struct linted_ko_task_read *task, unsigned task_action,
                          linted_ko ko, char *buf, size_t size);
 
-/**
- * @warning Consumes pending SIGPIPEs
- */
 void linted_ko_task_write(struct linted_ko_task_write *task,
                           unsigned task_action, linted_ko ko, char const *buf,
                           size_t size);
