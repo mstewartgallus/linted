@@ -78,12 +78,6 @@ linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 	return 0;
 }
 
-linted_error linted_ko_dummy(linted_ko *kop)
-{
-	return linted_ko_open(kop, LINTED_KO_CWD, "/dev/null",
-	                      LINTED_KO_RDONLY);
-}
-
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {

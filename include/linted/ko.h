@@ -82,8 +82,6 @@ struct linted_ko_task_write
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 
-linted_error linted_ko_dummy(linted_ko *kop);
-
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags);
 
