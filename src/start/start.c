@@ -141,7 +141,8 @@ It is insecure to run a game with high privileges!\n"));
 	{
 		linted_ko *xx;
 		size_t yy;
-		if ((errnum = find_open_kos(&xx, &yy)) != 0) {
+		errnum = find_open_kos(&xx, &yy);
+		if (errnum != 0) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: couldn't find open files: %s\n",
 			                       process_name,
@@ -335,42 +336,18 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *sizep)
 		if (fd == fds_dir_ko)
 			continue;
 
-		++size;
-	}
-
-	rewinddir(fds_dir);
-
-	{
-		void *xx;
-		errnum = linted_mem_alloc_array(&xx, size, sizeof fds[0]);
-		if (errnum != 0)
-			goto close_fds_dir;
-		fds = xx;
-	}
-
-	for (size_t ii = 0U; ii < size;) {
-		errno = 0;
-		struct dirent *const result = readdir(fds_dir);
 		{
-			errnum = errno;
+			void *xx;
+			errnum = linted_mem_realloc_array(&xx, fds, size + 1U,
+							  sizeof fds[0]);
 			if (errnum != 0)
 				goto free_fds;
+			fds = xx;
 		}
 
-		char const *const d_name = result->d_name;
-		if (0 == strcmp(d_name, "."))
-			continue;
+		fds[size] = fd;
 
-		if (0 == strcmp(d_name, ".."))
-			continue;
-
-		int const fd = atoi(d_name);
-
-		if (fd == dirfd(fds_dir))
-			continue;
-
-		fds[ii] = fd;
-		++ii;
+		++size;
 	}
 
 free_fds:
