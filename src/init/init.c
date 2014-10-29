@@ -17,7 +17,6 @@
 
 #include "config.h"
 
-#include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -25,13 +24,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 

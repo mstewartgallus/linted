@@ -47,12 +47,6 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 		return errnum;
 	}
 
-	if (-1 == shutdown(sock, SHUT_WR)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
 	{
 		struct sockaddr_un address = { 0 };
 
@@ -72,12 +66,6 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 		}
 	}
 
-	if (-1 == listen(sock, backlog)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
 	/* Set the nonblock status after binding because asynchronous
 	 * binding is a pain to deal with.
 	 */
@@ -89,6 +77,18 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 	}
 
 	if (-1 == fcntl(sock, F_SETFL, (long)flags | O_NONBLOCK)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_sock;
+	}
+
+	if (-1 == listen(sock, backlog)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_sock;
+	}
+
+	if (-1 == shutdown(sock, SHUT_WR)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto close_sock;
