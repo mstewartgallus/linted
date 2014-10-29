@@ -62,7 +62,7 @@ linted_error linted_log_write(linted_log log, char const *msg_ptr,
 	return errnum;
 }
 
-void linted_log_receive(struct linted_log_task *task, unsigned task_id,
+void linted_log_receive(struct linted_log_task_receive *task, unsigned task_id,
                         linted_log log, char msg_ptr[static LINTED_LOG_MAX])
 {
 	linted_mq_task_receive(LINTED_UPCAST(task), task_id, log, msg_ptr,

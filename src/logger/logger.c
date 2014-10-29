@@ -34,7 +34,7 @@ enum {
 
 struct logger_task
 {
-	struct linted_log_task parent;
+	struct linted_log_task_receive parent;
 	struct linted_asynch_pool *pool;
 	char const *process_name;
 	linted_ko log_ko;

@@ -35,23 +35,21 @@
  */
 typedef linted_mq linted_log;
 
-struct linted_log_task
+struct linted_log_task_receive
 {
 	struct linted_mq_task_receive parent;
 };
-
-#define LINTED_LOG_UPCAST(X)                                                   \
+#define LINTED_LOG_RECEIVE_UPCAST(X)                                           \
 	LINTED_MQ_RECEIVE_UPCAST(                                              \
-	    LINTED_UPCAST((struct linted_log_task *)NULL == (X), X))
-#define LINTED_LOG_DOWNCAST(X)                                                 \
-	LINTED_DOWNCAST(struct linted_log_task, LINTED_MQ_RECEIVE_DOWNCAST(X))
-
-linted_error linted_log_close(linted_log log);
+	    LINTED_UPCAST((struct linted_log_task_receive *)NULL == (X), X))
+#define LINTED_LOG_RECEIVE_DOWNCAST(X)                                         \
+	LINTED_DOWNCAST(struct linted_log_task_receive,                        \
+	                LINTED_MQ_RECEIVE_DOWNCAST(X))
 
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
                               size_t msg_len);
 
-void linted_log_receive(struct linted_log_task *task, unsigned task_id,
+void linted_log_receive(struct linted_log_task_receive *task, unsigned task_id,
                         linted_log log, char msg_ptr[static LINTED_LOG_MAX]);
 
 #endif /* LINTED_LOG_H */
