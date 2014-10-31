@@ -154,9 +154,6 @@ static void maybe_update_controller(struct linted_asynch_pool *pool,
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
 static linted_error get_xcb_error(xcb_generic_error_t *error);
 
-static linted_error get_window_size(xcb_connection_t *connection,
-                                    xcb_window_t window, unsigned *width,
-                                    unsigned *height);
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y);
 
@@ -518,37 +515,78 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	uint_fast32_t window =
 	    linted_window_notifier_decode(LINTED_UPCAST(notice_task));
 
-	xcb_void_cookie_t chattr_ck = xcb_change_window_attributes_checked(
-	    connection, window, XCB_CW_EVENT_MASK, window_opts);
+	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
+	                             window_opts);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
-	xcb_generic_error_t *chattr_err =
-	    xcb_request_check(connection, chattr_ck);
-	if (chattr_err != NULL) {
-		errnum = get_xcb_error(chattr_err);
-		linted_mem_free(chattr_err);
+	xcb_get_geometry_cookie_t geom_ck =
+	    xcb_get_geometry(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
 		return errnum;
-	}
+
+	xcb_query_pointer_cookie_t point_ck =
+	    xcb_query_pointer(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
 
 	unsigned width, height;
+	{
+		xcb_generic_error_t *error;
+		xcb_get_geometry_reply_t *reply;
+		{
+			xcb_generic_error_t *xx;
+			reply =
+			    xcb_get_geometry_reply(connection, geom_ck, &xx);
+
+			errnum = get_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
+
+			error = xx;
+		}
+
+		if (error != NULL) {
+			errnum = get_xcb_error(error);
+			linted_mem_free(error);
+			return errnum;
+		}
+
+		width = reply->width;
+		height = reply->height;
+
+		linted_mem_free(reply);
+	}
+
 	int x, y;
 	{
-		unsigned xx, yy;
-		errnum = get_window_size(connection, window, &xx, &yy);
-		if (errnum != 0)
+		xcb_generic_error_t *error;
+		xcb_query_pointer_reply_t *reply;
+		{
+			xcb_generic_error_t *xx;
+			reply =
+			    xcb_query_pointer_reply(connection, point_ck, &xx);
+
+			errnum = get_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
+
+			error = xx;
+		}
+
+		if (error != NULL) {
+			errnum = get_xcb_error(error);
+			linted_mem_free(error);
 			return errnum;
-		width = xx;
-		height = yy;
-	}
-	{
-		int xx, yy;
-		errnum = get_mouse_position(connection, window, &xx, &yy);
-		if (errnum != 0)
-			return errnum;
-		x = xx;
-		y = yy;
+		}
+
+		x = reply->win_x;
+		y = reply->win_y;
+
+		linted_mem_free(reply);
 	}
 
 	window_model->width = width;
@@ -561,7 +599,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	*windowp = window;
 
-	/* TODO: Check if this is in progress */
 	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
 	                    xcb_get_file_descriptor(connection), POLLIN);
 	poll_conn_task->time_to_quit = notice_task->time_to_quit;
@@ -584,7 +621,8 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = task->errnum;
+	if (errnum != 0)
 		return errnum;
 
 	struct controller_task *controller_task = CONTROLLER_DOWNCAST(task);
@@ -645,51 +683,12 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	controller_data->update_pending = true;
 }
 
-static linted_error get_window_size(xcb_connection_t *connection,
-                                    xcb_window_t window, unsigned *width,
-                                    unsigned *height)
-{
-	linted_error errnum;
-
-	xcb_get_geometry_cookie_t ck = xcb_get_geometry(connection, window);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		return errnum;
-
-	xcb_generic_error_t *error;
-	xcb_get_geometry_reply_t *reply;
-	{
-		xcb_generic_error_t *xx;
-		reply = xcb_get_geometry_reply(connection, ck, &xx);
-
-		errnum = get_xcb_conn_error(connection);
-		if (errnum != 0)
-			return errnum;
-
-		error = xx;
-	}
-
-	if (error != NULL) {
-		errnum = get_xcb_error(error);
-		linted_mem_free(error);
-		return errnum;
-	}
-
-	*width = reply->width;
-	*height = reply->height;
-
-	linted_mem_free(reply);
-
-	return 0;
-}
-
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y)
 {
 	linted_error errnum;
 
-	xcb_query_pointer_cookie_t cookie =
-	    xcb_query_pointer(connection, window);
+	xcb_query_pointer_cookie_t ck = xcb_query_pointer(connection, window);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
@@ -698,7 +697,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	xcb_query_pointer_reply_t *reply;
 	{
 		xcb_generic_error_t *xx;
-		reply = xcb_query_pointer_reply(connection, cookie, &xx);
+		reply = xcb_query_pointer_reply(connection, ck, &xx);
 
 		errnum = get_xcb_conn_error(connection);
 		if (errnum != 0)

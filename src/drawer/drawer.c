@@ -113,11 +113,6 @@ static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
-static linted_error get_xcb_error(xcb_generic_error_t *error);
-
-static linted_error get_window_size(xcb_connection_t *connection,
-                                    xcb_window_t window, unsigned *width,
-                                    unsigned *height);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -341,7 +336,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = task->errnum;
+	if (errnum != 0)
 		return errnum;
 
 	struct updater_task *updater_task = UPDATER_DOWNCAST(task);
@@ -394,32 +390,17 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_window_t *windowp = notice_task->window;
 	struct linted_gpu_context **gpu_contextp = notice_task->gpu_context;
 
-	uint_fast32_t window =
+	xcb_window_t window =
 	    linted_window_notifier_decode(LINTED_UPCAST(notice_task));
 
-	xcb_void_cookie_t chattr_ck = xcb_change_window_attributes_checked(
-	    connection, window, XCB_CW_EVENT_MASK, window_opts);
+	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
+	                             window_opts);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
-	xcb_generic_error_t *chattr_err =
-	    xcb_request_check(connection, chattr_ck);
-	if (chattr_err != NULL) {
-		errnum = get_xcb_error(chattr_err);
-		linted_mem_free(chattr_err);
-		return errnum;
-	}
-
-	unsigned width, height;
-	{
-		unsigned xx, yy;
-		errnum = get_window_size(connection, window, &xx, &yy);
-		if (errnum != 0)
-			return errnum;
-		width = xx;
-		height = yy;
-	}
+	if (xcb_flush(connection) < 0)
+		return get_xcb_conn_error(connection);
 
 	window_model->viewable = true;
 	*windowp = window;
@@ -433,8 +414,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		gpu_context = xx;
 	}
 	*gpu_contextp = gpu_context;
-
-	linted_gpu_resize(gpu_context, width, height);
 
 	linted_updater_receive(LINTED_UPCAST(updater_task), ON_RECEIVE_UPDATE,
 	                       updater);
@@ -452,44 +431,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	poll_conn_task->display = display;
 	linted_asynch_pool_submit(pool,
 	                          LINTED_UPCAST(LINTED_UPCAST(poll_conn_task)));
-
-	return 0;
-}
-
-static linted_error get_window_size(xcb_connection_t *connection,
-                                    xcb_window_t window, unsigned *width,
-                                    unsigned *height)
-{
-	linted_error errnum;
-
-	xcb_get_geometry_cookie_t ck = xcb_get_geometry(connection, window);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		return errnum;
-
-	xcb_generic_error_t *error;
-	xcb_get_geometry_reply_t *reply;
-	{
-		xcb_generic_error_t *xx;
-		reply = xcb_get_geometry_reply(connection, ck, &xx);
-
-		errnum = get_xcb_conn_error(connection);
-		if (errnum != 0)
-			return errnum;
-
-		error = xx;
-	}
-
-	if (error != NULL) {
-		errnum = get_xcb_error(error);
-		linted_mem_free(error);
-		return errnum;
-	}
-
-	*width = reply->width;
-	*height = reply->height;
-
-	linted_mem_free(reply);
 
 	return 0;
 }
@@ -518,10 +459,4 @@ static linted_error get_xcb_conn_error(xcb_connection_t *connection)
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
-}
-
-static linted_error get_xcb_error(xcb_generic_error_t *error)
-{
-	/* For now just be crappy. */
-	return ENOSYS;
 }
