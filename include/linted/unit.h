@@ -17,6 +17,9 @@
 #define LINTED_UNIT_H
 
 #include "linted/error.h"
+#include "linted/ko.h"
+
+#include <sys/types.h>
 
 /**
  * @file

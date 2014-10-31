@@ -18,7 +18,6 @@
 #include "config.h"
 
 #include "linted/conf.h"
-#include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/unit.h"
 #include "linted/util.h"
