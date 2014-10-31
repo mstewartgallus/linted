@@ -105,7 +105,7 @@ struct conn
 };
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                     char const *chrootdir);
+                                   char const *chrootdir);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -305,7 +305,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	} while (!waiter_task.time_to_exit);
 
 kill_procs:
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
@@ -327,7 +328,8 @@ kill_procs:
 		}
 	}
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
@@ -397,11 +399,12 @@ exit_monitor:
 }
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                     char const *chrootdir)
+                                   char const *chrootdir)
 {
 	linted_error errnum;
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
@@ -412,7 +415,8 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 			return errnum;
 	}
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
@@ -1263,7 +1267,8 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_unit const *unit =
-		    linted_unit_db_get_unit_by_name(units, request->status.name);
+		    linted_unit_db_get_unit_by_name(units,
+		                                    request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
@@ -1304,7 +1309,8 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	case LINTED_ADMIN_STOP: {
 		struct linted_unit const *unit =
-		    linted_unit_db_get_unit_by_name(units, request->status.name);
+		    linted_unit_db_get_unit_by_name(units,
+		                                    request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;

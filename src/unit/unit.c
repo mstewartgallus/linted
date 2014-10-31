@@ -147,7 +147,8 @@ size_t linted_unit_db_size(struct linted_unit_db *units)
 	return units->size;
 }
 
-struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units, size_t ii)
+struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
+                                            size_t ii)
 {
 	return &units->list[ii].common;
 }
@@ -324,8 +325,9 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	return 0;
 }
 
-struct linted_unit const *linted_unit_db_get_unit_by_name(struct linted_unit_db const *units,
-                                                 const char *name)
+struct linted_unit const *
+linted_unit_db_get_unit_by_name(struct linted_unit_db const *units,
+                                const char *name)
 {
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		struct linted_unit const *unit = &units->list[ii].common;
