@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/monitor
 
-%C%_monitor_SOURCES=%D%/monitor.c
-%C%_monitor_LDADD=\
-  src/start/libstart.la\
-  \
+noinst_LTLIBRARIES+=%D%/libunit.la
+%C%_libunit_la_SOURCES=%D%/unit.c include/linted/unit.h
+%C%_libunit_la_LIBADD=\
   src/conf/libconf.la\
-  src/error/liberror.la\
   src/ko/libko.la\
-  src/io/libio.la\
-  src/mem/libmem.la\
-  src/mq/libmq.la\
-  src/spawn/libspawn.la\
-  src/unit/libunit.la\
-  \
-  src/admin/libadmin.la
+  src/mem/libmem.la

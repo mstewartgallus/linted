@@ -27,12 +27,12 @@
 #include "linted/mq.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
+#include "linted/unit.h"
 #include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <mntent.h>
 #include <sched.h>
 #include <stdbool.h>
@@ -60,44 +60,6 @@ enum {
 	MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS
 };
 
-enum unit_type {
-	UNIT_TYPE_SOCKET,
-	UNIT_TYPE_SERVICE
-};
-
-struct unit_db;
-
-struct unit
-{
-	enum unit_type type;
-	char *name;
-};
-
-struct unit_service
-{
-	struct unit common;
-	pid_t pid;
-
-	char *name;
-
-	char const *const *exec_start;
-	char const *const *files;
-	char const *fstab;
-	char const *chdir_path;
-	char const *const *env_whitelist;
-	bool no_new_privs : 1U;
-};
-
-struct unit_socket
-{
-	struct unit common;
-	linted_ko ko;
-	char const *path;
-	long maxmsgs;
-	long msgsize;
-	bool is_open : 1U;
-};
-
 struct wait_service_task
 {
 	struct linted_asynch_task_waitid parent;
@@ -114,7 +76,7 @@ struct accepted_conn_task
 	struct linted_admin_task_accept parent;
 	struct linted_asynch_pool *pool;
 	struct conn_pool *conn_pool;
-	struct unit_db const *units;
+	struct linted_unit_db const *units;
 };
 
 struct read_conn_task
@@ -123,7 +85,7 @@ struct read_conn_task
 	struct linted_asynch_pool *pool;
 	struct conn_pool *conn_pool;
 	struct conn *conn;
-	struct unit_db const *units;
+	struct linted_unit_db const *units;
 };
 
 struct wrote_conn_task
@@ -142,15 +104,8 @@ struct conn
 	bool is_free : 1U;
 };
 
-static linted_error unit_db_create(struct unit_db **unitsp,
-                                   struct linted_conf_db *confs);
-static void unit_db_destroy(struct unit_db *units);
-static size_t unit_db_size(struct unit_db *units);
-static struct unit *unit_db_get_unit(struct unit_db *units, size_t ii);
-static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
+static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
                                      char const *chrootdir);
-static struct unit const *units_get_unit_by_name(struct unit_db const *unit,
-                                                 const char *name);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -171,15 +126,10 @@ static linted_error conn_pool_destroy(struct conn_pool *pool);
 static linted_error conn_add(struct conn_pool *pool, struct conn **connp);
 static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
-static linted_error service_create(struct unit_service *unit,
-                                   struct linted_conf *conf);
-static linted_error socket_create(struct unit_socket *unit,
-                                  struct linted_conf *conf);
-
-static linted_error socket_activate(struct unit_socket *unit);
-static linted_error service_activate(struct unit *unit, linted_ko cwd,
+static linted_error socket_activate(struct linted_unit_socket *unit);
+static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct unit_db const *units);
+                                     struct linted_unit_db const *units);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -187,10 +137,6 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
                                      unsigned long *mountflagsp,
                                      char const **leftoversp);
-
-static linted_error str_from_strs(char const *const *strs, char const **strp);
-static linted_error bool_from_cstring(char const *str, bool *boolp);
-static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -296,10 +242,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		conf_db = xx;
 	}
 
-	struct unit_db *units;
+	struct linted_unit_db *units;
 	{
-		struct unit_db *xx;
-		errnum = unit_db_create(&xx, conf_db);
+		struct linted_unit_db *xx;
+		errnum = linted_unit_db_create(&xx, conf_db);
 		if (errnum != 0)
 			goto destroy_confs;
 		units = xx;
@@ -332,7 +278,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = unit_db_activate(units, cwd, chrootdir);
+	errnum = activate_units(units, cwd, chrootdir);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -359,13 +305,13 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	} while (!waiter_task.time_to_exit);
 
 kill_procs:
-	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
-		struct unit *unit = unit_db_get_unit(units, ii);
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		struct unit_service *service = (void *)unit;
+		struct linted_unit_service *service = (void *)unit;
 
 		if (service->pid <= 1)
 			continue;
@@ -381,13 +327,13 @@ kill_procs:
 		}
 	}
 
-	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
-		struct unit *unit = unit_db_get_unit(units, ii);
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
 			continue;
 
-		struct unit_socket *socket = (void *)unit;
+		struct linted_unit_socket *socket = (void *)unit;
 
 		if (!socket->is_open)
 			continue;
@@ -399,7 +345,7 @@ kill_procs:
 		socket->is_open = false;
 	}
 
-	unit_db_destroy(units);
+	linted_unit_db_destroy(units);
 
 destroy_confs:
 	linted_conf_db_destroy(conf_db);
@@ -450,127 +396,13 @@ exit_monitor:
 	return EXIT_SUCCESS;
 }
 
-union unit_union
-{
-	struct unit common;
-	struct unit_service service;
-	struct unit_socket socket;
-};
-
-struct unit_db
-{
-	size_t size;
-	union unit_union list[];
-};
-
-static linted_error unit_db_create(struct unit_db **unitsp,
-                                   struct linted_conf_db *conf_db)
-{
-	linted_error errnum;
-	struct unit_db *units;
-
-	size_t size = linted_conf_db_size(conf_db);
-
-	size_t mem_size = sizeof *units + size * sizeof units->list[0U];
-	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, mem_size);
-		if (errnum != 0)
-			return errnum;
-		units = xx;
-	}
-	units->size = 0U;
-
-	*unitsp = units;
-
-	for (size_t ii = 0U; ii < size; ++ii) {
-		union unit_union *unit = &units->list[ii];
-		struct linted_conf *conf = linted_conf_db_get_conf(conf_db, ii);
-
-		char const *file_name = linted_conf_peek_name(conf);
-
-		char const *dot = strchr(file_name, '.');
-
-		char const *suffix = dot + 1U;
-
-		enum unit_type unit_type;
-		if (0 == strcmp(suffix, "socket")) {
-			unit_type = UNIT_TYPE_SOCKET;
-		} else if (0 == strcmp(suffix, "service")) {
-			unit_type = UNIT_TYPE_SERVICE;
-		} else {
-			errnum = EINVAL;
-			goto destroy_units;
-		}
-
-		char *unit_name = strndup(file_name, dot - file_name);
-		if (NULL == unit_name) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto destroy_units;
-		}
-
-		unit->common.type = unit_type;
-		unit->common.name = unit_name;
-
-		switch (unit_type) {
-		case UNIT_TYPE_SERVICE: {
-			unit->service.pid = -1;
-
-			errnum = service_create(&unit->service, conf);
-			if (errnum != 0)
-				goto destroy_units;
-			break;
-		}
-
-		case UNIT_TYPE_SOCKET: {
-			unit->socket.is_open = false;
-
-			errnum = socket_create(&unit->socket, conf);
-			if (errnum != 0)
-				goto destroy_units;
-			break;
-		}
-		}
-
-		++units->size;
-	}
-
-	return 0;
-
-destroy_units:
-	unit_db_destroy(units);
-
-	return errnum;
-}
-
-static void unit_db_destroy(struct unit_db *units)
-{
-	size_t size = units->size;
-	union unit_union *list = units->list;
-
-	for (size_t ii = 0U; ii < size; ++ii)
-		linted_mem_free(list[ii].common.name);
-	linted_mem_free(units);
-}
-
-static size_t unit_db_size(struct unit_db *units)
-{
-	return units->size;
-}
-
-static struct unit *unit_db_get_unit(struct unit_db *units, size_t ii)
-{
-	return &units->list[ii].common;
-}
-
-static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
+static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
                                      char const *chrootdir)
 {
 	linted_error errnum;
 
-	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
-		struct unit *unit = unit_db_get_unit(units, ii);
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
 			continue;
@@ -580,8 +412,8 @@ static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
 			return errnum;
 	}
 
-	for (size_t ii = 0U, size = unit_db_size(units); ii < size; ++ii) {
-		struct unit *unit = unit_db_get_unit(units, ii);
+	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size; ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
@@ -594,179 +426,7 @@ static linted_error unit_db_activate(struct unit_db *units, linted_ko cwd,
 	return 0;
 }
 
-static linted_error service_create(struct unit_service *unit,
-                                   struct linted_conf *conf)
-{
-	linted_error errnum;
-
-	char const *const *types = linted_conf_find(conf, "Service", "Type");
-	char const *const *exec_start =
-	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privss =
-	    linted_conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *files =
-	    linted_conf_find(conf, "Service", "X-Linted-Files");
-	char const *const *fstabs =
-	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
-	char const *const *chdir_paths =
-	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
-	char const *const *env_whitelist =
-	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
-
-	char const *type;
-	{
-		char const *xx;
-		errnum = str_from_strs(types, &xx);
-		if (errnum != 0)
-			return errnum;
-		type = xx;
-	}
-
-	if (NULL == exec_start)
-		return EINVAL;
-
-	char const *no_new_privs;
-	{
-		char const *xx;
-		errnum = str_from_strs(no_new_privss, &xx);
-		if (errnum != 0)
-			return errnum;
-		no_new_privs = xx;
-	}
-
-	char const *fstab;
-	{
-		char const *xx;
-		errnum = str_from_strs(fstabs, &xx);
-		if (errnum != 0)
-			return errnum;
-		fstab = xx;
-	}
-
-	char const *chdir_path;
-	{
-		char const *xx;
-		errnum = str_from_strs(chdir_paths, &xx);
-		if (errnum != 0)
-			return errnum;
-		chdir_path = xx;
-	}
-
-	if (NULL == type) {
-		/* simple type of service */
-	} else if (0 == strcmp("simple", type)) {
-		/* simple type of service */
-	} else {
-		return EINVAL;
-	}
-
-	bool no_new_privs_value = false;
-	if (no_new_privs != NULL) {
-		bool xx;
-		errnum = bool_from_cstring(no_new_privs, &xx);
-		if (errnum != 0)
-			return errnum;
-		no_new_privs_value = xx;
-	}
-
-	unit->exec_start = exec_start;
-	unit->no_new_privs = no_new_privs_value;
-	unit->files = files;
-	unit->fstab = fstab;
-	unit->chdir_path = chdir_path;
-	unit->env_whitelist = env_whitelist;
-
-	return 0;
-}
-
-static linted_error socket_create(struct unit_socket *unit,
-                                  struct linted_conf *conf)
-{
-	linted_error errnum;
-
-	char const *const *paths =
-	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
-	char const *const *maxmsgss =
-	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
-	char const *const *msgsizes =
-	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
-	char const *const *temps =
-	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
-
-	char const *path;
-	{
-		char const *xx;
-		errnum = str_from_strs(paths, &xx);
-		if (errnum != 0)
-			return errnum;
-		path = xx;
-	}
-
-	char const *maxmsgs;
-	{
-		char const *xx;
-		errnum = str_from_strs(maxmsgss, &xx);
-		if (errnum != 0)
-			return errnum;
-		maxmsgs = xx;
-	}
-
-	char const *msgsize;
-	{
-		char const *xx;
-		errnum = str_from_strs(msgsizes, &xx);
-		if (errnum != 0)
-			return errnum;
-		msgsize = xx;
-	}
-
-	char const *temp;
-	{
-		char const *xx;
-		errnum = str_from_strs(temps, &xx);
-		if (errnum != 0)
-			return errnum;
-		temp = xx;
-	}
-
-	long maxmsgs_value;
-	{
-		long xx;
-		errnum = long_from_cstring(maxmsgs, &xx);
-		if (errnum != 0)
-			return errnum;
-		maxmsgs_value = xx;
-	}
-
-	long msgsize_value;
-	{
-		long xx;
-		errnum = long_from_cstring(msgsize, &xx);
-		if (errnum != 0)
-			return errnum;
-		msgsize_value = xx;
-	}
-
-	bool temp_value;
-	{
-		bool xx;
-		errnum = bool_from_cstring(temp, &xx);
-		if (errnum != 0)
-			return errnum;
-		temp_value = xx;
-	}
-
-	if (!temp_value)
-		return EINVAL;
-
-	unit->path = path;
-	unit->maxmsgs = maxmsgs_value;
-	unit->msgsize = msgsize_value;
-
-	return 0;
-}
-
-static linted_error socket_activate(struct unit_socket *unit)
+static linted_error socket_activate(struct linted_unit_socket *unit)
 {
 	linted_error errnum;
 	linted_ko ko;
@@ -809,15 +469,15 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
 	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
-static linted_error service_activate(struct unit *unit, linted_ko cwd,
+static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct unit_db const *units)
+                                     struct linted_unit_db const *units)
 {
 	linted_error errnum = 0;
 
 	char const *service_name = unit->name;
 
-	struct unit_service *unit_service = (void *)unit;
+	struct linted_unit_service *unit_service = (void *)unit;
 
 	char const *const *exec_start = unit_service->exec_start;
 	bool no_new_privs = unit_service->no_new_privs;
@@ -1028,14 +688,14 @@ static linted_error service_activate(struct unit *unit, linted_ko cwd,
 		if (wronly)
 			flags |= LINTED_KO_WRONLY;
 
-		struct unit const *socket_unit =
-		    units_get_unit_by_name(units, filename);
+		struct linted_unit const *socket_unit =
+		    linted_unit_db_get_unit_by_name(units, filename);
 		if (NULL == socket_unit) {
 			errnum = EINVAL;
 			goto free_filename;
 		}
 
-		struct unit_socket const *socket = (void *)socket_unit;
+		struct linted_unit_socket const *socket = (void *)socket_unit;
 
 		linted_ko ko;
 		{
@@ -1514,7 +1174,7 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	struct linted_asynch_pool *pool = accepted_conn_task->pool;
 	struct conn_pool *conn_pool = accepted_conn_task->conn_pool;
 
-	struct unit_db const *units = accepted_conn_task->units;
+	struct linted_unit_db const *units = accepted_conn_task->units;
 
 	linted_admin new_socket = accept_task->returned_ko;
 
@@ -1570,7 +1230,7 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	struct linted_asynch_pool *pool = read_conn_task->pool;
 	struct conn_pool *conn_pool = read_conn_task->conn_pool;
 	struct conn *conn = read_conn_task->conn;
-	struct unit_db const *units = read_conn_task->units;
+	struct linted_unit_db const *units = read_conn_task->units;
 
 	if ((errnum = task->errnum) != 0) {
 		/* The other end did something bad */
@@ -1602,14 +1262,14 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 		break;
 
 	case LINTED_ADMIN_STATUS: {
-		struct unit const *unit =
-		    units_get_unit_by_name(units, request->status.name);
+		struct linted_unit const *unit =
+		    linted_unit_db_get_unit_by_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
 		}
 
-		struct unit_service *unit_service = (void *)unit;
+		struct linted_unit_service *unit_service = (void *)unit;
 
 		pid_t pid;
 		switch (unit->type) {
@@ -1643,14 +1303,14 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	}
 
 	case LINTED_ADMIN_STOP: {
-		struct unit const *unit =
-		    units_get_unit_by_name(units, request->status.name);
+		struct linted_unit const *unit =
+		    linted_unit_db_get_unit_by_name(units, request->status.name);
 		if (NULL == unit) {
 			reply.status.is_up = false;
 			break;
 		}
 
-		struct unit_service *unit_service = (void *)unit;
+		struct linted_unit_service *unit_service = (void *)unit;
 
 		pid_t pid;
 		switch (unit->type) {
@@ -1871,19 +1531,6 @@ static linted_error conn_remove(struct conn *conn, struct conn_pool *pool)
 	return linted_ko_close(ko);
 }
 
-static struct unit const *units_get_unit_by_name(struct unit_db const *units,
-                                                 const char *name)
-{
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct unit const *unit = &units->list[ii].common;
-
-		if (0 == strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
-			return unit;
-	}
-
-	return NULL;
-}
-
 static linted_error filter_envvars(char ***result_envvarsp,
                                    char const *const *allowed_envvars)
 {
@@ -1962,82 +1609,6 @@ static size_t null_list_size(char const *const *list)
 	for (size_t ii = 0U;; ++ii)
 		if (NULL == list[ii])
 			return ii;
-}
-
-static linted_error str_from_strs(char const *const *strs, char const **strp)
-{
-	char const *str;
-	if (NULL == strs) {
-		str = NULL;
-	} else {
-		str = strs[0U];
-
-		if (strs[1U] != NULL)
-			return EINVAL;
-	}
-
-	*strp = str;
-	return 0;
-}
-
-static linted_error bool_from_cstring(char const *str, bool *boolp)
-{
-	static char const *const yes_strs[] = { "1", "yes", "true", "on" };
-	static char const *const no_strs[] = { "0", "no", "false", "off" };
-
-	bool result;
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
-		if (0 == strcmp(str, yes_strs[ii])) {
-			result = true;
-			goto return_result;
-		}
-	}
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
-		if (0 == strcmp(str, yes_strs[ii])) {
-			result = false;
-			goto return_result;
-		}
-	}
-
-	return EINVAL;
-
-return_result:
-	*boolp = result;
-	return 0;
-}
-
-static linted_error long_from_cstring(char const *str, long *longp)
-{
-	size_t length = strlen(str);
-	unsigned long position = 1U;
-
-	if ('0' == str[0U] && length != 1U)
-		return EINVAL;
-
-	unsigned long total = 0U;
-	for (; length > 0U; --length) {
-		char const digit = str[length - 1U];
-
-		if (digit < '0' || digit > '9')
-			return EINVAL;
-
-		unsigned long sum =
-		    total + ((unsigned)(digit - '0')) * position;
-		if (sum > LONG_MAX)
-			return ERANGE;
-
-		total = sum;
-
-		unsigned long next_position = 10U * position;
-		if (next_position > LONG_MAX)
-			return ERANGE;
-		position = next_position;
-	}
-
-	*longp = total;
-	return 0;
 }
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,

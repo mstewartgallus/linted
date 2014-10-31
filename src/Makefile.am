@@ -48,6 +48,7 @@ include %C%/queue/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
+include %C%/unit/Makefile.am
 
 include %C%/admin/Makefile.am
 include %C%/controller/Makefile.am
