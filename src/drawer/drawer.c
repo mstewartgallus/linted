@@ -113,6 +113,7 @@ static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 
 static linted_error get_xcb_conn_error(xcb_connection_t *connection);
+static linted_error get_xcb_error(xcb_generic_error_t *error);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -399,8 +400,39 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	if (xcb_flush(connection) < 0)
-		return get_xcb_conn_error(connection);
+	xcb_get_geometry_cookie_t geom_ck =
+	    xcb_get_geometry(connection, window);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
+
+	unsigned width, height;
+	{
+		xcb_generic_error_t *error;
+		xcb_get_geometry_reply_t *reply;
+		{
+			xcb_generic_error_t *xx;
+			reply =
+			    xcb_get_geometry_reply(connection, geom_ck, &xx);
+
+			errnum = get_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
+
+			error = xx;
+		}
+
+		if (error != NULL) {
+			errnum = get_xcb_error(error);
+			linted_mem_free(error);
+			return errnum;
+		}
+
+		width = reply->width;
+		height = reply->height;
+
+		linted_mem_free(reply);
+	}
 
 	window_model->viewable = true;
 	*windowp = window;
@@ -459,4 +491,10 @@ static linted_error get_xcb_conn_error(xcb_connection_t *connection)
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+}
+
+static linted_error get_xcb_error(xcb_generic_error_t *error)
+{
+	/* For now just be crappy. */
+	return ENOSYS;
 }
