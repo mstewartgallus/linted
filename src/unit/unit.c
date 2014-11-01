@@ -38,7 +38,7 @@ union unit_union
 struct linted_unit_db
 {
 	size_t size;
-	union unit_union list[];
+	union unit_union *list;
 };
 
 static linted_error str_from_strs(char const *const *strs, char const **strp);
@@ -54,24 +54,20 @@ linted_error linted_unit_db_create(struct linted_unit_db **unitsp,
                                    struct linted_conf_db *conf_db)
 {
 	linted_error errnum;
-	struct linted_unit_db *units;
 
 	size_t size = linted_conf_db_size(conf_db);
-
-	size_t mem_size = sizeof *units + size * sizeof units->list[0U];
+	union unit_union *list;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, mem_size);
+		errnum = linted_mem_alloc_array(&xx, size, sizeof list[0U]);
 		if (errnum != 0)
 			return errnum;
-		units = xx;
+		list = xx;
 	}
-	units->size = 0U;
 
-	*unitsp = units;
-
+	size_t created = 0U;
 	for (size_t ii = 0U; ii < size; ++ii) {
-		union unit_union *unit = &units->list[ii];
+		union unit_union *unit = &list[ii];
 		struct linted_conf *conf = linted_conf_db_get_conf(conf_db, ii);
 
 		char const *file_name = linted_conf_peek_name(conf);
@@ -120,14 +116,28 @@ linted_error linted_unit_db_create(struct linted_unit_db **unitsp,
 		}
 		}
 
-		++units->size;
+		++created;
 	}
 
-	return 0;
+	struct linted_unit_db *units;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *units);
+		if (errnum != 0)
+			goto destroy_units;
+		units = xx;
+	}
+	units->size = size;
+	units->list = list;
+
+	*unitsp = units;
+
+	return errnum;
 
 destroy_units:
-	linted_unit_db_destroy(units);
-
+	for (size_t ii = 0U; ii < created; ++ii)
+		linted_mem_free(list[ii].common.name);
+	linted_mem_free(list);
 	return errnum;
 }
 
