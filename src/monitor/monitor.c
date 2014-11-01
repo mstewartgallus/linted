@@ -40,7 +40,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mount.h>
-#include <sys/reboot.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
@@ -1527,14 +1526,6 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	union linted_admin_reply reply;
 
 	switch (request->type) {
-	case LINTED_ADMIN_REBOOT:
-		if (-1 == reboot(RB_POWER_OFF)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto conn_remove;
-		}
-		break;
-
 	case LINTED_ADMIN_STATUS: {
 		struct linted_unit const *unit =
 		    linted_unit_db_get_unit_by_name(units,

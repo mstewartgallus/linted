@@ -34,7 +34,6 @@
 typedef linted_ko linted_admin;
 
 enum linted_admin_type {
-	LINTED_ADMIN_REBOOT,
 	LINTED_ADMIN_STATUS,
 	LINTED_ADMIN_STOP
 };
