@@ -1,9 +1,0 @@
-#! /usr/bin/env sh
-
-set -e
-set -C
-set -u
-
-: ${LINTED_CLANG_CHECK:=clang-check}
-
-find "${SRC}" -name '*.c' | xargs -- "${LINTED_CLANG_CHECK}" -p .
