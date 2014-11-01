@@ -7,11 +7,25 @@ set -u
 # This is not a real verification because our programs are unbounded
 # and is only a basic double check.
 
-cbmc\
+SCRIPTS="@srcdir@"
+BINARY="$1"
+
+: ${LINTED_CBMC:=cbmc}
+
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+}
+
+source_files() {
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
+}
+
+"${LINTED_CBMC}"\
     --bounds-check\
     --div-by-zero-check\
     --nan-check\
     --pointer-check\
     --signed-overflow-check\
     --unwind 100 --depth 200\
-    "$@"
+    $(source_cflags)\
+    $(source_files)
