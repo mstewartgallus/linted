@@ -70,12 +70,11 @@ struct linted_unit_socket
 	_Bool is_open : 1U;
 };
 
-struct linted_conf_db;
-
-linted_error linted_unit_db_create(struct linted_unit_db **unitsp,
-                                   struct linted_conf_db *confs);
+linted_error linted_unit_db_create(struct linted_unit_db **unitsp);
 void linted_unit_db_destroy(struct linted_unit_db *units);
 
+linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
+                                     struct linted_unit **unitp);
 size_t linted_unit_db_size(struct linted_unit_db *units);
 struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
                                             size_t ii);

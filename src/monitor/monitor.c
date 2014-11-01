@@ -33,6 +33,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <mntent.h>
 #include <sched.h>
 #include <stdbool.h>
@@ -104,6 +105,14 @@ struct conn
 	bool is_free : 1U;
 };
 
+static linted_error create_units(struct linted_unit_db **unitsp,
+                                 struct linted_conf_db *conf_db);
+
+static linted_error service_create(struct linted_unit_service *unit,
+                                   struct linted_conf *conf);
+static linted_error socket_create(struct linted_unit_socket *unit,
+                                  struct linted_conf *conf);
+
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
                                    char const *chrootdir);
 
@@ -141,6 +150,10 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 static size_t null_list_size(char const *const *list);
+
+static linted_error str_from_strs(char const *const *strs, char const **strp);
+static linted_error bool_from_cstring(char const *str, bool *boolp);
+static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
@@ -245,7 +258,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct linted_unit_db *units;
 	{
 		struct linted_unit_db *xx;
-		errnum = linted_unit_db_create(&xx, conf_db);
+		errnum = create_units(&xx, conf_db);
 		if (errnum != 0)
 			goto destroy_confs;
 		units = xx;
@@ -396,6 +409,263 @@ exit_monitor:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static linted_error create_units(struct linted_unit_db **unitsp,
+                                 struct linted_conf_db *conf_db)
+{
+	linted_error errnum;
+
+	struct linted_unit_db *units;
+	{
+		struct linted_unit_db *xx;
+		errnum = linted_unit_db_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		units = xx;
+	}
+
+	size_t size = linted_conf_db_size(conf_db);
+	for (size_t ii = 0U; ii < size; ++ii) {
+		struct linted_unit *unit;
+		{
+			struct linted_unit *xx;
+			errnum = linted_unit_db_add_unit(units, &xx);
+			if (errnum != 0)
+				goto destroy_units;
+			unit = xx;
+		}
+
+		struct linted_conf *conf = linted_conf_db_get_conf(conf_db, ii);
+
+		char const *file_name = linted_conf_peek_name(conf);
+
+		char const *dot = strchr(file_name, '.');
+
+		char const *suffix = dot + 1U;
+
+		enum linted_unit_type unit_type;
+		if (0 == strcmp(suffix, "socket")) {
+			unit_type = UNIT_TYPE_SOCKET;
+		} else if (0 == strcmp(suffix, "service")) {
+			unit_type = UNIT_TYPE_SERVICE;
+		} else {
+			errnum = EINVAL;
+			goto destroy_units;
+		}
+
+		char *unit_name = strndup(file_name, dot - file_name);
+		if (NULL == unit_name) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_units;
+		}
+
+		unit->type = unit_type;
+		unit->name = unit_name;
+
+		switch (unit_type) {
+		case UNIT_TYPE_SERVICE: {
+			struct linted_unit_service *s = (void *)unit;
+			s->pid = -1;
+
+			errnum = service_create(s, conf);
+			if (errnum != 0)
+				goto destroy_units;
+			break;
+		}
+
+		case UNIT_TYPE_SOCKET: {
+			struct linted_unit_socket *s = (void *)unit;
+			s->is_open = false;
+
+			errnum = socket_create(s, conf);
+			if (errnum != 0)
+				goto destroy_units;
+			break;
+		}
+		}
+	}
+
+	*unitsp = units;
+
+	return errnum;
+
+destroy_units:
+	linted_unit_db_destroy(units);
+	return errnum;
+}
+
+static linted_error service_create(struct linted_unit_service *unit,
+                                   struct linted_conf *conf)
+{
+	linted_error errnum;
+
+	char const *const *types = linted_conf_find(conf, "Service", "Type");
+	char const *const *exec_start =
+	    linted_conf_find(conf, "Service", "ExecStart");
+	char const *const *no_new_privss =
+	    linted_conf_find(conf, "Service", "NoNewPrivileges");
+	char const *const *files =
+	    linted_conf_find(conf, "Service", "X-Linted-Files");
+	char const *const *fstabs =
+	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
+	char const *const *chdir_paths =
+	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
+	char const *const *env_whitelist =
+	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
+
+	char const *type;
+	{
+		char const *xx;
+		errnum = str_from_strs(types, &xx);
+		if (errnum != 0)
+			return errnum;
+		type = xx;
+	}
+
+	if (NULL == exec_start)
+		return EINVAL;
+
+	char const *no_new_privs;
+	{
+		char const *xx;
+		errnum = str_from_strs(no_new_privss, &xx);
+		if (errnum != 0)
+			return errnum;
+		no_new_privs = xx;
+	}
+
+	char const *fstab;
+	{
+		char const *xx;
+		errnum = str_from_strs(fstabs, &xx);
+		if (errnum != 0)
+			return errnum;
+		fstab = xx;
+	}
+
+	char const *chdir_path;
+	{
+		char const *xx;
+		errnum = str_from_strs(chdir_paths, &xx);
+		if (errnum != 0)
+			return errnum;
+		chdir_path = xx;
+	}
+
+	if (NULL == type) {
+		/* simple type of service */
+	} else if (0 == strcmp("simple", type)) {
+		/* simple type of service */
+	} else {
+		return EINVAL;
+	}
+
+	bool no_new_privs_value = false;
+	if (no_new_privs != NULL) {
+		bool xx;
+		errnum = bool_from_cstring(no_new_privs, &xx);
+		if (errnum != 0)
+			return errnum;
+		no_new_privs_value = xx;
+	}
+
+	unit->exec_start = exec_start;
+	unit->no_new_privs = no_new_privs_value;
+	unit->files = files;
+	unit->fstab = fstab;
+	unit->chdir_path = chdir_path;
+	unit->env_whitelist = env_whitelist;
+
+	return 0;
+}
+
+static linted_error socket_create(struct linted_unit_socket *unit,
+                                  struct linted_conf *conf)
+{
+	linted_error errnum;
+
+	char const *const *paths =
+	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
+	char const *const *maxmsgss =
+	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
+	char const *const *msgsizes =
+	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
+	char const *const *temps =
+	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
+
+	char const *path;
+	{
+		char const *xx;
+		errnum = str_from_strs(paths, &xx);
+		if (errnum != 0)
+			return errnum;
+		path = xx;
+	}
+
+	char const *maxmsgs;
+	{
+		char const *xx;
+		errnum = str_from_strs(maxmsgss, &xx);
+		if (errnum != 0)
+			return errnum;
+		maxmsgs = xx;
+	}
+
+	char const *msgsize;
+	{
+		char const *xx;
+		errnum = str_from_strs(msgsizes, &xx);
+		if (errnum != 0)
+			return errnum;
+		msgsize = xx;
+	}
+
+	char const *temp;
+	{
+		char const *xx;
+		errnum = str_from_strs(temps, &xx);
+		if (errnum != 0)
+			return errnum;
+		temp = xx;
+	}
+
+	long maxmsgs_value;
+	{
+		long xx;
+		errnum = long_from_cstring(maxmsgs, &xx);
+		if (errnum != 0)
+			return errnum;
+		maxmsgs_value = xx;
+	}
+
+	long msgsize_value;
+	{
+		long xx;
+		errnum = long_from_cstring(msgsize, &xx);
+		if (errnum != 0)
+			return errnum;
+		msgsize_value = xx;
+	}
+
+	bool temp_value;
+	{
+		bool xx;
+		errnum = bool_from_cstring(temp, &xx);
+		if (errnum != 0)
+			return errnum;
+		temp_value = xx;
+	}
+
+	if (!temp_value)
+		return EINVAL;
+
+	unit->path = path;
+	unit->maxmsgs = maxmsgs_value;
+	unit->msgsize = msgsize_value;
+
+	return 0;
 }
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
@@ -1615,6 +1885,82 @@ static size_t null_list_size(char const *const *list)
 	for (size_t ii = 0U;; ++ii)
 		if (NULL == list[ii])
 			return ii;
+}
+
+static linted_error str_from_strs(char const *const *strs, char const **strp)
+{
+	char const *str;
+	if (NULL == strs) {
+		str = NULL;
+	} else {
+		str = strs[0U];
+
+		if (strs[1U] != NULL)
+			return EINVAL;
+	}
+
+	*strp = str;
+	return 0;
+}
+
+static linted_error bool_from_cstring(char const *str, bool *boolp)
+{
+	static char const *const yes_strs[] = { "1", "yes", "true", "on" };
+	static char const *const no_strs[] = { "0", "no", "false", "off" };
+
+	bool result;
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
+		if (0 == strcmp(str, yes_strs[ii])) {
+			result = true;
+			goto return_result;
+		}
+	}
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
+		if (0 == strcmp(str, yes_strs[ii])) {
+			result = false;
+			goto return_result;
+		}
+	}
+
+	return EINVAL;
+
+return_result:
+	*boolp = result;
+	return 0;
+}
+
+static linted_error long_from_cstring(char const *str, long *longp)
+{
+	size_t length = strlen(str);
+	unsigned long position = 1U;
+
+	if ('0' == str[0U] && length != 1U)
+		return EINVAL;
+
+	unsigned long total = 0U;
+	for (; length > 0U; --length) {
+		char const digit = str[length - 1U];
+
+		if (digit < '0' || digit > '9')
+			return EINVAL;
+
+		unsigned long sum =
+		    total + ((unsigned)(digit - '0')) * position;
+		if (sum > LONG_MAX)
+			return ERANGE;
+
+		total = sum;
+
+		unsigned long next_position = 10U * position;
+		if (next_position > LONG_MAX)
+			return ERANGE;
+		position = next_position;
+	}
+
+	*longp = total;
+	return 0;
 }
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
