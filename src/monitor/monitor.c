@@ -20,6 +20,7 @@
 #include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/conf.h"
+#include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -47,6 +48,7 @@
 
 #include <linux/ptrace.h>
 
+#define BACKLOG 20U
 #define MAX_MANAGE_CONNECTIONS 10U
 
 enum {
@@ -178,7 +180,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	pid_t ppid = getppid();
-	linted_admin admin = kos[0U];
+	linted_dir private_run_dir = kos[0U];
 
 	/**
 	 * @TODO Make the monitor not rely upon being basically PID 1
@@ -217,6 +219,24 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 		cwd = xx;
+	}
+
+	if (-1 == fchdir(private_run_dir)) {
+		perror("fchdir");
+		return EXIT_FAILURE;
+	}
+
+	linted_admin admin;
+	{
+		linted_admin xx;
+		errnum = linted_admin_bind(&xx, BACKLOG, "admin-socket",
+		                           strlen("admin-socket"));
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_admin_bind");
+			return EXIT_FAILURE;
+		}
+		admin = xx;
 	}
 
 	if (-1 == chdir("/")) {

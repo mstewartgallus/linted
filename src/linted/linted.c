@@ -19,7 +19,7 @@
 
 #include "settings.h"
 
-#include "linted/admin.h"
+#include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/locale.h"
 #include "linted/start.h"
@@ -31,11 +31,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
-
-#define BACKLOG 20U
 
 struct envvar
 {
@@ -74,7 +73,7 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_DRAWER_FSTAB", PKGDEFAULTCONFDIR "/drawer-fstab" }
 };
 
-static linted_error exec_init(char const *init, linted_admin admin);
+static linted_error exec_init(char const *init, linted_ko ko);
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
@@ -148,32 +147,60 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	linted_error errnum;
 
-	linted_admin admin;
+	/* TODO: Create a fallback */
+	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
+	if (NULL == runtime_dir_path) {
+		linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
+requires XDG_RUNTIME_DIR\n"));
+		return EXIT_FAILURE;
+	}
+
+	linted_ko runtime_dir;
 	{
-		linted_admin xx;
-		errnum = linted_admin_bind(&xx, BACKLOG, NULL, 0);
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, runtime_dir_path,
+		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
 			errno = errnum;
-			perror("linted_admin_bind");
+			perror("linted_ko_open");
 			return EXIT_FAILURE;
 		}
-		admin = xx;
+		runtime_dir = xx;
 	}
 
+	linted_ko linted_run_dir;
 	{
-		char buf[LINTED_ADMIN_PATH_MAX];
-		size_t len;
-		errnum = linted_admin_path(admin, buf, &len);
-		if (errnum != 0)
-			return errnum;
-
-		linted_io_write_str(STDOUT_FILENO, NULL,
-		                    LINTED_STR("LINTED_ADMIN_SOCKET="));
-		linted_io_write_all(STDOUT_FILENO, NULL, buf, len);
-		linted_io_write_str(STDOUT_FILENO, NULL, LINTED_STR("\n"));
+		linted_ko xx;
+		errnum = linted_dir_create(&xx, runtime_dir, PACKAGE_TARNAME, 0,
+		                           S_IRWXU);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_dir_create");
+			return EXIT_FAILURE;
+		}
+		linted_run_dir = xx;
 	}
+	linted_ko_close(runtime_dir);
 
-	errnum = exec_init(init, admin);
+	linted_ko private_run_dir;
+	{
+		linted_ko xx;
+		char path[10U];
+		sprintf(path, "%i", getpid());
+		errnum =
+		    linted_dir_create(&xx, linted_run_dir, path, 0, S_IRWXU);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_dir_create");
+			return EXIT_FAILURE;
+		}
+		private_run_dir = xx;
+	}
+	linted_ko_close(linted_run_dir);
+
+	fprintf(stderr, "LINTED_PID=%i\n", getpid());
+
+	errnum = exec_init(init, private_run_dir);
 	if (errnum != 0) {
 		errno = errnum;
 		perror("exec_init");
@@ -182,12 +209,12 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	return EXIT_SUCCESS;
 }
 
-static linted_error exec_init(char const *init, linted_admin admin)
+static linted_error exec_init(char const *init, linted_ko passed_ko)
 {
 	linted_error errnum;
 
 	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
-		                 STDERR_FILENO, admin };
+		                 STDERR_FILENO, passed_ko };
 
 	pid_t myself = getpid();
 	int setenv_pid_status;
@@ -219,14 +246,20 @@ static linted_error exec_init(char const *init, linted_admin admin)
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 
-		int flags = fcntl(ko, F_GETFD);
+		if (-1 == dup2(ko, ii)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		int flags = fcntl(ii, F_GETFD);
 		if (-1 == flags) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
 		}
 
-		if (-1 == fcntl(ko, F_SETFD, (long)flags & !FD_CLOEXEC)) {
+		if (-1 == fcntl(ii, F_SETFD, (long)flags & !FD_CLOEXEC)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
