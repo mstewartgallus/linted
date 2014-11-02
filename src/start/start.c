@@ -29,7 +29,6 @@
 
 #include <assert.h>
 #include <dirent.h>
-#include <elf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <link.h>
@@ -37,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/auxv.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
@@ -239,23 +239,7 @@ static bool is_privileged(void)
 #ifdef __linux__
 static bool was_privileged(void)
 {
-	/* At startup, environ hasn't been changed yet and so we can
-	 * still find the auxv from it.
-	 */
-	char **envp = environ;
-
-	while (*envp != NULL)
-		++envp;
-
-	ElfW(auxv_t) *vector = (ElfW(auxv_t) *)(envp + 1U);
-
-	for (; vector->a_type != AT_NULL; ++vector) {
-		if (AT_SECURE == vector->a_type)
-			goto got_vector;
-	}
-	abort();
-got_vector:
-	return vector->a_un.a_val;
+       return getauxval(AT_SECURE);
 }
 #else
 #error "was privileged" check has not been implemented for this system yet
