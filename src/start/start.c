@@ -239,7 +239,7 @@ static bool is_privileged(void)
 #ifdef __linux__
 static bool was_privileged(void)
 {
-       return getauxval(AT_SECURE);
+	return getauxval(AT_SECURE);
 }
 #else
 #error "was privileged" check has not been implemented for this system yet

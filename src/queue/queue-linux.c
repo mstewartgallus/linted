@@ -49,7 +49,8 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 	struct linted_queue *queue;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0)
+		errnum = linted_mem_alloc(&xx, sizeof *queue);
+		if (errnum != 0)
 			return errnum;
 		queue = xx;
 	}
@@ -62,12 +63,14 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 	{
 		pthread_mutexattr_t attr;
 
-		if ((errnum = pthread_mutexattr_init(&attr)) != 0)
+		errnum = pthread_mutexattr_init(&attr);
+		if (errnum != 0)
 			goto free_queue;
 
 #if !defined NDBEBUG && defined PTHREAD_MUTEX_ERRORCHECK_NP
-		if ((errnum = pthread_mutexattr_settype(
-		         &attr, PTHREAD_MUTEX_ERRORCHECK_NP)) != 0) {
+		errnum = pthread_mutexattr_settype(&attr,
+		                                   PTHREAD_MUTEX_ERRORCHECK_NP);
+		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
 		}
@@ -75,14 +78,16 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 
 		errnum = pthread_mutex_init(&queue->lock, &attr);
 
-		if (pthread_mutexattr_destroy(&attr) != 0)
+		errnum = pthread_mutexattr_destroy(&attr);
+		if (errnum != 0)
 			assert(false);
 
 		if (errnum != 0)
 			goto free_queue;
 	}
 
-	if ((errnum = pthread_cond_init(&queue->gains_member, NULL)) != 0) {
+	errnum = pthread_cond_init(&queue->gains_member, NULL);
+	if (errnum != 0) {
 		assert(errnum != EINVAL);
 		assert(false);
 	}
