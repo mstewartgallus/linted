@@ -166,7 +166,6 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([scripts/test
                  scripts/check-cbmc
                  scripts/check-clang-analysis
-                 scripts/check-clang-check
                  scripts/check-cppcheck
                  scripts/check-frama-c],[
                  chmod u+x "${ac_file}"
