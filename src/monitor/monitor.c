@@ -1398,6 +1398,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 				    sandboxed_pid, pid, strsignal(status));
 				break;
 
+			case CLD_CONTINUED:
+				fprintf(
+				    stderr,
+				    "process %i in sandbox %i continued by %s\n",
+				    sandboxed_pid, pid, strsignal(status));
+				break;
+
 			default:
 				LINTED_ASSUME_UNREACHABLE();
 			}
