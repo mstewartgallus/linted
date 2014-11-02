@@ -10,6 +10,8 @@ set -u
 SCRIPTS="@srcdir@"
 BINARY="$1"
 
+shift
+
 : ${LINTED_CBMC:=cbmc}
 
 source_cflags() {
@@ -28,4 +30,5 @@ source_files() {
     --signed-overflow-check\
     --unwind 100 --depth 200\
     $(source_cflags)\
-    $(source_files)
+    $(source_files)\
+    $@
