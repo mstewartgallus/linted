@@ -52,8 +52,6 @@
 
 /**
  * @file
- *
- * @bug Window destruction by the drawer thread isn't handled properly.
  */
 
 enum {

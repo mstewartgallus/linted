@@ -82,6 +82,7 @@ struct notice_task
 
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
+	Display *gpu_display;
 	Display *display;
 	linted_ko updater;
 	linted_log log;
@@ -148,6 +149,16 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto destroy_pool;
 	}
 
+	/* Use a separate connection just for GPU functions so that we
+	 * don't get false notifications of notices from GPU
+	 * functionality getting a notification.
+	 */
+	Display *gpu_display = XOpenDisplay(NULL);
+	if (NULL == gpu_display) {
+		errnum = ENOSYS;
+		goto close_display;
+	}
+
 	xcb_connection_t *connection = XGetXCBConnection(display);
 
 	linted_window_notifier_receive(LINTED_UPCAST(&notice_task),
@@ -157,6 +168,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	notice_task.pool = pool;
 	notice_task.connection = connection;
+	notice_task.gpu_display = gpu_display;
 	notice_task.display = display;
 	notice_task.updater = updater;
 	notice_task.log = log;
@@ -205,7 +217,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 cleanup_gpu:
 	if (gpu_context != NULL)
 		linted_gpu_context_destroy(gpu_context);
+	XCloseDisplay(gpu_display);
 
+close_display:
 	XCloseDisplay(display);
 
 destroy_pool:
@@ -378,6 +392,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
 	struct poll_conn_task *poll_conn_task = notice_task->poll_conn_task;
 	Display *display = notice_task->display;
+	Display *gpu_display = notice_task->gpu_display;
 	struct linted_asynch_pool *pool = notice_task->pool;
 
 	xcb_connection_t *connection = notice_task->connection;
@@ -440,7 +455,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	struct linted_gpu_context *gpu_context;
 	{
 		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(display, window, &xx, log);
+		errnum = linted_gpu_context_create(gpu_display, window, &xx, log);
 		if (errnum != 0)
 			return errnum;
 		gpu_context = xx;
