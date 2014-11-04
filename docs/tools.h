@@ -39,6 +39,9 @@
  * <ul>
  *
  * <li> [Valgrind](http://valgrind.org/)
+ *
+ * A runtime instrumentor that checks code for errors.
+ *
  * - You have to comment out and disable the seccomp sandboxing.
  * - You have to make sure every running service has a /tmp directory.
  * - You have to use the latest version from SVN (version 11) to
@@ -49,10 +52,28 @@
  * </li>
  *
  * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
+ *
+ * A compiler debug mode that checks code for errors.
+ *
  * - It works great without any changes.
  * </li>
  *
+ * <li> [Apitrace](https://github.com/apitrace/apitrace)
+ *
+ * Traces, error checks, replays and profiles OpenGL code.
+ *
+ * - It works great but before using one needs to set the drawer
+ *   process to not use a custom mount space and to change into an
+ *   owned directory.
+ *
+ * - Can't profile OpenGL ES code well.
+ *
+ * </li>
+ *
  * <li> [Linux Perf Utils](https://git.kernel.org/cgit/linux/kernel/git/namhyung/linux-perf.git/)
+ *
+ * Profiles code performance using CPU counters.
+ *
  * - It works great without any changes and handles multiple processes
  *   well.
  * - It does not handle a few internal functions in some libraries,
@@ -139,10 +160,12 @@
  * </li>
  *
  * <li> [Cppcheck](http://cppcheck.sourceforge.net/)
+ * A code linter.
  * - It's okay but mostly just catches bad style.
  * </li>
  *
  * <li> [CBMC](http://www.cprover.org/cbmc/)
+ * A code simulator that checks for errors.
  * - It's a bit fiddly to setup but works okay.
  * - Theoretically it should be able to handle nondeterminism and
  *   concurrency but only if I add a bunch of annotations manually.
