@@ -11,6 +11,9 @@
  *
  * Linted -- TODO
  *
+ * @bug If window is moved partially offscreen and resized it fails to
+ *      draw to a part of the window opposite from the part offscreen.
+ *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
