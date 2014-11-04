@@ -31,11 +31,10 @@ pkglibexec_PROGRAMS+=%D%/drawer
   src/window-notifier/libwindow-notifier.la\
   \
   $(X11_LIBS)\
-  $(XCB_LIBS)\
-  $(X11_XCB_LIBS)
+  $(XCB_LIBS)
 
 %C%_drawer_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS)\
+  $(X11_FLAGS) $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/drawer-fstab

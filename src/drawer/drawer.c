@@ -36,7 +36,6 @@
 
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
 
 enum {
 	ON_RECEIVE_UPDATE,
@@ -55,7 +54,6 @@ struct poll_conn_task
 	struct linted_ko_task_poll parent;
 
 	struct linted_gpu_context *gpu_context;
-	Display *display;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
 
@@ -83,7 +81,6 @@ struct notice_task
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
 	Display *gpu_display;
-	Display *display;
 	linted_ko updater;
 	linted_log log;
 
@@ -143,8 +140,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct updater_task updater_task;
 	struct poll_conn_task poll_conn_task;
 
-	Display *display = XOpenDisplay(NULL);
-	if (NULL == display) {
+	xcb_connection_t *connection = xcb_connect(NULL, NULL);
+	if (NULL == connection) {
 		errnum = ENOSYS;
 		goto destroy_pool;
 	}
@@ -159,8 +156,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto close_display;
 	}
 
-	xcb_connection_t *connection = XGetXCBConnection(display);
-
 	linted_window_notifier_receive(LINTED_UPCAST(&notice_task),
 	                               ON_RECEIVE_NOTICE, notifier);
 	notice_task.poll_conn_task = &poll_conn_task;
@@ -169,7 +164,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	notice_task.pool = pool;
 	notice_task.connection = connection;
 	notice_task.gpu_display = gpu_display;
-	notice_task.display = display;
 	notice_task.updater = updater;
 	notice_task.log = log;
 
@@ -220,7 +214,7 @@ cleanup_gpu:
 	XCloseDisplay(gpu_display);
 
 close_display:
-	XCloseDisplay(display);
+	xcb_disconnect(connection);
 
 destroy_pool:
 	linted_asynch_pool_stop(pool);
@@ -284,40 +278,35 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	    LINTED_DOWNCAST(struct poll_conn_task,
 	                    LINTED_DOWNCAST(struct linted_ko_task_poll, task));
 
-	Display *display = poll_conn_task->display;
 	xcb_connection_t *connection = poll_conn_task->connection;
 	struct linted_asynch_pool *pool = poll_conn_task->pool;
 	struct window_model *window_model = poll_conn_task->window_model;
 	struct linted_gpu_context *gpu_context = poll_conn_task->gpu_context;
 	bool *time_to_quitp = poll_conn_task->time_to_quit;
 
-	/* We have to use the Xlib event queue for the drawer events
-	 * because of broken Mesa libraries which abuse it.
-	 */
-	while (XPending(display) > 0) {
-		XEvent event;
-		XNextEvent(display, &event);
+	for (;;) {
+		xcb_generic_event_t *event = xcb_poll_for_event(connection);
+		if (NULL == event)
+			break;
 
 		bool time_to_quit = false;
-		switch (event.type) {
-		case ConfigureNotify: {
-			XConfigureEvent const *configure_event =
-			    &event.xconfigure;
-
+		switch (event->response_type & ~0x80) {
+		case XCB_CONFIGURE_NOTIFY: {
+			xcb_configure_notify_event_t const *configure_event = (void*)event;
 			linted_gpu_resize(gpu_context, configure_event->width,
 			                  configure_event->height);
 			break;
 		}
 
-		case UnmapNotify:
+		case XCB_UNMAP_NOTIFY:
 			window_model->viewable = false;
 			break;
 
-		case MapNotify:
+		case XCB_MAP_NOTIFY:
 			window_model->viewable = true;
 			break;
 
-		case DestroyNotify:
+		case XCB_DESTROY_NOTIFY:
 			goto quit_application;
 
 		default:
@@ -328,6 +317,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			time_to_quit = true;
 			break;
 		}
+		linted_mem_free(event);
 
 		*time_to_quitp = time_to_quit;
 		if (time_to_quit)
@@ -339,7 +329,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	poll_conn_task->time_to_quit = time_to_quitp;
 	poll_conn_task->window_model = window_model;
 	poll_conn_task->pool = pool;
-	poll_conn_task->display = display;
 	poll_conn_task->connection = connection;
 
 	linted_asynch_pool_submit(pool, task);
@@ -391,7 +380,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
 	struct poll_conn_task *poll_conn_task = notice_task->poll_conn_task;
-	Display *display = notice_task->display;
 	Display *gpu_display = notice_task->gpu_display;
 	struct linted_asynch_pool *pool = notice_task->pool;
 
@@ -460,6 +448,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			return errnum;
 		gpu_context = xx;
 	}
+	linted_gpu_resize(gpu_context, width, height);
 	*gpu_contextp = gpu_context;
 
 	linted_updater_receive(LINTED_UPCAST(updater_task), ON_RECEIVE_UPDATE,
@@ -475,7 +464,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	poll_conn_task->gpu_context = gpu_context;
 	poll_conn_task->pool = pool;
 	poll_conn_task->connection = connection;
-	poll_conn_task->display = display;
+
 	linted_asynch_pool_submit(pool,
 	                          LINTED_UPCAST(LINTED_UPCAST(poll_conn_task)));
 
