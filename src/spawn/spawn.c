@@ -97,7 +97,7 @@ struct linted_spawn_attr
 	int deathsig;
 	bool drop_caps : 1U;
 	bool no_new_privs : 1U;
-	bool deparent : 1U;
+	char const *waiter;
 };
 
 static void default_signals(linted_ko writer);
@@ -111,7 +111,6 @@ static void drop_privileges(linted_ko writer, cap_t caps);
 static void pid_to_str(char *buf, pid_t pid);
 
 static linted_error set_child_subreaper(bool v);
-static linted_error set_name(char const *name);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_death_sig(int signum);
 
@@ -141,7 +140,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
 	attr->no_new_privs = false;
-	attr->deparent = false;
+	attr->waiter = NULL;
 
 	*attrp = attr;
 	return 0;
@@ -166,9 +165,10 @@ void linted_spawn_attr_setname(struct linted_spawn_attr *attr, char const *name)
 	attr->name = name;
 }
 
-void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, _Bool b)
+void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
+                                   char const *waiter)
 {
-	attr->deparent = b;
+	attr->waiter = waiter;
 }
 
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
@@ -413,7 +413,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
 	bool no_new_privs = false;
-	bool deparent = false;
+	char const *waiter = NULL;
 
 	if (attr != NULL) {
 		name = attr->name;
@@ -425,7 +425,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
 		no_new_privs = attr->no_new_privs;
-		deparent = attr->deparent;
+		waiter = attr->waiter;
 	}
 
 	gid_t gid = getgid();
@@ -507,7 +507,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	linted_ko pid_writer;
 	bool pid_pipes_init = false;
 
-	if (deparent) {
+	if (waiter != NULL) {
 		linted_ko xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
 			goto close_err_pipes;
@@ -531,7 +531,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto close_pid_pipes;
 		}
 
-		if (deparent) {
+		if (waiter != NULL) {
 			child = fork();
 		} else {
 			child =
@@ -643,7 +643,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(err_reader);
 
-	if (deparent) {
+	if (waiter != NULL) {
 		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
@@ -661,10 +661,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if ((clone_flags & CLONE_NEWUSER) != 0)
 		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
-
-	errnum = set_death_sig(deathsig);
-	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
@@ -706,14 +702,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		err_writer = err_writer_copy;
 	}
 
-	if (chrootdir != NULL)
-		chroot_process(err_writer, chrootdir, mount_args,
-		               mount_args_size);
-
-	if (chdir_path != NULL)
-		if (-1 == chdir(chdir_path))
-			exit_with_error(err_writer, errno);
-
 	if (file_actions != NULL) {
 		union file_action const *actions = file_actions->actions;
 		size_t action_count = file_actions->action_count;
@@ -743,27 +731,16 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 	}
 
-	if (drop_caps)
-		drop_privileges(err_writer, caps);
+	errnum = set_death_sig(deathsig);
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
 
-	if (no_new_privs)
-		if (-1 == set_no_new_privs(true))
-			exit_with_error(err_writer, errno);
-
-	if (deparent) {
+	if (waiter != NULL) {
 		/*
 		 * This isn't needed if ((clone_flags & CLONE_NEWPID) != 0)
 		 * but doesn't hurt,
 		 */
 		errnum = set_child_subreaper(true);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-
-		/**
-		 * @todo execve a dedicated waiter process
-		 */
-
-		errnum = set_name(name);
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 
@@ -776,22 +753,31 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			if (errnum != 0)
 				_Exit(errnum);
 
-			for (;;) {
-				siginfo_t info;
-				do {
-					errnum = -1 == waitid(P_ALL, -1, &info,
-					                      WEXITED)
-					             ? errno
-					             : 0;
-				} while (EINTR == errnum);
-				if (errnum != 0) {
-					assert(errnum != EINVAL);
-					break;
-				}
+			{
+				static char const *const empty[] = { NULL };
+				char const *const arguments[] = { name, NULL };
+				execve(waiter, (char * const *)arguments,
+				       (char * const *)empty);
 			}
-			_Exit(errnum);
+
+			_Exit(errno);
 		}
 	}
+
+	if (chrootdir != NULL)
+		chroot_process(err_writer, chrootdir, mount_args,
+		               mount_args_size);
+
+	if (chdir_path != NULL)
+		if (-1 == chdir(chdir_path))
+			exit_with_error(err_writer, errno);
+
+	if (drop_caps)
+		drop_privileges(err_writer, caps);
+
+	if (no_new_privs)
+		if (-1 == set_no_new_privs(true))
+			exit_with_error(err_writer, errno);
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
@@ -1100,19 +1086,6 @@ static linted_error set_child_subreaper(bool v)
 #endif
 
 	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error set_name(char const *name)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

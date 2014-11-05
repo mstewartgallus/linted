@@ -115,7 +115,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf);
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir);
+                                   char const *chrootdir, char const *waiter);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -138,7 +138,7 @@ static linted_error conn_remove(struct conn *conn, struct conn_pool *conn_pool);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
-                                     char const *chrootdir,
+                                     char const *chrootdir, char const *waiter,
                                      struct linted_unit_db const *units);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -189,6 +189,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
+	char const *waiter = getenv("LINTED_WAITER");
 
 	if (NULL == chrootdir) {
 		linted_io_write_format(
@@ -202,6 +203,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == waiter) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_WAITER is a required environment variable\n",
 		    process_name);
 		return EXIT_FAILURE;
 	}
@@ -310,7 +319,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = activate_units(units, cwd, chrootdir);
+	errnum = activate_units(units, cwd, chrootdir, waiter);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -688,7 +697,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 }
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir)
+                                   char const *chrootdir, char const *waiter)
 {
 	linted_error errnum;
 
@@ -711,7 +720,8 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate((void *)unit, cwd, chrootdir, units);
+		errnum = service_activate((void *)unit, cwd, chrootdir, waiter,
+		                          units);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -763,7 +773,7 @@ static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
 	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
-                                     char const *chrootdir,
+                                     char const *chrootdir, char const *waiter,
                                      struct linted_unit_db const *units)
 {
 	linted_error errnum = 0;
@@ -845,7 +855,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setname(attr, service_name);
-	linted_spawn_attr_setdeparent(attr, true);
+	linted_spawn_attr_setdeparent(attr, waiter);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
@@ -1399,10 +1409,9 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 				break;
 
 			case CLD_CONTINUED:
-				fprintf(
-				    stderr,
-				    "process %i in sandbox %i continued by %s\n",
-				    sandboxed_pid, pid, strsignal(status));
+				fprintf(stderr, "process %i in sandbox %i "
+				                "continued by %s\n",
+				        sandboxed_pid, pid, strsignal(status));
 				break;
 
 			default:

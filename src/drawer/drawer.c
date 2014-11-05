@@ -292,7 +292,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		bool time_to_quit = false;
 		switch (event->response_type & ~0x80) {
 		case XCB_CONFIGURE_NOTIFY: {
-			xcb_configure_notify_event_t const *configure_event = (void*)event;
+			xcb_configure_notify_event_t const *configure_event =
+			    (void *)event;
 			linted_gpu_resize(gpu_context, configure_event->width,
 			                  configure_event->height);
 			break;
@@ -443,7 +444,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	struct linted_gpu_context *gpu_context;
 	{
 		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(gpu_display, window, &xx, log);
+		errnum =
+		    linted_gpu_context_create(gpu_display, window, &xx, log);
 		if (errnum != 0)
 			return errnum;
 		gpu_context = xx;
