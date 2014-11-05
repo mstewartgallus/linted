@@ -28,14 +28,17 @@ int main(int argc, char *argv[])
 	linted_error errnum;
 
 	for (;;) {
-		siginfo_t info;
-		do {
-			errnum =
-			    -1 == waitid(P_ALL, -1, &info, WEXITED) ? errno : 0;
-		} while (EINTR == errnum);
-		if (errnum != 0) {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_ALL, -1, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			errnum = errno;
+			assert(errnum != 0);
 			assert(errnum != EINVAL);
-			break;
+			if (errnum != EINTR)
+				break;
 		}
 	}
 
