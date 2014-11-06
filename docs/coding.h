@@ -207,8 +207,9 @@
  * Using one coding style makes it easy to "Use a clear and consistent
  * coding style."
  *
- * Use the Linux kernel coding style but with an indent level of 4 and
- * no tabs.
+ * Use the Linux kernel coding style but with tabs and spaces. If you
+ * are unsure of how to format some code let the clang-format tool do
+ * it for you.
  *
  * Use %%i instead of %%d in format string specifiers.
  *
