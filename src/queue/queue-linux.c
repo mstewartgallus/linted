@@ -128,6 +128,8 @@ void linted_queue_send(struct linted_queue *queue,
 	pthread_mutex_t *lock = &queue->lock;
 	pthread_cond_t *gains_member = &queue->gains_member;
 
+	node->next = tip;
+
 	errnum = pthread_mutex_lock(lock);
 	assert(errnum != EDEADLK);
 
@@ -135,7 +137,6 @@ void linted_queue_send(struct linted_queue *queue,
 	struct linted_queue_node *tail = tip->prev;
 	tail->next = node;
 	node->prev = tail;
-	node->next = tip;
 	tip->prev = node;
 
 	/* Not a cancellation point */
