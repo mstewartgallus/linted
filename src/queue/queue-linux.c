@@ -131,8 +131,6 @@ void linted_queue_send(struct linted_queue *queue,
 	errnum = pthread_mutex_lock(lock);
 	assert(errnum != EDEADLK);
 
-	pthread_cleanup_push(unlock_routine, lock);
-
 	/* The nodes previous to the tip are the tail */
 	struct linted_queue_node *tail = tip->prev;
 	tail->next = node;
@@ -140,9 +138,11 @@ void linted_queue_send(struct linted_queue *queue,
 	node->next = tip;
 	tip->prev = node;
 
+	/* Not a cancellation point */
 	pthread_cond_signal(gains_member);
 
-	pthread_cleanup_pop(true);
+	errnum = pthread_mutex_unlock(lock);
+	assert(errnum != EPERM);
 }
 
 void linted_queue_recv(struct linted_queue *queue,
@@ -158,22 +158,27 @@ void linted_queue_recv(struct linted_queue *queue,
 	errnum = pthread_mutex_lock(lock);
 	assert(errnum != EDEADLK);
 
-	pthread_cleanup_push(unlock_routine, lock);
-
 	/* The nodes next to the tip are the head */
 	for (;;) {
 		head = tip->next;
 		if (head != tip)
 			break;
 
+		/* On the slow path push the cancellation point
+		 * handler. */
+		pthread_cleanup_push(unlock_routine, lock);
 		pthread_cond_wait(gains_member, lock);
+		pthread_cleanup_pop(false);
 	}
 
 	struct linted_queue_node *next = head->next;
 	tip->next = next;
 	next->prev = tip;
 
-	pthread_cleanup_pop(true);
+	/* The fast path doesn't bother with the handler */
+
+	errnum = pthread_mutex_unlock(lock);
+	assert(errnum != EPERM);
 
 	/* Refresh the node for reuse later */
 	linted_queue_node(head);
@@ -193,7 +198,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	errnum = pthread_mutex_lock(lock);
 	assert(errnum != EDEADLK);
 
-	pthread_cleanup_push(unlock_routine, lock);
+	/* No cancellation points in the critical section */
 
 	/* The nodes next to the tip are the head */
 	head = tip->next;
@@ -206,8 +211,10 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	tip->next = next;
 	next->prev = tip;
 
-pop_cleanup:
-	pthread_cleanup_pop(true);
+pop_cleanup : {
+	linted_error unlock_errnum = pthread_mutex_unlock(lock);
+	assert(unlock_errnum != EPERM);
+}
 
 	if (0 == errnum) {
 		/* Refresh the node for reuse later */

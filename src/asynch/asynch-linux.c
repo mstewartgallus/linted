@@ -206,28 +206,10 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	linted_error errnum;
-	int oldstate;
-
 	assert(pool != NULL);
 
-	{
-		int xx;
-		errnum = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &xx);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(false);
-		}
-		oldstate = xx;
-	}
-
+	/* Isn't a cancellation point so always works */
 	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
-
-	errnum = pthread_setcancelstate(oldstate, NULL);
-	if (errnum != 0) {
-		assert(errnum != EINVAL);
-		assert(false);
-	}
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
