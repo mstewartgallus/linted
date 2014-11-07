@@ -199,14 +199,14 @@ It is insecure to run a game with high privileges!\n"));
 		return errnum;
 	}
 
-	/* if (linted_start_config.seccomp_bpf != NULL) { */
-	/* 	errnum = set_seccomp(linted_start_config.seccomp_bpf); */
-	/* 	if (errnum != 0) { */
-	/* 		errno = errnum; */
-	/* 		perror("prctl"); */
-	/* 		return errnum; */
-	/* 	} */
-	/* } */
+	if (linted_start_config.seccomp_bpf != NULL) {
+		errnum = set_seccomp(linted_start_config.seccomp_bpf);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("prctl");
+			return errnum;
+		}
+	}
 
 	{
 		unsigned entropy;
