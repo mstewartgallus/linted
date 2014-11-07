@@ -681,32 +681,48 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 {
 	GLfloat b_inverted[4U][4U];
 
-	for (size_t ii = 0U; ii < 4U; ++ii) {
-		GLfloat b_ii[4U];
-		memcpy(b_ii, b.x[ii], sizeof b_ii);
+	{
+		size_t ii = 4U;
+		do {
+			--ii;
 
-		for (size_t jj = 0U; jj < 4U; ++jj)
-			b_inverted[jj][ii] = b_ii[jj];
+			GLfloat b_ii[4U];
+			memcpy(b_ii, b.x[ii], sizeof b_ii);
+
+			size_t jj = 4U;
+			do {
+				--jj;
+
+				b_inverted[jj][ii] = b_ii[jj];
+			} while (jj != 0U);
+		} while (ii != 0U);
 	}
 
 	struct matrix result;
 
-	for (size_t ii = 0U; ii < 4U; ++ii) {
+	size_t ii = 4U;
+	do {
+		--ii;
+
 		GLfloat a_ii[4U];
 		memcpy(a_ii, a.x[ii], sizeof a_ii);
 
 		GLfloat result_ii[4U];
-		for (size_t jj = 0U; jj < 4U; ++jj) {
+
+		size_t jj = 4U;
+		do {
+			--jj;
+
 			GLfloat b_XX_jj[4U];
 			memcpy(b_XX_jj, b_inverted[jj], sizeof b_XX_jj);
 
 			result_ii[jj] =
 			    (a_ii[0U] * b_XX_jj[0U] + a_ii[1U] * b_XX_jj[1U]) +
 			    (a_ii[2U] * b_XX_jj[2U] + a_ii[3U] * b_XX_jj[3U]);
-		}
+		} while (jj != 0U);
 
 		memcpy(result.x[ii], result_ii, sizeof result_ii);
-	}
+	} while (ii != 0U);
 
 	return result;
 }
