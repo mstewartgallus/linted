@@ -160,17 +160,21 @@ void linted_queue_recv(struct linted_queue *queue,
 	assert(errnum != EDEADLK);
 
 	/* The nodes next to the tip are the head */
-	for (;;) {
-		head = tip->next;
-		if (head != tip)
-			break;
+	head = tip->next;
+	if (head != tip)
+		goto got_node;
 
-		/* On the slow path push the cancellation point
-		 * handler. */
-		pthread_cleanup_push(unlock_routine, lock);
+	/* The slow path, only bother to push the cancellation point
+	 * handler if we ever start waiting.*/
+	pthread_cleanup_push(unlock_routine, lock);
+	do {
 		pthread_cond_wait(gains_member, lock);
-		pthread_cleanup_pop(false);
-	}
+
+		head = tip->next;
+	} while (tip == head);
+	pthread_cleanup_pop(false);
+got_node:
+	;
 
 	struct linted_queue_node *next = head->next;
 	tip->next = next;
