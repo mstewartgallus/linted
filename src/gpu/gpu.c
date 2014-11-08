@@ -686,15 +686,25 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 		do {
 			--ii;
 
-			GLfloat b_ii[4U];
-			memcpy(b_ii, b.x[ii], sizeof b_ii);
+			GLfloat b_ii_0;
+			GLfloat b_ii_1;
+			GLfloat b_ii_2;
+			GLfloat b_ii_3;
 
-			size_t jj = 4U;
-			do {
-				--jj;
+			{
+				GLfloat b_ii[4U];
+				memcpy(b_ii, b.x[ii], sizeof b_ii);
 
-				b_inverted[jj][ii] = b_ii[jj];
-			} while (jj != 0U);
+				b_ii_0 = b_ii[0U];
+				b_ii_1 = b_ii[1U];
+				b_ii_2 = b_ii[2U];
+				b_ii_3 = b_ii[3U];
+			}
+
+			b_inverted[0U][ii] = b_ii_0;
+			b_inverted[1U][ii] = b_ii_1;
+			b_inverted[2U][ii] = b_ii_2;
+			b_inverted[3U][ii] = b_ii_3;
 		} while (ii != 0U);
 	}
 
