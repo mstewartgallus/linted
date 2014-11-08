@@ -128,6 +128,12 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
                                  bool time_to_quit);
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
                                   bool time_to_quit);
+static linted_error on_status_request(struct linted_unit_db const *units,
+                                      union linted_admin_request const *request,
+                                      union linted_admin_reply *reply);
+static linted_error on_stop_request(struct linted_unit_db const *units,
+                                    union linted_admin_request const *request,
+                                    union linted_admin_reply *reply);
 
 static linted_error ptrace_children(pid_t parent);
 
@@ -1541,13 +1547,9 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	struct conn *conn = read_conn_task->conn;
 	struct linted_unit_db const *units = read_conn_task->units;
 
-	if ((errnum = task->errnum) != 0) {
-		/* The other end did something bad */
-		errnum = conn_remove(conn, conn_pool);
-		if (errnum != 0)
-			return errnum;
-		return 0;
-	}
+	errnum = task->errnum;
+	if (errnum != 0)
+		goto conn_remove;
 
 	if (time_to_quit)
 		return 0;
@@ -1562,89 +1564,22 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 	union linted_admin_reply reply;
 
 	switch (request->type) {
-	case LINTED_ADMIN_STATUS: {
-		struct linted_unit const *unit =
-		    linted_unit_db_get_unit_by_name(units,
-		                                    request->status.name);
-		if (NULL == unit) {
-			reply.status.is_up = false;
-			break;
-		}
-
-		struct linted_unit_service *unit_service = (void *)unit;
-
-		pid_t pid;
-		switch (unit->type) {
-		case UNIT_TYPE_SERVICE:
-			pid = unit_service->pid;
-			goto status_service_process;
-
-		status_service_process:
-			if (0 == kill(pid, 0)) {
-				reply.status.is_up = true;
-				break;
-			}
-
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			assert(errnum != EINVAL);
-			switch (errnum) {
-			case ESRCH:
-				reply.status.is_up = false;
-				break;
-
-			default:
-				goto conn_remove;
-			}
-			break;
-
-		default:
-			break;
-		}
+	case LINTED_ADMIN_STATUS:
+		errnum = on_status_request(units, request, &reply);
 		break;
+
+	case LINTED_ADMIN_STOP:
+		errnum = on_stop_request(units, request, &reply);
+		break;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
 	}
-
-	case LINTED_ADMIN_STOP: {
-		struct linted_unit const *unit =
-		    linted_unit_db_get_unit_by_name(units,
-		                                    request->status.name);
-		if (NULL == unit) {
-			reply.status.is_up = false;
-			break;
-		}
-
-		struct linted_unit_service *unit_service = (void *)unit;
-
-		pid_t pid;
-		switch (unit->type) {
-		case UNIT_TYPE_SERVICE:
-			pid = unit_service->pid;
-			goto stop_service_process;
-
-		stop_service_process:
-			if (0 == kill(pid, SIGKILL)) {
-				reply.stop.was_up = true;
-				break;
-			}
-
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			assert(errnum != EINVAL);
-			switch (errnum) {
-			case ESRCH:
-				reply.stop.was_up = false;
-				break;
-
-			default:
-				goto conn_remove;
-			}
-			break;
-
-		default:
-			break;
-		}
-	}
-	}
+conn_remove:
+	/* Assume the other end did something bad and don't exit with
+	 * an error (unless conn_remove screws up.) */
+	if (errnum != 0)
+		return conn_remove(conn, conn_pool);
 
 	linted_admin_send_reply(LINTED_UPCAST(&conn->write_task),
 	                        ADMIN_WROTE_CONNECTION, ko, &reply);
@@ -1654,12 +1589,99 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
 	                                    LINTED_UPCAST(&conn->write_task))));
-
 	return 0;
+}
 
-conn_remove:
-	conn_remove(conn, conn_pool);
-	return errnum;
+static linted_error on_status_request(struct linted_unit_db const *units,
+                                      union linted_admin_request const *request,
+                                      union linted_admin_reply *reply)
+{
+	linted_error errnum = 0;
+	bool is_up;
+	struct linted_unit const *unit;
+
+	unit = linted_unit_db_get_unit_by_name(units, request->status.name);
+	if (NULL == unit) {
+		is_up = false;
+		goto reply;
+	}
+
+	struct linted_unit_service *unit_service = (void *)unit;
+
+	pid_t pid;
+	switch (unit->type) {
+	case UNIT_TYPE_SERVICE:
+		pid = unit_service->pid;
+
+		if (-1 == kill(pid, 0)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			assert(errnum != EINVAL);
+			if (ESRCH == errnum)
+				errnum = 0;
+
+			is_up = false;
+		} else {
+			is_up = true;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+reply:
+	if (errnum != 0)
+		return errnum;
+
+	reply->status.is_up = is_up;
+	return 0;
+}
+
+static linted_error on_stop_request(struct linted_unit_db const *units,
+                                    union linted_admin_request const *request,
+                                    union linted_admin_reply *reply)
+{
+	linted_error errnum = 0;
+	bool was_up;
+	struct linted_unit const *unit;
+
+	unit = linted_unit_db_get_unit_by_name(units, request->stop.name);
+	if (NULL == unit) {
+		was_up = false;
+		goto reply;
+	}
+
+	struct linted_unit_service *unit_service = (void *)unit;
+
+	pid_t pid;
+	switch (unit->type) {
+	case UNIT_TYPE_SERVICE:
+		pid = unit_service->pid;
+
+		if (-1 == kill(pid, SIGKILL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			assert(errnum != EINVAL);
+			if (ESRCH == errnum)
+				errnum = 0;
+
+			was_up = false;
+		} else {
+			was_up = true;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+reply:
+	if (errnum != 0)
+		return errnum;
+
+	reply->stop.was_up = was_up;
+	return 0;
 }
 
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
