@@ -135,6 +135,10 @@ static linted_error on_stop_request(struct linted_unit_db const *units,
                                     union linted_admin_request const *request,
                                     union linted_admin_reply *reply);
 
+static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
+static linted_error on_process_sigtrap(pid_t pid, int exit_status);
+static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
+                                           int exit_status);
 static linted_error ptrace_children(pid_t parent);
 
 static linted_error conn_pool_create(struct conn_pool **poolp);
@@ -1324,22 +1328,19 @@ static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
 static linted_error on_process_wait(struct linted_asynch_task *task,
                                     bool time_to_quit)
 {
-	if (time_to_quit)
-		return 0;
-
 	linted_error errnum = 0;
 
-	if (task->errnum != 0)
-		return 0;
+	errnum = task->errnum;
+	if (errnum != 0)
+		return errnum;
 
-	/**
-	 * @todo Warn on bad process wait.
-	 */
+	if (time_to_quit)
+		return 0;
 
 	struct wait_service_task *wait_service_task =
 	    LINTED_DOWNCAST(struct wait_service_task, task);
 	struct linted_asynch_pool *pool = wait_service_task->pool;
-	pid_t parent_process = wait_service_task->parent_process;
+	pid_t ppid = wait_service_task->parent_process;
 
 	pid_t pid;
 	int exit_status;
@@ -1364,109 +1365,118 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		fprintf(stderr, "%i exited with %i\n", pid, exit_status);
 		break;
 
-	case CLD_TRAPPED: {
-		int event = exit_status >> 8U;
-		switch (event) {
-		/* Trap a signal */
-		case 0: {
-			if (exit_status != SIGCHLD)
-				goto restart_process;
-
-			int code;
-			pid_t sandboxed_pid;
-			int status;
-			{
-				siginfo_t info = { 0 };
-				errnum = ptrace_getsiginfo(pid, &info);
-				if (errnum != 0)
-					goto restart_process;
-
-				code = info.si_code;
-
-				/* User generated signal */
-				if (code < 0)
-					goto restart_process;
-
-				sandboxed_pid = info.si_pid;
-				status = info.si_status;
-			}
-
-			switch (code) {
-			case CLD_EXITED:
-				fprintf(
-				    stderr,
-				    "process %i in sandbox %i exited with %i\n",
-				    sandboxed_pid, pid, status);
-				break;
-
-			case CLD_DUMPED:
-			case CLD_KILLED:
-				fprintf(
-				    stderr,
-				    "process %i in sandbox %i killed by %s\n",
-				    sandboxed_pid, pid, strsignal(status));
-				break;
-
-			case CLD_STOPPED:
-				fprintf(
-				    stderr,
-				    "process %i in sandbox %i stopped by %s\n",
-				    sandboxed_pid, pid, strsignal(status));
-				break;
-
-			case CLD_CONTINUED:
-				fprintf(stderr, "process %i in sandbox %i "
-				                "continued by %s\n",
-				        sandboxed_pid, pid, strsignal(status));
-				break;
-
-			default:
-				LINTED_ASSUME_UNREACHABLE();
-			}
-
-		restart_process : {
-			linted_error cont_errnum =
-			    ptrace_cont(pid, exit_status);
-			if (0 == errnum)
-				errnum = cont_errnum;
-			break;
-		}
-		}
-
-		case PTRACE_EVENT_STOP: {
-			int stop_sig = exit_status & 0xFF;
-
-			fprintf(stderr, "ptracing %i!\n", pid);
-
-			if (pid == parent_process)
-				errnum = ptrace_children(parent_process);
-
-			switch (stop_sig) {
-			case SIGTRAP: {
-				linted_error cont_errnum = ptrace_cont(pid, 0);
-				if (0 == errnum)
-					errnum = cont_errnum;
-				break;
-			}
-
-			default: {
-				linted_error cont_errnum = ptrace_listen(pid);
-				if (0 == errnum)
-					errnum = cont_errnum;
-				break;
-			}
-			}
-			break;
-		}
-
-		default:
-			LINTED_ASSUME_UNREACHABLE();
-		}
+	case CLD_TRAPPED:
+		errnum = on_process_trap(ppid, pid, exit_status);
 		break;
-	}
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
+	}
+
+	return errnum;
+}
+
+static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
+{
+	int event = exit_status >> 8U;
+	switch (event) {
+	case 0:
+		return on_process_sigtrap(pid, exit_status);
+
+	case PTRACE_EVENT_STOP:
+		return on_process_interrupted(ppid, pid, exit_status);
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
+}
+
+static linted_error on_process_sigtrap(pid_t pid, int exit_status)
+{
+	linted_error errnum = 0;
+
+	if (exit_status != SIGCHLD)
+		goto restart_process;
+
+	int code;
+	pid_t sandboxed_pid;
+	int status;
+	{
+		siginfo_t info = { 0 };
+		errnum = ptrace_getsiginfo(pid, &info);
+		if (errnum != 0)
+			goto restart_process;
+
+		code = info.si_code;
+
+		/* User generated signal */
+		if (code < 0)
+			goto restart_process;
+
+		sandboxed_pid = info.si_pid;
+		status = info.si_status;
+	}
+
+	switch (code) {
+	case CLD_EXITED:
+		fprintf(stderr, "process %i in sandbox %i exited with %i\n",
+		        sandboxed_pid, pid, status);
+		break;
+
+	case CLD_DUMPED:
+	case CLD_KILLED:
+		fprintf(stderr, "process %i in sandbox %i killed by %s\n",
+		        sandboxed_pid, pid, strsignal(status));
+		break;
+
+	case CLD_STOPPED:
+		fprintf(stderr, "process %i in sandbox %i stopped by %s\n",
+		        sandboxed_pid, pid, strsignal(status));
+		break;
+
+	case CLD_CONTINUED:
+		fprintf(stderr, "process %i in sandbox %i continued by %s\n",
+		        sandboxed_pid, pid, strsignal(status));
+		break;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
+
+restart_process:
+	;
+	linted_error cont_errnum = ptrace_cont(pid, exit_status);
+	if (0 == errnum)
+		errnum = cont_errnum;
+	return errnum;
+}
+
+static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
+                                           int exit_status)
+{
+	linted_error errnum = 0;
+
+	int stop_sig = exit_status & 0xFF;
+
+	fprintf(stderr, "ptracing %i!\n", pid);
+
+	if (pid == ppid)
+		errnum = ptrace_children(ppid);
+
+	switch (stop_sig) {
+	case SIGTRAP: {
+		linted_error cont_errnum = ptrace_cont(pid, 0);
+		if (0 == errnum)
+			errnum = cont_errnum;
+		break;
+	}
+
+	default: {
+		linted_error cont_errnum = ptrace_listen(pid);
+		if (0 == errnum)
+			errnum = cont_errnum;
+		break;
+	}
 	}
 
 	return errnum;
