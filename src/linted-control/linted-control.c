@@ -32,7 +32,6 @@
 #include <string.h>
 #include <unistd.h>
 
-static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-control",
 	.kos_size = 0U,
