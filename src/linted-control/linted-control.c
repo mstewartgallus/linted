@@ -30,18 +30,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/syscall.h>
 #include <unistd.h>
-
-#include <linux/filter.h>
-#include <linux/seccomp.h>
 
 static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-control",
 	.kos_size = 0U,
 	.kos = NULL,
-	.seccomp_bpf = &seccomp_filter
+	.seccomp_bpf = NULL
 };
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,
@@ -153,60 +149,6 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 	                                LINTED_STR("--help"));
 	return EXIT_FAILURE;
 }
-
-#define ALLOW(XX)                                                              \
-	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                \
-	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
-
-static struct sock_filter const real_filter[] = {
-	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, nr)),
-#ifdef __NR_arch_prctl
-	/*  */ ALLOW(arch_prctl),
-#endif
-#ifdef __NR_connect
-	/*  */ ALLOW(connect),
-#endif
-#ifdef __NR_socket
-	/*  */ ALLOW(socket),
-#endif
-	/*  */ ALLOW(access),
-	/*  */ ALLOW(brk),
-	/*  */ ALLOW(chdir),
-	/*  */ ALLOW(close),
-	/*  */ ALLOW(dup2),
-	/*  */ ALLOW(execve),
-	/*  */ ALLOW(exit_group),
-	/*  */ ALLOW(fcntl),
-	/*  */ ALLOW(fstat),
-	/*  */ ALLOW(futex),
-	/*  */ ALLOW(getdents),
-	/*  */ ALLOW(geteuid),
-	/*  */ ALLOW(getrlimit),
-	/*  */ ALLOW(getuid),
-	/*  */ ALLOW(lseek),
-	/*  */ ALLOW(mmap),
-	/*  */ ALLOW(mprotect),
-	/*  */ ALLOW(munmap),
-	/*  */ ALLOW(open),
-	/*  */ ALLOW(openat),
-	/*  */ ALLOW(prctl),
-	/*  */ ALLOW(read),
-	/*  */ ALLOW(restart_syscall),
-	/*  */ ALLOW(rt_sigaction),
-	/*  */ ALLOW(rt_sigprocmask),
-	/*  */ ALLOW(rt_sigtimedwait),
-	/*  */ ALLOW(set_robust_list),
-	/*  */ ALLOW(set_tid_address),
-	/*  */ ALLOW(stat),
-	/*  */ ALLOW(write),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
-
-static struct sock_fprog const seccomp_filter = {
-	.len = LINTED_ARRAY_SIZE(real_filter),
-	.filter = (struct sock_filter *)real_filter
-};
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[])
