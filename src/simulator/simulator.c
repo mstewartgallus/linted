@@ -32,11 +32,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
 #include <time.h>
-
-#include <linux/filter.h>
-#include <linux/seccomp.h>
 
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_UPDATER_INT_MAX / 8)
@@ -114,12 +110,10 @@ struct updater_task
 	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_SEND_DOWNCAST(X))
 
 static linted_ko kos[3U];
-static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = NULL
+	.kos = kos
 };
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -518,9 +512,3 @@ static linted_updater_uint absolute(linted_updater_int x)
 	           ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
 	           : imaxabs(x);
 }
-
-#if defined __amd64__
-#include "simulator-amd64.c"
-#elif defined __i386__
-#include "simulator-i386.c"
-#endif

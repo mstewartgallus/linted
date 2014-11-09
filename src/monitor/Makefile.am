@@ -17,6 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/monitor
 
 %C%_monitor_SOURCES=%D%/monitor.c
+EXTRA_%C%_monitor_SOURCES=%D%/monitor-i386.c %D%/monitor-amd64.c
 %C%_monitor_LDADD=\
   src/start/libstart.la\
   \

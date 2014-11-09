@@ -40,8 +40,6 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
-#include <linux/seccomp.h>
-
 static bool is_open(linted_ko ko);
 
 static bool is_privileged(void);
@@ -53,9 +51,6 @@ static linted_error sanitize_kos(size_t kos_size);
 
 static linted_error get_system_entropy(unsigned *entropyp);
 static linted_error open_fds_dir(linted_ko *kop);
-
-static linted_error set_no_new_privs(bool v);
-static linted_error set_seccomp(struct sock_fprog const *program);
 
 int main(int argc, char *argv[])
 {
@@ -190,27 +185,10 @@ It is insecure to run a game with high privileges!\n"));
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
 
-	errnum = set_no_new_privs(true);
-	if (errnum != 0) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not drop ability to raise privileges through execve: %s\n",
-		                       process_name,
-		                       linted_error_string(errnum));
-		return errnum;
-	}
-
-	if (linted_start_config.seccomp_bpf != NULL) {
-		errnum = set_seccomp(linted_start_config.seccomp_bpf);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("prctl");
-			return errnum;
-		}
-	}
-
 	{
 		unsigned entropy;
-		if ((errnum = get_system_entropy(&entropy)) != 0) {
+		errnum = get_system_entropy(&entropy);
+		if (errnum != 0) {
 			linted_io_write_format(STDERR_FILENO, NULL, "\
 %s: can not read a source of system entropy: %s\n",
 			                       process_name,
@@ -475,34 +453,3 @@ static linted_error open_fds_dir(linted_ko *kop)
 #else
 #error no open files directory known for this platform
 #endif
-
-static linted_error set_no_new_privs(bool v)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		assert(errnum != EINVAL);
-
-		return errnum;
-	}
-	return 0;
-}
-
-static linted_error set_seccomp(struct sock_fprog const *program)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
-	                program, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		assert(errnum != EINVAL);
-
-		return errnum;
-	}
-	return 0;
-}

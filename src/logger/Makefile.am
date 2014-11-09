@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/logger
 
 %C%_logger_SOURCES=%D%/logger.c
-EXTRA_%C%_liblogger_la_SOURCES=%D%/logger-i386.c %D%/logger-amd64.c
 %C%_logger_LDADD=\
   src/start/libstart.la\
   \

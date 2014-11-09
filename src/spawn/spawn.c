@@ -94,6 +94,7 @@ struct linted_spawn_attr
 	struct mount_args *mount_args;
 	char const *name;
 	char const *waiter;
+	struct sock_fprog const *filter;
 	int clone_flags;
 	int deathsig;
 	bool drop_caps : 1U;
@@ -113,6 +114,7 @@ static void pid_to_str(char *buf, pid_t pid);
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
+static linted_error set_seccomp(struct sock_fprog const *program);
 static linted_error set_death_sig(int signum);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
@@ -143,6 +145,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->no_new_privs = false;
 	attr->waiter = NULL;
 	attr->deparent = false;
+	attr->filter = NULL;
 
 	*attrp = attr;
 	return 0;
@@ -165,6 +168,12 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 void linted_spawn_attr_setname(struct linted_spawn_attr *attr, char const *name)
 {
 	attr->name = name;
+}
+
+void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
+                                 struct sock_fprog const *filter)
+{
+	attr->filter = filter;
 }
 
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
@@ -422,6 +431,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool no_new_privs = false;
 	char const *waiter = NULL;
 	bool deparent = false;
+	struct sock_fprog const *filter = NULL;
 
 	if (attr != NULL) {
 		name = attr->name;
@@ -435,13 +445,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		no_new_privs = attr->no_new_privs;
 		waiter = attr->waiter;
 		deparent = attr->deparent;
+		filter = attr->filter;
 	}
-
-	gid_t gid = getgid();
-	uid_t uid = getuid();
-
-	gid_t mapped_gid = gid;
-	uid_t mapped_uid = uid;
 
 	if (!((clone_flags & CLONE_NEWUSER) != 0) &
 	    (chrootdir != NULL || mount_args != NULL))
@@ -449,6 +454,15 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
 		return EINVAL;
+
+	if (filter != NULL && !no_new_privs)
+		return EINVAL;
+
+	gid_t gid = getgid();
+	uid_t uid = getuid();
+
+	gid_t mapped_gid = gid;
+	uid_t mapped_uid = uid;
 
 	size_t fd_len;
 	size_t filename_len;
@@ -475,13 +489,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto free_relative_path;
 		}
 
-		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_caps;
-		}
-
-		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_caps;
@@ -748,12 +756,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == chdir(chdir_path))
 			exit_with_error(err_writer, errno);
 
+	if (filter != NULL) {
+		errnum = set_seccomp(filter);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+	}
+
 	if (drop_caps)
 		drop_privileges(err_writer, caps);
 
-	if (no_new_privs)
-		if (-1 == set_no_new_privs(true))
-			exit_with_error(err_writer, errno);
+	if (no_new_privs) {
+		errnum = set_no_new_privs(true);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+	}
 
 	errnum = set_death_sig(deathsig);
 	if (errnum != 0)
@@ -1124,9 +1140,26 @@ static linted_error set_no_new_privs(bool b)
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
+		assert(errnum != EINVAL);
 		return errnum;
 	}
 
+	return 0;
+}
+
+static linted_error set_seccomp(struct sock_fprog const *program)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+	                program, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		assert(errnum != EINVAL);
+
+		return errnum;
+	}
 	return 0;
 }
 

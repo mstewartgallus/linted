@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
-
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -27,11 +25,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <sys/syscall.h>
 #include <unistd.h>
-
-#include <linux/filter.h>
-#include <linux/seccomp.h>
 
 enum {
 	ON_RECEIVE_LOG,
@@ -47,12 +41,10 @@ struct logger_task
 };
 
 static linted_ko kos[1U];
-static struct sock_fprog const seccomp_filter;
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-logger",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = &seccomp_filter
+	.kos = kos
 };
 
 static char logger_buffer[LINTED_LOG_MAX];
@@ -171,9 +163,3 @@ static linted_error on_receive_log(struct linted_asynch_task *task)
 
 	return 0;
 }
-
-#if defined __amd64__
-#include "logger-amd64.c"
-#elif defined __i386__
-#include "logger-i386.c"
-#endif

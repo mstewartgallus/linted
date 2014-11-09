@@ -135,8 +135,7 @@ static linted_ko kos[3U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-gui",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = NULL
+	.kos = kos
 };
 
 static linted_error dispatch(struct linted_asynch_task *task);

@@ -43,10 +43,14 @@
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <linux/audit.h>
+#include <linux/filter.h>
 #include <linux/ptrace.h>
+#include <linux/seccomp.h>
 
 #define BACKLOG 20U
 #define MAX_MANAGE_CONNECTIONS 10U
@@ -177,6 +181,7 @@ static linted_error ptrace_listen(pid_t pid);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_ko kos[1U];
+static struct sock_fprog const default_filter;
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-monitor",
@@ -865,6 +870,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setname(attr, service_name);
+	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setwaiter(attr, waiter);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
@@ -1402,21 +1408,20 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 	int code;
 	pid_t sandboxed_pid;
 	int status;
-	{
-		siginfo_t info = { 0 };
-		errnum = ptrace_getsiginfo(pid, &info);
-		if (errnum != 0)
-			goto restart_process;
 
-		code = info.si_code;
+	siginfo_t info = { 0 };
+	errnum = ptrace_getsiginfo(pid, &info);
+	if (errnum != 0)
+		goto restart_process;
 
-		/* User generated signal */
-		if (code < 0)
-			goto restart_process;
+	code = info.si_code;
 
-		sandboxed_pid = info.si_pid;
-		status = info.si_status;
-	}
+	/* User generated signal */
+	if (code < 0)
+		goto restart_process;
+
+	sandboxed_pid = info.si_pid;
+	status = info.si_status;
 
 	switch (code) {
 	case CLD_EXITED:
@@ -2132,3 +2137,11 @@ static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
 
 	return 0;
 }
+
+#if defined __amd64__
+#include "monitor-amd64.c"
+#elif defined __i386__
+#include "monitor-i386.c"
+#else
+#error No default seccomp filter has been defined for this architecture
+#endif

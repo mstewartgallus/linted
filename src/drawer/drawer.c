@@ -99,8 +99,7 @@ static linted_ko kos[3U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos,
-	.seccomp_bpf = NULL
+	.kos = kos
 };
 
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };

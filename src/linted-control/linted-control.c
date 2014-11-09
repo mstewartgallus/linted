@@ -35,8 +35,7 @@
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-control",
 	.kos_size = 0U,
-	.kos = NULL,
-	.seccomp_bpf = NULL
+	.kos = NULL
 };
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,

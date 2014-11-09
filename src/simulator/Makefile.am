@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/simulator
 
 %C%_simulator_SOURCES=%D%/simulator.c
-EXTRA_%C%_libsimulator_la_SOURCES=%D%/simulator-i386.c %D%/simulator-amd64.c
 %C%_simulator_LDADD=\
   src/start/libstart.la\
   \
