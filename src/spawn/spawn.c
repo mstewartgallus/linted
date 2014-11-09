@@ -93,11 +93,12 @@ struct linted_spawn_attr
 	size_t mount_args_size;
 	struct mount_args *mount_args;
 	char const *name;
+	char const *waiter;
 	int clone_flags;
 	int deathsig;
 	bool drop_caps : 1U;
 	bool no_new_privs : 1U;
-	char const *waiter;
+	bool deparent : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -141,6 +142,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->drop_caps = false;
 	attr->no_new_privs = false;
 	attr->waiter = NULL;
+	attr->deparent = false;
 
 	*attrp = attr;
 	return 0;
@@ -165,8 +167,13 @@ void linted_spawn_attr_setname(struct linted_spawn_attr *attr, char const *name)
 	attr->name = name;
 }
 
-void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
-                                   char const *waiter)
+void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
+{
+	attr->deparent = val;
+}
+
+void linted_spawn_attr_setwaiter(struct linted_spawn_attr *attr,
+                                 char const *waiter)
 {
 	attr->waiter = waiter;
 }
@@ -414,6 +421,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool drop_caps = false;
 	bool no_new_privs = false;
 	char const *waiter = NULL;
+	bool deparent = false;
 
 	if (attr != NULL) {
 		name = attr->name;
@@ -426,6 +434,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		drop_caps = attr->drop_caps;
 		no_new_privs = attr->no_new_privs;
 		waiter = attr->waiter;
+		deparent = attr->deparent;
 	}
 
 	gid_t gid = getgid();
@@ -507,7 +516,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	linted_ko pid_writer;
 	bool pid_pipes_init = false;
 
-	if (waiter != NULL) {
+	if (deparent) {
 		linted_ko xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
 			goto close_err_pipes;
@@ -531,7 +540,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto close_pid_pipes;
 		}
 
-		if (waiter != NULL) {
+		if (deparent) {
 			child = fork();
 		} else {
 			child =
@@ -643,7 +652,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(err_reader);
 
-	if (waiter != NULL) {
+	if (deparent) {
 		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
@@ -731,6 +740,21 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 	}
 
+	if (chrootdir != NULL)
+		chroot_process(err_writer, chrootdir, mount_args,
+		               mount_args_size);
+
+	if (chdir_path != NULL)
+		if (-1 == chdir(chdir_path))
+			exit_with_error(err_writer, errno);
+
+	if (drop_caps)
+		drop_privileges(err_writer, caps);
+
+	if (no_new_privs)
+		if (-1 == set_no_new_privs(true))
+			exit_with_error(err_writer, errno);
+
 	errnum = set_death_sig(deathsig);
 	if (errnum != 0)
 		exit_with_error(err_writer, errnum);
@@ -763,21 +787,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			_Exit(errno);
 		}
 	}
-
-	if (chrootdir != NULL)
-		chroot_process(err_writer, chrootdir, mount_args,
-		               mount_args_size);
-
-	if (chdir_path != NULL)
-		if (-1 == chdir(chdir_path))
-			exit_with_error(err_writer, errno);
-
-	if (drop_caps)
-		drop_privileges(err_writer, caps);
-
-	if (no_new_privs)
-		if (-1 == set_no_new_privs(true))
-			exit_with_error(err_writer, errno);
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;

@@ -865,7 +865,8 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setname(attr, service_name);
-	linted_spawn_attr_setdeparent(attr, waiter);
+	linted_spawn_attr_setdeparent(attr, true);
+	linted_spawn_attr_setwaiter(attr, waiter);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
