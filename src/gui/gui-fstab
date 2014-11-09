@@ -4,8 +4,8 @@
 # <file system>	<mount point>	<type>	<options>
 /home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
 
-tmpfs	tmp	tmpfs	mkdir,nosuid,noexec
-tmpfs	dev	tmpfs	mkdir,nosuid,noexec
+tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
+tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 
 # Allow connecting to X11\n
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind,noexec,nosuid
@@ -13,7 +13,7 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec
 /dev/null	dev/null	none	touch,bind
 /dev/random	dev/random	none	touch,bind
 
-tmpfs	var	tmpfs	mkdir,nosuid,noexec
+tmpfs	var	tmpfs	mkdir,nosuid,noexec,mode=700
 
 proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
 

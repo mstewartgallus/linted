@@ -960,7 +960,7 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 {
 	linted_error errnum;
 
-	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, NULL))
+	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
 		exit_with_error(writer, errno);
 
 	if (-1 == chdir(chrootdir))
