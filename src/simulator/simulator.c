@@ -119,7 +119,7 @@ struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
 	.kos = kos,
-	.seccomp_bpf = &seccomp_filter
+	.seccomp_bpf = NULL
 };
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -251,60 +251,6 @@ destroy_pool : {
 exit:
 	return errnum;
 }
-
-#define ALLOW(XX)                                                              \
-	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                \
-	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
-
-static struct sock_filter const real_filter[] = {
-	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, nr)),
-	/*  */ ALLOW(access),
-	/*  */ ALLOW(arch_prctl),
-	/*  */ ALLOW(brk),
-	/*  */ ALLOW(chdir),
-	/*  */ ALLOW(clock_nanosleep),
-	/*  */ ALLOW(clone),
-	/*  */ ALLOW(close),
-	/*  */ ALLOW(dup2),
-	/*  */ ALLOW(execve),
-	/*  */ ALLOW(exit_group),
-	/*  */ ALLOW(fcntl),
-	/*  */ ALLOW(fstat),
-	/*  */ ALLOW(futex),
-	/*  */ ALLOW(getdents),
-	/*  */ ALLOW(geteuid),
-	/*  */ ALLOW(getpid),
-	/*  */ ALLOW(getrlimit),
-	/*  */ ALLOW(gettid),
-	/*  */ ALLOW(getuid),
-	/*  */ ALLOW(lseek),
-	/*  */ ALLOW(mmap),
-	/*  */ ALLOW(mprotect),
-	/*  */ ALLOW(mq_timedreceive),
-	/*  */ ALLOW(mq_timedsend),
-	/*  */ ALLOW(munmap),
-	/*  */ ALLOW(open),
-	/*  */ ALLOW(openat),
-	/*  */ ALLOW(poll),
-	/*  */ ALLOW(prctl),
-	/*  */ ALLOW(read),
-	/*  */ ALLOW(restart_syscall),
-	/*  */ ALLOW(rt_sigaction),
-	/*  */ ALLOW(rt_sigprocmask),
-	/*  */ ALLOW(sched_getaffinity),
-	/*  */ ALLOW(setrlimit),
-	/*  */ ALLOW(set_robust_list),
-	/*  */ ALLOW(set_tid_address),
-	/*  */ ALLOW(stat),
-	/*  */ ALLOW(tgkill),
-	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
-};
-
-static struct sock_fprog const seccomp_filter = {
-	.len = LINTED_ARRAY_SIZE(real_filter),
-	.filter = (struct sock_filter *)real_filter
-};
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
@@ -572,3 +518,9 @@ static linted_updater_uint absolute(linted_updater_int x)
 	           ? -(int_fast64_t)LINTED_UPDATER_INT_MIN
 	           : imaxabs(x);
 }
+
+#if defined __amd64__
+#include "simulator-amd64.c"
+#elif defined __i386__
+#include "simulator-i386.c"
+#endif

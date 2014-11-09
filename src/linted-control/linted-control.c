@@ -161,12 +161,19 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 static struct sock_filter const real_filter[] = {
 	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 	                offsetof(struct seccomp_data, nr)),
-	/*  */ ALLOW(access),
+#ifdef __NR_arch_prctl
 	/*  */ ALLOW(arch_prctl),
+#endif
+#ifdef __NR_connect
+	/*  */ ALLOW(connect),
+#endif
+#ifdef __NR_socket
+	/*  */ ALLOW(socket),
+#endif
+	/*  */ ALLOW(access),
 	/*  */ ALLOW(brk),
 	/*  */ ALLOW(chdir),
 	/*  */ ALLOW(close),
-	/*  */ ALLOW(connect),
 	/*  */ ALLOW(dup2),
 	/*  */ ALLOW(execve),
 	/*  */ ALLOW(exit_group),
@@ -191,7 +198,6 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(rt_sigtimedwait),
 	/*  */ ALLOW(set_robust_list),
 	/*  */ ALLOW(set_tid_address),
-	/*  */ ALLOW(socket),
 	/*  */ ALLOW(stat),
 	/*  */ ALLOW(write),
 	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
