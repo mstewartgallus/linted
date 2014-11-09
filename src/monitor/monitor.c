@@ -1638,6 +1638,7 @@ static linted_error on_status_request(struct linted_unit_db const *units,
 		break;
 
 	default:
+		is_up = false;
 		break;
 	}
 
@@ -1684,6 +1685,7 @@ static linted_error on_stop_request(struct linted_unit_db const *units,
 		break;
 
 	default:
+		was_up = false;
 		break;
 	}
 
