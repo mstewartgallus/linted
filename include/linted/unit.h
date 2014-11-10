@@ -41,14 +41,13 @@ struct linted_unit_db;
 
 struct linted_unit
 {
-	enum linted_unit_type type;
 	char *name;
+	enum linted_unit_type type;
 };
 
 struct linted_unit_service
 {
 	struct linted_unit common;
-	pid_t pid;
 
 	char *name;
 
@@ -57,16 +56,19 @@ struct linted_unit_service
 	char const *fstab;
 	char const *chdir_path;
 	char const *const *env_whitelist;
+
+	pid_t pid;
+
 	_Bool no_new_privs : 1U;
 };
 
 struct linted_unit_socket
 {
 	struct linted_unit common;
-	linted_ko ko;
 	char const *path;
 	long maxmsgs;
 	long msgsize;
+	linted_ko ko;
 	_Bool is_open : 1U;
 };
 

@@ -770,8 +770,8 @@ enum {
 
 struct pair
 {
-	linted_ko ko;
 	unsigned long options;
+	linted_ko ko;
 };
 
 static char const *const file_options[] = {[RDONLY] = "rdonly",
@@ -783,9 +783,9 @@ static char const *const default_envvars[] = { "LANG", "USER", "LOGNAME",
 	                                       "XDG_SESSION_ID",
 	                                       "XDG_SEAT", "TERM" };
 
-static struct pair const defaults[] = { { STDIN_FILENO, LINTED_KO_RDONLY },
-	                                { STDOUT_FILENO, LINTED_KO_WRONLY },
-	                                { STDERR_FILENO, LINTED_KO_WRONLY } };
+static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
+	                                { LINTED_KO_WRONLY, STDOUT_FILENO },
+	                                { LINTED_KO_WRONLY, STDERR_FILENO } };
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *waiter,
@@ -1796,8 +1796,8 @@ free_buf:
 
 struct conn_pool
 {
-	bool conns_free[MAX_MANAGE_CONNECTIONS];
 	struct conn conns[MAX_MANAGE_CONNECTIONS];
+	bool conns_free[MAX_MANAGE_CONNECTIONS];
 	size_t count;
 };
 

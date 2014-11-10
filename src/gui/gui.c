@@ -120,10 +120,10 @@ struct notice_task
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
 	struct window_model *window_model;
-	linted_ko controller;
 	struct controller_data *controller_data;
 	struct controller_task *controller_task;
 	xcb_window_t *window;
+	linted_ko controller;
 };
 #define NOTICE_UPCAST(X) LINTED_WINDOW_NOTIFIER_RECEIVE_UPCAST(LINTED_UPCAST(X))
 #define NOTICE_DOWNCAST(X)                                                     \

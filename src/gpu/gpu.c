@@ -44,13 +44,13 @@ struct linted_gpu_context
 	EGLSurface surface;
 	EGLConfig config;
 
+	struct linted_gpu_update update;
+
 	unsigned width;
 	unsigned height;
 
-	struct linted_gpu_update update;
-
-	EGLContext context;
 	GLuint program;
+	EGLContext context;
 	GLint model_view_projection_matrix;
 	enum renderer_state state;
 

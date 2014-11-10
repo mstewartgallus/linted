@@ -75,8 +75,8 @@ struct linted_asynch_task_waitid
 struct linted_asynch_task_sleep_until
 {
 	struct linted_asynch_task parent;
-	int flags;
 	struct timespec request;
+	int flags;
 };
 
 #define LINTED_ASYNCH_SLEEP_UNTIL_UPCAST(X) LINTED_UPCAST(X)
