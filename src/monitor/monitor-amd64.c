@@ -19,8 +19,12 @@
 
 static struct sock_filter const real_filter[] = {
 	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	                offsetof(struct seccomp_data, nr)),
+	                offsetof(struct seccomp_data, arch)),
+	/*  */ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, EM_X86_64, 0U, 1U),
+	/*  */ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 
+	/*  */ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+	                offsetof(struct seccomp_data, nr)),
 	/*  */ ALLOW(access),
 	/*  */ ALLOW(arch_prctl),
 	/*  */ ALLOW(brk),
