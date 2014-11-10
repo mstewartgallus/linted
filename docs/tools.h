@@ -15,7 +15,6 @@
  * <ul>
  *
  * <li> [joern](https://github.com/fabsx00/joern) </li>
- * <li> [SPLINT](http://www.splint.org/) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
  * <li> [BLAST](http://mtc.epfl.ch/software-tools/blast/index-epfl.php) </li>
@@ -210,6 +209,12 @@
  *   important headers such as stddef.h.
  * - Lots of false positives, the tool seems to misunderstand a lot of
  *   standard C that the Linux kernel doesn't use.
+ * </li>
+ *
+ * <li> [SPLINT](http://www.splint.org/)
+ * - Does not know about standard defines such as `UINT32_MAX`.
+ * - Can't seem to parse reasonable code like:
+ * <code> uint_fast16_t low = ((uintmax_t) pos_bytes[0U]) | (((uintmax_t) pos_bytes[1U]) << 8U); </code>
  * </li>
  *
  * <li> Flawfinder or RATS
