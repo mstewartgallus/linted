@@ -14,11 +14,6 @@
  * @section potential Potential tools
  * <ul>
  *
- * <li> [Smatch](http://smatch.sourceforge.net/)
- * - Does not handle shared object linking (which makes sense as it
- *   was developed for the Linux kernel primarily.)
- * </li>
- *
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [SPLINT](http://www.splint.org/) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
@@ -206,6 +201,15 @@
  * This tool is okay but cannot handle thread cancellation which is
  * needed to kill worker threads that are taking too long.
  *
+ * </li>
+ *
+ * <li> [Smatch](http://smatch.sourceforge.net/)
+ * - Does not handle shared object linking (which makes sense as it
+ *   was developed for the Linux kernel primarily.)
+ * - Doesn't integrate with the hosts toolchain so it doesn't have
+ *   important headers such as stddef.h.
+ * - Lots of false positives, the tool seems to misunderstand a lot of
+ *   standard C that the Linux kernel doesn't use.
  * </li>
  *
  * <li> Flawfinder or RATS
