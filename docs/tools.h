@@ -170,6 +170,15 @@
  * - It can't handle concurrency or function pointers in some cases.
  * </li>
  *
+ * <li> [xtrace](http://xtrace.alioth.debian.org//)
+ * - Works perfectly for what it does.
+ * - Is kind of useless.
+ * - Doesn't support a -D detach option like strace.
+ * - Doesn't distinguish between multiple open connections well.
+ * - It'd be awesome if it supported features like fault injection as
+ *   well ("Maximum number of clients reached" for example.)
+ * </li>
+ *
  * @section rejected Rejected Tools
  *
  * <ul>
