@@ -268,7 +268,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
-	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
+	                    sizeof PACKAGE_TARNAME + sizeof PACKAGE_NAME,
+	                    PACKAGE_TARNAME "\0" PACKAGE_NAME);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
@@ -309,6 +310,13 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		                    net_wm_pid_atom, XCB_ATOM_CARDINAL, 32, 1,
 		                    &xx);
 	}
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+	                    XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8,
+	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
