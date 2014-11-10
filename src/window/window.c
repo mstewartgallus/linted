@@ -201,11 +201,32 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	{
-		xcb_atom_t atoms[] = { wm_delete_window_atom };
+		xcb_atom_t xx = wm_delete_window_atom;
 		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    wm_protocols_atom, 4, 32,
-		                    LINTED_ARRAY_SIZE(atoms), atoms);
+		                    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U,
+		                    &xx);
 	}
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
+	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+	                    XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
+	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+	                    XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8,
+	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
