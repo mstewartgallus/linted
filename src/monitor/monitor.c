@@ -816,12 +816,24 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 		envvars = xx;
 	}
 
+	char *root_setting;
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "LINTED_ROOT=%i", getppid())) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_envvars;
+		}
+		root_setting = xx;
+	}
+
 	char *service_name_setting;
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", service_name)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
+			linted_mem_free(root_setting);
 			goto free_envvars;
 		}
 		service_name_setting = xx;
@@ -833,15 +845,17 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 
 		void *xx;
 		errnum = linted_mem_realloc_array(
-		    &xx, envvars, envvars_size + 2U, sizeof envvars[0U]);
+		    &xx, envvars, envvars_size + 3U, sizeof envvars[0U]);
 		if (errnum != 0) {
+			linted_mem_free(root_setting);
 			linted_mem_free(service_name_setting);
 			goto free_envvars;
 		}
 		envvars = xx;
 
-		envvars[envvars_size] = service_name_setting;
-		envvars[envvars_size + 1U] = NULL;
+		envvars[envvars_size] = root_setting;
+		envvars[envvars_size + 1U] = service_name_setting;
+		envvars[envvars_size + 2U] = NULL;
 	}
 
 	struct linted_spawn_file_actions *file_actions;

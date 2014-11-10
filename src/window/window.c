@@ -28,10 +28,13 @@
 #include "linted/window-notifier.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <xcb/xcb.h>
 
@@ -82,6 +85,29 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	linted_window_notifier notifier = kos[1U];
+
+	char const *root = getenv("LINTED_ROOT");
+	if (NULL == root) {
+		fprintf(stderr, "%s: need LINTED_ROOT\n", process_name);
+		return EXIT_FAILURE;
+	}
+
+	errno = 0;
+	long int root_pid = strtol(root, NULL, 10);
+	errnum = errno;
+	if (0 == errnum) {
+		if (root_pid < 1) {
+			errnum = ERANGE;
+		}
+		if (root_pid > INT_MAX) {
+			errnum = ERANGE;
+		}
+	}
+	if (errnum != 0) {
+		errno = errnum;
+		perror("strtol");
+		return EXIT_FAILURE;
+	}
 
 	struct linted_asynch_pool *pool;
 	{
@@ -140,14 +166,20 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto close_display;
 
-	xcb_intern_atom_cookie_t protocols_ck =
-	    xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+	xcb_intern_atom_cookie_t protocols_ck = xcb_intern_atom(
+	    connection, 1, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_intern_atom_cookie_t delete_ck =
-	    xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+	xcb_intern_atom_cookie_t delete_ck = xcb_intern_atom(
+	    connection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	xcb_intern_atom_cookie_t pid_ck = xcb_intern_atom(
+	    connection, 0, strlen("_NET_WM_PID"), "_NET_WM_PID");
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
@@ -210,6 +242,30 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto destroy_window;
 
+	xcb_atom_t net_wm_pid_atom;
+	{
+		xcb_intern_atom_reply_t *pid_ck_reply;
+		xcb_generic_error_t *pid_ck_err;
+		{
+			xcb_generic_error_t *xx = NULL;
+			pid_ck_reply =
+			    xcb_intern_atom_reply(connection, pid_ck, &xx);
+			pid_ck_err = xx;
+		}
+		errnum = get_xcb_conn_error(connection);
+		if (errnum != 0)
+			goto destroy_window;
+
+		if (pid_ck_err != NULL) {
+			errnum = get_xcb_error(pid_ck_err);
+			linted_mem_free(pid_ck_err);
+			goto destroy_window;
+		}
+
+		net_wm_pid_atom = pid_ck_reply->atom;
+		linted_mem_free(pid_ck_reply);
+	}
+
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
@@ -227,6 +283,32 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	{
+		char buf[HOST_NAME_MAX + 1U];
+		if (-1 == gethostname(buf, sizeof buf)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_window;
+		}
+
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+		                    XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING,
+		                    8, strlen(buf), buf);
+	}
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	{
+		uint32_t xx = root_pid;
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+		                    net_wm_pid_atom, XCB_ATOM_CARDINAL, 32, 1,
+		                    &xx);
+	}
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
