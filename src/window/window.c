@@ -152,7 +152,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_atom_t wm_delete_window_atom;
 	xcb_atom_t wm_protocols_atom;
 	{
 		xcb_intern_atom_reply_t *proto_reply;
@@ -177,6 +176,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_mem_free(proto_reply);
 	}
 
+	xcb_atom_t wm_delete_window_atom;
 	{
 		xcb_intern_atom_reply_t *delete_ck_reply;
 		xcb_generic_error_t *delete_ck_err;
@@ -200,14 +200,17 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_mem_free(delete_ck_reply);
 	}
 
-	xcb_void_cookie_t ch_prop_ck = xcb_change_property_checked(
-	    connection, XCB_PROP_MODE_REPLACE, window, wm_protocols_atom, 4, 32,
-	    1, &wm_delete_window_atom);
+	{
+		xcb_atom_t atoms[] = { wm_delete_window_atom };
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+		                    wm_protocols_atom, 4, 32,
+		                    LINTED_ARRAY_SIZE(atoms), atoms);
+	}
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_void_cookie_t map_ck = xcb_map_window(connection, window);
+	xcb_map_window(connection, window);
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
@@ -224,26 +227,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_generic_error_t *ch_prop_err =
-	    xcb_request_check(connection, ch_prop_ck);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-	if (ch_prop_err != NULL) {
-		errnum = get_xcb_error(ch_prop_err);
-		linted_mem_free(ch_prop_err);
-		goto destroy_window;
-	}
-
-	xcb_generic_error_t *map_err = xcb_request_check(connection, map_ck);
-	errnum = get_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-	if (map_err != NULL) {
-		errnum = get_xcb_error(map_err);
-		linted_mem_free(map_err);
-		goto destroy_window;
-	}
+	xcb_flush(connection);
 
 	linted_window_notifier_send(LINTED_UPCAST(&notice_task), ON_SENT_NOTICE,
 	                            notifier, window);
