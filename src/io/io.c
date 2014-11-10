@@ -206,43 +206,18 @@ linted_error linted_io_write_format(linted_ko ko,
 	va_list ap;
 	va_start(ap, format_str);
 
-	va_list ap_copy;
-	va_copy(ap_copy, ap);
-
-	int bytes_should_write = vsnprintf(NULL, 0, format_str, ap);
-	if (bytes_should_write < 0) {
+	int bytes = vdprintf(ko, format_str, ap);
+	if (-1 == bytes) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		goto free_va_lists;
+		goto free_va_list;
 	}
 
-	{
-		size_t string_size = (unsigned)bytes_should_write + 1U;
+	if (bytes_wrote_out != NULL)
+		*bytes_wrote_out = bytes;
 
-		char *string;
-		{
-			void *xx;
-			errnum = linted_mem_alloc_zeroed(&xx, string_size);
-			if (errnum != 0)
-				goto free_va_lists;
-			string = xx;
-		}
-
-		if (vsnprintf(string, string_size, format_str, ap_copy) < 0) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_string;
-		}
-
-		errnum = linted_io_write_string(ko, bytes_wrote_out, string);
-
-	free_string:
-		linted_mem_free(string);
-	}
-
-free_va_lists:
+free_va_list:
 	va_end(ap);
-	va_end(ap_copy);
 
 	return errnum;
 }
