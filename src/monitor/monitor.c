@@ -246,11 +246,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
+retry_bind:;
 	linted_admin admin;
 	{
 		linted_admin xx;
 		errnum = linted_admin_bind(&xx, BACKLOG, "admin-socket",
 		                           strlen("admin-socket"));
+		if (EADDRINUSE == errnum) {
+			if (-1 == unlink("admin-socket")) {
+				perror("unlink");
+				return EXIT_FAILURE;
+			}
+			goto retry_bind;
+		}
 		if (errnum != 0) {
 			errno = errnum;
 			perror("linted_admin_bind");
@@ -802,6 +810,21 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 
 	struct linted_unit_service *unit_service = (void *)unit;
 
+	pid_t pid;
+	{
+		pid_t xx;
+		errnum = pid_for_service_name(&xx, service_name);
+		if (ENOENT == errnum)
+			goto service_not_found;
+		if (errnum != 0)
+			return errnum;
+		pid = xx;
+	}
+	unit_service->pid = pid;
+	return 0;
+
+service_not_found:
+	;
 	char const *const *exec_start = unit_service->exec_start;
 	bool no_new_privs = unit_service->no_new_privs;
 	char const *const *files = unit_service->files;
