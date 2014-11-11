@@ -18,14 +18,26 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
+
+static linted_error set_name(char const *name);
 
 int main(int argc, char *argv[])
 {
 	linted_error errnum;
+
+	char const *service = getenv("LINTED_SERVICE");
+
+	if (service != NULL) {
+		errnum = set_name(service);
+		assert(errnum != EINVAL);
+	}
 
 	for (;;) {
 		int wait_status;
@@ -43,4 +55,19 @@ int main(int argc, char *argv[])
 	}
 
 	return errnum;
+}
+
+static linted_error set_name(char const *name)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		assert(errnum != EINVAL);
+
+		return errnum;
+	}
+	return 0;
 }

@@ -36,9 +36,6 @@
  *
  * @todo Stop graphical banding problems
  *
- * @todo Use service identification that works with zombies (environ
- *       becomes empty for zombies.)
- *
  * @todo Preserve socket files between restarts
  *
  * @todo Restart child processes on crashes

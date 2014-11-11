@@ -167,7 +167,7 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 static linted_error pid_for_service_name(pid_t *pidp, char const *name);
 static linted_error get_process_service_name(pid_t pid, char **service_namep);
-static linted_error get_process_environ(linted_ko *kop, pid_t pid);
+static linted_error get_process_comm(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
 static linted_error ptrace_interrupt(pid_t pid);
@@ -1409,13 +1409,24 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	bool was_signal = CLD_DUMPED == exit_code || CLD_KILLED == exit_code;
 	bool exited = was_signal || CLD_EXITED == exit_code;
 	if (exited) {
-		if (was_signal) {
-			fprintf(stderr, "%i killed due to signal %s\n", pid,
-			        strsignal(exit_status));
-		} else {
-			fprintf(stderr, "%i exited with %i\n", pid,
-			        exit_status);
+		char *service_name;
+		{
+			char *xx;
+			errnum = get_process_service_name(pid, &xx);
+			if (errnum != 0)
+				return errnum;
+			service_name = xx;
 		}
+
+		if (was_signal) {
+			fprintf(stderr, "%s %i killed due to signal %s\n",
+			        service_name, pid, strsignal(exit_status));
+		} else {
+			fprintf(stderr, "%s %i exited with %i\n", service_name,
+			        pid, exit_status);
+		}
+
+		linted_mem_free(service_name);
 
 		do {
 			siginfo_t info;
@@ -1868,7 +1879,7 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 	linted_ko env;
 	{
 		linted_ko xx;
-		errnum = get_process_environ(&xx, pid);
+		errnum = get_process_comm(&xx, pid);
 		if (errnum != 0)
 			return errnum;
 		env = xx;
@@ -1884,52 +1895,29 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 		return errnum;
 	}
 
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	char const *service_name = NULL;
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, '\0', file);
-			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_buf;
-			}
-			buf = xx;
-			buf_size = yy;
-		}
-
-		if (0 == strncmp("LINTED_SERVICE=", buf,
-		                 strlen("LINTED_SERVICE="))) {
-			service_name = buf + strlen("LINTED_SERVICE=");
-			break;
-		}
+	char *buf;
+	size_t buf_size = 17U;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, buf_size);
+		if (errnum != 0)
+			goto close_file;
+		buf = xx;
 	}
 
-	if (NULL == service_name) {
-		errnum = ENOENT;
-		goto free_buf;
-	}
+	/* This is weird but /proc/[pid]/comm uses a newline */
 
-	char *copy = strdup(service_name);
-	if (NULL == copy) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto free_buf;
-	}
+	size_t bytes = fread(buf, 1U, buf_size, file);
+	errnum = errno;
+	if (ferror(file))
+		goto close_file;
+	errnum = 0;
 
-	*service_namep = copy;
+	buf[bytes - 1U] = '\0';
 
-free_buf:
-	linted_mem_free(buf);
+	*service_namep = buf;
 
+close_file:
 	fclose(file);
 
 	return errnum;
@@ -2204,10 +2192,10 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 	return 0;
 }
 
-static linted_error get_process_environ(linted_ko *kop, pid_t pid)
+static linted_error get_process_comm(linted_ko *kop, pid_t pid)
 {
 	char path[] = "/proc/XXXXXXXXXXXXXXXX";
-	sprintf(path, "/proc/%i/environ", pid);
+	sprintf(path, "/proc/%i/comm", pid);
 
 	return linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 }
