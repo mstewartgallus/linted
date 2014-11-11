@@ -142,9 +142,6 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
 static linted_error on_process_sigtrap(pid_t pid, int exit_status);
-static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
-                                           int exit_status);
-static linted_error ptrace_children(pid_t parent);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
@@ -174,10 +171,8 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep);
 static linted_error get_process_comm(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
-static linted_error ptrace_interrupt(pid_t pid);
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
-static linted_error ptrace_listen(pid_t pid);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_ko kos[1U];
@@ -338,10 +333,6 @@ retry_bind:
 
 		sched_yield();
 	}
-	if (errnum != 0)
-		goto destroy_confs;
-
-	errnum = ptrace_interrupt(ppid);
 	if (errnum != 0)
 		goto destroy_confs;
 
@@ -824,7 +815,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 
 	struct linted_unit_service *unit_service = (void *)unit;
 
-	pid_t pid;
+	pid_t child;
 	{
 		pid_t xx;
 		errnum = pid_for_service_name(&xx, service_name);
@@ -832,10 +823,10 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 			goto service_not_found;
 		if (errnum != 0)
 			return errnum;
-		pid = xx;
+		child = xx;
 	}
-	unit_service->pid = pid;
-	return 0;
+	unit_service->pid = child;
+	goto ptrace_child;
 
 service_not_found:
 	;
@@ -1098,7 +1089,6 @@ service_not_found:
 			goto destroy_proc_kos;
 	}
 
-	pid_t process;
 	{
 		pid_t xx;
 		errnum =
@@ -1106,10 +1096,10 @@ service_not_found:
 		                 exec_start, (char const * const *)envvars);
 		if (errnum != 0)
 			goto destroy_attr;
-		process = xx;
+		child = xx;
 	}
 
-	unit_service->pid = process;
+	unit_service->pid = child;
 
 destroy_proc_kos:
 	for (size_t jj = 0; jj < kos_opened; ++jj)
@@ -1126,6 +1116,14 @@ free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
 		linted_mem_free(*envp);
 	linted_mem_free(envvars);
+
+ptrace_child:
+	if (0 == errnum) {
+		errnum = ptrace_seize(child, 0U);
+
+		fprintf(stderr, "ptracing service %s: %i\n", service_name,
+		        child);
+	}
 
 	return errnum;
 }
@@ -1439,8 +1437,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 			        pid, exit_status);
 		}
 
-		struct linted_unit *unit = linted_unit_db_get_unit_by_name(unit_db,
-									   service_name);
+		struct linted_unit *unit =
+		    linted_unit_db_get_unit_by_name(unit_db, service_name);
 
 		linted_mem_free(service_name);
 
@@ -1459,7 +1457,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		if (errnum != 0)
 			return errnum;
 
-		errnum = service_activate(unit, cwd, chrootdir, waiter, unit_db);
+		errnum =
+		    service_activate(unit, cwd, chrootdir, waiter, unit_db);
 	}
 
 	if (CLD_TRAPPED == exit_code)
@@ -1476,9 +1475,6 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 	switch (event) {
 	case 0:
 		return on_process_sigtrap(pid, exit_status);
-
-	case PTRACE_EVENT_STOP:
-		return on_process_interrupted(ppid, pid, exit_status);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -1551,62 +1547,6 @@ restart_process:
 	linted_error cont_errnum = ptrace_cont(pid, exit_status);
 	if (0 == errnum)
 		errnum = cont_errnum;
-	return errnum;
-}
-
-static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
-                                           int exit_status)
-{
-	linted_error errnum = 0;
-
-	do {
-		siginfo_t info;
-		if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
-
-	int stop_sig = exit_status & 0xFF;
-
-	if (pid == ppid) {
-		fprintf(stderr, "ptracing init: %i\n", pid);
-		errnum = ptrace_children(ppid);
-		goto continue_process;
-	}
-
-	char *service_name;
-	{
-		char *xx;
-		errnum = get_process_service_name(pid, &xx);
-		if (errnum != 0)
-			return errnum;
-		service_name = xx;
-	}
-
-	fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
-
-	linted_mem_free(service_name);
-
-continue_process:
-	switch (stop_sig) {
-	case SIGTRAP: {
-		linted_error cont_errnum = ptrace_cont(pid, 0);
-		if (0 == errnum)
-			errnum = cont_errnum;
-		break;
-	}
-
-	default: {
-		linted_error cont_errnum = ptrace_listen(pid);
-		if (0 == errnum)
-			errnum = cont_errnum;
-		break;
-	}
-	}
-
 	return errnum;
 }
 
@@ -1823,76 +1763,6 @@ static linted_error on_wrote_conn(struct linted_asynch_task *task,
 	linted_mem_free(conn);
 
 	return 0;
-}
-
-static linted_error ptrace_children(pid_t parent)
-{
-	linted_error errnum;
-
-	linted_ko init_children;
-	{
-		linted_ko xx;
-		errnum = get_process_children(&xx, parent);
-		if (errnum != 0)
-			return errnum;
-		init_children = xx;
-	}
-
-	FILE *file = fdopen(init_children, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(init_children);
-
-		return errnum;
-	}
-
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_buf;
-			}
-			buf = xx;
-			buf_size = yy;
-		}
-
-		pid_t child = strtol(buf, NULL, 10);
-		if (getpid() == child)
-			continue;
-
-		errnum = ptrace_seize(child, 0U);
-
-		/* Child already exited */
-		if (EPERM == errnum)
-			continue;
-
-		if (errnum != 0)
-			break;
-
-		errnum = ptrace_interrupt(child);
-		if (errnum != 0)
-			break;
-	}
-
-free_buf:
-	linted_mem_free(buf);
-
-	fclose(file);
-
-	return errnum;
 }
 
 static linted_error get_process_service_name(pid_t pid, char **service_namep)
@@ -2221,7 +2091,8 @@ static linted_error get_process_comm(linted_ko *kop, pid_t pid)
 	{
 		char path[] = "/proc/XXXXXXXXXXXXXXXX";
 		sprintf(path, "/proc/%i/comm", pid);
-		errnum = linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum =
+		    linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 	}
 	if (ENOENT == errnum)
 		return ESRCH;
@@ -2234,24 +2105,12 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid)
 	{
 		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
 		sprintf(path, "/proc/%i/task/%i/children", pid, pid);
-		errnum = linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum =
+		    linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 	}
 	if (ENOENT == errnum)
 		return ESRCH;
 	return errnum;
-}
-
-static linted_error ptrace_interrupt(pid_t pid)
-{
-	linted_error errnum;
-
-	if (-1 == ptrace(PTRACE_INTERRUPT, pid, (void *)NULL, (void *)NULL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
 }
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
@@ -2273,19 +2132,6 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 
 	if (-1 ==
 	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t)signo, (void *)NULL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_listen(pid_t pid)
-{
-	linted_error errnum;
-
-	if (-1 == ptrace(PTRACE_LISTEN, pid, (void *)NULL, (void *)NULL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

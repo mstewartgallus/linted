@@ -38,8 +38,6 @@
  *
  * @todo Preserve socket files between restarts
  *
- * @todo Ptrace restarted child processes
- *
  * @todo Check child processes for hangups
  *
  * @todo Use the monitor to report crashes such as from seccomp rule

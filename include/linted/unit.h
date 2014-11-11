@@ -80,8 +80,7 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 size_t linted_unit_db_size(struct linted_unit_db *units);
 struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
                                             size_t ii);
-struct linted_unit *
-linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
-                                char const *name);
+struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
+                                                    char const *name);
 
 #endif /* LINTED_UNIT_H */
