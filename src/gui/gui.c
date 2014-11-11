@@ -23,32 +23,21 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/controller.h"
-#include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
 #include "linted/window-notifier.h"
 
-#include <assert.h>
 #include <errno.h>
-#include <math.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stddef.h>
-#include <string.h>
-#include <sys/syscall.h>
-#include <unistd.h>
 
 #include <xcb/xcb.h>
 #include <X11/keysymdef.h>
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
-
-#include <linux/filter.h>
-#include <linux/seccomp.h>
 
 /**
  * @file

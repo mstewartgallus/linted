@@ -22,12 +22,10 @@ pkglibexec_PROGRAMS+=%D%/gui
   \
   src/asynch/libasynch.la\
   src/error/liberror.la\
-  src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
   \
   src/controller/libcontroller.la\
-  src/log/liblog.la\
   src/window-notifier/libwindow-notifier.la\
   \
   $(X11_LIBS)\

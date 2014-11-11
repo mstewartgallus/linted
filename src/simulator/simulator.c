@@ -20,7 +20,6 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/controller.h"
-#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/start.h"

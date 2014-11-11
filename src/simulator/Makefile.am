@@ -22,7 +22,6 @@ pkglibexec_PROGRAMS+=%D%/simulator
   \
   src/asynch/libasynch.la\
   src/error/liberror.la\
-  src/io/libio.la\
   src/ko/libko.la\
   \
   src/controller/libcontroller.la\
