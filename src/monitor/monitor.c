@@ -185,6 +185,10 @@ struct linted_start_config const linted_start_config = {
 	.kos = kos
 };
 
+static void ignore(int signo)
+{
+}
+
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
@@ -193,10 +197,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	pid_t ppid = getppid();
 	linted_dir private_run_dir = kos[0U];
 
-	/**
-	 * @TODO Make the monitor not rely upon being basically PID 1
-	 * and recover from being restarted suddenly.
-	 */
+	{
+		struct sigaction action = { 0 };
+		action.sa_handler = ignore;
+		action.sa_flags = SA_RESTART | SA_NODEFER | SA_NOCLDSTOP;
+		sigaction(SIGCHLD, &action, NULL);
+	}
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
@@ -246,7 +252,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-retry_bind:;
+retry_bind:
+	;
 	linted_admin admin;
 	{
 		linted_admin xx;
@@ -342,7 +349,7 @@ retry_bind:;
 		goto kill_procs;
 
 	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
-	                          -1, WEXITED);
+	                          -1, WEXITED | WNOWAIT);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
 	waiter_task.time_to_exit = false;
@@ -416,8 +423,7 @@ destroy_conn_pool:
 		struct conn *conn;
 		{
 			struct linted_pool_node *xx;
-			errnum = linted_pool_remove_node(conn_pool, &xx);
-			if (EAGAIN == errnum)
+			if (EAGAIN == linted_pool_remove_node(conn_pool, &xx))
 				break;
 			conn = (void *)xx;
 		}
@@ -1400,26 +1406,32 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		exit_code = exit_info->si_code;
 	}
 
-	linted_asynch_pool_submit(pool, task);
+	bool was_signal = CLD_DUMPED == exit_code || CLD_KILLED == exit_code;
+	bool exited = was_signal || CLD_EXITED == exit_code;
+	if (exited) {
+		if (was_signal) {
+			fprintf(stderr, "%i killed due to signal %s\n", pid,
+			        strsignal(exit_status));
+		} else {
+			fprintf(stderr, "%i exited with %i\n", pid,
+			        exit_status);
+		}
 
-	switch (exit_code) {
-	case CLD_DUMPED:
-	case CLD_KILLED:
-		fprintf(stderr, "%i killed due to signal %s\n", pid,
-		        strsignal(exit_status));
-		break;
-
-	case CLD_EXITED:
-		fprintf(stderr, "%i exited with %i\n", pid, exit_status);
-		break;
-
-	case CLD_TRAPPED:
-		errnum = on_process_trap(ppid, pid, exit_status);
-		break;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
+		do {
+			siginfo_t info;
+			if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			} else {
+				errnum = 0;
+			}
+		} while (EINTR == errnum);
 	}
+
+	if (CLD_TRAPPED == exit_code)
+		errnum = on_process_trap(ppid, pid, exit_status);
+
+	linted_asynch_pool_submit(pool, task);
 
 	return errnum;
 }
@@ -1442,6 +1454,16 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 {
 	linted_error errnum = 0;
+
+	do {
+		siginfo_t info;
+		if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
 
 	if (exit_status != SIGCHLD)
 		goto restart_process;
@@ -1502,6 +1524,16 @@ static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
                                            int exit_status)
 {
 	linted_error errnum = 0;
+
+	do {
+		siginfo_t info;
+		if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
 
 	int stop_sig = exit_status & 0xFF;
 
