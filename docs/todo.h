@@ -12,7 +12,8 @@
  * Linted -- TODO
  *
  * @bug If window is moved partially offscreen and resized it fails to
- *      draw to a part of the window opposite from the part offscreen.
+ *      draw to a part of the window opposite from the part offscreen
+ *      (not my bug works with glxgears too.)
  *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
@@ -34,6 +35,10 @@
  * @todo Use length annotated strings instead of C strings.
  *
  * @todo Stop graphical banding problems
+ *
+ * @todo Preserve socket files between restarts
+ *
+ * @todo Restart child processes on crashes
  *
  * @todo Check child processes for hangups
  *
