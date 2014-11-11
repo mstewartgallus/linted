@@ -33,8 +33,6 @@ struct sock_fprog;
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp);
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-void linted_spawn_attr_setname(struct linted_spawn_attr *attr,
-                               char const *name);
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
                                    _Bool deparent);
 void linted_spawn_attr_setwaiter(struct linted_spawn_attr *attr,

@@ -166,6 +166,7 @@ static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
+static linted_error get_process_environ(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
 static linted_error ptrace_interrupt(pid_t pid);
@@ -887,7 +888,6 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
 
-	linted_spawn_attr_setname(attr, service_name);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setwaiter(attr, waiter);
@@ -1482,10 +1482,66 @@ static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
 
 	int stop_sig = exit_status & 0xFF;
 
-	fprintf(stderr, "ptracing %i!\n", pid);
-
-	if (pid == ppid)
+	if (pid == ppid) {
+		fprintf(stderr, "ptracing init: %i\n", pid);
 		errnum = ptrace_children(ppid);
+	}
+
+	linted_ko env;
+	{
+		linted_ko xx;
+		errnum = get_process_environ(&xx, pid);
+		if (errnum != 0)
+			return errnum;
+		env = xx;
+	}
+
+	FILE *file = fdopen(env, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(env);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	char const*service_name = NULL;
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz = getdelim(&xx, &yy, '\0', file);
+			if (-1 == zz) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_buf;
+			}
+			buf = xx;
+			buf_size = yy;
+		}
+
+		if (0 == strncmp("LINTED_SERVICE=", buf,
+				 strlen("LINTED_SERVICE="))) {
+			service_name = buf + strlen("LINTED_SERVICE=");
+			break;
+		}
+	}
+
+	if (service_name != NULL)
+		fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(file);
 
 	switch (stop_sig) {
 	case SIGTRAP: {
@@ -2000,6 +2056,14 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 	*filep = file;
 	return 0;
+}
+
+static linted_error get_process_environ(linted_ko *kop, pid_t pid)
+{
+	char path[] = "/proc/XXXXXXXXXXXXXXXX";
+	sprintf(path, "/proc/%i/environ", pid);
+
+	return linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 }
 
 static linted_error get_process_children(linted_ko *kop, pid_t pid)

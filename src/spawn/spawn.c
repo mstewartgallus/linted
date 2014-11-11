@@ -92,7 +92,6 @@ struct linted_spawn_attr
 	char const *chdir_path;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
-	char const *name;
 	char const *waiter;
 	struct sock_fprog const *filter;
 	int clone_flags;
@@ -135,7 +134,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
-	attr->name = NULL;
 	attr->deathsig = 0;
 	attr->chrootdir = NULL;
 	attr->chdir_path = NULL;
@@ -163,11 +161,6 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
-}
-
-void linted_spawn_attr_setname(struct linted_spawn_attr *attr, char const *name)
-{
-	attr->name = name;
 }
 
 void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
@@ -424,7 +417,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	int deathsig = 0;
 	char const *chrootdir = NULL;
 	char const *chdir_path = NULL;
-	char const *name = NULL;
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
@@ -434,7 +426,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	struct sock_fprog const *filter = NULL;
 
 	if (attr != NULL) {
-		name = attr->name;
 		clone_flags = attr->clone_flags;
 		deathsig = attr->deathsig;
 		chrootdir = attr->chrootdir;
@@ -793,12 +784,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			if (errnum != 0)
 				_Exit(errnum);
 
-			{
-				static char const *const empty[] = { NULL };
-				char const *const arguments[] = { name, NULL };
-				execve(waiter, (char * const *)arguments,
-				       (char * const *)empty);
-			}
+			char const *const arguments[] = { waiter, NULL };
+			execve(waiter, (char * const *)arguments,
+			       (char * const *)envp);
 
 			_Exit(errno);
 		}
