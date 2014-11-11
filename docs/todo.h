@@ -38,7 +38,7 @@
  *
  * @todo Preserve socket files between restarts
  *
- * @todo Restart child processes on crashes
+ * @todo Ptrace restarted child processes
  *
  * @todo Check child processes for hangups
  *

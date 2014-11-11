@@ -74,6 +74,10 @@ struct wait_service_task
 	struct linted_asynch_task_waitid parent;
 	struct linted_asynch_pool *pool;
 	pid_t parent_process;
+	linted_ko cwd;
+	char const *chrootdir;
+	char const *waiter;
+	struct linted_unit_db *unit_db;
 	bool time_to_exit : 1U;
 };
 
@@ -145,7 +149,7 @@ static linted_error ptrace_children(pid_t parent);
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *waiter,
-                                     struct linted_unit_db const *units);
+                                     struct linted_unit_db *units);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
                                 char const *fstab_path);
@@ -352,6 +356,10 @@ retry_bind:
 	                          -1, WEXITED | WNOWAIT);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
+	waiter_task.cwd = cwd;
+	waiter_task.chrootdir = chrootdir;
+	waiter_task.waiter = waiter;
+	waiter_task.unit_db = units;
 	waiter_task.time_to_exit = false;
 
 	linted_asynch_pool_submit(pool,
@@ -808,7 +816,7 @@ static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *waiter,
-                                     struct linted_unit_db const *units)
+                                     struct linted_unit_db *units)
 {
 	linted_error errnum = 0;
 
@@ -820,7 +828,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 	{
 		pid_t xx;
 		errnum = pid_for_service_name(&xx, service_name);
-		if (ENOENT == errnum)
+		if (ESRCH == errnum)
 			goto service_not_found;
 		if (errnum != 0)
 			return errnum;
@@ -1396,6 +1404,11 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	struct linted_asynch_pool *pool = wait_service_task->pool;
 	pid_t ppid = wait_service_task->parent_process;
 
+	linted_ko cwd = wait_service_task->cwd;
+	char const *chrootdir = wait_service_task->chrootdir;
+	char const *waiter = wait_service_task->waiter;
+	struct linted_unit_db *unit_db = wait_service_task->unit_db;
+
 	pid_t pid;
 	int exit_status;
 	int exit_code;
@@ -1426,8 +1439,14 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 			        pid, exit_status);
 		}
 
+		struct linted_unit *unit = linted_unit_db_get_unit_by_name(unit_db,
+									   service_name);
+
 		linted_mem_free(service_name);
 
+		/* This has to be done first so that service_activate
+		 * isn't stupid and thinks that the zombie is still
+		 * living. */
 		do {
 			siginfo_t info;
 			if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
@@ -1437,6 +1456,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 				errnum = 0;
 			}
 		} while (EINTR == errnum);
+		if (errnum != 0)
+			return errnum;
+
+		errnum = service_activate(unit, cwd, chrootdir, waiter, unit_db);
 	}
 
 	if (CLD_TRAPPED == exit_code)
@@ -1960,8 +1983,8 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 			if (-1 == zz) {
 				errnum = errno;
 				if (0 == errnum) {
-					errnum = ENOENT;
-					break;
+					errnum = ESRCH;
+					goto free_buf;
 				}
 
 				goto free_buf;
@@ -1976,7 +1999,7 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 		{
 			char *xx;
 			errnum = get_process_service_name(child, &xx);
-			if (ENOENT == errnum) {
+			if (ESRCH == errnum) {
 				errnum = 0;
 				continue;
 			}
@@ -2194,18 +2217,28 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 static linted_error get_process_comm(linted_ko *kop, pid_t pid)
 {
-	char path[] = "/proc/XXXXXXXXXXXXXXXX";
-	sprintf(path, "/proc/%i/comm", pid);
-
-	return linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+	linted_error errnum;
+	{
+		char path[] = "/proc/XXXXXXXXXXXXXXXX";
+		sprintf(path, "/proc/%i/comm", pid);
+		errnum = linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+	}
+	if (ENOENT == errnum)
+		return ESRCH;
+	return errnum;
 }
 
 static linted_error get_process_children(linted_ko *kop, pid_t pid)
 {
-	char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-	sprintf(path, "/proc/%i/task/%i/children", pid, pid);
-
-	return linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+	linted_error errnum;
+	{
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
+		sprintf(path, "/proc/%i/task/%i/children", pid, pid);
+		errnum = linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+	}
+	if (ENOENT == errnum)
+		return ESRCH;
+	return errnum;
 }
 
 static linted_error ptrace_interrupt(pid_t pid)

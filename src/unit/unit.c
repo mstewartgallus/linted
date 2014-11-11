@@ -109,12 +109,12 @@ struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
 	return &units->list[ii].common;
 }
 
-struct linted_unit const *
-linted_unit_db_get_unit_by_name(struct linted_unit_db const *units,
-                                const char *name)
+struct linted_unit *
+linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
+                                char const *name)
 {
 	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct linted_unit const *unit = &units->list[ii].common;
+		struct linted_unit *unit = &units->list[ii].common;
 
 		if (0 == strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
 			return unit;
