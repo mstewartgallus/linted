@@ -30,7 +30,8 @@
 
 struct linted_queue
 {
-	struct linted_queue_node tip;
+	struct linted_queue_node *head;
+	struct linted_queue_node **tailp;
 	pthread_mutex_t lock;
 	pthread_cond_t gains_member;
 };
@@ -39,7 +40,6 @@ static void unlock_routine(void *arg);
 
 void linted_queue_node(struct linted_queue_node *node)
 {
-	node->prev = NULL;
 	node->next = NULL;
 }
 
@@ -55,10 +55,8 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 		queue = xx;
 	}
 
-	struct linted_queue_node *tip = &queue->tip;
-
-	tip->prev = tip;
-	tip->next = tip;
+	queue->head = NULL;
+	queue->tailp = &queue->head;
 
 	{
 		pthread_mutexattr_t attr;
@@ -123,6 +121,7 @@ void linted_queue_destroy(struct linted_queue *restrict queue)
 	linted_mem_free(queue);
 }
 
+/* Attach to the tail */
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
@@ -130,13 +129,9 @@ void linted_queue_send(struct linted_queue *queue,
 
 	/* Guard against double insertions */
 	assert(NULL == node->next);
-	assert(NULL == node->prev);
 
-	struct linted_queue_node *tip = &queue->tip;
 	pthread_mutex_t *lock = &queue->lock;
 	pthread_cond_t *gains_member = &queue->gains_member;
-
-	node->next = tip;
 
 	errnum = pthread_mutex_lock(lock);
 	if (errnum != 0) {
@@ -144,11 +139,9 @@ void linted_queue_send(struct linted_queue *queue,
 		assert(false);
 	}
 
-	/* The nodes previous to the tip are the tail */
-	struct linted_queue_node *tail = tip->prev;
-	tail->next = node;
-	node->prev = tail;
-	tip->prev = node;
+	*queue->tailp = node;
+
+	queue->tailp = &node->next;
 
 	/* Not a cancellation point */
 	pthread_cond_signal(gains_member);
@@ -160,13 +153,13 @@ void linted_queue_send(struct linted_queue *queue,
 	}
 }
 
+/* Remove from the head */
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
 	linted_error errnum;
-	struct linted_queue_node *head;
+	struct linted_queue_node *removed;
 
-	struct linted_queue_node *tip = &queue->tip;
 	pthread_mutex_t *lock = &queue->lock;
 	pthread_cond_t *gains_member = &queue->gains_member;
 
@@ -177,8 +170,8 @@ void linted_queue_recv(struct linted_queue *queue,
 	}
 
 	/* The nodes next to the tip are the head */
-	head = tip->next;
-	if (head != tip)
+	removed = queue->head;
+	if (removed != NULL)
 		goto got_node;
 
 	/* The slow path, only bother to push the cancellation point
@@ -191,15 +184,16 @@ void linted_queue_recv(struct linted_queue *queue,
 			assert(false);
 		}
 
-		head = tip->next;
-	} while (tip == head);
+		removed = queue->head;
+	} while (removed == NULL);
 	pthread_cleanup_pop(false);
 got_node:
 	;
 
-	struct linted_queue_node *next = head->next;
-	tip->next = next;
-	next->prev = tip;
+	if (queue->tailp == &removed->next)
+		queue->tailp = &queue->head;
+
+	queue->head = removed->next;
 
 	/* The fast path doesn't bother with the handler */
 
@@ -210,18 +204,17 @@ got_node:
 	}
 
 	/* Refresh the node for reuse later */
-	linted_queue_node(head);
+	linted_queue_node(removed);
 
-	*nodep = head;
+	*nodep = removed;
 }
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **nodep)
 {
 	linted_error errnum = 0;
-	struct linted_queue_node *head;
+	struct linted_queue_node *removed;
 
-	struct linted_queue_node *tip = &queue->tip;
 	pthread_mutex_t *lock = &queue->lock;
 
 	errnum = pthread_mutex_lock(lock);
@@ -233,15 +226,16 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	/* No cancellation points in the critical section */
 
 	/* The nodes next to the tip are the head */
-	head = tip->next;
-	if (head == tip) {
+	removed = queue->head;
+	if (removed == NULL) {
 		errnum = EAGAIN;
 		goto pop_cleanup;
 	}
 
-	struct linted_queue_node *next = head->next;
-	tip->next = next;
-	next->prev = tip;
+	if (queue->tailp == &removed->next)
+		queue->tailp = &queue->head;
+
+	queue->head = removed->next;
 
 pop_cleanup : {
 	linted_error unlock_errnum = pthread_mutex_unlock(lock);
@@ -253,9 +247,9 @@ pop_cleanup : {
 
 	if (0 == errnum) {
 		/* Refresh the node for reuse later */
-		linted_queue_node(head);
+		linted_queue_node(removed);
 
-		*nodep = head;
+		*nodep = removed;
 	}
 
 	return errnum;
