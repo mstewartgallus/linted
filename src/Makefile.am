@@ -44,6 +44,7 @@ include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/mq/Makefile.am
+include %C%/pool/Makefile.am
 include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
 include %C%/spawn/Makefile.am
