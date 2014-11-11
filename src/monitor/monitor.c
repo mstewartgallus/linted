@@ -33,6 +33,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -45,6 +46,7 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -82,7 +84,6 @@ struct accepted_conn_task
 	struct linted_admin_task_accept parent;
 	struct linted_asynch_pool *pool;
 	struct linted_pool *conn_pool;
-	struct linted_unit_db const *units;
 };
 
 struct read_conn_task
@@ -90,7 +91,6 @@ struct read_conn_task
 	struct linted_admin_task_recv_request parent;
 	struct linted_asynch_pool *pool;
 	struct conn *conn;
-	struct linted_unit_db const *units;
 };
 
 struct wrote_conn_task
@@ -131,11 +131,9 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
                                  bool time_to_quit);
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
                                   bool time_to_quit);
-static linted_error on_status_request(struct linted_unit_db const *units,
-                                      union linted_admin_request const *request,
+static linted_error on_status_request(union linted_admin_request const *request,
                                       union linted_admin_reply *reply);
-static linted_error on_stop_request(struct linted_unit_db const *units,
-                                    union linted_admin_request const *request,
+static linted_error on_stop_request(union linted_admin_request const *request,
                                     union linted_admin_reply *reply);
 
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
@@ -166,6 +164,9 @@ static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
+
+static linted_error pid_for_service_name(pid_t *pidp, char const *name);
+static linted_error get_process_service_name(pid_t pid, char **service_namep);
 static linted_error get_process_environ(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
 
@@ -306,7 +307,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	                    ADMIN_ACCEPTED_CONNECTION, admin);
 	accepted_conn_task.pool = pool;
 	accepted_conn_task.conn_pool = conn_pool;
-	accepted_conn_task.units = units;
 
 	linted_asynch_pool_submit(
 	    pool,
@@ -1485,64 +1485,23 @@ static linted_error on_process_interrupted(pid_t ppid, pid_t pid,
 	if (pid == ppid) {
 		fprintf(stderr, "ptracing init: %i\n", pid);
 		errnum = ptrace_children(ppid);
+		goto continue_process;
 	}
 
-	linted_ko env;
+	char *service_name;
 	{
-		linted_ko xx;
-		errnum = get_process_environ(&xx, pid);
+		char *xx;
+		errnum = get_process_service_name(pid, &xx);
 		if (errnum != 0)
 			return errnum;
-		env = xx;
+		service_name = xx;
 	}
 
-	FILE *file = fdopen(env, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+	fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
 
-		linted_ko_close(env);
+	linted_mem_free(service_name);
 
-		return errnum;
-	}
-
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	char const*service_name = NULL;
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, '\0', file);
-			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_buf;
-			}
-			buf = xx;
-			buf_size = yy;
-		}
-
-		if (0 == strncmp("LINTED_SERVICE=", buf,
-				 strlen("LINTED_SERVICE="))) {
-			service_name = buf + strlen("LINTED_SERVICE=");
-			break;
-		}
-	}
-
-	if (service_name != NULL)
-		fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
-
-free_buf:
-	linted_mem_free(buf);
-
-	fclose(file);
-
+continue_process:
 	switch (stop_sig) {
 	case SIGTRAP: {
 		linted_error cont_errnum = ptrace_cont(pid, 0);
@@ -1579,8 +1538,6 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	struct linted_asynch_pool *pool = accepted_conn_task->pool;
 	struct linted_pool *conn_pool = accepted_conn_task->conn_pool;
 
-	struct linted_unit_db const *units = accepted_conn_task->units;
-
 	linted_admin new_socket = accept_task->returned_ko;
 
 	if (time_to_quit)
@@ -1607,7 +1564,6 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	                          ADMIN_READ_CONNECTION, new_socket);
 	conn->read_task.pool = pool;
 	conn->read_task.conn = conn;
-	conn->read_task.units = units;
 
 	linted_asynch_pool_submit(pool, LINTED_UPCAST(LINTED_UPCAST(
 	                                    LINTED_UPCAST(&conn->read_task))));
@@ -1632,7 +1588,6 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	struct linted_asynch_pool *pool = read_conn_task->pool;
 	struct conn *conn = read_conn_task->conn;
-	struct linted_unit_db const *units = read_conn_task->units;
 
 	errnum = task->errnum;
 	if (errnum != 0)
@@ -1652,11 +1607,11 @@ static linted_error on_read_conn(struct linted_asynch_task *task,
 
 	switch (request->type) {
 	case LINTED_ADMIN_STATUS:
-		errnum = on_status_request(units, request, &reply);
+		errnum = on_status_request(request, &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(units, request, &reply);
+		errnum = on_stop_request(request, &reply);
 		break;
 
 	default:
@@ -1683,43 +1638,34 @@ conn_remove:
 	return 0;
 }
 
-static linted_error on_status_request(struct linted_unit_db const *units,
-                                      union linted_admin_request const *request,
+static linted_error on_status_request(union linted_admin_request const *request,
                                       union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
 	bool is_up;
-	struct linted_unit const *unit;
-
-	unit = linted_unit_db_get_unit_by_name(units, request->status.name);
-	if (NULL == unit) {
-		is_up = false;
-		goto reply;
-	}
-
-	struct linted_unit_service *unit_service = (void *)unit;
 
 	pid_t pid;
-	switch (unit->type) {
-	case UNIT_TYPE_SERVICE:
-		pid = unit_service->pid;
-
-		if (-1 == kill(pid, 0)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			assert(errnum != EINVAL);
-			if (ESRCH == errnum)
-				errnum = 0;
-
+	{
+		pid_t xx;
+		errnum = pid_for_service_name(&xx, request->status.name);
+		if (errnum != 0) {
+			errnum = 0;
 			is_up = false;
-		} else {
-			is_up = true;
+			goto reply;
 		}
-		break;
+		pid = xx;
+	}
 
-	default:
+	if (-1 == kill(pid, 0)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		assert(errnum != EINVAL);
+		if (ESRCH == errnum)
+			errnum = 0;
+
 		is_up = false;
-		break;
+	} else {
+		is_up = true;
 	}
 
 reply:
@@ -1730,43 +1676,34 @@ reply:
 	return 0;
 }
 
-static linted_error on_stop_request(struct linted_unit_db const *units,
-                                    union linted_admin_request const *request,
+static linted_error on_stop_request(union linted_admin_request const *request,
                                     union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
 	bool was_up;
-	struct linted_unit const *unit;
-
-	unit = linted_unit_db_get_unit_by_name(units, request->stop.name);
-	if (NULL == unit) {
-		was_up = false;
-		goto reply;
-	}
-
-	struct linted_unit_service *unit_service = (void *)unit;
 
 	pid_t pid;
-	switch (unit->type) {
-	case UNIT_TYPE_SERVICE:
-		pid = unit_service->pid;
-
-		if (-1 == kill(pid, SIGKILL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			assert(errnum != EINVAL);
-			if (ESRCH == errnum)
-				errnum = 0;
-
+	{
+		pid_t xx;
+		errnum = pid_for_service_name(&xx, request->status.name);
+		if (errnum != 0) {
+			errnum = 0;
 			was_up = false;
-		} else {
-			was_up = true;
+			goto reply;
 		}
-		break;
+		pid = xx;
+	}
 
-	default:
+	if (-1 == kill(pid, SIGKILL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		assert(errnum != EINVAL);
+		if (ESRCH == errnum)
+			errnum = 0;
+
 		was_up = false;
-		break;
+	} else {
+		was_up = true;
 	}
 
 reply:
@@ -1860,6 +1797,160 @@ static linted_error ptrace_children(pid_t parent)
 		if (errnum != 0)
 			break;
 	}
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(file);
+
+	return errnum;
+}
+
+static linted_error get_process_service_name(pid_t pid, char **service_namep)
+{
+	linted_error errnum;
+
+	linted_ko env;
+	{
+		linted_ko xx;
+		errnum = get_process_environ(&xx, pid);
+		if (errnum != 0)
+			return errnum;
+		env = xx;
+	}
+
+	FILE *file = fdopen(env, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(env);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	char const *service_name = NULL;
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz = getdelim(&xx, &yy, '\0', file);
+			if (-1 == zz) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_buf;
+			}
+			buf = xx;
+			buf_size = yy;
+		}
+
+		if (0 == strncmp("LINTED_SERVICE=", buf,
+		                 strlen("LINTED_SERVICE="))) {
+			service_name = buf + strlen("LINTED_SERVICE=");
+			break;
+		}
+	}
+
+	if (NULL == service_name) {
+		errnum = ENOENT;
+		goto free_buf;
+	}
+
+	char *copy = strdup(service_name);
+	if (NULL == copy) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto free_buf;
+	}
+
+	*service_namep = copy;
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(file);
+
+	return errnum;
+}
+
+static linted_error pid_for_service_name(pid_t *pidp, char const *name)
+{
+	linted_error errnum = 0;
+
+	linted_ko init_children;
+	{
+		linted_ko xx;
+		errnum = get_process_children(&xx, getppid());
+		if (errnum != 0)
+			return errnum;
+		init_children = xx;
+	}
+
+	FILE *file = fdopen(init_children, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(init_children);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	pid_t pid;
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz = getdelim(&xx, &yy, ' ', file);
+			if (-1 == zz) {
+				errnum = errno;
+				if (0 == errnum) {
+					errnum = ENOENT;
+					break;
+				}
+
+				goto free_buf;
+			}
+			buf = xx;
+			buf_size = yy;
+		}
+
+		pid_t child = strtol(buf, NULL, 10);
+
+		char *service_name;
+		{
+			char *xx;
+			errnum = get_process_service_name(child, &xx);
+			if (ENOENT == errnum) {
+				errnum = 0;
+				continue;
+			}
+			if (errnum != 0)
+				goto free_buf;
+			service_name = xx;
+		}
+
+		if (0 == strcmp(service_name, name)) {
+			pid = child;
+			break;
+		}
+
+		linted_mem_free(service_name);
+	}
+
+	*pidp = pid;
 
 free_buf:
 	linted_mem_free(buf);
