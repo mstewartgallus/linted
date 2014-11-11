@@ -42,6 +42,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(fork),
 	/*  */ ALLOW(fstat),
 	/*  */ ALLOW(futex),
+	/*  */ ALLOW(getcwd),
 	/*  */ ALLOW(getdents),
 	/*  */ ALLOW(getegid),
 	/*  */ ALLOW(geteuid),
