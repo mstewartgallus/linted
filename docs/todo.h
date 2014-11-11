@@ -36,6 +36,9 @@
  *
  * @todo Stop graphical banding problems
  *
+ * @todo Use SIGCHLD based exit notification so metadata about exiting
+ *       processes can be looked at first.
+ *
  * @todo Preserve socket files between restarts
  *
  * @todo Restart child processes on crashes
