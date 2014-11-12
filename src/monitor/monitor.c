@@ -87,7 +87,7 @@ struct accepted_conn_task
 {
 	struct linted_admin_task_accept parent;
 	struct linted_asynch_pool *pool;
-	struct linted_pool *conn_pool;
+	struct conn_pool *conn_pool;
 };
 
 struct read_conn_task
@@ -110,8 +110,9 @@ struct conn
 	struct read_conn_task read_task;
 	struct wrote_conn_task write_task;
 	linted_ko ko;
-	bool is_free : 1U;
 };
+
+struct conn_pool;
 
 static linted_error create_units(struct linted_unit_db **unitsp,
                                  struct linted_conf_db *conf_db);
@@ -174,6 +175,13 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid);
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
+
+static linted_error conn_pool_create(struct conn_pool **poolp);
+static void conn_pool_destroy(struct conn_pool *pool);
+
+static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
+                                linted_ko ko);
+static void conn_discard(struct conn *conn);
 
 static linted_ko kos[1U];
 static struct sock_fprog const default_filter;
@@ -290,10 +298,10 @@ retry_bind:
 	struct wait_service_task waiter_task;
 	struct accepted_conn_task accepted_conn_task;
 
-	struct linted_pool *conn_pool;
+	struct conn_pool *conn_pool;
 	{
-		struct linted_pool *xx;
-		errnum = linted_pool_create(&xx);
+		struct conn_pool *xx;
+		errnum = conn_pool_create(&xx);
 		if (errnum != 0)
 			goto drain_asynch_pool;
 		conn_pool = xx;
@@ -418,19 +426,7 @@ destroy_confs:
 	linted_conf_db_destroy(conf_db);
 
 destroy_conn_pool:
-	for (;;) {
-		struct conn *conn;
-		{
-			struct linted_pool_node *xx;
-			if (EAGAIN == linted_pool_remove_node(conn_pool, &xx))
-				break;
-			conn = (void *)xx;
-		}
-		linted_ko_close(conn->ko);
-		linted_mem_free(conn);
-	}
-
-	linted_pool_destroy(conn_pool);
+	conn_pool_destroy(conn_pool);
 
 drain_asynch_pool:
 	linted_asynch_pool_stop(pool);
@@ -1565,7 +1561,7 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	    LINTED_UPCAST(LINTED_UPCAST(accepted_conn_task));
 
 	struct linted_asynch_pool *pool = accepted_conn_task->pool;
-	struct linted_pool *conn_pool = accepted_conn_task->conn_pool;
+	struct conn_pool *conn_pool = accepted_conn_task->conn_pool;
 
 	linted_admin new_socket = accept_task->returned_ko;
 
@@ -1576,18 +1572,11 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 
 	struct conn *conn;
 	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *conn);
-		if (errnum != 0) {
-			errnum = 0;
+		struct conn *xx;
+		if (conn_insert(conn_pool, &xx, new_socket) != 0)
 			goto close_new_socket;
-		}
 		conn = xx;
 	}
-	linted_pool_node_create(&conn->node);
-	conn->ko = new_socket;
-
-	linted_pool_insert_node(conn_pool, &conn->node);
 
 	linted_admin_recv_request(LINTED_UPCAST(&conn->read_task),
 	                          ADMIN_READ_CONNECTION, new_socket);
@@ -1650,10 +1639,7 @@ conn_remove:
 	/* Assume the other end did something bad and don't exit with
 	 * an error (unless conn_remove screws up.) */
 	if (errnum != 0) {
-		linted_pool_node_discard(&conn->node);
-
-		linted_ko_close(conn->ko);
-		linted_mem_free(conn);
+		conn_discard(conn);
 		return errnum;
 	}
 
@@ -1757,10 +1743,7 @@ static linted_error on_wrote_conn(struct linted_asynch_task *task,
 	if (time_to_quit)
 		return errnum;
 
-	linted_pool_node_discard((void *)conn);
-
-	linted_ko_close(conn->ko);
-	linted_mem_free(conn);
+	conn_discard(conn);
 
 	return 0;
 }
@@ -2152,6 +2135,72 @@ static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
 	}
 
 	return 0;
+}
+
+static linted_error conn_pool_create(struct conn_pool **poolp)
+{
+	linted_error errnum;
+
+	struct linted_pool *pool;
+	{
+		struct linted_pool *xx;
+		errnum = linted_pool_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		pool = xx;
+	}
+
+	*poolp = (void *)pool;
+
+	return 0;
+}
+
+static void conn_pool_destroy(struct conn_pool *pool)
+{
+	struct linted_pool *poolx = (void *)pool;
+	for (;;) {
+		struct conn *conn;
+		{
+			struct linted_pool_node *xx;
+			if (EAGAIN == linted_pool_remove_node(poolx, &xx))
+				break;
+			conn = (void *)xx;
+		}
+		linted_ko_close(conn->ko);
+		linted_mem_free(conn);
+	}
+
+	linted_pool_destroy(poolx);
+}
+
+static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
+                                linted_ko ko)
+{
+	linted_error errnum;
+
+	struct conn *conn;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *conn);
+		if (errnum != 0)
+			return errnum;
+		conn = xx;
+	}
+	linted_pool_node_create(&conn->node);
+	conn->ko = ko;
+
+	linted_pool_insert_node((void *)pool, &conn->node);
+
+	*connp = conn;
+
+	return errnum;
+}
+
+static void conn_discard(struct conn *conn)
+{
+	linted_pool_node_discard(&conn->node);
+	linted_ko_close(conn->ko);
+	linted_mem_free(conn);
 }
 
 #if defined __amd64__
