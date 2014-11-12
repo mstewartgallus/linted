@@ -1160,16 +1160,11 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 		if (0 == strcmp("none", opts))
 			opts = NULL;
 
-		bool mkdir_flag;
-		bool touch_flag;
-		unsigned long mountflags;
-		char const *data;
-		if (NULL == opts) {
-			mkdir_flag = false;
-			touch_flag = false;
-			mountflags = 0U;
-			data = NULL;
-		} else {
+		bool mkdir_flag = false;
+		bool touch_flag = false;
+		unsigned long mountflags = 0U;
+		char const *data = NULL;
+		if (opts != NULL) {
 			bool xx;
 			bool yy;
 			unsigned long zz;
@@ -1334,7 +1329,7 @@ free_subopts_str:
 	if (mkdir_flag && touch_flag)
 		return EINVAL;
 
-	unsigned long mountflags = 0;
+	unsigned long mountflags = 0U;
 
 	if (bind)
 		mountflags |= MS_BIND;
@@ -1413,9 +1408,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		exit_code = exit_info->si_code;
 	}
 
-	bool was_signal = CLD_DUMPED == exit_code || CLD_KILLED == exit_code;
-	bool exited = was_signal || CLD_EXITED == exit_code;
-	if (exited) {
+	bool was_signal = false;
+	switch (exit_code) {
+	case CLD_DUMPED:
+	case CLD_KILLED:
+		was_signal = true;
+
+	case CLD_EXITED: {
 		char *service_name;
 		{
 			char *xx;
@@ -1455,10 +1454,16 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 
 		errnum =
 		    service_activate(unit, cwd, chrootdir, waiter, unit_db);
+		break;
 	}
 
-	if (CLD_TRAPPED == exit_code)
+	case CLD_TRAPPED:
 		errnum = on_process_trap(ppid, pid, exit_status);
+		break;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -1551,7 +1556,8 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0)
+	errnum = completed_task->errnum;
+	if (errnum != 0)
 		return errnum;
 
 	struct accepted_conn_task *accepted_conn_task =
@@ -1566,7 +1572,7 @@ static linted_error on_accepted_conn(struct linted_asynch_task *completed_task,
 	linted_admin new_socket = accept_task->returned_ko;
 
 	if (time_to_quit)
-		return linted_ko_close(new_socket);
+		goto close_new_socket;
 
 	linted_asynch_pool_submit(pool, completed_task);
 
@@ -1732,20 +1738,13 @@ reply:
 static linted_error on_wrote_conn(struct linted_asynch_task *task,
                                   bool time_to_quit)
 {
-	linted_error errnum;
-
 	struct wrote_conn_task *wrote_conn_task =
 	    LINTED_DOWNCAST(struct wrote_conn_task, task);
 	struct conn *conn = wrote_conn_task->conn;
 
-	errnum = task->errnum;
-
-	if (time_to_quit)
-		return errnum;
-
 	conn_discard(conn);
 
-	return 0;
+	return task->errnum;
 }
 
 static linted_error get_process_service_name(pid_t pid, char **service_namep)
@@ -1771,30 +1770,44 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 		return errnum;
 	}
 
-	char *buf;
-	size_t buf_size = 17U;
+	ssize_t bytes;
+	char *buf = NULL;
+	{
+		char *xx = NULL;
+		size_t yy = 0U;
+		errno = 0;
+		bytes = getline(&xx, &yy, file);
+		if (-1 == bytes) {
+			errnum = errno;
+			if (errnum != 0)
+				goto close_file;
+		}
+		buf = xx;
+	}
+	/* Truncate out the newline character */
+	buf[bytes - 1U] = '\0';
+
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, buf_size);
+		errnum = linted_mem_realloc(&xx, buf, bytes);
 		if (errnum != 0)
 			goto close_file;
 		buf = xx;
 	}
 
-	/* This is weird but /proc/[pid]/comm uses a newline */
+close_file:
+	if (EOF == fclose(file)) {
+		if (0 == errnum)
+			errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-	size_t bytes = fread(buf, 1U, buf_size, file);
-	errnum = errno;
-	if (ferror(file))
-		goto close_file;
-	errnum = 0;
-
-	buf[bytes - 1U] = '\0';
+	if (errnum != 0) {
+		linted_mem_free(buf);
+		return errnum;
+	}
 
 	*service_namep = buf;
-
-close_file:
-	fclose(file);
 
 	return errnum;
 }
