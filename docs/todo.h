@@ -34,6 +34,12 @@
  *
  * @todo Use length annotated strings instead of C strings.
  *
+ * @todo Create a notification method.
+ *       Currently, outside administrator can create requests to the
+ *       monitor system but there needs to be a way for the monitor to
+ *       generate notifications. User Mode Linux has the same problem
+ *       and we should learn from how they solve it.
+ *
  * @todo Stop graphical banding problems
  *
  * @todo Preserve socket files between restarts
