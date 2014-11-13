@@ -884,7 +884,7 @@ service_not_found:
 	char *root_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_ROOT=%i", getppid())) {
+		if (-1 == asprintf(&xx, "MANAGERPID=%i", getppid())) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_envvars;

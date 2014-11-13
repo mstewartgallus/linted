@@ -86,9 +86,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_window_notifier notifier = kos[1U];
 
-	char const *root = getenv("LINTED_ROOT");
+	char const *root = getenv("MANAGERPID");
 	if (NULL == root) {
-		fprintf(stderr, "%s: need LINTED_ROOT\n", process_name);
+		fprintf(stderr, "%s: need MANAGERPID\n", process_name);
 		return EXIT_FAILURE;
 	}
 
