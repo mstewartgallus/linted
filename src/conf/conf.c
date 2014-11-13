@@ -735,132 +735,130 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 	size_t settings_size = bucket->settings_size;
 	struct conf_setting *settings = bucket->settings;
 
-	bool have_found_field = false;
 	size_t found_field;
 	for (size_t ii = 0U; ii < settings_size; ++ii) {
 		if (0 == strcmp(settings[ii].field, field)) {
-			have_found_field = true;
 			found_field = ii;
-			break;
+			goto found_field;
 		}
 	}
 
+	{
+		size_t new_settings_size = settings_size + 1U;
+		struct conf_setting *new_settings;
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(&xx, settings,
+			                                  new_settings_size,
+			                                  sizeof settings[0U]);
+			if (errnum != 0)
+				return errnum;
+			new_settings = xx;
+		}
+
+		size_t value_len;
+		for (size_t ii = 0U;; ++ii) {
+			if (NULL == value[ii]) {
+				value_len = ii;
+				break;
+			}
+		}
+
+		char **value_copy;
+		{
+			void *xx;
+			errnum = linted_mem_alloc_array(&xx, value_len + 1U,
+			                                sizeof value[0U]);
+			if (errnum != 0)
+				return errnum;
+			value_copy = xx;
+		}
+		for (size_t ii = 0U; ii < value_len; ++ii)
+			value_copy[ii] = strdup(value[ii]);
+		value_copy[value_len] = NULL;
+
+		new_settings[settings_size].field = field;
+		new_settings[settings_size].value = value_copy;
+
+		bucket->settings_size = new_settings_size;
+		bucket->settings = new_settings;
+
+		return 0;
+	}
+
+found_field:
 	if (NULL == value[0U]) {
 		linted_mem_free(field);
 
-		if (have_found_field) {
-			linted_mem_free(settings[found_field].field);
+		linted_mem_free(settings[found_field].field);
 
-			char **values = settings[found_field].value;
+		char **values = settings[found_field].value;
 
-			for (size_t ii = 0U; values[ii] != NULL; ++ii)
-				linted_mem_free(values[ii]);
+		for (size_t ii = 0U; values[ii] != NULL; ++ii)
+			linted_mem_free(values[ii]);
 
-			linted_mem_free(values);
+		linted_mem_free(values);
 
-			bucket->settings_size = settings_size - 1U;
-			memcpy(bucket->settings + found_field,
-			       buckets->settings + found_field + 1U,
-			       (settings_size - 1U - found_field) *
-			           sizeof bucket->settings[0U]);
-		}
+		bucket->settings_size = settings_size - 1U;
+		memcpy(bucket->settings + found_field,
+		       buckets->settings + found_field + 1U,
+		       (settings_size - 1U - found_field) *
+		           sizeof bucket->settings[0U]);
 	} else {
-		if (have_found_field) {
-			char **old_value = settings[found_field].value;
+		char **old_value = settings[found_field].value;
 
-			size_t old_value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == old_value[ii]) {
-					old_value_len = ii;
-					break;
-				}
+		size_t old_value_len;
+		for (size_t ii = 0U;; ++ii) {
+			if (NULL == old_value[ii]) {
+				old_value_len = ii;
+				break;
 			}
-
-			size_t value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == value[ii]) {
-					value_len = ii;
-					break;
-				}
-			}
-
-			size_t new_value_len = old_value_len + value_len;
-
-			char **new_value;
-			{
-				void *xx;
-				errnum = linted_mem_alloc_array(
-				    &xx, new_value_len + 1U, sizeof value[0U]);
-				if (errnum != 0)
-					return errnum;
-				new_value = xx;
-			}
-
-			for (size_t ii = 0U; ii < old_value_len; ++ii)
-				new_value[ii] = old_value[ii];
-
-			for (size_t ii = 0U; ii < value_len; ++ii) {
-				char *copy = strdup(value[ii]);
-				if (NULL == copy) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-					for (; ii != 0; --ii)
-						linted_mem_free(
-						    new_value[ii - 1U]);
-
-					linted_mem_free(new_value);
-					return errnum;
-				}
-				new_value[old_value_len + ii] = copy;
-			}
-
-			new_value[new_value_len] = NULL;
-
-			linted_mem_free(settings[found_field].field);
-			linted_mem_free(old_value);
-
-			settings[found_field].field = field;
-			settings[found_field].value = new_value;
-		} else {
-			size_t new_settings_size = settings_size + 1U;
-			struct conf_setting *new_settings;
-			{
-				void *xx;
-				errnum = linted_mem_realloc_array(
-				    &xx, settings, new_settings_size,
-				    sizeof settings[0U]);
-				if (errnum != 0)
-					return errnum;
-				new_settings = xx;
-			}
-
-			size_t value_len;
-			for (size_t ii = 0U;; ++ii) {
-				if (NULL == value[ii]) {
-					value_len = ii;
-					break;
-				}
-			}
-
-			char **value_copy;
-			{
-				void *xx;
-				errnum = linted_mem_alloc_array(
-				    &xx, value_len + 1U, sizeof value[0U]);
-				if (errnum != 0)
-					return errnum;
-				value_copy = xx;
-			}
-			for (size_t ii = 0U; ii < value_len; ++ii)
-				value_copy[ii] = strdup(value[ii]);
-			value_copy[value_len] = NULL;
-
-			new_settings[settings_size].field = field;
-			new_settings[settings_size].value = value_copy;
-
-			bucket->settings_size = new_settings_size;
-			bucket->settings = new_settings;
 		}
+
+		size_t value_len;
+		for (size_t ii = 0U;; ++ii) {
+			if (NULL == value[ii]) {
+				value_len = ii;
+				break;
+			}
+		}
+
+		size_t new_value_len = old_value_len + value_len;
+
+		char **new_value;
+		{
+			void *xx;
+			errnum = linted_mem_alloc_array(&xx, new_value_len + 1U,
+			                                sizeof value[0U]);
+			if (errnum != 0)
+				return errnum;
+			new_value = xx;
+		}
+
+		for (size_t ii = 0U; ii < old_value_len; ++ii)
+			new_value[ii] = old_value[ii];
+
+		for (size_t ii = 0U; ii < value_len; ++ii) {
+			char *copy = strdup(value[ii]);
+			if (NULL == copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				for (; ii != 0; --ii)
+					linted_mem_free(new_value[ii - 1U]);
+
+				linted_mem_free(new_value);
+				return errnum;
+			}
+			new_value[old_value_len + ii] = copy;
+		}
+
+		new_value[new_value_len] = NULL;
+
+		linted_mem_free(settings[found_field].field);
+		linted_mem_free(old_value);
+
+		settings[found_field].field = field;
+		settings[found_field].value = new_value;
 	}
 
 	return 0;

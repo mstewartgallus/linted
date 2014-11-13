@@ -36,7 +36,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                mode_t mode)
 {
 	linted_error errnum;
-	bool have_fildes = false;
+	linted_ko fildes = -1;
 
 	if (LINTED_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
@@ -93,20 +93,16 @@ make_directory:
 		goto close_realdir;
 	}
 
-open_directory:
-	;
-	linted_ko fildes;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, realdir, pathnamebase,
-		                        LINTED_KO_DIRECTORY);
-		if (ENOENT == errnum)
-			goto make_directory;
-		if (errnum != 0)
-			goto free_pathnamebase_buffer;
-		fildes = xx;
-		have_fildes = true;
-	}
+open_directory : {
+	linted_ko xx;
+	errnum =
+	    linted_ko_open(&xx, realdir, pathnamebase, LINTED_KO_DIRECTORY);
+	if (ENOENT == errnum)
+		goto make_directory;
+	if (errnum != 0)
+		goto free_pathnamebase_buffer;
+	fildes = xx;
+}
 
 close_realdir : {
 	linted_error close_errnum = linted_ko_close(realdir);
@@ -122,7 +118,7 @@ free_pathnamedir_buffer:
 	linted_mem_free(pathnamedir_buffer);
 
 	if (errnum != 0) {
-		if (have_fildes) {
+		if (fildes != -1) {
 			linted_error close_errnum = linted_ko_close(fildes);
 			assert(close_errnum != EBADF);
 		}

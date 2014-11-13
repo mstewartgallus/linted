@@ -88,26 +88,40 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 
-		siginfo_t info;
+		pid_t pid;
+		int code;
+		int status;
 		do {
 			do {
-				errnum = -1 == waitid(P_ALL, -1, &info, WEXITED)
-				             ? errno
-				             : 0;
+				{
+					siginfo_t info;
+					int wait_status =
+					    waitid(P_ALL, -1, &info, WEXITED);
+					if (-1 == wait_status)
+						goto waitid_failed;
+					errnum = 0;
+					pid = info.si_pid;
+					code = info.si_code;
+					status = info.si_status;
+				}
+				continue;
+
+			waitid_failed:
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
 			} while (EINTR == errnum);
 			if (errnum != 0) {
 				assert(errnum != EINVAL);
 				assert(errnum != ECHILD);
 				assert(false);
 			}
-		} while (info.si_pid != child);
+		} while (pid != child);
 
 		/**
 		 * @todo log errors
 		 */
 
-		if (CLD_EXITED == info.si_code &&
-		    EXIT_SUCCESS == info.si_status)
+		if (CLD_EXITED == code && EXIT_SUCCESS == status)
 			break;
 	}
 
@@ -117,7 +131,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 static linted_error spawn_monitor(pid_t *childp, char const *monitor,
                                   linted_ko admin)
 {
-	linted_error errnum = 0;
+	linted_error errnum;
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -168,10 +182,12 @@ destroy_attr:
 destroy_file_actions:
 	linted_spawn_file_actions_destroy(file_actions);
 
-	if (0 == errnum)
-		*childp = child;
+	if (errnum != 0)
+		return errnum;
 
-	return errnum;
+	*childp = child;
+
+	return 0;
 }
 
 static linted_error set_child_subreaper(bool v)
