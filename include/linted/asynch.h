@@ -19,6 +19,10 @@
 #include "linted/error.h"
 #include "linted/queue.h"
 
+#if _POSIX_C_SOURCE >= 199309L
+#include <signal.h>
+#endif
+
 #include <sys/types.h>
 
 #if _POSIX_C_SOURCE >= 199309L
@@ -39,6 +43,7 @@ enum {
 	LINTED_ASYNCH_TASK_POLL,
 	LINTED_ASYNCH_TASK_READ,
 	LINTED_ASYNCH_TASK_WRITE,
+	LINTED_ASYNCH_TASK_SIGWAITINFO,
 	LINTED_ASYNCH_TASK_MQ_RECEIVE,
 	LINTED_ASYNCH_TASK_MQ_SEND,
 	LINTED_ASYNCH_TASK_WAITID,
@@ -69,6 +74,20 @@ struct linted_asynch_task_waitid
 #define LINTED_ASYNCH_WAITID_UPCAST(X) LINTED_UPCAST(X)
 #define LINTED_ASYNCH_WAITID_DOWNCAST(X)                                       \
 	LINTED_DOWNCAST(struct linted_asynch_task_waitid, X)
+#endif
+
+#if _POSIX_C_SOURCE >= 199309L
+struct linted_asynch_task_sigwaitinfo
+{
+	struct linted_asynch_task parent;
+	siginfo_t info;
+	sigset_t set;
+	int signo;
+};
+
+#define LINTED_ASYNCH_SIGWAITINFO_UPCAST(X) LINTED_UPCAST(X)
+#define LINTED_ASYNCH_SIGWAITINFO_DOWNCAST(X)                                  \
+	LINTED_DOWNCAST(struct linted_asynch_task_sigwaitinfo, X)
 #endif
 
 #if _POSIX_C_SOURCE >= 199309L
@@ -108,6 +127,11 @@ void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
 void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
                                unsigned task_action, idtype_t idtype, id_t id,
                                int options);
+#endif
+
+#if _POSIX_C_SOURCE >= 199309L
+void linted_asynch_task_sigwaitinfo(struct linted_asynch_task_sigwaitinfo *task,
+                                    unsigned task_action, sigset_t const *set);
 #endif
 
 #if _POSIX_C_SOURCE >= 199309L

@@ -60,6 +60,8 @@ static void run_task(struct linted_asynch_pool *pool,
 
 static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
+static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task);
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task);
 
@@ -261,6 +263,15 @@ void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
 	task->options = options;
 }
 
+void linted_asynch_task_sigwaitinfo(struct linted_asynch_task_sigwaitinfo *task,
+                                    unsigned task_action, sigset_t const *set)
+{
+	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SIGWAITINFO,
+	                   task_action);
+
+	task->set = *set;
+}
+
 void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
                                     unsigned task_action, int flags,
                                     struct timespec const *request)
@@ -318,6 +329,10 @@ static void run_task(struct linted_asynch_pool *pool,
 		run_task_waitid(pool, task);
 		break;
 
+	case LINTED_ASYNCH_TASK_SIGWAITINFO:
+		run_task_sigwaitinfo(pool, task);
+		break;
+
 	case LINTED_ASYNCH_TASK_ACCEPT:
 		linted_ko_do_accept(pool, task);
 		break;
@@ -352,6 +367,30 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 		return;
 	}
 
+	task->errnum = errnum;
+
+	linted_asynch_pool_complete(pool, task);
+}
+
+static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task)
+{
+	struct linted_asynch_task_sigwaitinfo *task_wait =
+	    LINTED_DOWNCAST(struct linted_asynch_task_sigwaitinfo, task);
+	linted_error errnum = 0;
+
+	int signo = sigwaitinfo(&task_wait->set, &task_wait->info);
+	if (-1 == signo) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (EINTR == errnum) {
+		linted_asynch_pool_submit(pool, task);
+		return;
+	}
+
+	task_wait->signo = signo;
 	task->errnum = errnum;
 
 	linted_asynch_pool_complete(pool, task);

@@ -59,7 +59,8 @@
 #define MAX_MANAGE_CONNECTIONS 10U
 
 enum {
-	WAITER,
+	WAITID,
+	SIGWAITINFO,
 	ADMIN_ACCEPTED_CONNECTION,
 	ADMIN_READ_CONNECTION,
 	ADMIN_WROTE_CONNECTION
@@ -78,7 +79,13 @@ struct wait_service_task
 	char const *chrootdir;
 	char const *waiter;
 	struct linted_unit_db *unit_db;
-	bool time_to_exit : 1U;
+	bool *time_to_exit;
+};
+
+struct sigwait_task
+{
+	struct linted_asynch_task_sigwaitinfo parent;
+	bool *time_to_exit;
 };
 
 struct conn;
@@ -130,6 +137,8 @@ static linted_error dispatch(struct linted_asynch_task *completed_task,
 
 static linted_error on_process_wait(struct linted_asynch_task *task,
                                     bool time_to_quit);
+static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
+                                   bool time_to_quit);
 static linted_error on_accepted_conn(struct linted_asynch_task *task,
                                      bool time_to_quit);
 static linted_error on_read_conn(struct linted_asynch_task *task,
@@ -295,8 +304,27 @@ retry_bind:
 		pool = xx;
 	}
 
+	bool time_to_exit = false;
+	struct sigwait_task sigwait_task;
 	struct wait_service_task waiter_task;
 	struct accepted_conn_task accepted_conn_task;
+
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		sigaddset(&set, SIGTERM);
+
+		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
+		if (errnum != 0)
+			goto drain_asynch_pool;
+
+		linted_asynch_task_sigwaitinfo(LINTED_UPCAST(&sigwait_task),
+		                               SIGWAITINFO, &set);
+	}
+	sigwait_task.time_to_exit = &time_to_exit;
+
+	linted_asynch_pool_submit(pool,
+	                          LINTED_UPCAST(LINTED_UPCAST(&sigwait_task)));
 
 	struct conn_pool *conn_pool;
 	{
@@ -351,7 +379,7 @@ retry_bind:
 	if (errnum != 0)
 		goto kill_procs;
 
-	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITER, P_ALL,
+	linted_asynch_task_waitid(LINTED_UPCAST(&waiter_task), WAITID, P_ALL,
 	                          -1, WEXITED | WNOWAIT);
 	waiter_task.pool = pool;
 	waiter_task.parent_process = ppid;
@@ -359,7 +387,7 @@ retry_bind:
 	waiter_task.chrootdir = chrootdir;
 	waiter_task.waiter = waiter;
 	waiter_task.unit_db = units;
-	waiter_task.time_to_exit = false;
+	waiter_task.time_to_exit = &time_to_exit;
 
 	linted_asynch_pool_submit(pool,
 	                          LINTED_UPCAST(LINTED_UPCAST(&waiter_task)));
@@ -375,7 +403,7 @@ retry_bind:
 		errnum = dispatch(completed_task, false);
 		if (errnum != 0)
 			goto kill_procs;
-	} while (!waiter_task.time_to_exit);
+	} while (!time_to_exit);
 
 kill_procs:
 	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
@@ -1359,8 +1387,11 @@ free_subopts_str:
 static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
 {
 	switch (task->task_action) {
-	case WAITER:
+	case WAITID:
 		return on_process_wait(task, time_to_quit);
+
+	case SIGWAITINFO:
+		return on_sigwaitinfo(task, time_to_quit);
 
 	case ADMIN_ACCEPTED_CONNECTION:
 		return on_accepted_conn(task, time_to_quit);
@@ -1468,6 +1499,29 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	linted_asynch_pool_submit(pool, task);
 
 	return errnum;
+}
+
+static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
+                                   bool time_to_quit)
+{
+	linted_error errnum = 0;
+
+	errnum = task->errnum;
+	if (errnum != 0)
+		return errnum;
+
+	if (time_to_quit)
+		return 0;
+
+	struct sigwait_task *sigwait_task =
+	    LINTED_DOWNCAST(struct sigwait_task, task);
+	bool *time_to_exit = sigwait_task->time_to_exit;
+
+	assert(SIGTERM == LINTED_UPCAST(sigwait_task)->signo);
+
+	*time_to_exit = true;
+
+	return 0;
 }
 
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
