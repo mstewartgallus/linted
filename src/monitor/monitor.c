@@ -910,23 +910,28 @@ service_asprintf_failed:
 	linted_mem_free(root_setting);
 	goto free_envvars;
 
-service_asprintf_succeeded : {
+service_asprintf_succeeded:
+	;
 	size_t envvars_size = null_list_size((char const * const *)envvars);
-
-	void *xx;
-	errnum = linted_mem_realloc_array(&xx, envvars, envvars_size + 3U,
-	                                  sizeof envvars[0U]);
-	if (errnum != 0) {
-		linted_mem_free(root_setting);
-		linted_mem_free(service_name_setting);
-		goto free_envvars;
+	size_t new_size = envvars_size + 3U;
+	{
+		void *xx;
+		errnum = linted_mem_realloc_array(&xx, envvars, new_size,
+		                                  sizeof envvars[0U]);
+		if (errnum != 0)
+			goto envvar_allocate_failed;
+		envvars = xx;
+		goto envvar_allocate_succeeded;
 	}
-	envvars = xx;
+envvar_allocate_failed:
+	linted_mem_free(root_setting);
+	linted_mem_free(service_name_setting);
+	goto free_envvars;
 
+envvar_allocate_succeeded:
 	envvars[envvars_size] = root_setting;
 	envvars[envvars_size + 1U] = service_name_setting;
 	envvars[envvars_size + 2U] = NULL;
-}
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -1758,14 +1763,17 @@ static linted_error on_status_request(union linted_admin_request const *request,
 	{
 		pid_t xx;
 		errnum = pid_for_service_name(&xx, request->status.name);
-		if (errnum != 0) {
-			errnum = 0;
-			is_up = false;
-			goto reply;
-		}
+		if (errnum != 0)
+			goto pid_find_failure;
 		pid = xx;
+		goto found_pid;
 	}
+pid_find_failure:
+	errnum = 0;
+	is_up = false;
+	goto reply;
 
+found_pid:
 	if (-1 == kill(pid, 0)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -1796,14 +1804,17 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 	{
 		pid_t xx;
 		errnum = pid_for_service_name(&xx, request->status.name);
-		if (errnum != 0) {
-			errnum = 0;
-			was_up = false;
-			goto reply;
-		}
+		if (errnum != 0)
+			goto pid_find_failure;
 		pid = xx;
+		goto found_pid;
 	}
+pid_find_failure:
+	errnum = 0;
+	was_up = false;
+	goto reply;
 
+found_pid:
 	if (-1 == kill(pid, SIGKILL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);

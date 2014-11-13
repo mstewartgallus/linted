@@ -110,9 +110,8 @@ destroy_pool : {
 		}
 
 		linted_error dispatch_errnum = completed_task->errnum;
-		if (0 == errnum) {
+		if (0 == errnum)
 			errnum = dispatch_errnum;
-		}
 	}
 
 	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
