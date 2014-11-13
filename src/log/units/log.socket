@@ -20,4 +20,4 @@ ListenMessageQueue=/log
 MessageQueueMaxMessages=10
 MessageQueueMessageSize=1024
 
-X-Linted-Temporary=true
+X-LintedTemporary=true

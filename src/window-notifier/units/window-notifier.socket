@@ -20,4 +20,4 @@ ListenMessageQueue=/window-notifier
 MessageQueueMaxMessages=1
 MessageQueueMessageSize=4
 
-X-Linted-Temporary=true
+X-LintedTemporary=true

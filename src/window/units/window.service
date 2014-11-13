@@ -19,9 +19,9 @@ Documentation='man:linted-window(6)'
 ExecStart="${LINTED_WINDOW}"
 NoNewPrivileges=true
 
-X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,wronly
+X-LintedFiles=OPEN:log,wronly OPEN:window-notifier,wronly
 
-X-Linted-Fstab="${LINTED_WINDOW_FSTAB}"
+X-LintedFstab="${LINTED_WINDOW_FSTAB}"
 WorkingDirectory=/var
 
-X-Linted-Environment-Whitelist=DISPLAY
+X-LintedEnvironmentWhitelist=DISPLAY

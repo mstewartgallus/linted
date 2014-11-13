@@ -19,82 +19,82 @@ Documentation='man:linted-drawer(6)'
 ExecStart="${LINTED_DRAWER}"
 NoNewPrivileges=true
 
-X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,rdonly OPEN:updater,rdonly
+X-LintedFiles=OPEN:log,wronly OPEN:window-notifier,rdonly OPEN:updater,rdonly
 
-X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
+X-LintedFstab="${LINTED_DRAWER_FSTAB}"
 WorkingDirectory=/var
 
-X-Linted-Environment-Whitelist=DISPLAY
+X-LintedEnvironmentWhitelist=DISPLAY
 
-X-Linted-Environment-Whitelist=LD_PRELOAD
-X-Linted-Environment-Whitelist=LD_LIBRARY_PATH
+X-LintedEnvironmentWhitelist=LD_PRELOAD
+X-LintedEnvironmentWhitelist=LD_LIBRARY_PATH
 
-X-Linted-Environment-Whitelist=vblank_mode
+X-LintedEnvironmentWhitelist=vblank_mode
 
-X-Linted-Environment-Whitelist=EGL_DRIVERS_PATH
-X-Linted-Environment-Whitelist=EGL_DRIVER
-X-Linted-Environment-Whitelist=EGL_PLATFORM
-X-Linted-Environment-Whitelist=EGL_LOG_LEVEL
-X-Linted-Environment-Whitelist=EGL_SOFTWARE
+X-LintedEnvironmentWhitelist=EGL_DRIVERS_PATH
+X-LintedEnvironmentWhitelist=EGL_DRIVER
+X-LintedEnvironmentWhitelist=EGL_PLATFORM
+X-LintedEnvironmentWhitelist=EGL_LOG_LEVEL
+X-LintedEnvironmentWhitelist=EGL_SOFTWARE
 
-X-Linted-Environment-Whitelist=LIBGL_DEBUG
-X-Linted-Environment-Whitelist=LIBGL_DRIVERS_PATH
-X-Linted-Environment-Whitelist=LIBGL_ALWAYS_INDIRECT
-X-Linted-Environment-Whitelist=LIBGL_ALWAYS_SOFTWARE
-X-Linted-Environment-Whitelist=LIBGL_NO_DRAWARRAYS
-X-Linted-Environment-Whitelist=LIBGL_SHOW_FPS
+X-LintedEnvironmentWhitelist=LIBGL_DEBUG
+X-LintedEnvironmentWhitelist=LIBGL_DRIVERS_PATH
+X-LintedEnvironmentWhitelist=LIBGL_ALWAYS_INDIRECT
+X-LintedEnvironmentWhitelist=LIBGL_ALWAYS_SOFTWARE
+X-LintedEnvironmentWhitelist=LIBGL_NO_DRAWARRAYS
+X-LintedEnvironmentWhitelist=LIBGL_SHOW_FPS
 
-X-Linted-Environment-Whitelist=MESA_NO_ASM
-X-Linted-Environment-Whitelist=MESA_NO_MMX
-X-Linted-Environment-Whitelist=MESA_NO_3DNOW
-X-Linted-Environment-Whitelist=MESA_NO_SSE
-X-Linted-Environment-Whitelist=MESA_DEBUG
-X-Linted-Environment-Whitelist=MESA_LOG_FILE
-X-Linted-Environment-Whitelist=MESA_TEX_PROG
-X-Linted-Environment-Whitelist=MESA_TNL_PROG
-X-Linted-Environment-Whitelist=MESA_EXTENSION_OVERRIDE
-X-Linted-Environment-Whitelist=MESA_EXTENSION_MAX_YEAR
-X-Linted-Environment-Whitelist=MESA_GL_VERSION_OVERRIDE
-X-Linted-Environment-Whitelist=MESA_GLSL_VERSION_OVERRIDE
-X-Linted-Environment-Whitelist=MESA_GLSL
-X-Linted-Environment-Whitelist=MESA_RGB_VISUAL
-X-Linted-Environment-Whitelist=MESA_CI_VISUAL
-X-Linted-Environment-Whitelist=MESA_BACK_BUFFER
-X-Linted-Environment-Whitelist=MESA_GAMMA
-X-Linted-Environment-Whitelist=MESA_XSYNC
-X-Linted-Environment-Whitelist=MESA_GLX_FORCE_CI
-X-Linted-Environment-Whitelist=MESA_GLX_FORCE_ALPHA
-X-Linted-Environment-Whitelist=MESA_GLX_DEPTH_BITS
-X-Linted-Environment-Whitelist=MESA_GLX_ALPHA_BITS
+X-LintedEnvironmentWhitelist=MESA_NO_ASM
+X-LintedEnvironmentWhitelist=MESA_NO_MMX
+X-LintedEnvironmentWhitelist=MESA_NO_3DNOW
+X-LintedEnvironmentWhitelist=MESA_NO_SSE
+X-LintedEnvironmentWhitelist=MESA_DEBUG
+X-LintedEnvironmentWhitelist=MESA_LOG_FILE
+X-LintedEnvironmentWhitelist=MESA_TEX_PROG
+X-LintedEnvironmentWhitelist=MESA_TNL_PROG
+X-LintedEnvironmentWhitelist=MESA_EXTENSION_OVERRIDE
+X-LintedEnvironmentWhitelist=MESA_EXTENSION_MAX_YEAR
+X-LintedEnvironmentWhitelist=MESA_GL_VERSION_OVERRIDE
+X-LintedEnvironmentWhitelist=MESA_GLSL_VERSION_OVERRIDE
+X-LintedEnvironmentWhitelist=MESA_GLSL
+X-LintedEnvironmentWhitelist=MESA_RGB_VISUAL
+X-LintedEnvironmentWhitelist=MESA_CI_VISUAL
+X-LintedEnvironmentWhitelist=MESA_BACK_BUFFER
+X-LintedEnvironmentWhitelist=MESA_GAMMA
+X-LintedEnvironmentWhitelist=MESA_XSYNC
+X-LintedEnvironmentWhitelist=MESA_GLX_FORCE_CI
+X-LintedEnvironmentWhitelist=MESA_GLX_FORCE_ALPHA
+X-LintedEnvironmentWhitelist=MESA_GLX_DEPTH_BITS
+X-LintedEnvironmentWhitelist=MESA_GLX_ALPHA_BITS
 
-X-Linted-Environment-Whitelist=INTEL_NO_HW
-X-Linted-Environment-Whitelist=INTEL_DEBUG
+X-LintedEnvironmentWhitelist=INTEL_NO_HW
+X-LintedEnvironmentWhitelist=INTEL_DEBUG
 
-X-Linted-Environment-Whitelist=RADEON_NO_TCL
+X-LintedEnvironmentWhitelist=RADEON_NO_TCL
 
-X-Linted-Environment-Whitelist=GALLIUM_HUD
-X-Linted-Environment-Whitelist=GALLIUM_LOG_FILE
-X-Linted-Environment-Whitelist=GALLIUM_PRINT_OPTIONS
-X-Linted-Environment-Whitelist=GALLIUM_DUMP_CPU
+X-LintedEnvironmentWhitelist=GALLIUM_HUD
+X-LintedEnvironmentWhitelist=GALLIUM_LOG_FILE
+X-LintedEnvironmentWhitelist=GALLIUM_PRINT_OPTIONS
+X-LintedEnvironmentWhitelist=GALLIUM_DUMP_CPU
 
-X-Linted-Environment-Whitelist=TGSI_PRINT_SANITY
+X-LintedEnvironmentWhitelist=TGSI_PRINT_SANITY
 
-X-Linted-Environment-Whitelist=DRAW_FSE
-X-Linted-Environment-Whitelist=DRAW_NO_FSE
-X-Linted-Environment-Whitelist=DRAW_USE_LLVM
+X-LintedEnvironmentWhitelist=DRAW_FSE
+X-LintedEnvironmentWhitelist=DRAW_NO_FSE
+X-LintedEnvironmentWhitelist=DRAW_USE_LLVM
 
-X-Linted-Environment-Whitelist=ST_DEBUG
+X-LintedEnvironmentWhitelist=ST_DEBUG
 
-X-Linted-Environment-Whitelist=SOFTPIPE_DUMP_FS
-X-Linted-Environment-Whitelist=SOFTPIPE_DUMP_GS
-X-Linted-Environment-Whitelist=SOFTPIPE_NO_RAST
-X-Linted-Environment-Whitelist=SOFTPIPE_USE_LLVM
+X-LintedEnvironmentWhitelist=SOFTPIPE_DUMP_FS
+X-LintedEnvironmentWhitelist=SOFTPIPE_DUMP_GS
+X-LintedEnvironmentWhitelist=SOFTPIPE_NO_RAST
+X-LintedEnvironmentWhitelist=SOFTPIPE_USE_LLVM
 
-X-Linted-Environment-Whitelist=LP_NO_RAST
-X-Linted-Environment-Whitelist=LP_DEBUG
-X-Linted-Environment-Whitelist=LP_PERF
-X-Linted-Environment-Whitelist=LP_NUM_THREADS
+X-LintedEnvironmentWhitelist=LP_NO_RAST
+X-LintedEnvironmentWhitelist=LP_DEBUG
+X-LintedEnvironmentWhitelist=LP_PERF
+X-LintedEnvironmentWhitelist=LP_NUM_THREADS
 
-X-Linted-Environment-Whitelist=SVGA_FORCE_SWTNL
-X-Linted-Environment-Whitelist=SVGA_NO_SWTNL
-X-Linted-Environment-Whitelist=SVGA_DEBUG
+X-LintedEnvironmentWhitelist=SVGA_FORCE_SWTNL
+X-LintedEnvironmentWhitelist=SVGA_NO_SWTNL
+X-LintedEnvironmentWhitelist=SVGA_DEBUG

@@ -600,13 +600,13 @@ static linted_error service_create(struct linted_unit_service *unit,
 	char const *const *no_new_privss =
 	    linted_conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *files =
-	    linted_conf_find(conf, "Service", "X-Linted-Files");
+	    linted_conf_find(conf, "Service", "X-LintedFiles");
 	char const *const *fstabs =
-	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
+	    linted_conf_find(conf, "Service", "X-LintedFstab");
 	char const *const *chdir_paths =
 	    linted_conf_find(conf, "Service", "WorkingDirectory");
 	char const *const *env_whitelist =
-	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
+	    linted_conf_find(conf, "Service", "X-LintedEnvironmentWhitelist");
 
 	char const *type;
 	{
@@ -686,7 +686,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	char const *const *msgsizes =
 	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
 	char const *const *temps =
-	    linted_conf_find(conf, "Socket", "X-Linted-Temporary");
+	    linted_conf_find(conf, "Socket", "X-LintedTemporary");
 
 	char const *path;
 	{
@@ -2070,6 +2070,9 @@ static linted_error bool_from_cstring(char const *str, bool *boolp)
 
 	bool result;
 
+	if (NULL == str)
+		return EINVAL;
+
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
 		if (0 == strcmp(str, yes_strs[ii])) {
 			result = true;
@@ -2095,6 +2098,9 @@ static linted_error long_from_cstring(char const *str, long *longp)
 {
 	size_t length = strlen(str);
 	unsigned long position = 1U;
+
+	if (NULL == str)
+		return EINVAL;
 
 	if ('0' == str[0U] && length != 1U)
 		return EINVAL;

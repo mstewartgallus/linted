@@ -19,9 +19,9 @@ Documentation='man:linted-gui(6)'
 ExecStart="${LINTED_GUI}"
 NoNewPrivileges=true
 
-X-Linted-Files=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
+X-LintedFiles=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
 
-X-Linted-Fstab="${LINTED_GUI_FSTAB}"
+X-LintedFstab="${LINTED_GUI_FSTAB}"
 WorkingDirectory=/var
 
-X-Linted-Environment-Whitelist=DISPLAY
+X-LintedEnvironmentWhitelist=DISPLAY

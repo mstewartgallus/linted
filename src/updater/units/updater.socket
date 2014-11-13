@@ -20,4 +20,4 @@ ListenMessageQueue=/updater
 MessageQueueMaxMessages=1
 MessageQueueMessageSize=20
 
-X-Linted-Temporary=true
+X-LintedTemporary=true
