@@ -38,11 +38,14 @@
  *
  * - You have to comment out and disable the seccomp sandboxing.
  * - You have to make sure every running service has a /tmp directory.
+ * - You have to set the pipe prefix appropriately
+ * - You have to set the Valgrind to trace children
  * - You have to use the latest version from SVN (version 11) to
  *   handle system calls like pivot_root.
  * - It's a bit buggy with sandboxing but works fine.
  * - memcheck works fine.
  * - helgrind can't cope with asynchronous cancellation well.
+ * - All together something like `valgrind --vgdb-prefix=/tmp/vgdb --trace-children=yes ./scripts/test` works.
  * </li>
  *
  * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
