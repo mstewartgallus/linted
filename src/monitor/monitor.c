@@ -603,7 +603,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 	char const *const *fstabs =
 	    linted_conf_find(conf, "Service", "X-Linted-Fstab");
 	char const *const *chdir_paths =
-	    linted_conf_find(conf, "Service", "X-Linted-Chdir");
+	    linted_conf_find(conf, "Service", "WorkingDirectory");
 	char const *const *env_whitelist =
 	    linted_conf_find(conf, "Service", "X-Linted-Environment-Whitelist");
 

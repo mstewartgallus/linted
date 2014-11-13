@@ -22,7 +22,7 @@ NoNewPrivileges=true
 X-Linted-Files=OPEN:log,wronly OPEN:window-notifier,rdonly OPEN:updater,rdonly
 
 X-Linted-Fstab="${LINTED_DRAWER_FSTAB}"
-X-Linted-Chdir=/var
+WorkingDirectory=/var
 
 X-Linted-Environment-Whitelist=DISPLAY
 

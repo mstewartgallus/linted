@@ -22,6 +22,6 @@ NoNewPrivileges=true
 X-Linted-Files=OPEN:log,rdonly
 
 X-Linted-Fstab="${LINTED_LOGGER_FSTAB}"
-X-Linted-Chdir=/var
+WorkingDirectory=/var
 
 X-Linted-Environment-Whitelist=''
