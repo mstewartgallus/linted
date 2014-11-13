@@ -45,6 +45,7 @@
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -947,6 +948,19 @@ service_not_found:
 	if (fstab != NULL)
 		clone_flags |= CLONE_NEWNS;
 
+	/* Favor other processes over this process hierarchy.  Only
+	 * superuser may lower priorities so this is not
+	 * stoppable. This also makes the process hierarchy nicer for
+	 * the OOM killer.
+	 */
+	errno = 0;
+	int priority = getpriority(PRIO_PROCESS, 0);
+	if (-1 == priority) {
+		errnum = errno;
+		if (errnum != 0)
+			goto destroy_attr;
+	}
+	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setwaiter(attr, waiter);

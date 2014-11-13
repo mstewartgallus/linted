@@ -96,9 +96,11 @@ struct linted_spawn_attr
 	struct sock_fprog const *filter;
 	int clone_flags;
 	int deathsig;
+	int priority;
 	bool drop_caps : 1U;
 	bool no_new_privs : 1U;
 	bool deparent : 1U;
+	bool has_priority : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -144,6 +146,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->waiter = NULL;
 	attr->deparent = false;
 	attr->filter = NULL;
+	attr->has_priority = false;
 
 	*attrp = attr;
 	return 0;
@@ -209,6 +212,12 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
 void linted_spawn_attr_setchdir(struct linted_spawn_attr *attr, char const *dir)
 {
 	attr->chdir_path = dir;
+}
+
+void linted_spawn_attr_setpriority(struct linted_spawn_attr *attr, int priority)
+{
+	attr->has_priority = true;
+	attr->priority = priority;
 }
 
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
@@ -423,6 +432,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool no_new_privs = false;
 	char const *waiter = NULL;
 	bool deparent = false;
+	bool has_priority = false;
+	int priority;
 	struct sock_fprog const *filter = NULL;
 
 	if (attr != NULL) {
@@ -437,6 +448,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		waiter = attr->waiter;
 		deparent = attr->deparent;
 		filter = attr->filter;
+		has_priority = attr->has_priority;
+		priority = attr->priority;
 	}
 
 	if (!((clone_flags & CLONE_NEWUSER) != 0) &
@@ -756,6 +769,14 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (drop_caps)
 		drop_privileges(err_writer, caps);
 
+	if (has_priority) {
+		errno = 0;
+		setpriority(PRIO_PROCESS, 0, priority + 1);
+		errnum = errno;
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+	}
+
 	if (no_new_privs) {
 		errnum = set_no_new_privs(true);
 		if (errnum != 0)
@@ -1015,24 +1036,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 static void drop_privileges(linted_ko writer, cap_t caps)
 {
-	linted_error errnum;
-
-	/* Favor other processes over this process hierarchy.  Only
-	 * superuser may lower priorities so this is not
-	 * stoppable. This also makes the process hierarchy nicer for
-	 * the OOM killer.
-	 */
-	errno = 0;
-	int priority = getpriority(PRIO_PROCESS, 0);
-	if (-1 == priority) {
-		errnum = errno;
-		if (errnum != 0)
-			exit_with_error(writer, errnum);
-	}
-
-	if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
-		exit_with_error(writer, errno);
-
 	/* We need to use the raw system call because GLibc messes
 	 * around with signals to synchronize the permissions of every
 	 * thread. Of course, after a fork there is only one thread

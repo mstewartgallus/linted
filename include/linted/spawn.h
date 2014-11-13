@@ -47,6 +47,8 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir);
 void linted_spawn_attr_setchdir(struct linted_spawn_attr *attr,
                                 char const *dir);
+void linted_spawn_attr_setpriority(struct linted_spawn_attr *attr,
+                                   int priority);
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
                                         char const *source, char const *target,
                                         char const *filesystemtype,
