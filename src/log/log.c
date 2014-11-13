@@ -35,30 +35,41 @@ linted_error linted_log_write(linted_log log, char const *msg_ptr,
 	linted_error errnum = 0;
 
 	for (;;) {
+		int send_status;
 		do {
-			if (-1 == mq_send(log, msg_ptr, msg_len, 0)) {
+			send_status = mq_send(log, msg_ptr, msg_len, 0);
+			if (0 == send_status) {
+				errnum = 0;
+			} else {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 			}
 		} while (EINTR == errnum);
-
 		if (errnum != EAGAIN)
 			break;
 
-		short revents = 0;
-		do {
+		short revents;
+		for (;;) {
 			short xx;
 			errnum = poll_one(log, POLLOUT, &xx);
-			if (0 == errnum)
+			switch (errnum) {
+			case EINTR:
+				continue;
+
+			case 0:
 				revents = xx;
-		} while (EINTR == errnum);
+				goto check_for_poll_error;
+
+			default:
+				return errnum;
+			}
+		}
+
+	check_for_poll_error:
+		errnum = check_for_poll_error(log, revents);
 		if (errnum != 0)
 			break;
-
-		if ((errnum = check_for_poll_error(log, revents)) != 0)
-			break;
 	}
-
 	return errnum;
 }
 
@@ -79,15 +90,27 @@ static linted_error check_for_poll_error(linted_ko ko, short revents)
 	return errnum;
 }
 
-static linted_error poll_one(linted_ko ko, short events, short *revents)
+static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 {
-	struct pollfd pollfd = { .fd = ko, .events = events };
-	if (-1 == poll(&pollfd, 1U, -1)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+	linted_error errnum;
+
+	short revents;
+	{
+		struct pollfd pollfd = { .fd = ko, .events = events };
+		int poll_status = poll(&pollfd, 1U, -1);
+		if (-1 == poll_status)
+			goto poll_failed;
+
+		revents = pollfd.revents;
+		goto poll_succeeded;
 	}
 
-	*revents = pollfd.revents;
+poll_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
+
+poll_succeeded:
+	*reventsp = revents;
 	return 0;
 }

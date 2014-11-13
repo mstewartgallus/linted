@@ -542,16 +542,28 @@ static void pipe_set_init(void)
 	sigaddset(&pipeset, SIGPIPE);
 }
 
-static linted_error poll_one(linted_ko ko, short events, short *revents)
+static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 {
-	struct pollfd pollfd = { .fd = ko, .events = events };
-	if (-1 == poll(&pollfd, 1U, -1)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+	linted_error errnum;
+
+	short revents;
+	{
+		struct pollfd pollfd = { .fd = ko, .events = events };
+		int poll_status = poll(&pollfd, 1U, -1);
+		if (-1 == poll_status)
+			goto poll_failed;
+
+		revents = pollfd.revents;
+		goto poll_succeeded;
 	}
 
-	*revents = pollfd.revents;
+poll_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
+
+poll_succeeded:
+	*reventsp = revents;
 	return 0;
 }
 
