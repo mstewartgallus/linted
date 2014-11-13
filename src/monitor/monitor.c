@@ -295,6 +295,17 @@ retry_bind:
 		return EXIT_FAILURE;
 	}
 
+	/* Block SIGTERM before spawning threads */
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		sigaddset(&set, SIGTERM);
+
+		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
+		if (errnum != 0)
+			goto exit_monitor;
+	}
+
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
@@ -313,10 +324,6 @@ retry_bind:
 		sigset_t set;
 		sigemptyset(&set);
 		sigaddset(&set, SIGTERM);
-
-		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
-		if (errnum != 0)
-			goto drain_asynch_pool;
 
 		linted_asynch_task_sigwaitinfo(LINTED_UPCAST(&sigwait_task),
 		                               SIGWAITINFO, &set);
