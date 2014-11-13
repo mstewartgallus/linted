@@ -529,28 +529,28 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool pid_pipes_init = false;
 
 	if (deparent) {
-		linted_ko xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
-			goto close_err_pipes;
-		pid_reader = xx[0U];
-		pid_writer = xx[1U];
+		{
+			linted_ko xx[2U];
+			if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+				goto close_err_pipes;
+			pid_reader = xx[0U];
+			pid_writer = xx[1U];
+		}
 
 		pid_pipes_init = true;
 	}
 
 	{
 		/*
-		 * To save stack space reuse the same sigset for the full set
-		 * and
-		 * the old set.
+		 * To save stack space reuse the same sigset for the
+		 * full set and the old set.
 		 */
 		sigset_t sigset;
 		sigfillset(&sigset);
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
-		if (errnum != 0) {
+		if (errnum != 0)
 			goto close_pid_pipes;
-		}
 
 		if (deparent) {
 			child = fork();
@@ -574,17 +574,23 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if (child != 0) {
 		if (pid_pipes_init) {
-			linted_error wait_errnum;
-			siginfo_t info;
 			do {
-				wait_errnum =
-				    -1 == waitid(P_PID, child, &info, WEXITED)
-				        ? errno
-				        : 0;
-			} while (EINTR == wait_errnum);
-			if (wait_errnum != 0) {
-				assert(wait_errnum != EINVAL);
-				assert(wait_errnum != ECHILD);
+				int status;
+				{
+					siginfo_t info;
+					status = waitid(P_PID, child, &info,
+					                WEXITED);
+				}
+				if (-1 == status) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				} else {
+					errnum = 0;
+				}
+			} while (EINTR == errnum);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(errnum != ECHILD);
 				assert(false);
 			}
 		}
@@ -670,8 +676,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(err_writer, errno);
 
 		if (child != 0) {
-			linted_io_write_all(pid_writer, NULL, &child,
-			                    sizeof child);
+			pid_t xx = child;
+			linted_io_write_all(pid_writer, NULL, &xx, sizeof xx);
 			_Exit(0);
 		}
 		linted_ko_close(pid_writer);
@@ -770,11 +776,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		drop_privileges(err_writer, caps);
 
 	if (has_priority) {
-		errno = 0;
-		setpriority(PRIO_PROCESS, 0, priority + 1);
-		errnum = errno;
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+		if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
+			exit_with_error(err_writer, errno);
 	}
 
 	if (no_new_privs) {

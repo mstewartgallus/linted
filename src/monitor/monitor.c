@@ -851,17 +851,17 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 	{
 		pid_t xx;
 		errnum = pid_for_service_name(&xx, service_name);
-		if (ESRCH == errnum)
-			goto service_not_found;
 		if (errnum != 0)
-			return errnum;
+			goto service_not_found;
 		child = xx;
 	}
 	unit_service->pid = child;
 	goto ptrace_child;
 
 service_not_found:
-	;
+	if (errnum != ESRCH)
+		return errnum;
+
 	char const *const *exec_start = unit_service->exec_start;
 	bool no_new_privs = unit_service->no_new_privs;
 	char const *const *files = unit_service->files;
@@ -894,6 +894,7 @@ manager_asprintf_failed:
 	errnum = errno;
 	LINTED_ASSUME(errnum != 0);
 	goto free_envvars;
+
 manager_asprintf_succeeded:
 	;
 	char *service_name_setting;
@@ -924,8 +925,8 @@ service_asprintf_succeeded:
 		goto envvar_allocate_succeeded;
 	}
 envvar_allocate_failed:
-	linted_mem_free(root_setting);
 	linted_mem_free(service_name_setting);
+	linted_mem_free(root_setting);
 	goto free_envvars;
 
 envvar_allocate_succeeded:
