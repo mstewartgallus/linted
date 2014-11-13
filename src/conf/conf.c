@@ -327,15 +327,19 @@ linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
 			size_t yy = line_capacity;
 			errno = 0;
 			ssize_t zz = getline(&xx, &yy, conf_file);
-			if (-1 == zz) {
-				errnum = errno;
-				/* May be 0 to indicate end of line */
-				break;
-			}
+			if (-1 == zz)
+				goto getline_failed;
 			line_buffer = xx;
 			line_capacity = yy;
 			line_size = zz;
+			goto getline_succeeded;
 		}
+	getline_failed:
+		errnum = errno;
+		/* May be 0 to indicate end of line */
+		break;
+
+	getline_succeeded:
 		if (0U == line_size)
 			break;
 

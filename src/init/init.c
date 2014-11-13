@@ -95,9 +95,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			do {
 				{
 					siginfo_t info;
-					int wait_status =
-					    waitid(P_ALL, -1, &info, WEXITED);
-					if (-1 == wait_status)
+					if (-1 ==
+					    waitid(P_ALL, -1, &info, WEXITED))
 						goto waitid_failed;
 					errnum = 0;
 					pid = info.si_pid;

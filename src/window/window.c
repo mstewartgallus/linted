@@ -290,16 +290,21 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	{
 		char buf[HOST_NAME_MAX + 1U];
-		if (-1 == gethostname(buf, sizeof buf)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto destroy_window;
-		}
+		if (-1 == gethostname(buf, sizeof buf))
+			goto get_hostname_failed;
 
 		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 		                    XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING,
 		                    8, strlen(buf), buf);
+		goto get_hostname_succeeded;
 	}
+
+get_hostname_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	goto destroy_window;
+
+get_hostname_succeeded:
 	errnum = get_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;

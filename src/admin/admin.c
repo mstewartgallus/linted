@@ -47,6 +47,7 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 		return errnum;
 	}
 
+	int bind_status;
 	{
 		struct sockaddr_un address = { 0 };
 
@@ -58,12 +59,13 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 				address.sun_path[0U] = '\0';
 		}
 
-		if (-1 == bind(sock, (void *)&address,
-		               sizeof(sa_family_t) + path_len)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_sock;
-		}
+		bind_status = bind(sock, (void *)&address,
+		                   sizeof(sa_family_t) + path_len);
+	}
+	if (-1 == bind_status) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_sock;
 	}
 
 	/* Set the nonblock status after binding because asynchronous
@@ -123,6 +125,7 @@ linted_error linted_admin_connect(linted_admin *admin, char const *path,
 		return errnum;
 	}
 
+	int connect_status;
 	{
 		struct sockaddr_un address = { 0 };
 
@@ -132,12 +135,13 @@ linted_error linted_admin_connect(linted_admin *admin, char const *path,
 		if ('@' == address.sun_path[0U])
 			address.sun_path[0U] = '\0';
 
-		if (-1 == connect(sock, (void *)&address,
-		                  sizeof(sa_family_t) + path_len)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_sock;
-		}
+		connect_status = connect(sock, (void *)&address,
+		                         sizeof(sa_family_t) + path_len);
+	}
+	if (-1 == connect_status) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_sock;
 	}
 
 	*admin = sock;
@@ -152,26 +156,31 @@ linted_error linted_admin_path(linted_admin admin,
                                char buf[static LINTED_ADMIN_PATH_MAX],
                                size_t *len)
 {
-	struct sockaddr_un address = { 0 };
-
-	socklen_t addr_len = sizeof address;
 	{
-		socklen_t xx = sizeof address;
-		if (-1 == getsockname(admin, (void *)&address, &xx)) {
-			linted_error errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		addr_len = xx;
-	}
+		struct sockaddr_un address = { 0 };
 
-	*len = addr_len - sizeof(sa_family_t);
-	memcpy(buf, address.sun_path, *len);
+		socklen_t addr_len;
+		{
+			socklen_t xx = sizeof address;
+			if (-1 == getsockname(admin, (void *)&address, &xx))
+				goto getsockname_failed;
+			addr_len = xx;
+		}
+
+		*len = addr_len - sizeof(sa_family_t);
+		memcpy(buf, address.sun_path, *len);
+	}
 
 	if ('\0' == buf[0U])
 		buf[0U] = '@';
 
 	return 0;
+
+getsockname_failed:
+	;
+	linted_error errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
 }
 
 void linted_admin_recv_request(struct linted_admin_task_recv_request *task,

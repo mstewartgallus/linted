@@ -883,8 +883,10 @@ static void default_signals(linted_ko writer)
 			/* If sigerrnum == EINVAL then we are
 			 * trampling on OS signals.
 			 */
-			if (sigerrnum != EINVAL)
-				exit_with_error(writer, sigerrnum);
+			if (sigerrnum != EINVAL) {
+				errnum = sigerrnum;
+				goto sigaction_fail_errnum;
+			}
 
 			/* Skip setting this action */
 			continue;
@@ -895,12 +897,18 @@ static void default_signals(linted_ko writer)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == sigaction(ii, &action, NULL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			exit_with_error(writer, errnum);
-		}
+		if (-1 == sigaction(ii, &action, NULL))
+			goto sigaction_failed;
 	}
+
+	return;
+
+sigaction_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+
+sigaction_fail_errnum:
+	exit_with_error(writer, errnum);
 }
 
 static void set_id_maps(linted_ko writer, uid_t mapped_uid, uid_t uid,

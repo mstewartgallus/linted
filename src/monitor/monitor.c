@@ -881,47 +881,52 @@ service_not_found:
 		envvars = xx;
 	}
 
+	pid_t ppid = getppid();
 	char *root_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "MANAGERPID=%i", getppid())) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_envvars;
-		}
+		if (-1 == asprintf(&xx, "MANAGERPID=%i", ppid))
+			goto manager_asprintf_failed;
 		root_setting = xx;
+		goto manager_asprintf_succeeded;
 	}
-
+manager_asprintf_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	goto free_envvars;
+manager_asprintf_succeeded:
+	;
 	char *service_name_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", service_name)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			linted_mem_free(root_setting);
-			goto free_envvars;
-		}
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", service_name))
+			goto service_asprintf_failed;
 		service_name_setting = xx;
+		goto service_asprintf_succeeded;
 	}
+service_asprintf_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	linted_mem_free(root_setting);
+	goto free_envvars;
 
-	{
-		size_t envvars_size =
-		    null_list_size((char const * const *)envvars);
+service_asprintf_succeeded : {
+	size_t envvars_size = null_list_size((char const * const *)envvars);
 
-		void *xx;
-		errnum = linted_mem_realloc_array(
-		    &xx, envvars, envvars_size + 3U, sizeof envvars[0U]);
-		if (errnum != 0) {
-			linted_mem_free(root_setting);
-			linted_mem_free(service_name_setting);
-			goto free_envvars;
-		}
-		envvars = xx;
-
-		envvars[envvars_size] = root_setting;
-		envvars[envvars_size + 1U] = service_name_setting;
-		envvars[envvars_size + 2U] = NULL;
+	void *xx;
+	errnum = linted_mem_realloc_array(&xx, envvars, envvars_size + 3U,
+	                                  sizeof envvars[0U]);
+	if (errnum != 0) {
+		linted_mem_free(root_setting);
+		linted_mem_free(service_name_setting);
+		goto free_envvars;
 	}
+	envvars = xx;
+
+	envvars[envvars_size] = root_setting;
+	envvars[envvars_size + 1U] = service_name_setting;
+	envvars[envvars_size + 2U] = NULL;
+}
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -1493,8 +1498,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		 * isn't stupid and thinks that the zombie is still
 		 * living. */
 		do {
-			siginfo_t info;
-			if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
+			int wait_status;
+			{
+				siginfo_t info;
+				wait_status =
+				    waitid(P_PID, pid, &info, WEXITED);
+			}
+			if (-1 == wait_status) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 			} else {
@@ -1562,8 +1572,12 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 	linted_error errnum = 0;
 
 	do {
-		siginfo_t info;
-		if (-1 == waitid(P_PID, pid, &info, WEXITED)) {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_PID, pid, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 		} else {
@@ -1852,13 +1866,17 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 		size_t yy = 0U;
 		errno = 0;
 		bytes = getline(&xx, &yy, file);
-		if (-1 == bytes) {
-			errnum = errno;
-			if (errnum != 0)
-				goto close_file;
-		}
+		if (-1 == bytes)
+			goto getline_failed;
 		buf = xx;
+		goto getline_succeeded;
 	}
+getline_failed:
+	errnum = errno;
+	/* errnum can be 0 on EOF */
+	goto close_file;
+
+getline_succeeded:
 	/* Truncate out the newline character */
 	buf[bytes - 1U] = '\0';
 
@@ -1921,19 +1939,20 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 
 			errno = 0;
 			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum) {
-					errnum = ESRCH;
-					goto free_buf;
-				}
-
-				goto free_buf;
-			}
+			if (-1 == zz)
+				goto getdelim_failed;
 			buf = xx;
 			buf_size = yy;
+			goto getdelim_succeeded;
 		}
+	getdelim_failed:
+		errnum = errno;
+		if (0 == errnum)
+			errnum = ESRCH;
+		goto free_buf;
 
+	getdelim_succeeded:
+		;
 		pid_t child = strtol(buf, NULL, 10);
 
 		char *service_name;
@@ -2136,13 +2155,20 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 	char const *abspath;
 	if (filename[0U] != '/') {
-		char *xx;
-		if (-1 == asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+		{
+			char *xx;
+			if (-1 ==
+			    asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename))
+				goto asprintf_failed;
+			abspath = xx;
+			goto asprintf_succeeded;
 		}
-		abspath = xx;
+	asprintf_failed:
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	asprintf_succeeded:
+		;
 	} else {
 		abspath = filename;
 	}
