@@ -20,6 +20,7 @@ noinst_LTLIBRARIES+=%D%/libmq.la
 %C%_libmq_la_SOURCES=%D%/mq.c include/linted/mq.h
 EXTRA_%C%_libmq_la_SOURCES=%D%/mq-linux.c %D%/mq-windows.c
 %C%_libmq_la_LIBADD=\
+  src/mem/libmem.la\
   src/random/librandom.la\
   -lrt
 # There is a circular dependency with libasynch

@@ -17,18 +17,137 @@
 
 #include "linted/updater.h"
 
+#include "linted/mem.h"
 #include "linted/mq.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <stddef.h>
 
-void linted_updater_send(struct linted_updater_task_send *task,
-                         unsigned task_id, linted_updater updater,
-                         struct linted_updater_update const *update)
+struct linted_updater_task_send
 {
-	linted_mq_task_send(LINTED_UPCAST(task), task_id, updater,
-	                    task->message, sizeof task->message);
+	struct linted_mq_task_send *parent;
+	void *data;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
+	             LINTED_RPC_UINT32_SIZE];
+};
+
+struct linted_updater_task_receive
+{
+	struct linted_mq_task_receive *parent;
+	void *data;
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
+	             LINTED_RPC_UINT32_SIZE];
+};
+
+linted_error
+linted_updater_task_receive_create(struct linted_updater_task_receive **taskp,
+                                   void *data)
+{
+	linted_error errnum;
+	struct linted_updater_task_receive *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_mq_task_receive *parent;
+	{
+		struct linted_mq_task_receive *xx;
+		errnum = linted_mq_task_receive_create(&xx, task);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void
+linted_updater_task_receive_destroy(struct linted_updater_task_receive *task)
+{
+	linted_mq_task_receive_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void
+linted_updater_task_receive_prepare(struct linted_updater_task_receive *task,
+                                    unsigned task_action, linted_ko updater)
+{
+	linted_mq_task_receive_prepare(task->parent, task_action, updater,
+	                               task->message, sizeof task->message);
+}
+
+struct linted_updater_task_receive *
+linted_updater_task_receive_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_mq_task_receive_data(
+	    linted_mq_task_receive_from_asynch(task));
+}
+
+struct linted_asynch_task *
+linted_updater_task_receive_to_asynch(struct linted_updater_task_receive *task)
+{
+	return linted_mq_task_receive_to_asynch(task->parent);
+}
+
+void *linted_updater_task_receive_data(struct linted_updater_task_receive *task)
+{
+	return task->data;
+}
+
+linted_error
+linted_updater_task_send_create(struct linted_updater_task_send **taskp,
+                                void *data)
+{
+	linted_error errnum;
+	struct linted_updater_task_send *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_mq_task_send *parent;
+	{
+		struct linted_mq_task_send *xx;
+		errnum = linted_mq_task_send_create(&xx, task);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_updater_task_send_destroy(struct linted_updater_task_send *task)
+{
+	linted_mq_task_send_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void
+linted_updater_task_send_prepare(struct linted_updater_task_send *task,
+                                 unsigned task_action, linted_ko updater,
+                                 struct linted_updater_update const *update)
+{
+	linted_mq_task_send_prepare(task->parent, task_action, updater,
+	                            task->message, sizeof task->message);
 
 	char *tip = task->message;
 
@@ -47,11 +166,21 @@ void linted_updater_send(struct linted_updater_task_send *task,
 	linted_rpc_pack_uint32(update->y_rotation._value, tip);
 }
 
-void linted_updater_receive(struct linted_updater_task_receive *task,
-                            unsigned task_id, linted_updater updater)
+struct linted_updater_task_send *
+linted_updater_task_send_from_asynch(struct linted_asynch_task *task)
 {
-	linted_mq_task_receive(LINTED_UPCAST(task), task_id, updater,
-	                       task->message, sizeof task->message);
+	return linted_mq_task_send_data(linted_mq_task_send_from_asynch(task));
+}
+
+struct linted_asynch_task *
+linted_updater_task_send_to_asynch(struct linted_updater_task_send *task)
+{
+	return linted_mq_task_send_to_asynch(task->parent);
+}
+
+void *linted_updater_task_send_data(struct linted_updater_task_send *task)
+{
+	return task->data;
 }
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,

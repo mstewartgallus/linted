@@ -53,6 +53,42 @@ struct linted_asynch_pool
 	pthread_t workers[];
 };
 
+struct linted_asynch_task_waitid
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	siginfo_t info;
+	idtype_t idtype;
+	id_t id;
+	int options;
+};
+
+struct linted_asynch_task_sigwaitinfo
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	siginfo_t info;
+	sigset_t set;
+	int signo;
+};
+
+struct linted_asynch_task_sleep_until
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	struct timespec request;
+	int flags;
+};
+
+struct linted_asynch_task
+{
+	struct linted_queue_node parent;
+	linted_error errnum;
+	unsigned type;
+	unsigned task_action;
+	void *data;
+};
+
 static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
@@ -241,46 +277,266 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 	return 0;
 }
 
-void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
-                        unsigned task_action)
+linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
+                                       void *data, unsigned type)
 {
-	linted_queue_node(LINTED_UPCAST(task));
-
+	linted_error errnum;
+	struct linted_asynch_task *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	linted_queue_node(&task->parent);
+	task->data = data;
 	task->type = type;
-	task->errnum = 0;
+	task->errnum = EINVAL;
+
+	*taskp = task;
+	return 0;
+}
+
+void linted_asynch_task_destroy(struct linted_asynch_task *task)
+{
+	linted_mem_free(task);
+}
+
+void linted_asynch_task_prepare(struct linted_asynch_task *task,
+                                unsigned task_action)
+{
 	task->task_action = task_action;
 }
 
-void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
-                               unsigned task_action, idtype_t idtype, id_t id,
-                               int options)
+unsigned linted_asynch_task_action(struct linted_asynch_task *task)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WAITID,
-	                   task_action);
+	return task->task_action;
+}
 
-	task->idtype = idtype;
+linted_error linted_asynch_task_errnum(struct linted_asynch_task *task)
+{
+	return task->errnum;
+}
+
+void linted_asynch_task_seterrnum(struct linted_asynch_task *task,
+                                  linted_error errnum)
+{
+	task->errnum = errnum;
+}
+
+void *linted_asynch_task_data(struct linted_asynch_task *task)
+{
+	return task->data;
+}
+
+linted_error
+linted_asynch_task_waitid_create(struct linted_asynch_task_waitid **taskp,
+                                 void *data)
+{
+	linted_error errnum;
+	struct linted_asynch_task_waitid *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_WAITID);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_asynch_task_waitid_destroy(struct linted_asynch_task_waitid *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void *linted_asynch_task_waitid_data(struct linted_asynch_task_waitid *task)
+{
+	return task->data;
+}
+
+struct linted_asynch_task *
+linted_asynch_task_waitid_to_asynch(struct linted_asynch_task_waitid *task)
+{
+	return task->parent;
+}
+
+struct linted_asynch_task_waitid *
+linted_asynch_task_waitid_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+void linted_asynch_task_waitid_info(struct linted_asynch_task_waitid *task,
+                                    siginfo_t *info)
+{
+	*info = task->info;
+}
+
+void linted_asynch_task_waitid_prepare(struct linted_asynch_task_waitid *task,
+                                       unsigned task_action, idtype_t type,
+                                       id_t id, int options)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
+	task->idtype = type;
 	task->id = id;
 	task->options = options;
 }
 
-void linted_asynch_task_sigwaitinfo(struct linted_asynch_task_sigwaitinfo *task,
-                                    unsigned task_action, sigset_t const *set)
+linted_error linted_asynch_task_sigwaitinfo_create(
+    struct linted_asynch_task_sigwaitinfo **taskp, void *data)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SIGWAITINFO,
-	                   task_action);
+	linted_error errnum;
+	struct linted_asynch_task_sigwaitinfo *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_SIGWAITINFO);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
 
+void linted_asynch_task_sigwaitinfo_destroy(
+    struct linted_asynch_task_sigwaitinfo *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void *
+linted_asynch_task_sigwaitinfo_data(struct linted_asynch_task_sigwaitinfo *task)
+{
+	return task->data;
+}
+
+int linted_asynch_task_sigwaitinfo_signo(
+    struct linted_asynch_task_sigwaitinfo *task)
+{
+	return task->signo;
+}
+
+void linted_asynch_task_sigwaitinfo_prepare(
+    struct linted_asynch_task_sigwaitinfo *task, unsigned task_action,
+    sigset_t const *set)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
 	task->set = *set;
 }
 
-void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
-                                    unsigned task_action, int flags,
-                                    struct timespec const *request)
+struct linted_asynch_task *linted_asynch_task_sigwaitinfo_to_asynch(
+    struct linted_asynch_task_sigwaitinfo *task)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_SLEEP_UNTIL,
-	                   task_action);
+	return task->parent;
+}
 
+struct linted_asynch_task_sigwaitinfo *
+linted_asynch_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+linted_error linted_asynch_task_sleep_until_create(
+    struct linted_asynch_task_sleep_until **taskp, void *data)
+{
+	linted_error errnum;
+	struct linted_asynch_task_sleep_until *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_SLEEP_UNTIL);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_asynch_task_sleep_until_destroy(
+    struct linted_asynch_task_sleep_until *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void *
+linted_asynch_task_sleep_until_data(struct linted_asynch_task_sleep_until *task)
+{
+	return task->data;
+}
+
+void linted_asynch_task_sleep_until_request(
+    struct linted_asynch_task_sleep_until *task, struct timespec *req)
+{
+	*req = task->request;
+}
+
+void linted_asynch_task_sleep_until_prepare(
+    struct linted_asynch_task_sleep_until *task, unsigned task_action,
+    int flags, struct timespec const *req)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
 	task->flags = flags;
-	task->request = *request;
+	task->request = *req;
+}
+
+struct linted_asynch_task *linted_asynch_task_sleep_until_to_asynch(
+    struct linted_asynch_task_sleep_until *task)
+{
+	return task->parent;
+}
+
+struct linted_asynch_task_sleep_until *
+linted_asynch_task_sleep_until_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
 }
 
 static void *worker_routine(void *arg)
@@ -349,8 +605,8 @@ static void run_task(struct linted_asynch_pool *pool,
 static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task)
 {
-	struct linted_asynch_task_waitid *task_wait =
-	    LINTED_DOWNCAST(struct linted_asynch_task_waitid, task);
+	struct linted_asynch_task_waitid *task_wait = task->data;
+
 	linted_error errnum = 0;
 
 	idtype_t idtype = task_wait->idtype;
@@ -375,8 +631,7 @@ static void run_task_waitid(struct linted_asynch_pool *pool,
 static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	struct linted_asynch_task_sigwaitinfo *task_wait =
-	    LINTED_DOWNCAST(struct linted_asynch_task_sigwaitinfo, task);
+	struct linted_asynch_task_sigwaitinfo *task_wait = task->data;
 	linted_error errnum = 0;
 
 	int signo = sigwaitinfo(&task_wait->set, &task_wait->info);
@@ -399,8 +654,7 @@ static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	struct linted_asynch_task_sleep_until *restrict task_sleep =
-	    LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, task);
+	struct linted_asynch_task_sleep_until *restrict task_sleep = task->data;
 	linted_error errnum = 0;
 
 	int flags = task_sleep->flags;

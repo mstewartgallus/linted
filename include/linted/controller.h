@@ -44,35 +44,40 @@ struct linted_controller_message
 	_Bool jumping : 1U;
 };
 
-struct linted_controller_task_send
-{
-	struct linted_mq_task_send parent;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
-};
+struct linted_controller_task_send;
+struct linted_controller_task_receive;
 
-struct linted_controller_task_receive
-{
-	struct linted_mq_task_receive parent;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
-};
+linted_error
+linted_controller_task_send_create(struct linted_controller_task_send **taskp,
+                                   void *data);
+void
+linted_controller_task_send_destroy(struct linted_controller_task_send *task);
 
-#define LINTED_CONTROLLER_SEND_UPCAST(X) LINTED_MQ_SEND_UPCAST(LINTED_UPCAST(X))
-#define LINTED_CONTROLLER_SEND_DOWNCAST(X)                                     \
-	LINTED_DOWNCAST(struct linted_controller_task_send,                    \
-	                LINTED_MQ_SEND_DOWNCAST(X))
+struct linted_asynch_task *
+linted_controller_task_send_to_asynch(struct linted_controller_task_send *task);
+struct linted_controller_task_send *
+linted_controller_task_send_from_asynch(struct linted_asynch_task *task);
+void *
+linted_controller_task_send_data(struct linted_controller_task_send *task);
+void linted_controller_task_send_prepare(
+    struct linted_controller_task_send *task, unsigned task_action,
+    linted_controller controller,
+    struct linted_controller_message const *message);
 
-#define LINTED_CONTROLLER_RECEIVE_UPCAST(X)                                    \
-	LINTED_MQ_RECEIVE_UPCAST(LINTED_UPCAST(X))
-#define LINTED_CONTROLLER_RECEIVE_DOWNCAST(X)                                  \
-	LINTED_DOWNCAST(struct linted_controller_task_receive,                 \
-	                LINTED_MQ_RECEIVE_DOWNCAST(X))
+linted_error linted_controller_task_receive_create(
+    struct linted_controller_task_receive **taskp, void *data);
+void linted_controller_task_receive_destroy(
+    struct linted_controller_task_receive *task);
 
-void linted_controller_send(struct linted_controller_task_send *task,
-                            unsigned task_id, linted_controller controller,
-                            struct linted_controller_message const *message);
-
-void linted_controller_receive(struct linted_controller_task_receive *task,
-                               unsigned task_id, linted_controller controller);
+struct linted_asynch_task *linted_controller_task_receive_to_asynch(
+    struct linted_controller_task_receive *task);
+struct linted_controller_task_receive *
+linted_controller_task_receive_from_asynch(struct linted_asynch_task *task);
+void *linted_controller_task_receive_data(
+    struct linted_controller_task_receive *task);
+void linted_controller_task_receive_prepare(
+    struct linted_controller_task_receive *task, unsigned task_action,
+    linted_controller controller);
 
 linted_error
 linted_controller_decode(struct linted_controller_task_receive const *task,

@@ -44,23 +44,17 @@ enum {
 	MAX_TASKS
 };
 
-struct poll_conn_task
+struct poll_conn_data
 {
-	struct linted_ko_task_poll parent;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
 	bool *time_to_quit;
 };
 
-struct notice_task
+struct notice_data
 {
-	struct linted_window_notifier_task_send parent;
 	struct linted_asynch_pool *pool;
 };
-#define NOTICE_UPCAST(X) LINTED_WINDOW_NOTIFIER_SEND_UPCAST(LINTED_UPCAST(X))
-#define NOTICE_DOWNCAST(X)                                                     \
-	LINTED_DOWNCAST(struct notice_task,                                    \
-	                LINTED_WINDOW_NOTIFIER_SEND_DOWNCAST(X))
 
 static linted_ko kos[2U];
 
@@ -118,8 +112,28 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct notice_task notice_task;
-	struct poll_conn_task poll_conn_task;
+	struct notice_data notice_data;
+	struct poll_conn_data poll_conn_data;
+
+	struct linted_ko_task_poll *poll_conn_task;
+	struct linted_window_notifier_task_send *notice_task;
+
+	{
+		struct linted_window_notifier_task_send *xx;
+		errnum =
+		    linted_window_notifier_task_send_create(&xx, &notice_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		notice_task = xx;
+	}
+
+	{
+		struct linted_ko_task_poll *xx;
+		errnum = linted_ko_task_poll_create(&xx, &poll_conn_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		poll_conn_task = xx;
+	}
 
 	/* Open the connection to the X server */
 	unsigned screen_number;
@@ -345,21 +359,23 @@ get_hostname_succeeded:
 
 	xcb_flush(connection);
 
-	linted_window_notifier_send(LINTED_UPCAST(&notice_task), ON_SENT_NOTICE,
-	                            notifier, window);
-	notice_task.pool = pool;
-	linted_asynch_pool_submit(pool, NOTICE_UPCAST(&notice_task));
+	linted_window_notifier_task_send_prepare(notice_task, ON_SENT_NOTICE,
+	                                         notifier, window);
+	notice_data.pool = pool;
+	linted_asynch_pool_submit(
+	    pool, linted_window_notifier_task_send_to_asynch(notice_task));
 
 	bool time_to_quit;
 
-	linted_ko_task_poll(LINTED_UPCAST(&poll_conn_task), ON_POLL_CONN,
-	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_conn_task.time_to_quit = &time_to_quit;
-	poll_conn_task.pool = pool;
-	poll_conn_task.connection = connection;
+	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	                            xcb_get_file_descriptor(connection),
+	                            POLLIN);
+	poll_conn_data.time_to_quit = &time_to_quit;
+	poll_conn_data.pool = pool;
+	poll_conn_data.connection = connection;
 
 	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(&poll_conn_task)));
+	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -413,7 +429,8 @@ destroy_pool:
 			completed_task = xx;
 		}
 
-		linted_error dispatch_errnum = completed_task->errnum;
+		linted_error dispatch_errnum =
+		    linted_asynch_task_errnum(completed_task);
 		if (0 == errnum)
 			errnum = dispatch_errnum;
 	}
@@ -433,7 +450,7 @@ destroy_pool:
 
 static linted_error dispatch(struct linted_asynch_task *task)
 {
-	switch (task->task_action) {
+	switch (linted_asynch_task_action(task)) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -449,16 +466,18 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
 		return errnum;
 
-	struct poll_conn_task *poll_conn_task =
-	    LINTED_DOWNCAST(struct poll_conn_task,
-	                    LINTED_DOWNCAST(struct linted_ko_task_poll, task));
+	struct linted_ko_task_poll *poll_conn_task =
+	    linted_ko_task_poll_from_asynch(task);
+	struct poll_conn_data *poll_conn_data =
+	    linted_ko_task_poll_data(poll_conn_task);
 
-	xcb_connection_t *connection = poll_conn_task->connection;
-	struct linted_asynch_pool *pool = poll_conn_task->pool;
-	bool *time_to_quitp = poll_conn_task->time_to_quit;
+	xcb_connection_t *connection = poll_conn_data->connection;
+	struct linted_asynch_pool *pool = poll_conn_data->pool;
+	bool *time_to_quitp = poll_conn_data->time_to_quit;
 
 	for (;;) {
 		xcb_generic_event_t *event = xcb_wait_for_event(connection);
@@ -485,11 +504,12 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			return 0;
 	}
 
-	linted_ko_task_poll(LINTED_UPCAST(poll_conn_task), ON_POLL_CONN,
-	                    xcb_get_file_descriptor(connection), POLLIN);
-	poll_conn_task->time_to_quit = time_to_quitp;
-	poll_conn_task->pool = pool;
-	poll_conn_task->connection = connection;
+	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	                            xcb_get_file_descriptor(connection),
+	                            POLLIN);
+	poll_conn_data->time_to_quit = time_to_quitp;
+	poll_conn_data->pool = pool;
+	poll_conn_data->connection = connection;
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -500,13 +520,16 @@ static linted_error on_sent_notice(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	errnum = task->errnum;
+	errnum = linted_asynch_task_errnum(task);
 	if (errnum != 0)
 		return errnum;
 
-	struct notice_task *notice_task = NOTICE_DOWNCAST(task);
+	struct linted_window_notifier_task_send *notice_task =
+	    linted_window_notifier_task_send_from_asynch(task);
+	struct notice_data *notice_data =
+	    linted_window_notifier_task_send_data(notice_task);
 
-	linted_asynch_pool_submit(notice_task->pool, task);
+	linted_asynch_pool_submit(notice_data->pool, task);
 
 	return 0;
 }

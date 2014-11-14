@@ -23,5 +23,6 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
   src/asynch/libasynch.la\
   src/io/libio.la\
   src/ko/libko.la\
+  src/mem/libmem.la\
   \
   -lrt

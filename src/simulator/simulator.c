@@ -71,42 +71,27 @@ struct simulator_state
 	bool write_in_progress : 1U;
 };
 
-struct updater_task;
-
-struct tick_task
+struct tick_data
 {
-	struct linted_asynch_task_sleep_until parent;
 	struct linted_asynch_pool *pool;
-	struct updater_task *updater_task;
+	struct linted_updater_task_send *updater_task;
 	struct action_state const *action_state;
 	struct simulator_state *simulator_state;
 	linted_ko updater;
 };
-#define TICK_UPCAST(X) LINTED_ASYNCH_SLEEP_UNTIL_UPCAST(LINTED_UPCAST(X))
-#define TICK_DOWNCAST(X)                                                       \
-	LINTED_DOWNCAST(struct tick_task, LINTED_ASYNCH_SLEEP_UNTIL_DOWNCAST(X))
 
-struct controller_task
+struct controller_data
 {
-	struct linted_controller_task_receive parent;
 	struct linted_asynch_pool *pool;
 	struct action_state *action_state;
 };
-#define CONTROLLER_UPCAST(X) LINTED_CONTROLLER_RECEIVE_UPCAST(LINTED_UPCAST(X))
-#define CONTROLLER_DOWNCAST(X)                                                 \
-	LINTED_DOWNCAST(struct controller_task,                                \
-	                LINTED_CONTROLLER_RECEIVE_DOWNCAST(X))
 
-struct updater_task
+struct updater_data
 {
-	struct linted_updater_task_send parent;
 	struct simulator_state *simulator_state;
 	struct linted_asynch_pool *pool;
 	linted_ko updater;
 };
-#define UPDATER_UPCAST(X) LINTED_UPDATER_SEND_UPCAST(LINTED_UPCAST(X))
-#define UPDATER_DOWNCAST(X)                                                    \
-	LINTED_DOWNCAST(struct updater_task, LINTED_UPDATER_SEND_DOWNCAST(X))
 
 static linted_ko kos[3U];
 struct linted_start_config const linted_start_config = {
@@ -123,7 +108,7 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task);
 
 static void maybe_update(linted_updater updater,
                          struct simulator_state *simulator_state,
-                         struct updater_task *updater_task,
+                         struct linted_updater_task_send *updater_task,
                          struct linted_asynch_pool *pool);
 
 static void simulate_tick(struct simulator_state *simulator_state,
@@ -172,31 +157,62 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct tick_task timer_task;
-	struct controller_task controller_task;
-	struct updater_task updater_task;
+	struct tick_data timer_data;
+	struct controller_data controller_data;
+	struct updater_data updater_data;
+
+	struct linted_asynch_task_sleep_until *tick_task;
+	struct linted_controller_task_receive *controller_task;
+	struct linted_updater_task_send *updater_task;
+
+	{
+		struct linted_asynch_task_sleep_until *xx;
+		errnum =
+		    linted_asynch_task_sleep_until_create(&xx, &timer_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		tick_task = xx;
+	}
+
+	{
+		struct linted_controller_task_receive *xx;
+		errnum = linted_controller_task_receive_create(
+		    &xx, &controller_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		controller_task = xx;
+	}
+
+	{
+		struct linted_updater_task_send *xx;
+		errnum = linted_updater_task_send_create(&xx, &updater_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		updater_task = xx;
+	}
 
 	{
 		struct timespec now;
 		clock_gettime(CLOCK_MONOTONIC, &now);
 
-		linted_asynch_task_sleep_until(LINTED_UPCAST(&timer_task),
-		                               ON_READ_TIMER, TIMER_ABSTIME,
-		                               &now);
+		linted_asynch_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
+		                                       TIMER_ABSTIME, &now);
 	}
-	timer_task.pool = pool;
-	timer_task.updater_task = &updater_task;
-	timer_task.action_state = &action_state;
-	timer_task.simulator_state = &simulator_state;
-	timer_task.updater = updater;
+	timer_data.pool = pool;
+	timer_data.updater_task = updater_task;
+	timer_data.action_state = &action_state;
+	timer_data.simulator_state = &simulator_state;
+	timer_data.updater = updater;
 
-	linted_controller_receive(LINTED_UPCAST(&controller_task),
-	                          ON_RECEIVE_CONTROLLER_EVENT, controller);
-	controller_task.pool = pool;
-	controller_task.action_state = &action_state;
+	linted_controller_task_receive_prepare(
+	    controller_task, ON_RECEIVE_CONTROLLER_EVENT, controller);
+	controller_data.pool = pool;
+	controller_data.action_state = &action_state;
 
-	linted_asynch_pool_submit(pool, TICK_UPCAST(&timer_task));
-	linted_asynch_pool_submit(pool, CONTROLLER_UPCAST(&controller_task));
+	linted_asynch_pool_submit(
+	    pool, linted_asynch_task_sleep_until_to_asynch(tick_task));
+	linted_asynch_pool_submit(
+	    pool, linted_controller_task_receive_to_asynch(controller_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -216,17 +232,17 @@ destroy_pool : {
 	linted_asynch_pool_stop(pool);
 
 	for (;;) {
-		struct linted_asynch_task *completed_task;
+		struct linted_asynch_task *task;
 		linted_error poll_errnum;
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
 			if (EAGAIN == poll_errnum)
 				break;
-			completed_task = xx;
+			task = xx;
 		}
 
-		linted_error dispatch_errnum = completed_task->errnum;
+		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
 		if (0 == errnum)
 			errnum = dispatch_errnum;
 	}
@@ -236,7 +252,7 @@ destroy_pool : {
 		errnum = destroy_errnum;
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
-	(void)timer_task;
+	(void)tick_task;
 	(void)controller_task;
 	(void)updater_task;
 }
@@ -247,7 +263,7 @@ exit:
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
-	switch (completed_task->task_action) {
+	switch (linted_asynch_task_action(completed_task)) {
 	case ON_READ_TIMER:
 		return on_read_timer(completed_task);
 
@@ -262,23 +278,35 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
 	}
 }
 
-static linted_error on_read_timer(struct linted_asynch_task *completed_task)
+static linted_error on_read_timer(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0)
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
 		return errnum;
 
-	struct tick_task *timer_task = TICK_DOWNCAST(completed_task);
+	struct linted_asynch_task_sleep_until *timer_task =
+	    linted_asynch_task_sleep_until_from_asynch(task);
+	struct tick_data *timer_data =
+	    linted_asynch_task_sleep_until_data(timer_task);
 
-	struct linted_asynch_pool *pool = timer_task->pool;
-	linted_ko updater = timer_task->updater;
-	struct updater_task *updater_task = timer_task->updater_task;
-	struct action_state const *action_state = timer_task->action_state;
-	struct simulator_state *simulator_state = timer_task->simulator_state;
+	struct linted_asynch_pool *pool = timer_data->pool;
+	linted_ko updater = timer_data->updater;
+	struct linted_updater_task_send *updater_task =
+	    timer_data->updater_task;
+	struct action_state const *action_state = timer_data->action_state;
+	struct simulator_state *simulator_state = timer_data->simulator_state;
 
-	time_t requested_sec = LINTED_UPCAST(timer_task)->request.tv_sec;
-	long requested_nsec = LINTED_UPCAST(timer_task)->request.tv_nsec;
+	time_t requested_sec;
+	long requested_nsec;
+
+	{
+		struct timespec request;
+		linted_asynch_task_sleep_until_request(timer_task, &request);
+		requested_sec = request.tv_sec;
+		requested_nsec = request.tv_nsec;
+	}
 
 	long const second = 1000000000;
 	requested_nsec += second / 60;
@@ -287,10 +315,16 @@ static linted_error on_read_timer(struct linted_asynch_task *completed_task)
 		requested_sec += 1;
 	}
 
-	LINTED_UPCAST(timer_task)->request.tv_sec = requested_sec;
-	LINTED_UPCAST(timer_task)->request.tv_nsec = requested_nsec;
+	{
+		struct timespec request;
 
-	linted_asynch_pool_submit(pool, completed_task);
+		request.tv_sec = requested_sec;
+		request.tv_nsec = requested_nsec;
+
+		linted_asynch_task_sleep_until_prepare(
+		    timer_task, ON_READ_TIMER, TIMER_ABSTIME, &request);
+	}
+	linted_asynch_pool_submit(pool, task);
 
 	simulate_tick(simulator_state, action_state);
 
@@ -303,17 +337,20 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
 		return errnum;
 
-	struct controller_task *controller_task = CONTROLLER_DOWNCAST(task);
+	struct linted_controller_task_receive *controller_task =
+	    linted_controller_task_receive_from_asynch(task);
+	struct controller_data *controller_data =
+	    linted_controller_task_receive_data(controller_task);
 
-	struct linted_asynch_pool *pool = controller_task->pool;
-	struct action_state *action_state = controller_task->action_state;
+	struct linted_asynch_pool *pool = controller_data->pool;
+	struct action_state *action_state = controller_data->action_state;
 
 	struct linted_controller_message message;
-	errnum =
-	    linted_controller_decode(LINTED_UPCAST(controller_task), &message);
+	errnum = linted_controller_decode(controller_task, &message);
 	if (errnum != 0)
 		return errnum;
 
@@ -330,18 +367,22 @@ static linted_error on_controller_receive(struct linted_asynch_task *task)
 	return 0;
 }
 
-static linted_error on_sent_update(struct linted_asynch_task *completed_task)
+static linted_error on_sent_update(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = completed_task->errnum) != 0)
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
 		return errnum;
 
-	struct updater_task *updater_task = UPDATER_DOWNCAST(completed_task);
+	struct linted_updater_task_send *updater_task =
+	    linted_updater_task_send_from_asynch(task);
 
-	struct linted_asynch_pool *pool = updater_task->pool;
-	linted_ko updater = updater_task->updater;
-	struct simulator_state *simulator_state = updater_task->simulator_state;
+	struct updater_data *updater_data =
+	    linted_updater_task_send_data(updater_task);
+	struct linted_asynch_pool *pool = updater_data->pool;
+	linted_ko updater = updater_data->updater;
+	struct simulator_state *simulator_state = updater_data->simulator_state;
 
 	simulator_state->write_in_progress = false;
 
@@ -352,7 +393,7 @@ static linted_error on_sent_update(struct linted_asynch_task *completed_task)
 
 static void maybe_update(linted_updater updater,
                          struct simulator_state *simulator_state,
-                         struct updater_task *updater_task,
+                         struct linted_updater_task_send *updater_task,
                          struct linted_asynch_pool *pool)
 {
 	if (!simulator_state->update_pending)
@@ -370,15 +411,18 @@ static void maybe_update(linted_updater updater,
 			.y_rotation = simulator_state->y_rotation
 		};
 
-		linted_updater_send(LINTED_UPCAST(updater_task),
-		                    ON_SENT_UPDATER_EVENT, updater, &update);
+		linted_updater_task_send_prepare(
+		    updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
 	}
 
-	updater_task->simulator_state = simulator_state;
-	updater_task->pool = pool;
-	updater_task->updater = updater;
+	struct updater_data *updater_data =
+	    linted_updater_task_send_data(updater_task);
+	updater_data->simulator_state = simulator_state;
+	updater_data->pool = pool;
+	updater_data->updater = updater;
 
-	linted_asynch_pool_submit(pool, UPDATER_UPCAST(updater_task));
+	linted_asynch_pool_submit(
+	    pool, linted_updater_task_send_to_asynch(updater_task));
 
 	simulator_state->update_pending = false;
 	simulator_state->write_in_progress = true;

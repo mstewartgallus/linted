@@ -39,6 +39,8 @@
  * Schedule tasks on kernel objects to be completed asynchronously.
  */
 
+struct linted_asynch_pool;
+
 enum {
 	LINTED_ASYNCH_TASK_POLL,
 	LINTED_ASYNCH_TASK_READ,
@@ -51,57 +53,10 @@ enum {
 	LINTED_ASYNCH_TASK_SLEEP_UNTIL
 };
 
-struct linted_asynch_pool;
-
-struct linted_asynch_task
-{
-	struct linted_queue_node parent;
-	linted_error errnum;
-	unsigned type;
-	unsigned task_action;
-};
-
-#if _POSIX_C_SOURCE >= 200809L
-struct linted_asynch_task_waitid
-{
-	struct linted_asynch_task parent;
-	siginfo_t info;
-	idtype_t idtype;
-	id_t id;
-	int options;
-};
-
-#define LINTED_ASYNCH_WAITID_UPCAST(X) LINTED_UPCAST(X)
-#define LINTED_ASYNCH_WAITID_DOWNCAST(X)                                       \
-	LINTED_DOWNCAST(struct linted_asynch_task_waitid, X)
-#endif
-
-#if _POSIX_C_SOURCE >= 199309L
-struct linted_asynch_task_sigwaitinfo
-{
-	struct linted_asynch_task parent;
-	siginfo_t info;
-	sigset_t set;
-	int signo;
-};
-
-#define LINTED_ASYNCH_SIGWAITINFO_UPCAST(X) LINTED_UPCAST(X)
-#define LINTED_ASYNCH_SIGWAITINFO_DOWNCAST(X)                                  \
-	LINTED_DOWNCAST(struct linted_asynch_task_sigwaitinfo, X)
-#endif
-
-#if _POSIX_C_SOURCE >= 199309L
-struct linted_asynch_task_sleep_until
-{
-	struct linted_asynch_task parent;
-	struct timespec request;
-	int flags;
-};
-
-#define LINTED_ASYNCH_SLEEP_UNTIL_UPCAST(X) LINTED_UPCAST(X)
-#define LINTED_ASYNCH_SLEEP_UNTIL_DOWNCAST(X)                                  \
-	LINTED_DOWNCAST(struct linted_asynch_task_sleep_until, X)
-#endif
+struct linted_asynch_task;
+struct linted_asynch_task_waitid;
+struct linted_asynch_task_sigwaitinfo;
+struct linted_asynch_task_sleep_until;
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks);
@@ -120,24 +75,72 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp);
 
-void linted_asynch_task(struct linted_asynch_task *task, unsigned type,
-                        unsigned task_action);
+linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
+                                       void *data, unsigned type);
+void linted_asynch_task_destroy(struct linted_asynch_task *task);
+
+void linted_asynch_task_prepare(struct linted_asynch_task *task,
+                                unsigned task_action);
+unsigned linted_asynch_task_action(struct linted_asynch_task *task);
+linted_error linted_asynch_task_errnum(struct linted_asynch_task *task);
+void linted_asynch_task_seterrnum(struct linted_asynch_task *task,
+                                  linted_error errnum);
+void *linted_asynch_task_data(struct linted_asynch_task *task);
+
+linted_error
+linted_asynch_task_waitid_create(struct linted_asynch_task_waitid **taskp,
+                                 void *data);
+void linted_asynch_task_waitid_destroy(struct linted_asynch_task_waitid *task);
 
 #if _POSIX_C_SOURCE >= 200809L
-void linted_asynch_task_waitid(struct linted_asynch_task_waitid *task,
-                               unsigned task_action, idtype_t idtype, id_t id,
-                               int options);
+void linted_asynch_task_waitid_prepare(struct linted_asynch_task_waitid *task,
+                                       unsigned task_action, idtype_t type,
+                                       id_t id, int options);
+void linted_asynch_task_waitid_info(struct linted_asynch_task_waitid *task,
+                                    siginfo_t *info);
 #endif
+void *linted_asynch_task_waitid_data(struct linted_asynch_task_waitid *task);
+struct linted_asynch_task *
+linted_asynch_task_waitid_to_asynch(struct linted_asynch_task_waitid *task);
+struct linted_asynch_task_waitid *
+linted_asynch_task_waitid_from_asynch(struct linted_asynch_task *task);
+
+linted_error linted_asynch_task_sigwaitinfo_create(
+    struct linted_asynch_task_sigwaitinfo **taskp, void *data);
+void linted_asynch_task_sigwaitinfo_destroy(
+    struct linted_asynch_task_sigwaitinfo *task);
 
 #if _POSIX_C_SOURCE >= 199309L
-void linted_asynch_task_sigwaitinfo(struct linted_asynch_task_sigwaitinfo *task,
-                                    unsigned task_action, sigset_t const *set);
+void linted_asynch_task_sigwaitinfo_prepare(
+    struct linted_asynch_task_sigwaitinfo *task, unsigned task_action,
+    sigset_t const *set);
 #endif
+void *linted_asynch_task_sigwaitinfo_data(
+    struct linted_asynch_task_sigwaitinfo *task);
+int linted_asynch_task_sigwaitinfo_signo(
+    struct linted_asynch_task_sigwaitinfo *task);
+struct linted_asynch_task *linted_asynch_task_sigwaitinfo_to_asynch(
+    struct linted_asynch_task_sigwaitinfo *task);
+struct linted_asynch_task_sigwaitinfo *
+linted_asynch_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task);
+
+linted_error linted_asynch_task_sleep_until_create(
+    struct linted_asynch_task_sleep_until **taskp, void *data);
+void linted_asynch_task_sleep_until_destroy(
+    struct linted_asynch_task_sleep_until *task);
 
 #if _POSIX_C_SOURCE >= 199309L
-void linted_asynch_task_sleep_until(struct linted_asynch_task_sleep_until *task,
-                                    unsigned task_action, int flags,
-                                    struct timespec const *request);
+void linted_asynch_task_sleep_until_prepare(
+    struct linted_asynch_task_sleep_until *task, unsigned task_action,
+    int flags, struct timespec const *req);
+void linted_asynch_task_sleep_until_request(
+    struct linted_asynch_task_sleep_until *task, struct timespec *req);
 #endif
+void *linted_asynch_task_sleep_until_data(
+    struct linted_asynch_task_sleep_until *task);
+struct linted_asynch_task *linted_asynch_task_sleep_until_to_asynch(
+    struct linted_asynch_task_sleep_until *task);
+struct linted_asynch_task_sleep_until *
+linted_asynch_task_sleep_until_from_asynch(struct linted_asynch_task *task);
 
 #endif /* LINTED_ASYNCH_H */

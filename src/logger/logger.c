@@ -32,9 +32,8 @@ enum {
 	MAX_TASKS
 };
 
-struct logger_task
+struct logger_data
 {
-	struct linted_log_task_receive parent;
 	struct linted_asynch_pool *pool;
 	char const *process_name;
 	linted_ko log_ko;
@@ -63,22 +62,31 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		if ((errnum = linted_asynch_pool_create(&xx, MAX_TASKS)) != 0) {
+		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (errnum != 0)
 			goto exit;
-		}
 		pool = xx;
 	}
 
-	struct logger_task logger_task;
+	struct linted_log_task_receive *logger_task;
+	struct logger_data logger_data;
 
-	linted_log_receive(LINTED_UPCAST(&logger_task), ON_RECEIVE_LOG, log,
-	                   logger_buffer);
-	logger_task.log_ko = STDERR_FILENO;
-	logger_task.process_name = process_name;
-	logger_task.pool = pool;
+	{
+		struct linted_log_task_receive *xx;
+		errnum = linted_log_task_receive_create(&xx, &logger_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		logger_task = xx;
+	}
+
+	linted_log_task_receive_prepare(logger_task, ON_RECEIVE_LOG, log,
+	                                logger_buffer);
+	logger_data.log_ko = STDERR_FILENO;
+	logger_data.process_name = process_name;
+	logger_data.pool = pool;
 
 	linted_asynch_pool_submit(
-	    pool, LINTED_UPCAST(LINTED_UPCAST(LINTED_UPCAST(&logger_task))));
+	    pool, linted_log_task_receive_to_asynch(logger_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -89,7 +97,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			completed_task = xx;
 		}
 
-		if ((errnum = dispatch(completed_task)) != 0)
+		errnum = dispatch(completed_task);
+		if (errnum != 0)
 			goto destroy_pool;
 	}
 
@@ -98,18 +107,17 @@ destroy_pool : {
 
 	/* TODO: Print left over messages */
 	for (;;) {
-		struct linted_asynch_task *completed_task;
+		struct linted_asynch_task *task;
 		linted_error poll_errnum;
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum) {
+			if (EAGAIN == poll_errnum)
 				break;
-			}
-			completed_task = xx;
+			task = xx;
 		}
 
-		linted_error dispatch_errnum = completed_task->errnum;
+		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
 		if (0 == errnum)
 			errnum = dispatch_errnum;
 	}
@@ -128,7 +136,7 @@ exit:
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
-	switch (completed_task->task_action) {
+	switch (linted_asynch_task_action(completed_task)) {
 	case ON_RECEIVE_LOG:
 		return on_receive_log(completed_task);
 
@@ -141,17 +149,20 @@ static linted_error on_receive_log(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	if ((errnum = task->errnum) != 0)
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
 		return errnum;
 
-	struct logger_task *logger_task =
-	    LINTED_DOWNCAST(struct logger_task, task);
+	struct linted_log_task_receive *logger_task =
+	    linted_log_task_receive_from_asynch(task);
+	struct logger_data *logger_data =
+	    linted_log_task_receive_data(logger_task);
 
-	struct linted_asynch_pool *pool = logger_task->pool;
-	linted_ko log_ko = logger_task->log_ko;
-	char const *process_name = logger_task->process_name;
-	size_t log_size = LINTED_UPCAST(LINTED_UPCAST(logger_task))->bytes_read;
-	char const *buf = LINTED_UPCAST(LINTED_UPCAST(logger_task))->buf;
+	struct linted_asynch_pool *pool = logger_data->pool;
+	linted_ko log_ko = logger_data->log_ko;
+	char const *process_name = logger_data->process_name;
+	size_t log_size = linted_log_task_receive_bytes_read(logger_task);
+	char const *buf = linted_log_task_receive_buf(logger_task);
 
 	linted_io_write_string(log_ko, NULL, process_name);
 	linted_io_write_str(log_ko, NULL, LINTED_STR(": "));

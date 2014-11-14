@@ -31,39 +31,39 @@
 
 typedef linted_mq linted_window_notifier;
 
-struct linted_window_notifier_task_send
-{
-	struct linted_mq_task_send parent;
-	char message[LINTED_RPC_UINT32_SIZE];
-};
+struct linted_window_notifier_task_send;
+struct linted_window_notifier_task_receive;
 
-struct linted_window_notifier_task_receive
-{
-	struct linted_mq_task_receive parent;
-	char message[LINTED_RPC_UINT32_SIZE];
-};
+linted_error linted_window_notifier_task_receive_create(
+    struct linted_window_notifier_task_receive **taskp, void *data);
+void linted_window_notifier_task_receive_destroy(
+    struct linted_window_notifier_task_receive *task);
 
-#define LINTED_WINDOW_NOTIFIER_SEND_UPCAST(X)                                  \
-	LINTED_MQ_SEND_UPCAST(LINTED_UPCAST(X))
-#define LINTED_WINDOW_NOTIFIER_SEND_DOWNCAST(X)                                \
-	LINTED_DOWNCAST(struct linted_window_notifier_task_send,               \
-	                LINTED_MQ_SEND_DOWNCAST(X))
+void linted_window_notifier_task_receive_prepare(
+    struct linted_window_notifier_task_receive *task, unsigned task_action,
+    linted_ko notifier);
+struct linted_window_notifier_task_receive *
+linted_window_notifier_task_receive_from_asynch(
+    struct linted_asynch_task *task);
+struct linted_asynch_task *linted_window_notifier_task_receive_to_asynch(
+    struct linted_window_notifier_task_receive *task);
+void *linted_window_notifier_task_receive_data(
+    struct linted_window_notifier_task_receive *task);
 
-#define LINTED_WINDOW_NOTIFIER_RECEIVE_UPCAST(X)                               \
-	LINTED_MQ_RECEIVE_UPCAST(LINTED_UPCAST(X))
-#define LINTED_WINDOW_NOTIFIER_RECEIVE_DOWNCAST(X)                             \
-	LINTED_DOWNCAST(struct linted_window_notifier_task_receive,            \
-	                LINTED_MQ_RECEIVE_DOWNCAST(X))
+linted_error linted_window_notifier_task_send_create(
+    struct linted_window_notifier_task_send **taskp, void *data);
+void linted_window_notifier_task_send_destroy(
+    struct linted_window_notifier_task_send *task);
 
-void linted_window_notifier_send(struct linted_window_notifier_task_send *task,
-                                 unsigned task_id,
-                                 linted_window_notifier notifier,
-                                 uint_fast32_t window);
-
-void
-linted_window_notifier_receive(struct linted_window_notifier_task_receive *task,
-                               unsigned task_id,
-                               linted_window_notifier notifier);
+void linted_window_notifier_task_send_prepare(
+    struct linted_window_notifier_task_send *task, unsigned task_action,
+    linted_ko notifier, uint_fast32_t window);
+struct linted_window_notifier_task_send *
+linted_window_notifier_task_send_from_asynch(struct linted_asynch_task *task);
+struct linted_asynch_task *linted_window_notifier_task_send_to_asynch(
+    struct linted_window_notifier_task_send *task);
+void *linted_window_notifier_task_send_data(
+    struct linted_window_notifier_task_send *task);
 
 uint_fast32_t linted_window_notifier_decode(
     struct linted_window_notifier_task_receive const *task);

@@ -55,32 +55,8 @@ struct linted_updater_update
 	linted_updater_angle y_rotation;
 };
 
-struct linted_updater_task_send
-{
-	struct linted_mq_task_send parent;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
-	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
-	             LINTED_RPC_UINT32_SIZE];
-};
-
-struct linted_updater_task_receive
-{
-	struct linted_mq_task_receive parent;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
-	             LINTED_RPC_INT32_SIZE + LINTED_RPC_UINT32_SIZE +
-	             LINTED_RPC_UINT32_SIZE];
-};
-
-#define LINTED_UPDATER_SEND_UPCAST(X) LINTED_MQ_SEND_UPCAST(LINTED_UPCAST(X))
-#define LINTED_UPDATER_SEND_DOWNCAST(X)                                        \
-	LINTED_DOWNCAST(struct linted_updater_task_send,                       \
-	                LINTED_MQ_SEND_DOWNCAST(X))
-
-#define LINTED_UPDATER_RECEIVE_UPCAST(X)                                       \
-	LINTED_MQ_RECEIVE_UPCAST(LINTED_UPCAST(X))
-#define LINTED_UPDATER_RECEIVE_DOWNCAST(X)                                     \
-	LINTED_DOWNCAST(struct linted_updater_task_receive,                    \
-	                LINTED_MQ_RECEIVE_DOWNCAST(X))
+struct linted_updater_task_send;
+struct linted_updater_task_receive;
 
 #define LINTED_UPDATER_UINT_MAX UINT32_MAX
 
@@ -96,12 +72,36 @@ struct linted_updater_task_receive
 
 static linted_updater_int linted_updater__saturate(int_fast64_t x);
 
-void linted_updater_send(struct linted_updater_task_send *task,
-                         unsigned task_id, linted_updater updater,
-                         struct linted_updater_update const *update);
+linted_error
+linted_updater_task_receive_create(struct linted_updater_task_receive **taskp,
+                                   void *data);
+void
+linted_updater_task_receive_destroy(struct linted_updater_task_receive *task);
 
-void linted_updater_receive(struct linted_updater_task_receive *task,
-                            unsigned task_id, linted_updater updater);
+void
+linted_updater_task_receive_prepare(struct linted_updater_task_receive *task,
+                                    unsigned task_action, linted_ko updater);
+struct linted_asynch_task *
+linted_updater_task_receive_to_asynch(struct linted_updater_task_receive *task);
+struct linted_updater_task_receive *
+linted_updater_task_receive_from_asynch(struct linted_asynch_task *task);
+void *
+linted_updater_task_receive_data(struct linted_updater_task_receive *task);
+
+linted_error
+linted_updater_task_send_create(struct linted_updater_task_send **taskp,
+                                void *data);
+void linted_updater_task_send_destroy(struct linted_updater_task_send *task);
+
+void
+linted_updater_task_send_prepare(struct linted_updater_task_send *task,
+                                 unsigned task_action, linted_ko updater,
+                                 struct linted_updater_update const *update);
+struct linted_asynch_task *
+linted_updater_task_send_to_asynch(struct linted_updater_task_send *task);
+struct linted_updater_task_send *
+linted_updater_task_send_from_asynch(struct linted_asynch_task *task);
+void *linted_updater_task_send_data(struct linted_updater_task_send *task);
 
 void linted_updater_decode(struct linted_updater_task_receive const *task,
                            struct linted_updater_update *update);

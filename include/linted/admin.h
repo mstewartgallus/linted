@@ -75,28 +75,12 @@ union linted_admin_reply
 	struct linted_admin_stop_reply stop;
 };
 
-struct linted_admin_task_accept
-{
-	struct linted_ko_task_accept parent;
-};
-
-struct linted_admin_task_recv_request
-{
-	struct linted_ko_task_read parent;
-	union linted_admin_request request;
-};
-
-struct linted_admin_task_send_reply
-{
-	struct linted_ko_task_write parent;
-	union linted_admin_reply reply;
-};
+struct linted_admin_task_accept;
+struct linted_admin_task_recv_request;
+struct linted_admin_task_send_reply;
 
 linted_error linted_admin_bind(linted_admin *admin, int backlog,
                                char const *path, size_t path_len);
-
-void linted_admin_accept(struct linted_admin_task_accept *task,
-                         unsigned task_action, linted_admin admin);
 
 linted_error linted_admin_connect(linted_admin *admin, char const *path,
                                   size_t path_len);
@@ -105,12 +89,59 @@ linted_error linted_admin_path(linted_admin admin,
                                char buf[static LINTED_ADMIN_PATH_MAX],
                                size_t *len);
 
-void linted_admin_recv_request(struct linted_admin_task_recv_request *task,
-                               unsigned task_action, linted_admin admin);
+void linted_admin_accept(struct linted_admin_task_accept *task,
+                         unsigned task_action, linted_admin admin);
 
-void linted_admin_send_reply(struct linted_admin_task_send_reply *task,
-                             unsigned task_action, linted_admin admin,
-                             union linted_admin_reply const *reply);
+linted_error
+linted_admin_task_accept_create(struct linted_admin_task_accept **taskp,
+                                void *data);
+void linted_admin_task_accept_destroy(struct linted_admin_task_accept *task);
+
+linted_admin
+linted_admin_task_accept_returned_ko(struct linted_admin_task_accept *task);
+void linted_admin_task_accept_prepare(struct linted_admin_task_accept *task,
+                                      unsigned task_action, linted_ko ko);
+void *linted_admin_task_accept_data(struct linted_admin_task_accept *task);
+struct linted_asynch_task *
+linted_admin_task_accept_to_asynch(struct linted_admin_task_accept *task);
+struct linted_admin_task_accept *
+linted_admin_task_accept_from_asynch(struct linted_asynch_task *task);
+
+linted_error linted_admin_task_recv_request_create(
+    struct linted_admin_task_recv_request **taskp, void *data);
+void linted_admin_task_recv_request_destroy(
+    struct linted_admin_task_recv_request *task);
+
+linted_admin
+linted_admin_task_recv_request_ko(struct linted_admin_task_recv_request *task);
+union linted_admin_request const *linted_admin_task_recv_request_request(
+    struct linted_admin_task_recv_request *task);
+void *linted_admin_task_recv_request_data(
+    struct linted_admin_task_recv_request *task);
+void linted_admin_task_recv_request_prepare(
+    struct linted_admin_task_recv_request *task, unsigned task_action,
+    linted_ko ko);
+struct linted_asynch_task *linted_admin_task_recv_request_to_asynch(
+    struct linted_admin_task_recv_request *task);
+struct linted_admin_task_recv_request *
+linted_admin_task_recv_request_from_asynch(struct linted_asynch_task *task);
+
+linted_error
+linted_admin_task_send_reply_create(struct linted_admin_task_send_reply **taskp,
+                                    void *data);
+void
+linted_admin_task_send_reply_destroy(struct linted_admin_task_send_reply *task);
+
+void
+linted_admin_task_send_reply_prepare(struct linted_admin_task_send_reply *task,
+                                     unsigned task_action, linted_ko ko,
+                                     union linted_admin_reply const *reply);
+void *
+linted_admin_task_send_reply_data(struct linted_admin_task_send_reply *task);
+struct linted_asynch_task *linted_admin_task_send_reply_to_asynch(
+    struct linted_admin_task_send_reply *task);
+struct linted_admin_task_send_reply *
+linted_admin_task_send_reply_from_asynch(struct linted_asynch_task *task);
 
 linted_error
 linted_admin_send_request(linted_admin admin,

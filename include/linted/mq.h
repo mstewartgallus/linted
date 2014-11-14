@@ -30,31 +30,8 @@
 
 typedef linted_ko linted_mq;
 
-struct linted_mq_task_receive
-{
-	struct linted_asynch_task parent;
-	char *buf;
-	size_t size;
-	size_t bytes_read;
-	linted_ko ko;
-};
-
-struct linted_mq_task_send
-{
-	struct linted_asynch_task parent;
-	char const *buf;
-	size_t size;
-	size_t bytes_wrote;
-	linted_ko ko;
-};
-
-#define LINTED_MQ_RECEIVE_UPCAST(X) LINTED_UPCAST(X)
-#define LINTED_MQ_RECEIVE_DOWNCAST(X)                                          \
-	LINTED_DOWNCAST(struct linted_mq_task_receive, X)
-
-#define LINTED_MQ_SEND_UPCAST(X) LINTED_UPCAST(X)
-#define LINTED_MQ_SEND_DOWNCAST(X)                                             \
-	LINTED_DOWNCAST(struct linted_mq_task_send, X)
+struct linted_mq_task_receive;
+struct linted_mq_task_send;
 
 /**
  * The linted_mq_pair call creates an unnamed pair of message queues.
@@ -90,12 +67,33 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
                               size_t maxmsg, size_t msgsize,
                               unsigned long flags);
 
-void linted_mq_task_receive(struct linted_mq_task_receive *task,
-                            unsigned task_action, linted_ko ko, char *buf,
-                            size_t size);
+linted_error
+linted_mq_task_receive_create(struct linted_mq_task_receive **taskp,
+                              void *data);
+void linted_mq_task_receive_destroy(struct linted_mq_task_receive *task);
 
-void linted_mq_task_send(struct linted_mq_task_send *task, unsigned task_action,
-                         linted_ko ko, char const *buf, size_t size);
+void linted_mq_task_receive_prepare(struct linted_mq_task_receive *task,
+                                    unsigned task_action, linted_ko ko,
+                                    char *buf, size_t msglen);
+struct linted_asynch_task *
+linted_mq_task_receive_to_asynch(struct linted_mq_task_receive *task);
+struct linted_mq_task_receive *
+linted_mq_task_receive_from_asynch(struct linted_asynch_task *task);
+void *linted_mq_task_receive_data(struct linted_mq_task_receive *task);
+size_t linted_mq_task_receive_bytes_read(struct linted_mq_task_receive *task);
+
+linted_error linted_mq_task_send_create(struct linted_mq_task_send **taskp,
+                                        void *data);
+void linted_mq_task_send_destroy(struct linted_mq_task_send *task);
+
+void linted_mq_task_send_prepare(struct linted_mq_task_send *task,
+                                 unsigned task_action, linted_ko ko, char *buf,
+                                 size_t msglen);
+struct linted_asynch_task *
+linted_mq_task_send_to_asynch(struct linted_mq_task_send *task);
+struct linted_mq_task_send *
+linted_mq_task_send_from_asynch(struct linted_asynch_task *task);
+void *linted_mq_task_send_data(struct linted_mq_task_send *task);
 
 void linted_mq_do_receive(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
