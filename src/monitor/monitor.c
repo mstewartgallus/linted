@@ -999,7 +999,7 @@ envvar_allocate_succeeded:
 			goto destroy_attr;
 	}
 	linted_spawn_attr_setpriority(attr, priority + 1);
-	// linted_spawn_attr_setfilter(attr, &default_filter);
+	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setwaiter(attr, waiter);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
