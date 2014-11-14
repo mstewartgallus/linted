@@ -19,6 +19,7 @@
 
 #include "linted/mem.h"
 #include "linted/mq.h"
+#include "linted/rpc.h"
 #include "linted/util.h"
 
 #include <errno.h>

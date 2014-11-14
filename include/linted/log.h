@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 #include "linted/mq.h"
-#include "linted/util.h"
 
 #include <stddef.h>
 
