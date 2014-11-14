@@ -1922,13 +1922,12 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 	}
 getline_failed:
 	errnum = errno;
-	/* errnum can be 0 on EOF */
-	goto close_file;
+	if (errnum != 0)
+		goto close_file;
+	bytes = 1U;
 
 getline_succeeded:
-	/* Truncate out the newline character */
-	buf[bytes - 1U] = '\0';
-
+	/* Truncate out the newline character and handle a NULL buf */
 	{
 		void *xx;
 		errnum = linted_mem_realloc(&xx, buf, bytes);
@@ -1936,6 +1935,8 @@ getline_succeeded:
 			goto close_file;
 		buf = xx;
 	}
+
+	buf[bytes - 1U] = '\0';
 
 close_file:
 	if (EOF == fclose(file)) {
@@ -2008,10 +2009,8 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 		{
 			char *xx;
 			errnum = get_process_service_name(child, &xx);
-			if (ESRCH == errnum) {
-				errnum = 0;
+			if (ESRCH == errnum)
 				continue;
-			}
 			if (errnum != 0)
 				goto free_buf;
 			service_name = xx;
