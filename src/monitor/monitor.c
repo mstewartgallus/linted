@@ -150,6 +150,7 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
 static linted_error on_process_sigtrap(pid_t pid, int exit_status);
+static linted_error on_event_stop(pid_t pid, int exit_status);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
@@ -1202,7 +1203,7 @@ free_envvars:
 
 ptrace_child:
 	if (0 == errnum) {
-		errnum = ptrace_seize(child, 0U);
+		errnum = ptrace_seize(child, 0);
 
 		fprintf(stderr, "ptracing service %s: %i\n", service_name,
 		        child);
@@ -1600,6 +1601,14 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 	case 0:
 		return on_process_sigtrap(pid, exit_status);
 
+	/* Even if we never use PTRACE_O_TRACECLONE,
+	 * PTRACE_O_TRACEFORK, PTRACE_O_TRACEVFORK, or
+	 * PTRACE_INTERRUPT we still get this event when a ptraced
+	 * process is sent SIGCONT.
+	 */
+	case PTRACE_EVENT_STOP:
+		return on_event_stop(pid, exit_status);
+
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
@@ -1672,6 +1681,30 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 
 restart_process:
 	;
+	linted_error cont_errnum = ptrace_cont(pid, exit_status);
+	if (0 == errnum)
+		errnum = cont_errnum;
+	return errnum;
+}
+
+static linted_error on_event_stop(pid_t pid, int exit_status)
+{
+	linted_error errnum = 0;
+
+	do {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_PID, pid, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
+
 	linted_error cont_errnum = ptrace_cont(pid, exit_status);
 	if (0 == errnum)
 		errnum = cont_errnum;
