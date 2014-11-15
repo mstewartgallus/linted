@@ -76,8 +76,14 @@
  * - It does not handle a few internal functions in some libraries,
  *   probably due to:
  *   https://bugzilla.kernel.org/show_bug.cgi?id=80671
- * - It cannot handle Mesa's JITted GPU code. Not sure how easy it
- *   would be for Mesa to output debug information.
+ * - In order for perf to handle Mesa's JITted GPU code (from llvmpipe
+ *   enabled with LIBGL_ALWAYS_SOFTWARE=true) perf needs Mesa to be
+ *   built with PROFILE defined and Mesa needs to output a file
+ *   "/tmp/perf-[pid]" mapping symbols to JITted code. This means that
+ *   /tmp needs to be available inside the drawer process sandbox and
+ *   the drawer can't be trapped in a new process hierarchy with
+ *   CLONE_NEWPID. Also Mesa tests the PERF_BUILDID_DIR environment
+ *   variable set by perf before writing the file.
  * - Make sure to download all debug symbols
  * - Related packages used by Linted on my OS
  *   - libc6
