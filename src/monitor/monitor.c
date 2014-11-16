@@ -1202,14 +1202,13 @@ free_envvars:
 	linted_mem_free(envvars);
 
 ptrace_child:
-	if (0 == errnum) {
-		errnum = ptrace_seize(child, 0);
+	if (errnum != 0)
+		return errnum;
 
-		fprintf(stderr, "ptracing service %s: %i\n", service_name,
-		        child);
-	}
+	fprintf(stderr, "ptracing service %s: %i\n", service_name,
+		child);
 
-	return errnum;
+	return ptrace_seize(child, 0);
 }
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
