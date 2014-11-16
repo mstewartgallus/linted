@@ -541,33 +541,32 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	{
-		/*
-		 * To save stack space reuse the same sigset for the
-		 * full set and the old set.
-		 */
 		sigset_t sigset;
 		sigfillset(&sigset);
 
-		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+		errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 		if (errnum != 0)
 			goto close_pid_pipes;
+	}
 
-		if (deparent) {
-			child = fork();
-		} else {
-			child =
-			    syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
-		}
-		if (-1 == child) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
+	if (deparent) {
+		child = fork();
+	} else {
+		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+	}
+	if (-1 == child) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
-		if (0 == child)
-			default_signals(err_writer);
+	if (0 == child)
+		default_signals(err_writer);
 
+	{
+		sigset_t emptyset;
+		sigemptyset(&emptyset);
 		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		    pthread_sigmask(SIG_SETMASK, &emptyset, NULL);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
