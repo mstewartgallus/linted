@@ -134,13 +134,18 @@ linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
 		EGLConfig xx;
 		EGLint yy;
 		if (EGL_FALSE ==
-		    eglChooseConfig(display, attr_list, &xx, 1U, &yy)) {
-			errnum = get_egl_error();
-			goto destroy_display;
-		}
+		    eglChooseConfig(display, attr_list, &xx, 1U, &yy))
+			goto choose_config_failed;
 		config = xx;
+		goto choose_config_succeeded;
 	}
 
+choose_config_failed:
+	errnum = get_egl_error();
+	goto destroy_display;
+
+choose_config_succeeded:
+	;
 	EGLSurface surface =
 	    eglCreateWindowSurface(display, config, native_window, NULL);
 	if (EGL_NO_SURFACE == surface) {
@@ -367,107 +372,128 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		goto use_no_context;
 	}
 
+	flush_gl_errors();
+	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	if (0 == fragment_shader) {
+		errnum = get_gl_error();
+		goto cleanup_program;
+	}
+	glAttachShader(program, fragment_shader);
+	glDeleteShader(fragment_shader);
+
+	glShaderSource(fragment_shader, 1U,
+	               (GLchar const **)&linted_assets_fragment_shader, NULL);
+	glCompileShader(fragment_shader);
+
+	GLint fragment_is_valid;
 	{
-		flush_gl_errors();
-		GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-		if (0 == fragment_shader) {
-			errnum = get_gl_error();
-			goto cleanup_program;
+		GLint xx = false;
+		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &xx);
+		fragment_is_valid = xx;
+	}
+	if (!fragment_is_valid) {
+		errnum = EINVAL;
+
+		GLint info_log_length;
+		{
+			GLint xx = 0;
+			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &xx);
+			info_log_length = xx;
 		}
-		glAttachShader(program, fragment_shader);
-		glDeleteShader(fragment_shader);
 
-		glShaderSource(fragment_shader, 1U,
-		               (GLchar const **)&linted_assets_fragment_shader,
-		               NULL);
-		glCompileShader(fragment_shader);
-
-		GLint is_valid;
-		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &is_valid);
-		if (!is_valid) {
-			errnum = EINVAL;
-
-			GLint info_log_length;
-			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
-			              &info_log_length);
-
+		GLchar *info_log;
+		{
 			void *xx;
 			linted_error mem_errnum =
 			    linted_mem_alloc(&xx, info_log_length);
-			if (0 == mem_errnum) {
-				GLchar *info_log = xx;
-				glGetShaderInfoLog(fragment_shader,
-				                   info_log_length, NULL,
-				                   info_log);
-				log_str(log, LINTED_STR("Invalid shader: "),
-				        info_log);
-				linted_mem_free(info_log);
-			}
-			goto cleanup_program;
+			if (mem_errnum != 0)
+				goto cleanup_program;
+			info_log = xx;
 		}
+		glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
+		                   info_log);
+		log_str(log, LINTED_STR("Invalid shader: "), info_log);
+		linted_mem_free(info_log);
 	}
 
+	flush_gl_errors();
+	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	if (0 == vertex_shader) {
+		errnum = get_gl_error();
+		goto cleanup_program;
+	}
+	glAttachShader(program, vertex_shader);
+	glDeleteShader(vertex_shader);
+
+	glShaderSource(vertex_shader, 1U,
+	               (GLchar const **)&linted_assets_vertex_shader, NULL);
+	glCompileShader(vertex_shader);
+
+	GLint vertex_is_valid;
 	{
-		flush_gl_errors();
-		GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		if (0 == vertex_shader) {
-			errnum = get_gl_error();
-			goto cleanup_program;
+		GLint xx = false;
+		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &xx);
+		vertex_is_valid = xx;
+	}
+	if (!vertex_is_valid) {
+		errnum = EINVAL;
+
+		GLint info_log_length = 0;
+		{
+			GLint xx;
+			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &xx);
+			info_log_length = xx;
 		}
-		glAttachShader(program, vertex_shader);
-		glDeleteShader(vertex_shader);
 
-		glShaderSource(vertex_shader, 1U,
-		               (GLchar const **)&linted_assets_vertex_shader,
-		               NULL);
-		glCompileShader(vertex_shader);
-
-		GLint is_valid;
-		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &is_valid);
-		if (!is_valid) {
-			errnum = EINVAL;
-
-			GLint info_log_length;
-			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH,
-			              &info_log_length);
-
+		GLchar *info_log;
+		{
 			void *xx;
 			linted_error mem_errnum =
 			    linted_mem_alloc(&xx, info_log_length);
-			if (0 == mem_errnum) {
-				GLchar *info_log = xx;
-				glGetShaderInfoLog(vertex_shader,
-				                   info_log_length, NULL,
-				                   info_log);
-				log_str(log, LINTED_STR("Invalid shader: "),
-				        info_log);
-				linted_mem_free(info_log);
-			}
-			goto cleanup_program;
+			if (mem_errnum != 0)
+				goto cleanup_program;
+			info_log = xx;
 		}
+
+		glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
+		                   info_log);
+		log_str(log, LINTED_STR("Invalid shader: "), info_log);
+		linted_mem_free(info_log);
+		goto cleanup_program;
 	}
 	glLinkProgram(program);
 
 	glValidateProgram(program);
 
-	GLint is_valid;
-	glGetProgramiv(program, GL_VALIDATE_STATUS, &is_valid);
-	if (!is_valid) {
+	GLint program_is_valid;
+	{
+		GLint xx = false;
+		glGetProgramiv(program, GL_VALIDATE_STATUS, &xx);
+		program_is_valid = xx;
+	}
+	if (!program_is_valid) {
 		errnum = EINVAL;
 
 		GLint info_log_length;
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
-
-		void *xx;
-		linted_error mem_errnum =
-		    linted_mem_alloc(&xx, info_log_length);
-		if (0 == mem_errnum) {
-			GLchar *info_log = xx;
-			glGetProgramInfoLog(program, info_log_length, NULL,
-			                    info_log);
-			log_str(log, LINTED_STR("Invalid program: "), info_log);
-			linted_mem_free(info_log);
+		{
+			GLint xx = 0;
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &xx);
+			info_log_length = xx;
 		}
+
+		GLchar *info_log;
+		{
+			void *xx;
+			linted_error mem_errnum =
+			    linted_mem_alloc(&xx, info_log_length);
+			if (mem_errnum != 0)
+				goto cleanup_program;
+			info_log = xx;
+		}
+
+		glGetProgramInfoLog(program, info_log_length, NULL, info_log);
+		log_str(log, LINTED_STR("Invalid program: "), info_log);
+		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
 

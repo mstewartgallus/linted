@@ -1205,8 +1205,7 @@ ptrace_child:
 	if (errnum != 0)
 		return errnum;
 
-	fprintf(stderr, "ptracing service %s: %i\n", service_name,
-		child);
+	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
 
 	return ptrace_seize(child, 0);
 }
