@@ -14,6 +14,7 @@
  * @section potential Potential tools
  * <ul>
  *
+ * <li> iwyu </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
