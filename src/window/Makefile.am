@@ -25,7 +25,6 @@ pkglibexec_PROGRAMS+=%D%/window
   src/ko/libko.la\
   src/mem/libmem.la\
   \
-  src/log/liblog.la\
   src/window-notifier/libwindow-notifier.la\
   \
   $(XCB_LIBS)

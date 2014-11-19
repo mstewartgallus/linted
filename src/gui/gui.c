@@ -58,7 +58,6 @@ static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
 	                                0 };
 
 struct controller_data;
-struct controller_task;
 
 struct window_model
 {

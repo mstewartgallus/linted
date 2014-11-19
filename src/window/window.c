@@ -20,10 +20,8 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
-#include "linted/updater.h"
 #include "linted/util.h"
 #include "linted/window-notifier.h"
 

@@ -26,11 +26,10 @@
 #include "linted/updater.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 
 #define ROTATION_SPEED 512U
