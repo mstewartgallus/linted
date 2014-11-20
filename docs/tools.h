@@ -189,6 +189,10 @@
  *   well ("Maximum number of clients reached" for example.)
  * </li>
  *
+ * <li> [FlameGraph](https://github.com/brendangregg/FlameGraph)
+ * - Visualizes perf output nicely.
+ * </li>
+ *
  * @section rejected Rejected Tools
  *
  * <ul>
