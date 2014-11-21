@@ -43,4 +43,10 @@
  * @bug Currently if PR_SET_CHILD_SUBREAPER sandboxes die then their
  * children wont be killed by the kernel and will mess up the init
  * container.
+ *
+ * @bug Currently the CLONE_NEWPID sandboxes do not receive
+ * controlling terminal notifications such as SIGINT although the
+ * PR_SET_CHILD_SUBREAPER still do. Coincidentally this is the desired
+ * behaviour. We should have similar behaviour for the
+ * PR_SET_CHILD_SUBREAPER sandboxes as the CLONE_NEWPID sandboxes.
  */
