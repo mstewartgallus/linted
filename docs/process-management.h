@@ -54,14 +54,23 @@
  *
  * @section signals Signal handling
  *
- * Currently, `init` blocks all nonurgent exit signals (`SIGHUP`,
+ * Currently `init` blocks all nonurgent exit signals (`SIGHUP`,
  * `SIGINT1, `SIGQUIT`, and `SIGTERM`) and lets the `monitor` handle
  * them.
  *
- * Currently (due to coincidental semantics of `CLONE_NEWPID`) the
- * `CLONE_NEWPID` sandboxes do not receive controlling terminal
- * notifications such as `SIGINT` and let the monitor handle the
- * signals.
+ * Currently as sandboxes are ptraced by the `monitor` when they get
+ * terminal notifications such as `SIGINT` they are not acted upon as
+ * `monitor` traps such notifications and doesn't process them while
+ * it is shutting down. This may be a good way of preventing sandboxes
+ * from getting terminal notifications or it may be a bad way of
+ * handling this.
+ *
+ * @todo Currently `CLONE_NEWPID` service processes explicitly setup
+ * signal handlers for exit signals and forward them to children. This
+ * does not work for `SIGKILL` for `PR_SET_CHILD_SUBREAPER` style
+ * service processes. Remove such handling from `CLONE_NEWPID` style
+ * waiters and make the monitor forward the signals and handle both
+ * the `CLONE_NEWPID` case and the `PR_SET_CHILD_SUBREAPER` case.
  *
  * @todo Extend ignoring controlling terminal notifications to
  * `PR_SET_CHILD_SUBREAPER` sandboxes and let the monitor handle the
