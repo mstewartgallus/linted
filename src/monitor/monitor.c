@@ -217,7 +217,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	sigset_t orig_mask;
 
-	errnum = pthread_sigmask(SIG_SETMASK, NULL, &orig_mask);
+	sigset_t exit_signals;
+	sigemptyset(&exit_signals);
+	sigaddset(&exit_signals, SIGHUP);
+	sigaddset(&exit_signals, SIGINT);
+	sigaddset(&exit_signals, SIGQUIT);
+	sigaddset(&exit_signals, SIGTERM);
+
+	/* Block signals before spawning threads */
+	errnum = pthread_sigmask(SIG_BLOCK, &exit_signals, &orig_mask);
 	if (errnum != 0)
 		goto exit_monitor;
 
@@ -226,17 +234,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_handler = ignore;
 		action.sa_flags = SA_RESTART | SA_NODEFER | SA_NOCLDSTOP;
 		sigaction(SIGCHLD, &action, NULL);
-	}
-
-	/* Block SIGTERM before spawning threads */
-	{
-		sigset_t set;
-		sigemptyset(&set);
-		sigaddset(&set, SIGTERM);
-
-		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
-		if (errnum != 0)
-			goto exit_monitor;
 	}
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
@@ -359,14 +356,8 @@ retry_bind:
 		accepted_conn_task = xx;
 	}
 
-	{
-		sigset_t set;
-		sigemptyset(&set);
-		sigaddset(&set, SIGTERM);
-
-		linted_asynch_task_sigwaitinfo_prepare(sigwait_task,
-		                                       SIGWAITINFO, &set);
-	}
+	linted_asynch_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
+	                                       &exit_signals);
 	sigwait_data.time_to_exit = &time_to_exit;
 
 	linted_asynch_pool_submit(
@@ -1599,8 +1590,6 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 	struct sigwait_data *sigwait_data =
 	    linted_asynch_task_sigwaitinfo_data(sigwait_task);
 	bool *time_to_exit = sigwait_data->time_to_exit;
-
-	assert(SIGTERM == linted_asynch_task_sigwaitinfo_signo(sigwait_task));
 
 	*time_to_exit = true;
 

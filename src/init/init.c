@@ -41,8 +41,8 @@ struct linted_start_config const linted_start_config = {
 	.kos = kos
 };
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor,
-                                  linted_ko admin);
+static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
+                                  char const *monitor, linted_ko admin);
 static linted_error set_child_subreaper(bool value);
 static linted_error set_ptracer(pid_t pid);
 
@@ -50,6 +50,25 @@ unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
+
+	sigset_t orig_mask;
+
+	{
+		sigset_t exit_signals;
+		sigemptyset(&exit_signals);
+		sigaddset(&exit_signals, SIGHUP);
+		sigaddset(&exit_signals, SIGINT);
+		sigaddset(&exit_signals, SIGQUIT);
+		sigaddset(&exit_signals, SIGTERM);
+
+		/* Let the monitor handle exit signals */
+		errnum = pthread_sigmask(SIG_BLOCK, &exit_signals, &orig_mask);
+	}
+	if (errnum != 0) {
+		errno = errnum;
+		perror("pthread_sigmask");
+		return EXIT_FAILURE;
+	}
 
 	char const *monitor = getenv("LINTED_MONITOR");
 
@@ -69,7 +88,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = spawn_monitor(&xx, monitor, admin);
+			errnum = spawn_monitor(&xx, &orig_mask, monitor, admin);
 			if (errnum != 0) {
 				linted_io_write_format(
 				    STDERR_FILENO, NULL,
@@ -127,8 +146,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	return EXIT_SUCCESS;
 }
 
-static linted_error spawn_monitor(pid_t *childp, char const *monitor,
-                                  linted_ko admin)
+static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
+                                  char const *monitor, linted_ko admin)
 {
 	linted_error errnum;
 
@@ -152,6 +171,7 @@ static linted_error spawn_monitor(pid_t *childp, char const *monitor,
 	}
 
 	linted_spawn_attr_setdeathsig(attr, SIGKILL);
+	linted_spawn_attr_setmask(attr, orig_mask);
 
 	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
 		                 STDERR_FILENO, admin };

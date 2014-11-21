@@ -11,6 +11,10 @@
  *
  * Linted -- TODO
  *
+ * @bug Child processes should not receive controlling terminal
+ *      notifications such as SIGINT and should let the monitor handle
+ *      them.
+ *
  * @bug If window is moved partially offscreen and resized it fails to
  *      draw to a part of the window opposite from the part offscreen
  *      (not my bug works with glxgears too.)
