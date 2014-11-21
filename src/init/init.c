@@ -193,15 +193,8 @@ static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
 
-	unsigned long set_child_subreaper;
-
-#ifdef PR_SET_CHILD_SUBREAPER
-	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
-#else
-	set_child_subreaper = 36UL;
-#endif
-
-	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
+	if (-1 ==
+	    prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
