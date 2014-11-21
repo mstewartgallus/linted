@@ -2318,7 +2318,7 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_CONT, pid, (void *)(intptr_t)signo, (void *)NULL)) {
+	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

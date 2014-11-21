@@ -22,10 +22,15 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
+static void propagate_signal(int signo);
 static linted_error set_name(char const *name);
 
 int main(int argc, char *argv[])
@@ -37,6 +42,36 @@ int main(int argc, char *argv[])
 	if (service != NULL) {
 		errnum = set_name(service);
 		assert(errnum != EINVAL);
+	}
+
+	/* Catch signals
+	 *
+	 * The only signals that can be sent to process ID 1, the init
+	 * process, are those for which init has explicitly installed
+	 * signal handlers.  This is done to assure the system is not
+	 * brought down accidentally.
+	 *
+	 * - KILL(2) http://www.kernel.org/doc/man-pages/.
+	 *
+	 * This applies to waiters to if they use CLONE_NEWPID.
+	 *
+	 * We want to explicitly handle the signal so that it is
+	 * propagated to children of init as well.
+	 */
+	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
+	if (1 == getpid()) {
+		/* Delegate the exit signal to children and then exit */
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
+		     ++ii) {
+			struct sigaction action = { 0 };
+			action.sa_handler = propagate_signal;
+			action.sa_flags = 0;
+			sigfillset(&action.sa_mask);
+			if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+				assert(errno != EINVAL);
+				assert(0);
+			}
+		}
 	}
 
 	for (;;) {
@@ -55,6 +90,15 @@ int main(int argc, char *argv[])
 	}
 
 	return errnum;
+}
+
+static void propagate_signal(int signo)
+{
+	kill(-1, signo);
+
+	/* Sadly, it is impossible to kill oneself with the proper
+	 * signal as init. */
+	raise(SIGKILL);
 }
 
 static linted_error set_name(char const *name)

@@ -54,6 +54,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(gettid),
 	/*  */ ALLOW(getuid),
 	/*  */ ALLOW(ioctl),
+	/*  */ ALLOW(kill),
 	/*  */ ALLOW(lseek),
 	/*  */ ALLOW(madvise),
 	/*  */ ALLOW(mincore),
