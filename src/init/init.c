@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -41,6 +42,9 @@ struct linted_start_config const linted_start_config = {
 	.kos = kos
 };
 
+static volatile sig_atomic_t monitor_pid = 0;
+
+static void delegate_signal(int signo);
 static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
                                   char const *monitor, linted_ko admin);
 static linted_error set_child_subreaper(bool value);
@@ -53,21 +57,18 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	sigset_t orig_mask;
 
-	{
-		sigset_t exit_signals;
-		sigemptyset(&exit_signals);
-		sigaddset(&exit_signals, SIGHUP);
-		sigaddset(&exit_signals, SIGINT);
-		sigaddset(&exit_signals, SIGQUIT);
-		sigaddset(&exit_signals, SIGTERM);
+	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 
-		/* Let the monitor handle exit signals */
-		errnum = pthread_sigmask(SIG_BLOCK, &exit_signals, &orig_mask);
-	}
-	if (errnum != 0) {
-		errno = errnum;
-		perror("pthread_sigmask");
-		return EXIT_FAILURE;
+	/* Delegate the exit signal to the monitor child */
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
+		struct sigaction action = { 0 };
+		action.sa_handler = delegate_signal;
+		action.sa_flags = SA_RESTART;
+		sigfillset(&action.sa_mask);
+		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+			perror("sigaction");
+			return EXIT_FAILURE;
+		}
 	}
 
 	char const *monitor = getenv("LINTED_MONITOR");
@@ -106,6 +107,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			    process_name, linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
+		monitor_pid = child;
 
 		pid_t pid;
 		int code;
@@ -134,14 +136,27 @@ unsigned char linted_start(char const *process_name, size_t argc,
 				assert(false);
 			}
 		} while (pid != child);
+		monitor_pid = 0;
 
-		/**
-		 * @todo log errors
-		 */
+		switch (code) {
+		case CLD_EXITED:
+			if (EXIT_SUCCESS == status)
+				goto exit_loop;
 
-		if (CLD_EXITED == code && EXIT_SUCCESS == status)
+			fprintf(stderr, "monitor exited with %i\n", status);
 			break;
+
+		case CLD_DUMPED:
+		case CLD_KILLED:
+			fprintf(stderr, "monitor killed by %s\n",
+			        strsignal(status));
+			break;
+
+		default:
+			LINTED_ASSUME_UNREACHABLE();
+		}
 	}
+exit_loop:
 
 	return EXIT_SUCCESS;
 }
@@ -234,4 +249,42 @@ static linted_error set_ptracer(pid_t pid)
 	}
 
 	return 0;
+}
+
+static void delegate_signal(int signo)
+{
+	int errnum = errno;
+
+	/* All signals are blocked here. */
+
+	pid_t the_pid = monitor_pid;
+
+	if (the_pid > 0) {
+		/* If WNOHANG was specified in options and there were
+		 * no children in a waitable state, then waitid()
+		 * returns 0 immediately and the state of the
+		 * siginfo_t structure pointed to by infop is
+		 * unspecified.
+		 *
+		 * - WAIT(2) http://www.kernel.org/doc/man-pages/.
+		 */
+		{
+			siginfo_t info = { 0 };
+			if (-1 == waitid(P_PID, the_pid, &info,
+			                 WEXITED | WNOWAIT | WNOHANG)) {
+				assert(errno != EINVAL);
+				assert(false);
+			}
+
+			/* The process was killed and waited on */
+			if (info.si_pid != the_pid)
+				goto restore_errno;
+		}
+
+		/* The may be dead but not waited on at least */
+		kill(the_pid, signo);
+	}
+
+restore_errno:
+	errno = errnum;
 }

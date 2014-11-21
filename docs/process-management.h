@@ -58,9 +58,6 @@
  * `SIGINT1, `SIGQUIT`, and `SIGTERM`) and lets the `monitor` handle
  * them.
  *
- * @todo `init` should forward the signals to `monitor` instead of
- * blocking them.
- *
  * Currently (due to coincidental semantics of `CLONE_NEWPID`) the
  * `CLONE_NEWPID` sandboxes do not receive controlling terminal
  * notifications such as `SIGINT` and let the monitor handle the

@@ -233,6 +233,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		struct sigaction action = { 0 };
 		action.sa_handler = ignore;
 		action.sa_flags = SA_RESTART | SA_NODEFER | SA_NOCLDSTOP;
+		sigemptyset(&action.sa_mask);
 		sigaction(SIGCHLD, &action, NULL);
 	}
 

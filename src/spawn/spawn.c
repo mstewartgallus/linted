@@ -573,8 +573,12 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (0 == child)
 			default_signals(err_writer);
 
-		linted_error mask_errnum = pthread_sigmask(
-		    SIG_SETMASK, NULL == mask ? &sigset : mask, NULL);
+		sigset_t const *setmask = &sigset;
+		if (0 == child && mask != NULL)
+			setmask = mask;
+
+		linted_error mask_errnum =
+		    pthread_sigmask(SIG_SETMASK, setmask, NULL);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
