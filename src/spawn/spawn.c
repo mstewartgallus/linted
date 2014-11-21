@@ -90,6 +90,7 @@ struct linted_spawn_attr
 {
 	char const *chrootdir;
 	char const *chdir_path;
+	sigset_t const *mask;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
 	char const *waiter;
@@ -139,6 +140,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->deathsig = 0;
 	attr->chrootdir = NULL;
 	attr->chdir_path = NULL;
+	attr->mask = NULL;
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
@@ -164,6 +166,12 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr->mount_args);
 
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
+                               sigset_t const *set)
+{
+	attr->mask = set;
 }
 
 void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
@@ -435,6 +443,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	bool has_priority = false;
 	int priority;
 	struct sock_fprog const *filter = NULL;
+	sigset_t const *mask = NULL;
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
@@ -449,7 +458,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		deparent = attr->deparent;
 		filter = attr->filter;
 		has_priority = attr->has_priority;
-		priority = attr->priority;
+		if (has_priority)
+			priority = attr->priority;
+		mask = attr->mask;
 	}
 
 	if (!((clone_flags & CLONE_NEWUSER) != 0) &
@@ -544,29 +555,26 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		sigset_t sigset;
 		sigfillset(&sigset);
 
-		errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0)
 			goto close_pid_pipes;
-	}
 
-	if (deparent) {
-		child = fork();
-	} else {
-		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
-	}
-	if (-1 == child) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
+		if (deparent) {
+			child = fork();
+		} else {
+			child =
+			    syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+		}
+		if (-1 == child) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
 
-	if (0 == child)
-		default_signals(err_writer);
+		if (0 == child)
+			default_signals(err_writer);
 
-	{
-		sigset_t emptyset;
-		sigemptyset(&emptyset);
-		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &emptyset, NULL);
+		linted_error mask_errnum = pthread_sigmask(
+		    SIG_SETMASK, NULL == mask ? &sigset : mask, NULL);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}

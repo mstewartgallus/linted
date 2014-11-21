@@ -78,6 +78,7 @@ struct wait_service_data
 	linted_ko cwd;
 	char const *chrootdir;
 	char const *waiter;
+	sigset_t const *orig_mask;
 	struct linted_unit_db *unit_db;
 	bool *time_to_exit;
 };
@@ -128,7 +129,8 @@ static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf);
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *waiter);
+                                   char const *chrootdir, char const *waiter,
+                                   sigset_t const *orig_mask);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -155,6 +157,7 @@ static linted_error on_event_stop(pid_t pid, int exit_status);
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *waiter,
+                                     sigset_t const *orig_mask,
                                      struct linted_unit_db *units);
 
 static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
@@ -212,11 +215,28 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	pid_t ppid = getppid();
 	linted_dir private_run_dir = kos[0U];
 
+	sigset_t orig_mask;
+
+	errnum = pthread_sigmask(SIG_SETMASK, NULL, &orig_mask);
+	if (errnum != 0)
+		goto exit_monitor;
+
 	{
 		struct sigaction action = { 0 };
 		action.sa_handler = ignore;
 		action.sa_flags = SA_RESTART | SA_NODEFER | SA_NOCLDSTOP;
 		sigaction(SIGCHLD, &action, NULL);
+	}
+
+	/* Block SIGTERM before spawning threads */
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		sigaddset(&set, SIGTERM);
+
+		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
+		if (errnum != 0)
+			goto exit_monitor;
 	}
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
@@ -292,17 +312,6 @@ retry_bind:
 	if (-1 == chdir("/")) {
 		perror("chdir");
 		return EXIT_FAILURE;
-	}
-
-	/* Block SIGTERM before spawning threads */
-	{
-		sigset_t set;
-		sigemptyset(&set);
-		sigaddset(&set, SIGTERM);
-
-		errnum = pthread_sigmask(SIG_BLOCK, &set, NULL);
-		if (errnum != 0)
-			goto exit_monitor;
 	}
 
 	struct linted_asynch_pool *pool;
@@ -411,7 +420,7 @@ retry_bind:
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = activate_units(units, cwd, chrootdir, waiter);
+	errnum = activate_units(units, cwd, chrootdir, waiter, &orig_mask);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -423,6 +432,7 @@ retry_bind:
 	waiter_data.chrootdir = chrootdir;
 	waiter_data.waiter = waiter;
 	waiter_data.unit_db = units;
+	waiter_data.orig_mask = &orig_mask;
 	waiter_data.time_to_exit = &time_to_exit;
 
 	linted_asynch_pool_submit(
@@ -790,7 +800,8 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 }
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *waiter)
+                                   char const *chrootdir, char const *waiter,
+                                   sigset_t const *orig_mask)
 {
 	linted_error errnum;
 
@@ -814,7 +825,7 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 			continue;
 
 		errnum = service_activate((void *)unit, cwd, chrootdir, waiter,
-		                          units);
+		                          orig_mask, units);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -867,6 +878,7 @@ static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *waiter,
+                                     sigset_t const *orig_mask,
                                      struct linted_unit_db *units)
 {
 	linted_error errnum = 0;
@@ -999,6 +1011,8 @@ envvar_allocate_succeeded:
 		if (errnum != 0)
 			goto destroy_attr;
 	}
+
+	linted_spawn_attr_setmask(attr, orig_mask);
 	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
@@ -1487,6 +1501,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	linted_ko cwd = wait_service_data->cwd;
 	char const *chrootdir = wait_service_data->chrootdir;
 	char const *waiter = wait_service_data->waiter;
+	sigset_t const *orig_mask = wait_service_data->orig_mask;
 	struct linted_unit_db *unit_db = wait_service_data->unit_db;
 
 	pid_t pid;
@@ -1549,8 +1564,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		if (errnum != 0)
 			return errnum;
 
-		errnum =
-		    service_activate(unit, cwd, chrootdir, waiter, unit_db);
+		errnum = service_activate(unit, cwd, chrootdir, waiter,
+		                          orig_mask, unit_db);
 		break;
 	}
 
