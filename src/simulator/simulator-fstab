@@ -20,3 +20,5 @@ proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
 /usr	usr	none	mkdir,ro,nosuid,nodev,bind 
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
+
+/bin	bin	none	mkdir,ro,nosuid,nodev,bind

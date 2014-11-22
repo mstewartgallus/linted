@@ -23,3 +23,5 @@ proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
 /lib64	lib64	none	mkdir,ro,nosuid,nodev,bind 
 
 /usr	usr	none	mkdir,ro,nosuid,nodev,bind 
+
+/bin	bin	none	mkdir,ro,nosuid,nodev,bind
