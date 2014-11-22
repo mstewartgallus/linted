@@ -17,9 +17,11 @@ Documentation='man:linted-gui(6)'
 
 [Service]
 ExecStart="${LINTED_GUI}"
-NoNewPrivileges=true
 
 X-LintedFiles=OPEN:log,wronly OPEN:controller,wronly OPEN:window-notifier,rdonly
+
+NoNewPrivileges=true
+X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
 
 X-LintedFstab="${LINTED_GUI_FSTAB}"
 WorkingDirectory=/var

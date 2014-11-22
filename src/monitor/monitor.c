@@ -629,14 +629,16 @@ static linted_error service_create(struct linted_unit_service *unit,
 	    linted_conf_find(conf, "Service", "ExecStart");
 	char const *const *no_new_privss =
 	    linted_conf_find(conf, "Service", "NoNewPrivileges");
+	char const *const *chdir_paths =
+	    linted_conf_find(conf, "Service", "WorkingDirectory");
 	char const *const *files =
 	    linted_conf_find(conf, "Service", "X-LintedFiles");
 	char const *const *fstabs =
 	    linted_conf_find(conf, "Service", "X-LintedFstab");
-	char const *const *chdir_paths =
-	    linted_conf_find(conf, "Service", "WorkingDirectory");
 	char const *const *env_whitelist =
 	    linted_conf_find(conf, "Service", "X-LintedEnvironmentWhitelist");
+	char const *const *clone_flags =
+	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
 
 	char const *type;
 	{
@@ -677,6 +679,33 @@ static linted_error service_create(struct linted_unit_service *unit,
 		chdir_path = xx;
 	}
 
+	bool clone_newuser;
+	bool clone_newpid;
+	bool clone_newipc;
+	bool clone_newnet;
+	bool clone_newns;
+	if (clone_flags != NULL) {
+		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
+			if (0 == strcmp("CLONE_NEWUSER", clone_flags[ii])) {
+				clone_newuser = true;
+			} else if (0 ==
+			           strcmp("CLONE_NEWPID", clone_flags[ii])) {
+				clone_newpid = true;
+			} else if (0 ==
+			           strcmp("CLONE_NEWIPC", clone_flags[ii])) {
+				clone_newipc = true;
+			} else if (0 ==
+			           strcmp("CLONE_NEWNET", clone_flags[ii])) {
+				clone_newnet = true;
+			} else if (0 ==
+			           strcmp("CLONE_NEWNS", clone_flags[ii])) {
+				clone_newns = true;
+			} else {
+				return EINVAL;
+			}
+		}
+	}
+
 	if (NULL == type) {
 		/* simple type of service */
 	} else if (0 == strcmp("simple", type)) {
@@ -700,6 +729,12 @@ static linted_error service_create(struct linted_unit_service *unit,
 	unit->fstab = fstab;
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
+
+	unit->clone_newuser = clone_newuser;
+	unit->clone_newpid = clone_newpid;
+	unit->clone_newipc = clone_newipc;
+	unit->clone_newnet = clone_newnet;
+	unit->clone_newns = clone_newns;
 
 	return 0;
 }
@@ -901,6 +936,15 @@ service_not_found:
 	char const *chdir_path = unit_service->chdir_path;
 	char const *const *env_whitelist = unit_service->env_whitelist;
 
+	bool clone_newuser = unit_service->clone_newuser;
+	bool clone_newpid = unit_service->clone_newpid;
+	bool clone_newipc = unit_service->clone_newipc;
+	bool clone_newnet = unit_service->clone_newnet;
+	bool clone_newns = unit_service->clone_newns;
+
+	if (fstab != NULL && !clone_newns)
+		return EINVAL;
+
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
 
@@ -985,10 +1029,16 @@ envvar_allocate_succeeded:
 		attr = xx;
 	}
 
-	int clone_flags =
-	    CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWIPC | CLONE_NEWNET;
-
-	if (fstab != NULL)
+	int clone_flags = 0;
+	if (clone_newuser)
+		clone_flags |= CLONE_NEWUSER;
+	if (clone_newpid)
+		clone_flags |= CLONE_NEWPID;
+	if (clone_newipc)
+		clone_flags |= CLONE_NEWIPC;
+	if (clone_newnet)
+		clone_flags |= CLONE_NEWNET;
+	if (clone_newns)
 		clone_flags |= CLONE_NEWNS;
 
 	/* Favor other processes over this process hierarchy.  Only
