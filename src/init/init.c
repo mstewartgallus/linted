@@ -258,7 +258,6 @@ static void delegate_signal(int signo)
 	/* All signals are blocked here. */
 
 	pid_t the_pid = monitor_pid;
-
 	if (the_pid > 0) {
 		/* If WNOHANG was specified in options and there were
 		 * no children in a waitable state, then waitid()
@@ -276,8 +275,8 @@ static void delegate_signal(int signo)
 				assert(false);
 			}
 
-			/* The process was killed and waited on */
-			if (info.si_pid != the_pid)
+			/* The process was killed and is waitable */
+			if (info.si_pid != 0)
 				goto restore_errno;
 		}
 

@@ -33,5 +33,4 @@ pkglibexec_PROGRAMS+=%D%/window
   $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/window-fstab
 dist_pkgdefaultunits_DATA+=%D%/units/window.service

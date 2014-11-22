@@ -679,11 +679,11 @@ static linted_error service_create(struct linted_unit_service *unit,
 		chdir_path = xx;
 	}
 
-	bool clone_newuser;
-	bool clone_newpid;
-	bool clone_newipc;
-	bool clone_newnet;
-	bool clone_newns;
+	bool clone_newuser = false;
+	bool clone_newpid = false;
+	bool clone_newipc = false;
+	bool clone_newnet = false;
+	bool clone_newns = false;
 	if (clone_flags != NULL) {
 		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
 			if (0 == strcmp("CLONE_NEWUSER", clone_flags[ii])) {

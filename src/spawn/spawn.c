@@ -390,33 +390,6 @@ static char const fd_str[] = " /proc/self/fd/";
 /**
  * @bug assert isn't AS-safe.
  */
-/* Used ways to sandbox:
- *
- * - CLONE_NEWNS - Coupled with chrooting is good for sandboxing
- *                 files.
- *
- * - CLONE_NEWIPC - Nobody really uses System V IPC objects anymore
- *                  but maybe a few applications on the system have
- *                  some for legacy communication purposes.
- *
- * - CLONE_NEWNET - Prevents processes from connecting to open
- *                  abstract sockets.
- *
- * Unused
- *
- * - CLONE_NEWUTS - Clones the hostname namespace. Pretty useless.
- *
- * - CLONE_NEWUSER - Allows to create one's own users and enable some
- *                   more sandboxes. Otherwise, it is pretty
- *                   useless. Not permitted to use under the existing
- *                   sandbox.
- *
- * - CLONE_NEWPID - Prevents processes from ptracing and signalling
- *                  other processes. Unfortunately, PID 1 can't send
- *                  itself signals so this is unusable for many
- *                  applications.
- *
- */
 linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
