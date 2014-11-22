@@ -27,10 +27,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-enum {
-	ON_RECEIVE_LOG,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_LOG, MAX_TASKS };
 
 struct logger_data
 {

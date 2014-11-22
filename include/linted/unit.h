@@ -27,15 +27,10 @@
  * Units.
  */
 
-enum {
-	LINTED_UNIT_NAME_MAX = 255
-};
+enum { LINTED_UNIT_NAME_MAX = 255 };
 #define LINTED_UNIT_NAME_MAX ((unsigned)LINTED_UNIT_NAME_MAX)
 
-enum linted_unit_type {
-	UNIT_TYPE_SOCKET,
-	UNIT_TYPE_SERVICE
-};
+enum linted_unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
 
 struct linted_unit_db;
 

@@ -114,10 +114,7 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	enum {
-		STATUS,
-		STOP
-	};
+	enum { STATUS, STOP };
 
 	static char const *const commands[] = {[STATUS] = "status",
 		                               [STOP] = "stop" };

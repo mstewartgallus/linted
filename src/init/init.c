@@ -188,8 +188,8 @@ static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
 	linted_spawn_attr_setdeathsig(attr, SIGKILL);
 	linted_spawn_attr_setmask(attr, orig_mask);
 
-	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
-		                 STDERR_FILENO, admin };
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
+		                 admin };
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 		errnum =

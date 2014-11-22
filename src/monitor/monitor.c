@@ -67,9 +67,7 @@ enum {
 	ADMIN_WROTE_CONNECTION
 };
 
-enum {
-	MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS
-};
+enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
 
 struct wait_service_data
 {
@@ -879,10 +877,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	return 0;
 }
 
-enum {
-	RDONLY,
-	WRONLY
-};
+enum { RDONLY, WRONLY };
 
 struct pair
 {
@@ -1336,18 +1331,7 @@ close_file:
 	return errnum;
 }
 
-enum {
-	MKDIR,
-	TOUCH,
-	BIND,
-	RBIND,
-	RO,
-	RW,
-	SUID,
-	NOSUID,
-	NODEV,
-	NOEXEC
-};
+enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
 
 static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
 	                                    [TOUCH] = "touch",        /*  */

@@ -33,10 +33,7 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-enum renderer_state {
-	BUFFER_COMMANDS,
-	SWAP_BUFFERS
-};
+enum renderer_state { BUFFER_COMMANDS, SWAP_BUFFERS };
 
 struct linted_gpu_context
 {
@@ -599,7 +596,8 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		};
 
 		/* Translate the camera */
-		struct matrix const camera = { { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
+		struct matrix const camera = { { { 1, 0, 0, 0 },
+				                 { 0, 1, 0, 0 },
 				                 { 0, 0, 1, 0 },
 				                 { x_position, y_position,
 					           z_position, 1 } } };
@@ -611,13 +609,13 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		struct matrix const projection = { { { d / aspect, 0, 0, 0 },
-				                     { 0, d, 0, 0 },
-				                     { 0, 0, (far + near) /
-					                         (near - far),
-					               2 * far * near /
-					                   (near - far) },
-				                     { 0, 0, -1, 0 } } };
+		struct matrix const projection = {
+			{ { d / aspect, 0, 0, 0 },
+			  { 0, d, 0, 0 },
+			  { 0, 0, (far + near) / (near - far),
+			    2 * far * near / (near - far) },
+			  { 0, 0, -1, 0 } }
+		};
 
 		struct matrix rotations =
 		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);

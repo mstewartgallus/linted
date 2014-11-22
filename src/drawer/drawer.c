@@ -38,12 +38,7 @@
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 
-enum {
-	ON_RECEIVE_UPDATE,
-	ON_POLL_CONN,
-	ON_RECEIVE_NOTICE,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
 
 struct window_model
 {

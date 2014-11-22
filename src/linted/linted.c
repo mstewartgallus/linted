@@ -42,10 +42,7 @@ struct envvar
 	char const *value;
 };
 
-enum {
-	HELP,
-	VERSION_OPTION
-};
+enum { HELP, VERSION_OPTION };
 
 extern char **environ;
 
@@ -215,8 +212,8 @@ static linted_error exec_init(char const *init, linted_ko passed_ko)
 {
 	linted_error errnum;
 
-	linted_ko stdfiles[] = { STDIN_FILENO,  STDOUT_FILENO,
-		                 STDERR_FILENO, passed_ko };
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
+		                 passed_ko };
 
 	pid_t myself = getpid();
 	int setenv_pid_status;

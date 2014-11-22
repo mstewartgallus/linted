@@ -52,9 +52,7 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-enum file_action_type {
-	FILE_ACTION_ADDDUP2
-};
+enum file_action_type { FILE_ACTION_ADDDUP2 };
 
 struct adddup2
 {

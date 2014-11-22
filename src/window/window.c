@@ -37,11 +37,7 @@
 
 #include <xcb/xcb.h>
 
-enum {
-	ON_POLL_CONN,
-	ON_SENT_NOTICE,
-	MAX_TASKS
-};
+enum { ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
 struct poll_conn_data
 {

@@ -33,10 +33,7 @@
 
 typedef linted_ko linted_admin;
 
-enum linted_admin_type {
-	LINTED_ADMIN_STATUS,
-	LINTED_ADMIN_STOP
-};
+enum linted_admin_type { LINTED_ADMIN_STATUS, LINTED_ADMIN_STOP };
 
 struct linted_admin_status_request
 {

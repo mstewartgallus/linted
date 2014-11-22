@@ -43,12 +43,7 @@
  * @file
  */
 
-enum {
-	ON_RECEIVE_NOTICE,
-	ON_POLL_CONN,
-	ON_SENT_CONTROL,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
 	                                    XCB_EVENT_MASK_KEY_PRESS |
