@@ -1230,7 +1230,7 @@ envvar_allocate_succeeded:
 		    linted_spawn(&xx, cwd, exec_start[0U], file_actions, attr,
 		                 exec_start, (char const * const *)envvars);
 		if (errnum != 0)
-			goto destroy_attr;
+			goto destroy_proc_kos;
 		child = xx;
 	}
 
@@ -1282,7 +1282,6 @@ static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
 			errnum = errno;
 			if (errnum != 0)
 				goto close_file;
-
 			break;
 		}
 
