@@ -75,7 +75,7 @@ struct wait_service_data
 	pid_t parent_process;
 	linted_ko cwd;
 	char const *chrootdir;
-	char const *waiter;
+	char const *sandbox;
 	sigset_t const *orig_mask;
 	struct linted_unit_db *unit_db;
 	bool *time_to_exit;
@@ -127,7 +127,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf);
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *waiter,
+                                   char const *chrootdir, char const *sandbox,
                                    sigset_t const *orig_mask);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
@@ -154,7 +154,7 @@ static linted_error on_event_stop(pid_t pid, int exit_status);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
-                                     char const *chrootdir, char const *waiter,
+                                     char const *chrootdir, char const *sandbox,
                                      sigset_t const *orig_mask,
                                      struct linted_unit_db *units);
 
@@ -237,7 +237,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
-	char const *waiter = getenv("LINTED_WAITER");
+	char const *sandbox = getenv("LINTED_SANDBOX");
 
 	if (NULL == chrootdir) {
 		linted_io_write_format(
@@ -255,10 +255,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == waiter) {
+	if (NULL == sandbox) {
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
-		    "%s: LINTED_WAITER is a required environment variable\n",
+		    "%s: LINTED_SANDBOX is a required environment variable\n",
 		    process_name);
 		return EXIT_FAILURE;
 	}
@@ -322,19 +322,19 @@ retry_bind:
 	bool time_to_exit = false;
 
 	struct sigwait_data sigwait_data;
-	struct wait_service_data waiter_data;
+	struct wait_service_data sandbox_data;
 	struct accepted_conn_data accepted_conn_data;
 
-	struct linted_asynch_task_waitid *waiter_task;
+	struct linted_asynch_task_waitid *sandbox_task;
 	struct linted_asynch_task_sigwaitinfo *sigwait_task;
 	struct linted_admin_task_accept *accepted_conn_task;
 
 	{
 		struct linted_asynch_task_waitid *xx;
-		errnum = linted_asynch_task_waitid_create(&xx, &waiter_data);
+		errnum = linted_asynch_task_waitid_create(&xx, &sandbox_data);
 		if (errnum != 0)
 			goto destroy_pool;
-		waiter_task = xx;
+		sandbox_task = xx;
 	}
 
 	{
@@ -410,23 +410,23 @@ retry_bind:
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = activate_units(units, cwd, chrootdir, waiter, &orig_mask);
+	errnum = activate_units(units, cwd, chrootdir, sandbox, &orig_mask);
 	if (errnum != 0)
 		goto kill_procs;
 
-	linted_asynch_task_waitid_prepare(waiter_task, WAITID, P_ALL, -1,
+	linted_asynch_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
 	                                  WEXITED | WNOWAIT);
-	waiter_data.pool = pool;
-	waiter_data.parent_process = ppid;
-	waiter_data.cwd = cwd;
-	waiter_data.chrootdir = chrootdir;
-	waiter_data.waiter = waiter;
-	waiter_data.unit_db = units;
-	waiter_data.orig_mask = &orig_mask;
-	waiter_data.time_to_exit = &time_to_exit;
+	sandbox_data.pool = pool;
+	sandbox_data.parent_process = ppid;
+	sandbox_data.cwd = cwd;
+	sandbox_data.chrootdir = chrootdir;
+	sandbox_data.sandbox = sandbox;
+	sandbox_data.unit_db = units;
+	sandbox_data.orig_mask = &orig_mask;
+	sandbox_data.time_to_exit = &time_to_exit;
 
 	linted_asynch_pool_submit(
-	    pool, linted_asynch_task_waitid_to_asynch(waiter_task));
+	    pool, linted_asynch_task_waitid_to_asynch(sandbox_task));
 
 	do {
 		struct linted_asynch_task *completed_task;
@@ -516,7 +516,7 @@ destroy_pool : {
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
-	(void)waiter_task;
+	(void)sandbox_task;
 	(void)accepted_conn_task;
 }
 
@@ -825,7 +825,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 }
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *waiter,
+                                   char const *chrootdir, char const *sandbox,
                                    sigset_t const *orig_mask)
 {
 	linted_error errnum;
@@ -849,7 +849,7 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate((void *)unit, cwd, chrootdir, waiter,
+		errnum = service_activate(unit, cwd, chrootdir, sandbox,
 		                          orig_mask, units);
 		if (errnum != 0)
 			return errnum;
@@ -899,7 +899,7 @@ static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 	                                { LINTED_KO_WRONLY, STDERR_FILENO } };
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
-                                     char const *chrootdir, char const *waiter,
+                                     char const *chrootdir, char const *sandbox,
                                      sigset_t const *orig_mask,
                                      struct linted_unit_db *units)
 {
@@ -1005,6 +1005,24 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 1U] = service_name_setting;
 	envvars[envvars_size + 2U] = NULL;
 
+	size_t exec_start_size =
+	    null_list_size((char const * const *)exec_start);
+	size_t args_size = exec_start_size + 2U;
+	char const **args;
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, args_size + 1U,
+		                                sizeof exec_start[0U]);
+		if (errnum != 0)
+			goto free_envvars;
+		args = xx;
+	}
+	args[0U] = sandbox;
+	args[1U] = "--";
+	for (size_t ii = 0U; ii < exec_start_size; ++ii)
+		args[ii + 2U] = exec_start[ii];
+	args[args_size] = NULL;
+
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
 
@@ -1012,7 +1030,7 @@ envvar_allocate_succeeded:
 		struct linted_spawn_file_actions *xx;
 		errnum = linted_spawn_file_actions_init(&xx);
 		if (errnum != 0)
-			goto free_envvars;
+			goto free_args;
 		file_actions = xx;
 	}
 
@@ -1053,7 +1071,6 @@ envvar_allocate_succeeded:
 	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
-	linted_spawn_attr_setwaiter(attr, waiter);
 	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
@@ -1226,9 +1243,8 @@ envvar_allocate_succeeded:
 
 	{
 		pid_t xx;
-		errnum =
-		    linted_spawn(&xx, cwd, exec_start[0U], file_actions, attr,
-		                 exec_start, (char const * const *)envvars);
+		errnum = linted_spawn(&xx, cwd, args[0U], file_actions, attr,
+		                      args, (char const * const *)envvars);
 		if (errnum != 0)
 			goto destroy_proc_kos;
 		child = xx;
@@ -1246,6 +1262,9 @@ destroy_attr:
 
 destroy_file_actions:
 	linted_spawn_file_actions_destroy(file_actions);
+
+free_args:
+	linted_mem_free(args);
 
 free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
@@ -1516,16 +1535,16 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	if (time_to_quit)
 		return 0;
 
-	struct linted_asynch_task_waitid *waiter_task =
+	struct linted_asynch_task_waitid *sandbox_task =
 	    linted_asynch_task_waitid_from_asynch(task);
 	struct wait_service_data *wait_service_data =
-	    linted_asynch_task_waitid_data(waiter_task);
+	    linted_asynch_task_waitid_data(sandbox_task);
 	struct linted_asynch_pool *pool = wait_service_data->pool;
 	pid_t ppid = wait_service_data->parent_process;
 
 	linted_ko cwd = wait_service_data->cwd;
 	char const *chrootdir = wait_service_data->chrootdir;
-	char const *waiter = wait_service_data->waiter;
+	char const *sandbox = wait_service_data->sandbox;
 	sigset_t const *orig_mask = wait_service_data->orig_mask;
 	struct linted_unit_db *unit_db = wait_service_data->unit_db;
 
@@ -1534,7 +1553,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	int exit_code;
 	{
 		siginfo_t exit_info;
-		linted_asynch_task_waitid_info(waiter_task, &exit_info);
+		linted_asynch_task_waitid_info(sandbox_task, &exit_info);
 		pid = exit_info.si_pid;
 		exit_status = exit_info.si_status;
 		exit_code = exit_info.si_code;
@@ -1589,7 +1608,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		if (errnum != 0)
 			return errnum;
 
-		errnum = service_activate(unit, cwd, chrootdir, waiter,
+		errnum = service_activate(unit, cwd, chrootdir, sandbox,
 		                          orig_mask, unit_db);
 		break;
 	}

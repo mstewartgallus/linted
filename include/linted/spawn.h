@@ -39,8 +39,6 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set);
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
                                    _Bool deparent);
-void linted_spawn_attr_setwaiter(struct linted_spawn_attr *attr,
-                                 char const *waiter);
 void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
                                  struct sock_fprog const *program);
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo);

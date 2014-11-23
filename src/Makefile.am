@@ -30,7 +30,7 @@ include %C%/linted/Makefile.am
 include %C%/logger/Makefile.am
 include %C%/monitor/Makefile.am
 include %C%/simulator/Makefile.am
-include %C%/waiter/Makefile.am
+include %C%/sandbox/Makefile.am
 include %C%/window/Makefile.am
 
 include %C%/assets/Makefile.am

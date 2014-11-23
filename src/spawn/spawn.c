@@ -143,7 +143,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
 	attr->no_new_privs = false;
-	attr->waiter = NULL;
 	attr->deparent = false;
 	attr->filter = NULL;
 	attr->has_priority = false;
@@ -181,12 +180,6 @@ void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
 {
 	attr->deparent = val;
-}
-
-void linted_spawn_attr_setwaiter(struct linted_spawn_attr *attr,
-                                 char const *waiter)
-{
-	attr->waiter = waiter;
 }
 
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
@@ -409,7 +402,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
 	bool no_new_privs = false;
-	char const *waiter = NULL;
 	bool deparent = false;
 	bool has_priority = false;
 	int priority;
@@ -425,7 +417,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
 		no_new_privs = attr->no_new_privs;
-		waiter = attr->waiter;
 		deparent = attr->deparent;
 		filter = attr->filter;
 		has_priority = attr->has_priority;
@@ -772,31 +763,13 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (errnum != 0)
 		exit_with_error(err_writer, errnum);
 
-	if (waiter != NULL) {
-		/*
-		 * This isn't needed if ((clone_flags & CLONE_NEWPID) != 0)
-		 * but doesn't hurt,
-		 */
-		errnum = set_child_subreaper(true);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-
-		pid_t grandchild = fork();
-		if (-1 == grandchild)
-			exit_with_error(err_writer, errno);
-
-		if (grandchild != 0) {
-			errnum = linted_ko_close(err_writer);
-			if (errnum != 0)
-				_Exit(errnum);
-
-			char const *const arguments[] = { waiter, NULL };
-			execve(waiter, (char * const *)arguments,
-			       (char * const *)envp);
-
-			_Exit(errno);
-		}
-	}
+	/*
+	 * This isn't needed if ((clone_flags & CLONE_NEWPID) != 0)
+	 * but doesn't hurt,
+	 */
+	errnum = set_child_subreaper(true);
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;

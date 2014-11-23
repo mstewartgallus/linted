@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE 200809L
 
 #include "config.h"
 
@@ -23,12 +23,20 @@
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+enum { STOP_OPTIONS, HELP, VERSION_OPTION };
+
+extern char **environ;
+
+static char const *const argstrs[] = {[STOP_OPTIONS] = "--", [HELP] = "--help",
+	                              [VERSION_OPTION] = "--version" };
 
 static void propagate_signal(int signo);
 static linted_error set_name(char const *name);
@@ -37,11 +45,80 @@ int main(int argc, char *argv[])
 {
 	linted_error errnum;
 
+	size_t arguments_length = argc;
+
 	char const *service = getenv("LINTED_SERVICE");
 
 	if (service != NULL) {
 		errnum = set_name(service);
 		assert(errnum != EINVAL);
+	}
+
+	char const *bad_option = NULL;
+	bool need_version = false;
+	bool need_help = false;
+	bool have_command = false;
+	size_t command_start;
+
+	for (size_t ii = 1U; ii < arguments_length; ++ii) {
+		char const *argument = argv[ii];
+
+		int arg = -1;
+		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+			if (0 == strcmp(argument, argstrs[jj])) {
+				arg = jj;
+				break;
+			}
+		}
+
+		switch (arg) {
+		case -1:
+			bad_option = argument;
+			break;
+
+		case STOP_OPTIONS:
+			have_command = true;
+			command_start = ii;
+			goto exit_loop;
+
+		case HELP:
+			need_help = true;
+			break;
+
+		case VERSION_OPTION:
+			need_version = true;
+			break;
+		}
+	}
+exit_loop:
+	if (!have_command) {
+		fprintf(stderr, "need command\n");
+		return EXIT_FAILURE;
+	}
+
+	if (bad_option != NULL) {
+		fprintf(stderr, "bad option: %s\n", bad_option);
+		return EXIT_FAILURE;
+	}
+
+	char const *const *command =
+	    (char const * const *)argv + 1U + command_start;
+
+	pid_t child = fork();
+	if (-1 == child) {
+		perror("fork");
+		return EXIT_FAILURE;
+	}
+
+	if (0 == child) {
+		char listen_pid[] = "XXXXXXXXXXXXXXXXX";
+		sprintf(listen_pid, "%i", getpid());
+
+		setenv("LISTEN_PID", listen_pid, true);
+
+		execve(command[0U], (char * const *)command, environ);
+		perror("execve");
+		return EXIT_FAILURE;
 	}
 
 	/* Catch signals
@@ -53,7 +130,7 @@ int main(int argc, char *argv[])
 	 *
 	 * - KILL(2) http://www.kernel.org/doc/man-pages/.
 	 *
-	 * This applies to waiters to if they use CLONE_NEWPID.
+	 * This applies to sandboxs to if they use CLONE_NEWPID.
 	 *
 	 * We want to explicitly handle the signal so that it is
 	 * propagated to children of init as well.

@@ -30,7 +30,7 @@ ${SRCDIR}/src/controller/units\
 
 : ${LINTED_INIT:="${ROOT}/../src/init/init"}
 : ${LINTED_MONITOR:="${ROOT}/../src/monitor/monitor"}
-: ${LINTED_WAITER:="${ROOT}/../src/waiter/waiter"}
+: ${LINTED_SANDBOX:="${ROOT}/../src/sandbox/sandbox"}
 
 : ${LINTED_LOGGER_FSTAB:="${SRCDIR}/src/logger/logger-fstab"}
 : ${LINTED_LOGGER:="${ROOT}/../src/logger/logger"}
@@ -50,7 +50,7 @@ export LINTED_UNIT_PATH
 export LINTED_CHROOT
 export LINTED_INIT
 export LINTED_MONITOR
-export LINTED_WAITER
+export LINTED_SANDBOX
 export LINTED_LOGGER_FSTAB
 export LINTED_LOGGER
 export LINTED_SIMULATOR_FSTAB
