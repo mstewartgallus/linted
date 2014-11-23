@@ -13,6 +13,14 @@
  *
  * @section runtime Runtime Dependencies
  *
+ * - libcap
+ *   - Main Site - https://sites.google.com/site/fullycapable/
+ *   - Binaries
+ *     - /lib/x86_64-linux-gnu/libcap.so.2.24
+ * - elfutils
+ *   - Main Site - https://fedorahosted.org/elfutils/
+ *   - Binaries
+ *     - /usr/lib/x86_64-linux-gnu/libelf-0.158.so
  * - Linux Kernel
  *   - Main Site - https://www.kernel.org/
  *   - Bug Database - https://bugzilla.kernel.org/
@@ -68,16 +76,9 @@
  *   - Main Site - http://zlib.net/
  *   - Binaries
  *     - /lib/x86_64-linux-gnu/libz.so.1.2.8
- * - Fully Capable
- *   - Main Site - https://sites.google.com/site/fullycapable/
- *   - Binaries
- *     - /lib/x86_64-linux-gnu/libcap.so.2.24
- * - elfutils
- *   - Main Site - https://fedorahosted.org/elfutils/
- *   - Binaries
- *     - /usr/lib/x86_64-linux-gnu/libelf-0.158.so
  * - libffi
  *   - Main Site - https://sourceware.org/libffi/
+ *   - Bug Database - https://github.com/atgreen/libffi/issues
  *   - Binaries
  *     - /usr/lib/x86_64-linux-gnu/libffi.so.6.0.1
  * - LLVM
@@ -87,6 +88,7 @@
  *     - /usr/lib/x86_64-linux-gnu/libLLVM-3.4.so.1
  * - The Expat XML Parser
  *   - Main Site - http://expat.sourceforge.net/
+ *   - Bug Database - http://sourceforge.net/p/expat/bugs/
  *   - Binaries
  *     - /lib/x86_64-linux-gnu/libexpat.so.1.6.0
  * - shared low-level terminfo library for terminal handling
