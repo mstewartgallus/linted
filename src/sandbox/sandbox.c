@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -27,11 +27,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-enum { STOP_OPTIONS, HELP, VERSION_OPTION, NO_NEW_PRIVS };
+enum { STOP_OPTIONS, HELP, VERSION_OPTION, DROP_CAPS, NO_NEW_PRIVS };
 
 extern char **environ;
 
@@ -39,6 +40,7 @@ static char const *const argstrs[] = {
 	    /**/[STOP_OPTIONS] = "--",
 	    /**/ [HELP] = "--help",
 	    /**/ [VERSION_OPTION] = "--version",
+	    /**/ [DROP_CAPS] = "--dropcaps",
 	    /**/ [NO_NEW_PRIVS] = "--nonewprivs"
 };
 
@@ -65,6 +67,7 @@ int main(int argc, char *argv[])
 	bool need_version = false;
 	bool need_help = false;
 	bool no_new_privs = false;
+	bool drop_caps = false;
 	bool have_command = false;
 	size_t command_start;
 
@@ -100,6 +103,10 @@ int main(int argc, char *argv[])
 		case NO_NEW_PRIVS:
 			no_new_privs = true;
 			break;
+
+		case DROP_CAPS:
+			drop_caps = true;
+			break;
 		}
 	}
 exit_loop:
@@ -127,6 +134,41 @@ exit_loop:
 		return EXIT_FAILURE;
 	}
 
+	/* Drop all capabilities I might possibly have. I'm not sure I
+	 * need to do this and I probably can do this in a better
+	 * way. Note that currently we do not use PR_SET_KEEPCAPS and
+	 * do not map our sandboxed user to root but if we did in the
+	 * future we would need this.
+	 */
+
+	if (drop_caps) {
+		cap_t caps = cap_get_proc();
+		if (NULL == caps) {
+			perror("cap_get_proc");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == cap_set_proc(caps)) {
+			perror("cap_set_proc");
+			return EXIT_FAILURE;
+		}
+
+		cap_free(caps);
+	}
+
 	if (no_new_privs) {
 		errnum = set_no_new_privs(true);
 		if (errnum != 0) {
@@ -146,7 +188,10 @@ exit_loop:
 		char listen_pid[] = "XXXXXXXXXXXXXXXXX";
 		sprintf(listen_pid, "%i", getpid());
 
-		setenv("LISTEN_PID", listen_pid, true);
+		if (-1 == setenv("LISTEN_PID", listen_pid, true)) {
+			perror("setenv");
+			return EXIT_FAILURE;
+		}
 
 		execve(command[0U], (char * const *)command, environ);
 		perror("execve");

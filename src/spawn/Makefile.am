@@ -20,5 +20,4 @@ noinst_LTLIBRARIES+=%D%/libspawn.la
 %C%_libspawn_la_LIBADD=\
   src/file/libfile.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
-  -lcap
+  src/mem/libmem.la

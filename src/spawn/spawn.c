@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
@@ -96,7 +95,6 @@ struct linted_spawn_attr
 	int clone_flags;
 	int deathsig;
 	int priority;
-	bool drop_caps : 1U;
 	bool deparent : 1U;
 	bool has_priority : 1U;
 };
@@ -107,7 +105,6 @@ static void set_id_maps(linted_ko writer, uid_t mapped_uid, uid_t uid,
 static void chroot_process(linted_ko writer, char const *chrootdir,
                            struct mount_args *mount_args,
                            size_t mount_args_size);
-static void drop_privileges(linted_ko writer, cap_t caps);
 
 static void pid_to_str(char *buf, pid_t pid);
 
@@ -138,7 +135,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mask = NULL;
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
-	attr->drop_caps = false;
 	attr->deparent = false;
 	attr->filter = NULL;
 	attr->has_priority = false;
@@ -181,11 +177,6 @@ void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
 {
 	attr->deathsig = signo;
-}
-
-void linted_spawn_attr_setdropcaps(struct linted_spawn_attr *attr, _Bool b)
-{
-	attr->drop_caps = b;
 }
 
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags)
@@ -391,7 +382,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	char const *chdir_path = NULL;
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
-	bool drop_caps = false;
 	bool deparent = false;
 	bool has_priority = false;
 	int priority;
@@ -405,7 +395,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		chdir_path = attr->chdir_path;
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
-		drop_caps = attr->drop_caps;
 		deparent = attr->deparent;
 		filter = attr->filter;
 		has_priority = attr->has_priority;
@@ -443,22 +432,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		relative_filename = xx;
 	}
 
-	cap_t caps;
-	if (drop_caps) {
-		caps = cap_get_proc();
-		if (NULL == caps) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_relative_path;
-		}
-
-		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_caps;
-		}
-	}
-
 	char **envp_copy = NULL;
 	size_t env_size = 0U;
 	for (char const *const *env = envp; *env != NULL; ++env)
@@ -469,7 +442,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		errnum =
 		    linted_mem_alloc_array(&xx, env_size + 3U, sizeof envp[0U]);
 		if (errnum != 0)
-			goto free_caps;
+			goto free_relative_path;
 		envp_copy = xx;
 	}
 
@@ -612,10 +585,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	free_env:
 		linted_mem_free(envp_copy);
 
-	free_caps:
-		if (drop_caps)
-			cap_free(caps);
-
 	free_relative_path:
 		linted_mem_free(relative_filename);
 
@@ -731,8 +700,22 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(err_writer, errnum);
 	}
 
-	if (drop_caps)
-		drop_privileges(err_writer, caps);
+	if ((clone_flags & CLONE_NEWUSER) != 0) {
+		/* We need to use the raw system call because GLibc
+		 * messes around with signals to synchronize the
+		 * permissions of every thread. Of course, after a
+		 * fork there is only one thread and there is no need
+		 * for the synchronization.
+		 *
+		 * See the following for problems related to the nonatomic
+		 * setxid calls.
+		 *
+		 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
+		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
+		 */
+		if (-1 == syscall(__NR_setgroups, 0U, NULL))
+			exit_with_error(err_writer, errno);
+	}
 
 	if (has_priority) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
@@ -969,32 +952,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 		exit_with_error(writer, errno);
 
 	if (-1 == chdir("/"))
-		exit_with_error(writer, errno);
-}
-
-static void drop_privileges(linted_ko writer, cap_t caps)
-{
-	/* We need to use the raw system call because GLibc messes
-	 * around with signals to synchronize the permissions of every
-	 * thread. Of course, after a fork there is only one thread
-	 * and there is no need for the synchronization.
-	 *
-	 * See the following for problems related to the nonatomic
-	 * setxid calls.
-	 *
-	 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
-	 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
-	 */
-	if (-1 == syscall(__NR_setgroups, 0U, NULL))
-		exit_with_error(writer, errno);
-
-	/* Drop all capabilities I might possibly have. I'm not sure I
-	 * need to do this and I probably can do this in a better
-	 * way. Note that currently we do not use PR_SET_KEEPCAPS and
-	 * do not map our sandboxed user to root but if we did in the
-	 * future we would need this.
-	 */
-	if (-1 == cap_set_proc(caps))
 		exit_with_error(writer, errno);
 }
 

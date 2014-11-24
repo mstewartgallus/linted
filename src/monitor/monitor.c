@@ -1005,10 +1005,14 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 1U] = service_name_setting;
 	envvars[envvars_size + 2U] = NULL;
 
+	bool drop_caps = true;
+
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 	size_t num_options = 0U;
 	if (no_new_privs)
+		++num_options;
+	if (drop_caps)
 		++num_options;
 	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
@@ -1021,8 +1025,11 @@ envvar_allocate_succeeded:
 		args = xx;
 	}
 	args[0U] = sandbox;
+	size_t ix = 1U;
 	if (no_new_privs)
-		args[1U] = "--nonewprivs";
+		args[ix++] = "--nonewprivs";
+	if (drop_caps)
+		args[ix++] = "--dropcaps";
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
 		args[1U + num_options + 1U + ii] = exec_start[ii];
@@ -1076,7 +1083,6 @@ envvar_allocate_succeeded:
 	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
-	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
 	if (chdir_path != NULL)
 		linted_spawn_attr_setchdir(attr, chdir_path);

@@ -28,6 +28,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(access),
 	/*  */ ALLOW(arch_prctl),
 	/*  */ ALLOW(brk),
+	/*  */ ALLOW(capget),
 	/*  */ ALLOW(capset),
 	/*  */ ALLOW(chdir),
 	/*  */ ALLOW(clock_nanosleep),

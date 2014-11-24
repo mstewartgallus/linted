@@ -17,3 +17,5 @@
 pkglibexec_PROGRAMS+=%D%/sandbox
 
 %C%_sandbox_SOURCES=%D%/sandbox.c
+%C%_sandbox_LDADD=\
+  -lcap
