@@ -353,7 +353,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		child_mask = attr->mask;
 	}
 
-	if (!((clone_flags & CLONE_NEWUSER) != 0) &
+	if (!((clone_flags & CLONE_NEWUSER) != 0) &&
 	    (chrootdir != NULL || mount_args != NULL))
 		return EINVAL;
 
@@ -616,6 +616,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	linted_ko_close(err_reader);
 
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
+
 	if (deparent) {
 		child = syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
 		if (-1 == child)
@@ -634,7 +637,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		message.msg_control = NULL;
 		message.msg_controllen = 0U;
 
-		errnum = 0;
 		if (-1 == sendmsg(pid_writer, &message, MSG_NOSIGNAL)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
@@ -644,12 +646,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 	}
-
-	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
-
-	if ((clone_flags & CLONE_NEWUSER) != 0)
-		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
@@ -720,11 +716,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		}
 	}
 
-	if (chrootdir != NULL)
-		chroot_process(err_writer, chrootdir, mount_args,
-		               mount_args_size);
-
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
+		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
+
 		/* We need to use the raw system call because GLibc
 		 * messes around with signals to synchronize the
 		 * permissions of every thread. Of course, after a
@@ -740,6 +734,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == syscall(__NR_setgroups, 0U, NULL))
 			exit_with_error(err_writer, errno);
 	}
+
+	if (chrootdir != NULL)
+		chroot_process(err_writer, chrootdir, mount_args,
+		               mount_args_size);
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
