@@ -198,8 +198,13 @@ linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool)
 
 	size_t worker_count = pool->worker_count;
 
-	for (size_t ii = 0U; ii < worker_count; ++ii)
-		pthread_cancel(pool->workers[ii]);
+	for (size_t ii = 0U; ii < worker_count; ++ii) {
+		errnum = pthread_cancel(pool->workers[ii]);
+		if (errnum != 0) {
+			assert(errnum != ESRCH);
+			assert(false);
+		}
+	}
 
 	/* After this point a few workers can still be left hanging
 	 * waiting to return completed tasks and users should clean
@@ -219,8 +224,18 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 	 * now. */
 	size_t worker_count = pool->worker_count;
 
-	for (size_t ii = 0U; ii < worker_count; ++ii)
-		pthread_join(pool->workers[ii], NULL);
+	for (size_t ii = 0U; ii < worker_count; ++ii) {
+		pthread_t worker = pool->workers[ii];
+
+		void *retval;
+		errnum = pthread_join(worker, &retval);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(errnum != EINVAL);
+			assert(errnum != ESRCH);
+		}
+		assert(PTHREAD_CANCELED == retval);
+	}
 
 	linted_queue_destroy(pool->worker_command_queue);
 

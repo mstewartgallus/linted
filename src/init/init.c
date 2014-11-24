@@ -252,7 +252,9 @@ static linted_error set_ptracer(pid_t pid)
 
 static void delegate_signal(int signo)
 {
-	int errnum = errno;
+	linted_ko old_errnum = errno;
+
+	linted_ko errnum = 0;
 
 	/* All signals are blocked here. */
 
@@ -269,8 +271,14 @@ static void delegate_signal(int signo)
 		{
 			siginfo_t info = { 0 };
 			if (-1 == waitid(P_PID, the_pid, &info,
-			                 WEXITED | WNOWAIT | WNOHANG)) {
-				assert(errno != EINVAL);
+			                 WEXITED | WNOWAIT | WNOHANG))
+				errnum = errno;
+
+			if (ECHILD == errnum)
+				goto restore_errno;
+			if (errnum != 0) {
+				assert(errnum != EINTR);
+				assert(errnum != EINVAL);
 				assert(false);
 			}
 
@@ -279,10 +287,10 @@ static void delegate_signal(int signo)
 				goto restore_errno;
 		}
 
-		/* The may be dead but not waited on at least */
+		/* The process may be dead but not waited on at least */
 		kill(the_pid, signo);
 	}
 
 restore_errno:
-	errno = errnum;
+	errno = old_errnum;
 }

@@ -357,8 +357,9 @@ static void propagate_signal(int signo)
 	kill(-1, signo);
 
 	/* Sadly, it is impossible to kill oneself with the proper
-	 * signal as init. */
-	raise(SIGKILL);
+	 * signal as init. Also, using raise(SIGKILL) doesn't work
+	 * either. */
+	_Exit(signo);
 }
 
 static linted_error set_name(char const *name)

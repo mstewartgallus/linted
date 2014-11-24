@@ -664,13 +664,11 @@ static void default_signals(linted_ko writer)
 			/* If sigerrnum == EINVAL then we are
 			 * trampling on OS signals.
 			 */
-			if (sigerrnum != EINVAL) {
-				errnum = sigerrnum;
-				goto sigaction_fail_errnum;
-			}
+			if (EINVAL == sigerrnum)
+				continue;
 
-			/* Skip setting this action */
-			continue;
+			errnum = sigerrnum;
+			goto sigaction_fail_errnum;
 		}
 
 		if (SIG_IGN == action.sa_handler)
@@ -678,8 +676,16 @@ static void default_signals(linted_ko writer)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == sigaction(ii, &action, NULL))
+		if (-1 == sigaction(ii, &action, NULL)) {
+			linted_error sigerrnum = errno;
+
+			/* Workaround broken debugging utilities */
+			if (EINVAL == sigerrnum)
+				continue;
+
+			errnum = sigerrnum;
 			goto sigaction_failed;
+		}
 	}
 
 	return;
