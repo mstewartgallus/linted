@@ -449,12 +449,22 @@ kill_procs:
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		struct linted_unit_service *service = (void *)unit;
+		pid_t pid;
+		{
+			pid_t xx;
+			linted_error pid_errnum =
+			    pid_for_service_name(&xx, unit->name);
+			if (pid_errnum != ESRCH)
+				continue;
+			if (pid_errnum != 0) {
+				if (0 == errnum)
+					errnum = pid_errnum;
+				continue;
+			}
+			pid = xx;
+		}
 
-		if (service->pid <= 1)
-			continue;
-
-		if (-1 == kill(service->pid, SIGKILL)) {
+		if (-1 == kill(pid, SIGKILL)) {
 			linted_error kill_errnum = errno;
 			LINTED_ASSUME(kill_errnum != 0);
 			if (kill_errnum != ESRCH) {
@@ -588,7 +598,6 @@ static linted_error create_units(struct linted_unit_db **unitsp,
 		switch (unit_type) {
 		case UNIT_TYPE_SERVICE: {
 			struct linted_unit_service *s = (void *)unit;
-			s->pid = -1;
 
 			errnum = service_create(s, conf);
 			if (errnum != 0)
@@ -917,7 +926,6 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 			goto service_not_found;
 		child = xx;
 	}
-	unit_service->pid = child;
 	goto ptrace_child;
 
 service_not_found:
@@ -1270,8 +1278,6 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 		child = xx;
 	}
-
-	unit_service->pid = child;
 
 destroy_proc_kos:
 	for (size_t jj = 0; jj < kos_opened; ++jj)
@@ -2024,8 +2030,12 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 		size_t yy = 0U;
 		errno = 0;
 		bytes = getline(&xx, &yy, file);
-		if (-1 == bytes)
+		if (-1 == bytes) {
+			errnum = errno;
+			if (0 == errnum)
+				errnum = EINVAL;
 			goto getline_failed;
+		}
 		buf = xx;
 		goto getline_succeeded;
 	}

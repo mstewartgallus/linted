@@ -44,15 +44,11 @@ struct linted_unit_service
 {
 	struct linted_unit common;
 
-	char *name;
-
 	char const *const *exec_start;
 	char const *const *files;
 	char const *fstab;
 	char const *chdir_path;
 	char const *const *env_whitelist;
-
-	pid_t pid;
 
 	_Bool clone_newuser : 1U;
 	_Bool clone_newpid : 1U;
