@@ -40,7 +40,6 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
@@ -83,7 +82,6 @@ struct linted_spawn_attr
 	sigset_t const *mask;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
-	char const *waiter;
 	int clone_flags;
 	bool deparent : 1U;
 };
@@ -446,28 +444,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
-		if (deparent) {
-			do {
-				int status;
-				{
-					siginfo_t info;
-					status = waitid(P_PID, child, &info,
-					                WEXITED);
-				}
-				if (-1 == status) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-				} else {
-					errnum = 0;
-				}
-			} while (EINTR == errnum);
-			if (errnum != 0) {
-				assert(errnum != EINVAL);
-				assert(errnum != ECHILD);
-				assert(false);
-			}
-		}
-
 	close_err_pipes : {
 		linted_error close_errnum = linted_ko_close(err_writer);
 		if (0 == errnum)
