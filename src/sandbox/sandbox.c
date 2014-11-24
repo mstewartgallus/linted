@@ -41,8 +41,6 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
-extern char **environ;
-
 enum {
 	STOP_OPTIONS,
 	HELP,
@@ -196,23 +194,6 @@ exit_loop:
 		linted_ko_close(fd);
 	}
 
-	if (no_new_privs) {
-		/* Must appear before the seccomp filter */
-		errnum = set_no_new_privs(true);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_no_new_privs");
-			return EXIT_FAILURE;
-		}
-
-		errnum = set_seccomp(&default_filter);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_seccomp");
-			return EXIT_FAILURE;
-		}
-	}
-
 	if (priority != NULL) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
 			perror("setpriority");
@@ -229,6 +210,13 @@ exit_loop:
 		errno = errnum;
 		perror("set_child_subreaper");
 		return EXIT_FAILURE;
+	}
+
+	if (chdir_path != NULL) {
+		if (-1 == chdir(chdir_path)) {
+			perror("chdir");
+			return EXIT_FAILURE;
+		}
 	}
 
 	/* Drop all capabilities I might possibly have. I'm not sure I
@@ -265,6 +253,23 @@ exit_loop:
 
 		if (-1 == cap_free(caps)) {
 			perror("cap_free");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (no_new_privs) {
+		/* Must appear before the seccomp filter */
+		errnum = set_no_new_privs(true);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_no_new_privs");
+			return EXIT_FAILURE;
+		}
+
+		errnum = set_seccomp(&default_filter);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_seccomp");
 			return EXIT_FAILURE;
 		}
 	}
