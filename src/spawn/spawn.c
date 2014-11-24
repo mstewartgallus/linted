@@ -38,10 +38,8 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
-#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -86,7 +84,6 @@ struct mount_args
 struct linted_spawn_attr
 {
 	char const *chrootdir;
-	char const *chdir_path;
 	sigset_t const *mask;
 	size_t mount_args_size;
 	struct mount_args *mount_args;
@@ -94,9 +91,7 @@ struct linted_spawn_attr
 	struct sock_fprog const *filter;
 	int clone_flags;
 	int deathsig;
-	int priority;
 	bool deparent : 1U;
-	bool has_priority : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -131,13 +126,11 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->clone_flags = 0;
 	attr->deathsig = 0;
 	attr->chrootdir = NULL;
-	attr->chdir_path = NULL;
 	attr->mask = NULL;
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
 	attr->deparent = false;
 	attr->filter = NULL;
-	attr->has_priority = false;
 
 	*attrp = attr;
 	return 0;
@@ -188,17 +181,6 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir)
 {
 	attr->chrootdir = chrootdir;
-}
-
-void linted_spawn_attr_setchdir(struct linted_spawn_attr *attr, char const *dir)
-{
-	attr->chdir_path = dir;
-}
-
-void linted_spawn_attr_setpriority(struct linted_spawn_attr *attr, int priority)
-{
-	attr->has_priority = true;
-	attr->priority = priority;
 }
 
 linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
@@ -379,12 +361,9 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	int clone_flags = 0;
 	int deathsig = 0;
 	char const *chrootdir = NULL;
-	char const *chdir_path = NULL;
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool deparent = false;
-	bool has_priority = false;
-	int priority;
 	struct sock_fprog const *filter = NULL;
 	sigset_t const *mask = NULL;
 
@@ -392,14 +371,10 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		clone_flags = attr->clone_flags;
 		deathsig = attr->deathsig;
 		chrootdir = attr->chrootdir;
-		chdir_path = attr->chdir_path;
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		deparent = attr->deparent;
 		filter = attr->filter;
-		has_priority = attr->has_priority;
-		if (has_priority)
-			priority = attr->priority;
 		mask = attr->mask;
 	}
 
@@ -690,10 +665,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		chroot_process(err_writer, chrootdir, mount_args,
 		               mount_args_size);
 
-	if (chdir_path != NULL)
-		if (-1 == chdir(chdir_path))
-			exit_with_error(err_writer, errno);
-
 	if (filter != NULL) {
 		errnum = set_seccomp(filter);
 		if (errnum != 0)
@@ -714,11 +685,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
 		 */
 		if (-1 == syscall(__NR_setgroups, 0U, NULL))
-			exit_with_error(err_writer, errno);
-	}
-
-	if (has_priority) {
-		if (-1 == setpriority(PRIO_PROCESS, 0, priority + 1))
 			exit_with_error(err_writer, errno);
 	}
 

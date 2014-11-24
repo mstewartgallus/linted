@@ -1006,6 +1006,7 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 2U] = NULL;
 
 	bool drop_caps = true;
+	bool set_priority = true;
 
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
@@ -1014,6 +1015,10 @@ envvar_allocate_succeeded:
 		++num_options;
 	if (drop_caps)
 		++num_options;
+	if (chdir_path != NULL)
+		num_options += 2U;
+	if (set_priority)
+		num_options += 2U;
 	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
 	{
@@ -1030,6 +1035,29 @@ envvar_allocate_succeeded:
 		args[ix++] = "--nonewprivs";
 	if (drop_caps)
 		args[ix++] = "--dropcaps";
+	if (chdir_path != NULL) {
+		args[ix++] = "--chdir";
+		args[ix++] = chdir_path;
+	}
+	char prio_str[] = "XXXXXXXXXXXXXXXXX";
+	if (set_priority) {
+		/* Favor other processes over this process hierarchy.  Only
+		 * superuser may lower priorities so this is not
+		 * stoppable. This also makes the process hierarchy nicer for
+		 * the OOM killer.
+		 */
+		errno = 0;
+		int priority = getpriority(PRIO_PROCESS, 0);
+		if (-1 == priority) {
+			errnum = errno;
+			if (errnum != 0)
+				goto free_args;
+		}
+		sprintf(prio_str, "%i", priority + 1);
+
+		args[ix++] = "--priority";
+		args[ix++] = prio_str;
+	}
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
 		args[1U + num_options + 1U + ii] = exec_start[ii];
@@ -1066,26 +1094,10 @@ envvar_allocate_succeeded:
 	if (clone_newns)
 		clone_flags |= CLONE_NEWNS;
 
-	/* Favor other processes over this process hierarchy.  Only
-	 * superuser may lower priorities so this is not
-	 * stoppable. This also makes the process hierarchy nicer for
-	 * the OOM killer.
-	 */
-	errno = 0;
-	int priority = getpriority(PRIO_PROCESS, 0);
-	if (-1 == priority) {
-		errnum = errno;
-		if (errnum != 0)
-			goto destroy_attr;
-	}
-
 	linted_spawn_attr_setmask(attr, orig_mask);
-	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
-	if (chdir_path != NULL)
-		linted_spawn_attr_setchdir(attr, chdir_path);
 
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);

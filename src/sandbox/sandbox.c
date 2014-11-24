@@ -29,10 +29,20 @@
 #include <string.h>
 #include <sys/capability.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-enum { STOP_OPTIONS, HELP, VERSION_OPTION, DROP_CAPS, NO_NEW_PRIVS };
+enum {
+	STOP_OPTIONS,
+	HELP,
+	VERSION_OPTION,
+	DROP_CAPS,
+	NO_NEW_PRIVS,
+	CHDIR,
+	PRIORITY
+};
 
 extern char **environ;
 
@@ -41,7 +51,9 @@ static char const *const argstrs[] = {
 	    /**/ [HELP] = "--help",
 	    /**/ [VERSION_OPTION] = "--version",
 	    /**/ [DROP_CAPS] = "--dropcaps",
-	    /**/ [NO_NEW_PRIVS] = "--nonewprivs"
+	    /**/ [NO_NEW_PRIVS] = "--nonewprivs",
+	    /**/ [CHDIR] = "--chdir",
+	    /**/ [PRIORITY] = "--priority"
 };
 
 static void propagate_signal(int signo);
@@ -68,6 +80,8 @@ int main(int argc, char *argv[])
 	bool need_help = false;
 	bool no_new_privs = false;
 	bool drop_caps = false;
+	char const *chdir_path = NULL;
+	char const *priority = NULL;
 	bool have_command = false;
 	size_t command_start;
 
@@ -107,6 +121,20 @@ int main(int argc, char *argv[])
 		case DROP_CAPS:
 			drop_caps = true;
 			break;
+
+		case CHDIR:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			chdir_path = argv[ii];
+			break;
+
+		case PRIORITY:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			priority = argv[ii];
+			break;
 		}
 	}
 exit_loop:
@@ -122,6 +150,13 @@ exit_loop:
 
 	char const *const *command =
 	    (char const * const *)argv + 1U + command_start;
+
+	if (priority != NULL) {
+		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
+			perror("setpriority");
+			return EXIT_FAILURE;
+		}
+	}
 
 	/*
 	 * This isn't needed if CLONE_NEWPID was used but it doesn't
@@ -166,7 +201,10 @@ exit_loop:
 			return EXIT_FAILURE;
 		}
 
-		cap_free(caps);
+		if (-1 == cap_free(caps)) {
+			perror("cap_free");
+			return EXIT_FAILURE;
+		}
 	}
 
 	if (no_new_privs) {
