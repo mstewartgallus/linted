@@ -541,7 +541,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			message.msg_control = buf;
 			message.msg_controllen = sizeof buf;
 
-			errnum = 0;
 			ssize_t bytes_recved = recvmsg(pid_reader, &message, 0);
 			if (0 == bytes_recved)
 				goto get_err;

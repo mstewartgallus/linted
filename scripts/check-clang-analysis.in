@@ -91,8 +91,6 @@ CHECKERS="${CHECKERS} alpha.osx.cocoa.InstanceVariableInvalidation"
 # Check that the invalidation methods are present in classes that
 # contain invalidatable instance variables
 CHECKERS="${CHECKERS} alpha.osx.cocoa.MissingInvalidationMethod"
-# Warn about Objective-C methods that lack a necessary call to super
-CHECKERS="${CHECKERS} alpha.osx.cocoa.MissingSuperCall"
 # Warn about buffer overflows (older checker)
 CHECKERS="${CHECKERS} alpha.security.ArrayBound"
 # Warn about buffer overflows (newer checker)
@@ -206,6 +204,8 @@ CHECKERS="${CHECKERS} osx.cocoa.ClassRelease"
 CHECKERS="${CHECKERS} osx.cocoa.IncompatibleMethodTypes"
 # Improved modeling of loops using Cocoa collection types
 CHECKERS="${CHECKERS} osx.cocoa.Loops"
+# Warn about Objective-C methods that lack a necessary call to super
+CHECKERS="${CHECKERS} osx.cocoa.MissingSuperCall"
 # Warn for suboptimal uses of NSAutoreleasePool in Objective-C GC mode
 CHECKERS="${CHECKERS} osx.cocoa.NSAutoreleasePool"
 # Check usage of NSError** parameters
