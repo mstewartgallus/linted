@@ -44,9 +44,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <linux/filter.h>
-#include <linux/seccomp.h>
-
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
 enum file_action_type { FILE_ACTION_ADDDUP2 };
@@ -88,7 +85,6 @@ struct linted_spawn_attr
 	size_t mount_args_size;
 	struct mount_args *mount_args;
 	char const *waiter;
-	struct sock_fprog const *filter;
 	int clone_flags;
 	int deathsig;
 	bool deparent : 1U;
@@ -103,7 +99,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 
 static void pid_to_str(char *buf, pid_t pid);
 
-static linted_error set_seccomp(struct sock_fprog const *program);
 static linted_error set_death_sig(int signum);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
@@ -130,7 +125,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
 	attr->deparent = false;
-	attr->filter = NULL;
 
 	*attrp = attr;
 	return 0;
@@ -154,12 +148,6 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set)
 {
 	attr->mask = set;
-}
-
-void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
-                                 struct sock_fprog const *filter)
-{
-	attr->filter = filter;
 }
 
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
@@ -364,7 +352,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool deparent = false;
-	struct sock_fprog const *filter = NULL;
 	sigset_t const *mask = NULL;
 
 	if (attr != NULL) {
@@ -374,7 +361,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		deparent = attr->deparent;
-		filter = attr->filter;
 		mask = attr->mask;
 	}
 
@@ -664,12 +650,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (chrootdir != NULL)
 		chroot_process(err_writer, chrootdir, mount_args,
 		               mount_args_size);
-
-	if (filter != NULL) {
-		errnum = set_seccomp(filter);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-	}
 
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
 		/* We need to use the raw system call because GLibc
@@ -961,22 +941,6 @@ static linted_error set_death_sig(int signum)
 		return errnum;
 	}
 
-	return 0;
-}
-
-static linted_error set_seccomp(struct sock_fprog const *program)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
-	                program, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		assert(errnum != EINVAL);
-
-		return errnum;
-	}
 	return 0;
 }
 

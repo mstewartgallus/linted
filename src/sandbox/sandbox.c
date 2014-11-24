@@ -30,9 +30,16 @@
 #include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <linux/audit.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+
+extern char **environ;
 
 enum {
 	STOP_OPTIONS,
@@ -44,7 +51,7 @@ enum {
 	PRIORITY
 };
 
-extern char **environ;
+static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
 	    /**/[STOP_OPTIONS] = "--",
@@ -61,6 +68,7 @@ static linted_error set_name(char const *name);
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
+static linted_error set_seccomp(struct sock_fprog const *program);
 
 int main(int argc, char *argv[])
 {
@@ -151,6 +159,23 @@ exit_loop:
 	char const *const *command =
 	    (char const * const *)argv + 1U + command_start;
 
+	if (no_new_privs) {
+		/* Must appear before the seccomp filter */
+		errnum = set_no_new_privs(true);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_no_new_privs");
+			return EXIT_FAILURE;
+		}
+
+		errnum = set_seccomp(&default_filter);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_seccomp");
+			return EXIT_FAILURE;
+		}
+	}
+
 	if (priority != NULL) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
 			perror("setpriority");
@@ -203,15 +228,6 @@ exit_loop:
 
 		if (-1 == cap_free(caps)) {
 			perror("cap_free");
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (no_new_privs) {
-		errnum = set_no_new_privs(true);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_no_new_privs");
 			return EXIT_FAILURE;
 		}
 	}
@@ -335,3 +351,27 @@ static linted_error set_no_new_privs(bool b)
 
 	return 0;
 }
+
+static linted_error set_seccomp(struct sock_fprog const *program)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
+	                program, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		assert(errnum != EINVAL);
+
+		return errnum;
+	}
+	return 0;
+}
+
+#if defined __amd64__
+#include "sandbox-amd64.c"
+#elif defined __i386__
+#include "sandbox-i386.c"
+#else
+#error No default seccomp filter has been defined for this architecture
+#endif

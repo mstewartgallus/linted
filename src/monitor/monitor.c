@@ -46,15 +46,11 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <linux/audit.h>
-#include <linux/filter.h>
 #include <linux/ptrace.h>
-#include <linux/seccomp.h>
 
 #define BACKLOG 20U
 #define MAX_MANAGE_CONNECTIONS 10U
@@ -193,7 +189,6 @@ static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
 static void conn_discard(struct conn *conn);
 
 static linted_ko kos[1U];
-static struct sock_fprog const default_filter;
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-monitor",
@@ -1095,7 +1090,6 @@ envvar_allocate_succeeded:
 		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setmask(attr, orig_mask);
-	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
 
@@ -2480,11 +2474,3 @@ static void conn_discard(struct conn *conn)
 	linted_ko_close(conn->ko);
 	linted_mem_free(conn);
 }
-
-#if defined __amd64__
-#include "monitor-amd64.c"
-#elif defined __i386__
-#include "monitor-i386.c"
-#else
-#error No default seccomp filter has been defined for this architecture
-#endif
