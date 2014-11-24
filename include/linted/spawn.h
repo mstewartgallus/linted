@@ -37,7 +37,6 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set);
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
                                    _Bool deparent);
-void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo);
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags);
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir);

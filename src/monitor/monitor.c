@@ -180,6 +180,7 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid);
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
+static linted_error set_death_sig(int signum);
 
 static linted_error conn_pool_create(struct conn_pool **poolp);
 static void conn_pool_destroy(struct conn_pool *pool);
@@ -209,6 +210,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_dir private_run_dir = kos[0U];
 
 	sigset_t orig_mask;
+
+	errnum = set_death_sig(SIGKILL);
+	if (errnum != 0)
+		goto exit_monitor;
 
 	sigset_t exit_signals;
 	sigemptyset(&exit_signals);
@@ -2401,6 +2406,20 @@ static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
 
 	if (-1 ==
 	    ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL, (void *)siginfo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_death_sig(int signum)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

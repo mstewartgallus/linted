@@ -185,7 +185,6 @@ static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
 		attr = xx;
 	}
 
-	linted_spawn_attr_setdeathsig(attr, SIGKILL);
 	linted_spawn_attr_setmask(attr, orig_mask);
 
 	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,

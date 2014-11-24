@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
-#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -86,7 +85,6 @@ struct linted_spawn_attr
 	struct mount_args *mount_args;
 	char const *waiter;
 	int clone_flags;
-	int deathsig;
 	bool deparent : 1U;
 };
 
@@ -98,8 +96,6 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
                            size_t mount_args_size);
 
 static void pid_to_str(char *buf, pid_t pid);
-
-static linted_error set_death_sig(int signum);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -119,7 +115,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
-	attr->deathsig = 0;
 	attr->chrootdir = NULL;
 	attr->mask = NULL;
 	attr->mount_args_size = 0U;
@@ -153,11 +148,6 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
 void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
 {
 	attr->deparent = val;
-}
-
-void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
-{
-	attr->deathsig = signo;
 }
 
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags)
@@ -347,7 +337,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		return EBADF;
 
 	int clone_flags = 0;
-	int deathsig = 0;
 	char const *chrootdir = NULL;
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
@@ -356,7 +345,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
-		deathsig = attr->deathsig;
 		chrootdir = attr->chrootdir;
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
@@ -668,10 +656,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(err_writer, errno);
 	}
 
-	errnum = set_death_sig(deathsig);
-	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
-
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
 	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
 
@@ -928,20 +912,6 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
-}
-
-static linted_error set_death_sig(int signum)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
 }
 
 static pid_t real_getpid(void)
