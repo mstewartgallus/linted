@@ -38,6 +38,7 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -341,7 +342,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool deparent = false;
-	sigset_t const *mask = NULL;
+	sigset_t const *child_mask = NULL;
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
@@ -349,7 +350,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		deparent = attr->deparent;
-		mask = attr->mask;
+		child_mask = attr->mask;
 	}
 
 	if (!((clone_flags & CLONE_NEWUSER) != 0) &
@@ -399,8 +400,11 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	linted_ko err_writer;
 	{
 		linted_ko xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto free_env;
+		}
 		err_reader = xx[0U];
 		err_writer = xx[1U];
 	}
@@ -412,13 +416,40 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	if (deparent) {
 		{
 			linted_ko xx[2U];
-			if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+			if (-1 == socketpair(AF_UNIX,
+			                     SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
+			                     xx)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
 				goto close_err_pipes;
+			}
 			pid_reader = xx[0U];
 			pid_writer = xx[1U];
 		}
 
 		pid_pipes_init = true;
+
+		{
+			int xx = true;
+			if (-1 == setsockopt(pid_reader, SOL_SOCKET,
+			                     SO_PASSCRED, &xx, sizeof xx)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_pid_pipes;
+			}
+		}
+
+		if (-1 == shutdown(pid_reader, SHUT_WR)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_pid_pipes;
+		}
+
+		if (-1 == shutdown(pid_writer, SHUT_RD)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_pid_pipes;
+		}
 	}
 
 	{
@@ -429,6 +460,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (errnum != 0)
 			goto close_pid_pipes;
 
+		sigset_t const *sigmask = &sigset;
+
 		if (deparent) {
 			child = fork();
 		} else {
@@ -438,17 +471,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == child) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
+			goto unmask_signals;
 		}
+		if (child != 0)
+			goto unmask_signals;
 
-		if (0 == child)
-			default_signals(err_writer);
+		default_signals(err_writer);
 
-		sigset_t const *setmask = &sigset;
-		if (0 == child && mask != NULL)
-			setmask = mask;
+		if (child_mask != NULL)
+			sigmask = child_mask;
 
+	unmask_signals:
+		;
 		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, setmask, NULL);
+		    pthread_sigmask(SIG_SETMASK, sigmask, NULL);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
@@ -493,31 +529,65 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			goto close_err_reader;
 
 		if (pid_pipes_init) {
-			size_t xx;
-			pid_t yy;
-			errnum =
-			    linted_io_read_all(pid_reader, &xx, &yy, sizeof yy);
-			if (errnum != 0)
-				goto close_err_reader;
+			char buf[CMSG_LEN(sizeof(struct ucred))];
 
-			/* If bytes_read is zero then an error occured */
-			if (xx == sizeof yy)
-				child = yy;
+			char dummy[1U];
+			struct iovec iovecs[] = { { .iov_base = dummy,
+					            .iov_len = sizeof dummy } };
+
+			struct msghdr message = { 0 };
+			message.msg_iov = iovecs;
+			message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+			message.msg_control = buf;
+			message.msg_controllen = sizeof buf;
+
+			errnum = 0;
+			ssize_t bytes_recved = recvmsg(pid_reader, &message, 0);
+			if (0 == bytes_recved)
+				goto get_err;
+
+			if (-1 == bytes_recved) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_err_reader;
+			}
+
+			if (bytes_recved != sizeof dummy) {
+				errnum = EINVAL;
+				goto close_err_reader;
+			}
+
+			bool cred_init = false;
+			struct ucred cred;
+			for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&message);
+			     cmsg != NULL; cmsg = CMSG_NXTHDR(&message, cmsg)) {
+				if (SCM_CREDENTIALS == cmsg->cmsg_type) {
+					cred_init = true;
+					memcpy(&cred, CMSG_DATA(cmsg),
+					       sizeof cred);
+				}
+			}
+
+			if (!cred_init) {
+				errnum = EINVAL;
+				goto close_err_reader;
+			}
+
+			child = cred.pid;
 		}
 
-		{
-			size_t xx;
-			linted_error yy;
-			errnum =
-			    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
-			if (errnum != 0)
-				goto close_err_reader;
+	get_err : {
+		size_t xx;
+		linted_error yy;
+		errnum = linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+		if (errnum != 0)
+			goto close_err_reader;
 
-			/* If bytes_read is zero then a succesful exec
-			 * occured */
-			if (xx == sizeof yy)
-				errnum = yy;
-		}
+		/* If bytes_read is zero then a succesful exec
+		 * occured */
+		if (xx == sizeof yy)
+			errnum = yy;
+	}
 
 	close_err_reader : {
 		linted_error close_errnum = linted_ko_close(err_reader);
@@ -552,12 +622,28 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
 
-		if (child != 0) {
-			pid_t xx = child;
-			linted_io_write_all(pid_writer, NULL, &xx, sizeof xx);
+		if (child != 0)
 			_Exit(0);
+
+		char dummy[] = { 0 };
+		struct iovec iovecs[] = { { .iov_base = dummy,
+				            .iov_len = sizeof dummy } };
+
+		struct msghdr message = { 0 };
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+		message.msg_control = NULL;
+		message.msg_controllen = 0U;
+
+		errnum = 0;
+		if (-1 == sendmsg(pid_writer, &message, MSG_NOSIGNAL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 		}
 		linted_ko_close(pid_writer);
+
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
 	}
 
 	if (errnum != 0)
