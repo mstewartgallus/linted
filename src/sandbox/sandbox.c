@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/ko.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -30,6 +31,7 @@
 #include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -48,7 +50,8 @@ enum {
 	DROP_CAPS,
 	NO_NEW_PRIVS,
 	CHDIR,
-	PRIORITY
+	PRIORITY,
+	PID_OUT_FD
 };
 
 static struct sock_fprog const default_filter;
@@ -60,7 +63,8 @@ static char const *const argstrs[] = {
 	    /**/ [DROP_CAPS] = "--dropcaps",
 	    /**/ [NO_NEW_PRIVS] = "--nonewprivs",
 	    /**/ [CHDIR] = "--chdir",
-	    /**/ [PRIORITY] = "--priority"
+	    /**/ [PRIORITY] = "--priority",
+	    /**/ [PID_OUT_FD] = "--pidoutfd"
 };
 
 static void propagate_signal(int signo);
@@ -77,6 +81,11 @@ int main(int argc, char *argv[])
 	size_t arguments_length = argc;
 
 	char const *service = getenv("LINTED_SERVICE");
+	char const *listen_fds = getenv("LISTEN_FDS");
+	if (NULL == listen_fds) {
+		fprintf(stderr, "need LISTEN_FDS\n");
+		return EXIT_FAILURE;
+	}
 
 	if (service != NULL) {
 		errnum = set_name(service);
@@ -90,6 +99,7 @@ int main(int argc, char *argv[])
 	bool drop_caps = false;
 	char const *chdir_path = NULL;
 	char const *priority = NULL;
+	char const *pid_out_fd = NULL;
 	bool have_command = false;
 	size_t command_start;
 
@@ -143,6 +153,13 @@ int main(int argc, char *argv[])
 				goto exit_loop;
 			priority = argv[ii];
 			break;
+
+		case PID_OUT_FD:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			pid_out_fd = argv[ii];
+			break;
 		}
 	}
 exit_loop:
@@ -158,6 +175,26 @@ exit_loop:
 
 	char const *const *command =
 	    (char const * const *)argv + 1U + command_start;
+
+	if (pid_out_fd != NULL) {
+		int fd = atoi(pid_out_fd);
+
+		char dummy[] = { 0 };
+		struct iovec iovecs[] = { { .iov_base = dummy,
+				            .iov_len = sizeof dummy } };
+
+		struct msghdr message = { 0 };
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+		message.msg_control = NULL;
+		message.msg_controllen = 0U;
+
+		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL)) {
+			perror("sendmsg");
+			return EXIT_FAILURE;
+		}
+		linted_ko_close(fd);
+	}
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
@@ -239,12 +276,22 @@ exit_loop:
 	}
 
 	if (0 == child) {
-		char listen_pid[] = "XXXXXXXXXXXXXXXXX";
-		sprintf(listen_pid, "%i", getpid());
+		{
+			char xx[] = "XXXXXXXXXXXXXXXXX";
+			sprintf(xx, "%i", getpid());
+			if (-1 == setenv("LISTEN_PID", xx, true)) {
+				perror("setenv");
+				return EXIT_FAILURE;
+			}
+		}
 
-		if (-1 == setenv("LISTEN_PID", listen_pid, true)) {
-			perror("setenv");
-			return EXIT_FAILURE;
+		{
+			char xx[] = "XXXXXXXXXXXXXXXXX";
+			sprintf(xx, "%i", atoi(listen_fds) - 1);
+			if (-1 == setenv("LISTEN_FDS", xx, true)) {
+				perror("setenv");
+				return EXIT_FAILURE;
+			}
 		}
 
 		execve(command[0U], (char * const *)command, environ);

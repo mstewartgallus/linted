@@ -38,7 +38,6 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -409,56 +408,13 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		err_writer = xx[1U];
 	}
 
-	linted_ko pid_reader;
-	linted_ko pid_writer;
-	bool pid_pipes_init = false;
-
-	if (deparent) {
-		{
-			linted_ko xx[2U];
-			if (-1 == socketpair(AF_UNIX,
-			                     SOCK_SEQPACKET | SOCK_CLOEXEC, 0,
-			                     xx)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_err_pipes;
-			}
-			pid_reader = xx[0U];
-			pid_writer = xx[1U];
-		}
-
-		pid_pipes_init = true;
-
-		{
-			int xx = true;
-			if (-1 == setsockopt(pid_reader, SOL_SOCKET,
-			                     SO_PASSCRED, &xx, sizeof xx)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_pid_pipes;
-			}
-		}
-
-		if (-1 == shutdown(pid_reader, SHUT_WR)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_pid_pipes;
-		}
-
-		if (-1 == shutdown(pid_writer, SHUT_RD)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_pid_pipes;
-		}
-	}
-
 	{
 		sigset_t sigset;
 		sigfillset(&sigset);
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0)
-			goto close_pid_pipes;
+			goto close_err_pipes;
 
 		sigset_t const *sigmask = &sigset;
 
@@ -490,7 +446,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	}
 
 	if (child != 0) {
-		if (pid_pipes_init) {
+		if (deparent) {
 			do {
 				int status;
 				{
@@ -512,13 +468,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			}
 		}
 
-	close_pid_pipes:
-		if (pid_pipes_init) {
-			linted_error close_errnum = linted_ko_close(pid_writer);
-			if (0 == errnum)
-				errnum = close_errnum;
-		}
-
 	close_err_pipes : {
 		linted_error close_errnum = linted_ko_close(err_writer);
 		if (0 == errnum)
@@ -528,77 +477,25 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (errnum != 0)
 			goto close_err_reader;
 
-		if (pid_pipes_init) {
-			char buf[CMSG_LEN(sizeof(struct ucred))];
-
-			char dummy[1U];
-			struct iovec iovecs[] = { { .iov_base = dummy,
-					            .iov_len = sizeof dummy } };
-
-			struct msghdr message = { 0 };
-			message.msg_iov = iovecs;
-			message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-			message.msg_control = buf;
-			message.msg_controllen = sizeof buf;
-
-			ssize_t bytes_recved = recvmsg(pid_reader, &message, 0);
-			if (0 == bytes_recved)
-				goto get_err;
-
-			if (-1 == bytes_recved) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+		{
+			size_t xx;
+			linted_error yy;
+			errnum =
+			    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+			if (errnum != 0)
 				goto close_err_reader;
-			}
 
-			if (bytes_recved != sizeof dummy) {
-				errnum = EINVAL;
-				goto close_err_reader;
-			}
-
-			bool cred_init = false;
-			struct ucred cred;
-			for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&message);
-			     cmsg != NULL; cmsg = CMSG_NXTHDR(&message, cmsg)) {
-				if (SCM_CREDENTIALS == cmsg->cmsg_type) {
-					cred_init = true;
-					memcpy(&cred, CMSG_DATA(cmsg),
-					       sizeof cred);
-				}
-			}
-
-			if (!cred_init) {
-				errnum = EINVAL;
-				goto close_err_reader;
-			}
-
-			child = cred.pid;
+			/* If bytes_read is zero then a succesful exec
+			 * occured */
+			if (xx == sizeof yy)
+				errnum = yy;
 		}
-
-	get_err : {
-		size_t xx;
-		linted_error yy;
-		errnum = linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
-		if (errnum != 0)
-			goto close_err_reader;
-
-		/* If bytes_read is zero then a succesful exec
-		 * occured */
-		if (xx == sizeof yy)
-			errnum = yy;
-	}
 
 	close_err_reader : {
 		linted_error close_errnum = linted_ko_close(err_reader);
 		if (0 == errnum)
 			errnum = close_errnum;
 	}
-
-		if (pid_pipes_init) {
-			linted_error close_errnum = linted_ko_close(pid_reader);
-			if (0 == errnum)
-				errnum = close_errnum;
-		}
 
 	free_env:
 		linted_mem_free(envp_copy);
@@ -609,7 +506,8 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		if (errnum != 0)
 			return errnum;
 
-		*childp = child;
+		if (childp != NULL)
+			*childp = child;
 
 		return 0;
 	}
@@ -626,25 +524,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 		if (child != 0)
 			_Exit(0);
-
-		char dummy[] = { 0 };
-		struct iovec iovecs[] = { { .iov_base = dummy,
-				            .iov_len = sizeof dummy } };
-
-		struct msghdr message = { 0 };
-		message.msg_iov = iovecs;
-		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-		message.msg_control = NULL;
-		message.msg_controllen = 0U;
-
-		if (-1 == sendmsg(pid_writer, &message, MSG_NOSIGNAL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
-		linted_ko_close(pid_writer);
-
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
 	}
 
 	/* Copy file descriptors in case they get overridden */

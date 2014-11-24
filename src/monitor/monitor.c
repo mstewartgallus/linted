@@ -46,6 +46,7 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -1013,6 +1014,47 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 1U] = service_name_setting;
 	envvars[envvars_size + 2U] = NULL;
 
+	size_t files_size = 0U;
+	if (files != NULL)
+		files_size = null_list_size(files);
+
+	linted_ko pid_reader;
+	linted_ko pid_writer;
+	{
+		linted_ko xx[2U];
+		if (-1 ==
+		    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, xx)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_envvars;
+		}
+		pid_reader = xx[0U];
+		pid_writer = xx[1U];
+	}
+
+	{
+		int xx = true;
+		if (-1 == setsockopt(pid_reader, SOL_SOCKET, SO_PASSCRED, &xx,
+		                     sizeof xx)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_pid_pipes;
+		}
+	}
+
+	if (-1 == shutdown(pid_reader, SHUT_WR)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_pid_pipes;
+	}
+
+	if (-1 == shutdown(pid_writer, SHUT_RD)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_pid_pipes;
+	}
+
+	bool pid_out = true;
 	bool drop_caps = true;
 	bool set_priority = true;
 
@@ -1027,6 +1069,9 @@ envvar_allocate_succeeded:
 		num_options += 2U;
 	if (set_priority)
 		num_options += 2U;
+	if (pid_out)
+		num_options += 2U;
+
 	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
 	{
@@ -1065,6 +1110,13 @@ envvar_allocate_succeeded:
 
 		args[ix++] = "--priority";
 		args[ix++] = prio_str;
+	}
+	char pid_out_str[] = "XXXXXXXXXXXXXXXX";
+	if (pid_out) {
+		sprintf(pid_out_str, "%lu", 3U + files_size);
+
+		args[ix++] = "--pidoutfd";
+		args[ix++] = pid_out_str;
 	}
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
@@ -1116,10 +1168,6 @@ envvar_allocate_succeeded:
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;
-
-	size_t files_size = 0U;
-	if (files != NULL)
-		files_size = null_list_size(files);
 
 	{
 		void *xx;
@@ -1270,13 +1318,62 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 	}
 
+	errnum = linted_spawn_file_actions_adddup2(&file_actions, pid_writer,
+	                                           kos_opened);
+	if (errnum != 0)
+		goto destroy_proc_kos;
+
+	errnum = linted_spawn(NULL, cwd, args[0U], file_actions, attr, args,
+	                      (char const * const *)envvars);
+	if (errnum != 0)
+		goto destroy_proc_kos;
+
 	{
-		pid_t xx;
-		errnum = linted_spawn(&xx, cwd, args[0U], file_actions, attr,
-		                      args, (char const * const *)envvars);
-		if (errnum != 0)
+		char buf[CMSG_LEN(sizeof(struct ucred))];
+
+		char dummy[1U];
+		struct iovec iovecs[] = { { .iov_base = dummy,
+				            .iov_len = sizeof dummy } };
+
+		struct msghdr message = { 0 };
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+		message.msg_control = buf;
+		message.msg_controllen = sizeof buf;
+
+		ssize_t bytes_recved = recvmsg(pid_reader, &message, 0);
+		if (0 == bytes_recved) {
+			errnum = EINVAL;
 			goto destroy_proc_kos;
-		child = xx;
+		}
+
+		if (-1 == bytes_recved) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_proc_kos;
+		}
+
+		if (bytes_recved != sizeof dummy) {
+			errnum = EINVAL;
+			goto destroy_proc_kos;
+		}
+
+		bool cred_init = false;
+		struct ucred cred;
+		for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&message);
+		     cmsg != NULL; cmsg = CMSG_NXTHDR(&message, cmsg)) {
+			if (SCM_CREDENTIALS == cmsg->cmsg_type) {
+				cred_init = true;
+				memcpy(&cred, CMSG_DATA(cmsg), sizeof cred);
+			}
+		}
+
+		if (!cred_init) {
+			errnum = EINVAL;
+			goto destroy_proc_kos;
+		}
+
+		child = cred.pid;
 	}
 
 destroy_proc_kos:
@@ -1292,6 +1389,12 @@ destroy_file_actions:
 
 free_args:
 	linted_mem_free(args);
+
+close_pid_pipes : {
+	linted_error close_errnum = linted_ko_close(pid_writer);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
 
 free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
