@@ -1007,7 +1007,10 @@ envvar_allocate_succeeded:
 
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
-	size_t args_size = exec_start_size + 2U;
+	size_t num_options = 0U;
+	if (no_new_privs)
+		++num_options;
+	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
 	{
 		void *xx;
@@ -1018,9 +1021,11 @@ envvar_allocate_succeeded:
 		args = xx;
 	}
 	args[0U] = sandbox;
-	args[1U] = "--";
+	if (no_new_privs)
+		args[1U] = "--nonewprivs";
+	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
-		args[ii + 2U] = exec_start[ii];
+		args[1U + num_options + 1U + ii] = exec_start[ii];
 	args[args_size] = NULL;
 
 	struct linted_spawn_file_actions *file_actions;
@@ -1071,7 +1076,6 @@ envvar_allocate_succeeded:
 	linted_spawn_attr_setpriority(attr, priority + 1);
 	linted_spawn_attr_setfilter(attr, &default_filter);
 	linted_spawn_attr_setdeparent(attr, true);
-	linted_spawn_attr_setnonewprivs(attr, no_new_privs);
 	linted_spawn_attr_setdropcaps(attr, true);
 	linted_spawn_attr_setcloneflags(attr, clone_flags);
 	if (chdir_path != NULL)

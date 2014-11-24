@@ -42,7 +42,6 @@ void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
 void linted_spawn_attr_setfilter(struct linted_spawn_attr *attr,
                                  struct sock_fprog const *program);
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo);
-void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b);
 void linted_spawn_attr_setdropcaps(struct linted_spawn_attr *attr, _Bool b);
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags);
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,

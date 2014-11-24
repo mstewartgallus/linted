@@ -97,7 +97,6 @@ struct linted_spawn_attr
 	int deathsig;
 	int priority;
 	bool drop_caps : 1U;
-	bool no_new_privs : 1U;
 	bool deparent : 1U;
 	bool has_priority : 1U;
 };
@@ -112,8 +111,6 @@ static void drop_privileges(linted_ko writer, cap_t caps);
 
 static void pid_to_str(char *buf, pid_t pid);
 
-static linted_error set_child_subreaper(bool v);
-static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
 static linted_error set_death_sig(int signum);
 
@@ -142,7 +139,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	attr->mount_args_size = 0U;
 	attr->mount_args = NULL;
 	attr->drop_caps = false;
-	attr->no_new_privs = false;
 	attr->deparent = false;
 	attr->filter = NULL;
 	attr->has_priority = false;
@@ -185,11 +181,6 @@ void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr, bool val)
 void linted_spawn_attr_setdeathsig(struct linted_spawn_attr *attr, int signo)
 {
 	attr->deathsig = signo;
-}
-
-void linted_spawn_attr_setnonewprivs(struct linted_spawn_attr *attr, _Bool b)
-{
-	attr->no_new_privs = b;
 }
 
 void linted_spawn_attr_setdropcaps(struct linted_spawn_attr *attr, _Bool b)
@@ -401,7 +392,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	bool drop_caps = false;
-	bool no_new_privs = false;
 	bool deparent = false;
 	bool has_priority = false;
 	int priority;
@@ -416,7 +406,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		mount_args_size = attr->mount_args_size;
 		mount_args = attr->mount_args;
 		drop_caps = attr->drop_caps;
-		no_new_privs = attr->no_new_privs;
 		deparent = attr->deparent;
 		filter = attr->filter;
 		has_priority = attr->has_priority;
@@ -430,9 +419,6 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		return EINVAL;
 
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
-		return EINVAL;
-
-	if (filter != NULL && !no_new_privs)
 		return EINVAL;
 
 	gid_t gid = getgid();
@@ -753,21 +739,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 			exit_with_error(err_writer, errno);
 	}
 
-	if (no_new_privs) {
-		errnum = set_no_new_privs(true);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-	}
-
 	errnum = set_death_sig(deathsig);
-	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
-
-	/*
-	 * This isn't needed if ((clone_flags & CLONE_NEWPID) != 0)
-	 * but doesn't hurt,
-	 */
-	errnum = set_child_subreaper(true);
 	if (errnum != 0)
 		exit_with_error(err_writer, errnum);
 
@@ -1055,27 +1027,6 @@ static void pid_to_str(char *buf, pid_t pid)
 	buf[strsize] = '\0';
 }
 
-static linted_error set_child_subreaper(bool v)
-{
-	linted_error errnum;
-
-	unsigned long set_child_subreaper;
-
-#ifdef PR_SET_CHILD_SUBREAPER
-	set_child_subreaper = PR_SET_CHILD_SUBREAPER;
-#else
-	set_child_subreaper = 36UL;
-#endif
-
-	if (-1 == prctl(set_child_subreaper, (unsigned long)v, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
 static linted_error set_death_sig(int signum)
 {
 	linted_error errnum;
@@ -1084,20 +1035,6 @@ static linted_error set_death_sig(int signum)
 	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error set_no_new_privs(bool b)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		assert(errnum != EINVAL);
 		return errnum;
 	}
 

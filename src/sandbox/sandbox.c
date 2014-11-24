@@ -31,15 +31,22 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-enum { STOP_OPTIONS, HELP, VERSION_OPTION };
+enum { STOP_OPTIONS, HELP, VERSION_OPTION, NO_NEW_PRIVS };
 
 extern char **environ;
 
-static char const *const argstrs[] = {[STOP_OPTIONS] = "--", [HELP] = "--help",
-	                              [VERSION_OPTION] = "--version" };
+static char const *const argstrs[] = {
+	    /**/[STOP_OPTIONS] = "--",
+	    /**/ [HELP] = "--help",
+	    /**/ [VERSION_OPTION] = "--version",
+	    /**/ [NO_NEW_PRIVS] = "--nonewprivs"
+};
 
 static void propagate_signal(int signo);
 static linted_error set_name(char const *name);
+
+static linted_error set_child_subreaper(bool v);
+static linted_error set_no_new_privs(bool b);
 
 int main(int argc, char *argv[])
 {
@@ -57,6 +64,7 @@ int main(int argc, char *argv[])
 	char const *bad_option = NULL;
 	bool need_version = false;
 	bool need_help = false;
+	bool no_new_privs = false;
 	bool have_command = false;
 	size_t command_start;
 
@@ -88,6 +96,10 @@ int main(int argc, char *argv[])
 		case VERSION_OPTION:
 			need_version = true;
 			break;
+
+		case NO_NEW_PRIVS:
+			no_new_privs = true;
+			break;
 		}
 	}
 exit_loop:
@@ -103,6 +115,26 @@ exit_loop:
 
 	char const *const *command =
 	    (char const * const *)argv + 1U + command_start;
+
+	/*
+	 * This isn't needed if CLONE_NEWPID was used but it doesn't
+	 * hurt,
+	 */
+	errnum = set_child_subreaper(true);
+	if (errnum != 0) {
+		errno = errnum;
+		perror("set_child_subreaper");
+		return EXIT_FAILURE;
+	}
+
+	if (no_new_privs) {
+		errnum = set_no_new_privs(true);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("set_no_new_privs");
+			return EXIT_FAILURE;
+		}
+	}
 
 	pid_t child = fork();
 	if (-1 == child) {
@@ -190,5 +222,33 @@ static linted_error set_name(char const *name)
 
 		return errnum;
 	}
+	return 0;
+}
+
+static linted_error set_child_subreaper(bool v)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_no_new_privs(bool b)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		assert(errnum != EINVAL);
+		return errnum;
+	}
+
 	return 0;
 }
