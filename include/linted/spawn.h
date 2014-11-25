@@ -35,13 +35,6 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
 void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set);
-void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
-                                   _Bool deparent);
-void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags);
-void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
-                                    char const *chrootdir);
-void linted_spawn_attr_setfstab(struct linted_spawn_attr *attr,
-                                char const *fstab);
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp);
 linted_error linted_spawn_file_actions_adddup2(

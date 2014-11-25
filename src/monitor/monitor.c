@@ -1049,6 +1049,11 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 	size_t num_options = 0U;
+	if (fstab != NULL) {
+		num_options += 2U;
+
+		num_options += 2U;
+	}
 	if (no_new_privs)
 		++num_options;
 	if (drop_caps)
@@ -1072,6 +1077,13 @@ envvar_allocate_succeeded:
 	}
 	args[0U] = sandbox;
 	size_t ix = 1U;
+	if (fstab != NULL) {
+		args[ix++] = "--chrootdir";
+		args[ix++] = chrootdir;
+
+		args[ix++] = "--fstab";
+		args[ix++] = fstab;
+	}
 	if (no_new_privs)
 		args[ix++] = "--nonewprivs";
 	if (drop_caps)
@@ -1143,13 +1155,6 @@ envvar_allocate_succeeded:
 		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setmask(attr, orig_mask);
-	linted_spawn_attr_setdeparent(attr, true);
-	linted_spawn_attr_setcloneflags(attr, clone_flags);
-
-	if (fstab != NULL) {
-		linted_spawn_attr_setchrootdir(attr, chrootdir);
-		linted_spawn_attr_setfstab(attr, fstab);
-	}
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;
@@ -1414,7 +1419,9 @@ ptrace_child:
 
 	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
 
-	return ptrace_seize(child, 0);
+	errnum = ptrace_seize(child, 0);
+
+	return 0;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
