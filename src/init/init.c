@@ -45,8 +45,6 @@ struct linted_start_config const linted_start_config = {
 static volatile sig_atomic_t monitor_pid = 0;
 
 static void delegate_signal(int signo);
-static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
-                                  char const *monitor, linted_ko admin);
 static linted_error set_child_subreaper(bool value);
 static linted_error set_ptracer(pid_t pid);
 
@@ -82,6 +80,46 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_ko admin = kos[0U];
 
+	struct linted_spawn_file_actions *file_actions;
+	struct linted_spawn_attr *attr;
+
+	{
+		struct linted_spawn_file_actions *xx;
+		errnum = linted_spawn_file_actions_init(&xx);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_spawn_file_actions_init");
+			return EXIT_FAILURE;
+		}
+		file_actions = xx;
+	}
+
+	{
+		struct linted_spawn_attr *xx;
+		errnum = linted_spawn_attr_init(&xx);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_spawn_attr_init");
+			return EXIT_FAILURE;
+		}
+		attr = xx;
+	}
+
+	linted_spawn_attr_setmask(attr, &orig_mask);
+
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
+		                 admin };
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
+		linted_ko ko = stdfiles[ii];
+		errnum =
+		    linted_spawn_file_actions_adddup2(&file_actions, ko, ii);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_spawn_file_actions_adddup2");
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (;;) {
 		linted_io_write_str(STDOUT_FILENO, NULL,
 		                    LINTED_STR("spawning monitor\n"));
@@ -89,11 +127,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = spawn_monitor(&xx, &orig_mask, monitor, admin);
+			errnum = linted_spawn(
+			    &xx, LINTED_KO_CWD, monitor, file_actions, attr,
+			    (char const * const[]) { monitor, NULL },
+			    (char const * const *)environ);
 			if (errnum != 0) {
 				linted_io_write_format(
 				    STDERR_FILENO, NULL,
-				    "%s: can't fork process: %s\n",
+				    "%s: can't spawn process: %s\n",
 				    process_name, linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
@@ -112,30 +153,31 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pid_t pid;
 		int code;
 		int status;
-		do {
-			do {
-				{
-					siginfo_t info;
-					if (-1 ==
-					    waitid(P_ALL, -1, &info, WEXITED))
-						goto waitid_failed;
-					errnum = 0;
-					pid = info.si_pid;
-					code = info.si_code;
-					status = info.si_status;
-				}
+		for (;;) {
+			{
+				siginfo_t info;
+				if (-1 == waitid(P_ALL, -1, &info, WEXITED))
+					goto waitid_failed;
+				pid = info.si_pid;
+				code = info.si_code;
+				status = info.si_status;
+				goto waitid_succeeded;
+			}
+		waitid_failed:
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			if (EINTR == errnum)
 				continue;
 
-			waitid_failed:
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} while (EINTR == errnum);
-			if (errnum != 0) {
-				assert(errnum != EINVAL);
-				assert(errnum != ECHILD);
-				assert(false);
-			}
-		} while (pid != child);
+			assert(errnum != EINVAL);
+			assert(errnum != ECHILD);
+			assert(false);
+
+		waitid_succeeded:
+			errnum = 0;
+			if (child == pid)
+				break;
+		}
 		monitor_pid = 0;
 
 		switch (code) {
@@ -157,70 +199,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 exit_loop:
-
 	return EXIT_SUCCESS;
-}
-
-static linted_error spawn_monitor(pid_t *childp, sigset_t const *orig_mask,
-                                  char const *monitor, linted_ko admin)
-{
-	linted_error errnum;
-
-	struct linted_spawn_file_actions *file_actions;
-	struct linted_spawn_attr *attr;
-
-	{
-		struct linted_spawn_file_actions *xx;
-		errnum = linted_spawn_file_actions_init(&xx);
-		if (errnum != 0)
-			return errnum;
-		file_actions = xx;
-	}
-
-	{
-		struct linted_spawn_attr *xx;
-		errnum = linted_spawn_attr_init(&xx);
-		if (errnum != 0)
-			goto destroy_file_actions;
-		attr = xx;
-	}
-
-	linted_spawn_attr_setmask(attr, orig_mask);
-
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
-		                 admin };
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
-		linted_ko ko = stdfiles[ii];
-		errnum =
-		    linted_spawn_file_actions_adddup2(&file_actions, ko, ii);
-		if (errnum != 0)
-			goto destroy_attr;
-	}
-
-	pid_t child;
-	{
-		pid_t xx;
-		errnum =
-		    linted_spawn(&xx, LINTED_KO_CWD, monitor, file_actions,
-		                 NULL, (char const * const[]) { monitor, NULL },
-		                 (char const * const *)environ);
-		if (errnum != 0)
-			goto destroy_attr;
-		child = xx;
-	}
-
-destroy_attr:
-	linted_spawn_attr_destroy(attr);
-
-destroy_file_actions:
-	linted_spawn_file_actions_destroy(file_actions);
-
-	if (errnum != 0)
-		return errnum;
-
-	*childp = child;
-
-	return 0;
 }
 
 static linted_error set_child_subreaper(bool v)
@@ -252,9 +231,9 @@ static linted_error set_ptracer(pid_t pid)
 
 static void delegate_signal(int signo)
 {
-	linted_ko old_errnum = errno;
+	linted_error old_errnum = errno;
 
-	linted_ko errnum = 0;
+	linted_error errnum = 0;
 
 	/* All signals are blocked here. */
 
