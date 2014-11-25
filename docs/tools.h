@@ -193,6 +193,14 @@
  * - Visualizes perf output nicely.
  * </li>
  *
+ * <li> [Clang-Format](http://clang.llvm.org/)
+ * - Formats code nicely
+ * </li>
+ *
+ * <li> [Git](http://git-scm.com//)
+ * - A version control system
+ * </li>
+ *
  * @section rejected Rejected Tools
  *
  * <ul>
