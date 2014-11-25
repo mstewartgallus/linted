@@ -680,6 +680,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 	bool clone_newipc = false;
 	bool clone_newnet = false;
 	bool clone_newns = false;
+	bool clone_newuts = false;
 	if (clone_flags != NULL) {
 		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
 			if (0 == strcmp("CLONE_NEWUSER", clone_flags[ii])) {
@@ -696,6 +697,9 @@ static linted_error service_create(struct linted_unit_service *unit,
 			} else if (0 ==
 			           strcmp("CLONE_NEWNS", clone_flags[ii])) {
 				clone_newns = true;
+			} else if (0 ==
+			           strcmp("CLONE_NEWUTS", clone_flags[ii])) {
+				clone_newuts = true;
 			} else {
 				return EINVAL;
 			}
@@ -731,6 +735,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 	unit->clone_newipc = clone_newipc;
 	unit->clone_newnet = clone_newnet;
 	unit->clone_newns = clone_newns;
+	unit->clone_newuts = clone_newuts;
 
 	return 0;
 }
@@ -933,6 +938,7 @@ service_not_found:
 	bool clone_newipc = unit_service->clone_newipc;
 	bool clone_newnet = unit_service->clone_newnet;
 	bool clone_newns = unit_service->clone_newns;
+	bool clone_newuts = unit_service->clone_newuts;
 
 	if (fstab != NULL && !clone_newns)
 		return EINVAL;
@@ -1065,6 +1071,19 @@ envvar_allocate_succeeded:
 	if (pid_out)
 		num_options += 2U;
 
+	if (clone_newuser)
+		++num_options;
+	if (clone_newpid)
+		++num_options;
+	if (clone_newipc)
+		++num_options;
+	if (clone_newnet)
+		++num_options;
+	if (clone_newns)
+		++num_options;
+	if (clone_newuts)
+		++num_options;
+
 	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
 	{
@@ -1118,6 +1137,20 @@ envvar_allocate_succeeded:
 		args[ix++] = "--pidoutfd";
 		args[ix++] = pid_out_str;
 	}
+
+	if (clone_newuser)
+		args[ix++] = "--clone-newuser";
+	if (clone_newpid)
+		args[ix++] = "--clone-newpid";
+	if (clone_newipc)
+		args[ix++] = "--clone-newipc";
+	if (clone_newnet)
+		args[ix++] = "--clone-newnet";
+	if (clone_newns)
+		args[ix++] = "--clone-newns";
+	if (clone_newuts)
+		args[ix++] = "--clone-newuts";
+
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
 		args[1U + num_options + 1U + ii] = exec_start[ii];
@@ -1141,18 +1174,6 @@ envvar_allocate_succeeded:
 			goto destroy_file_actions;
 		attr = xx;
 	}
-
-	int clone_flags = 0;
-	if (clone_newuser)
-		clone_flags |= CLONE_NEWUSER;
-	if (clone_newpid)
-		clone_flags |= CLONE_NEWPID;
-	if (clone_newipc)
-		clone_flags |= CLONE_NEWIPC;
-	if (clone_newnet)
-		clone_flags |= CLONE_NEWNET;
-	if (clone_newns)
-		clone_flags |= CLONE_NEWNS;
 
 	linted_spawn_attr_setmask(attr, orig_mask);
 

@@ -55,6 +55,7 @@ struct linted_unit_service
 	_Bool clone_newipc : 1U;
 	_Bool clone_newnet : 1U;
 	_Bool clone_newns : 1U;
+	_Bool clone_newuts : 1U;
 
 	_Bool no_new_privs : 1U;
 };

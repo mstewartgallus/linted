@@ -60,6 +60,12 @@ enum {
 	PRIORITY,
 	CHROOTDIR,
 	FSTAB,
+	NEWUSER_ARG,
+	NEWPID_ARG,
+	NEWIPC_ARG,
+	NEWNET_ARG,
+	NEWNS_ARG,
+	NEWUTS_ARG,
 	PID_OUT_FD
 };
 
@@ -86,6 +92,12 @@ static char const *const argstrs[] = {
 	    /**/ [PRIORITY] = "--priority",
 	    /**/ [CHROOTDIR] = "--chrootdir",
 	    /**/ [FSTAB] = "--fstab",
+	    /**/ [NEWUSER_ARG] = "--clone-newuser",
+	    /**/ [NEWPID_ARG] = "--clone-newpid",
+	    /**/ [NEWIPC_ARG] = "--clone-newipc",
+	    /**/ [NEWNET_ARG] = "--clone-newnet",
+	    /**/ [NEWNS_ARG] = "--clone-newns",
+	    /**/ [NEWUTS_ARG] = "--clone-newuts",
 	    /**/ [PID_OUT_FD] = "--pidoutfd"
 };
 
@@ -142,6 +154,9 @@ int main(int argc, char *argv[])
 	bool need_help = false;
 	bool no_new_privs = false;
 	bool drop_caps = false;
+
+	unsigned long clone_flags = 0U;
+
 	char const *chdir_path = NULL;
 	char const *priority = NULL;
 	char const *chrootdir = NULL;
@@ -215,6 +230,30 @@ int main(int argc, char *argv[])
 			fstab = argv[ii];
 			break;
 
+		case NEWUSER_ARG:
+			clone_flags |= CLONE_NEWUSER;
+			break;
+
+		case NEWPID_ARG:
+			clone_flags |= CLONE_NEWPID;
+			break;
+
+		case NEWIPC_ARG:
+			clone_flags |= CLONE_NEWIPC;
+			break;
+
+		case NEWNET_ARG:
+			clone_flags |= CLONE_NEWNET;
+			break;
+
+		case NEWNS_ARG:
+			clone_flags |= CLONE_NEWNS;
+			break;
+
+		case NEWUTS_ARG:
+			clone_flags |= CLONE_NEWUTS;
+			break;
+
 		case PID_OUT_FD:
 			++ii;
 			if (ii >= arguments_length)
@@ -269,8 +308,6 @@ exit_loop:
 
 	pid_t spawner = getppid();
 
-	unsigned long clone_flags = CLONE_NEWUSER | CLONE_NEWPID |
-	                            CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS;
 	{
 		pid_t child;
 
@@ -287,7 +324,10 @@ exit_loop:
 			_Exit(EXIT_SUCCESS);
 	}
 
-	if (NULL == fstab) {
+	/* Due to a kernel bug new users aren't protected from ptrace
+	 * anyways.
+	 */
+	if (!((clone_flags & CLONE_NEWUSER) != 0)) {
 		errnum = set_ptracer(spawner);
 		if (errnum != 0) {
 			linted_io_write_format(
@@ -325,7 +365,7 @@ exit_loop:
 		 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
 		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
 		 */
-		if (-1 == syscall(__NR_setgroups, 0U, NULL))
+		if (-1 == setgroups(0U, NULL))
 			exit_with_error(errno);
 
 		chroot_process(chrootdir, mount_args, mount_args_size);
