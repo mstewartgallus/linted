@@ -53,9 +53,9 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 	struct linted_queue *queue;
 	{
 		void *xx;
-		if ((errnum = linted_mem_alloc(&xx, sizeof *queue)) != 0) {
+		errnum = linted_mem_alloc(&xx, sizeof *queue);
+		if (errnum != 0)
 			return errnum;
-		}
 		queue = xx;
 	}
 

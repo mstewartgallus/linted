@@ -437,7 +437,8 @@ static linted_error get_system_entropy(unsigned *entropyp)
 		entropy = xx;
 	}
 
-	if ((errnum = linted_ko_close(random)) != 0)
+	errnum = linted_ko_close(random);
+	if (errnum != 0)
 		return errnum;
 
 	*entropyp = entropy;

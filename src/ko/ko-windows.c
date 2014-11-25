@@ -404,7 +404,8 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 		if (errnum != 0)
 			break;
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
+		errnum = check_for_poll_error(ko, revents);
+		if (errnum != 0)
 			break;
 	}
 

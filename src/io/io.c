@@ -83,7 +83,8 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 		if (errnum != 0)
 			break;
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
+		errnum = check_for_poll_error(ko, revents);
+		if (errnum != 0)
 			break;
 	}
 
@@ -106,7 +107,8 @@ linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
 	sigemptyset(&oldset);
 	sigaddset(&oldset, SIGPIPE);
 
-	if ((errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset)) != 0)
+	errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+	if (errnum != 0)
 		return errnum;
 
 	for (;;) {
@@ -144,7 +146,8 @@ linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
 		if (errnum != 0)
 			break;
 
-		if ((errnum = check_for_poll_error(ko, revents)) != 0)
+		errnum = check_for_poll_error(ko, revents);
+		if (errnum != 0)
 			break;
 	}
 
