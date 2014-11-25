@@ -37,12 +37,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <mntent.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
@@ -155,13 +153,6 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      sigset_t const *orig_mask,
                                      struct linted_unit_db *units);
 
-static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
-                                char const *fstab_path);
-static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
-                                     bool *touch_flagp,
-                                     unsigned long *mountflagsp,
-                                     char const **leftoversp);
-
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 static size_t null_list_size(char const *const *list);
@@ -169,9 +160,6 @@ static size_t null_list_size(char const *const *list);
 static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
-
-static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
-                                   char const *filename, char const *type);
 
 static linted_error pid_for_service_name(pid_t *pidp, char const *name);
 static linted_error get_process_service_name(pid_t pid, char **service_namep);
@@ -1160,10 +1148,7 @@ envvar_allocate_succeeded:
 
 	if (fstab != NULL) {
 		linted_spawn_attr_setchrootdir(attr, chrootdir);
-
-		errnum = parse_fstab(attr, cwd, fstab);
-		if (errnum != 0)
-			goto destroy_attr;
+		linted_spawn_attr_setfstab(attr, fstab);
 	}
 
 	linted_ko *proc_kos = NULL;
@@ -1430,226 +1415,6 @@ ptrace_child:
 	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
 
 	return ptrace_seize(child, 0);
-}
-
-static linted_error parse_fstab(struct linted_spawn_attr *attr, linted_ko cwd,
-                                char const *fstab_path)
-{
-	linted_error errnum = 0;
-
-	FILE *fstab;
-	{
-		FILE *xx;
-		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
-		if (errnum != 0)
-			return errnum;
-		fstab = xx;
-	}
-
-	for (;;) {
-		errno = 0;
-		struct mntent *entry = getmntent(fstab);
-		if (NULL == entry) {
-			errnum = errno;
-			if (errnum != 0)
-				goto close_file;
-			break;
-		}
-
-		char const *fsname = entry->mnt_fsname;
-		char const *dir = entry->mnt_dir;
-		char const *type = entry->mnt_type;
-		char const *opts = entry->mnt_opts;
-
-		if (0 == strcmp("none", fsname))
-			fsname = NULL;
-
-		if (0 == strcmp("none", opts))
-			opts = NULL;
-
-		bool mkdir_flag = false;
-		bool touch_flag = false;
-		unsigned long mountflags = 0U;
-		char const *data = NULL;
-		if (opts != NULL) {
-			bool xx;
-			bool yy;
-			unsigned long zz;
-			char const *ww;
-			errnum = parse_mount_opts(opts, &xx, &yy, &zz, &ww);
-			if (errnum != 0)
-				goto close_file;
-			mkdir_flag = xx;
-			touch_flag = yy;
-			mountflags = zz;
-			data = ww;
-		}
-
-		errnum = linted_spawn_attr_setmount(attr, fsname, dir, type,
-		                                    mkdir_flag, touch_flag,
-		                                    mountflags, data);
-		if (errnum != 0)
-			goto close_file;
-	}
-
-close_file:
-	if (endmntent(fstab) != 1 && 0 == errnum) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	return errnum;
-}
-
-enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
-
-static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
-	                                    [TOUCH] = "touch",        /*  */
-	                                    [BIND] = "bind",          /*  */
-	                                    [RBIND] = "rbind",        /*  */
-	                                    [RO] = MNTOPT_RO,         /*  */
-	                                    [RW] = MNTOPT_RW,         /*  */
-	                                    [SUID] = MNTOPT_SUID,     /*  */
-	                                    [NOSUID] = MNTOPT_NOSUID, /*  */
-	                                    [NODEV] = "nodev",        /*  */
-	                                    [NOEXEC] = "noexec",      /*  */
-	                                    NULL };
-
-static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
-                                     bool *touch_flagp,
-                                     unsigned long *mountflagsp,
-                                     char const **leftoversp)
-{
-	linted_error errnum;
-
-	bool touch_flag = false;
-	bool mkdir_flag = false;
-	bool bind = false;
-	bool rec = false;
-	bool readonly = false;
-	bool readwrite = false;
-	bool suid = true;
-	bool dev = true;
-	bool exec = true;
-	char *leftovers = NULL;
-
-	char *subopts_str = strdup(opts);
-	if (NULL == subopts_str) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	char *subopts = subopts_str;
-	char *value = NULL;
-
-	while (*subopts != '\0') {
-		int token;
-		{
-			char *xx = subopts;
-			char *yy = value;
-			token =
-			    getsubopt(&xx, (char * const *)mount_options, &yy);
-			subopts = xx;
-			value = yy;
-		}
-		switch (token) {
-		case MKDIR:
-			mkdir_flag = true;
-			break;
-
-		case TOUCH:
-			touch_flag = true;
-			break;
-
-		case BIND:
-			bind = true;
-			break;
-
-		case RBIND:
-			bind = true;
-			rec = true;
-			break;
-
-		case RO:
-			readonly = true;
-			break;
-
-		case RW:
-			readwrite = true;
-			break;
-
-		case SUID:
-			suid = true;
-			break;
-
-		case NOSUID:
-			suid = false;
-			break;
-
-		case NODEV:
-			dev = false;
-			break;
-
-		case NOEXEC:
-			exec = false;
-			break;
-
-		default:
-			leftovers = strstr(opts, value);
-			goto free_subopts_str;
-		}
-	}
-
-free_subopts_str:
-	linted_mem_free(subopts_str);
-
-	if (readwrite && readonly)
-		return EINVAL;
-
-	if (bind && rec && readonly)
-		/*
-		 * Due to a completely idiotic kernel bug (see
-		 * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
-		 * recursive bind mount as readonly would fail completely
-		 * silently and there is no way to workaround this.
-		 *
-		 * Even after working around by remounting it will fail for
-		 * the recursive case. For example, /home directory that is
-		 * recursively bind mounted as readonly and that has encrypted
-		 * user directories as an example. The /home directory will be
-		 * readonly but the user directory /home/user will not be.
-		 */
-		return EINVAL;
-
-	if (mkdir_flag && touch_flag)
-		return EINVAL;
-
-	unsigned long mountflags = 0U;
-
-	if (bind)
-		mountflags |= MS_BIND;
-
-	if (rec)
-		mountflags |= MS_REC;
-
-	if (readonly)
-		mountflags |= MS_RDONLY;
-
-	if (!suid)
-		mountflags |= MS_NOSUID;
-
-	if (!dev)
-		mountflags |= MS_NODEV;
-
-	if (!exec)
-		mountflags |= MS_NOEXEC;
-
-	*leftoversp = leftovers;
-	*mkdir_flagp = mkdir_flag;
-	*touch_flagp = touch_flag;
-	*mountflagsp = mountflags;
-	return 0;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
@@ -2437,46 +2202,6 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	}
 
 	*longp = total;
-	return 0;
-}
-
-static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
-                                   char const *filename, char const *type)
-{
-	linted_error errnum;
-
-	char const *abspath;
-	if (filename[0U] != '/') {
-		{
-			char *xx;
-			if (-1 ==
-			    asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename))
-				goto asprintf_failed;
-			abspath = xx;
-			goto asprintf_succeeded;
-		}
-	asprintf_failed:
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	asprintf_succeeded:
-		;
-	} else {
-		abspath = filename;
-	}
-
-	FILE *file = setmntent(abspath, type);
-	errnum = errno;
-
-	if (abspath != filename)
-		linted_mem_free((char *)abspath);
-
-	if (NULL == file) {
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	*filep = file;
 	return 0;
 }
 

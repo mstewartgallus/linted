@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <mntent.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -78,10 +79,9 @@ struct mount_args
 
 struct linted_spawn_attr
 {
-	char const *chrootdir;
 	sigset_t const *mask;
-	size_t mount_args_size;
-	struct mount_args *mount_args;
+	char const *chrootdir;
+	char const *fstab;
 	int clone_flags;
 	bool deparent : 1U;
 };
@@ -96,6 +96,15 @@ static void chroot_process(linted_ko writer, char const *chrootdir,
 static void pid_to_str(char *buf, pid_t pid);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
+
+static linted_error parse_fstab(struct mount_args **mount_argsp, size_t *sizep,
+                                linted_ko cwd, char const *fstab_path);
+static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
+                                     bool *touch_flagp,
+                                     unsigned long *mountflagsp,
+                                     char const **leftoversp);
+static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
+                                   char const *filename, char const *type);
 
 static pid_t real_getpid(void);
 
@@ -113,10 +122,9 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->clone_flags = 0;
-	attr->chrootdir = NULL;
 	attr->mask = NULL;
-	attr->mount_args_size = 0U;
-	attr->mount_args = NULL;
+	attr->chrootdir = NULL;
+	attr->fstab = NULL;
 	attr->deparent = false;
 
 	*attrp = attr;
@@ -125,15 +133,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
-	for (size_t ii = 0U; ii < attr->mount_args_size; ++ii) {
-		struct mount_args *mount_arg = &attr->mount_args[ii];
-		linted_mem_free(mount_arg->source);
-		linted_mem_free(mount_arg->target);
-		linted_mem_free(mount_arg->filesystemtype);
-		linted_mem_free(mount_arg->data);
-	}
-	linted_mem_free(attr->mount_args);
-
 	linted_mem_free(attr);
 }
 
@@ -159,96 +158,10 @@ void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
 	attr->chrootdir = chrootdir;
 }
 
-linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
-                                        char const *source, char const *target,
-                                        char const *filesystemtype,
-                                        bool mkdir_flag, bool touch_flag,
-                                        unsigned long mountflags,
-                                        char const *data)
+void linted_spawn_attr_setfstab(struct linted_spawn_attr *attr,
+                                char const *fstab)
 {
-	linted_error errnum = 0;
-	struct mount_args *mount_args = attr->mount_args;
-	size_t size = attr->mount_args_size;
-
-	size_t new_size = size + 1U;
-	if (new_size < size)
-		return ENOMEM;
-
-	char *source_copy = NULL;
-	char *target_copy = NULL;
-	char *filesystemtype_copy = NULL;
-	char *data_copy = NULL;
-
-	if (source != NULL) {
-		source_copy = strdup(source);
-		if (NULL == source_copy) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-	}
-
-	if (target != NULL) {
-		target_copy = strdup(target);
-		if (NULL == target_copy) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_source;
-		}
-	}
-
-	if (filesystemtype != NULL) {
-		filesystemtype_copy = strdup(filesystemtype);
-		if (NULL == filesystemtype) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_target;
-		}
-	}
-
-	if (data != NULL) {
-		data_copy = strdup(data);
-		if (NULL == data_copy) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_filesystemtype;
-		}
-	}
-
-	{
-		void *xx;
-		errnum = linted_mem_realloc_array(&xx, mount_args, new_size,
-		                                  sizeof mount_args[0U]);
-		if (errnum != 0)
-			goto free_data;
-		mount_args = xx;
-	}
-
-	if (errnum != 0) {
-	free_data:
-		linted_mem_free(data_copy);
-
-	free_filesystemtype:
-		linted_mem_free(filesystemtype_copy);
-
-	free_target:
-		linted_mem_free(target_copy);
-
-	free_source:
-		linted_mem_free(source_copy);
-	} else {
-		mount_args[size].source = source_copy;
-		mount_args[size].target = target_copy;
-		mount_args[size].filesystemtype = filesystemtype_copy;
-		mount_args[size].mkdir_flag = mkdir_flag;
-		mount_args[size].touch_flag = touch_flag;
-		mount_args[size].mountflags = mountflags;
-		mount_args[size].data = data_copy;
-
-		attr->mount_args = mount_args;
-		attr->mount_args_size = new_size;
-	}
-	return errnum;
+	attr->fstab = fstab;
 }
 
 linted_error
@@ -321,7 +234,7 @@ static char const fd_str[] = " /proc/self/fd/";
 /**
  * @bug assert isn't AS-safe.
  */
-linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
+linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char const *const argv[], char const *const envp[])
@@ -336,22 +249,20 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	int clone_flags = 0;
 	char const *chrootdir = NULL;
-	size_t mount_args_size = 0U;
-	struct mount_args *mount_args = NULL;
+	char const *fstab = NULL;
 	bool deparent = false;
 	sigset_t const *child_mask = NULL;
 
 	if (attr != NULL) {
 		clone_flags = attr->clone_flags;
 		chrootdir = attr->chrootdir;
-		mount_args_size = attr->mount_args_size;
-		mount_args = attr->mount_args;
+		fstab = attr->fstab;
 		deparent = attr->deparent;
 		child_mask = attr->mask;
 	}
 
 	if (!((clone_flags & CLONE_NEWUSER) != 0) &&
-	    (chrootdir != NULL || mount_args != NULL))
+	    (chrootdir != NULL || fstab != NULL))
 		return EINVAL;
 
 	if (chrootdir != NULL && !((clone_flags & CLONE_NEWNS) != 0))
@@ -362,6 +273,19 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
+
+	struct mount_args *mount_args = NULL;
+	size_t mount_args_size = 0U;
+
+	if (fstab != NULL) {
+		struct mount_args *xx;
+		size_t yy;
+		errnum = parse_fstab(&xx, &yy, dirfd, fstab);
+		if (errnum != 0)
+			return errnum;
+		mount_args = xx;
+		mount_args_size = yy;
+	}
 
 	size_t fd_len;
 	size_t filename_len;
@@ -375,7 +299,7 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 		void *xx;
 		errnum = linted_mem_alloc(&xx, relative_size);
 		if (errnum != 0)
-			return errnum;
+			goto free_mount_args;
 		relative_filename = xx;
 	}
 
@@ -478,6 +402,16 @@ linted_error linted_spawn(pid_t *childp, int dirfd, char const *filename,
 
 	free_relative_path:
 		linted_mem_free(relative_filename);
+
+	free_mount_args:
+		for (size_t ii = 0U; ii < mount_args_size; ++ii) {
+			struct mount_args *mount_arg = &mount_args[ii];
+			linted_mem_free(mount_arg->source);
+			linted_mem_free(mount_arg->target);
+			linted_mem_free(mount_arg->filesystemtype);
+			linted_mem_free(mount_arg->data);
+		}
+		linted_mem_free(mount_args);
 
 		if (errnum != 0)
 			return errnum;
@@ -856,6 +790,356 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+static linted_error parse_fstab(struct mount_args **mount_argsp, size_t *sizep,
+                                linted_ko cwd, char const *fstab_path)
+{
+	linted_error errnum = 0;
+
+	struct mount_args *mount_args = NULL;
+	size_t size = 0U;
+
+	FILE *fstab;
+	{
+		FILE *xx;
+		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
+		if (errnum != 0)
+			return errnum;
+		fstab = xx;
+	}
+
+	for (;;) {
+		errno = 0;
+		struct mntent *entry = getmntent(fstab);
+		if (NULL == entry) {
+			errnum = errno;
+			if (errnum != 0)
+				goto close_file;
+			break;
+		}
+
+		char const *fsname = entry->mnt_fsname;
+		char const *dir = entry->mnt_dir;
+		char const *type = entry->mnt_type;
+		char const *opts = entry->mnt_opts;
+
+		if (0 == strcmp("none", fsname))
+			fsname = NULL;
+
+		if (0 == strcmp("none", opts))
+			opts = NULL;
+
+		bool mkdir_flag = false;
+		bool touch_flag = false;
+		unsigned long mountflags = 0U;
+		char const *data = NULL;
+		if (opts != NULL) {
+			bool xx;
+			bool yy;
+			unsigned long zz;
+			char const *ww;
+			errnum = parse_mount_opts(opts, &xx, &yy, &zz, &ww);
+			if (errnum != 0)
+				goto close_file;
+			mkdir_flag = xx;
+			touch_flag = yy;
+			mountflags = zz;
+			data = ww;
+		}
+
+		char *source_copy = NULL;
+		char *target_copy = NULL;
+		char *filesystemtype_copy = NULL;
+		char *data_copy = NULL;
+
+		if (fsname != NULL) {
+			source_copy = strdup(fsname);
+			if (NULL == source_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_file;
+			}
+		}
+
+		if (dir != NULL) {
+			target_copy = strdup(dir);
+			if (NULL == target_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_source;
+			}
+		}
+
+		if (type != NULL) {
+			filesystemtype_copy = strdup(type);
+			if (NULL == filesystemtype_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_target;
+			}
+		}
+
+		if (data != NULL) {
+			data_copy = strdup(data);
+			if (NULL == data_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_filesystemtype;
+			}
+		}
+
+		size_t old_size = size;
+		size_t new_size = size + 1U;
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(
+			    &xx, mount_args, new_size, sizeof mount_args[0U]);
+			if (errnum != 0)
+				goto free_data;
+			mount_args = xx;
+			size = new_size;
+		}
+
+		if (errnum != 0) {
+		free_data:
+			linted_mem_free(data_copy);
+
+		free_filesystemtype:
+			linted_mem_free(filesystemtype_copy);
+
+		free_target:
+			linted_mem_free(target_copy);
+
+		free_source:
+			linted_mem_free(source_copy);
+
+			goto close_file;
+		}
+
+		mount_args[old_size].source = source_copy;
+		mount_args[old_size].target = target_copy;
+		mount_args[old_size].filesystemtype = filesystemtype_copy;
+		mount_args[old_size].mkdir_flag = mkdir_flag;
+		mount_args[old_size].touch_flag = touch_flag;
+		mount_args[old_size].mountflags = mountflags;
+		mount_args[old_size].data = data_copy;
+	}
+
+close_file:
+	if (endmntent(fstab) != 1 && 0 == errnum) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (errnum != 0) {
+		for (size_t ii = 0U; ii < size; ++ii) {
+			struct mount_args *mount_arg = &mount_args[ii];
+			linted_mem_free(mount_arg->source);
+			linted_mem_free(mount_arg->target);
+			linted_mem_free(mount_arg->filesystemtype);
+			linted_mem_free(mount_arg->data);
+		}
+		linted_mem_free(mount_args);
+
+		return errnum;
+	}
+
+	*mount_argsp = mount_args;
+	*sizep = size;
+
+	return 0;
+}
+
+enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
+
+static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
+	                                    [TOUCH] = "touch",        /*  */
+	                                    [BIND] = "bind",          /*  */
+	                                    [RBIND] = "rbind",        /*  */
+	                                    [RO] = MNTOPT_RO,         /*  */
+	                                    [RW] = MNTOPT_RW,         /*  */
+	                                    [SUID] = MNTOPT_SUID,     /*  */
+	                                    [NOSUID] = MNTOPT_NOSUID, /*  */
+	                                    [NODEV] = "nodev",        /*  */
+	                                    [NOEXEC] = "noexec",      /*  */
+	                                    NULL };
+
+static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
+                                     bool *touch_flagp,
+                                     unsigned long *mountflagsp,
+                                     char const **leftoversp)
+{
+	linted_error errnum;
+
+	bool touch_flag = false;
+	bool mkdir_flag = false;
+	bool bind = false;
+	bool rec = false;
+	bool readonly = false;
+	bool readwrite = false;
+	bool suid = true;
+	bool dev = true;
+	bool exec = true;
+	char *leftovers = NULL;
+
+	char *subopts_str = strdup(opts);
+	if (NULL == subopts_str) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	char *subopts = subopts_str;
+	char *value = NULL;
+
+	while (*subopts != '\0') {
+		int token;
+		{
+			char *xx = subopts;
+			char *yy = value;
+			token =
+			    getsubopt(&xx, (char * const *)mount_options, &yy);
+			subopts = xx;
+			value = yy;
+		}
+		switch (token) {
+		case MKDIR:
+			mkdir_flag = true;
+			break;
+
+		case TOUCH:
+			touch_flag = true;
+			break;
+
+		case BIND:
+			bind = true;
+			break;
+
+		case RBIND:
+			bind = true;
+			rec = true;
+			break;
+
+		case RO:
+			readonly = true;
+			break;
+
+		case RW:
+			readwrite = true;
+			break;
+
+		case SUID:
+			suid = true;
+			break;
+
+		case NOSUID:
+			suid = false;
+			break;
+
+		case NODEV:
+			dev = false;
+			break;
+
+		case NOEXEC:
+			exec = false;
+			break;
+
+		default:
+			leftovers = strstr(opts, value);
+			goto free_subopts_str;
+		}
+	}
+
+free_subopts_str:
+	linted_mem_free(subopts_str);
+
+	if (readwrite && readonly)
+		return EINVAL;
+
+	if (bind && rec && readonly)
+		/*
+		 * Due to a completely idiotic kernel bug (see
+		 * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
+		 * recursive bind mount as readonly would fail completely
+		 * silently and there is no way to workaround this.
+		 *
+		 * Even after working around by remounting it will fail for
+		 * the recursive case. For example, /home directory that is
+		 * recursively bind mounted as readonly and that has encrypted
+		 * user directories as an example. The /home directory will be
+		 * readonly but the user directory /home/user will not be.
+		 */
+		return EINVAL;
+
+	if (mkdir_flag && touch_flag)
+		return EINVAL;
+
+	unsigned long mountflags = 0U;
+
+	if (bind)
+		mountflags |= MS_BIND;
+
+	if (rec)
+		mountflags |= MS_REC;
+
+	if (readonly)
+		mountflags |= MS_RDONLY;
+
+	if (!suid)
+		mountflags |= MS_NOSUID;
+
+	if (!dev)
+		mountflags |= MS_NODEV;
+
+	if (!exec)
+		mountflags |= MS_NOEXEC;
+
+	*leftoversp = leftovers;
+	*mkdir_flagp = mkdir_flag;
+	*touch_flagp = touch_flag;
+	*mountflagsp = mountflags;
+	return 0;
+}
+
+static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
+                                   char const *filename, char const *type)
+{
+	linted_error errnum;
+
+	char const *abspath;
+	if (filename[0U] != '/') {
+		{
+			char *xx;
+			if (-1 ==
+			    asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename))
+				goto asprintf_failed;
+			abspath = xx;
+			goto asprintf_succeeded;
+		}
+	asprintf_failed:
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	asprintf_succeeded:
+		;
+	} else {
+		abspath = filename;
+	}
+
+	FILE *file = setmntent(abspath, type);
+	errnum = errno;
+
+	if (abspath != filename)
+		linted_mem_free((char *)abspath);
+
+	if (NULL == file) {
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	*filep = file;
+	return 0;
 }
 
 static pid_t real_getpid(void)

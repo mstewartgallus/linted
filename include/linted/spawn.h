@@ -40,13 +40,8 @@ void linted_spawn_attr_setdeparent(struct linted_spawn_attr *attr,
 void linted_spawn_attr_setcloneflags(struct linted_spawn_attr *attr, int flags);
 void linted_spawn_attr_setchrootdir(struct linted_spawn_attr *attr,
                                     char const *chrootdir);
-linted_error linted_spawn_attr_setmount(struct linted_spawn_attr *attr,
-                                        char const *source, char const *target,
-                                        char const *filesystemtype,
-                                        _Bool mkdir_flag, _Bool touch_flag,
-                                        unsigned long mountflags,
-                                        char const *data);
-
+void linted_spawn_attr_setfstab(struct linted_spawn_attr *attr,
+                                char const *fstab);
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp);
 linted_error linted_spawn_file_actions_adddup2(
