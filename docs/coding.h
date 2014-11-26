@@ -13,17 +13,18 @@
  *
  * This is a list of standards for maintaining correct and high
  * quality code in Linted.  It is more important to understand the
- * standard and why it is what it is than to follow it.
+ * coding standard than to follow it.
  *
- * The Linted project unconditionally enforces it's rules for correct
+ * The Linted project unconditionally enforces its rules for correct
  * code. No exceptions.
  *
- * The Linted project almost always enforce it's rules for high
- * quality code but recognize that they are only heuristics and that
- * exceptions are okay occasionally.
+ * The Linted project has rules that may help ensure high code
+ * quality, that is to say: functional and defect-free code. However,
+ * these code quality rules are only heuristics and should never get
+ * in the way of writing correct code.
  *
- * The rules for code style are very arbitrary but may be bent
- * occasionally.
+ * The Linted project's rules for code style are nothing more than
+ * guidelines.
  *
  * @section correctness Code Correctness
  *
@@ -120,6 +121,38 @@
  * @section quality Code Quality
  *
  * <ul>
+ *
+ * <li> Do not communicate code to be executed between actors
+ *
+ * When code to be executed is communicated between different actors a
+ * malicious actor can often submit program code that takes over the
+ * actor that executes the malicious actor's code.
+ *
+ * For example, Python's pickled objects data format embeds code to be
+ * executed inside of it and so an attacker that can submit arbitrary
+ * pickled object data to your service to be decoded can subvert and
+ * control it.
+ *
+ * </li>
+ *
+ * <li> Do not communicate privileges between actors
+ *
+ * When privileges are communicated between actors it is often
+ * possible for an attacker to forge a session cookie that
+ * impersonates another user and that gives the attacker privileges
+ * they should not have.
+ *
+ * For example, many insecure web electronic store fronts implement
+ * user sessions by storing customer account information in web
+ * browser cookies. However, a customer's session cookies are under
+ * their full control and a malicious actor could rewrite their
+ * session cookies to indicate another customer's user account unless
+ * said cookies are securely communicated and private to one user's
+ * account at a time, authenticated as approved by the web store
+ * front, and expire at a data that is in a reasonably short time in
+ * the future.
+ *
+ * </li>
  *
  * <li> Do not needlessly waste system resources.
  *
