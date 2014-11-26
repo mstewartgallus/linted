@@ -53,8 +53,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	sigset_t orig_mask;
-
 	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 
 	/* Delegate the exit signal to the monitor child */
@@ -104,8 +102,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 		attr = xx;
 	}
-
-	linted_spawn_attr_setmask(attr, &orig_mask);
 
 	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
 		                 admin };
