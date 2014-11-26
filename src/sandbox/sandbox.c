@@ -311,7 +311,7 @@ exit_loop:
 	{
 		pid_t child;
 
-		if (fstab != NULL)
+		if (clone_flags != 0)
 			child =
 			    syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
 		else
