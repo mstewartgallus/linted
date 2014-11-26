@@ -443,7 +443,7 @@ kill_procs:
 			pid_t xx;
 			linted_error pid_errnum =
 			    pid_for_service_name(&xx, unit->name);
-			if (pid_errnum != ESRCH)
+			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
 				if (0 == errnum)
@@ -452,7 +452,6 @@ kill_procs:
 			}
 			pid = xx;
 		}
-
 		if (-1 == kill(pid, SIGKILL)) {
 			linted_error kill_errnum = errno;
 			LINTED_ASSUME(kill_errnum != 0);
@@ -2054,13 +2053,13 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 		}
 
 		if (0 == strcmp(service_name, name)) {
+			errnum = 0;
 			pid = child;
 			break;
 		}
 
 		linted_mem_free(service_name);
 	}
-
 	*pidp = pid;
 
 free_buf:

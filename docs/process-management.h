@@ -43,14 +43,15 @@
  * the controlling terminal (if there is a terminal.) This is not good
  * enough for proper containerization as it doesn't work when there is
  * not a controlling terminal or if children change their controlling
- * terminal or if children use `CLONE_NEWPID`.
+ * terminal.
  *
  * Currently if `CLONE_NEWPID` sandboxes die then their children will
  * automatically be killed by the kernel.
  *
  * @bug Currently if `PR_SET_CHILD_SUBREAPER` sandboxes die then their
  * children wont be killed by the kernel and will mess up the init
- * container.
+ * container. Kill `PR_SET_CHILD_SUBREAPER` sandbox children upon
+ * their death and when `monitor` kills them.
  *
  * @section signals Signal handling
  *
