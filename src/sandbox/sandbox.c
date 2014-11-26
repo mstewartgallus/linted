@@ -101,12 +101,7 @@ static char const *const argstrs[] = {
 	    /**/ [PID_OUT_FD] = "--pidoutfd"
 };
 
-static void exit_with_error(linted_error errnum)
-{
-	errno = errnum;
-	perror("stuff");
-	_Exit(EXIT_FAILURE);
-}
+static void exit_with_error(linted_error errnum);
 
 static linted_error set_ptracer(pid_t pid);
 
@@ -124,12 +119,15 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 static void chroot_process(char const *chrootdir, struct mount_args *mount_args,
                            size_t mount_args_size);
 
-static void propagate_signal(int signo);
+static void do_nothing(int signo);
 static linted_error set_name(char const *name);
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
+
+static pid_t my_clone(unsigned long flags);
+static int my_pivot_root(char const *new_root, char const *put_old);
 
 int main(int argc, char *argv[])
 {
@@ -312,8 +310,7 @@ exit_loop:
 		pid_t child;
 
 		if (clone_flags != 0)
-			child =
-			    syscall(__NR_clone, SIGCHLD | clone_flags, NULL);
+			child = my_clone(SIGCHLD | clone_flags);
 		else
 			child = fork();
 
@@ -322,6 +319,14 @@ exit_loop:
 
 		if (child != 0)
 			_Exit(EXIT_SUCCESS);
+	}
+
+	/* First things first set the id mapping */
+	if ((clone_flags & CLONE_NEWUSER) != 0) {
+		set_id_maps(mapped_uid, uid, mapped_gid, gid);
+
+		if (-1 == setgroups(0U, NULL))
+			exit_with_error(errno);
 	}
 
 	/* Due to a kernel bug new users aren't protected from ptrace
@@ -350,23 +355,6 @@ exit_loop:
 			mount_args = xx;
 			mount_args_size = yy;
 		}
-
-		set_id_maps(mapped_uid, uid, mapped_gid, gid);
-
-		/* We need to use the raw system call because GLibc
-		 * messes around with signals to synchronize the
-		 * permissions of every thread. Of course, after a
-		 * fork there is only one thread and there is no need
-		 * for the synchronization.
-		 *
-		 * See the following for problems related to the nonatomic
-		 * setxid calls.
-		 *
-		 * https://www.redhat.com/archives/libvir-list/2013-November/msg00577.html
-		 * https://lists.samba.org/archive/samba-technical/2012-June/085101.html
-		 */
-		if (-1 == setgroups(0U, NULL))
-			exit_with_error(errno);
 
 		chroot_process(chrootdir, mount_args, mount_args_size);
 
@@ -530,7 +518,7 @@ exit_loop:
 		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
 		     ++ii) {
 			struct sigaction action = { 0 };
-			action.sa_handler = propagate_signal;
+			action.sa_handler = do_nothing;
 			action.sa_flags = 0;
 			sigfillset(&action.sa_mask);
 			if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
@@ -677,7 +665,7 @@ static void chroot_process(char const *chrootdir, struct mount_args *mount_args,
 	if (-1 == old_root)
 		exit_with_error(errno);
 
-	if (-1 == syscall(__NR_pivot_root, ".", "."))
+	if (-1 == my_pivot_root(".", "."))
 		exit_with_error(errno);
 
 	/* pivot_root() may or may not affect its current working
@@ -1011,6 +999,13 @@ free_subopts_str:
 	return 0;
 }
 
+static void exit_with_error(linted_error errnum)
+{
+	errno = errnum;
+	perror("stuff");
+	_Exit(EXIT_FAILURE);
+}
+
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type)
 {
@@ -1051,10 +1046,10 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 	return 0;
 }
 
-static void propagate_signal(int signo)
+static void do_nothing(int signo)
 {
-	/* Monitor will notify our children for us. If they choose to
-	 * exit then we will exit afterwards. */
+	/* Do nothing, monitor will notify our children for us. If
+	 * they choose to exit then we will exit afterwards. */
 }
 
 static linted_error set_name(char const *name)
@@ -1114,6 +1109,23 @@ static linted_error set_seccomp(struct sock_fprog const *program)
 		return errnum;
 	}
 	return 0;
+}
+
+/* Unfortunately, the clone system call interface varies a lot between
+ * architectures on Linux.
+ */
+#if defined __amd64__ || defined __i386__
+static pid_t my_clone(unsigned long flags)
+{
+	return syscall(__NR_clone, SIGCHLD | flags, NULL, NULL, NULL, NULL);
+}
+#else
+#error No clone implementation has been defined for this architecture
+#endif
+
+static int my_pivot_root(char const *new_root, char const *put_old)
+{
+	return syscall(__NR_pivot_root, new_root, put_old);
 }
 
 #if defined __amd64__
