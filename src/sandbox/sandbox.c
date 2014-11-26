@@ -101,6 +101,7 @@ static char const *const argstrs[] = {
 	    /**/ [PID_OUT_FD] = "--pidoutfd"
 };
 
+static void exit_with_err(linted_ko writer, linted_error errnum);
 static void exit_with_error(linted_error errnum);
 
 static linted_error set_ptracer(pid_t pid);
@@ -114,8 +115,8 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
                         gid_t gid);
-static void chroot_process(linted_ko cwd, char const *chrootdir,
-                           char const *fstab_path);
+static void chroot_process(linted_ko err_writer, linted_ko cwd,
+                           char const *chrootdir, char const *fstab_path);
 
 static void do_nothing(int signo);
 static linted_error set_name(char const *name);
@@ -304,27 +305,64 @@ exit_loop:
 
 	pid_t spawner = getppid();
 
+	linted_ko err_reader;
+	linted_ko err_writer;
 	{
-		pid_t child;
-
-		if (clone_flags != 0)
-			child = my_clone(SIGCHLD | clone_flags);
-		else
-			child = fork();
-
-		if (-1 == child)
-			exit_with_error(errno);
-
-		if (child != 0)
-			_Exit(EXIT_SUCCESS);
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			perror("pipe2");
+			return EXIT_FAILURE;
+		}
+		err_reader = xx[0U];
+		err_writer = xx[1U];
 	}
+
+	{
+		pid_t child = clone_flags != 0U
+		                  ? my_clone(SIGCHLD | clone_flags)
+		                  : fork();
+
+		if (-1 == child) {
+			perror("clone");
+			return EXIT_FAILURE;
+		}
+
+		if (child != 0) {
+			linted_ko_close(err_writer);
+
+			{
+				size_t xx;
+				linted_error yy;
+				errnum = linted_io_read_all(err_reader, &xx,
+				                            &yy, sizeof yy);
+				if (errnum != 0)
+					goto close_err_reader;
+
+				/* If bytes_read is zero then a succesful exec
+				 * occured */
+				if (xx == sizeof yy)
+					errnum = yy;
+			}
+		close_err_reader:
+			linted_ko_close(err_reader);
+
+			if (errnum != 0) {
+				errno = errnum;
+				perror("spawning");
+				_Exit(EXIT_FAILURE);
+			}
+
+			_Exit(EXIT_SUCCESS);
+		}
+	}
+	linted_ko_close(err_reader);
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
 		set_id_maps(mapped_uid, uid, mapped_gid, gid);
 
 		if (-1 == setgroups(0U, NULL))
-			exit_with_error(errno);
+			exit_with_err(err_writer, errno);
 	}
 
 	/* Due to a kernel bug new users aren't protected from ptrace
@@ -332,16 +370,12 @@ exit_loop:
 	 */
 	if (!((clone_flags & CLONE_NEWUSER) != 0)) {
 		errnum = set_ptracer(spawner);
-		if (errnum != 0) {
-			linted_io_write_format(
-			    STDERR_FILENO, NULL, "%s: set_ptracer: %s\n",
-			    process_name, linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
+		if (errnum != 0)
+			exit_with_err(err_writer, errno);
 	}
 
 	if (fstab != NULL)
-		chroot_process(cwd, chrootdir, fstab);
+		chroot_process(err_writer, cwd, chrootdir, fstab);
 
 	if (pid_out_fd != NULL) {
 		int fd = atoi(pid_out_fd);
@@ -356,18 +390,14 @@ exit_loop:
 		message.msg_control = NULL;
 		message.msg_controllen = 0U;
 
-		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL)) {
-			perror("sendmsg");
-			return EXIT_FAILURE;
-		}
+		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL))
+			exit_with_err(err_writer, errno);
 		linted_ko_close(fd);
 	}
 
 	if (priority != NULL) {
-		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
-			perror("setpriority");
-			return EXIT_FAILURE;
-		}
+		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority)))
+			exit_with_err(err_writer, errno);
 	}
 
 	/*
@@ -375,103 +405,77 @@ exit_loop:
 	 * hurt,
 	 */
 	errnum = set_child_subreaper(true);
-	if (errnum != 0) {
-		errno = errnum;
-		perror("set_child_subreaper");
-		return EXIT_FAILURE;
-	}
+	if (errnum != 0)
+		exit_with_err(err_writer, errnum);
 
 	if (chdir_path != NULL) {
-		if (-1 == chdir(chdir_path)) {
-			perror("chdir");
-			return EXIT_FAILURE;
-		}
+		if (-1 == chdir(chdir_path))
+			exit_with_err(err_writer, errno);
 	}
 
-	/* Drop all capabilities I might possibly have. I'm not sure I
-	 * need to do this and I probably can do this in a better
-	 * way. Note that currently we do not use PR_SET_KEEPCAPS and
-	 * do not map our sandboxed user to root but if we did in the
-	 * future we would need this.
+	/* Drop all capabilities I might possibly have. Note that
+	 * currently we do not use PR_SET_KEEPCAPS and do not map our
+	 * sandboxed user to root but if we did in the future we would
+	 * need this.
 	 */
 
 	if (drop_caps) {
 		cap_t caps = cap_get_proc();
-		if (NULL == caps) {
-			perror("cap_get_proc");
-			return EXIT_FAILURE;
-		}
+		if (NULL == caps)
+			exit_with_err(err_writer, errno);
 
-		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
-			perror("cap_clear_flag");
-			return EXIT_FAILURE;
-		}
-		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-			perror("cap_clear_flag");
-			return EXIT_FAILURE;
-		}
-		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
-			perror("cap_clear_flag");
-			return EXIT_FAILURE;
-		}
+		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE))
+			exit_with_err(err_writer, errno);
 
-		if (-1 == cap_set_proc(caps)) {
-			perror("cap_set_proc");
-			return EXIT_FAILURE;
-		}
+		if (-1 == cap_clear_flag(caps, CAP_PERMITTED))
+			exit_with_err(err_writer, errno);
 
-		if (-1 == cap_free(caps)) {
-			perror("cap_free");
-			return EXIT_FAILURE;
-		}
+		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE))
+			exit_with_err(err_writer, errno);
+
+		if (-1 == cap_set_proc(caps))
+			exit_with_err(err_writer, errno);
+
+		if (-1 == cap_free(caps))
+			exit_with_err(err_writer, errno);
 	}
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_no_new_privs");
-			return EXIT_FAILURE;
-		}
+		if (errnum != 0)
+			exit_with_err(err_writer, errnum);
 
 		errnum = set_seccomp(&default_filter);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("set_seccomp");
-			return EXIT_FAILURE;
-		}
+		if (errnum != 0)
+			exit_with_err(err_writer, errnum);
 	}
 
 	pid_t child = fork();
-	if (-1 == child) {
-		perror("fork");
-		return EXIT_FAILURE;
-	}
+	if (-1 == child)
+		exit_with_err(err_writer, errno);
 
 	if (0 == child) {
 		{
 			char xx[] = "XXXXXXXXXXXXXXXXX";
 			sprintf(xx, "%i", getpid());
-			if (-1 == setenv("LISTEN_PID", xx, true)) {
-				perror("setenv");
-				return EXIT_FAILURE;
-			}
+			if (-1 == setenv("LISTEN_PID", xx, true))
+				exit_with_err(err_writer, errno);
 		}
 
 		{
 			char xx[] = "XXXXXXXXXXXXXXXXX";
 			sprintf(xx, "%i", atoi(listen_fds) - 1);
-			if (-1 == setenv("LISTEN_FDS", xx, true)) {
-				perror("setenv");
-				return EXIT_FAILURE;
-			}
+			if (-1 == setenv("LISTEN_FDS", xx, true))
+				exit_with_err(err_writer, errno);
 		}
 
 		execve(command[0U], (char * const *)command, environ);
-		perror("execve");
-		return EXIT_FAILURE;
+		exit_with_err(err_writer, errno);
 	}
+
+	linted_ko_close(err_writer);
+	linted_ko_close(cwd);
 
 	/* Catch signals
 	 *
@@ -594,8 +598,8 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 	}
 }
 
-static void chroot_process(linted_ko cwd, char const *chrootdir,
-                           char const *fstab_path)
+static void chroot_process(linted_ko err_writer, linted_ko cwd,
+                           char const *chrootdir, char const *fstab_path)
 {
 	linted_error errnum;
 
@@ -604,15 +608,15 @@ static void chroot_process(linted_ko cwd, char const *chrootdir,
 		FILE *xx;
 		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
 		if (errnum != 0)
-			exit_with_error(errnum);
+			exit_with_err(err_writer, errnum);
 		fstab = xx;
 	}
 
 	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	if (-1 == chdir(chrootdir))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	for (;;) {
 		errno = 0;
@@ -620,7 +624,7 @@ static void chroot_process(linted_ko cwd, char const *chrootdir,
 		if (NULL == entry) {
 			errnum = errno;
 			if (errnum != 0)
-				exit_with_error(errnum);
+				exit_with_err(err_writer, errnum);
 			break;
 		}
 
@@ -655,35 +659,35 @@ static void chroot_process(linted_ko cwd, char const *chrootdir,
 
 		if (mkdir_flag) {
 			if (-1 == mkdir(dir, S_IRWXU))
-				exit_with_error(errno);
+				exit_with_err(err_writer, errno);
 		} else if (touch_flag) {
 			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
-				exit_with_error(errno);
+				exit_with_err(err_writer, errno);
 		}
 
 		if (-1 == mount(fsname, dir, type, mountflags, data))
-			exit_with_error(errno);
+			exit_with_err(err_writer, errno);
 
 		if ((mountflags & MS_BIND) != 0U) {
 			mountflags |= MS_REMOUNT;
 			if (-1 == mount(fsname, dir, type, mountflags, data))
-				exit_with_error(errno);
+				exit_with_err(err_writer, errno);
 		}
 	}
 
 close_file:
 	if (endmntent(fstab) != 1)
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	/* Magic incantation that clears up /proc/mounts more than
 	 * mount MS_MOVE
 	 */
 	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
 	if (-1 == old_root)
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	if (-1 == my_pivot_root(".", "."))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	/* pivot_root() may or may not affect its current working
 	 * directory.  It is therefore recommended to call chdir("/")
@@ -693,17 +697,17 @@ close_file:
 	 */
 
 	if (-1 == fchdir(old_root))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	errnum = linted_ko_close(old_root);
 	if (errnum != 0)
-		exit_with_error(errnum);
+		exit_with_err(err_writer, errnum);
 
 	if (-1 == umount2(".", MNT_DETACH))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 
 	if (-1 == chdir("/"))
-		exit_with_error(errno);
+		exit_with_err(err_writer, errno);
 }
 
 enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
@@ -855,6 +859,12 @@ free_subopts_str:
 	*touch_flagp = touch_flag;
 	*mountflagsp = mountflags;
 	return 0;
+}
+
+static void exit_with_err(linted_ko writer, linted_error errnum)
+{
+	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
+	_Exit(EXIT_FAILURE);
 }
 
 static void exit_with_error(linted_error errnum)
