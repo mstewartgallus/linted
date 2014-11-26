@@ -1053,12 +1053,8 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 static void propagate_signal(int signo)
 {
-	kill(-1, signo);
-
-	/* Sadly, it is impossible to kill oneself with the proper
-	 * signal as init. Also, using raise(SIGKILL) doesn't work
-	 * either. */
-	_Exit(signo);
+	/* Monitor will notify our children for us. If they choose to
+	 * exit then we will exit afterwards. */
 }
 
 static linted_error set_name(char const *name)

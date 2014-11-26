@@ -165,6 +165,7 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name);
 static linted_error get_process_service_name(pid_t pid, char **service_namep);
 static linted_error get_process_comm(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
+static linted_error kill_process_children(pid_t pid, int signo);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
@@ -1510,6 +1511,11 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		was_signal = true;
 
 	case CLD_EXITED: {
+		/* Kill the sandbox's inhabitants */
+		errnum = kill_process_children(pid, SIGKILL);
+		if (errnum != 0)
+			return errnum;
+
 		char *service_name;
 		{
 			char *xx;
@@ -1631,51 +1637,71 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 		}
 	} while (EINTR == errnum);
 
-	if (exit_status != SIGCHLD)
+	if (pid == getppid())
 		goto restart_process;
 
-	int code;
-	pid_t sandboxed_pid;
-	int status;
-
-	siginfo_t info = { 0 };
-	errnum = ptrace_getsiginfo(pid, &info);
-	if (errnum != 0)
-		goto restart_process;
-
-	code = info.si_code;
-
-	/* User generated signal */
-	if (code < 0)
-		goto restart_process;
-
-	sandboxed_pid = info.si_pid;
-	status = info.si_status;
-
-	switch (code) {
-	case CLD_EXITED:
-		fprintf(stderr, "process %i in sandbox %i exited with %i\n",
-		        sandboxed_pid, pid, status);
-		break;
-
-	case CLD_DUMPED:
-	case CLD_KILLED:
-		fprintf(stderr, "process %i in sandbox %i killed by %s\n",
-		        sandboxed_pid, pid, strsignal(status));
-		break;
-
-	case CLD_STOPPED:
-		fprintf(stderr, "process %i in sandbox %i stopped by %s\n",
-		        sandboxed_pid, pid, strsignal(status));
-		break;
-
-	case CLD_CONTINUED:
-		fprintf(stderr, "process %i in sandbox %i continued by %s\n",
-		        sandboxed_pid, pid, strsignal(status));
-		break;
-
+	switch (exit_status) {
 	default:
-		LINTED_ASSUME_UNREACHABLE();
+		goto restart_process;
+
+	case SIGHUP:
+	case SIGINT:
+	case SIGQUIT:
+	case SIGTERM:
+		/* Propagate to the rest of the sandbox */
+		errnum = kill_process_children(pid, exit_status);
+		break;
+
+	case SIGCHLD: {
+		int code;
+		pid_t sandboxed_pid;
+		int status;
+
+		siginfo_t info = { 0 };
+		errnum = ptrace_getsiginfo(pid, &info);
+		if (errnum != 0)
+			goto restart_process;
+
+		code = info.si_code;
+
+		/* User generated signal */
+		if (code < 0)
+			goto restart_process;
+
+		sandboxed_pid = info.si_pid;
+		status = info.si_status;
+
+		switch (code) {
+		case CLD_EXITED:
+			fprintf(stderr,
+			        "process %i in sandbox %i exited with %i\n",
+			        sandboxed_pid, pid, status);
+			break;
+
+		case CLD_DUMPED:
+		case CLD_KILLED:
+			fprintf(stderr,
+			        "process %i in sandbox %i killed by %s\n",
+			        sandboxed_pid, pid, strsignal(status));
+			break;
+
+		case CLD_STOPPED:
+			fprintf(stderr,
+			        "process %i in sandbox %i stopped by %s\n",
+			        sandboxed_pid, pid, strsignal(status));
+			break;
+
+		case CLD_CONTINUED:
+			fprintf(stderr,
+			        "process %i in sandbox %i continued by %s\n",
+			        sandboxed_pid, pid, strsignal(status));
+			break;
+
+		default:
+			LINTED_ASSUME_UNREACHABLE();
+		}
+		break;
+	}
 	}
 
 restart_process:
@@ -2061,6 +2087,64 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 		linted_mem_free(service_name);
 	}
 	*pidp = pid;
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(file);
+
+	return errnum;
+}
+
+static linted_error kill_process_children(pid_t pid, int signo)
+{
+	linted_error errnum = 0;
+
+	linted_ko children;
+	{
+		linted_ko xx;
+		errnum = get_process_children(&xx, pid);
+		if (errnum != 0)
+			return errnum;
+		children = xx;
+	}
+
+	FILE *file = fdopen(children, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(children);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz = getdelim(&xx, &yy, ' ', file);
+			if (-1 == zz)
+				goto getdelim_failed;
+			buf = xx;
+			buf_size = yy;
+			goto getdelim_succeeded;
+		}
+	getdelim_failed:
+		errnum = errno;
+		goto free_buf;
+
+	getdelim_succeeded:
+		;
+		pid_t child = strtol(buf, NULL, 10);
+
+		kill(child, signo);
+	}
 
 free_buf:
 	linted_mem_free(buf);
