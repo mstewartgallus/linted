@@ -105,8 +105,6 @@ static void exit_with_error(linted_error errnum);
 
 static linted_error set_ptracer(pid_t pid);
 
-static linted_error parse_fstab(struct mount_args **mount_argsp, size_t *sizep,
-                                linted_ko cwd, char const *fstab_path);
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
                                      unsigned long *mountflagsp,
@@ -116,8 +114,8 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 
 static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
                         gid_t gid);
-static void chroot_process(char const *chrootdir, struct mount_args *mount_args,
-                           size_t mount_args_size);
+static void chroot_process(linted_ko cwd, char const *chrootdir,
+                           char const *fstab_path);
 
 static void do_nothing(int signo);
 static linted_error set_name(char const *name);
@@ -342,31 +340,8 @@ exit_loop:
 		}
 	}
 
-	if (fstab != NULL) {
-		struct mount_args *mount_args = NULL;
-		size_t mount_args_size = 0U;
-
-		{
-			struct mount_args *xx;
-			size_t yy;
-			errnum = parse_fstab(&xx, &yy, cwd, fstab);
-			if (errnum != 0)
-				return errnum;
-			mount_args = xx;
-			mount_args_size = yy;
-		}
-
-		chroot_process(chrootdir, mount_args, mount_args_size);
-
-		for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-			struct mount_args *mount_arg = &mount_args[ii];
-			linted_mem_free(mount_arg->source);
-			linted_mem_free(mount_arg->target);
-			linted_mem_free(mount_arg->filesystemtype);
-			linted_mem_free(mount_arg->data);
-		}
-		linted_mem_free(mount_args);
-	}
+	if (fstab != NULL)
+		chroot_process(cwd, chrootdir, fstab);
 
 	if (pid_out_fd != NULL) {
 		int fd = atoi(pid_out_fd);
@@ -619,10 +594,19 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 	}
 }
 
-static void chroot_process(char const *chrootdir, struct mount_args *mount_args,
-                           size_t mount_args_size)
+static void chroot_process(linted_ko cwd, char const *chrootdir,
+                           char const *fstab_path)
 {
 	linted_error errnum;
+
+	FILE *fstab;
+	{
+		FILE *xx;
+		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
+		if (errnum != 0)
+			exit_with_error(errnum);
+		fstab = xx;
+	}
 
 	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
 		exit_with_error(errno);
@@ -630,89 +614,13 @@ static void chroot_process(char const *chrootdir, struct mount_args *mount_args,
 	if (-1 == chdir(chrootdir))
 		exit_with_error(errno);
 
-	for (size_t ii = 0U; ii < mount_args_size; ++ii) {
-		struct mount_args *mount_arg = &mount_args[ii];
-
-		if (mount_arg->mkdir_flag) {
-			if (-1 == mkdir(mount_arg->target, S_IRWXU))
-				exit_with_error(errno);
-		} else if (mount_arg->touch_flag) {
-			if (-1 ==
-			    mknod(mount_arg->target, S_IRWXU | S_IFREG, 0))
-				exit_with_error(errno);
-		}
-
-		unsigned long mountflags = mount_arg->mountflags;
-
-		if (-1 == mount(mount_arg->source, mount_arg->target,
-		                mount_arg->filesystemtype, mountflags,
-		                mount_arg->data))
-			exit_with_error(errno);
-
-		if ((mountflags & MS_BIND) != 0U) {
-			mountflags |= MS_REMOUNT;
-			if (-1 == mount(mount_arg->source, mount_arg->target,
-			                mount_arg->filesystemtype, mountflags,
-			                mount_arg->data))
-				exit_with_error(errno);
-		}
-	}
-
-	/* Magic incantation that clears up /proc/mounts more than
-	 * mount MS_MOVE
-	 */
-	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
-	if (-1 == old_root)
-		exit_with_error(errno);
-
-	if (-1 == my_pivot_root(".", "."))
-		exit_with_error(errno);
-
-	/* pivot_root() may or may not affect its current working
-	 * directory.  It is therefore recommended to call chdir("/")
-	 * immediately after pivot_root().
-	 *
-	 * - http://man7.org/linux/man-pages/man2/pivot_root.2.html
-	 */
-
-	if (-1 == fchdir(old_root))
-		exit_with_error(errno);
-
-	errnum = linted_ko_close(old_root);
-	if (errnum != 0)
-		exit_with_error(errnum);
-
-	if (-1 == umount2(".", MNT_DETACH))
-		exit_with_error(errno);
-
-	if (-1 == chdir("/"))
-		exit_with_error(errno);
-}
-
-static linted_error parse_fstab(struct mount_args **mount_argsp, size_t *sizep,
-                                linted_ko cwd, char const *fstab_path)
-{
-	linted_error errnum = 0;
-
-	struct mount_args *mount_args = NULL;
-	size_t size = 0U;
-
-	FILE *fstab;
-	{
-		FILE *xx;
-		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
-		if (errnum != 0)
-			return errnum;
-		fstab = xx;
-	}
-
 	for (;;) {
 		errno = 0;
 		struct mntent *entry = getmntent(fstab);
 		if (NULL == entry) {
 			errnum = errno;
 			if (errnum != 0)
-				goto close_file;
+				exit_with_error(errnum);
 			break;
 		}
 
@@ -745,107 +653,57 @@ static linted_error parse_fstab(struct mount_args **mount_argsp, size_t *sizep,
 			data = ww;
 		}
 
-		char *source_copy = NULL;
-		char *target_copy = NULL;
-		char *filesystemtype_copy = NULL;
-		char *data_copy = NULL;
-
-		if (fsname != NULL) {
-			source_copy = strdup(fsname);
-			if (NULL == source_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_file;
-			}
+		if (mkdir_flag) {
+			if (-1 == mkdir(dir, S_IRWXU))
+				exit_with_error(errno);
+		} else if (touch_flag) {
+			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
+				exit_with_error(errno);
 		}
 
-		if (dir != NULL) {
-			target_copy = strdup(dir);
-			if (NULL == target_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_source;
-			}
+		if (-1 == mount(fsname, dir, type, mountflags, data))
+			exit_with_error(errno);
+
+		if ((mountflags & MS_BIND) != 0U) {
+			mountflags |= MS_REMOUNT;
+			if (-1 == mount(fsname, dir, type, mountflags, data))
+				exit_with_error(errno);
 		}
-
-		if (type != NULL) {
-			filesystemtype_copy = strdup(type);
-			if (NULL == filesystemtype_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_target;
-			}
-		}
-
-		if (data != NULL) {
-			data_copy = strdup(data);
-			if (NULL == data_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_filesystemtype;
-			}
-		}
-
-		size_t old_size = size;
-		size_t new_size = size + 1U;
-		{
-			void *xx;
-			errnum = linted_mem_realloc_array(
-			    &xx, mount_args, new_size, sizeof mount_args[0U]);
-			if (errnum != 0)
-				goto free_data;
-			mount_args = xx;
-			size = new_size;
-		}
-
-		if (errnum != 0) {
-		free_data:
-			linted_mem_free(data_copy);
-
-		free_filesystemtype:
-			linted_mem_free(filesystemtype_copy);
-
-		free_target:
-			linted_mem_free(target_copy);
-
-		free_source:
-			linted_mem_free(source_copy);
-
-			goto close_file;
-		}
-
-		mount_args[old_size].source = source_copy;
-		mount_args[old_size].target = target_copy;
-		mount_args[old_size].filesystemtype = filesystemtype_copy;
-		mount_args[old_size].mkdir_flag = mkdir_flag;
-		mount_args[old_size].touch_flag = touch_flag;
-		mount_args[old_size].mountflags = mountflags;
-		mount_args[old_size].data = data_copy;
 	}
 
 close_file:
-	if (endmntent(fstab) != 1 && 0 == errnum) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
+	if (endmntent(fstab) != 1)
+		exit_with_error(errno);
 
-	if (errnum != 0) {
-		for (size_t ii = 0U; ii < size; ++ii) {
-			struct mount_args *mount_arg = &mount_args[ii];
-			linted_mem_free(mount_arg->source);
-			linted_mem_free(mount_arg->target);
-			linted_mem_free(mount_arg->filesystemtype);
-			linted_mem_free(mount_arg->data);
-		}
-		linted_mem_free(mount_args);
+	/* Magic incantation that clears up /proc/mounts more than
+	 * mount MS_MOVE
+	 */
+	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
+	if (-1 == old_root)
+		exit_with_error(errno);
 
-		return errnum;
-	}
+	if (-1 == my_pivot_root(".", "."))
+		exit_with_error(errno);
 
-	*mount_argsp = mount_args;
-	*sizep = size;
+	/* pivot_root() may or may not affect its current working
+	 * directory.  It is therefore recommended to call chdir("/")
+	 * immediately after pivot_root().
+	 *
+	 * - http://man7.org/linux/man-pages/man2/pivot_root.2.html
+	 */
 
-	return 0;
+	if (-1 == fchdir(old_root))
+		exit_with_error(errno);
+
+	errnum = linted_ko_close(old_root);
+	if (errnum != 0)
+		exit_with_error(errnum);
+
+	if (-1 == umount2(".", MNT_DETACH))
+		exit_with_error(errno);
+
+	if (-1 == chdir("/"))
+		exit_with_error(errno);
 }
 
 enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
