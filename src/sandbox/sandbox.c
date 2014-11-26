@@ -488,8 +488,8 @@ exit_loop:
 	 *
 	 * This applies to sandboxs to if they use CLONE_NEWPID.
 	 *
-	 * We want to explicitly handle the signal so that it is
-	 * propagated to children of init as well.
+	 * We want to explicitly handle the signal so that the monitor
+	 * can observe it and propagate it to it's children as well.
 	 */
 	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 	if (1 == getpid()) {
