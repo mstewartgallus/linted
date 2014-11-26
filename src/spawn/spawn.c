@@ -170,7 +170,7 @@ static char const fd_str[] = " /proc/self/fd/";
 /**
  * @bug assert isn't AS-safe.
  */
-linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
+linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char const *const argv[], char const *const envp[])
@@ -178,9 +178,9 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
 	linted_error errnum = 0;
 	pid_t child = -1;
 	bool is_relative_path = filename[0U] != '/';
-	bool at_fdcwd = LINTED_KO_CWD == dirfd;
+	bool at_fdcwd = LINTED_KO_CWD == dirko;
 
-	if (is_relative_path && !at_fdcwd && dirfd < 0)
+	if (is_relative_path && !at_fdcwd && dirko < 0)
 		return EBADF;
 
 	sigset_t const *child_mask = NULL;
@@ -230,6 +230,24 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
 		}
 		err_reader = xx[0U];
 		err_writer = xx[1U];
+	}
+
+	int greatest = -1;
+	if (file_actions != NULL) {
+		union file_action const *actions = file_actions->actions;
+		size_t action_count = file_actions->action_count;
+		for (size_t ii = 0U; ii < action_count; ++ii) {
+			union file_action const *action = &actions[ii];
+			switch (action->type) {
+			case FILE_ACTION_ADDDUP2: {
+				int newfildes = action->adddup2.newfildes;
+
+				if (newfildes > greatest)
+					greatest = newfildes;
+				break;
+			}
+			}
+		}
 	}
 
 	{
@@ -316,32 +334,15 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
-		int greatest = -1;
-
-		union file_action const *actions = file_actions->actions;
-		size_t action_count = file_actions->action_count;
-		for (size_t ii = 0U; ii < action_count; ++ii) {
-			union file_action const *action = &actions[ii];
-			switch (action->type) {
-			case FILE_ACTION_ADDDUP2: {
-				int newfildes = action->adddup2.newfildes;
-
-				if (newfildes > greatest)
-					greatest = newfildes;
-				break;
-			}
-			}
-		}
-
 		if (!at_fdcwd && is_relative_path) {
 			int copy =
-			    fcntl(dirfd, F_DUPFD_CLOEXEC, (long)greatest);
+			    fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 			if (-1 == copy)
 				exit_with_error(err_writer, errno);
 
-			linted_ko_close(dirfd);
+			linted_ko_close(dirko);
 
-			dirfd = copy;
+			dirko = copy;
 		}
 
 		int err_writer_copy =
@@ -414,7 +415,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirfd, char const *filename,
 	if (relative_filename != NULL) {
 		memcpy(relative_filename, fd_str, fd_len);
 
-		pid_to_str(relative_filename + fd_len, dirfd);
+		pid_to_str(relative_filename + fd_len, dirko);
 
 		size_t fd_and_dir_len = strlen(relative_filename);
 
