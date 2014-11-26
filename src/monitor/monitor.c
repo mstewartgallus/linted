@@ -1335,31 +1335,33 @@ envvar_allocate_succeeded:
 	if (errnum != 0)
 		goto destroy_proc_kos;
 
+	pid_t sandbox_spawner;
 	{
 		pid_t xx;
 		errnum = linted_spawn(&xx, cwd, args[0U], file_actions, attr,
 		                      args, (char const * const *)envvars);
 		if (errnum != 0)
 			goto destroy_proc_kos;
+		sandbox_spawner = xx;
+	}
 
-		do {
-			int status;
-			{
-				siginfo_t info;
-				status = waitid(P_PID, xx, &info, WEXITED);
-			}
-			if (-1 == status) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
-			}
-		} while (EINTR == errnum);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(errnum != ECHILD);
-			assert(false);
+	do {
+		int status;
+		{
+			siginfo_t info;
+			status = waitid(P_PID, sandbox_spawner, &info, WEXITED);
 		}
+		if (-1 == status) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
+	if (errnum != 0) {
+		assert(errnum != EINVAL);
+		assert(errnum != ECHILD);
+		assert(false);
 	}
 
 	{
