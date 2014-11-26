@@ -48,10 +48,8 @@
  * Currently if `CLONE_NEWPID` sandboxes die then their children will
  * automatically be killed by the kernel.
  *
- * @bug Currently if `PR_SET_CHILD_SUBREAPER` sandboxes die then their
- * children wont be killed by the kernel and will mess up the init
- * container. Kill `PR_SET_CHILD_SUBREAPER` sandbox children upon
- * their death and when `monitor` kills them.
+ * @bug Go back to the main loop to kill `PR_SET_CHILD_SUBREAPER`
+ * sandbox children when `monitor` is exiting and killing them.
  *
  * @section signals Signal handling
  *
@@ -65,15 +63,4 @@
  * it is shutting down. This may be a good way of preventing sandboxes
  * from getting terminal notifications or it may be a bad way of
  * handling this.
- *
- * @todo Currently `CLONE_NEWPID` service processes explicitly setup
- * signal handlers for exit signals and forward them to children. This
- * does not work for `SIGKILL` for `PR_SET_CHILD_SUBREAPER` style
- * service processes. Remove such handling from `CLONE_NEWPID` style
- * waiters and make the monitor forward the signals and handle both
- * the `CLONE_NEWPID` case and the `PR_SET_CHILD_SUBREAPER` case.
- *
- * @todo Extend ignoring controlling terminal notifications to
- * `PR_SET_CHILD_SUBREAPER` sandboxes and let the monitor handle the
- * signals.
  */

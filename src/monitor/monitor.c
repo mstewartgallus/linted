@@ -145,6 +145,7 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
 static linted_error on_process_sigtrap(pid_t pid, int exit_status);
+static linted_error on_event_exit(pid_t pid, int exit_status);
 static linted_error on_event_stop(pid_t pid, int exit_status);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
@@ -1440,7 +1441,7 @@ ptrace_child:
 
 	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
 
-	errnum = ptrace_seize(child, 0);
+	errnum = ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
 	return 0;
 }
@@ -1511,11 +1512,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		was_signal = true;
 
 	case CLD_EXITED: {
-		/* Kill the sandbox's inhabitants */
-		errnum = kill_process_children(pid, SIGKILL);
-		if (errnum != 0)
-			return errnum;
-
 		char *service_name;
 		{
 			char *xx;
@@ -1605,6 +1601,9 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 	switch (event) {
 	case 0:
 		return on_process_sigtrap(pid, exit_status);
+
+	case PTRACE_EVENT_EXIT:
+		return on_event_exit(pid, exit_status);
 
 	/* Even if we never use PTRACE_O_TRACECLONE,
 	 * PTRACE_O_TRACEFORK, PTRACE_O_TRACEVFORK, or
@@ -1709,6 +1708,24 @@ restart_process:
 	linted_error cont_errnum = ptrace_cont(pid, exit_status);
 	if (0 == errnum)
 		errnum = cont_errnum;
+	return errnum;
+}
+
+static linted_error on_event_exit(pid_t pid, int exit_status)
+{
+
+	linted_error errnum = 0;
+
+	if (pid == getppid())
+		goto restart_process;
+
+	errnum = kill_process_children(pid, SIGKILL);
+	if (errnum != 0)
+		return errnum;
+
+restart_process:
+	ptrace_cont(pid, SIGKILL);
+
 	return errnum;
 }
 
