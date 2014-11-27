@@ -105,8 +105,7 @@ static char const *const argstrs[] = {
 	    /**/ [PID_OUT_FD] = "--pidoutfd"
 };
 
-static void exit_with_err(linted_ko writer, linted_error errnum);
-static void exit_with_error(linted_error errnum);
+static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static linted_error set_ptracer(pid_t pid);
 
@@ -117,8 +116,8 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
 
-static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
-                        gid_t gid);
+static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
+                        gid_t mapped_gid, gid_t gid);
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
                            char const *chrootdir, char const *fstab_path);
 
@@ -400,10 +399,10 @@ exit_loop:
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
-		set_id_maps(mapped_uid, uid, mapped_gid, gid);
+		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
 
 		if (-1 == setgroups(0U, NULL))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	/* Due to a kernel bug new users aren't protected from ptrace
@@ -412,7 +411,7 @@ exit_loop:
 	if (!((clone_flags & CLONE_NEWUSER) != 0)) {
 		errnum = set_ptracer(spawner);
 		if (errnum != 0)
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	if (fstab != NULL)
@@ -432,13 +431,13 @@ exit_loop:
 		message.msg_controllen = 0U;
 
 		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 		linted_ko_close(fd);
 	}
 
 	if (priority != NULL) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority)))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	/*
@@ -447,11 +446,11 @@ exit_loop:
 	 */
 	errnum = set_child_subreaper(true);
 	if (errnum != 0)
-		exit_with_err(err_writer, errnum);
+		exit_with_error(err_writer, errnum);
 
 	if (chdir_path != NULL) {
 		if (-1 == chdir(chdir_path))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	/* Drop all capabilities I might possibly have. Note that
@@ -463,29 +462,29 @@ exit_loop:
 	if (drop_caps) {
 		cap_t caps = cap_get_proc();
 		if (NULL == caps)
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == cap_clear_flag(caps, CAP_PERMITTED))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == cap_set_proc(caps))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == cap_free(caps))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	int signal_pipe_reader;
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 		signal_pipe_reader = xx[0U];
 		signal_pipe_writer = xx[1U];
 	}
@@ -495,7 +494,7 @@ exit_loop:
 		sigemptyset(&sigset);
 		sigaddset(&sigset, SIGCHLD);
 		if (-1 == pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	{
@@ -504,56 +503,56 @@ exit_loop:
 		action.sa_handler = signal_handler;
 		sigfillset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 	}
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
 		if (errnum != 0)
-			exit_with_err(err_writer, errnum);
+			exit_with_error(err_writer, errnum);
 
 		errnum = set_seccomp(&default_filter);
 		if (errnum != 0)
-			exit_with_err(err_writer, errnum);
+			exit_with_error(err_writer, errnum);
 	}
 
 	pid_t child = fork();
 	if (-1 == child)
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	if (0 == child) {
 		{
 			char xx[] = "XXXXXXXXXXXXXXXXX";
 			sprintf(xx, "%i", getpid());
 			if (-1 == setenv("LISTEN_PID", xx, true))
-				exit_with_err(err_writer, errno);
+				exit_with_error(err_writer, errno);
 		}
 
 		{
 			char xx[] = "XXXXXXXXXXXXXXXXX";
 			sprintf(xx, "%i", atoi(listen_fds) - 1);
 			if (-1 == setenv("LISTEN_FDS", xx, true))
-				exit_with_err(err_writer, errno);
+				exit_with_error(err_writer, errno);
 		}
 
 		if (-1 == dup2(pts, STDIN_FILENO))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == dup2(pts, STDOUT_FILENO))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == dup2(pts, STDERR_FILENO))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == setsid())
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if (-1 == ioctl(pts, TIOCSCTTY))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		execve(command[0U], (char * const *)command, environ);
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 	}
 
 	linted_ko_close(err_writer);
@@ -703,8 +702,8 @@ static void signal_handler(int signo)
 	errno = errnum;
 }
 
-static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
-                        gid_t gid)
+static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
+                        gid_t mapped_gid, gid_t gid)
 {
 	linted_error errnum;
 
@@ -726,18 +725,18 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 			                        "/proc/self/uid_map",
 			                        LINTED_KO_WRONLY);
 			if (errnum != 0)
-				exit_with_error(errnum);
+				exit_with_error(err_writer, errnum);
 			file = xx;
 		}
 
 		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
 		                                mapped_uid, uid);
 		if (errnum != 0)
-			exit_with_error(errnum);
+			exit_with_error(err_writer, errnum);
 
 		errnum = linted_ko_close(file);
 		if (errnum != 0)
-			exit_with_error(errnum);
+			exit_with_error(err_writer, errnum);
 	}
 
 	{
@@ -748,18 +747,18 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 			                        "/proc/self/gid_map",
 			                        LINTED_KO_WRONLY);
 			if (errnum != 0)
-				exit_with_error(errnum);
+				exit_with_error(err_writer, errnum);
 			file = xx;
 		}
 
 		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
 		                                mapped_gid, gid);
 		if (errnum != 0)
-			exit_with_error(errnum);
+			exit_with_error(err_writer, errnum);
 
 		errnum = linted_ko_close(file);
 		if (errnum != 0)
-			exit_with_error(errnum);
+			exit_with_error(err_writer, errnum);
 	}
 }
 
@@ -773,15 +772,15 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 		FILE *xx;
 		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
 		if (errnum != 0)
-			exit_with_err(err_writer, errnum);
+			exit_with_error(err_writer, errnum);
 		fstab = xx;
 	}
 
 	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	if (-1 == chdir(chrootdir))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	for (;;) {
 		errno = 0;
@@ -789,7 +788,7 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 		if (NULL == entry) {
 			errnum = errno;
 			if (errnum != 0)
-				exit_with_err(err_writer, errnum);
+				exit_with_error(err_writer, errnum);
 			break;
 		}
 
@@ -824,35 +823,35 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 
 		if (mkdir_flag) {
 			if (-1 == mkdir(dir, S_IRWXU))
-				exit_with_err(err_writer, errno);
+				exit_with_error(err_writer, errno);
 		} else if (touch_flag) {
 			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
-				exit_with_err(err_writer, errno);
+				exit_with_error(err_writer, errno);
 		}
 
 		if (-1 == mount(fsname, dir, type, mountflags, data))
-			exit_with_err(err_writer, errno);
+			exit_with_error(err_writer, errno);
 
 		if ((mountflags & MS_BIND) != 0U) {
 			mountflags |= MS_REMOUNT;
 			if (-1 == mount(fsname, dir, type, mountflags, data))
-				exit_with_err(err_writer, errno);
+				exit_with_error(err_writer, errno);
 		}
 	}
 
 close_file:
 	if (endmntent(fstab) != 1)
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	/* Magic incantation that clears up /proc/mounts more than
 	 * mount MS_MOVE
 	 */
 	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
 	if (-1 == old_root)
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	if (-1 == my_pivot_root(".", "."))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	/* pivot_root() may or may not affect its current working
 	 * directory.  It is therefore recommended to call chdir("/")
@@ -862,17 +861,17 @@ close_file:
 	 */
 
 	if (-1 == fchdir(old_root))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	errnum = linted_ko_close(old_root);
 	if (errnum != 0)
-		exit_with_err(err_writer, errnum);
+		exit_with_error(err_writer, errnum);
 
 	if (-1 == umount2(".", MNT_DETACH))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 
 	if (-1 == chdir("/"))
-		exit_with_err(err_writer, errno);
+		exit_with_error(err_writer, errno);
 }
 
 enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
@@ -1026,16 +1025,9 @@ free_subopts_str:
 	return 0;
 }
 
-static void exit_with_err(linted_ko writer, linted_error errnum)
+static void exit_with_error(linted_ko writer, linted_error errnum)
 {
 	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
-	_Exit(EXIT_FAILURE);
-}
-
-static void exit_with_error(linted_error errnum)
-{
-	errno = errnum;
-	perror("stuff");
 	_Exit(EXIT_FAILURE);
 }
 
