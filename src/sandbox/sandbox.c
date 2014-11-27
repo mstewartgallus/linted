@@ -35,7 +35,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/capability.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/poll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -80,6 +82,8 @@ struct mount_args
 	bool touch_flag : 1U;
 };
 
+static int signal_pipe_writer;
+
 static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
@@ -118,6 +122,8 @@ static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
                            char const *chrootdir, char const *fstab_path);
 
+static void drain_from_to(int in, int out);
+
 static void do_nothing(int signo);
 static linted_error set_name(char const *name);
 
@@ -127,6 +133,8 @@ static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t my_clone(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
+
+static void signal_handler(int signo);
 
 int main(int argc, char *argv[])
 {
@@ -297,6 +305,39 @@ exit_loop:
 		cwd = xx;
 	}
 
+	linted_ko pt = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+	if (-1 == pt) {
+		perror("posix_openpt");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == grantpt(pt)) {
+		perror("grantpt");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == unlockpt(pt)) {
+		perror("unlockpt");
+		return EXIT_FAILURE;
+	}
+
+	linted_ko pts;
+	{
+		char const *slave_name;
+
+		slave_name = ptsname(pt);
+		if (NULL == slave_name) {
+			perror("ptsname");
+			return EXIT_FAILURE;
+		}
+
+		pts = open(slave_name, O_RDWR | O_NOCTTY | O_CLOEXEC);
+		if (-1 == pts) {
+			perror("open");
+			return EXIT_FAILURE;
+		}
+	}
+
 	gid_t gid = getgid();
 	uid_t uid = getuid();
 
@@ -440,6 +481,32 @@ exit_loop:
 			exit_with_err(err_writer, errno);
 	}
 
+	int signal_pipe_reader;
+	{
+		int xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC))
+			exit_with_err(err_writer, errno);
+		signal_pipe_reader = xx[0U];
+		signal_pipe_writer = xx[1U];
+	}
+
+	{
+		sigset_t sigset;
+		sigemptyset(&sigset);
+		sigaddset(&sigset, SIGCHLD);
+		if (-1 == pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
+			exit_with_err(err_writer, errno);
+	}
+
+	{
+		struct sigaction action = { 0 };
+		action.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+		action.sa_handler = signal_handler;
+		sigfillset(&action.sa_mask);
+		if (-1 == sigaction(SIGCHLD, &action, NULL))
+			exit_with_err(err_writer, errno);
+	}
+
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
@@ -469,6 +536,21 @@ exit_loop:
 			if (-1 == setenv("LISTEN_FDS", xx, true))
 				exit_with_err(err_writer, errno);
 		}
+
+		if (-1 == dup2(pts, STDIN_FILENO))
+			exit_with_err(err_writer, errno);
+
+		if (-1 == dup2(pts, STDOUT_FILENO))
+			exit_with_err(err_writer, errno);
+
+		if (-1 == dup2(pts, STDERR_FILENO))
+			exit_with_err(err_writer, errno);
+
+		if (-1 == setsid())
+			exit_with_err(err_writer, errno);
+
+		if (-1 == ioctl(pts, TIOCSCTTY))
+			exit_with_err(err_writer, errno);
 
 		execve(command[0U], (char * const *)command, environ);
 		exit_with_err(err_writer, errno);
@@ -507,35 +589,118 @@ exit_loop:
 		}
 	}
 
+	bool pt_closed = false;
+	bool input_closed = false;
 	for (;;) {
-		int wait_status;
-		{
-			siginfo_t info;
-			wait_status = waitid(P_ALL, -1, &info, WEXITED);
+		enum { PT_FD, IN_FD, SIGNAL_FD, FDS_COUNT };
+		struct pollfd fds[FDS_COUNT];
+
+		fds[PT_FD].fd = pt_closed ? -1 : pt;
+		fds[PT_FD].events = POLLIN;
+
+		fds[IN_FD].fd = input_closed ? -1 : STDIN_FILENO;
+		fds[IN_FD].events = POLLIN;
+
+		fds[SIGNAL_FD].fd = signal_pipe_reader;
+		fds[SIGNAL_FD].events = POLLIN;
+
+		if (-1 == poll(fds, LINTED_ARRAY_SIZE(fds), -1)) {
+			if (EINTR == errno)
+				continue;
+			perror("poll");
+			return EXIT_FAILURE;
 		}
-		if (-1 == wait_status) {
-			errnum = errno;
-			assert(errnum != 0);
-			assert(errnum != EINVAL);
-			if (errnum != EINTR)
+
+		if (!pt_closed) {
+			if ((fds[PT_FD].revents & POLLNVAL) != 0)
+				pt_closed = 1;
+
+			if ((fds[PT_FD].revents & POLLIN) != 0)
+				drain_from_to(pt, STDOUT_FILENO);
+		}
+
+		if (!input_closed) {
+			if ((fds[IN_FD].revents & POLLNVAL) != 0)
+				input_closed = 1;
+
+			if ((fds[IN_FD].revents & POLLIN) != 0)
+				drain_from_to(STDIN_FILENO, pt);
+		}
+
+		if ((fds[SIGNAL_FD].revents & POLLIN) != 0) {
+			int signo;
+
+			for (;;) {
+				int xx;
+				if (-1 ==
+				    read(signal_pipe_reader, &xx, sizeof xx)) {
+					if (EINTR == errno)
+						continue;
+					perror("read");
+					return EXIT_FAILURE;
+				}
+				signo = xx;
 				break;
+			}
+
+			for (;;) {
+				int xx;
+				switch (waitpid(-1, &xx, WNOHANG)) {
+				case -1:
+					if (ECHILD == errno)
+						goto exit_application;
+					if (EINTR == errno)
+						continue;
+					perror("waitpid");
+					return EXIT_FAILURE;
+
+				case 0:
+					goto exit_wait_loop;
+
+				default:
+					continue;
+				}
+			}
+		exit_wait_loop:
+			;
 		}
 	}
-
-	return errnum;
+exit_application:
+	return EXIT_SUCCESS;
 }
 
-static linted_error set_ptracer(pid_t pid)
+static void drain_from_to(int in, int out)
 {
-	linted_error errnum;
+	for (;;) {
+		char buf[80U];
+		ssize_t bytes_read = read(in, buf, sizeof buf);
+		switch (bytes_read) {
+		case -1:
+			if (EAGAIN == errno)
+				return;
+			perror("read");
+			exit(EXIT_FAILURE);
 
-	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)pid, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		case 0:
+			close(in);
+			close(out);
+			return;
+
+		default:
+			if (-1 == write(out, buf, bytes_read)) {
+				perror("write");
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
 	}
+}
 
-	return 0;
+static void signal_handler(int signo)
+{
+	linted_ko errnum = errno;
+	write(signal_pipe_writer, &signo, sizeof signo);
+	errno = errnum;
 }
 
 static void set_id_maps(uid_t mapped_uid, uid_t uid, gid_t mapped_gid,
@@ -932,6 +1097,19 @@ static linted_error set_name(char const *name)
 
 		return errnum;
 	}
+	return 0;
+}
+
+static linted_error set_ptracer(pid_t pid)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)pid, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
 	return 0;
 }
 
