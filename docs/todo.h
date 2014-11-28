@@ -54,8 +54,4 @@
  *       violations.
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
- *
- * @todo For units check the configuration directory (eg /etc) before
- *       checking the default configuration directory (eg
- *       /usr/local/share/factory/linted/etc).
  */

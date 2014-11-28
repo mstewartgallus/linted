@@ -52,6 +52,14 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
+/**
+ * @file
+ *
+ * @todo Use vfork here. A possible way to use it safely might be to
+ *       kill the parent from the child with SIGKILL. That way I could
+ *       do what I want after the vfork.
+ */
+
 enum {
 	STOP_OPTIONS,
 	HELP,
@@ -517,7 +525,7 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	pid_t child = fork();
+	pid_t child = vfork();
 	if (-1 == child)
 		exit_with_error(err_writer, errno);
 

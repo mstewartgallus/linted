@@ -168,7 +168,7 @@ void linted_spawn_file_actions_destroy(
 static char const fd_str[] = " /proc/self/fd/";
 
 /**
- * @bug assert isn't AS-safe.
+ * @todo Make linted_spawn use vfork instead.
  */
 linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
                           struct linted_spawn_file_actions const *file_actions,
