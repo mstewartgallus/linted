@@ -525,7 +525,7 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	pid_t child = vfork();
+	pid_t child = fork();
 	if (-1 == child)
 		exit_with_error(err_writer, errno);
 
