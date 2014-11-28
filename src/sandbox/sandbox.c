@@ -39,6 +39,7 @@
 #include <sys/mount.h>
 #include <sys/poll.h>
 #include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -75,8 +76,7 @@ enum {
 	NEWIPC_ARG,
 	NEWNET_ARG,
 	NEWNS_ARG,
-	NEWUTS_ARG,
-	PID_OUT_FD
+	NEWUTS_ARG
 };
 
 struct mount_args
@@ -109,13 +109,10 @@ static char const *const argstrs[] = {
 	    /**/ [NEWIPC_ARG] = "--clone-newipc",
 	    /**/ [NEWNET_ARG] = "--clone-newnet",
 	    /**/ [NEWNS_ARG] = "--clone-newns",
-	    /**/ [NEWUTS_ARG] = "--clone-newuts",
-	    /**/ [PID_OUT_FD] = "--pidoutfd"
+	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
-
-static linted_error set_ptracer(pid_t pid);
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp,
@@ -173,7 +170,6 @@ int main(int argc, char *argv[])
 	char const *priority = NULL;
 	char const *chrootdir = NULL;
 	char const *fstab = NULL;
-	char const *pid_out_fd = NULL;
 	bool have_command = false;
 	size_t command_start;
 
@@ -265,13 +261,6 @@ int main(int argc, char *argv[])
 		case NEWUTS_ARG:
 			clone_flags |= CLONE_NEWUTS;
 			break;
-
-		case PID_OUT_FD:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			pid_out_fd = argv[ii];
-			break;
 		}
 	}
 exit_loop:
@@ -351,8 +340,6 @@ exit_loop:
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
 
-	pid_t spawner = getppid();
-
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -410,15 +397,6 @@ exit_loop:
 		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
 
 		if (-1 == setgroups(0U, NULL))
-			exit_with_error(err_writer, errno);
-	}
-
-	/* Due to a kernel bug new users aren't protected from ptrace
-	 * anyways.
-	 */
-	if (!((clone_flags & CLONE_NEWUSER) != 0)) {
-		errnum = set_ptracer(spawner);
-		if (errnum != 0)
 			exit_with_error(err_writer, errno);
 	}
 
@@ -522,9 +500,10 @@ exit_loop:
 				exit_with_error(err_writer, errno);
 		}
 
+		int num_fds = atoi(listen_fds);
 		{
 			char xx[] = "XXXXXXXXXXXXXXXXX";
-			sprintf(xx, "%i", atoi(listen_fds) - 1);
+			sprintf(xx, "%i", num_fds);
 			if (-1 == setenv("LISTEN_FDS", xx, true))
 				exit_with_error(err_writer, errno);
 		}
@@ -579,26 +558,6 @@ exit_loop:
 				assert(0);
 			}
 		}
-	}
-
-	if (pid_out_fd != NULL) {
-		int fd = atoi(pid_out_fd);
-
-		char dummy[] = { 0 };
-		struct iovec iovecs[] = { { .iov_base = dummy,
-				            .iov_len = sizeof dummy } };
-
-		struct msghdr message = { 0 };
-		message.msg_iov = iovecs;
-		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-		message.msg_control = NULL;
-		message.msg_controllen = 0U;
-
-		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL)) {
-			perror("sendmsg");
-			return EXIT_FAILURE;
-		}
-		linted_ko_close(fd);
 	}
 
 	bool pt_closed = false;
@@ -1086,19 +1045,6 @@ static linted_error set_name(char const *name)
 
 		return errnum;
 	}
-	return 0;
-}
-
-static linted_error set_ptracer(pid_t pid)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)pid, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
 	return 0;
 }
 

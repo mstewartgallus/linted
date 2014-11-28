@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
@@ -62,6 +64,8 @@ struct linted_spawn_file_actions
 struct linted_spawn_attr
 {
 	sigset_t const *mask;
+	unsigned long ptrace_options;
+	bool ptracing : 1U;
 };
 
 static void default_signals(linted_ko writer);
@@ -69,6 +73,9 @@ static void default_signals(linted_ko writer);
 static void pid_to_str(char *buf, pid_t pid);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
+
+static linted_error set_ptracer(pid_t tracer);
+static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -84,6 +91,8 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->mask = NULL;
+	attr->ptrace_options = 0;
+	attr->ptracing = false;
 
 	*attrp = attr;
 	return 0;
@@ -98,6 +107,13 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set)
 {
 	attr->mask = set;
+}
+
+void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr,
+                                 unsigned long options)
+{
+	attr->ptracing = true;
+	attr->ptrace_options = options;
 }
 
 linted_error
@@ -184,9 +200,13 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		return EBADF;
 
 	sigset_t const *child_mask = NULL;
+	bool ptracing = false;
+	unsigned long ptrace_options = 0UL;
 
 	if (attr != NULL) {
 		child_mask = attr->mask;
+		ptracing = attr->ptracing;
+		ptrace_options = attr->ptrace_options;
 	}
 
 	size_t fd_len;
@@ -249,6 +269,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 			}
 		}
 	}
+
+	pid_t parent = getpid();
 
 	{
 		sigset_t sigset;
@@ -321,6 +343,12 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		if (errnum != 0)
 			return errnum;
 
+		if (ptracing) {
+			errnum = ptrace_seize(child, ptrace_options);
+			if (errnum != 0)
+				return errnum;
+		}
+
 		if (childp != NULL)
 			*childp = child;
 
@@ -382,6 +410,12 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 				exit_with_error(err_writer, EINVAL);
 			}
 		}
+	}
+
+	if (ptracing) {
+		errnum = set_ptracer(parent);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
 	}
 
 	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
@@ -515,4 +549,30 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_ptracer(pid_t tracer)
+{
+	linted_error errnum;
+
+	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)tracer, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }

@@ -147,6 +147,7 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
 static linted_error on_process_sigtrap(pid_t pid, int exit_status);
 static linted_error on_event_exit(pid_t pid, int exit_status);
 static linted_error on_event_stop(pid_t pid, int exit_status);
+static linted_error on_event_clone(pid_t pid, int exit_status);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
@@ -166,10 +167,13 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name);
 static linted_error get_process_service_name(pid_t pid, char **service_namep);
 static linted_error get_process_comm(linted_ko *kop, pid_t pid);
 static linted_error get_process_children(linted_ko *kop, pid_t pid);
+static linted_error is_child(pid_t pid, bool *isp);
 static linted_error kill_process_children(pid_t pid, int signo);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
+static linted_error ptrace_detach(pid_t pid, int signo);
+static linted_error ptrace_setoptions(pid_t pid, unsigned options);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 static linted_error set_death_sig(int signum);
 
@@ -921,7 +925,10 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 			goto service_not_found;
 		child = xx;
 	}
-	goto ptrace_child;
+
+	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
+
+	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
 service_not_found:
 	if (errnum != ESRCH)
@@ -1013,43 +1020,6 @@ envvar_allocate_succeeded:
 	if (files != NULL)
 		files_size = null_list_size(files);
 
-	linted_ko pid_reader;
-	linted_ko pid_writer;
-	{
-		linted_ko xx[2U];
-		if (-1 ==
-		    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, xx)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_envvars;
-		}
-		pid_reader = xx[0U];
-		pid_writer = xx[1U];
-	}
-
-	{
-		int xx = true;
-		if (-1 == setsockopt(pid_reader, SOL_SOCKET, SO_PASSCRED, &xx,
-		                     sizeof xx)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_pid_pipes;
-		}
-	}
-
-	if (-1 == shutdown(pid_reader, SHUT_WR)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_pid_pipes;
-	}
-
-	if (-1 == shutdown(pid_writer, SHUT_RD)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_pid_pipes;
-	}
-
-	bool pid_out = true;
 	bool drop_caps = true;
 	bool set_priority = true;
 
@@ -1068,8 +1038,6 @@ envvar_allocate_succeeded:
 	if (chdir_path != NULL)
 		num_options += 2U;
 	if (set_priority)
-		num_options += 2U;
-	if (pid_out)
 		num_options += 2U;
 
 	if (clone_newuser)
@@ -1131,13 +1099,6 @@ envvar_allocate_succeeded:
 		args[ix++] = "--priority";
 		args[ix++] = prio_str;
 	}
-	char pid_out_str[] = "XXXXXXXXXXXXXXXX";
-	if (pid_out) {
-		sprintf(pid_out_str, "%lu", 3U + files_size);
-
-		args[ix++] = "--pidoutfd";
-		args[ix++] = pid_out_str;
-	}
 
 	if (clone_newuser)
 		args[ix++] = "--clone-newuser";
@@ -1177,6 +1138,9 @@ envvar_allocate_succeeded:
 	}
 
 	linted_spawn_attr_setmask(attr, orig_mask);
+	linted_spawn_attr_setptrace(attr, PTRACE_O_TRACECLONE |
+	                                      PTRACE_O_TRACEFORK |
+	                                      PTRACE_O_TRACEVFORK);
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;
@@ -1330,11 +1294,6 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 	}
 
-	errnum = linted_spawn_file_actions_adddup2(&file_actions, pid_writer,
-	                                           kos_opened);
-	if (errnum != 0)
-		goto destroy_proc_kos;
-
 	pid_t sandbox_spawner;
 	{
 		pid_t xx;
@@ -1345,72 +1304,7 @@ envvar_allocate_succeeded:
 		sandbox_spawner = xx;
 	}
 
-	do {
-		int status;
-		{
-			siginfo_t info;
-			status = waitid(P_PID, sandbox_spawner, &info, WEXITED);
-		}
-		if (-1 == status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
-	if (errnum != 0) {
-		assert(errnum != EINVAL);
-		assert(errnum != ECHILD);
-		assert(false);
-	}
-
-	{
-		char buf[CMSG_LEN(sizeof(struct ucred))];
-
-		char dummy[1U];
-		struct iovec iovecs[] = { { .iov_base = dummy,
-				            .iov_len = sizeof dummy } };
-
-		struct msghdr message = { 0 };
-		message.msg_iov = iovecs;
-		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-		message.msg_control = buf;
-		message.msg_controllen = sizeof buf;
-
-		ssize_t bytes_recved = recvmsg(pid_reader, &message, 0);
-		if (0 == bytes_recved) {
-			errnum = EINVAL;
-			goto destroy_proc_kos;
-		}
-
-		if (-1 == bytes_recved) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto destroy_proc_kos;
-		}
-
-		if (bytes_recved != sizeof dummy) {
-			errnum = EINVAL;
-			goto destroy_proc_kos;
-		}
-
-		bool cred_init = false;
-		struct ucred cred;
-		for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&message);
-		     cmsg != NULL; cmsg = CMSG_NXTHDR(&message, cmsg)) {
-			if (SCM_CREDENTIALS == cmsg->cmsg_type) {
-				cred_init = true;
-				memcpy(&cred, CMSG_DATA(cmsg), sizeof cred);
-			}
-		}
-
-		if (!cred_init) {
-			errnum = EINVAL;
-			goto destroy_proc_kos;
-		}
-
-		child = cred.pid;
-	}
+/* Let the child be leaked, we'll get the wait later */
 
 destroy_proc_kos:
 	for (size_t jj = 0; jj < kos_opened; ++jj)
@@ -1426,26 +1320,12 @@ destroy_file_actions:
 free_args:
 	linted_mem_free(args);
 
-close_pid_pipes : {
-	linted_error close_errnum = linted_ko_close(pid_writer);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
 free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
 		linted_mem_free(*envp);
 	linted_mem_free(envvars);
 
-ptrace_child:
-	if (errnum != 0)
-		return errnum;
-
-	fprintf(stderr, "ptracing service %s: %i\n", service_name, child);
-
-	errnum = ptrace_seize(child, PTRACE_O_TRACEEXIT);
-
-	return 0;
+	return errnum;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
@@ -1514,6 +1394,32 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		was_signal = true;
 
 	case CLD_EXITED: {
+		bool is;
+		{
+			bool xx;
+			errnum = is_child(pid, &xx);
+			if (errnum != 0)
+				return errnum;
+			is = xx;
+		}
+		if (is) {
+			do {
+				int wait_status;
+				{
+					siginfo_t info;
+					wait_status =
+					    waitid(P_PID, pid, &info, WEXITED);
+				}
+				if (-1 == wait_status) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				} else {
+					errnum = 0;
+				}
+			} while (EINTR == errnum);
+			return errnum;
+		}
+
 		char *service_name;
 		{
 			char *xx;
@@ -1556,8 +1462,13 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		if (errnum != 0)
 			return errnum;
 
-		errnum = service_activate(unit, cwd, chrootdir, sandbox,
-		                          orig_mask, unit_db);
+		/**
+		 * @todo distinguish between sandbox creators and sandboxes
+		 */
+		if (0) {
+			errnum = service_activate(unit, cwd, chrootdir, sandbox,
+			                          orig_mask, unit_db);
+		}
 		break;
 	}
 
@@ -1600,12 +1511,13 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 {
 	int event = exit_status >> 8U;
+	int exit_code = WTERMSIG(exit_status);
 	switch (event) {
 	case 0:
-		return on_process_sigtrap(pid, exit_status);
+		return on_process_sigtrap(pid, exit_code);
 
 	case PTRACE_EVENT_EXIT:
-		return on_event_exit(pid, exit_status);
+		return on_event_exit(pid, exit_code);
 
 	/* Even if we never use PTRACE_O_TRACECLONE,
 	 * PTRACE_O_TRACEFORK, PTRACE_O_TRACEVFORK, or
@@ -1613,7 +1525,12 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 	 * process is sent SIGCONT.
 	 */
 	case PTRACE_EVENT_STOP:
-		return on_event_stop(pid, exit_status);
+		return on_event_stop(pid, exit_code);
+
+	case PTRACE_EVENT_VFORK:
+	case PTRACE_EVENT_FORK:
+	case PTRACE_EVENT_CLONE:
+		return on_event_clone(pid, exit_code);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -1710,6 +1627,7 @@ restart_process:
 	linted_error cont_errnum = ptrace_cont(pid, exit_status);
 	if (0 == errnum)
 		errnum = cont_errnum;
+
 	return errnum;
 }
 
@@ -1749,9 +1667,51 @@ static linted_error on_event_stop(pid_t pid, int exit_status)
 		}
 	} while (EINTR == errnum);
 
+	char *service_name;
+	{
+		char *xx;
+		errnum = get_process_service_name(pid, &xx);
+		if (errnum != 0)
+			return errnum;
+		service_name = xx;
+	}
+
+	fprintf(stderr, "ptracing sandbox %s, %i\n", service_name, pid);
+
+	linted_mem_free(service_name);
+
+	errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+
 	linted_error cont_errnum = ptrace_cont(pid, exit_status);
 	if (0 == errnum)
 		errnum = cont_errnum;
+
+	return errnum;
+}
+
+/* A sandbox creator is creating a sandbox */
+static linted_error on_event_clone(pid_t pid, int exit_status)
+{
+	linted_error errnum = 0;
+
+	do {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_PID, pid, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
+
+	linted_error detach_errnum = ptrace_detach(pid, exit_status);
+	if (0 == errnum)
+		errnum = detach_errnum;
+
 	return errnum;
 }
 
@@ -2032,6 +1992,71 @@ close_file:
 	}
 
 	*service_namep = buf;
+
+	return errnum;
+}
+
+static linted_error is_child(pid_t pid, bool *isp)
+{
+	linted_error errnum = 0;
+
+	linted_ko children;
+	{
+		linted_ko xx;
+		errnum = get_process_children(&xx, getpid());
+		if (errnum != 0)
+			return errnum;
+		children = xx;
+	}
+
+	FILE *file = fdopen(children, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(children);
+
+		return errnum;
+	}
+
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	bool is = false;
+	for (;;) {
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			ssize_t zz = getdelim(&xx, &yy, ' ', file);
+			if (-1 == zz)
+				goto getdelim_failed;
+			buf = xx;
+			buf_size = yy;
+			goto getdelim_succeeded;
+		}
+	getdelim_failed:
+		errnum = errno;
+		if (0 == errnum)
+			errnum = ESRCH;
+		goto free_buf;
+
+	getdelim_succeeded:
+		;
+		pid_t child = strtol(buf, NULL, 10);
+		if (child == pid) {
+			is = true;
+			break;
+		}
+	}
+
+	*isp = is;
+
+free_buf:
+	linted_mem_free(buf);
+
+	fclose(file);
 
 	return errnum;
 }
@@ -2382,6 +2407,34 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 
 	if (-1 ==
 	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_detach(pid_t pid, int signo)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    ptrace(PTRACE_DETACH, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_setoptions(pid_t pid, unsigned options)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL,
+	                 (void *)(uintptr_t)options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

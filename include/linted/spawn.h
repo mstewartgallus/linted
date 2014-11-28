@@ -35,17 +35,18 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
 void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set);
+void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr,
+                                 unsigned long options);
+
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp);
-linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **file_actionsp, linted_ko oldko,
-    linted_ko newko);
 void linted_spawn_file_actions_destroy(
     struct linted_spawn_file_actions *file_actions);
 
-/**
- * Spawns a ptraced child
- */
+linted_error linted_spawn_file_actions_adddup2(
+    struct linted_spawn_file_actions **file_actionsp, linted_ko oldko,
+    linted_ko newko);
+
 linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *path,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
