@@ -44,7 +44,6 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -147,7 +146,7 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
                                     struct linted_unit_db *unit_db,
                                     sigset_t const *orig_mask,
                                     char const *chrootdir, char const *sandbox);
-static linted_error on_child_trapped(pid_t ppid, pid_t pid, int exit_status);
+static linted_error on_child_trapped(pid_t pid, int exit_status);
 static linted_error on_child_signaled(pid_t pid, int signo);
 static linted_error on_child_about_to_exit(pid_t pid);
 static linted_error on_child_debug_stopped(pid_t pid);
@@ -188,6 +187,8 @@ static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
                                 linted_ko ko);
 static void conn_discard(struct conn *conn);
 
+static void clear_wait(pid_t pid);
+
 static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
@@ -205,7 +206,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	pid_t ppid = getppid();
 	linted_dir private_run_dir = kos[0U];
 
 	sigset_t orig_mask;
@@ -406,7 +406,6 @@ retry_bind:
 	linted_asynch_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
 	                                  WEXITED | WNOWAIT);
 	sandbox_data.pool = pool;
-	sandbox_data.parent_process = ppid;
 	sandbox_data.cwd = cwd;
 	sandbox_data.chrootdir = chrootdir;
 	sandbox_data.sandbox = sandbox;
@@ -1362,7 +1361,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	struct wait_service_data *wait_service_data =
 	    linted_asynch_task_waitid_data(sandbox_task);
 	struct linted_asynch_pool *pool = wait_service_data->pool;
-	pid_t ppid = wait_service_data->parent_process;
 
 	linted_ko cwd = wait_service_data->cwd;
 	char const *chrootdir = wait_service_data->chrootdir;
@@ -1390,7 +1388,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		break;
 
 	case CLD_TRAPPED:
-		errnum = on_child_trapped(ppid, pid, exit_status);
+		errnum = on_child_trapped(pid, exit_status);
 		break;
 
 	default:
@@ -1444,21 +1442,8 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 		is = xx;
 	}
 	if (is) {
-		do {
-			int wait_status;
-			{
-				siginfo_t info;
-				wait_status =
-				    waitid(P_PID, pid, &info, WEXITED);
-			}
-			if (-1 == wait_status) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
-			}
-		} while (EINTR == errnum);
-		return errnum;
+		clear_wait(pid);
+		return 0;
 	}
 
 	char *service_name;
@@ -1486,27 +1471,13 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	/* This has to be done first so that service_activate
 	 * isn't stupid and thinks that the zombie is still
 	 * living. */
-	do {
-		int wait_status;
-		{
-			siginfo_t info;
-			wait_status = waitid(P_PID, pid, &info, WEXITED);
-		}
-		if (-1 == wait_status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
-	if (errnum != 0)
-		return errnum;
+	clear_wait(pid);
 
 	return service_activate(unit, cwd, chrootdir, sandbox, orig_mask,
 	                        unit_db);
 }
 
-static linted_error on_child_trapped(pid_t ppid, pid_t pid, int exit_status)
+static linted_error on_child_trapped(pid_t pid, int exit_status)
 {
 	int event = exit_status >> 8U;
 	switch (event) {
@@ -1538,22 +1509,7 @@ static linted_error on_child_signaled(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
-	do {
-		int wait_status;
-		{
-			siginfo_t info;
-			wait_status = waitid(P_PID, pid, &info, WEXITED);
-		}
-		if (-1 == wait_status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
-
-	if (pid == getppid())
-		goto restart_process;
+	clear_wait(pid);
 
 	switch (signo) {
 	default:
@@ -1632,15 +1588,8 @@ static linted_error on_child_about_to_exit(pid_t pid)
 
 	linted_error errnum = 0;
 
-	if (pid == getppid())
-		goto restart_process;
-
 	errnum = kill_process_children(pid, 0);
-	if (errnum != 0)
-		return errnum;
 
-restart_process:
-	;
 	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
 		errnum = cont_errnum;
@@ -1652,26 +1601,14 @@ static linted_error on_child_debug_stopped(pid_t pid)
 {
 	linted_error errnum = 0;
 
-	do {
-		int wait_status;
-		{
-			siginfo_t info;
-			wait_status = waitid(P_PID, pid, &info, WEXITED);
-		}
-		if (-1 == wait_status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
+	clear_wait(pid);
 
 	char *service_name;
 	{
 		char *xx;
 		errnum = get_process_service_name(pid, &xx);
 		if (errnum != 0)
-			return errnum;
+			goto restart_process;
 		service_name = xx;
 	}
 
@@ -1681,6 +1618,8 @@ static linted_error on_child_debug_stopped(pid_t pid)
 
 	errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 
+restart_process:
+	;
 	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
 		errnum = cont_errnum;
@@ -1693,19 +1632,7 @@ static linted_error on_child_about_to_clone(pid_t pid)
 {
 	linted_error errnum = 0;
 
-	do {
-		int wait_status;
-		{
-			siginfo_t info;
-			wait_status = waitid(P_PID, pid, &info, WEXITED);
-		}
-		if (-1 == wait_status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		} else {
-			errnum = 0;
-		}
-	} while (EINTR == errnum);
+	clear_wait(pid);
 
 	linted_error detach_errnum = ptrace_detach(pid, 0);
 	if (0 == errnum)
@@ -2387,33 +2314,6 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid)
 	return errnum;
 }
 
-static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
-{
-	linted_error errnum;
-
-	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_cont(pid_t pid, int signo)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
 static linted_error ptrace_detach(pid_t pid, int signo)
 {
 	linted_error errnum;
@@ -2534,4 +2434,55 @@ static void conn_discard(struct conn *conn)
 	linted_pool_node_discard(&conn->node);
 	linted_ko_close(conn->ko);
 	linted_mem_free(conn);
+}
+
+static void clear_wait(pid_t pid)
+{
+	for (;;) {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_PID, pid, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			linted_error errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			if (EINTR == errnum)
+				continue;
+
+			assert(errnum != ECHILD);
+			assert(errnum != EINVAL);
+			assert(false);
+			break;
+		}
+
+		break;
+	}
+}
+
+static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_cont(pid_t pid, int signo)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }
