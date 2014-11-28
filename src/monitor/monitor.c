@@ -143,11 +143,15 @@ static linted_error on_status_request(union linted_admin_request const *request,
 static linted_error on_stop_request(union linted_admin_request const *request,
                                     union linted_admin_reply *reply);
 
-static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status);
-static linted_error on_process_sigtrap(pid_t pid, int exit_status);
-static linted_error on_event_exit(pid_t pid, int exit_status);
-static linted_error on_event_stop(pid_t pid, int exit_status);
-static linted_error on_event_clone(pid_t pid, int exit_status);
+static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
+                                    struct linted_unit_db *unit_db,
+                                    sigset_t const *orig_mask,
+                                    char const *chrootdir, char const *sandbox);
+static linted_error on_child_trapped(pid_t ppid, pid_t pid, int exit_status);
+static linted_error on_child_signaled(pid_t pid, int signo);
+static linted_error on_child_about_to_exit(pid_t pid);
+static linted_error on_child_debug_stopped(pid_t pid);
+static linted_error on_child_about_to_clone(pid_t pid);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
@@ -1387,93 +1391,16 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		exit_code = exit_info.si_code;
 	}
 
-	bool was_signal = false;
 	switch (exit_code) {
 	case CLD_DUMPED:
 	case CLD_KILLED:
-		was_signal = true;
-
-	case CLD_EXITED: {
-		bool is;
-		{
-			bool xx;
-			errnum = is_child(pid, &xx);
-			if (errnum != 0)
-				return errnum;
-			is = xx;
-		}
-		if (is) {
-			do {
-				int wait_status;
-				{
-					siginfo_t info;
-					wait_status =
-					    waitid(P_PID, pid, &info, WEXITED);
-				}
-				if (-1 == wait_status) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-				} else {
-					errnum = 0;
-				}
-			} while (EINTR == errnum);
-			return errnum;
-		}
-
-		char *service_name;
-		{
-			char *xx;
-			errnum = get_process_service_name(pid, &xx);
-			if (errnum != 0)
-				return errnum;
-			service_name = xx;
-		}
-
-		if (was_signal) {
-			fprintf(stderr, "%s %i killed due to signal %s\n",
-			        service_name, pid, strsignal(exit_status));
-		} else {
-			fprintf(stderr, "%s %i exited with %i\n", service_name,
-			        pid, exit_status);
-		}
-
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit_by_name(unit_db, service_name);
-
-		linted_mem_free(service_name);
-
-		/* This has to be done first so that service_activate
-		 * isn't stupid and thinks that the zombie is still
-		 * living. */
-		do {
-			int wait_status;
-			{
-				siginfo_t info;
-				wait_status =
-				    waitid(P_PID, pid, &info, WEXITED);
-			}
-			if (-1 == wait_status) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			} else {
-				errnum = 0;
-			}
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			return errnum;
-
-		/**
-		 * @todo distinguish between sandbox creators and sandboxes
-		 */
-		if (0) {
-			errnum = service_activate(unit, cwd, chrootdir, sandbox,
-			                          orig_mask, unit_db);
-		}
+	case CLD_EXITED:
+		errnum = on_child_exited(exit_code, pid, cwd, unit_db,
+		                         orig_mask, chrootdir, sandbox);
 		break;
-	}
 
 	case CLD_TRAPPED:
-		errnum = on_process_trap(ppid, pid, exit_status);
+		errnum = on_child_trapped(ppid, pid, exit_status);
 		break;
 
 	default:
@@ -1508,16 +1435,96 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 	return 0;
 }
 
-static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
+static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
+                                    struct linted_unit_db *unit_db,
+                                    sigset_t const *orig_mask,
+                                    char const *chrootdir, char const *sandbox)
+{
+	linted_error errnum = 0;
+
+	bool was_signal =
+	    CLD_DUMPED == exit_status || CLD_KILLED == exit_status;
+
+	bool is;
+	{
+		bool xx;
+		errnum = is_child(pid, &xx);
+		if (errnum != 0)
+			return errnum;
+		is = xx;
+	}
+	if (is) {
+		do {
+			int wait_status;
+			{
+				siginfo_t info;
+				wait_status =
+				    waitid(P_PID, pid, &info, WEXITED);
+			}
+			if (-1 == wait_status) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			} else {
+				errnum = 0;
+			}
+		} while (EINTR == errnum);
+		return errnum;
+	}
+
+	char *service_name;
+	{
+		char *xx;
+		errnum = get_process_service_name(pid, &xx);
+		if (errnum != 0)
+			return errnum;
+		service_name = xx;
+	}
+
+	if (was_signal) {
+		fprintf(stderr, "%s %i killed due to signal %s\n", service_name,
+		        pid, strsignal(exit_status));
+	} else {
+		fprintf(stderr, "%s %i exited with %i\n", service_name, pid,
+		        exit_status);
+	}
+
+	struct linted_unit *unit =
+	    linted_unit_db_get_unit_by_name(unit_db, service_name);
+
+	linted_mem_free(service_name);
+
+	/* This has to be done first so that service_activate
+	 * isn't stupid and thinks that the zombie is still
+	 * living. */
+	do {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_PID, pid, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		} else {
+			errnum = 0;
+		}
+	} while (EINTR == errnum);
+	if (errnum != 0)
+		return errnum;
+
+	return service_activate(unit, cwd, chrootdir, sandbox, orig_mask,
+	                        unit_db);
+}
+
+static linted_error on_child_trapped(pid_t ppid, pid_t pid, int exit_status)
 {
 	int event = exit_status >> 8U;
-	int exit_code = WTERMSIG(exit_status);
 	switch (event) {
 	case 0:
-		return on_process_sigtrap(pid, exit_code);
+		return on_child_signaled(pid, WSTOPSIG(exit_status));
 
 	case PTRACE_EVENT_EXIT:
-		return on_event_exit(pid, exit_code);
+		return on_child_about_to_exit(pid);
 
 	/* Even if we never use PTRACE_O_TRACECLONE,
 	 * PTRACE_O_TRACEFORK, PTRACE_O_TRACEVFORK, or
@@ -1525,19 +1532,19 @@ static linted_error on_process_trap(pid_t ppid, pid_t pid, int exit_status)
 	 * process is sent SIGCONT.
 	 */
 	case PTRACE_EVENT_STOP:
-		return on_event_stop(pid, exit_code);
+		return on_child_debug_stopped(pid);
 
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
 	case PTRACE_EVENT_CLONE:
-		return on_event_clone(pid, exit_code);
+		return on_child_about_to_clone(pid);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_process_sigtrap(pid_t pid, int exit_status)
+static linted_error on_child_signaled(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
@@ -1558,7 +1565,7 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 	if (pid == getppid())
 		goto restart_process;
 
-	switch (exit_status) {
+	switch (signo) {
 	default:
 		goto restart_process;
 
@@ -1567,7 +1574,7 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 	case SIGQUIT:
 	case SIGTERM:
 		/* Propagate to the rest of the sandbox */
-		errnum = kill_process_children(pid, exit_status);
+		errnum = kill_process_children(pid, signo);
 		break;
 
 	case SIGCHLD: {
@@ -1624,14 +1631,13 @@ static linted_error on_process_sigtrap(pid_t pid, int exit_status)
 
 restart_process:
 	;
-	linted_error cont_errnum = ptrace_cont(pid, exit_status);
+	linted_error cont_errnum = ptrace_cont(pid, signo);
 	if (0 == errnum)
 		errnum = cont_errnum;
-
 	return errnum;
 }
 
-static linted_error on_event_exit(pid_t pid, int exit_status)
+static linted_error on_child_about_to_exit(pid_t pid)
 {
 
 	linted_error errnum = 0;
@@ -1639,17 +1645,20 @@ static linted_error on_event_exit(pid_t pid, int exit_status)
 	if (pid == getppid())
 		goto restart_process;
 
-	errnum = kill_process_children(pid, SIGKILL);
+	errnum = kill_process_children(pid, 0);
 	if (errnum != 0)
 		return errnum;
 
 restart_process:
-	ptrace_cont(pid, SIGKILL);
+	;
+	linted_error cont_errnum = ptrace_cont(pid, 0);
+	if (0 == errnum)
+		errnum = cont_errnum;
 
 	return errnum;
 }
 
-static linted_error on_event_stop(pid_t pid, int exit_status)
+static linted_error on_child_debug_stopped(pid_t pid)
 {
 	linted_error errnum = 0;
 
@@ -1682,7 +1691,7 @@ static linted_error on_event_stop(pid_t pid, int exit_status)
 
 	errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 
-	linted_error cont_errnum = ptrace_cont(pid, exit_status);
+	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
 		errnum = cont_errnum;
 
@@ -1690,7 +1699,7 @@ static linted_error on_event_stop(pid_t pid, int exit_status)
 }
 
 /* A sandbox creator is creating a sandbox */
-static linted_error on_event_clone(pid_t pid, int exit_status)
+static linted_error on_child_about_to_clone(pid_t pid)
 {
 	linted_error errnum = 0;
 
@@ -1708,7 +1717,7 @@ static linted_error on_event_clone(pid_t pid, int exit_status)
 		}
 	} while (EINTR == errnum);
 
-	linted_error detach_errnum = ptrace_detach(pid, exit_status);
+	linted_error detach_errnum = ptrace_detach(pid, 0);
 	if (0 == errnum)
 		errnum = detach_errnum;
 
