@@ -27,10 +27,10 @@
  *
  * `init` is the top level service that contains everything using
  * `PR_SET_CHILD_SUBREAPER`. All it does is monitor and restart the
- * `monitor` process.
+ * `monitor` process and delegate signals to it.
  *
  * Underneath `init` the `monitor` process monitors and restarts
- * service processes.
+ * service processes and delegates signals.
  *
  * Service processes underneath `init` using `PR_SET_CHILD_SUBREAPER`
  * or `CLONE_NEWPID` contain underneath them similarly named processes

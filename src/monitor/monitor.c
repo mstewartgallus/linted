@@ -396,16 +396,6 @@ retry_bind:
 	linted_asynch_pool_submit(
 	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
 
-	for (;;) {
-		errnum = ptrace_seize(ppid, 0U);
-		if (errnum != EPERM)
-			break;
-
-		sched_yield();
-	}
-	if (errnum != 0)
-		goto destroy_confs;
-
 	/**
 	 * @todo Warn about unactivated units.
 	 */
