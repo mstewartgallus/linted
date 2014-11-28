@@ -90,7 +90,7 @@ struct mount_args
 	bool touch_flag : 1U;
 };
 
-static int signal_pipe_writer;
+static volatile sig_atomic_t waitable_process_pending = false;
 
 static struct sock_fprog const default_filter;
 
@@ -141,7 +141,7 @@ static linted_error set_seccomp(struct sock_fprog const *program);
 static pid_t my_clone(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
-static void signal_handler(int signo);
+static void sigchld_handler(int signo);
 
 int main(int argc, char *argv[])
 {
@@ -425,24 +425,6 @@ exit_loop:
 	if (fstab != NULL)
 		chroot_process(err_writer, cwd, chrootdir, fstab);
 
-	if (pid_out_fd != NULL) {
-		int fd = atoi(pid_out_fd);
-
-		char dummy[] = { 0 };
-		struct iovec iovecs[] = { { .iov_base = dummy,
-				            .iov_len = sizeof dummy } };
-
-		struct msghdr message = { 0 };
-		message.msg_iov = iovecs;
-		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
-		message.msg_control = NULL;
-		message.msg_controllen = 0U;
-
-		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL))
-			exit_with_error(err_writer, errno);
-		linted_ko_close(fd);
-	}
-
 	if (priority != NULL) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority)))
 			exit_with_error(err_writer, errno);
@@ -488,15 +470,6 @@ exit_loop:
 			exit_with_error(err_writer, errno);
 	}
 
-	int signal_pipe_reader;
-	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC))
-			exit_with_error(err_writer, errno);
-		signal_pipe_reader = xx[0U];
-		signal_pipe_writer = xx[1U];
-	}
-
 	{
 		sigset_t sigset;
 		sigemptyset(&sigset);
@@ -505,10 +478,22 @@ exit_loop:
 			exit_with_error(err_writer, errno);
 	}
 
+	sigset_t sigchld_unblocked;
+	{
+		sigset_t sigset;
+		sigemptyset(&sigset);
+		sigaddset(&sigset, SIGCHLD);
+		if (-1 ==
+		    pthread_sigmask(SIG_BLOCK, &sigset, &sigchld_unblocked))
+			exit_with_error(err_writer, errno);
+	}
+
+	/* We do not use SA_RESTART here so that we get an EINTR on
+	 * ppoll and can check if a waitable process is pending */
 	{
 		struct sigaction action = { 0 };
-		action.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-		action.sa_handler = signal_handler;
+		action.sa_flags = SA_NOCLDSTOP;
+		action.sa_handler = sigchld_handler;
 		sigfillset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL))
 			exit_with_error(err_writer, errno);
@@ -581,7 +566,7 @@ exit_loop:
 	 * can observe it and propagate it to it's children as well.
 	 */
 	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
-	if (1 == getpid()) {
+	if ((clone_flags & CLONE_NEWPID) != 0) {
 		/* Delegate the exit signal to children and then exit */
 		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
 		     ++ii) {
@@ -596,10 +581,30 @@ exit_loop:
 		}
 	}
 
+	if (pid_out_fd != NULL) {
+		int fd = atoi(pid_out_fd);
+
+		char dummy[] = { 0 };
+		struct iovec iovecs[] = { { .iov_base = dummy,
+				            .iov_len = sizeof dummy } };
+
+		struct msghdr message = { 0 };
+		message.msg_iov = iovecs;
+		message.msg_iovlen = LINTED_ARRAY_SIZE(iovecs);
+		message.msg_control = NULL;
+		message.msg_controllen = 0U;
+
+		if (-1 == sendmsg(fd, &message, MSG_NOSIGNAL)) {
+			perror("sendmsg");
+			return EXIT_FAILURE;
+		}
+		linted_ko_close(fd);
+	}
+
 	bool pt_closed = false;
 	bool input_closed = false;
 	for (;;) {
-		enum { PT_FD, IN_FD, SIGNAL_FD, FDS_COUNT };
+		enum { PT_FD, IN_FD, FDS_COUNT };
 		struct pollfd fds[FDS_COUNT];
 
 		fds[PT_FD].fd = pt_closed ? -1 : pt;
@@ -608,13 +613,11 @@ exit_loop:
 		fds[IN_FD].fd = input_closed ? -1 : STDIN_FILENO;
 		fds[IN_FD].events = POLLIN;
 
-		fds[SIGNAL_FD].fd = signal_pipe_reader;
-		fds[SIGNAL_FD].events = POLLIN;
-
-		if (-1 == poll(fds, LINTED_ARRAY_SIZE(fds), -1)) {
+		if (-1 == ppoll(fds, LINTED_ARRAY_SIZE(fds), NULL,
+		                &sigchld_unblocked)) {
 			if (EINTR == errno)
-				continue;
-			perror("poll");
+				goto on_interrupt;
+			perror("ppoll");
 			return EXIT_FAILURE;
 		}
 
@@ -633,47 +636,40 @@ exit_loop:
 			if ((fds[IN_FD].revents & POLLIN) != 0)
 				drain_from_to(STDIN_FILENO, pt);
 		}
+		continue;
 
-		if ((fds[SIGNAL_FD].revents & POLLIN) != 0) {
-			int signo;
+	on_interrupt:
+		if (!waitable_process_pending)
+			continue;
 
-			for (;;) {
-				int xx;
-				if (-1 ==
-				    read(signal_pipe_reader, &xx, sizeof xx)) {
-					if (EINTR == errno)
-						continue;
-					perror("read");
-					return EXIT_FAILURE;
-				}
-				signo = xx;
-				break;
-			}
-
-			for (;;) {
-				int xx;
-				switch (waitpid(-1, &xx, WNOHANG)) {
-				case -1:
-					if (ECHILD == errno)
-						goto exit_application;
-					if (EINTR == errno)
-						continue;
-					perror("waitpid");
-					return EXIT_FAILURE;
-
-				case 0:
-					goto exit_wait_loop;
-
-				default:
+		for (;;) {
+			int xx;
+			switch (waitpid(-1, &xx, WNOHANG)) {
+			case -1:
+				if (ECHILD == errno)
+					goto exit_application;
+				if (EINTR == errno)
 					continue;
-				}
+				perror("waitpid");
+				return EXIT_FAILURE;
+
+			case 0:
+				goto no_more_pending_waitable_processes;
+
+			default:
+				continue;
 			}
-		exit_wait_loop:
-			;
 		}
+	no_more_pending_waitable_processes:
+		waitable_process_pending = false;
 	}
 exit_application:
 	return EXIT_SUCCESS;
+}
+
+static void sigchld_handler(int signo)
+{
+	waitable_process_pending = true;
 }
 
 static void drain_from_to(int in, int out)
@@ -701,13 +697,6 @@ static void drain_from_to(int in, int out)
 			break;
 		}
 	}
-}
-
-static void signal_handler(int signo)
-{
-	linted_ko errnum = errno;
-	write(signal_pipe_writer, &signo, sizeof signo);
-	errno = errnum;
 }
 
 static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
