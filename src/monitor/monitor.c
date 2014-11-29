@@ -37,7 +37,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,7 +65,6 @@ enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
 struct wait_service_data
 {
 	struct linted_asynch_pool *pool;
-	pid_t parent_process;
 	linted_ko cwd;
 	char const *chrootdir;
 	char const *sandbox;
@@ -1482,7 +1480,7 @@ static linted_error on_child_trapped(pid_t pid, int exit_status)
 	int event = exit_status >> 8U;
 	switch (event) {
 	case 0:
-		return on_child_signaled(pid, WSTOPSIG(exit_status));
+		return on_child_signaled(pid, exit_status);
 
 	case PTRACE_EVENT_EXIT:
 		return on_child_about_to_exit(pid);
@@ -1580,6 +1578,7 @@ restart_process:
 	linted_error cont_errnum = ptrace_cont(pid, signo);
 	if (0 == errnum)
 		errnum = cont_errnum;
+
 	return errnum;
 }
 
@@ -1964,9 +1963,7 @@ static linted_error is_child(pid_t pid, bool *isp)
 		}
 	getdelim_failed:
 		errnum = errno;
-		if (0 == errnum)
-			errnum = ESRCH;
-		goto free_buf;
+		goto set_isp;
 
 	getdelim_succeeded:
 		;
@@ -1977,9 +1974,9 @@ static linted_error is_child(pid_t pid, bool *isp)
 		}
 	}
 
+set_isp:
 	*isp = is;
 
-free_buf:
 	linted_mem_free(buf);
 
 	fclose(file);

@@ -451,8 +451,9 @@ exit_loop:
 		sigset_t sigset;
 		sigemptyset(&sigset);
 		sigaddset(&sigset, SIGCHLD);
-		if (-1 == pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
-			exit_with_error(err_writer, errno);
+		errnum = pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
 	}
 
 	sigset_t sigchld_unblocked;
@@ -460,9 +461,10 @@ exit_loop:
 		sigset_t sigset;
 		sigemptyset(&sigset);
 		sigaddset(&sigset, SIGCHLD);
-		if (-1 ==
-		    pthread_sigmask(SIG_BLOCK, &sigset, &sigchld_unblocked))
-			exit_with_error(err_writer, errno);
+		errnum =
+		    pthread_sigmask(SIG_BLOCK, &sigset, &sigchld_unblocked);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
 	}
 
 	/* We do not use SA_RESTART here so that we get an EINTR on
