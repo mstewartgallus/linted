@@ -55,9 +55,7 @@
 /**
  * @file
  *
- * @todo Use vfork here. A possible way to use it safely might be to
- *       kill the parent from the child with SIGKILL. That way I could
- *       do what I want after the vfork.
+ * Sandbox applications.
  */
 
 enum {
@@ -128,8 +126,9 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 static void drain_from_to(int in, int out);
 
 static void do_nothing(int signo);
-static linted_error set_name(char const *name);
+static void pid_to_str(char *buf, pid_t pid);
 
+static linted_error set_name(char const *name);
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
@@ -489,43 +488,63 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	pid_t child = fork();
-	if (-1 == child)
-		exit_with_error(err_writer, errno);
+	{
+		char **env_copy = NULL;
+		size_t env_size = 0U;
+		for (char const *const *env = (char const * const *)environ;
+		     *env != NULL; ++env)
+			++env_size;
 
-	if (0 == child) {
 		{
-			char xx[] = "XXXXXXXXXXXXXXXXX";
-			sprintf(xx, "%i", getpid());
-			if (-1 == setenv("LISTEN_PID", xx, true))
-				exit_with_error(err_writer, errno);
+			void *xx;
+			errnum = linted_mem_alloc_array(&xx, env_size + 3U,
+			                                sizeof env_copy[0U]);
+			if (errnum != 0)
+				exit_with_error(err_writer, errnum);
+			env_copy = xx;
 		}
+
+		for (size_t ii = 0U; ii < env_size; ++ii)
+			env_copy[2U + ii] = environ[ii];
 
 		int num_fds = atoi(listen_fds);
-		{
-			char xx[] = "XXXXXXXXXXXXXXXXX";
-			sprintf(xx, "%i", num_fds);
-			if (-1 == setenv("LISTEN_FDS", xx, true))
+		char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
+		char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
+
+		sprintf(listen_fds_str, "LISTEN_FDS=%i", num_fds);
+
+		env_copy[0U] = listen_fds_str;
+		env_copy[1U] = listen_pid_str;
+		env_copy[env_size + 2U] = NULL;
+
+		pid_t child = vfork();
+		if (-1 == child)
+			exit_with_error(err_writer, errno);
+
+		if (0 == child) {
+			pid_to_str(listen_pid_str + strlen("LISTEN_PID="),
+			           getpid());
+
+			if (-1 == dup2(pts, STDIN_FILENO))
 				exit_with_error(err_writer, errno);
+
+			if (-1 == dup2(pts, STDOUT_FILENO))
+				exit_with_error(err_writer, errno);
+
+			if (-1 == dup2(pts, STDERR_FILENO))
+				exit_with_error(err_writer, errno);
+
+			if (-1 == setsid())
+				exit_with_error(err_writer, errno);
+
+			if (-1 == ioctl(pts, TIOCSCTTY))
+				exit_with_error(err_writer, errno);
+
+			execve(command[0U], (char * const *)command, env_copy);
+			exit_with_error(err_writer, errno);
 		}
 
-		if (-1 == dup2(pts, STDIN_FILENO))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == dup2(pts, STDOUT_FILENO))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == dup2(pts, STDERR_FILENO))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == setsid())
-			exit_with_error(err_writer, errno);
-
-		if (-1 == ioctl(pts, TIOCSCTTY))
-			exit_with_error(err_writer, errno);
-
-		execve(command[0U], (char * const *)command, environ);
-		exit_with_error(err_writer, errno);
+		linted_mem_free(env_copy);
 	}
 
 	linted_ko_close(err_writer);
@@ -1035,6 +1054,29 @@ static void do_nothing(int signo)
 {
 	/* Do nothing, monitor will notify our children for us. If
 	 * they choose to exit then we will exit afterwards. */
+}
+
+static void pid_to_str(char *buf, pid_t pid)
+{
+	size_t strsize = 0U;
+
+	assert(pid > 0);
+
+	for (;;) {
+		memmove(buf + 1U, buf, strsize);
+
+		pid_t digit = pid % 10;
+
+		*buf = '0' + digit;
+
+		pid /= 10;
+		++strsize;
+
+		if (0 == pid)
+			break;
+	}
+
+	buf[strsize] = '\0';
 }
 
 static linted_error set_name(char const *name)
