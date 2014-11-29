@@ -606,12 +606,15 @@ exit_loop:
 			int xx;
 			switch (waitpid(-1, &xx, WNOHANG)) {
 			case -1:
-				if (ECHILD == errno)
+				switch (errno) {
+				case ECHILD:
 					goto exit_application;
-				if (EINTR == errno)
+				case EINTR:
 					continue;
-				perror("waitpid");
-				return EXIT_FAILURE;
+				default:
+					perror("waitpid");
+					return EXIT_FAILURE;
+				}
 
 			case 0:
 				goto no_more_pending_waitable_processes;
