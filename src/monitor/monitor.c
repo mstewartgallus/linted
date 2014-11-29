@@ -1285,15 +1285,10 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 	}
 
-	pid_t sandbox_spawner;
-	{
-		pid_t xx;
-		errnum = linted_spawn(&xx, cwd, args[0U], file_actions, attr,
-		                      args, (char const * const *)envvars);
-		if (errnum != 0)
-			goto destroy_proc_kos;
-		sandbox_spawner = xx;
-	}
+	errnum = linted_spawn(NULL, cwd, args[0U], file_actions, attr, args,
+	                      (char const * const *)envvars);
+	if (errnum != 0)
+		goto destroy_proc_kos;
 
 /* Let the child be leaked, we'll get the wait later */
 
