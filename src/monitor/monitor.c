@@ -1895,14 +1895,13 @@ static linted_error get_process_service_name(pid_t pid, char **service_namep)
 		if (-1 == bytes) {
 			errnum = errno;
 			if (0 == errnum)
-				errnum = EINVAL;
+				errnum = ESRCH;
 			goto getline_failed;
 		}
 		buf = xx;
 		goto getline_succeeded;
 	}
 getline_failed:
-	errnum = errno;
 	if (errnum != 0)
 		goto close_file;
 	bytes = 1U;
