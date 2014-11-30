@@ -376,38 +376,27 @@ static linted_error sanitize_kos(size_t kos_size)
 		}
 
 		/**
-		 * @bug Sockets don't get O_NONBLOCK set.
+		 * @bug Reopening sockets doesn't work properly.
 		 *
-		 * @bug This doesn't work properly controlling
-		 * terminals and ends up getting SIGHUP sent.
+		 * @bug Reopening pseudo-terminals doesn't work
+		 * properly and ends up sending SIGHUP to users of the
+		 * slave terminal.
 		 */
-		if (errnum != ENXIO) {
-			if (errnum != 0)
-				return errnum;
+		if (ENXIO == errnum)
+			continue;
 
-			if (-1 == dup2(new_fd, fd)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				return errnum;
-			}
+		if (errnum != 0)
+			return errnum;
 
-			errnum = linted_ko_close(new_fd);
-			if (errnum != 0)
-				return errnum;
-		}
-
-		int dflags = fcntl(fd, F_GETFD);
-		if (-1 == dflags) {
+		if (-1 == dup3(new_fd, fd, O_CLOEXEC)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
 		}
 
-		if (-1 == fcntl(fd, F_SETFD, (long)dflags | FD_CLOEXEC)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		errnum = linted_ko_close(new_fd);
+		if (errnum != 0)
 			return errnum;
-		}
 	}
 
 	return linted_ko_close(fds_dir_ko);
