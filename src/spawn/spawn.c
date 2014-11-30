@@ -443,19 +443,26 @@ static pid_t do_vfork(sigset_t const *sigset,
 				linted_ko newfd = action->adddup2.newfildes;
 
 				int flags = fcntl(oldfd, F_GETFD);
-				if (-1 == flags)
+				if (-1 == flags) {
+					errnum = errno;
 					goto fail;
+				}
 
-				if (-1 == dup2(oldfd, newfd))
+				if (-1 == dup2(oldfd, newfd)) {
+					errnum = errno;
 					goto fail;
+				}
 
-				if (-1 ==
-				    fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
+				if (-1 == fcntl(newfd, F_SETFD,
+				                flags & ~FD_CLOEXEC)) {
+					errnum = errno;
 					goto fail;
+				}
 				break;
 			}
 
 			default:
+				errnum = EINVAL;
 				goto fail;
 			}
 		}
@@ -465,7 +472,6 @@ static pid_t do_vfork(sigset_t const *sigset,
 		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
 		                 (void *)NULL)) {
 			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
 			goto fail;
 		}
 	}
