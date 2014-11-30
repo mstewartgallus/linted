@@ -22,4 +22,5 @@ pkglibexec_PROGRAMS+=%D%/waiter
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/mem/libmem.la
+  src/mem/libmem.la\
+  src/start/libstart.la

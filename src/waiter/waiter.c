@@ -21,6 +21,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/start.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -45,7 +46,16 @@ static void drain_from_to(int in, int out);
 
 static linted_error set_name(char const *name);
 
-int main(int argc, char **argv)
+static linted_ko kos[3U];
+
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-waiter",
+	.kos_size = LINTED_ARRAY_SIZE(kos),
+	.kos = kos
+};
+
+unsigned char linted_start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error errnum = 0;
 
@@ -55,7 +65,9 @@ int main(int argc, char **argv)
 		assert(errnum != EINVAL);
 	}
 
-	linted_ko pt = 3;
+	linted_ko stdin_writer = kos[0U];
+	linted_ko stdout_reader = kos[1U];
+	linted_ko stderr_reader = kos[2U];
 
 	/* We do not use SA_RESTART here so that we get an EINTR on
 	 * ppoll and can check if a waitable process is pending */
@@ -71,7 +83,10 @@ int main(int argc, char **argv)
 	}
 
 	sigset_t sigchld_unblocked;
-	errnum = pthread_sigmask(SIG_BLOCK, NULL, &sigchld_unblocked);
+	sigemptyset(&sigchld_unblocked);
+	sigaddset(&sigchld_unblocked, SIGCHLD);
+	errnum =
+	    pthread_sigmask(SIG_BLOCK, &sigchld_unblocked, &sigchld_unblocked);
 	if (errnum != 0) {
 		errno = errnum;
 		perror("pthread_sigmask");
@@ -109,14 +124,19 @@ int main(int argc, char **argv)
 		}
 	}
 
-	bool pt_closed = false;
+	bool out_closed = false;
+	bool err_closed = false;
 	bool input_closed = false;
 	for (;;) {
-		enum { PT_FD, IN_FD, FDS_COUNT };
+		enum { STDOUT_FD, STDERR_FD, IN_FD, FDS_COUNT };
+
 		struct pollfd fds[FDS_COUNT];
 
-		fds[PT_FD].fd = pt_closed ? -1 : pt;
-		fds[PT_FD].events = POLLIN;
+		fds[STDOUT_FD].fd = out_closed ? -1 : stdout_reader;
+		fds[STDOUT_FD].events = POLLIN;
+
+		fds[STDERR_FD].fd = err_closed ? -1 : stderr_reader;
+		fds[STDERR_FD].events = POLLIN;
 
 		fds[IN_FD].fd = input_closed ? -1 : STDIN_FILENO;
 		fds[IN_FD].events = POLLIN;
@@ -129,12 +149,20 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
-		if (!pt_closed) {
-			if ((fds[PT_FD].revents & POLLNVAL) != 0)
-				pt_closed = 1;
+		if (!out_closed) {
+			if ((fds[STDOUT_FD].revents & POLLNVAL) != 0)
+				out_closed = 1;
 
-			if ((fds[PT_FD].revents & POLLIN) != 0)
-				drain_from_to(pt, STDOUT_FILENO);
+			if ((fds[STDOUT_FD].revents & POLLIN) != 0)
+				drain_from_to(stdout_reader, STDOUT_FILENO);
+		}
+
+		if (!err_closed) {
+			if ((fds[STDERR_FD].revents & POLLNVAL) != 0)
+				err_closed = 1;
+
+			if ((fds[STDERR_FD].revents & POLLIN) != 0)
+				drain_from_to(stderr_reader, STDERR_FILENO);
 		}
 
 		if (!input_closed) {
@@ -142,7 +170,7 @@ int main(int argc, char **argv)
 				input_closed = 1;
 
 			if ((fds[IN_FD].revents & POLLIN) != 0)
-				drain_from_to(STDIN_FILENO, pt);
+				drain_from_to(STDIN_FILENO, stdin_writer);
 		}
 		continue;
 

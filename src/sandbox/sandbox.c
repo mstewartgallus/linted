@@ -100,8 +100,10 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
-static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
-                      char const *const *argv, char const *const *env);
+static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
+                      linted_ko stdout_writer, linted_ko stderr_writer,
+                      char *listen_pid_str, char const *const *argv,
+                      char const *const *env);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -298,37 +300,40 @@ exit_loop:
 		cwd = xx;
 	}
 
-	linted_ko pt = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
-	if (-1 == pt) {
-		perror("posix_openpt");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == grantpt(pt)) {
-		perror("grantpt");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == unlockpt(pt)) {
-		perror("unlockpt");
-		return EXIT_FAILURE;
-	}
-
-	linted_ko pts;
+	linted_ko stdin_reader;
+	linted_ko stdin_writer;
 	{
-		char const *slave_name;
-
-		slave_name = ptsname(pt);
-		if (NULL == slave_name) {
-			perror("ptsname");
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			perror("pipe2");
 			return EXIT_FAILURE;
 		}
+		stdin_reader = xx[0U];
+		stdin_writer = xx[1U];
+	}
 
-		pts = open(slave_name, O_RDWR | O_NOCTTY | O_CLOEXEC);
-		if (-1 == pts) {
-			perror("open");
+	linted_ko stdout_reader;
+	linted_ko stdout_writer;
+	{
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			perror("pipe2");
 			return EXIT_FAILURE;
 		}
+		stdout_reader = xx[0U];
+		stdout_writer = xx[1U];
+	}
+
+	linted_ko stderr_reader;
+	linted_ko stderr_writer;
+	{
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			perror("pipe2");
+			return EXIT_FAILURE;
+		}
+		stderr_reader = xx[0U];
+		stderr_writer = xx[1U];
 	}
 
 	gid_t gid = getgid();
@@ -515,13 +520,19 @@ exit_loop:
 			vfork_err_writer = xx[1U];
 		}
 
-		pid_t child = do_vfork(vfork_err_writer, pts, listen_pid_str,
-		                       (char const * const *)command,
-		                       (char const * const *)env_copy);
+		pid_t child =
+		    do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
+		             stderr_writer, listen_pid_str,
+		             (char const * const *)command,
+		             (char const * const *)env_copy);
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
 
 		linted_ko_close(vfork_err_writer);
+
+		linted_ko_close(stdin_reader);
+		linted_ko_close(stdout_writer);
+		linted_ko_close(stderr_writer);
 
 		{
 			size_t xx;
@@ -545,10 +556,14 @@ exit_loop:
 	for (size_t ii = 0U; ii < num_fds; ++ii)
 		linted_ko_close(3 + ii);
 
-	if (-1 == dup2(pt, 3))
+	if (-1 == dup2(stdin_writer, 3))
+		exit_with_error(err_writer, errno);
+	if (-1 == dup2(stdout_reader, 4))
+		exit_with_error(err_writer, errno);
+	if (-1 == dup2(stderr_reader, 5))
 		exit_with_error(err_writer, errno);
 
-	sprintf(listen_fds_str, "LISTEN_FDS=%i", 1);
+	sprintf(listen_fds_str, "LISTEN_FDS=%i", 3);
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	char const *arguments[] = { waiter, NULL };
@@ -557,8 +572,10 @@ exit_loop:
 	return EXIT_FAILURE;
 }
 
-static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
-                      char const *const *argv, char const *const *env)
+static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
+                      linted_ko stdout_writer, linted_ko stderr_writer,
+                      char *listen_pid_str, char const *const *argv,
+                      char const *const *env)
 {
 	pid_t child = vfork();
 	if (child != 0)
@@ -566,19 +583,26 @@ static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
 
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
-	if (-1 == dup2(pts, STDIN_FILENO))
+	/* Terminals are really ugly and horrible, avoid them. */
+	int tty = open("/dev/tty", O_CLOEXEC);
+	if (-1 == tty) {
+		if (errno != ENXIO)
+			exit_with_error(err_writer, errno);
+	} else {
+		if (-1 == ioctl(tty, TIOCNOTTY))
+			exit_with_error(err_writer, errno);
+	}
+
+	if (-1 == dup2(stdin_reader, STDIN_FILENO))
 		exit_with_error(err_writer, errno);
 
-	if (-1 == dup2(pts, STDOUT_FILENO))
+	if (-1 == dup2(stdout_writer, STDOUT_FILENO))
 		exit_with_error(err_writer, errno);
 
-	if (-1 == dup2(pts, STDERR_FILENO))
+	if (-1 == dup2(stderr_writer, STDERR_FILENO))
 		exit_with_error(err_writer, errno);
 
 	if (-1 == setsid())
-		exit_with_error(err_writer, errno);
-
-	if (-1 == ioctl(pts, TIOCSCTTY))
 		exit_with_error(err_writer, errno);
 
 	execve(argv[0U], (char * const *)argv, (char * const *)env);

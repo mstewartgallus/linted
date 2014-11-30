@@ -12,6 +12,7 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 
 /dev/null	dev/null	none	touch,bind
 /dev/random	dev/random	none	touch,bind
+/dev/tty	dev/tty	none	touch,bind
 
 tmpfs	var	tmpfs	mkdir,nosuid,noexec,mode=700
 
