@@ -56,6 +56,8 @@
  * @file
  *
  * Sandbox applications.
+ *
+ * @todo Use vfork instead of fork for the first fork
  */
 
 enum {
@@ -68,6 +70,7 @@ enum {
 	PRIORITY,
 	CHROOTDIR,
 	FSTAB,
+	WAITER,
 	NEWUSER_ARG,
 	NEWPID_ARG,
 	NEWIPC_ARG,
@@ -75,19 +78,6 @@ enum {
 	NEWNS_ARG,
 	NEWUTS_ARG
 };
-
-struct mount_args
-{
-	char *source;
-	char *target;
-	char *filesystemtype;
-	unsigned long mountflags;
-	char *data;
-	bool mkdir_flag : 1U;
-	bool touch_flag : 1U;
-};
-
-static volatile sig_atomic_t waitable_process_pending = false;
 
 static struct sock_fprog const default_filter;
 
@@ -101,6 +91,7 @@ static char const *const argstrs[] = {
 	    /**/ [PRIORITY] = "--priority",
 	    /**/ [CHROOTDIR] = "--chrootdir",
 	    /**/ [FSTAB] = "--fstab",
+	    /**/ [WAITER] = "--waiter",
 	    /**/ [NEWUSER_ARG] = "--clone-newuser",
 	    /**/ [NEWPID_ARG] = "--clone-newpid",
 	    /**/ [NEWIPC_ARG] = "--clone-newipc",
@@ -126,20 +117,15 @@ static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
                            char const *chrootdir, char const *fstab_path);
 
-static void drain_from_to(int in, int out);
-
-static void do_nothing(int signo);
 static void pid_to_str(char *buf, pid_t pid);
 
-static linted_error set_name(char const *name);
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
 
+static pid_t real_getpid(void);
 static pid_t my_clone(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
-
-static void sigchld_handler(int signo);
 
 int main(int argc, char *argv[])
 {
@@ -150,16 +136,10 @@ int main(int argc, char *argv[])
 
 	size_t arguments_length = argc;
 
-	char const *service = getenv("LINTED_SERVICE");
 	char const *listen_fds = getenv("LISTEN_FDS");
 	if (NULL == listen_fds) {
 		fprintf(stderr, "need LISTEN_FDS\n");
 		return EXIT_FAILURE;
-	}
-
-	if (service != NULL) {
-		errnum = set_name(service);
-		assert(errnum != EINVAL);
 	}
 
 	char const *bad_option = NULL;
@@ -174,6 +154,7 @@ int main(int argc, char *argv[])
 	char const *priority = NULL;
 	char const *chrootdir = NULL;
 	char const *fstab = NULL;
+	char const *waiter = NULL;
 	bool have_command = false;
 	size_t command_start;
 
@@ -242,6 +223,13 @@ int main(int argc, char *argv[])
 			fstab = argv[ii];
 			break;
 
+		case WAITER:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			waiter = argv[ii];
+			break;
+
 		case NEWUSER_ARG:
 			clone_flags |= CLONE_NEWUSER;
 			break;
@@ -275,6 +263,11 @@ exit_loop:
 
 	if (bad_option != NULL) {
 		fprintf(stderr, "bad option: %s\n", bad_option);
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == waiter) {
+		fprintf(stderr, "need waiter\n");
 		return EXIT_FAILURE;
 	}
 
@@ -472,17 +465,6 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	/* We do not use SA_RESTART here so that we get an EINTR on
-	 * ppoll and can check if a waitable process is pending */
-	{
-		struct sigaction action = { 0 };
-		action.sa_flags = SA_NOCLDSTOP;
-		action.sa_handler = sigchld_handler;
-		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(SIGCHLD, &action, NULL))
-			exit_with_error(err_writer, errno);
-	}
-
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
@@ -494,144 +476,85 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	{
-		char **env_copy = NULL;
-		size_t env_size = 0U;
-		for (char const *const *env = (char const * const *)environ;
-		     *env != NULL; ++env)
-			++env_size;
+	char **env_copy = NULL;
+	size_t env_size = 0U;
+	for (char const *const *env = (char const * const *)environ;
+	     *env != NULL; ++env)
+		++env_size;
 
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, env_size + 3U,
+		                                sizeof env_copy[0U]);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+		env_copy = xx;
+	}
+
+	for (size_t ii = 0U; ii < env_size; ++ii)
+		env_copy[2U + ii] = environ[ii];
+
+	int num_fds = atoi(listen_fds);
+	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
+	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
+
+	sprintf(listen_fds_str, "LISTEN_FDS=%i", num_fds);
+
+	env_copy[0U] = listen_fds_str;
+	env_copy[1U] = listen_pid_str;
+	env_copy[env_size + 2U] = NULL;
+
+	{
+		linted_ko vfork_err_reader;
+		linted_ko vfork_err_writer;
 		{
-			void *xx;
-			errnum = linted_mem_alloc_array(&xx, env_size + 3U,
-			                                sizeof env_copy[0U]);
-			if (errnum != 0)
-				exit_with_error(err_writer, errnum);
-			env_copy = xx;
+			linted_ko xx[2U];
+			if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+				exit_with_error(err_writer, errno);
+			vfork_err_reader = xx[0U];
+			vfork_err_writer = xx[1U];
 		}
 
-		for (size_t ii = 0U; ii < env_size; ++ii)
-			env_copy[2U + ii] = environ[ii];
-
-		int num_fds = atoi(listen_fds);
-		char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
-		char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
-
-		sprintf(listen_fds_str, "LISTEN_FDS=%i", num_fds);
-
-		env_copy[0U] = listen_fds_str;
-		env_copy[1U] = listen_pid_str;
-		env_copy[env_size + 2U] = NULL;
-
-		pid_t child = do_vfork(err_writer, pts, listen_pid_str,
+		pid_t child = do_vfork(vfork_err_writer, pts, listen_pid_str,
 		                       (char const * const *)command,
 		                       (char const * const *)env_copy);
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
 
-		linted_mem_free(env_copy);
-	}
+		linted_ko_close(vfork_err_writer);
 
-	linted_ko_close(err_writer);
+		{
+			size_t xx;
+			linted_error yy;
+			errnum = linted_io_read_all(vfork_err_reader, &xx, &yy,
+			                            sizeof yy);
+			if (errnum != 0)
+				exit_with_error(err_writer, errnum);
+
+			/* If bytes_read is zero then a succesful exec
+			 * occured */
+			if (xx == sizeof yy)
+				errnum = yy;
+		}
+	}
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
+
 	linted_ko_close(cwd);
 
-	/* Catch signals
-	 *
-	 * The only signals that can be sent to process ID 1, the init
-	 * process, are those for which init has explicitly installed
-	 * signal handlers.  This is done to assure the system is not
-	 * brought down accidentally.
-	 *
-	 * - KILL(2) http://www.kernel.org/doc/man-pages/.
-	 *
-	 * This applies to sandboxs to if they use CLONE_NEWPID.
-	 *
-	 * We want to explicitly handle the signal so that the monitor
-	 * can observe it and propagate it to it's children as well.
-	 */
-	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
-	if ((clone_flags & CLONE_NEWPID) != 0) {
-		/* Delegate the exit signal to children and then exit */
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
-		     ++ii) {
-			struct sigaction action = { 0 };
-			action.sa_handler = do_nothing;
-			action.sa_flags = 0;
-			sigfillset(&action.sa_mask);
-			if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
-				assert(errno != EINVAL);
-				assert(0);
-			}
-		}
-	}
+	for (size_t ii = 0U; ii < num_fds; ++ii)
+		linted_ko_close(3 + ii);
 
-	bool pt_closed = false;
-	bool input_closed = false;
-	for (;;) {
-		enum { PT_FD, IN_FD, FDS_COUNT };
-		struct pollfd fds[FDS_COUNT];
+	if (-1 == dup2(pt, 3))
+		exit_with_error(err_writer, errno);
 
-		fds[PT_FD].fd = pt_closed ? -1 : pt;
-		fds[PT_FD].events = POLLIN;
+	sprintf(listen_fds_str, "LISTEN_FDS=%i", 1);
+	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
-		fds[IN_FD].fd = input_closed ? -1 : STDIN_FILENO;
-		fds[IN_FD].events = POLLIN;
-
-		if (-1 == ppoll(fds, LINTED_ARRAY_SIZE(fds), NULL,
-		                &sigchld_unblocked)) {
-			if (EINTR == errno)
-				goto on_interrupt;
-			perror("ppoll");
-			return EXIT_FAILURE;
-		}
-
-		if (!pt_closed) {
-			if ((fds[PT_FD].revents & POLLNVAL) != 0)
-				pt_closed = 1;
-
-			if ((fds[PT_FD].revents & POLLIN) != 0)
-				drain_from_to(pt, STDOUT_FILENO);
-		}
-
-		if (!input_closed) {
-			if ((fds[IN_FD].revents & POLLNVAL) != 0)
-				input_closed = 1;
-
-			if ((fds[IN_FD].revents & POLLIN) != 0)
-				drain_from_to(STDIN_FILENO, pt);
-		}
-		continue;
-
-	on_interrupt:
-		if (!waitable_process_pending)
-			continue;
-
-		for (;;) {
-			int xx;
-			switch (waitpid(-1, &xx, WNOHANG)) {
-			case -1:
-				switch (errno) {
-				case ECHILD:
-					goto exit_application;
-				case EINTR:
-					continue;
-				default:
-					perror("waitpid");
-					return EXIT_FAILURE;
-				}
-
-			case 0:
-				goto no_more_pending_waitable_processes;
-
-			default:
-				continue;
-			}
-		}
-	no_more_pending_waitable_processes:
-		waitable_process_pending = false;
-	}
-exit_application:
-	return EXIT_SUCCESS;
+	char const *arguments[] = { waiter, NULL };
+	execve(waiter, (char * const *)arguments, env_copy);
+	perror("execve");
+	return EXIT_FAILURE;
 }
 
 static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
@@ -641,7 +564,7 @@ static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
 	if (child != 0)
 		return child;
 
-	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), getpid());
+	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	if (-1 == dup2(pts, STDIN_FILENO))
 		exit_with_error(err_writer, errno);
@@ -662,38 +585,6 @@ static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
 	exit_with_error(err_writer, errno);
 
 	return 0;
-}
-
-static void sigchld_handler(int signo)
-{
-	waitable_process_pending = true;
-}
-
-static void drain_from_to(int in, int out)
-{
-	for (;;) {
-		char buf[80U];
-		ssize_t bytes_read = read(in, buf, sizeof buf);
-		switch (bytes_read) {
-		case -1:
-			if (EAGAIN == errno)
-				return;
-			perror("read");
-			exit(EXIT_FAILURE);
-
-		case 0:
-			close(in);
-			close(out);
-			return;
-
-		default:
-			if (-1 == write(out, buf, bytes_read)) {
-				perror("write");
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
-	}
 }
 
 static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
@@ -1065,12 +956,6 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 	return 0;
 }
 
-static void do_nothing(int signo)
-{
-	/* Do nothing, monitor will notify our children for us. If
-	 * they choose to exit then we will exit afterwards. */
-}
-
 static void pid_to_str(char *buf, pid_t pid)
 {
 	size_t strsize = 0U;
@@ -1092,21 +977,6 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
-}
-
-static linted_error set_name(char const *name)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		assert(errnum != EINVAL);
-
-		return errnum;
-	}
-	return 0;
 }
 
 static linted_error set_child_subreaper(bool v)
@@ -1151,6 +1021,11 @@ static linted_error set_seccomp(struct sock_fprog const *program)
 		return errnum;
 	}
 	return 0;
+}
+
+static pid_t real_getpid(void)
+{
+	return syscall(__NR_getpid);
 }
 
 /* Unfortunately, the clone system call interface varies a lot between

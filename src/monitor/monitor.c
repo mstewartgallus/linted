@@ -68,6 +68,7 @@ struct wait_service_data
 	linted_ko cwd;
 	char const *chrootdir;
 	char const *sandbox;
+	char const *waiter;
 	sigset_t const *orig_mask;
 	struct linted_unit_db *unit_db;
 	bool *time_to_exit;
@@ -120,6 +121,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
                                    char const *chrootdir, char const *sandbox,
+                                   char const *waiter,
                                    sigset_t const *orig_mask);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
@@ -143,7 +145,8 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
                                     struct linted_unit_db *unit_db,
                                     sigset_t const *orig_mask,
-                                    char const *chrootdir, char const *sandbox);
+                                    char const *chrootdir, char const *sandbox,
+                                    char const *waiter);
 static linted_error on_child_trapped(pid_t pid, int exit_status);
 static linted_error on_child_signaled(pid_t pid, int signo);
 static linted_error on_child_about_to_exit(pid_t pid);
@@ -152,6 +155,7 @@ static linted_error on_child_about_to_clone(pid_t pid);
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *sandbox,
+                                     char const *waiter,
                                      sigset_t const *orig_mask,
                                      struct linted_unit_db *units);
 
@@ -234,6 +238,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
 	char const *sandbox = getenv("LINTED_SANDBOX");
+	char const *waiter = getenv("LINTED_WAITER");
 
 	if (NULL == chrootdir) {
 		linted_io_write_format(
@@ -255,6 +260,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
 		    "%s: LINTED_SANDBOX is a required environment variable\n",
+		    process_name);
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == waiter) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: LINTED_waiter is a required environment variable\n",
 		    process_name);
 		return EXIT_FAILURE;
 	}
@@ -396,7 +409,8 @@ retry_bind:
 	/**
 	 * @todo Warn about unactivated units.
 	 */
-	errnum = activate_units(units, cwd, chrootdir, sandbox, &orig_mask);
+	errnum =
+	    activate_units(units, cwd, chrootdir, sandbox, waiter, &orig_mask);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -406,6 +420,7 @@ retry_bind:
 	sandbox_data.cwd = cwd;
 	sandbox_data.chrootdir = chrootdir;
 	sandbox_data.sandbox = sandbox;
+	sandbox_data.waiter = waiter;
 	sandbox_data.unit_db = units;
 	sandbox_data.orig_mask = &orig_mask;
 	sandbox_data.time_to_exit = &time_to_exit;
@@ -824,6 +839,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
                                    char const *chrootdir, char const *sandbox,
+                                   char const *waiter,
                                    sigset_t const *orig_mask)
 {
 	linted_error errnum;
@@ -847,7 +863,7 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate(unit, cwd, chrootdir, sandbox,
+		errnum = service_activate(unit, cwd, chrootdir, sandbox, waiter,
 		                          orig_mask, units);
 		if (errnum != 0)
 			return errnum;
@@ -898,6 +914,7 @@ static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *sandbox,
+                                     char const *waiter,
                                      sigset_t const *orig_mask,
                                      struct linted_unit_db *units)
 {
@@ -1010,12 +1027,15 @@ envvar_allocate_succeeded:
 	if (files != NULL)
 		files_size = null_list_size(files);
 
+	bool set_waiter = true;
 	bool drop_caps = true;
 	bool set_priority = true;
 
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 	size_t num_options = 0U;
+	if (set_waiter)
+		num_options += 2U;
 	if (fstab != NULL) {
 		num_options += 2U;
 
@@ -1055,6 +1075,10 @@ envvar_allocate_succeeded:
 	}
 	args[0U] = sandbox;
 	size_t ix = 1U;
+	if (set_waiter) {
+		args[ix++] = "--waiter";
+		args[ix++] = waiter;
+	}
 	if (fstab != NULL) {
 		args[ix++] = "--chrootdir";
 		args[ix++] = chrootdir;
@@ -1355,6 +1379,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	linted_ko cwd = wait_service_data->cwd;
 	char const *chrootdir = wait_service_data->chrootdir;
 	char const *sandbox = wait_service_data->sandbox;
+	char const *waiter = wait_service_data->waiter;
 	sigset_t const *orig_mask = wait_service_data->orig_mask;
 	struct linted_unit_db *unit_db = wait_service_data->unit_db;
 
@@ -1374,7 +1399,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	case CLD_KILLED:
 	case CLD_EXITED:
 		errnum = on_child_exited(exit_code, pid, cwd, unit_db,
-		                         orig_mask, chrootdir, sandbox);
+		                         orig_mask, chrootdir, sandbox, waiter);
 		break;
 
 	case CLD_TRAPPED:
@@ -1416,7 +1441,8 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
                                     struct linted_unit_db *unit_db,
                                     sigset_t const *orig_mask,
-                                    char const *chrootdir, char const *sandbox)
+                                    char const *chrootdir, char const *sandbox,
+                                    char const *waiter)
 {
 	linted_error errnum = 0;
 
@@ -1457,15 +1483,24 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	struct linted_unit *unit =
 	    linted_unit_db_get_unit_by_name(unit_db, service_name);
 
+	if (NULL == unit) {
+		fprintf(stderr, "service_name: %s\n", service_name);
+	}
+
 	linted_mem_free(service_name);
+
+	if (NULL == unit) {
+		clear_wait(pid);
+		return 0;
+	}
 
 	/* This has to be done first so that service_activate
 	 * isn't stupid and thinks that the zombie is still
 	 * living. */
 	clear_wait(pid);
 
-	return service_activate(unit, cwd, chrootdir, sandbox, orig_mask,
-	                        unit_db);
+	return service_activate(unit, cwd, chrootdir, sandbox, waiter,
+	                        orig_mask, unit_db);
 }
 
 static linted_error on_child_trapped(pid_t pid, int exit_status)

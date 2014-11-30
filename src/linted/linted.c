@@ -61,6 +61,7 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
 	{ "LINTED_MONITOR", PKGLIBEXECDIR "/monitor" EXEEXT },
 	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/sandbox" EXEEXT },
+	{ "LINTED_WAITER", PKGLIBEXECDIR "/waiter" EXEEXT },
 	{ "LINTED_LOGGER", PKGLIBEXECDIR "/logger" EXEEXT },
 	{ "LINTED_LOGGER_FSTAB", PKGDEFAULTCONFDIR "/logger-fstab" },
 	{ "LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT },

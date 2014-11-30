@@ -377,6 +377,9 @@ static linted_error sanitize_kos(size_t kos_size)
 
 		/**
 		 * @bug Sockets don't get O_NONBLOCK set.
+		 *
+		 * @bug This doesn't work properly controlling
+		 * terminals and ends up getting SIGHUP sent.
 		 */
 		if (errnum != ENXIO) {
 			if (errnum != 0)

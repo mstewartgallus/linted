@@ -70,6 +70,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(openat),
 	/*  */ ALLOW(pause),
 	/*  */ ALLOW(pipe),
+	/*  */ ALLOW(pipe2),
 	/*  */ ALLOW(poll),
 	/*  */ ALLOW(ppoll),
 	/*  */ ALLOW(prctl),
@@ -101,6 +102,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(unlink),
 	/*  */ ALLOW(vfork),
 	/*  */ ALLOW(wait4),
+	/*  */ ALLOW(waitid),
 	/*  */ ALLOW(write),
 	/*  */ ALLOW(writev),
 
