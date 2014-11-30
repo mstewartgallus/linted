@@ -96,6 +96,7 @@ static struct sock_filter const real_filter[] = {
 	/*  */ ALLOW(stat),
 	/*  */ ALLOW(tgkill),
 	/*  */ ALLOW(time),
+	/*  */ ALLOW(tkill),
 	/*  */ ALLOW(uname),
 	/*  */ ALLOW(unlink),
 	/*  */ ALLOW(vfork),
