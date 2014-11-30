@@ -161,7 +161,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			assert(false);
 
 		waitid_succeeded:
-			errnum = 0;
 			if (child == pid)
 				break;
 		}

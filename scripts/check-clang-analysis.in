@@ -253,8 +253,12 @@ CHECKERS="${CHECKERS} security.insecureAPI.mktemp"
 CHECKERS="${CHECKERS} security.insecureAPI.rand"
 # Warn on uses of the 'strcpy' and 'strcat' functions
 CHECKERS="${CHECKERS} security.insecureAPI.strcpy"
-# Warn on uses of the 'vfork' function
-CHECKERS="${CHECKERS} security.insecureAPI.vfork"
+
+# Sadly we need to use vfork sometimes
+if false; then
+    # Warn on uses of the 'vfork' function
+    CHECKERS="${CHECKERS} security.insecureAPI.vfork"
+fi
 
 # Check calls to various UNIX/Posix functions
 CHECKERS="${CHECKERS} unix.API"

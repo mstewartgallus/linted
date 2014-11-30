@@ -494,8 +494,6 @@ fail : {
 
 static linted_error default_signals(void)
 {
-	linted_error errnum;
-
 	/*
 	 * Get rid of signal handlers so that they can't be called
 	 * before execve.
@@ -507,17 +505,16 @@ static linted_error default_signals(void)
 
 		struct sigaction action;
 		if (-1 == sigaction(ii, NULL, &action)) {
-			linted_error sigerrnum = errno;
-			LINTED_ASSUME(sigerrnum != 0);
+			linted_error errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 
 			/* If sigerrnum == EINVAL then we are
 			 * trampling on OS signals.
 			 */
-			if (EINVAL == sigerrnum)
+			if (EINVAL == errnum)
 				continue;
 
-			errnum = sigerrnum;
-			goto sigaction_fail_errnum;
+			return errnum;
 		}
 
 		if (SIG_IGN == action.sa_handler)
@@ -526,25 +523,18 @@ static linted_error default_signals(void)
 		action.sa_handler = SIG_DFL;
 
 		if (-1 == sigaction(ii, &action, NULL)) {
-			linted_error sigerrnum = errno;
+			linted_error errnum = errno;
 
-			/* Workaround broken debugging utilities */
-			if (EINVAL == sigerrnum)
+			/* Workaround a bug in Clang's thread
+			 * sanitizer. */
+			if (EINVAL == errnum)
 				continue;
 
-			errnum = sigerrnum;
-			goto sigaction_failed;
+			return errnum;
 		}
 	}
 
 	return 0;
-
-sigaction_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-
-sigaction_fail_errnum:
-	return errnum;
 }
 
 static void pid_to_str(char *buf, pid_t pid)
