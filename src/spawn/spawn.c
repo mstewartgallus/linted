@@ -79,9 +79,6 @@ static linted_error default_signals(void);
 
 static void pid_to_str(char *buf, pid_t pid);
 
-static linted_error set_ptracer(pid_t tracer);
-static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
-
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
 	linted_error errnum;
@@ -114,11 +111,9 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
 	attr->mask = set;
 }
 
-void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr,
-                                 unsigned long options)
+void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr, bool v)
 {
-	attr->ptracing = true;
-	attr->ptrace_options = options;
+	attr->ptracing = v;
 }
 
 linted_error
@@ -202,12 +197,10 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 
 	sigset_t const *child_mask = NULL;
 	bool ptracing = false;
-	unsigned long ptrace_options = 0UL;
 
 	if (attr != NULL) {
 		child_mask = attr->mask;
 		ptracing = attr->ptracing;
-		ptrace_options = attr->ptrace_options;
 	}
 
 	size_t fd_len;
@@ -298,7 +291,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		}
 	}
 
-	linted_ko dirko_copy;
+	linted_ko dirko_copy = -1;
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
@@ -364,7 +357,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	}
 
 close_dirko_copy:
-	linted_ko_close(dirko_copy);
+	if (dirko_copy != -1)
+		linted_ko_close(dirko_copy);
 
 close_err_pipes : {
 	linted_error close_errnum = linted_ko_close(err_writer);
@@ -402,12 +396,6 @@ free_relative_path:
 
 	if (errnum != 0)
 		return errnum;
-
-	if (ptracing) {
-		errnum = ptrace_seize(child, ptrace_options);
-		if (errnum != 0)
-			return errnum;
-	}
 
 	if (childp != NULL)
 		*childp = child;
@@ -464,9 +452,12 @@ static void do_vfork(sigset_t const *sigset,
 	}
 
 	if (ptracing) {
-		errnum = set_ptracer(parent);
-		if (errnum != 0)
+		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
+		                 (void *)NULL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto fail;
+		}
 	}
 
 	/* This is the ONE write to memory done. */
@@ -560,30 +551,4 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
-}
-
-static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
-{
-	linted_error errnum;
-
-	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error set_ptracer(pid_t tracer)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_PTRACER, (unsigned long)tracer, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
 }

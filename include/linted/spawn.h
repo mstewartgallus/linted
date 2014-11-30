@@ -35,8 +35,7 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
 void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set);
-void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr,
-                                 unsigned long options);
+void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr, _Bool v);
 
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp);

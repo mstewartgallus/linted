@@ -140,6 +140,9 @@ static void sigchld_handler(int signo);
 
 int main(int argc, char *argv[])
 {
+	/* Register with the parent */
+	raise(SIGSTOP);
+
 	linted_error errnum;
 
 	size_t arguments_length = argc;

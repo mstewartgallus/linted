@@ -147,7 +147,6 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 static linted_error on_child_trapped(pid_t pid, int exit_status);
 static linted_error on_child_signaled(pid_t pid, int signo);
 static linted_error on_child_about_to_exit(pid_t pid);
-static linted_error on_child_debug_stopped(pid_t pid);
 static linted_error on_child_about_to_clone(pid_t pid);
 
 static linted_error socket_activate(struct linted_unit_socket *unit);
@@ -1129,9 +1128,7 @@ envvar_allocate_succeeded:
 	}
 
 	linted_spawn_attr_setmask(attr, orig_mask);
-	linted_spawn_attr_setptrace(attr, PTRACE_O_TRACECLONE |
-	                                      PTRACE_O_TRACEFORK |
-	                                      PTRACE_O_TRACEVFORK);
+	linted_spawn_attr_setptrace(attr, true);
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;
@@ -1436,6 +1433,7 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	}
 	if (is) {
 		clear_wait(pid);
+
 		return 0;
 	}
 
@@ -1480,14 +1478,6 @@ static linted_error on_child_trapped(pid_t pid, int exit_status)
 	case PTRACE_EVENT_EXIT:
 		return on_child_about_to_exit(pid);
 
-	/* Even if we never use PTRACE_O_TRACECLONE,
-	 * PTRACE_O_TRACEFORK, PTRACE_O_TRACEVFORK, or
-	 * PTRACE_INTERRUPT we still get this event when a ptraced
-	 * process is sent SIGCONT.
-	 */
-	case PTRACE_EVENT_STOP:
-		return on_child_debug_stopped(pid);
-
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
 	case PTRACE_EVENT_CLONE:
@@ -1507,6 +1497,43 @@ static linted_error on_child_signaled(pid_t pid, int signo)
 	switch (signo) {
 	default:
 		goto restart_process;
+
+	case SIGSTOP: {
+		signo = 0;
+
+		bool is;
+		{
+			bool xx;
+			errnum = is_child(pid, &xx);
+			if (errnum != 0)
+				break;
+			is = xx;
+		}
+		if (is) {
+			errnum = ptrace_setoptions(
+			    pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
+			             PTRACE_O_TRACEVFORK);
+			break;
+		}
+
+		char *service_name;
+		{
+			char *xx;
+			errnum = get_process_service_name(pid, &xx);
+			if (errnum != 0)
+				break;
+			service_name = xx;
+		}
+
+		fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
+		linted_mem_free(service_name);
+		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+		break;
+	}
+
+	case SIGTRAP:
+		signo = 0;
+		break;
 
 	case SIGHUP:
 	case SIGINT:
@@ -1584,36 +1611,6 @@ static linted_error on_child_about_to_exit(pid_t pid)
 
 	errnum = kill_process_children(pid, 0);
 
-	linted_error cont_errnum = ptrace_cont(pid, 0);
-	if (0 == errnum)
-		errnum = cont_errnum;
-
-	return errnum;
-}
-
-static linted_error on_child_debug_stopped(pid_t pid)
-{
-	linted_error errnum = 0;
-
-	clear_wait(pid);
-
-	char *service_name;
-	{
-		char *xx;
-		errnum = get_process_service_name(pid, &xx);
-		if (errnum != 0)
-			goto restart_process;
-		service_name = xx;
-	}
-
-	fprintf(stderr, "ptracing sandbox %s, %i\n", service_name, pid);
-
-	linted_mem_free(service_name);
-
-	errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
-
-restart_process:
-	;
 	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
 		errnum = cont_errnum;
