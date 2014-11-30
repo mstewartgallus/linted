@@ -26,6 +26,7 @@
  * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
  * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
+ * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
  * <li> ggcc </li>
  *
  * </li>
