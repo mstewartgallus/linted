@@ -70,7 +70,6 @@ struct notice_data
 	xcb_connection_t *connection;
 	Display *gpu_display;
 	linted_ko updater;
-	linted_log log;
 
 	struct window_model *window_model;
 	bool *time_to_quit;
@@ -176,7 +175,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	notice_data.connection = connection;
 	notice_data.gpu_display = gpu_display;
 	notice_data.updater = updater;
-	notice_data.log = log;
 
 	notice_data.window_model = &window_model;
 	notice_data.time_to_quit = &time_to_quit;
@@ -411,7 +409,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_connection_t *connection = notice_data->connection;
 	struct window_model *window_model = notice_data->window_model;
 
-	linted_ko log = notice_data->log;
 	linted_ko updater = notice_data->updater;
 	struct linted_updater_task_receive *updater_task =
 	    notice_data->updater_task;
@@ -468,8 +465,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	struct linted_gpu_context *gpu_context;
 	{
 		struct linted_gpu_context *xx;
-		errnum =
-		    linted_gpu_context_create(gpu_display, window, &xx, log);
+		errnum = linted_gpu_context_create(gpu_display, window, &xx);
 		if (errnum != 0)
 			return errnum;
 		gpu_context = xx;

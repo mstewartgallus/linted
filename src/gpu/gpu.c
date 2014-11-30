@@ -98,8 +98,7 @@ static linted_error log_str(linted_log log, struct linted_str start,
 
 linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
                                        linted_gpu_native_window native_window,
-                                       struct linted_gpu_context **gpu_contextp,
-                                       linted_log log)
+                                       struct linted_gpu_context **gpu_contextp)
 {
 	linted_error errnum = 0;
 

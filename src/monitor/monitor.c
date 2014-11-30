@@ -111,18 +111,18 @@ struct conn
 
 struct conn_pool;
 
-static linted_error create_units(struct linted_unit_db **unitsp,
-                                 struct linted_conf_db *conf_db);
+static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
+                                   struct linted_conf_db *conf_db);
 
 static linted_error service_create(struct linted_unit_service *unit,
                                    struct linted_conf *conf);
 static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf);
 
-static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *sandbox,
-                                   char const *waiter,
-                                   sigset_t const *orig_mask);
+static linted_error activate_unit_db(struct linted_unit_db *unit_db,
+                                     linted_ko cwd, char const *chrootdir,
+                                     char const *sandbox, char const *waiter,
+                                     sigset_t const *orig_mask);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task,
                              bool time_to_quit);
@@ -157,7 +157,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *sandbox,
                                      char const *waiter,
                                      sigset_t const *orig_mask,
-                                     struct linted_unit_db *units);
+                                     struct linted_unit_db *unit_db);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -198,10 +198,6 @@ struct linted_start_config const linted_start_config = {
 	.kos = kos
 };
 
-static void ignore(int signo)
-{
-}
-
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
@@ -226,14 +222,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	errnum = pthread_sigmask(SIG_BLOCK, &exit_signals, &orig_mask);
 	if (errnum != 0)
 		goto exit_monitor;
-
-	{
-		struct sigaction action = { 0 };
-		action.sa_handler = ignore;
-		action.sa_flags = SA_RESTART | SA_NODEFER | SA_NOCLDSTOP;
-		sigemptyset(&action.sa_mask);
-		sigaction(SIGCHLD, &action, NULL);
-	}
 
 	char const *chrootdir = getenv("LINTED_CHROOT");
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
@@ -389,13 +377,13 @@ retry_bind:
 		conf_db = xx;
 	}
 
-	struct linted_unit_db *units;
+	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
-		errnum = create_units(&xx, conf_db);
+		errnum = create_unit_db(&xx, conf_db);
 		if (errnum != 0)
 			goto destroy_confs;
-		units = xx;
+		unit_db = xx;
 	}
 
 	linted_admin_task_accept_prepare(accepted_conn_task,
@@ -407,10 +395,10 @@ retry_bind:
 	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 	/**
-	 * @todo Warn about unactivated units.
+	 * @todo Warn about unactivated unit_db.
 	 */
-	errnum =
-	    activate_units(units, cwd, chrootdir, sandbox, waiter, &orig_mask);
+	errnum = activate_unit_db(unit_db, cwd, chrootdir, sandbox, waiter,
+	                          &orig_mask);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -421,7 +409,7 @@ retry_bind:
 	sandbox_data.chrootdir = chrootdir;
 	sandbox_data.sandbox = sandbox;
 	sandbox_data.waiter = waiter;
-	sandbox_data.unit_db = units;
+	sandbox_data.unit_db = unit_db;
 	sandbox_data.orig_mask = &orig_mask;
 	sandbox_data.time_to_exit = &time_to_exit;
 
@@ -442,9 +430,9 @@ retry_bind:
 	} while (!time_to_exit);
 
 kill_procs:
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
@@ -474,9 +462,9 @@ kill_procs:
 		}
 	}
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
 			continue;
@@ -493,7 +481,7 @@ kill_procs:
 		socket->is_open = false;
 	}
 
-	linted_unit_db_destroy(units);
+	linted_unit_db_destroy(unit_db);
 
 destroy_confs:
 	linted_conf_db_destroy(conf_db);
@@ -541,18 +529,18 @@ exit_monitor:
 	return EXIT_SUCCESS;
 }
 
-static linted_error create_units(struct linted_unit_db **unitsp,
-                                 struct linted_conf_db *conf_db)
+static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
+                                   struct linted_conf_db *conf_db)
 {
 	linted_error errnum;
 
-	struct linted_unit_db *units;
+	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
 		errnum = linted_unit_db_create(&xx);
 		if (errnum != 0)
 			return errnum;
-		units = xx;
+		unit_db = xx;
 	}
 
 	size_t size = linted_conf_db_size(conf_db);
@@ -560,9 +548,9 @@ static linted_error create_units(struct linted_unit_db **unitsp,
 		struct linted_unit *unit;
 		{
 			struct linted_unit *xx;
-			errnum = linted_unit_db_add_unit(units, &xx);
+			errnum = linted_unit_db_add_unit(unit_db, &xx);
 			if (errnum != 0)
-				goto destroy_units;
+				goto destroy_unit_db;
 			unit = xx;
 		}
 
@@ -581,14 +569,14 @@ static linted_error create_units(struct linted_unit_db **unitsp,
 			unit_type = UNIT_TYPE_SERVICE;
 		} else {
 			errnum = EINVAL;
-			goto destroy_units;
+			goto destroy_unit_db;
 		}
 
 		char *unit_name = strndup(file_name, dot - file_name);
 		if (NULL == unit_name) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto destroy_units;
+			goto destroy_unit_db;
 		}
 
 		unit->type = unit_type;
@@ -600,7 +588,7 @@ static linted_error create_units(struct linted_unit_db **unitsp,
 
 			errnum = service_create(s, conf);
 			if (errnum != 0)
-				goto destroy_units;
+				goto destroy_unit_db;
 			break;
 		}
 
@@ -610,18 +598,18 @@ static linted_error create_units(struct linted_unit_db **unitsp,
 
 			errnum = socket_create(s, conf);
 			if (errnum != 0)
-				goto destroy_units;
+				goto destroy_unit_db;
 			break;
 		}
 		}
 	}
 
-	*unitsp = units;
+	*unit_dbp = unit_db;
 
 	return errnum;
 
-destroy_units:
-	linted_unit_db_destroy(units);
+destroy_unit_db:
+	linted_unit_db_destroy(unit_db);
 	return errnum;
 }
 
@@ -837,16 +825,16 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	return 0;
 }
 
-static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
-                                   char const *chrootdir, char const *sandbox,
-                                   char const *waiter,
-                                   sigset_t const *orig_mask)
+static linted_error activate_unit_db(struct linted_unit_db *unit_db,
+                                     linted_ko cwd, char const *chrootdir,
+                                     char const *sandbox, char const *waiter,
+                                     sigset_t const *orig_mask)
 {
 	linted_error errnum;
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
 		if (unit->type != UNIT_TYPE_SOCKET)
 			continue;
@@ -856,15 +844,15 @@ static linted_error activate_units(struct linted_unit_db *units, linted_ko cwd,
 			return errnum;
 	}
 
-	for (size_t ii = 0U, size = linted_unit_db_size(units); ii < size;
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(units, ii);
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
 		errnum = service_activate(unit, cwd, chrootdir, sandbox, waiter,
-		                          orig_mask, units);
+		                          orig_mask, unit_db);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -916,7 +904,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir, char const *sandbox,
                                      char const *waiter,
                                      sigset_t const *orig_mask,
-                                     struct linted_unit_db *units)
+                                     struct linted_unit_db *unit_db)
 {
 	linted_error errnum = 0;
 
@@ -1272,7 +1260,7 @@ envvar_allocate_succeeded:
 			flags |= LINTED_KO_WRONLY;
 
 		struct linted_unit const *socket_unit =
-		    linted_unit_db_get_unit_by_name(units, filename);
+		    linted_unit_db_get_unit_by_name(unit_db, filename);
 		if (NULL == socket_unit) {
 			errnum = EINVAL;
 			goto free_filename;
@@ -2338,48 +2326,6 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid)
 	return errnum;
 }
 
-static linted_error ptrace_detach(pid_t pid, int signo)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    ptrace(PTRACE_DETACH, pid, (void *)NULL, (void *)(intptr_t)signo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_setoptions(pid_t pid, unsigned options)
-{
-	linted_error errnum;
-
-	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL,
-	                 (void *)(uintptr_t)options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL, (void *)siginfo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
 static linted_error set_death_sig(int signum)
 {
 	linted_error errnum;
@@ -2482,6 +2428,48 @@ static void clear_wait(pid_t pid)
 
 		break;
 	}
+}
+
+static linted_error ptrace_detach(pid_t pid, int signo)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    ptrace(PTRACE_DETACH, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_setoptions(pid_t pid, unsigned options)
+{
+	linted_error errnum;
+
+	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL,
+	                 (void *)(uintptr_t)options)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL, (void *)siginfo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
 }
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)

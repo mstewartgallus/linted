@@ -59,7 +59,7 @@ struct linted_mq_task_send
 
 static void gen_name(char *name, size_t size);
 static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(linted_ko ko, short revents);
+static linted_error check_for_poll_error(short revents);
 
 /**
  * Implemented using POSIX message queues.
@@ -310,7 +310,7 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 		if (errnum != 0)
 			goto complete_task;
 
-		errnum = check_for_poll_error(ko, revents);
+		errnum = check_for_poll_error(revents);
 		if (0 == errnum)
 			goto submit_retry;
 	}
@@ -362,7 +362,7 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 		if (errnum != 0)
 			goto complete_task;
 
-		errnum = check_for_poll_error(ko, revents);
+		errnum = check_for_poll_error(revents);
 		if (0 == errnum)
 			goto submit_retry;
 	}
@@ -427,7 +427,7 @@ poll_succeeded:
 	return 0;
 }
 
-static linted_error check_for_poll_error(linted_ko ko, short revents)
+static linted_error check_for_poll_error(short revents)
 {
 	linted_error errnum = 0;
 

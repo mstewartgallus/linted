@@ -37,7 +37,7 @@
 #include <unistd.h>
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(linted_ko ko, short revents);
+static linted_error check_for_poll_error(short revents);
 
 linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
                                 size_t size)
@@ -83,7 +83,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 		if (errnum != 0)
 			break;
 
-		errnum = check_for_poll_error(ko, revents);
+		errnum = check_for_poll_error(revents);
 		if (errnum != 0)
 			break;
 	}
@@ -146,7 +146,7 @@ linted_error linted_io_write_all(linted_ko ko, size_t *restrict bytes_wrote_out,
 		if (errnum != 0)
 			break;
 
-		errnum = check_for_poll_error(ko, revents);
+		errnum = check_for_poll_error(revents);
 		if (errnum != 0)
 			break;
 	}
@@ -250,7 +250,7 @@ poll_succeeded:
 	return 0;
 }
 
-static linted_error check_for_poll_error(linted_ko ko, short revents)
+static linted_error check_for_poll_error(short revents)
 {
 	linted_error errnum = 0;
 

@@ -499,7 +499,7 @@ exit_loop:
 	for (size_t ii = 0U; ii < env_size; ++ii)
 		env_copy[2U + ii] = environ[ii];
 
-	int num_fds = atoi(listen_fds);
+	size_t num_fds = atoi(listen_fds);
 	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
 	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
 

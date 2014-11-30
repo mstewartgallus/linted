@@ -32,7 +32,7 @@ struct linted_log_task_receive
 };
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(linted_ko ko, short revents);
+static linted_error check_for_poll_error(short revents);
 
 linted_error
 linted_log_task_receive_create(struct linted_log_task_receive **taskp,
@@ -147,14 +147,14 @@ linted_error linted_log_write(linted_log log, char const *msg_ptr,
 		}
 
 	check_for_poll_error:
-		errnum = check_for_poll_error(log, revents);
+		errnum = check_for_poll_error(revents);
 		if (errnum != 0)
 			break;
 	}
 	return errnum;
 }
 
-static linted_error check_for_poll_error(linted_ko ko, short revents)
+static linted_error check_for_poll_error(short revents)
 {
 	linted_error errnum = 0;
 
