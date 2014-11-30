@@ -70,9 +70,8 @@ struct linted_spawn_attr
 
 static pid_t do_vfork(sigset_t const *sigset,
                       struct linted_spawn_file_actions const *file_actions,
-                      pid_t parent, linted_ko err_reader, linted_ko err_writer,
-                      bool ptracing, char const *const *argv,
-                      char const *const *envp, char const *listen_fds,
+                      linted_ko err_reader, linted_ko err_writer, bool ptracing,
+                      char const *const *argv, char const *const *envp,
                       char *listen_pid, char const *filename);
 
 static linted_error default_signals(void);
@@ -333,8 +332,6 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		filename = relative_filename;
 	}
 
-	pid_t parent = getpid();
-
 	sigset_t sigset;
 	sigfillset(&sigset);
 
@@ -345,9 +342,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	if (errnum != 0)
 		goto close_err_pipes;
 
-	pid_t child =
-	    do_vfork(child_mask, file_actions, parent, err_reader, err_writer,
-	             ptracing, argv, envp, listen_fds, listen_pid, filename);
+	pid_t child = do_vfork(child_mask, file_actions, err_reader, err_writer,
+	                       ptracing, argv, envp, listen_pid, filename);
 	if (-1 == child) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -411,9 +407,8 @@ free_relative_path:
 
 static pid_t do_vfork(sigset_t const *sigset,
                       struct linted_spawn_file_actions const *file_actions,
-                      pid_t parent, linted_ko err_reader, linted_ko err_writer,
-                      bool ptracing, char const *const *argv,
-                      char const *const *envp, char const *listen_fds,
+                      linted_ko err_reader, linted_ko err_writer, bool ptracing,
+                      char const *const *argv, char const *const *envp,
                       char *listen_pid, char const *filename)
 {
 	pid_t const child = vfork();

@@ -109,6 +109,9 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
+static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
+                      char const *const *argv, char const *const *env);
+
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
@@ -520,32 +523,11 @@ exit_loop:
 		env_copy[1U] = listen_pid_str;
 		env_copy[env_size + 2U] = NULL;
 
-		pid_t child = vfork();
+		pid_t child = do_vfork(err_writer, pts, listen_pid_str,
+		                       (char const * const *)command,
+		                       (char const * const *)env_copy);
 		if (-1 == child)
 			exit_with_error(err_writer, errno);
-
-		if (0 == child) {
-			pid_to_str(listen_pid_str + strlen("LISTEN_PID="),
-			           getpid());
-
-			if (-1 == dup2(pts, STDIN_FILENO))
-				exit_with_error(err_writer, errno);
-
-			if (-1 == dup2(pts, STDOUT_FILENO))
-				exit_with_error(err_writer, errno);
-
-			if (-1 == dup2(pts, STDERR_FILENO))
-				exit_with_error(err_writer, errno);
-
-			if (-1 == setsid())
-				exit_with_error(err_writer, errno);
-
-			if (-1 == ioctl(pts, TIOCSCTTY))
-				exit_with_error(err_writer, errno);
-
-			execve(command[0U], (char * const *)command, env_copy);
-			exit_with_error(err_writer, errno);
-		}
 
 		linted_mem_free(env_copy);
 	}
@@ -650,6 +632,36 @@ exit_loop:
 	}
 exit_application:
 	return EXIT_SUCCESS;
+}
+
+static pid_t do_vfork(linted_ko err_writer, linted_ko pts, char *listen_pid_str,
+                      char const *const *argv, char const *const *env)
+{
+	pid_t child = vfork();
+	if (child != 0)
+		return child;
+
+	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), getpid());
+
+	if (-1 == dup2(pts, STDIN_FILENO))
+		exit_with_error(err_writer, errno);
+
+	if (-1 == dup2(pts, STDOUT_FILENO))
+		exit_with_error(err_writer, errno);
+
+	if (-1 == dup2(pts, STDERR_FILENO))
+		exit_with_error(err_writer, errno);
+
+	if (-1 == setsid())
+		exit_with_error(err_writer, errno);
+
+	if (-1 == ioctl(pts, TIOCSCTTY))
+		exit_with_error(err_writer, errno);
+
+	execve(argv[0U], (char * const *)argv, (char * const *)env);
+	exit_with_error(err_writer, errno);
+
+	return 0;
 }
 
 static void sigchld_handler(int signo)
