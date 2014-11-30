@@ -68,12 +68,12 @@ struct linted_spawn_attr
 	bool ptracing : 1U;
 };
 
-static void do_vfork(sigset_t const *sigset,
-                     struct linted_spawn_file_actions const *file_actions,
-                     pid_t parent, linted_ko err_reader, linted_ko err_writer,
-                     bool ptracing, char const *const *argv,
-                     char const *const *envp, char const *listen_fds,
-                     char *listen_pid, char const *filename);
+static pid_t do_vfork(sigset_t const *sigset,
+                      struct linted_spawn_file_actions const *file_actions,
+                      pid_t parent, linted_ko err_reader, linted_ko err_writer,
+                      bool ptracing, char const *const *argv,
+                      char const *const *envp, char const *listen_fds,
+                      char *listen_pid, char const *filename);
 
 static linted_error default_signals(void);
 
@@ -298,14 +298,20 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		if (!at_fdcwd && is_relative_path) {
 			dirko_copy =
 			    fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
-			if (-1 == dirko_copy)
+			if (-1 == dirko_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
 				goto close_err_pipes;
+			}
 		}
 
 		int err_writer_copy =
 		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
-		if (-1 == err_writer_copy)
+		if (-1 == err_writer_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto close_dirko_copy;
+		}
 
 		linted_ko_close(err_writer);
 
@@ -339,11 +345,9 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	if (errnum != 0)
 		goto close_err_pipes;
 
-	pid_t const child = vfork();
-	if (0 == child)
-		do_vfork(child_mask, file_actions, parent, err_reader,
-		         err_writer, ptracing, argv, envp, listen_fds,
-		         listen_pid, filename);
+	pid_t child =
+	    do_vfork(child_mask, file_actions, parent, err_reader, err_writer,
+	             ptracing, argv, envp, listen_fds, listen_pid, filename);
 	if (-1 == child) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -378,8 +382,10 @@ close_err_pipes : {
 
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
-		if (xx == sizeof yy)
+		if (xx == sizeof yy) {
 			errnum = yy;
+			LINTED_ASSUME(errnum != 0);
+		}
 	}
 
 close_err_reader : {
@@ -403,13 +409,17 @@ free_relative_path:
 	return 0;
 }
 
-static void do_vfork(sigset_t const *sigset,
-                     struct linted_spawn_file_actions const *file_actions,
-                     pid_t parent, linted_ko err_reader, linted_ko err_writer,
-                     bool ptracing, char const *const *argv,
-                     char const *const *envp, char const *listen_fds,
-                     char *listen_pid, char const *filename)
+static pid_t do_vfork(sigset_t const *sigset,
+                      struct linted_spawn_file_actions const *file_actions,
+                      pid_t parent, linted_ko err_reader, linted_ko err_writer,
+                      bool ptracing, char const *const *argv,
+                      char const *const *envp, char const *listen_fds,
+                      char *listen_pid, char const *filename)
 {
+	pid_t const child = vfork();
+	if (child != 0)
+		return child;
+
 	linted_error errnum = 0;
 
 	errnum = default_signals();
@@ -473,6 +483,7 @@ fail : {
 	_Exit(EXIT_SUCCESS);
 }
 	/* Impossible */
+	return 0;
 }
 
 static linted_error default_signals(void)
