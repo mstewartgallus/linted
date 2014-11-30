@@ -405,11 +405,18 @@ free_relative_path:
 	return 0;
 }
 
-static pid_t do_vfork(sigset_t const *sigset,
-                      struct linted_spawn_file_actions const *file_actions,
-                      linted_ko err_reader, linted_ko err_writer, bool ptracing,
-                      char const *const *argv, char const *const *envp,
-                      char *listen_pid, char const *filename)
+/* Don't inline to work around a bug in Clang */
+#ifdef __clang__
+#define DO_VFORK_ATTR __attribute__((noinline))
+#else
+#define DO_VFORK_ATTR
+#endif
+static DO_VFORK_ATTR pid_t
+do_vfork(sigset_t const *sigset,
+         struct linted_spawn_file_actions const *file_actions,
+         linted_ko err_reader, linted_ko err_writer, bool ptracing,
+         char const *const *argv, char const *const *envp, char *listen_pid,
+         char const *filename)
 {
 	pid_t const child = vfork();
 	if (child != 0)
