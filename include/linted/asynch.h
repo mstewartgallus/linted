@@ -79,6 +79,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
                                        void *data, unsigned type);
 void linted_asynch_task_destroy(struct linted_asynch_task *task);
 
+void linted_asynch_task_cancel(struct linted_asynch_task *task);
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
                                 unsigned task_action);
 unsigned linted_asynch_task_action(struct linted_asynch_task *task);

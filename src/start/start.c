@@ -40,6 +40,8 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
+static void do_nothing(int signo);
+
 static bool is_open(linted_ko ko);
 
 static bool is_privileged(void);
@@ -198,7 +200,21 @@ It is insecure to run a game with high privileges!\n"));
 		linted_random_seed_generator(entropy);
 	}
 
+	{
+		struct sigaction act = { 0 };
+		sigemptyset(&act.sa_mask);
+		act.sa_handler = do_nothing;
+		if (-1 == sigaction(SIGRTMIN, &act, NULL)) {
+			perror("sigaction");
+			return EXIT_FAILURE;
+		}
+	}
+
 	return linted_start(process_name, argc, (char const * const *)argv);
+}
+
+static void do_nothing(int signo)
+{
 }
 
 static bool is_privileged(void)

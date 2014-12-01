@@ -749,14 +749,12 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 		{
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum)
-				revents = xx;
+			if (EINTR == errnum)
+				goto submit_retry;
+			if (errnum != 0)
+				goto complete_task;
+			revents = xx;
 		}
-		if (EINTR == errnum)
-			goto submit_retry;
-
-		if (errnum != 0)
-			goto complete_task;
 
 		errnum = check_for_poll_error(revents);
 		if (0 == errnum)

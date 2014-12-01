@@ -490,8 +490,11 @@ destroy_conn_pool:
 	conn_pool_destroy(conn_pool);
 
 drain_asynch_pool:
+	linted_asynch_task_cancel(
+	    linted_asynch_task_waitid_to_asynch(sandbox_task));
+	linted_asynch_task_cancel(
+	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 	linted_asynch_pool_stop(pool);
-
 	for (;;) {
 		struct linted_asynch_task *completed_task;
 		{
@@ -1352,6 +1355,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	linted_error errnum = 0;
 
 	errnum = linted_asynch_task_errnum(task);
+	if (ECANCELED == errnum)
+		return 0;
 	if (errnum != 0)
 		return errnum;
 
@@ -1409,6 +1414,8 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 	linted_error errnum = 0;
 
 	errnum = linted_asynch_task_errnum(task);
+	if (ECANCELED == errnum)
+		return 0;
 	if (errnum != 0)
 		return errnum;
 
@@ -1661,6 +1668,8 @@ static linted_error on_accepted_conn(struct linted_asynch_task *task,
 	linted_error errnum;
 
 	errnum = linted_asynch_task_errnum(task);
+	if (ECANCELED == errnum)
+		return 0;
 	if (errnum != 0)
 		return errnum;
 

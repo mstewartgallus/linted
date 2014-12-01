@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -87,6 +88,12 @@ struct linted_asynch_task_sleep_until
 struct linted_asynch_task
 {
 	struct linted_queue_node parent;
+
+	pthread_mutex_t owner_lock;
+	pthread_t owner;
+	bool owned : 1U;
+	bool cancelled : 1U;
+
 	void *data;
 	linted_error errnum;
 	unsigned type;
@@ -137,11 +144,12 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	/*
 	 * Our tasks are only I/O tasks and have extremely tiny stacks.
 	 */
-	long stack_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(stack_size != -1);
-
 	long page_size = sysconf(_SC_PAGE_SIZE);
 	assert(page_size != -1);
+
+	/* We need an extra page for signals */
+	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
+	assert(stack_size != -1);
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t worker_stacks_size =
@@ -296,19 +304,62 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
+	bool cancelled;
+	linted_error errnum;
+
 	assert(pool != NULL);
 	assert(!pool->stopped);
 
-	task->errnum = EINPROGRESS;
-	linted_queue_send(pool->worker_command_queue, LINTED_UPCAST(task));
+	errnum = pthread_mutex_lock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	task->owned = false;
+	cancelled = task->cancelled;
+
+	errnum = pthread_mutex_unlock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
+	if (cancelled) {
+		task->errnum = ECANCELED;
+		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+	} else {
+		linted_queue_send(pool->worker_command_queue,
+		                  LINTED_UPCAST(task));
+	}
 }
 
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
+	linted_error errnum;
+
 	assert(pool != NULL);
 
-	/* Isn't a cancellation point so always works */
+	/* Aren't a cancellation point so always works */
+
+	errnum = pthread_mutex_lock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	assert(task->owned);
+
+	task->cancelled = false;
+	task->owned = false;
+	errnum = pthread_mutex_unlock(&task->owner_lock);
+
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
 	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
 }
 
@@ -352,17 +403,93 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 		task = xx;
 	}
 	linted_queue_node(&task->parent);
+
+	{
+		pthread_mutexattr_t attr;
+
+		errnum = pthread_mutexattr_init(&attr);
+		if (errnum != 0)
+			goto free_task;
+
+#if !defined NDBEBUG
+		errnum =
+		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+		assert(errnum != EINVAL);
+		if (errnum != 0)
+			goto destroy_attr;
+#endif
+
+		errnum = pthread_mutex_init(&task->owner_lock, &attr);
+		if (errnum != 0)
+			goto destroy_attr;
+
+	destroy_attr:
+		pthread_mutexattr_destroy(&attr);
+		if (errnum != 0)
+			goto free_task;
+	}
+
+	task->owned = false;
+	task->cancelled = false;
+
 	task->data = data;
 	task->type = type;
 	task->errnum = EINVAL;
 
 	*taskp = task;
 	return 0;
+
+free_task:
+	linted_mem_free(task);
+	return errnum;
 }
 
 void linted_asynch_task_destroy(struct linted_asynch_task *task)
 {
 	linted_mem_free(task);
+}
+
+void linted_asynch_task_cancel(struct linted_asynch_task *task)
+{
+	linted_error errnum;
+
+	errnum = pthread_mutex_lock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	task->cancelled = true;
+
+	/* Yes, really, we do have to busy wait to prevent race
+	 * conditions unfortunately */
+	while (task->owned) {
+		errnum = pthread_kill(task->owner, SIGRTMIN);
+		if (errnum != 0 && errnum != EAGAIN) {
+			assert(errnum != ESRCH);
+			assert(errnum != EINVAL);
+			assert(false);
+		}
+
+		errnum = pthread_mutex_unlock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
+
+		sched_yield();
+
+		errnum = pthread_mutex_lock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+	}
+	errnum = pthread_mutex_unlock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
 }
 
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
@@ -604,6 +731,7 @@ linted_asynch_task_sleep_until_from_asynch(struct linted_asynch_task *task)
 static void *worker_routine(void *arg)
 {
 	struct linted_asynch_pool *pool = arg;
+	linted_error errnum;
 
 	for (;;) {
 		struct linted_asynch_task *task;
@@ -611,6 +739,21 @@ static void *worker_routine(void *arg)
 			struct linted_queue_node *node;
 			linted_queue_recv(pool->worker_command_queue, &node);
 			task = LINTED_DOWNCAST(struct linted_asynch_task, node);
+		}
+
+		errnum = pthread_mutex_lock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+
+		task->owner = pthread_self();
+		task->owned = true;
+
+		errnum = pthread_mutex_unlock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
 		}
 
 		run_task(pool, task);
