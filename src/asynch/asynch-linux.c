@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 struct linted_asynch_pool
@@ -45,6 +46,9 @@ struct linted_asynch_pool
 	 * too large.
 	 */
 	struct linted_queue *event_queue;
+
+	size_t worker_stacks_size;
+	void *worker_stacks;
 
 	size_t worker_count;
 
@@ -83,10 +87,10 @@ struct linted_asynch_task_sleep_until
 struct linted_asynch_task
 {
 	struct linted_queue_node parent;
+	void *data;
 	linted_error errnum;
 	unsigned type;
 	unsigned task_action;
-	void *data;
 };
 
 static void *worker_routine(void *arg);
@@ -130,26 +134,64 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
 	pool->worker_count = max_tasks;
 
+	/*
+	 * Our tasks are only I/O tasks and have extremely tiny stacks.
+	 */
+	long stack_size = sysconf(_SC_THREAD_STACK_MIN);
+	assert(stack_size != -1);
+
+	long page_size = sysconf(_SC_PAGE_SIZE);
+	assert(page_size != -1);
+
+	size_t stack_and_guard_size = stack_size + page_size;
+	size_t worker_stacks_size =
+	    page_size + stack_and_guard_size * max_tasks;
+	void *worker_stacks = mmap(
+	    NULL, worker_stacks_size, PROT_READ | PROT_WRITE,
+	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+	if (NULL == worker_stacks) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto destroy_event_queue;
+	}
+
+	/* Guard pages are shared between the stacks */
+	if (-1 == mprotect((char *)worker_stacks, page_size, PROT_NONE)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto destroy_stacks;
+	}
+
+	for (size_t ii = 0U; ii < max_tasks; ++ii) {
+		if (-1 == mprotect((char *)worker_stacks + page_size +
+		                       ii * stack_and_guard_size + stack_size,
+		                   page_size, PROT_NONE)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_stacks;
+		}
+	}
+
+	pool->worker_stacks = worker_stacks;
+	pool->worker_stacks_size = worker_stacks_size;
+
 	{
 		pthread_attr_t attr;
 
 		errnum = pthread_attr_init(&attr);
 		if (errnum != 0)
-			goto destroy_event_queue;
-
-		/*
-		 * Our tasks are only I/O tasks and have extremely tiny stacks.
-		 */
-		long stack_min = sysconf(_SC_THREAD_STACK_MIN);
-		assert(stack_min != -1);
-
-		errnum = pthread_attr_setstacksize(&attr, stack_min);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
-			assert(false);
-		}
+			goto destroy_stacks;
 
 		for (; created_threads < max_tasks; ++created_threads) {
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)worker_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
+			}
+
 			errnum = pthread_create(&pool->workers[created_threads],
 			                        &attr, worker_routine, pool);
 			if (errnum != 0)
@@ -174,6 +216,9 @@ destroy_threads:
 
 	for (size_t ii = 0U; ii < created_threads; ++ii)
 		pthread_join(pool->workers[ii], NULL);
+
+destroy_stacks:
+	munmap(worker_stacks, worker_stacks_size);
 
 destroy_event_queue:
 	linted_queue_destroy(pool->event_queue);
@@ -236,6 +281,8 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 		}
 		assert(PTHREAD_CANCELED == retval);
 	}
+
+	munmap(pool->worker_stacks, pool->worker_stacks_size);
 
 	linted_queue_destroy(pool->worker_command_queue);
 
