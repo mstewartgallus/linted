@@ -111,6 +111,56 @@ struct conn
 
 struct conn_pool;
 
+#define COMM_MAX 16U
+
+struct pidstat
+{
+	pid_t pid;
+	char comm[1U + COMM_MAX + 1U + 1U];
+	char state;
+	pid_t ppid;
+	pid_t pgrp;
+	pid_t session;
+	int tty_nr;
+	pid_t tpgid;
+	unsigned flags;
+	unsigned long minflt;
+	unsigned long cminflt;
+	unsigned long majflt;
+	unsigned long cmajflt;
+	unsigned long utime;
+	unsigned long stime;
+	long cutime;
+	long cstime;
+	long priority;
+	long nice;
+	long num_threads;
+	long itrealvalue;
+	unsigned long long starttime;
+	unsigned long vsize;
+	long rss;
+	unsigned long rsslim;
+	unsigned long startcode;
+	unsigned long endcode;
+	unsigned long startstack;
+	unsigned long kstkesp;
+	unsigned long kstkeip;
+	unsigned long signal;
+	unsigned long blocked;
+	unsigned long sigignore;
+	unsigned long sigcatch;
+	unsigned long wchan;
+	unsigned long nswap;
+	unsigned long cnswap;
+	int exit_signal;
+	int processor;
+	unsigned rt_priority;
+	unsigned policy;
+	unsigned long long delayacct_blkio_ticks;
+	unsigned long guest_time;
+	long cguest_time;
+};
+
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
                                    struct linted_conf_db *conf_db);
 
@@ -162,18 +212,22 @@ static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 
-static linted_error pid_for_service_name(pid_t *pidp, char const *name);
-static linted_error get_process_service_name(pid_t pid, char **service_namep);
-static linted_error get_process_comm(linted_ko *kop, pid_t pid);
-static linted_error get_process_children(linted_ko *kop, pid_t pid);
-static linted_error is_child(pid_t pid, bool *isp);
-static linted_error kill_process_children(pid_t pid, int signo);
+static linted_error pid_children(linted_ko *kop, pid_t pid);
+static linted_error kill_pid_children(pid_t pid, int signo);
+
+static linted_error pid_of_service(pid_t *pidp, char const *name);
+
+static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
+
+static linted_error pid_comm(pid_t pid, char comm[static COMM_MAX + 1U]);
+static linted_error pid_stat(pid_t pid, struct pidstat *buf);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_detach(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, unsigned options);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
+
 static linted_error set_death_sig(int signum);
 
 static linted_error conn_pool_create(struct conn_pool **poolp);
@@ -442,7 +496,7 @@ kill_procs:
 		{
 			pid_t xx;
 			linted_error pid_errnum =
-			    pid_for_service_name(&xx, unit->name);
+				pid_of_service(&xx, unit->name);
 			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
@@ -922,7 +976,7 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = pid_for_service_name(&xx, service_name);
+		errnum = pid_of_service(&xx, service_name);
 		if (errnum != 0)
 			goto service_not_found;
 		child = xx;
@@ -1541,7 +1595,7 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	bool is;
 	{
 		bool xx;
-		errnum = is_child(pid, &xx);
+		errnum = pid_is_child_of(getpid(), pid, &xx);
 		if (errnum != 0)
 			return errnum;
 		is = xx;
@@ -1552,14 +1606,11 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 		return 0;
 	}
 
-	char *service_name;
-	{
-		char *xx;
-		errnum = get_process_service_name(pid, &xx);
-		if (errnum != 0)
-			return errnum;
-		service_name = xx;
-	}
+	char service_name[COMM_MAX + 16U];
+
+	errnum = pid_comm(pid, service_name);
+	if (errnum != 0)
+		return errnum;
 
 	if (was_signal) {
 		fprintf(stderr, "%s %i killed due to signal %s\n", service_name,
@@ -1575,8 +1626,6 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	if (NULL == unit) {
 		fprintf(stderr, "service_name: %s\n", service_name);
 	}
-
-	linted_mem_free(service_name);
 
 	if (NULL == unit) {
 		clear_wait(pid);
@@ -1628,7 +1677,7 @@ static linted_error on_child_signaled(pid_t pid, int signo)
 		bool is;
 		{
 			bool xx;
-			errnum = is_child(pid, &xx);
+			errnum = pid_is_child_of(getpid(), pid, &xx);
 			if (errnum != 0)
 				break;
 			is = xx;
@@ -1640,17 +1689,14 @@ static linted_error on_child_signaled(pid_t pid, int signo)
 			break;
 		}
 
-		char *service_name;
-		{
-			char *xx;
-			errnum = get_process_service_name(pid, &xx);
-			if (errnum != 0)
-				break;
-			service_name = xx;
-		}
+		char service_name[COMM_MAX + 16U];
+
+		errnum = pid_comm(pid, service_name);
+		if (errnum != 0)
+			return errnum;
 
 		fprintf(stderr, "ptracing service %s: %i\n", service_name, pid);
-		linted_mem_free(service_name);
+
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
 	}
@@ -1664,7 +1710,7 @@ static linted_error on_child_signaled(pid_t pid, int signo)
 	case SIGQUIT:
 	case SIGTERM:
 		/* Propagate to the rest of the sandbox */
-		errnum = kill_process_children(pid, signo);
+		errnum = kill_pid_children(pid, signo);
 		break;
 
 	case SIGCHLD: {
@@ -1733,7 +1779,7 @@ static linted_error on_child_about_to_exit(pid_t pid)
 
 	linted_error errnum = 0;
 
-	errnum = kill_process_children(pid, 0);
+	errnum = kill_pid_children(pid, 0);
 
 	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
@@ -1765,7 +1811,7 @@ static linted_error on_status_request(union linted_admin_request const *request,
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = pid_for_service_name(&xx, request->status.name);
+		errnum = pid_of_service(&xx, request->status.name);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -1806,7 +1852,7 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = pid_for_service_name(&xx, request->status.name);
+		errnum = pid_of_service(&xx, request->status.name);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -1838,138 +1884,14 @@ reply:
 	return 0;
 }
 
-static linted_error get_process_service_name(pid_t pid, char **service_namep)
-{
-	linted_error errnum;
-
-	linted_ko env;
-	{
-		linted_ko xx;
-		errnum = get_process_comm(&xx, pid);
-		if (errnum != 0)
-			return errnum;
-		env = xx;
-	}
-
-	FILE *file = fdopen(env, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(env);
-
-		return errnum;
-	}
-
-	ssize_t bytes;
-	char *buf = NULL;
-	{
-		char *xx = NULL;
-		size_t yy = 0U;
-		errno = 0;
-		bytes = getline(&xx, &yy, file);
-		if (-1 == bytes) {
-			errnum = errno;
-			if (0 == errnum)
-				errnum = ESRCH;
-			goto getline_failed;
-		}
-		buf = xx;
-		goto getline_succeeded;
-	}
-getline_failed:
-	if (errnum != 0)
-		goto close_file;
-	bytes = 1U;
-
-getline_succeeded:
-	/* Truncate out the newline character and handle a NULL buf */
-	{
-		void *xx;
-		errnum = linted_mem_realloc(&xx, buf, bytes);
-		if (errnum != 0)
-			goto close_file;
-		buf = xx;
-	}
-
-	buf[bytes - 1U] = '\0';
-
-close_file:
-	if (EOF == fclose(file)) {
-		if (0 == errnum)
-			errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	if (errnum != 0) {
-		linted_mem_free(buf);
-		return errnum;
-	}
-
-	*service_namep = buf;
-
-	return errnum;
-}
-
-static linted_error is_child(pid_t pid, bool *isp)
-{
-	linted_error errnum = 0;
-
-	linted_ko stat_ko;
-	{
-		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
-		sprintf(path, "/proc/%i/stat", pid);
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-		if (errnum != 0)
-			return errnum;
-		stat_ko = xx;
-	}
-
-	FILE *file = fdopen(stat_ko, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(stat_ko);
-
-		return errnum;
-	}
-
-	pid_t ppid;
-	{
-		pid_t xx;
-		int num_match = fscanf(file, "%*d %*s %*c %d", &xx);
-		if (EOF == num_match) {
-			errnum = errno;
-			if (0 == errnum)
-				errnum = ENOSYS;
-			goto close_file;
-		}
-		if (num_match < 1) {
-			errnum = ENOSYS;
-			goto close_file;
-		}
-		ppid = xx;
-	}
-
-	*isp = ppid == getpid();
-
-close_file:
-	fclose(file);
-
-	return errnum;
-}
-
-static linted_error pid_for_service_name(pid_t *pidp, char const *name)
+static linted_error pid_of_service(pid_t *pidp, char const *name)
 {
 	linted_error errnum = 0;
 
 	linted_ko init_children;
 	{
 		linted_ko xx;
-		errnum = get_process_children(&xx, getppid());
+		errnum = pid_children(&xx, getppid());
 		if (errnum != 0)
 			return errnum;
 		init_children = xx;
@@ -2012,24 +1934,17 @@ static linted_error pid_for_service_name(pid_t *pidp, char const *name)
 		;
 		pid_t child = strtol(buf, NULL, 10);
 
-		char *service_name;
-		{
-			char *xx;
-			errnum = get_process_service_name(child, &xx);
-			if (ESRCH == errnum)
-				continue;
-			if (errnum != 0)
-				goto free_buf;
-			service_name = xx;
-		}
+		char service_name[COMM_MAX + 16U];
+
+		errnum = pid_comm(child, service_name);
+		if (errnum != 0)
+			return errnum;
 
 		if (0 == strcmp(service_name, name)) {
 			errnum = 0;
 			pid = child;
 			break;
 		}
-
-		linted_mem_free(service_name);
 	}
 	*pidp = pid;
 
@@ -2041,14 +1956,14 @@ free_buf:
 	return errnum;
 }
 
-static linted_error kill_process_children(pid_t pid, int signo)
+static linted_error kill_pid_children(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
 	linted_ko children;
 	{
 		linted_ko xx;
-		errnum = get_process_children(&xx, pid);
+		errnum = pid_children(&xx, pid);
 		if (errnum != 0)
 			return errnum;
 		children = xx;
@@ -2261,21 +2176,7 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	return 0;
 }
 
-static linted_error get_process_comm(linted_ko *kop, pid_t pid)
-{
-	linted_error errnum;
-	{
-		char path[] = "/proc/XXXXXXXXXXXXXXXX";
-		sprintf(path, "/proc/%i/comm", pid);
-		errnum =
-		    linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-	}
-	if (ENOENT == errnum)
-		return ESRCH;
-	return errnum;
-}
-
-static linted_error get_process_children(linted_ko *kop, pid_t pid)
+static linted_error pid_children(linted_ko *kop, pid_t pid)
 {
 	linted_error errnum;
 	{
@@ -2287,20 +2188,6 @@ static linted_error get_process_children(linted_ko *kop, pid_t pid)
 	if (ENOENT == errnum)
 		return ESRCH;
 	return errnum;
-}
-
-static linted_error set_death_sig(int signum)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
 }
 
 static linted_error conn_pool_create(struct conn_pool **poolp)
@@ -2393,6 +2280,167 @@ static void clear_wait(pid_t pid)
 	}
 }
 
+static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)
+{
+	linted_error errnum;
+	struct pidstat buf;
+
+	errnum = pid_stat(child, &buf);
+	if (errnum != 0)
+		return errnum;
+
+	*isp = buf.ppid == parent;
+
+	return errnum;
+}
+
+static linted_error pid_comm(pid_t pid, char comm[static COMM_MAX + 1U])
+{
+	linted_error errnum;
+
+	linted_ko ko;
+	{
+		linted_ko xx;
+		char path[] = "/proc/XXXXXXXXXXXXXXXX";
+		sprintf(path, "/proc/%i/comm", pid);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		ko = xx;
+	}
+	if (ENOENT == errnum)
+		return ESRCH;
+	if (errnum != 0)
+		return errnum;
+
+	FILE *file = fdopen(ko, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(ko);
+
+		return errnum;
+	}
+
+	int nr = fscanf(file, "%16s", comm);
+	if (EOF == nr) {
+		errnum = errno;
+		goto close_file;
+	}
+	if (nr < 1) {
+		errnum = ENOSYS;
+		goto close_file;
+	}
+
+close_file:
+	if (EOF == fclose(file)) {
+		if (0 == errnum)
+			errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	return errnum;
+}
+
+static linted_error pid_stat(pid_t pid, struct pidstat *buf)
+{
+	linted_error errnum = 0;
+
+	linted_ko stat_ko;
+	{
+		linted_ko xx;
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
+		sprintf(path, "/proc/%i/stat", pid);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		if (errnum != 0)
+			return errnum;
+		stat_ko = xx;
+	}
+
+	FILE *file = fdopen(stat_ko, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(stat_ko);
+
+		return errnum;
+	}
+
+	memset(buf, 0, sizeof *buf);
+
+	int num_match = fscanf(
+	    file, "%d "   // pid
+	          "%s "   // comm
+	          "%c "   // state
+	          "%d "   // ppid
+	          "%d "   // pgrp
+	          "%d "   // session
+	          "%d "   // tty_nr
+	          "%d "   // tpgid
+	          "%u "   // flags
+	          "%lu "  // minflt
+	          "%lu "  // cminflt
+	          "%lu "  // majflt
+	          "%lu "  // cmajflt
+	          "%lu "  // utime
+	          "%lu "  // stime
+	          "%ld "  // cutime
+	          "%ld "  // cstime
+	          "%ld "  // priority
+	          "%ld "  // nice
+	          "%ld "  // num_threads
+	          "%ld "  // itrealvalue
+	          "%llu " // starttime
+	          "%lu "  // vsize
+	          "%ld "  // rss
+	          "%lu "  // rsslim
+	          "%lu "  // startcode
+	          "%lu "  // endcode
+	          "%lu "  // startstack
+	          "%lu "  // kstkesp
+	          "%lu "  // kstkeip
+	          "%lu "  // signal
+	          "%lu "  // blocked
+	          "%lu "  // sigignore
+	          "%lu "  // sigcatch
+	          "%lu "  // wchan
+	          "%lu "  // nswap
+	          "%lu "  // cnswap
+	          "%d "   // exit_signal
+	          "%d "   // processor
+	          "%u "   // rt_priority
+	          "%u "   // policy
+	          "%llu " // delayacct_blkio_ticks
+	          "%lu "  // guest_time
+	          "%ld"   // cguest_time
+	    ,
+	    &buf->pid, buf->comm, &buf->state, &buf->ppid, &buf->pgrp,
+	    &buf->session, &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
+	    &buf->cminflt, &buf->majflt, &buf->cmajflt, &buf->utime,
+	    &buf->stime, &buf->cutime, &buf->cstime, &buf->priority, &buf->nice,
+	    &buf->num_threads, &buf->itrealvalue, &buf->starttime, &buf->vsize,
+	    &buf->rss, &buf->rsslim, &buf->startcode, &buf->endcode,
+	    &buf->startstack, &buf->kstkesp, &buf->kstkeip, &buf->signal,
+	    &buf->blocked, &buf->sigignore, &buf->sigcatch, &buf->wchan,
+	    &buf->nswap, &buf->cnswap, &buf->exit_signal, &buf->processor,
+	    &buf->rt_priority, &buf->policy, &buf->delayacct_blkio_ticks,
+	    &buf->guest_time, &buf->cguest_time);
+	if (EOF == num_match) {
+		errnum = errno;
+		if (0 == errnum)
+			errnum = ENOSYS;
+		goto close_file;
+	}
+
+close_file:
+	if (EOF == fclose(file))
+		return errno;
+
+	return errnum;
+}
+
 static linted_error ptrace_detach(pid_t pid, int signo)
 {
 	linted_error errnum;
@@ -2454,6 +2502,20 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 
 	if (-1 ==
 	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
+static linted_error set_death_sig(int signum)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
