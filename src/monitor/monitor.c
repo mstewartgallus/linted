@@ -883,12 +883,19 @@ enum { RDONLY, WRONLY };
 
 struct pair
 {
-	unsigned long options;
+	unsigned long flags;
 	linted_ko ko;
 };
 
-static char const *const file_options[] = {[RDONLY] = "rdonly",
-	                                   [WRONLY] = "wronly", NULL };
+struct option
+{
+	bool flag;
+	char const *name;
+	char const *value;
+};
+
+static char const *const file_flags[] = {[RDONLY] = "rdonly",
+	                                 [WRONLY] = "wronly", NULL };
 
 static char const *const default_envvars[] = { "LANG", "USER", "LOGNAME",
 	                                       "HOME", "SHELL",
@@ -949,6 +956,28 @@ service_not_found:
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
 
+	bool drop_caps = true;
+	int priority;
+
+	/* Favor other processes over this process hierarchy.  Only
+	 * superuser may lower priorities so this is not
+	 * stoppable. This also makes the process hierarchy nicer for
+	 * the OOM killer.
+	 */
+	errno = 0;
+	int current_priority = getpriority(PRIO_PROCESS, 0);
+	if (-1 == current_priority) {
+		errnum = errno;
+		if (errnum != 0)
+			return errnum;
+	}
+	priority = current_priority + 1;
+
+	char prio_str[] = "XXXXXXXXXXXXXXXXX";
+	sprintf(prio_str, "%i", priority);
+
+	pid_t ppid = getppid();
+
 	char **envvars;
 	{
 		char **xx;
@@ -958,7 +987,6 @@ service_not_found:
 		envvars = xx;
 	}
 
-	pid_t ppid = getppid();
 	char *root_setting;
 	{
 		char *xx;
@@ -1015,44 +1043,38 @@ envvar_allocate_succeeded:
 	if (files != NULL)
 		files_size = null_list_size(files);
 
-	bool set_waiter = true;
-	bool drop_caps = true;
-	bool set_priority = true;
-
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
+
+	struct option options[] = {
+		{ waiter != NULL, "--waiter", waiter },
+		{ fstab != NULL, "--chrootdir", chrootdir },
+		{ fstab != NULL, "--fstab", fstab },
+		{ no_new_privs, "--nonewprivs", NULL },
+		{ drop_caps, "--dropcaps", NULL },
+		{ chdir_path != NULL, "--chdir", chdir_path },
+		{ prio_str != NULL, "--priority", prio_str },
+		{ clone_newuser, "--clone-newuser", NULL },
+		{ clone_newpid, "--clone-newpid", NULL },
+		{ clone_newipc, "--clone-newipc", NULL },
+		{ clone_newnet, "--clone-newnet", NULL },
+		{ clone_newns, "--clone-newns", NULL },
+		{ clone_newuts, "--clone-newuts", NULL }
+	};
+
 	size_t num_options = 0U;
-	if (set_waiter)
-		num_options += 2U;
-	if (fstab != NULL) {
-		num_options += 2U;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
+		struct option option = options[ii];
+		if (!option.flag)
+			continue;
 
-		num_options += 2U;
+		++num_options;
+		if (option.value != NULL)
+			++num_options;
 	}
-	if (no_new_privs)
-		++num_options;
-	if (drop_caps)
-		++num_options;
-	if (chdir_path != NULL)
-		num_options += 2U;
-	if (set_priority)
-		num_options += 2U;
 
-	if (clone_newuser)
-		++num_options;
-	if (clone_newpid)
-		++num_options;
-	if (clone_newipc)
-		++num_options;
-	if (clone_newnet)
-		++num_options;
-	if (clone_newns)
-		++num_options;
-	if (clone_newuts)
-		++num_options;
-
-	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	char const **args;
+	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	{
 		void *xx;
 		errnum = linted_mem_alloc_array(&xx, args_size + 1U,
@@ -1062,58 +1084,17 @@ envvar_allocate_succeeded:
 		args = xx;
 	}
 	args[0U] = sandbox;
+
 	size_t ix = 1U;
-	if (set_waiter) {
-		args[ix++] = "--waiter";
-		args[ix++] = waiter;
-	}
-	if (fstab != NULL) {
-		args[ix++] = "--chrootdir";
-		args[ix++] = chrootdir;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
+		struct option option = options[ii];
+		if (!option.flag)
+			continue;
 
-		args[ix++] = "--fstab";
-		args[ix++] = fstab;
+		args[ix++] = option.name;
+		if (option.value != NULL)
+			args[ix++] = option.value;
 	}
-	if (no_new_privs)
-		args[ix++] = "--nonewprivs";
-	if (drop_caps)
-		args[ix++] = "--dropcaps";
-	if (chdir_path != NULL) {
-		args[ix++] = "--chdir";
-		args[ix++] = chdir_path;
-	}
-	char prio_str[] = "XXXXXXXXXXXXXXXXX";
-	if (set_priority) {
-		/* Favor other processes over this process hierarchy.  Only
-		 * superuser may lower priorities so this is not
-		 * stoppable. This also makes the process hierarchy nicer for
-		 * the OOM killer.
-		 */
-		errno = 0;
-		int priority = getpriority(PRIO_PROCESS, 0);
-		if (-1 == priority) {
-			errnum = errno;
-			if (errnum != 0)
-				goto free_args;
-		}
-		sprintf(prio_str, "%i", priority + 1);
-
-		args[ix++] = "--priority";
-		args[ix++] = prio_str;
-	}
-
-	if (clone_newuser)
-		args[ix++] = "--clone-newuser";
-	if (clone_newpid)
-		args[ix++] = "--clone-newpid";
-	if (clone_newipc)
-		args[ix++] = "--clone-newipc";
-	if (clone_newnet)
-		args[ix++] = "--clone-newnet";
-	if (clone_newns)
-		args[ix++] = "--clone-newns";
-	if (clone_newuts)
-		args[ix++] = "--clone-newuts";
 
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
@@ -1157,12 +1138,12 @@ envvar_allocate_succeeded:
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(defaults); ++ii) {
 		struct pair const *pair = &defaults[ii];
 		linted_ko ko = pair->ko;
-		unsigned long options = pair->options;
+		unsigned long flags = pair->flags;
 
 		linted_ko copy_ko;
 		{
 			linted_ko xx;
-			errnum = linted_ko_reopen(&xx, ko, options);
+			errnum = linted_ko_reopen(&xx, ko, flags);
 			if (errnum != 0)
 				goto destroy_proc_kos;
 			copy_ko = xx;
@@ -1222,7 +1203,7 @@ envvar_allocate_succeeded:
 				char *xx = opts;
 				char *yy = value;
 				token = getsubopt(
-				    &xx, (char * const *)file_options, &yy);
+				    &xx, (char * const *)file_flags, &yy);
 				opts = xx;
 				value = yy;
 			}
@@ -1421,7 +1402,6 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 
 	return 0;
 }
-
 
 static linted_error on_accepted_conn(struct linted_asynch_task *task)
 {
