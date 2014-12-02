@@ -1915,60 +1915,48 @@ static linted_error is_child(pid_t pid, bool *isp)
 {
 	linted_error errnum = 0;
 
-	linted_ko children;
+	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		errnum = get_process_children(&xx, getpid());
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
+		sprintf(path, "/proc/%i/stat", pid);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 		if (errnum != 0)
 			return errnum;
-		children = xx;
+		stat_ko = xx;
 	}
 
-	FILE *file = fdopen(children, "r");
+	FILE *file = fdopen(stat_ko, "r");
 	if (NULL == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
-		linted_ko_close(children);
+		linted_ko_close(stat_ko);
 
 		return errnum;
 	}
 
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	bool is = false;
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz)
-				goto getdelim_failed;
-			buf = xx;
-			buf_size = yy;
-			goto getdelim_succeeded;
+	pid_t ppid;
+	{
+		pid_t xx;
+		int num_match = fscanf(file, "%*d %*s %*c %d", &xx);
+		if (EOF == num_match) {
+			errnum = errno;
+			if (0 == errnum)
+				errnum = ENOSYS;
+			goto close_file;
 		}
-	getdelim_failed:
-		errnum = errno;
-		goto set_isp;
-
-	getdelim_succeeded:
-		;
-		pid_t child = strtol(buf, NULL, 10);
-		if (child == pid) {
-			is = true;
-			break;
+		if (num_match < 1) {
+			errnum = ENOSYS;
+			goto close_file;
 		}
+		ppid = xx;
 	}
 
-set_isp:
-	*isp = is;
+	*isp = ppid == getpid();
 
-	linted_mem_free(buf);
-
+close_file:
 	fclose(file);
 
 	return errnum;
