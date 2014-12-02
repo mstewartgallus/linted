@@ -124,19 +124,14 @@ static linted_error activate_unit_db(struct linted_unit_db *unit_db,
                                      char const *sandbox, char const *waiter,
                                      sigset_t const *orig_mask);
 
-static linted_error dispatch(struct linted_asynch_task *completed_task,
-                             bool time_to_quit);
+static linted_error dispatch(struct linted_asynch_task *completed_task);
 
-static linted_error on_process_wait(struct linted_asynch_task *task,
-                                    bool time_to_quit);
-static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
-                                   bool time_to_quit);
-static linted_error on_accepted_conn(struct linted_asynch_task *task,
-                                     bool time_to_quit);
-static linted_error on_read_conn(struct linted_asynch_task *task,
-                                 bool time_to_quit);
-static linted_error on_wrote_conn(struct linted_asynch_task *task,
-                                  bool time_to_quit);
+static linted_error on_process_wait(struct linted_asynch_task *task);
+static linted_error on_sigwaitinfo(struct linted_asynch_task *task);
+static linted_error on_accepted_conn(struct linted_asynch_task *task);
+static linted_error on_read_conn(struct linted_asynch_task *task);
+static linted_error on_wrote_conn(struct linted_asynch_task *task);
+
 static linted_error on_status_request(union linted_admin_request const *request,
                                       union linted_admin_reply *reply);
 static linted_error on_stop_request(union linted_admin_request const *request,
@@ -424,7 +419,7 @@ retry_bind:
 			completed_task = xx;
 		}
 
-		errnum = dispatch(completed_task, false);
+		errnum = dispatch(completed_task);
 		if (errnum != 0)
 			goto cancel_tasks;
 	} while (!time_to_exit);
@@ -506,7 +501,7 @@ drain_asynch_pool:
 			completed_task = xx;
 		}
 
-		linted_error dispatch_error = dispatch(completed_task, true);
+		linted_error dispatch_error = dispatch(completed_task);
 		if (0 == errnum)
 			errnum = dispatch_error;
 	}
@@ -1328,31 +1323,30 @@ free_envvars:
 	return errnum;
 }
 
-static linted_error dispatch(struct linted_asynch_task *task, bool time_to_quit)
+static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (linted_asynch_task_action(task)) {
 	case WAITID:
-		return on_process_wait(task, time_to_quit);
+		return on_process_wait(task);
 
 	case SIGWAITINFO:
-		return on_sigwaitinfo(task, time_to_quit);
+		return on_sigwaitinfo(task);
 
 	case ADMIN_ACCEPTED_CONNECTION:
-		return on_accepted_conn(task, time_to_quit);
+		return on_accepted_conn(task);
 
 	case ADMIN_READ_CONNECTION:
-		return on_read_conn(task, time_to_quit);
+		return on_read_conn(task);
 
 	case ADMIN_WROTE_CONNECTION:
-		return on_wrote_conn(task, time_to_quit);
+		return on_wrote_conn(task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_process_wait(struct linted_asynch_task *task,
-                                    bool time_to_quit)
+static linted_error on_process_wait(struct linted_asynch_task *task)
 {
 	linted_error errnum = 0;
 
@@ -1361,9 +1355,6 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 		return 0;
 	if (errnum != 0)
 		return errnum;
-
-	if (time_to_quit)
-		return 0;
 
 	struct linted_asynch_task_waitid *sandbox_task =
 	    linted_asynch_task_waitid_from_asynch(task);
@@ -1410,8 +1401,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task,
 	return errnum;
 }
 
-static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
-                                   bool time_to_quit)
+static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 {
 	linted_error errnum = 0;
 
@@ -1420,9 +1410,6 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 		return 0;
 	if (errnum != 0)
 		return errnum;
-
-	if (time_to_quit)
-		return 0;
 
 	struct linted_asynch_task_sigwaitinfo *sigwait_task =
 	    linted_asynch_task_sigwaitinfo_from_asynch(task);
@@ -1433,6 +1420,131 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task,
 	*time_to_exit = true;
 
 	return 0;
+}
+
+
+static linted_error on_accepted_conn(struct linted_asynch_task *task)
+{
+	linted_error errnum;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (ECANCELED == errnum)
+		return 0;
+	if (errnum != 0)
+		return errnum;
+
+	struct linted_admin_task_accept *accepted_conn_task =
+	    linted_admin_task_accept_from_asynch(task);
+	struct accepted_conn_data *accepted_conn_data =
+	    linted_admin_task_accept_data(accepted_conn_task);
+
+	struct linted_asynch_pool *pool = accepted_conn_data->pool;
+	struct conn_pool *conn_pool = accepted_conn_data->conn_pool;
+
+	linted_admin new_socket =
+	    linted_admin_task_accept_returned_ko(accepted_conn_task);
+
+	linted_asynch_pool_submit(pool, task);
+
+	struct conn *conn;
+	{
+		struct conn *xx;
+		if (conn_insert(conn_pool, &xx, new_socket) != 0)
+			goto close_new_socket;
+		conn = xx;
+	}
+
+	linted_admin_task_recv_request_prepare(
+	    conn->read_task, ADMIN_READ_CONNECTION, new_socket);
+	conn->read_data.pool = pool;
+	conn->read_data.conn = conn;
+
+	linted_asynch_pool_submit(
+	    pool, linted_admin_task_recv_request_to_asynch(conn->read_task));
+	return 0;
+
+close_new_socket : {
+	linted_error close_errnum = linted_ko_close(new_socket);
+	if (0 == errnum)
+		errnum = close_errnum;
+}
+
+	return errnum;
+}
+
+static linted_error on_read_conn(struct linted_asynch_task *task)
+{
+	linted_error errnum;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
+		goto conn_remove;
+
+	struct linted_admin_task_recv_request *read_conn_task =
+	    linted_admin_task_recv_request_from_asynch(task);
+	struct read_conn_data *read_conn_data =
+	    linted_admin_task_recv_request_data(read_conn_task);
+
+	struct linted_asynch_pool *pool = read_conn_data->pool;
+	struct conn *conn = read_conn_data->conn;
+
+	linted_ko ko = linted_admin_task_recv_request_ko(read_conn_task);
+
+	union linted_admin_request const *request =
+	    linted_admin_task_recv_request_request(read_conn_task);
+	union linted_admin_reply reply;
+
+	switch (request->type) {
+	case LINTED_ADMIN_STATUS:
+		errnum = on_status_request(request, &reply);
+		break;
+
+	case LINTED_ADMIN_STOP:
+		errnum = on_stop_request(request, &reply);
+		break;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
+conn_remove:
+	/* Assume the other end did something bad and don't exit with
+	 * an error (unless conn_remove screws up.) */
+	if (errnum != 0) {
+		conn_discard(conn);
+
+		if (ECANCELED == errnum)
+			return 0;
+
+		return 0;
+	}
+
+	linted_admin_task_send_reply_prepare(
+	    conn->write_task, ADMIN_WROTE_CONNECTION, ko, &reply);
+	conn->write_data.pool = pool;
+	conn->write_data.conn = conn;
+
+	linted_asynch_pool_submit(
+	    pool, linted_admin_task_send_reply_to_asynch(conn->write_task));
+	return 0;
+}
+
+static linted_error on_wrote_conn(struct linted_asynch_task *task)
+{
+	linted_error errnum = linted_asynch_task_errnum(task);
+
+	struct linted_admin_task_send_reply *wrote_conn_task =
+	    linted_admin_task_send_reply_from_asynch(task);
+	struct wrote_conn_data *wrote_conn_data =
+	    linted_admin_task_send_reply_data(wrote_conn_task);
+
+	struct conn *conn = wrote_conn_data->conn;
+
+	conn_discard(conn);
+
+	if (ECANCELED == errnum)
+		return 0;
+
+	return errnum;
 }
 
 static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
@@ -1664,115 +1776,6 @@ static linted_error on_child_about_to_clone(pid_t pid)
 	return errnum;
 }
 
-static linted_error on_accepted_conn(struct linted_asynch_task *task,
-                                     bool time_to_quit)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (ECANCELED == errnum)
-		return 0;
-	if (errnum != 0)
-		return errnum;
-
-	struct linted_admin_task_accept *accepted_conn_task =
-	    linted_admin_task_accept_from_asynch(task);
-	struct accepted_conn_data *accepted_conn_data =
-	    linted_admin_task_accept_data(accepted_conn_task);
-
-	struct linted_asynch_pool *pool = accepted_conn_data->pool;
-	struct conn_pool *conn_pool = accepted_conn_data->conn_pool;
-
-	linted_admin new_socket =
-	    linted_admin_task_accept_returned_ko(accepted_conn_task);
-
-	if (time_to_quit)
-		goto close_new_socket;
-
-	linted_asynch_pool_submit(pool, task);
-
-	struct conn *conn;
-	{
-		struct conn *xx;
-		if (conn_insert(conn_pool, &xx, new_socket) != 0)
-			goto close_new_socket;
-		conn = xx;
-	}
-
-	linted_admin_task_recv_request_prepare(
-	    conn->read_task, ADMIN_READ_CONNECTION, new_socket);
-	conn->read_data.pool = pool;
-	conn->read_data.conn = conn;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_recv_request_to_asynch(conn->read_task));
-	return 0;
-
-close_new_socket : {
-	linted_error close_errnum = linted_ko_close(new_socket);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
-	return errnum;
-}
-
-static linted_error on_read_conn(struct linted_asynch_task *task,
-                                 bool time_to_quit)
-{
-	linted_error errnum;
-
-	struct linted_admin_task_recv_request *read_conn_task =
-	    linted_admin_task_recv_request_from_asynch(task);
-	struct read_conn_data *read_conn_data =
-	    linted_admin_task_recv_request_data(read_conn_task);
-
-	struct linted_asynch_pool *pool = read_conn_data->pool;
-	struct conn *conn = read_conn_data->conn;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		goto conn_remove;
-
-	if (time_to_quit)
-		return 0;
-
-	linted_ko ko = linted_admin_task_recv_request_ko(read_conn_task);
-
-	union linted_admin_request const *request =
-	    linted_admin_task_recv_request_request(read_conn_task);
-	union linted_admin_reply reply;
-
-	switch (request->type) {
-	case LINTED_ADMIN_STATUS:
-		errnum = on_status_request(request, &reply);
-		break;
-
-	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(request, &reply);
-		break;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-conn_remove:
-	/* Assume the other end did something bad and don't exit with
-	 * an error (unless conn_remove screws up.) */
-	if (errnum != 0) {
-		conn_discard(conn);
-		return errnum;
-	}
-
-	linted_admin_task_send_reply_prepare(
-	    conn->write_task, ADMIN_WROTE_CONNECTION, ko, &reply);
-	conn->write_data.pool = pool;
-	conn->write_data.conn = conn;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_send_reply_to_asynch(conn->write_task));
-	return 0;
-}
-
 static linted_error on_status_request(union linted_admin_request const *request,
                                       union linted_admin_reply *reply)
 {
@@ -1853,24 +1856,6 @@ reply:
 
 	reply->stop.was_up = was_up;
 	return 0;
-}
-
-static linted_error on_wrote_conn(struct linted_asynch_task *task,
-                                  bool time_to_quit)
-{
-	struct linted_admin_task_send_reply *wrote_conn_task =
-	    linted_admin_task_send_reply_from_asynch(task);
-	struct wrote_conn_data *wrote_conn_data =
-	    linted_admin_task_send_reply_data(wrote_conn_task);
-
-	struct conn *conn = wrote_conn_data->conn;
-
-	linted_error errnum = linted_asynch_task_errnum(task);
-	;
-
-	conn_discard(conn);
-
-	return errnum;
 }
 
 static linted_error get_process_service_name(pid_t pid, char **service_namep)
