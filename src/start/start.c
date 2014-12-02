@@ -204,7 +204,7 @@ It is insecure to run a game with high privileges!\n"));
 		struct sigaction act = { 0 };
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
-		if (-1 == sigaction(SIGRTMIN, &act, NULL)) {
+		if (-1 == sigaction(SIGUSR1, &act, NULL)) {
 			perror("sigaction");
 			return EXIT_FAILURE;
 		}

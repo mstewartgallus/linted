@@ -453,6 +453,11 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 
 	bool cancel_reply = false;
 
+	/* This can't be a POSIX real-time signal as those queue up so
+	 * we can end up queuing a barrage of signals that trap the
+	 * thread were waiting in signal handling.
+	 */
+
 	{
 		errnum = pthread_spin_lock(&task->owner_lock);
 		if (errnum != 0) {
@@ -465,7 +470,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 
 		bool owned = task->owned;
 		if (owned) {
-			errnum = pthread_kill(task->owner, SIGRTMIN);
+			errnum = pthread_kill(task->owner, SIGUSR1);
 			if (errnum != 0 && errnum != EAGAIN) {
 				assert(errnum != ESRCH);
 				assert(errnum != EINVAL);
@@ -482,19 +487,9 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 
 	/* Yes, really, we do have to busy wait to prevent race
 	 * conditions unfortunately */
-
-	/**
-	 * Signals are REALLY, REALLY, REALLY slow so we have to yield
-	 * a lot or else we just keep the sendee trapped in a barrage
-	 * of signals. Yes, this is a horrible hack.
-	 *
-	 * @todo Make signals less racy.
-	 */
-
 	bool cancel_replied;
 	do {
-		for (size_t ii = 0U; ii < 4U; ++ii)
-			pthread_yield();
+		pthread_yield();
 
 		errnum = pthread_spin_lock(&task->owner_lock);
 		if (errnum != 0) {
@@ -506,7 +501,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 		if (!cancel_replied) {
 			bool owned = task->owned;
 			if (owned) {
-				errnum = pthread_kill(task->owner, SIGRTMIN);
+				errnum = pthread_kill(task->owner, SIGUSR1);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);

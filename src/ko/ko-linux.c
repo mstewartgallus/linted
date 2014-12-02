@@ -745,13 +745,10 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	}
 
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
-		fprintf(stderr, "poll_one\n");
 		short revents = 0;
 		{
 			short xx;
 			errnum = poll_one(ko, POLLIN, &xx);
-			errno = errnum;
-			fprintf(stderr, "poll_one_end %m\n");
 			if (EINTR == errnum)
 				goto submit_retry;
 			if (errnum != 0)
