@@ -1047,6 +1047,7 @@ envvar_allocate_succeeded:
 	    null_list_size((char const * const *)exec_start);
 
 	struct option options[] = {
+		{ true, "--traceme", NULL },
 		{ waiter != NULL, "--waiter", waiter },
 		{ fstab != NULL, "--chrootdir", chrootdir },
 		{ fstab != NULL, "--fstab", fstab },
@@ -1121,7 +1122,6 @@ envvar_allocate_succeeded:
 	}
 
 	linted_spawn_attr_setmask(attr, orig_mask);
-	linted_spawn_attr_setptrace(attr, true);
 
 	linted_ko *proc_kos = NULL;
 	size_t kos_opened = 0U;

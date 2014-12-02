@@ -35,7 +35,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
-#include <sys/ptrace.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
@@ -64,13 +63,11 @@ struct linted_spawn_file_actions
 struct linted_spawn_attr
 {
 	sigset_t const *mask;
-	unsigned long ptrace_options;
-	bool ptracing : 1U;
 };
 
 static pid_t do_vfork(sigset_t const *sigset,
                       struct linted_spawn_file_actions const *file_actions,
-                      linted_ko err_reader, linted_ko err_writer, bool ptracing,
+                      linted_ko err_reader, linted_ko err_writer,
                       char const *const *argv, char const *const *envp,
                       char *listen_pid, char const *filename);
 
@@ -92,8 +89,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	}
 
 	attr->mask = NULL;
-	attr->ptrace_options = 0;
-	attr->ptracing = false;
 
 	*attrp = attr;
 	return 0;
@@ -108,11 +103,6 @@ void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
                                sigset_t const *set)
 {
 	attr->mask = set;
-}
-
-void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr, bool v)
-{
-	attr->ptracing = v;
 }
 
 linted_error
@@ -195,11 +185,9 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		return EBADF;
 
 	sigset_t const *child_mask = NULL;
-	bool ptracing = false;
 
 	if (attr != NULL) {
 		child_mask = attr->mask;
-		ptracing = attr->ptracing;
 	}
 
 	size_t fd_len;
@@ -343,7 +331,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		goto close_err_pipes;
 
 	pid_t child = do_vfork(child_mask, file_actions, err_reader, err_writer,
-	                       ptracing, argv, envp, listen_pid, filename);
+	                       argv, envp, listen_pid, filename);
 	if (-1 == child) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -414,9 +402,8 @@ free_relative_path:
 static DO_VFORK_ATTR pid_t
 do_vfork(sigset_t const *sigset,
          struct linted_spawn_file_actions const *file_actions,
-         linted_ko err_reader, linted_ko err_writer, bool ptracing,
-         char const *const *argv, char const *const *envp, char *listen_pid,
-         char const *filename)
+         linted_ko err_reader, linted_ko err_writer, char const *const *argv,
+         char const *const *envp, char *listen_pid, char const *filename)
 {
 	pid_t const child = vfork();
 	if (child != 0)
@@ -467,14 +454,6 @@ do_vfork(sigset_t const *sigset,
 				errnum = EINVAL;
 				goto fail;
 			}
-		}
-	}
-
-	if (ptracing) {
-		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
-		                 (void *)NULL)) {
-			errnum = errno;
-			goto fail;
 		}
 	}
 

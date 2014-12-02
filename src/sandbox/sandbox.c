@@ -41,6 +41,7 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
+#include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
@@ -64,6 +65,7 @@ enum {
 	STOP_OPTIONS,
 	HELP,
 	VERSION_OPTION,
+	TRACEME,
 	DROP_CAPS,
 	NO_NEW_PRIVS,
 	CHDIR,
@@ -85,6 +87,7 @@ static char const *const argstrs[] = {
 	    /**/[STOP_OPTIONS] = "--",
 	    /**/ [HELP] = "--help",
 	    /**/ [VERSION_OPTION] = "--version",
+	    /**/ [TRACEME] = "--traceme",
 	    /**/ [DROP_CAPS] = "--dropcaps",
 	    /**/ [NO_NEW_PRIVS] = "--nonewprivs",
 	    /**/ [CHDIR] = "--chdir",
@@ -131,9 +134,6 @@ static int my_pivot_root(char const *new_root, char const *put_old);
 
 int main(int argc, char *argv[])
 {
-	/* Register with the parent */
-	raise(SIGSTOP);
-
 	linted_error errnum;
 
 	size_t arguments_length = argc;
@@ -147,6 +147,8 @@ int main(int argc, char *argv[])
 	char const *bad_option = NULL;
 	bool need_version = false;
 	bool need_help = false;
+
+	bool traceme = false;
 	bool no_new_privs = false;
 	bool drop_caps = false;
 
@@ -187,6 +189,10 @@ int main(int argc, char *argv[])
 
 		case VERSION_OPTION:
 			need_version = true;
+			break;
+
+		case TRACEME:
+			traceme = true;
 			break;
 
 		case NO_NEW_PRIVS:
@@ -278,6 +284,20 @@ exit_loop:
 		fprintf(stderr,
 		        "--chrootdir and --fstab are required together\n");
 		return EXIT_FAILURE;
+	}
+
+	if (traceme) {
+		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
+		                 (void *)NULL)) {
+			perror("ptrace");
+			return EXIT_FAILURE;
+		}
+
+		/* Register with the parent */
+		if (-1 == raise(SIGSTOP)) {
+			perror("raise");
+			return EXIT_FAILURE;
+		}
 	}
 
 	char const *process_name = argv[0U];
@@ -503,7 +523,7 @@ exit_loop:
 	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
 	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
 
-	sprintf(listen_fds_str, "LISTEN_FDS=%i", num_fds);
+	sprintf(listen_fds_str, "LISTEN_FDS=%lu", num_fds);
 
 	env_copy[0U] = listen_fds_str;
 	env_copy[1U] = listen_pid_str;
