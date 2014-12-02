@@ -426,8 +426,14 @@ retry_bind:
 
 		errnum = dispatch(completed_task, false);
 		if (errnum != 0)
-			goto kill_procs;
+			goto cancel_tasks;
 	} while (!time_to_exit);
+
+cancel_tasks:
+	linted_asynch_task_cancel(
+	    linted_asynch_task_waitid_to_asynch(sandbox_task));
+	linted_asynch_task_cancel(
+	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 kill_procs:
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
@@ -490,10 +496,6 @@ destroy_conn_pool:
 	conn_pool_destroy(conn_pool);
 
 drain_asynch_pool:
-	linted_asynch_task_cancel(
-	    linted_asynch_task_waitid_to_asynch(sandbox_task));
-	linted_asynch_task_cancel(
-	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 	linted_asynch_pool_stop(pool);
 	for (;;) {
 		struct linted_asynch_task *completed_task;

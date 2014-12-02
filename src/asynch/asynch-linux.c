@@ -89,10 +89,10 @@ struct linted_asynch_task
 {
 	struct linted_queue_node parent;
 
-	pthread_mutex_t owner_lock;
+	pthread_spinlock_t owner_lock;
 	pthread_t owner;
 	bool owned : 1U;
-	bool cancelled : 1U;
+	bool *cancel_replier;
 
 	void *data;
 	linted_error errnum;
@@ -310,16 +310,22 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 	assert(pool != NULL);
 	assert(!pool->stopped);
 
-	errnum = pthread_mutex_lock(&task->owner_lock);
+	errnum = pthread_spin_lock(&task->owner_lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
 	}
 
 	task->owned = false;
-	cancelled = task->cancelled;
+	{
+		bool *cancel_replier = task->cancel_replier;
+		cancelled = cancel_replier != NULL;
+		if (cancelled)
+			*cancel_replier = true;
+		task->cancel_replier = NULL;
+	}
 
-	errnum = pthread_mutex_unlock(&task->owner_lock);
+	errnum = pthread_spin_unlock(&task->owner_lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -343,7 +349,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 
 	/* Aren't a cancellation point so always works */
 
-	errnum = pthread_mutex_lock(&task->owner_lock);
+	errnum = pthread_spin_lock(&task->owner_lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -351,9 +357,16 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 
 	assert(task->owned);
 
-	task->cancelled = false;
+	{
+		bool *cancel_replier = task->cancel_replier;
+		bool cancelled = cancel_replier != NULL;
+		if (cancelled)
+			*cancel_replier = true;
+		task->cancel_replier = NULL;
+	}
+
 	task->owned = false;
-	errnum = pthread_mutex_unlock(&task->owner_lock);
+	errnum = pthread_spin_unlock(&task->owner_lock);
 
 	if (errnum != 0) {
 		assert(errnum != EPERM);
@@ -404,33 +417,12 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 	}
 	linted_queue_node(&task->parent);
 
-	{
-		pthread_mutexattr_t attr;
-
-		errnum = pthread_mutexattr_init(&attr);
-		if (errnum != 0)
-			goto free_task;
-
-#if !defined NDBEBUG
-		errnum =
-		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
-		assert(errnum != EINVAL);
-		if (errnum != 0)
-			goto destroy_attr;
-#endif
-
-		errnum = pthread_mutex_init(&task->owner_lock, &attr);
-		if (errnum != 0)
-			goto destroy_attr;
-
-	destroy_attr:
-		pthread_mutexattr_destroy(&attr);
-		if (errnum != 0)
-			goto free_task;
-	}
+	errnum = pthread_spin_init(&task->owner_lock, false);
+	if (errnum != 0)
+		goto free_task;
 
 	task->owned = false;
-	task->cancelled = false;
+	task->cancel_replier = NULL;
 
 	task->data = data;
 	task->type = type;
@@ -446,6 +438,12 @@ free_task:
 
 void linted_asynch_task_destroy(struct linted_asynch_task *task)
 {
+	linted_error errnum;
+	errnum = pthread_spin_destroy(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EBUSY);
+		assert(false);
+	}
 	linted_mem_free(task);
 }
 
@@ -453,43 +451,65 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 {
 	linted_error errnum;
 
-	errnum = pthread_mutex_lock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
-		assert(false);
-	}
+	bool cancel_reply = false;
 
-	task->cancelled = true;
-
-	/* Yes, really, we do have to busy wait to prevent race
-	 * conditions unfortunately */
-	while (task->owned) {
-		errnum = pthread_kill(task->owner, SIGRTMIN);
-		if (errnum != 0 && errnum != EAGAIN) {
-			assert(errnum != ESRCH);
-			assert(errnum != EINVAL);
-			assert(false);
-		}
-
-		errnum = pthread_mutex_unlock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EPERM);
-			assert(false);
-		}
-
-		sched_yield();
-
-		errnum = pthread_mutex_lock(&task->owner_lock);
+	{
+		errnum = pthread_spin_lock(&task->owner_lock);
 		if (errnum != 0) {
 			assert(errnum != EDEADLK);
 			assert(false);
 		}
+
+		task->cancel_replier = &cancel_reply;
+
+		bool owned = task->owned;
+		if (owned) {
+			errnum = pthread_kill(task->owner, SIGRTMIN);
+			if (errnum != 0 && errnum != EAGAIN) {
+				assert(errnum != ESRCH);
+				assert(errnum != EINVAL);
+				assert(false);
+			}
+		}
+
+		errnum = pthread_spin_unlock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
 	}
-	errnum = pthread_mutex_unlock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
+
+	/* Yes, really, we do have to busy wait to prevent race
+	 * conditions unfortunately */
+
+	bool cancel_replied;
+	do {
+		pthread_yield();
+
+		errnum = pthread_spin_lock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+
+		cancel_replied = cancel_reply;
+
+		bool owned = task->owned;
+		if (owned) {
+			errnum = pthread_kill(task->owner, SIGRTMIN);
+			if (errnum != 0 && errnum != EAGAIN) {
+				assert(errnum != ESRCH);
+				assert(errnum != EINVAL);
+				assert(false);
+			}
+		}
+
+		errnum = pthread_spin_unlock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
+	} while (!cancel_replied);
 }
 
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
@@ -733,7 +753,11 @@ static void *worker_routine(void *arg)
 	struct linted_asynch_pool *pool = arg;
 	linted_error errnum;
 
+	pthread_t self = pthread_self();
+
 	for (;;) {
+		bool cancelled;
+
 		struct linted_asynch_task *task;
 		{
 			struct linted_queue_node *node;
@@ -741,22 +765,36 @@ static void *worker_routine(void *arg)
 			task = LINTED_DOWNCAST(struct linted_asynch_task, node);
 		}
 
-		errnum = pthread_mutex_lock(&task->owner_lock);
+		errnum = pthread_spin_lock(&task->owner_lock);
 		if (errnum != 0) {
 			assert(errnum != EDEADLK);
 			assert(false);
 		}
 
-		task->owner = pthread_self();
-		task->owned = true;
+		{
+			bool *cancel_replier = task->cancel_replier;
+			cancelled = cancel_replier != NULL;
+			if (cancelled) {
+				*cancel_replier = true;
+				task->cancel_replier = NULL;
+			} else {
+				task->owner = self;
+				task->owned = true;
+			}
+		}
 
-		errnum = pthread_mutex_unlock(&task->owner_lock);
+		errnum = pthread_spin_unlock(&task->owner_lock);
 		if (errnum != 0) {
 			assert(errnum != EPERM);
 			assert(false);
 		}
 
-		run_task(pool, task);
+		if (cancelled) {
+			task->errnum = ECANCELED;
+			linted_asynch_pool_complete(pool, task);
+		} else {
+			run_task(pool, task);
+		}
 	}
 
 	LINTED_ASSUME_UNREACHABLE();
