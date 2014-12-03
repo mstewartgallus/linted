@@ -77,6 +77,7 @@ struct wait_service_data
 struct sigwait_data
 {
 	bool *time_to_exit;
+	struct linted_unit_db *unit_db;
 };
 
 struct conn;
@@ -187,11 +188,10 @@ static linted_error on_status_request(union linted_admin_request const *request,
 static linted_error on_stop_request(union linted_admin_request const *request,
                                     union linted_admin_reply *reply);
 
-static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
-                                    struct linted_unit_db *unit_db,
-                                    sigset_t const *orig_mask,
-                                    char const *chrootdir, char const *sandbox,
-                                    char const *waiter);
+static linted_error
+on_child_exited(bool time_to_exit, int exit_status, pid_t pid, linted_ko cwd,
+                struct linted_unit_db *unit_db, sigset_t const *orig_mask,
+                char const *chrootdir, char const *sandbox, char const *waiter);
 static linted_error on_child_trapped(pid_t pid, int exit_status);
 static linted_error on_child_signaled(pid_t pid, int signo);
 static linted_error on_child_about_to_exit(pid_t pid);
@@ -401,13 +401,6 @@ retry_bind:
 		accepted_conn_task = xx;
 	}
 
-	linted_asynch_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
-	                                       &exit_signals);
-	sigwait_data.time_to_exit = &time_to_exit;
-
-	linted_asynch_pool_submit(
-	    pool, linted_asynch_task_sigwaitinfo_to_asynch(sigwait_task));
-
 	struct conn_pool *conn_pool;
 	{
 		struct conn_pool *xx;
@@ -434,6 +427,14 @@ retry_bind:
 			goto destroy_confs;
 		unit_db = xx;
 	}
+
+	linted_asynch_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
+	                                       &exit_signals);
+	sigwait_data.time_to_exit = &time_to_exit;
+	sigwait_data.unit_db = unit_db;
+
+	linted_asynch_pool_submit(
+	    pool, linted_asynch_task_sigwaitinfo_to_asynch(sigwait_task));
 
 	linted_admin_task_accept_prepare(accepted_conn_task,
 	                                 ADMIN_ACCEPTED_CONNECTION, admin);
@@ -465,7 +466,7 @@ retry_bind:
 	linted_asynch_pool_submit(
 	    pool, linted_asynch_task_waitid_to_asynch(sandbox_task));
 
-	do {
+	for (;;) {
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
@@ -476,47 +477,17 @@ retry_bind:
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
 			goto cancel_tasks;
-	} while (!time_to_exit);
-
-cancel_tasks:
-	linted_asynch_task_cancel(
-	    linted_asynch_task_waitid_to_asynch(sandbox_task));
-	linted_asynch_task_cancel(
-	    linted_admin_task_accept_to_asynch(accepted_conn_task));
-
-kill_procs:
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
-	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != UNIT_TYPE_SERVICE)
-			continue;
-
-		pid_t pid;
-		{
-			pid_t xx;
-			linted_error pid_errnum =
-				pid_of_service(&xx, unit->name);
-			if (ESRCH == pid_errnum)
-				continue;
-			if (pid_errnum != 0) {
-				if (0 == errnum)
-					errnum = pid_errnum;
-				continue;
-			}
-			pid = xx;
-		}
-		if (-1 == kill(pid, SIGKILL)) {
-			linted_error kill_errnum = errno;
-			LINTED_ASSUME(kill_errnum != 0);
-			if (kill_errnum != ESRCH) {
-				assert(kill_errnum != EINVAL);
-				assert(kill_errnum != EPERM);
-				assert(false);
-			}
-		}
 	}
 
+cancel_tasks:
+	if (ECANCELED == errnum)
+		errnum = 0;
+/* linted_asynch_task_cancel( */
+/*     linted_asynch_task_waitid_to_asynch(sandbox_task)); */
+/* linted_asynch_task_cancel( */
+/*     linted_admin_task_accept_to_asynch(accepted_conn_task)); */
+
+kill_procs:
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
@@ -1388,6 +1359,8 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	errnum = linted_asynch_task_errnum(task);
 	if (ECANCELED == errnum)
 		return 0;
+	if (ECHILD == errnum)
+		return ECANCELED;
 	if (errnum != 0)
 		return errnum;
 
@@ -1403,6 +1376,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	char const *waiter = wait_service_data->waiter;
 	sigset_t const *orig_mask = wait_service_data->orig_mask;
 	struct linted_unit_db *unit_db = wait_service_data->unit_db;
+	bool time_to_exit = *wait_service_data->time_to_exit;
 
 	pid_t pid;
 	int exit_status;
@@ -1419,8 +1393,9 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	case CLD_DUMPED:
 	case CLD_KILLED:
 	case CLD_EXITED:
-		errnum = on_child_exited(exit_code, pid, cwd, unit_db,
-		                         orig_mask, chrootdir, sandbox, waiter);
+		errnum =
+		    on_child_exited(time_to_exit, exit_code, pid, cwd, unit_db,
+		                    orig_mask, chrootdir, sandbox, waiter);
 		break;
 
 	case CLD_TRAPPED:
@@ -1451,6 +1426,39 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	struct sigwait_data *sigwait_data =
 	    linted_asynch_task_sigwaitinfo_data(sigwait_task);
 	bool *time_to_exit = sigwait_data->time_to_exit;
+	struct linted_unit_db *unit_db = sigwait_data->unit_db;
+
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
+	     ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
+
+		if (unit->type != UNIT_TYPE_SERVICE)
+			continue;
+
+		pid_t pid;
+		{
+			pid_t xx;
+			linted_error pid_errnum =
+			    pid_of_service(&xx, unit->name);
+			if (ESRCH == pid_errnum)
+				continue;
+			if (pid_errnum != 0) {
+				if (0 == errnum)
+					errnum = pid_errnum;
+				continue;
+			}
+			pid = xx;
+		}
+		if (-1 == kill(pid, SIGKILL)) {
+			linted_error kill_errnum = errno;
+			LINTED_ASSUME(kill_errnum != 0);
+			if (kill_errnum != ESRCH) {
+				assert(kill_errnum != EINVAL);
+				assert(kill_errnum != EPERM);
+				assert(false);
+			}
+		}
+	}
 
 	*time_to_exit = true;
 
@@ -1581,11 +1589,10 @@ static linted_error on_wrote_conn(struct linted_asynch_task *task)
 	return errnum;
 }
 
-static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
-                                    struct linted_unit_db *unit_db,
-                                    sigset_t const *orig_mask,
-                                    char const *chrootdir, char const *sandbox,
-                                    char const *waiter)
+static linted_error
+on_child_exited(bool time_to_exit, int exit_status, pid_t pid, linted_ko cwd,
+                struct linted_unit_db *unit_db, sigset_t const *orig_mask,
+                char const *chrootdir, char const *sandbox, char const *waiter)
 {
 	linted_error errnum = 0;
 
@@ -1636,6 +1643,9 @@ static linted_error on_child_exited(int exit_status, pid_t pid, linted_ko cwd,
 	 * isn't stupid and thinks that the zombie is still
 	 * living. */
 	clear_wait(pid);
+
+	if (time_to_exit)
+		return 0;
 
 	return service_activate(unit, cwd, chrootdir, sandbox, waiter,
 	                        orig_mask, unit_db);
@@ -1779,7 +1789,9 @@ static linted_error on_child_about_to_exit(pid_t pid)
 
 	linted_error errnum = 0;
 
-	errnum = kill_pid_children(pid, 0);
+	fprintf(stderr, "pid %i about to exit\n", pid);
+
+	errnum = kill_pid_children(pid, SIGKILL);
 
 	linted_error cont_errnum = ptrace_cont(pid, 0);
 	if (0 == errnum)
@@ -2003,13 +2015,20 @@ static linted_error kill_pid_children(pid_t pid, int signo)
 		;
 		pid_t child = strtol(buf, NULL, 10);
 
-		kill(child, signo);
+		if (-1 == kill(child, signo)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_buf;
+		}
 	}
 
 free_buf:
 	linted_mem_free(buf);
 
-	fclose(file);
+	if (EOF == fclose(file)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
 
 	return errnum;
 }

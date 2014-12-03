@@ -778,15 +778,13 @@ static void *worker_routine(void *arg)
 		}
 
 		{
-			bool *cancel_replier = task->cancel_replier;
-			cancelled = cancel_replier != NULL;
-			if (cancelled) {
-				*cancel_replier = true;
-				task->cancel_replier = NULL;
-			} else {
-				task->owner = self;
-				task->owned = true;
-			}
+			cancelled = task->cancel_replier != NULL;
+
+			/* Don't actually complete the cancellation if
+			 * cancelled and let the completion do that.
+			 */
+			task->owner = self;
+			task->owned = true;
 		}
 
 		errnum = pthread_spin_unlock(&task->owner_lock);
