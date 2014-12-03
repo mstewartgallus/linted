@@ -1761,13 +1761,13 @@ on_child_about_to_exit(bool time_to_exit, pid_t pid, linted_ko cwd,
 	if (is)
 		goto detach_from_process;
 
-	unsigned long exit_status;
+	unsigned long status;
 	{
 		unsigned long xx;
 		errnum = ptrace_geteventmsg(pid, &xx);
 		if (errnum != 0)
 			goto detach_from_process;
-		exit_status = xx;
+		status = xx;
 	}
 
 	char service_name[COMM_MAX + 1U];
@@ -1776,10 +1776,20 @@ on_child_about_to_exit(bool time_to_exit, pid_t pid, linted_ko cwd,
 	if (errnum != 0)
 		goto detach_from_process;
 
-	/* TODO: Get whether killed by signal or exited normally */
+	if (WIFEXITED(status)) {
+		int exit_status = WEXITSTATUS(status);
 
-	fprintf(stderr, "%s %i exited with %lu\n", service_name, pid,
-	        exit_status);
+		fprintf(stderr, "%s %i exited with %i\n", service_name, pid,
+		        exit_status);
+
+	} else if (WIFSIGNALED(status)) {
+		int signo = WTERMSIG(status);
+
+		fprintf(stderr, "%s %i killed by %s\n", service_name, pid,
+		        strsignal(signo));
+	} else {
+		LINTED_ASSUME_UNREACHABLE();
+	}
 
 	unit = linted_unit_db_get_unit_by_name(unit_db, service_name);
 
