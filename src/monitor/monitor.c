@@ -1597,9 +1597,6 @@ on_child_exited(bool time_to_exit, int exit_status, pid_t pid, linted_ko cwd,
 {
 	linted_error errnum = 0;
 
-	bool was_signal =
-	    CLD_DUMPED == exit_status || CLD_KILLED == exit_status;
-
 	bool is;
 	{
 		bool xx;
@@ -1620,12 +1617,20 @@ on_child_exited(bool time_to_exit, int exit_status, pid_t pid, linted_ko cwd,
 	if (errnum != 0)
 		return errnum;
 
-	if (was_signal) {
+	switch (exit_status) {
+	case CLD_DUMPED:
+	case CLD_KILLED:
 		fprintf(stderr, "%s %i killed due to signal %s\n", service_name,
 		        pid, strsignal(exit_status));
-	} else {
+		break;
+
+	case CLD_EXITED:
 		fprintf(stderr, "%s %i exited with %i\n", service_name, pid,
 		        exit_status);
+		break;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
 	}
 
 	struct linted_unit *unit =
@@ -1789,6 +1794,8 @@ static linted_error on_child_about_to_exit(pid_t pid)
 {
 
 	linted_error errnum = 0;
+
+	clear_wait(pid);
 
 	errnum = kill_pid_children(pid, SIGKILL);
 
