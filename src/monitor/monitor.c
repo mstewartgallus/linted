@@ -482,10 +482,11 @@ retry_bind:
 cancel_tasks:
 	if (ECANCELED == errnum)
 		errnum = 0;
-/* linted_asynch_task_cancel( */
-/*     linted_asynch_task_waitid_to_asynch(sandbox_task)); */
-/* linted_asynch_task_cancel( */
-/*     linted_admin_task_accept_to_asynch(accepted_conn_task)); */
+
+	linted_asynch_task_cancel(
+	    linted_asynch_task_waitid_to_asynch(sandbox_task));
+	linted_asynch_task_cancel(
+	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 kill_procs:
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;

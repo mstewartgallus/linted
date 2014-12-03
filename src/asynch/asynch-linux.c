@@ -92,6 +92,7 @@ struct linted_asynch_task
 	pthread_spinlock_t owner_lock;
 	pthread_t owner;
 	bool owned : 1U;
+	bool in_flight : 1U;
 	bool *cancel_replier;
 
 	void *data;
@@ -316,6 +317,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 		assert(false);
 	}
 
+	task->in_flight = true;
 	task->owned = false;
 	{
 		bool *cancel_replier = task->cancel_replier;
@@ -356,6 +358,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	}
 
 	assert(task->owned);
+	assert(task->in_flight);
 
 	{
 		bool *cancel_replier = task->cancel_replier;
@@ -365,6 +368,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 		task->cancel_replier = NULL;
 	}
 
+	task->in_flight = false;
 	task->owned = false;
 	errnum = pthread_spin_unlock(&task->owner_lock);
 
@@ -421,6 +425,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 	if (errnum != 0)
 		goto free_task;
 
+	task->in_flight = false;
 	task->owned = false;
 	task->cancel_replier = NULL;
 
@@ -452,6 +457,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 	linted_error errnum;
 
 	bool cancel_reply = false;
+	bool in_flight;
 
 	/* This can't be a POSIX real-time signal as those queue up so
 	 * we can end up queuing a barrage of signals that trap the
@@ -466,15 +472,19 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 		}
 
 		assert(NULL == task->cancel_replier);
-		task->cancel_replier = &cancel_reply;
 
-		bool owned = task->owned;
-		if (owned) {
-			errnum = pthread_kill(task->owner, SIGUSR1);
-			if (errnum != 0 && errnum != EAGAIN) {
-				assert(errnum != ESRCH);
-				assert(errnum != EINVAL);
-				assert(false);
+		in_flight = task->in_flight;
+		if (in_flight) {
+			task->cancel_replier = &cancel_reply;
+
+			bool owned = task->owned;
+			if (owned) {
+				errnum = pthread_kill(task->owner, SIGUSR1);
+				if (errnum != 0 && errnum != EAGAIN) {
+					assert(errnum != ESRCH);
+					assert(errnum != EINVAL);
+					assert(false);
+				}
 			}
 		}
 
@@ -484,6 +494,9 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 			assert(false);
 		}
 	}
+
+	if (!in_flight)
+		return;
 
 	/* Yes, really, we do have to busy wait to prevent race
 	 * conditions unfortunately */
