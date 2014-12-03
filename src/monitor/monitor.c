@@ -1449,7 +1449,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 			}
 			pid = xx;
 		}
-		if (-1 == kill(pid, SIGKILL)) {
+		if (-1 == kill(pid, SIGTERM)) {
 			linted_error kill_errnum = errno;
 			LINTED_ASSUME(kill_errnum != 0);
 			if (kill_errnum != ESRCH) {
