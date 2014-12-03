@@ -150,24 +150,33 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 
 		if (!out_closed) {
-			if ((fds[STDOUT_FD].revents & POLLNVAL) != 0)
+			if ((fds[STDOUT_FD].revents & POLLHUP) != 0) {
 				out_closed = 1;
+				close(stdout_reader);
+				close(STDOUT_FILENO);
+			}
 
 			if ((fds[STDOUT_FD].revents & POLLIN) != 0)
 				drain_from_to(stdout_reader, STDOUT_FILENO);
 		}
 
 		if (!err_closed) {
-			if ((fds[STDERR_FD].revents & POLLNVAL) != 0)
+			if ((fds[STDERR_FD].revents & POLLHUP) != 0) {
 				err_closed = 1;
+				close(stderr_reader);
+				close(STDERR_FILENO);
+			}
 
 			if ((fds[STDERR_FD].revents & POLLIN) != 0)
 				drain_from_to(stderr_reader, STDERR_FILENO);
 		}
 
 		if (!input_closed) {
-			if ((fds[IN_FD].revents & POLLNVAL) != 0)
+			if ((fds[IN_FD].revents & POLLHUP) != 0) {
 				input_closed = 1;
+				close(STDIN_FILENO);
+				close(stdin_writer);
+			}
 
 			if ((fds[IN_FD].revents & POLLIN) != 0)
 				drain_from_to(STDIN_FILENO, stdin_writer);
@@ -228,11 +237,6 @@ static void drain_from_to(int in, int out)
 				return;
 			perror("read");
 			exit(EXIT_FAILURE);
-
-		case 0:
-			close(in);
-			close(out);
-			return;
 
 		default:
 			if (-1 == write(out, buf, bytes_read)) {
