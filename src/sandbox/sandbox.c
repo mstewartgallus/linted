@@ -1078,7 +1078,7 @@ static pid_t real_getpid(void)
 #if defined __amd64__ || defined __i386__
 static pid_t my_clone(unsigned long flags)
 {
-	return syscall(__NR_clone, SIGCHLD | flags, NULL, NULL, NULL, NULL);
+	return syscall(__NR_clone, flags, NULL, NULL, NULL, NULL);
 }
 #else
 #error No clone implementation has been defined for this architecture
