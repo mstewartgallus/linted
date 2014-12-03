@@ -1519,8 +1519,6 @@ static linted_error on_read_conn(struct linted_asynch_task *task)
 	linted_error errnum;
 
 	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		goto conn_remove;
 
 	struct linted_admin_task_recv_request *read_conn_task =
 	    linted_admin_task_recv_request_from_asynch(task);
@@ -1529,6 +1527,9 @@ static linted_error on_read_conn(struct linted_asynch_task *task)
 
 	struct linted_asynch_pool *pool = read_conn_data->pool;
 	struct conn *conn = read_conn_data->conn;
+
+	if (errnum != 0)
+		goto conn_remove;
 
 	linted_ko ko = linted_admin_task_recv_request_ko(read_conn_task);
 
