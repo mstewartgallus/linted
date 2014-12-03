@@ -1790,8 +1790,6 @@ static linted_error on_child_about_to_exit(pid_t pid)
 
 	linted_error errnum = 0;
 
-	fprintf(stderr, "pid %i about to exit\n", pid);
-
 	errnum = kill_pid_children(pid, SIGKILL);
 
 	linted_error cont_errnum = ptrace_cont(pid, 0);
