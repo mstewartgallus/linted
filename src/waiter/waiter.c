@@ -103,24 +103,26 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 *
 	 * - KILL(2) http://www.kernel.org/doc/man-pages/.
 	 *
-	 * This applies to sandboxs to if they use CLONE_NEWPID.
+	 * This applies to sandboxes to if they use CLONE_NEWPID.
 	 *
 	 * We want to explicitly handle the signal so that the monitor
-	 * can observe it and propagate it to it's children as well.
+	 * can observe it and propagate the signal to it's children as
+	 * well. Also we want to do this anyways for SUBREAPER
+	 * sandboxes as well. Maybe we should propagate the signals
+	 * ourselves though.
 	 */
 	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
-	if (1 == getpid()) {
-		/* Delegate the exit signal to children and then exit */
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
-		     ++ii) {
-			struct sigaction action = { 0 };
-			action.sa_handler = do_nothing;
-			action.sa_flags = 0;
-			sigfillset(&action.sa_mask);
-			if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
-				assert(errno != EINVAL);
-				assert(0);
-			}
+
+	/* Delegate the exit signals to children and then exit when
+	 * they do. */
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
+		struct sigaction action = { 0 };
+		action.sa_handler = do_nothing;
+		action.sa_flags = 0;
+		sigfillset(&action.sa_mask);
+		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+			assert(errno != EINVAL);
+			assert(0);
 		}
 	}
 
