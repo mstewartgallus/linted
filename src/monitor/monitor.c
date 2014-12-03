@@ -1770,7 +1770,7 @@ on_child_about_to_exit(bool time_to_exit, pid_t pid, linted_ko cwd,
 		exit_status = xx;
 	}
 
-	char service_name[COMM_MAX + 16U];
+	char service_name[COMM_MAX + 1U];
 
 	errnum = pid_comm(pid, service_name);
 	if (errnum != 0)
