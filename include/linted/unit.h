@@ -19,6 +19,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
+#include <signal.h>
 #include <sys/types.h>
 
 /**
@@ -34,30 +35,25 @@ enum linted_unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
 
 struct linted_unit_db;
 
+struct linted_unit;
+struct linted_unit_service;
+struct linted_unit_socket;
+
+linted_error linted_unit_db_create(struct linted_unit_db **unitsp);
+void linted_unit_db_destroy(struct linted_unit_db *units);
+
+linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
+                                     struct linted_unit **unitp);
+size_t linted_unit_db_size(struct linted_unit_db *units);
+struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
+                                            size_t ii);
+struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
+                                                    char const *name);
+
 struct linted_unit
 {
 	char *name;
 	enum linted_unit_type type;
-};
-
-struct linted_unit_service
-{
-	struct linted_unit common;
-
-	char const *const *exec_start;
-	char const *const *files;
-	char const *fstab;
-	char const *chdir_path;
-	char const *const *env_whitelist;
-
-	_Bool clone_newuser : 1U;
-	_Bool clone_newpid : 1U;
-	_Bool clone_newipc : 1U;
-	_Bool clone_newnet : 1U;
-	_Bool clone_newns : 1U;
-	_Bool clone_newuts : 1U;
-
-	_Bool no_new_privs : 1U;
 };
 
 struct linted_unit_socket
@@ -70,15 +66,30 @@ struct linted_unit_socket
 	_Bool is_open : 1U;
 };
 
-linted_error linted_unit_db_create(struct linted_unit_db **unitsp);
-void linted_unit_db_destroy(struct linted_unit_db *units);
+#if defined _POSIX_C_SOURCE && _POSIX_C_SOURCE >= 1
+struct linted_unit_service
+{
+	struct linted_unit common;
 
-linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
-                                     struct linted_unit **unitp);
-size_t linted_unit_db_size(struct linted_unit_db *units);
-struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
-                                            size_t ii);
-struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
-                                                    char const *name);
+	char const *const *exec_start;
+	char const *const *files;
+	char const *fstab;
+	char const *chdir_path;
+	char const *const *env_whitelist;
+
+	sigset_t const *sigmask;
+	char const *sandbox;
+	char const *waiter;
+
+	_Bool clone_newuser : 1U;
+	_Bool clone_newpid : 1U;
+	_Bool clone_newipc : 1U;
+	_Bool clone_newnet : 1U;
+	_Bool clone_newns : 1U;
+	_Bool clone_newuts : 1U;
+
+	_Bool no_new_privs : 1U;
+};
+#endif
 
 #endif /* LINTED_UNIT_H */
