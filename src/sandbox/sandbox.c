@@ -106,7 +106,8 @@ static char const *const argstrs[] = {
 static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
                       linted_ko stdout_writer, linted_ko stderr_writer,
                       char *listen_pid_str, char const *const *argv,
-                      char const *const *env);
+                      char const *const *env,
+		      bool no_new_privs);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -490,17 +491,6 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	if (no_new_privs) {
-		/* Must appear before the seccomp filter */
-		errnum = set_no_new_privs(true);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-
-		errnum = set_seccomp(&default_filter);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-	}
-
 	char **env_copy = NULL;
 	size_t env_size = 0U;
 	for (char const *const *env = (char const * const *)environ;
@@ -527,46 +517,53 @@ exit_loop:
 
 	env_copy[0U] = listen_fds_str;
 	env_copy[1U] = listen_pid_str;
+
+	linted_ko vfork_err_reader;
+	linted_ko vfork_err_writer;
+	{
+		linted_ko xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
+			exit_with_error(err_writer, errno);
+		vfork_err_reader = xx[0U];
+		vfork_err_writer = xx[1U];
+	}
+
 	env_copy[env_size + 2U] = NULL;
 
+	if (no_new_privs) {
+		/* Must appear before the seccomp filter */
+		errnum = set_no_new_privs(true);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+	}
+
+	pid_t child =
+		do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
+			 stderr_writer, listen_pid_str,
+			 (char const * const *)command,
+			 (char const * const *)env_copy,
+			no_new_privs);
+	if (-1 == child)
+		exit_with_error(err_writer, errno);
+
+	linted_ko_close(vfork_err_writer);
+
+	linted_ko_close(stdin_reader);
+	linted_ko_close(stdout_writer);
+	linted_ko_close(stderr_writer);
+
 	{
-		linted_ko vfork_err_reader;
-		linted_ko vfork_err_writer;
-		{
-			linted_ko xx[2U];
-			if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
-				exit_with_error(err_writer, errno);
-			vfork_err_reader = xx[0U];
-			vfork_err_writer = xx[1U];
-		}
+		size_t xx;
+		linted_error yy;
+		errnum = linted_io_read_all(vfork_err_reader, &xx, &yy,
+					    sizeof yy);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
 
-		pid_t child =
-		    do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
-		             stderr_writer, listen_pid_str,
-		             (char const * const *)command,
-		             (char const * const *)env_copy);
-		if (-1 == child)
-			exit_with_error(err_writer, errno);
-
-		linted_ko_close(vfork_err_writer);
-
-		linted_ko_close(stdin_reader);
-		linted_ko_close(stdout_writer);
-		linted_ko_close(stderr_writer);
-
-		{
-			size_t xx;
-			linted_error yy;
-			errnum = linted_io_read_all(vfork_err_reader, &xx, &yy,
-			                            sizeof yy);
-			if (errnum != 0)
-				exit_with_error(err_writer, errnum);
-
-			/* If bytes_read is zero then a succesful exec
-			 * occured */
-			if (xx == sizeof yy)
-				errnum = yy;
-		}
+		/* If bytes_read is zero then a succesful exec
+		 * occured */
+		if (xx == sizeof yy)
+			errnum = yy;
 	}
 	if (errnum != 0)
 		exit_with_error(err_writer, errnum);
@@ -595,7 +592,7 @@ exit_loop:
 static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
                       linted_ko stdout_writer, linted_ko stderr_writer,
                       char *listen_pid_str, char const *const *argv,
-                      char const *const *env)
+                      char const *const *env, bool no_new_privs)
 {
 	pid_t child = vfork();
 	if (child != 0)
@@ -624,6 +621,11 @@ static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
 
 	if (-1 == setsid())
 		exit_with_error(err_writer, errno);
+
+	/* Do seccomp filter last of all */
+	linted_error errnum = set_seccomp(&default_filter);
+	if (errnum != 0)
+		exit_with_error(err_writer, errnum);
 
 	execve(argv[0U], (char * const *)argv, (char * const *)env);
 	exit_with_error(err_writer, errno);
