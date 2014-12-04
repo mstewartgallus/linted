@@ -113,53 +113,16 @@ struct conn
 struct conn_pool;
 
 #define COMM_MAX 16U
-
+#define PIDSTAT_FIELDS 4U
 struct pidstat
 {
 	pid_t pid;
 	char comm[1U + COMM_MAX + 1U + 1U];
 	char state;
 	pid_t ppid;
-	pid_t pgrp;
-	pid_t session;
-	int tty_nr;
-	pid_t tpgid;
-	unsigned flags;
-	unsigned long minflt;
-	unsigned long cminflt;
-	unsigned long majflt;
-	unsigned long cmajflt;
-	unsigned long utime;
-	unsigned long stime;
-	long cutime;
-	long cstime;
-	long priority;
-	long nice;
-	long num_threads;
-	long itrealvalue;
-	unsigned long long starttime;
-	unsigned long vsize;
-	long rss;
-	unsigned long rsslim;
-	unsigned long startcode;
-	unsigned long endcode;
-	unsigned long startstack;
-	unsigned long kstkesp;
-	unsigned long kstkeip;
-	unsigned long signal;
-	unsigned long blocked;
-	unsigned long sigignore;
-	unsigned long sigcatch;
-	unsigned long wchan;
-	unsigned long nswap;
-	unsigned long cnswap;
-	int exit_signal;
-	int processor;
-	unsigned rt_priority;
-	unsigned policy;
-	unsigned long long delayacct_blkio_ticks;
-	unsigned long guest_time;
-	long cguest_time;
+	pid_t ngid;
+	pid_t tid;
+	pid_t tracer_pid;
 };
 
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
@@ -2357,11 +2320,14 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 {
 	linted_error errnum = 0;
 
+	/* Use /proc/<pid>/status to avoid troubles with processes
+	 * that have names like ':-) 0 1 2 3 4 5'. procps-ng takes a
+	 * different approach that I'm not actually sure works. */
 	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
-		sprintf(path, "/proc/%i/stat", pid);
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/status";
+		sprintf(path, "/proc/%i/status", pid);
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 		if (errnum != 0)
@@ -2382,66 +2348,58 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 	memset(buf, 0, sizeof *buf);
 
 	int num_match = fscanf(
-	    file, "%d "        // pid
-	          "(%16[^)]) " // comm
-	          "%c "        // state
-	          "%d "        // ppid
-	          "%d "        // pgrp
-	          "%d "        // session
-	          "%d "        // tty_nr
-	          "%d "        // tpgid
-	          "%u "        // flags
-	          "%lu "       // minflt
-	          "%lu "       // cminflt
-	          "%lu "       // majflt
-	          "%lu "       // cmajflt
-	          "%lu "       // utime
-	          "%lu "       // stime
-	          "%ld "       // cutime
-	          "%ld "       // cstime
-	          "%ld "       // priority
-	          "%ld "       // nice
-	          "%ld "       // num_threads
-	          "%ld "       // itrealvalue
-	          "%llu "      // starttime
-	          "%lu "       // vsize
-	          "%ld "       // rss
-	          "%lu "       // rsslim
-	          "%lu "       // startcode
-	          "%lu "       // endcode
-	          "%lu "       // startstack
-	          "%lu "       // kstkesp
-	          "%lu "       // kstkeip
-	          "%lu "       // signal
-	          "%lu "       // blocked
-	          "%lu "       // sigignore
-	          "%lu "       // sigcatch
-	          "%lu "       // wchan
-	          "%lu "       // nswap
-	          "%lu "       // cnswap
-	          "%d "        // exit_signal
-	          "%d "        // processor
-	          "%u "        // rt_priority
-	          "%u "        // policy
-	          "%llu "      // delayacct_blkio_ticks
-	          "%lu "       // guest_time
-	          "%ld"        // cguest_time
-	    ,
-	    &buf->pid, buf->comm, &buf->state, &buf->ppid, &buf->pgrp,
-	    &buf->session, &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
-	    &buf->cminflt, &buf->majflt, &buf->cmajflt, &buf->utime,
-	    &buf->stime, &buf->cutime, &buf->cstime, &buf->priority, &buf->nice,
-	    &buf->num_threads, &buf->itrealvalue, &buf->starttime, &buf->vsize,
-	    &buf->rss, &buf->rsslim, &buf->startcode, &buf->endcode,
-	    &buf->startstack, &buf->kstkesp, &buf->kstkeip, &buf->signal,
-	    &buf->blocked, &buf->sigignore, &buf->sigcatch, &buf->wchan,
-	    &buf->nswap, &buf->cnswap, &buf->exit_signal, &buf->processor,
-	    &buf->rt_priority, &buf->policy, &buf->delayacct_blkio_ticks,
-	    &buf->guest_time, &buf->cguest_time);
+	    file,
+	    "Name: %16s\n"
+	    "State: %c (%*[^)])\n"
+	    "Tgid: %d\n" /* pid */
+	    "Ngid: %d\n" /* no idea what this is */
+	    "Pid: %d\n"  /* Thread ID */
+	    "PPid: %d\n"
+	    "TracerPid: %d\n"
+	    "Uid: %*d %*d %*d %*d\n" /* real, effective, saved, filesystem */
+	    "Gid: %*d %*d %*d %*d\n" /* real, effective, saved, filesystem */
+	    "FDSize: %*lu\n"
+	    "Groups: %*[^\n]\n"
+	    "VmPeak: %*lu kB\n"
+	    "VmSize: %*lu kB\n"
+	    "VmLck: %*lu kB\n"
+	    "VmPin: %*lu kB\n"
+	    "VmHWM: %*lu kB\n"
+	    "VmRSS: %*lu kB\n"
+	    "VmData: %*lu kB\n"
+	    "VmStk: %*lu kB\n"
+	    "VmExe: %*lu kB\n"
+	    "VmLib: %*lu kB\n"
+	    "VmPTE: %*lu kB\n"
+	    "VmSwap: %*lu kB\n"
+	    "Threads: %*lu kB\n"
+	    "SigQ: %*u/%*u\n" /* queued signals / max queued signals */
+	    "SigPnd: %*lux\n"
+	    "ShdPnd: %*lux\n"
+	    "ShdBlk: %*lux\n"
+	    "ShdIgn: %*lux\n"
+	    "ShdCgt: %*lux\n"
+	    "CapInh: %*lux\n"
+	    "CapPrm: %*lux\n"
+	    "CapEff: %*lux\n"
+	    "CapBnd: %*lux\n"
+	    "Seccomp: %*d\n"
+	    "CapBnd: %*x\n"
+	    "Cpus_allowed: %*d-%*d\n"
+	    "Mems_allowed: %*x,%*x\n"
+	    "Mems_allowed_list: %*d\n"
+	    "voluntary_ctxt_switches: %*lu\n"
+	    "nonvoluntary_ctxt_switches: %*lu\n",
+	    buf->comm, &buf->state, &buf->pid, &buf->ngid, &buf->tid,
+	    &buf->ppid, &buf->tracer_pid);
 	if (EOF == num_match) {
 		errnum = errno;
 		if (0 == errnum)
 			errnum = ENOSYS;
+		goto close_file;
+	}
+	if ((unsigned)num_match < PIDSTAT_FIELDS) {
+		errnum = ENOSYS;
 		goto close_file;
 	}
 
