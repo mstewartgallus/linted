@@ -72,7 +72,7 @@ static EGLint const attr_list[] = {
 	EGL_NONE
 };
 
-static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /*  */
+static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /**/
 	                               EGL_NONE };
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);

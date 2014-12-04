@@ -805,16 +805,16 @@ close_file:
 
 enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
 
-static char const *const mount_options[] = {[MKDIR] = "mkdir",        /*  */
-	                                    [TOUCH] = "touch",        /*  */
-	                                    [BIND] = "bind",          /*  */
-	                                    [RBIND] = "rbind",        /*  */
-	                                    [RO] = MNTOPT_RO,         /*  */
-	                                    [RW] = MNTOPT_RW,         /*  */
-	                                    [SUID] = MNTOPT_SUID,     /*  */
-	                                    [NOSUID] = MNTOPT_NOSUID, /*  */
-	                                    [NODEV] = "nodev",        /*  */
-	                                    [NOEXEC] = "noexec",      /*  */
+static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
+	                                    [TOUCH] = "touch",        /**/
+	                                    [BIND] = "bind",          /**/
+	                                    [RBIND] = "rbind",        /**/
+	                                    [RO] = MNTOPT_RO,         /**/
+	                                    [RW] = MNTOPT_RW,         /**/
+	                                    [SUID] = MNTOPT_SUID,     /**/
+	                                    [NOSUID] = MNTOPT_NOSUID, /**/
+	                                    [NODEV] = "nodev",        /**/
+	                                    [NOEXEC] = "noexec",      /**/
 	                                    NULL };
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
