@@ -74,6 +74,12 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(write),
 	/**/ ALLOW(writev),
 
+	/* Debugging related system calls */
+	/**/ ALLOW(gettid),
+	/**/ ALLOW(getpid),
+	/**/ ALLOW(sched_getaffinity),
+	/**/ ALLOW(setrlimit),
+
 	/**/ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
 };
 

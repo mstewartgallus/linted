@@ -106,8 +106,7 @@ static char const *const argstrs[] = {
 static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
                       linted_ko stdout_writer, linted_ko stderr_writer,
                       char *listen_pid_str, char const *const *argv,
-                      char const *const *env,
-		      bool no_new_privs);
+                      char const *const *env, bool no_new_privs);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -537,12 +536,10 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	pid_t child =
-		do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
-			 stderr_writer, listen_pid_str,
-			 (char const * const *)command,
-			 (char const * const *)env_copy,
-			no_new_privs);
+	pid_t child = do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
+	                       stderr_writer, listen_pid_str,
+	                       (char const * const *)command,
+	                       (char const * const *)env_copy, no_new_privs);
 	if (-1 == child)
 		exit_with_error(err_writer, errno);
 
@@ -555,8 +552,8 @@ exit_loop:
 	{
 		size_t xx;
 		linted_error yy;
-		errnum = linted_io_read_all(vfork_err_reader, &xx, &yy,
-					    sizeof yy);
+		errnum =
+		    linted_io_read_all(vfork_err_reader, &xx, &yy, sizeof yy);
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 
