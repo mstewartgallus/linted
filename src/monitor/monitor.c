@@ -206,7 +206,8 @@ static linted_error on_child_about_to_exit(bool time_to_exit, pid_t pid,
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct linted_unit_db *unit_db);
+                                     struct linted_unit_db *unit_db,
+                                     bool check);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -890,7 +891,7 @@ static linted_error activate_unit_db(struct linted_unit_db *unit_db,
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate(unit, cwd, chrootdir, unit_db);
+		errnum = service_activate(unit, cwd, chrootdir, unit_db, true);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -947,13 +948,16 @@ static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 
 static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
                                      char const *chrootdir,
-                                     struct linted_unit_db *unit_db)
+                                     struct linted_unit_db *unit_db, bool check)
 {
 	linted_error errnum = 0;
 
 	char const *service_name = unit->name;
 
 	struct linted_unit_service *unit_service = (void *)unit;
+
+	if (!check)
+		goto spawn_service;
 
 	pid_t child;
 	{
@@ -971,7 +975,8 @@ static linted_error service_activate(struct linted_unit *unit, linted_ko cwd,
 service_not_found:
 	if (errnum != ESRCH)
 		return errnum;
-
+spawn_service:
+	;
 	char const *const *exec_start = unit_service->exec_start;
 	bool no_new_privs = unit_service->no_new_privs;
 	char const *const *files = unit_service->files;
@@ -1803,12 +1808,12 @@ detach_from_process:
 		return errnum;
 
 	if (time_to_exit)
-		return 0;
+		return errnum;
 
 	if (NULL == unit)
-		return 0;
+		return errnum;
 
-	errnum = service_activate(unit, cwd, chrootdir, unit_db);
+	errnum = service_activate(unit, cwd, chrootdir, unit_db, false);
 
 	return errnum;
 }
@@ -1957,17 +1962,17 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 		;
 		pid_t child = strtol(buf, NULL, 10);
 
-		char service_name[COMM_MAX + 16U];
-
+		char service_name[COMM_MAX + 1U];
 		errnum = pid_comm(child, service_name);
 		if (errnum != 0)
 			return errnum;
 
-		if (0 == strcmp(service_name, name)) {
-			errnum = 0;
-			pid = child;
-			break;
-		}
+		if (strcmp(name, service_name) != 0)
+			continue;
+
+		errnum = 0;
+		pid = child;
+		break;
 	}
 	*pidp = pid;
 
@@ -2377,50 +2382,50 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 	memset(buf, 0, sizeof *buf);
 
 	int num_match = fscanf(
-	    file, "%d "   // pid
-	          "%s "   // comm
-	          "%c "   // state
-	          "%d "   // ppid
-	          "%d "   // pgrp
-	          "%d "   // session
-	          "%d "   // tty_nr
-	          "%d "   // tpgid
-	          "%u "   // flags
-	          "%lu "  // minflt
-	          "%lu "  // cminflt
-	          "%lu "  // majflt
-	          "%lu "  // cmajflt
-	          "%lu "  // utime
-	          "%lu "  // stime
-	          "%ld "  // cutime
-	          "%ld "  // cstime
-	          "%ld "  // priority
-	          "%ld "  // nice
-	          "%ld "  // num_threads
-	          "%ld "  // itrealvalue
-	          "%llu " // starttime
-	          "%lu "  // vsize
-	          "%ld "  // rss
-	          "%lu "  // rsslim
-	          "%lu "  // startcode
-	          "%lu "  // endcode
-	          "%lu "  // startstack
-	          "%lu "  // kstkesp
-	          "%lu "  // kstkeip
-	          "%lu "  // signal
-	          "%lu "  // blocked
-	          "%lu "  // sigignore
-	          "%lu "  // sigcatch
-	          "%lu "  // wchan
-	          "%lu "  // nswap
-	          "%lu "  // cnswap
-	          "%d "   // exit_signal
-	          "%d "   // processor
-	          "%u "   // rt_priority
-	          "%u "   // policy
-	          "%llu " // delayacct_blkio_ticks
-	          "%lu "  // guest_time
-	          "%ld"   // cguest_time
+	    file, "%d "        // pid
+	          "(%16[^)]) " // comm
+	          "%c "        // state
+	          "%d "        // ppid
+	          "%d "        // pgrp
+	          "%d "        // session
+	          "%d "        // tty_nr
+	          "%d "        // tpgid
+	          "%u "        // flags
+	          "%lu "       // minflt
+	          "%lu "       // cminflt
+	          "%lu "       // majflt
+	          "%lu "       // cmajflt
+	          "%lu "       // utime
+	          "%lu "       // stime
+	          "%ld "       // cutime
+	          "%ld "       // cstime
+	          "%ld "       // priority
+	          "%ld "       // nice
+	          "%ld "       // num_threads
+	          "%ld "       // itrealvalue
+	          "%llu "      // starttime
+	          "%lu "       // vsize
+	          "%ld "       // rss
+	          "%lu "       // rsslim
+	          "%lu "       // startcode
+	          "%lu "       // endcode
+	          "%lu "       // startstack
+	          "%lu "       // kstkesp
+	          "%lu "       // kstkeip
+	          "%lu "       // signal
+	          "%lu "       // blocked
+	          "%lu "       // sigignore
+	          "%lu "       // sigcatch
+	          "%lu "       // wchan
+	          "%lu "       // nswap
+	          "%lu "       // cnswap
+	          "%d "        // exit_signal
+	          "%d "        // processor
+	          "%u "        // rt_priority
+	          "%u "        // policy
+	          "%llu "      // delayacct_blkio_ticks
+	          "%lu "       // guest_time
+	          "%ld"        // cguest_time
 	    ,
 	    &buf->pid, buf->comm, &buf->state, &buf->ppid, &buf->pgrp,
 	    &buf->session, &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
