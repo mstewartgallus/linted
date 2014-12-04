@@ -15,7 +15,7 @@
  */
 #version 100
 
-precision highp float;
+precision lowp float;
 
 #pragma linted include("shaders/varying.glsl")
 
