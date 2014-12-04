@@ -223,6 +223,10 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 {
 	gpu_context->update = *gpu_update;
 	gpu_context->update_pending = true;
+
+	/* Abort swapping buffers if the current processed or being
+	 * processed buffer is stale */
+	gpu_context->state = BUFFER_COMMANDS;
 }
 
 void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
@@ -253,15 +257,20 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 		break;
 
 	case SWAP_BUFFERS:
+		/* Poll to see if the buffer is ready for swapping, if
+		 * it is not ready we can listen for updates in the
+		 * meanwhile. */
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			errnum = get_egl_error();
-			if (ENOSYS == errnum) {
-				destroy_contexts(gpu_context);
-				gpu_context->has_gl_context = false;
-			}
+			break;
 		}
 		gpu_context->state = BUFFER_COMMANDS;
 		break;
+	}
+
+	if (errnum != 0) {
+		destroy_contexts(gpu_context);
+		gpu_context->has_gl_context = false;
 	}
 }
 

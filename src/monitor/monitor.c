@@ -2126,7 +2126,7 @@ static linted_error bool_from_cstring(char const *str, bool *boolp)
 	}
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
-		if (0 == strcmp(str, yes_strs[ii])) {
+		if (0 == strcmp(str, no_strs[ii])) {
 			result = false;
 			goto return_result;
 		}

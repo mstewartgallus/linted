@@ -620,9 +620,11 @@ static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
 		exit_with_error(err_writer, errno);
 
 	/* Do seccomp filter last of all */
-	linted_error errnum = set_seccomp(&default_filter);
-	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
+	if (no_new_privs) {
+		linted_error errnum = set_seccomp(&default_filter);
+		if (errnum != 0)
+			exit_with_error(err_writer, errnum);
+	}
 
 	execve(argv[0U], (char * const *)argv, (char * const *)env);
 	exit_with_error(err_writer, errno);
