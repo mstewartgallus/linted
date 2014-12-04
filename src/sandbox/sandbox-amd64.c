@@ -80,6 +80,21 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(sched_getaffinity),
 	/**/ ALLOW(setrlimit),
 
+	/* Valgrind related system calls */
+	/**/ ALLOW(getcwd),
+	/**/ ALLOW(getppid),
+	/**/ ALLOW(gettimeofday),
+	/**/ ALLOW(getxattr),
+	/**/ ALLOW(mknod),
+	/**/ ALLOW(pipe),
+	/**/ ALLOW(pread64),
+	/**/ ALLOW(readlink),
+	/**/ ALLOW(rt_sigreturn),
+	/**/ ALLOW(sched_yield),
+	/**/ ALLOW(time),
+	/**/ ALLOW(tkill),
+	/**/ ALLOW(unlink),
+
 	/**/ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL)
 };
 
