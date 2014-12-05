@@ -236,6 +236,10 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
 	gpu_context->height = height;
 
 	gpu_context->resize_pending = true;
+
+	/* Abort swapping buffers if the current processed or being
+	 * processed buffer is stale */
+	gpu_context->state = BUFFER_COMMANDS;
 }
 
 void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
