@@ -180,7 +180,7 @@ static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 
-static linted_error pid_children(linted_ko *kop, pid_t pid);
+static linted_error pid_children(pid_t pid, char **childrenp);
 static linted_error kill_pid_children(pid_t pid, int signo);
 
 static linted_error pid_of_service(pid_t *pidp, char const *name);
@@ -1879,70 +1879,58 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 {
 	linted_error errnum = 0;
 
-	linted_ko init_children;
+	char *buf;
 	{
-		linted_ko xx;
-		errnum = pid_children(&xx, getppid());
+		char *xx;
+		errnum = pid_children(getppid(), &xx);
 		if (errnum != 0)
 			return errnum;
-		init_children = xx;
+		buf = xx;
 	}
-
-	FILE *file = fdopen(init_children, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(init_children);
-
+	if (NULL == buf)
 		return errnum;
-	}
 
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	pid_t pid;
+	pid_t pid = -1;
+	char const *start = buf;
 	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
-
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz)
-				goto getdelim_failed;
-			buf = xx;
-			buf_size = yy;
-			goto getdelim_succeeded;
-		}
-	getdelim_failed:
+		errno = 0;
+		pid_t child = strtol(start, NULL, 10);
 		errnum = errno;
-		if (0 == errnum)
-			errnum = ESRCH;
-		goto free_buf;
-
-	getdelim_succeeded:
-		;
-		pid_t child = strtol(buf, NULL, 10);
+		if (errnum != 0)
+			goto free_buf;
 
 		char service_name[COMM_MAX + 1U];
 		errnum = pid_comm(child, service_name);
 		if (errnum != 0)
-			return errnum;
+			goto free_buf;
 
 		if (strcmp(name, service_name) != 0)
-			continue;
+			goto move_on;
 
 		errnum = 0;
 		pid = child;
 		break;
+	move_on:
+		start = strchr(start, ' ');
+		if (NULL == start)
+			break;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
+		++start;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
 	}
+	if (-1 == pid)
+		errnum = ESRCH;
+
 	*pidp = pid;
 
 free_buf:
 	linted_mem_free(buf);
-
-	fclose(file);
 
 	return errnum;
 }
@@ -1951,61 +1939,22 @@ static linted_error kill_pid_children(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
-	linted_ko children;
+	char *buf;
 	{
-		linted_ko xx;
-		errnum = pid_children(&xx, pid);
+		char *xx;
+		errnum = pid_children(pid, &xx);
 		if (errnum != 0)
 			return errnum;
-		children = xx;
-	}
-
-	FILE *file = fdopen(children, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(children);
-
-		return errnum;
-	}
-
-	/* Get the child all at once to avoid raciness. */
-	char *buf = NULL;
-	size_t buf_size = 0U;
-
-	{
-		char *xx = buf;
-		size_t yy = buf_size;
-
-		errno = 0;
-		ssize_t zz = getline(&xx, &yy, file);
-		if (-1 == zz) {
-			errnum = errno;
-			goto close_file;
-		}
 		buf = xx;
-		buf_size = yy;
 	}
-
-close_file:
-	if (EOF == fclose(file)) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
-	}
-	if (errnum != 0)
-		goto free_buf;
-
 	if (NULL == buf)
-		goto free_buf;
+		return errnum;
 
 	char const *start = buf;
 	for (;;) {
 		errno = 0;
 		pid_t child = strtol(start, NULL, 10);
-		errnum = errnum;
+		errnum = errno;
 		if (errnum != 0)
 			goto free_buf;
 
@@ -2018,7 +1967,13 @@ close_file:
 		start = strchr(start, ' ');
 		if (NULL == start)
 			break;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
 		++start;
+		if ('\n' == *start)
+			break;
 		if ('\0' == *start)
 			break;
 	}
@@ -2191,17 +2146,63 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	return 0;
 }
 
-static linted_error pid_children(linted_ko *kop, pid_t pid)
+static linted_error pid_children(pid_t pid, char **childrenp)
 {
 	linted_error errnum;
+	linted_ko children;
+
 	{
+		linted_ko xx;
 		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
 		sprintf(path, "/proc/%i/task/%i/children", pid, pid);
 		errnum =
-		    linted_ko_open(kop, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		if (ENOENT == errnum)
+			return ESRCH;
+		if (errnum != 0)
+			return errnum;
+		children = xx;
 	}
-	if (ENOENT == errnum)
-		return ESRCH;
+
+	FILE *file = fdopen(children, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(children);
+
+		return errnum;
+	}
+
+	/* Get the child all at once to avoid raciness. */
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	{
+		char *xx = buf;
+		size_t yy = buf_size;
+
+		errno = 0;
+		ssize_t zz = getline(&xx, &yy, file);
+		if (-1 == zz) {
+			errnum = errno;
+			/* May be zero */
+			goto set_childrenp;
+		}
+		buf = xx;
+		buf_size = yy;
+	}
+
+set_childrenp:
+	*childrenp = buf;
+
+	if (EOF == fclose(file)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
 	return errnum;
 }
 
