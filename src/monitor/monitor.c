@@ -1970,44 +1970,61 @@ static linted_error kill_pid_children(pid_t pid, int signo)
 		return errnum;
 	}
 
+	/* Get the child all at once to avoid raciness. */
 	char *buf = NULL;
 	size_t buf_size = 0U;
 
-	for (;;) {
-		{
-			char *xx = buf;
-			size_t yy = buf_size;
+	{
+		char *xx = buf;
+		size_t yy = buf_size;
 
-			errno = 0;
-			ssize_t zz = getdelim(&xx, &yy, ' ', file);
-			if (-1 == zz)
-				goto getdelim_failed;
-			buf = xx;
-			buf_size = yy;
-			goto getdelim_succeeded;
+		errno = 0;
+		ssize_t zz = getline(&xx, &yy, file);
+		if (-1 == zz) {
+			errnum = errno;
+			goto close_file;
 		}
-	getdelim_failed:
-		errnum = errno;
+		buf = xx;
+		buf_size = yy;
+	}
+
+close_file:
+	if (EOF == fclose(file)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+	if (errnum != 0)
 		goto free_buf;
 
-	getdelim_succeeded:
-		;
-		pid_t child = strtol(buf, NULL, 10);
+	if (NULL == buf)
+		goto free_buf;
+
+	char const *start = buf;
+	for (;;) {
+		errno = 0;
+		pid_t child = strtol(start, NULL, 10);
+		errnum = errnum;
+		if (errnum != 0)
+			goto free_buf;
 
 		if (-1 == kill(child, signo)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_buf;
 		}
+
+		start = strchr(start, ' ');
+		if (NULL == start)
+			break;
+		++start;
+		if ('\0' == *start)
+			break;
 	}
 
 free_buf:
 	linted_mem_free(buf);
-
-	if (EOF == fclose(file)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
 
 	return errnum;
 }
