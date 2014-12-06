@@ -22,9 +22,8 @@ noinst_LTLIBRARIES+=%D%/libgpu.la
   src/mem/libmem.la\
   \
   -lm\
-  $(GLES_LIBS)\
   $(EGL_LIBS)
 
 %C%_libgpu_la_CPPFLAGS=\
-  $(GLES_FLAGS) $(EGL_FLAGS)\
+  $(EGL_FLAGS)\
   $(AM_CPPFLAGS)

@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -95,6 +96,44 @@ static double square(double x);
 
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
+
+static void gpu_ClearColor(GLfloat red, GLfloat green, GLfloat blue,
+                           GLfloat alpha);
+static void gpu_Flush(void);
+static void gpu_Enable(GLenum cap);
+static GLuint gpu_CreateProgram(void);
+static GLuint gpu_CreateShader(GLenum shader_type);
+static void gpu_AttachShader(GLuint program, GLuint shader);
+static void gpu_DeleteShader(GLuint shader);
+static void gpu_ShaderSource(GLuint shader, GLsizei count,
+                             const GLchar **string, const GLint *length);
+static void gpu_ShaderSource(GLuint shader, GLsizei count,
+                             const GLchar **string, const GLint *length);
+static void gpu_CompileShader(GLuint shader);
+static void gpu_GetShaderiv(GLuint shader, GLenum pname, GLint *params);
+static void gpu_GetShaderInfoLog(GLuint shader, GLsizei maxLength,
+                                 GLsizei *length, GLchar *infoLog);
+static void gpu_UseProgram(GLuint program);
+static void gpu_DeleteProgram(GLuint program);
+static GLenum gpu_GetError(void);
+static void gpu_LinkProgram(GLuint program);
+static void gpu_ValidateProgram(GLuint program);
+static void gpu_GetProgramiv(GLuint program, GLenum pname, GLint *params);
+static GLint gpu_GetUniformLocation(GLuint program, GLchar const *name);
+static GLint gpu_GetAttribLocation(GLuint program, GLchar const *name);
+static void gpu_EnableVertexAttribArray(GLuint index);
+static void gpu_GetProgramInfoLog(GLuint program, GLsizei maxLength,
+                                  GLsizei *length, GLchar *infoLog);
+static void gpu_DeleteProgram(GLuint program);
+static void gpu_Viewport(GLint x, GLint y, GLsizei width, GLsizei height);
+static void gpu_UniformMatrix4fv(GLint location, GLsizei count,
+                                 GLboolean transpose, GLfloat *value);
+static void gpu_Clear(GLbitfield mask);
+static void gpu_DrawElements(GLenum mode, GLsizei count, GLenum type,
+                             GLvoid const *indices);
+static void gpu_VertexAttribPointer(GLuint index, GLint size, GLenum type,
+                                    GLboolean normalized, GLsizei stride,
+                                    const GLvoid *pointer);
 
 linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
                                        linted_gpu_native_window native_window,
@@ -256,7 +295,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 	switch (gpu_context->state) {
 	case BUFFER_COMMANDS:
 		real_draw(gpu_context);
-		glFlush();
+		gpu_Flush();
 		gpu_context->state = SWAP_BUFFERS;
 		break;
 
@@ -285,8 +324,8 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context)
 	EGLDisplay display = gpu_context->display;
 	EGLContext context = gpu_context->context;
 
-	glUseProgram(0);
-	glDeleteProgram(gpu_context->program);
+	gpu_UseProgram(0);
+	gpu_DeleteProgram(gpu_context->program);
 
 	if (EGL_FALSE == eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
 	                                EGL_NO_CONTEXT))
@@ -323,8 +362,8 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		goto destroy_context;
 	}
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	gpu_Enable(GL_DEPTH_TEST);
+	gpu_Enable(GL_CULL_FACE);
 
 	/* The brightest colour is (1, 1, 1) */
 	/* The darkest colour is (0, 0, 0) */
@@ -372,32 +411,32 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	double red = x;
 	double green = x;
 
-	glClearColor(red, green, blue, 1);
+	gpu_ClearColor(red, green, blue, 1);
 
 	flush_gl_errors();
-	GLuint program = glCreateProgram();
+	GLuint program = gpu_CreateProgram();
 	if (0 == program) {
 		errnum = get_gl_error();
 		goto use_no_context;
 	}
 
 	flush_gl_errors();
-	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	GLuint fragment_shader = gpu_CreateShader(GL_FRAGMENT_SHADER);
 	if (0 == fragment_shader) {
 		errnum = get_gl_error();
 		goto cleanup_program;
 	}
-	glAttachShader(program, fragment_shader);
-	glDeleteShader(fragment_shader);
+	gpu_AttachShader(program, fragment_shader);
+	gpu_DeleteShader(fragment_shader);
 
-	glShaderSource(fragment_shader, 1U,
-	               (GLchar const **)&linted_assets_fragment_shader, NULL);
-	glCompileShader(fragment_shader);
+	gpu_ShaderSource(fragment_shader, 1U,
+	                 (GLchar const **)&linted_assets_fragment_shader, NULL);
+	gpu_CompileShader(fragment_shader);
 
 	GLint fragment_is_valid;
 	{
 		GLint xx = false;
-		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &xx);
+		gpu_GetShaderiv(fragment_shader, GL_COMPILE_STATUS, &xx);
 		fragment_is_valid = xx;
 	}
 	if (!fragment_is_valid) {
@@ -406,7 +445,8 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		GLint info_log_length;
 		{
 			GLint xx = 0;
-			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &xx);
+			gpu_GetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
+			                &xx);
 			info_log_length = xx;
 		}
 
@@ -419,29 +459,29 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 				goto cleanup_program;
 			info_log = xx;
 		}
-		glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
-		                   info_log);
+		gpu_GetShaderInfoLog(fragment_shader, info_log_length, NULL,
+		                     info_log);
 		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 	}
 
 	flush_gl_errors();
-	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	GLuint vertex_shader = gpu_CreateShader(GL_VERTEX_SHADER);
 	if (0 == vertex_shader) {
 		errnum = get_gl_error();
 		goto cleanup_program;
 	}
-	glAttachShader(program, vertex_shader);
-	glDeleteShader(vertex_shader);
+	gpu_AttachShader(program, vertex_shader);
+	gpu_DeleteShader(vertex_shader);
 
-	glShaderSource(vertex_shader, 1U,
-	               (GLchar const **)&linted_assets_vertex_shader, NULL);
-	glCompileShader(vertex_shader);
+	gpu_ShaderSource(vertex_shader, 1U,
+	                 (GLchar const **)&linted_assets_vertex_shader, NULL);
+	gpu_CompileShader(vertex_shader);
 
 	GLint vertex_is_valid;
 	{
 		GLint xx = false;
-		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &xx);
+		gpu_GetShaderiv(vertex_shader, GL_COMPILE_STATUS, &xx);
 		vertex_is_valid = xx;
 	}
 	if (!vertex_is_valid) {
@@ -450,7 +490,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		GLint info_log_length = 0;
 		{
 			GLint xx;
-			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &xx);
+			gpu_GetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -464,20 +504,20 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 			info_log = xx;
 		}
 
-		glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
-		                   info_log);
+		gpu_GetShaderInfoLog(vertex_shader, info_log_length, NULL,
+		                     info_log);
 		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
-	glLinkProgram(program);
+	gpu_LinkProgram(program);
 
-	glValidateProgram(program);
+	gpu_ValidateProgram(program);
 
 	GLint program_is_valid;
 	{
 		GLint xx = false;
-		glGetProgramiv(program, GL_VALIDATE_STATUS, &xx);
+		gpu_GetProgramiv(program, GL_VALIDATE_STATUS, &xx);
 		program_is_valid = xx;
 	}
 	if (!program_is_valid) {
@@ -486,7 +526,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		GLint info_log_length;
 		{
 			GLint xx = 0;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &xx);
+			gpu_GetProgramiv(program, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -500,42 +540,42 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 			info_log = xx;
 		}
 
-		glGetProgramInfoLog(program, info_log_length, NULL, info_log);
+		gpu_GetProgramInfoLog(program, info_log_length, NULL, info_log);
 		log_str(log, LINTED_STR("Invalid program: "), info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
 
 	GLint mvp_matrix =
-	    glGetUniformLocation(program, "model_view_projection_matrix");
+	    gpu_GetUniformLocation(program, "model_view_projection_matrix");
 	if (-1 == mvp_matrix) {
 		errnum = EINVAL;
 		goto cleanup_program;
 	}
 
-	GLint vertex = glGetAttribLocation(program, "vertex");
+	GLint vertex = gpu_GetAttribLocation(program, "vertex");
 	if (-1 == vertex) {
 		errnum = EINVAL;
 		goto cleanup_program;
 	}
 
-	GLint normal = glGetAttribLocation(program, "normal");
+	GLint normal = gpu_GetAttribLocation(program, "normal");
 	if (-1 == normal) {
 		errnum = EINVAL;
 		goto cleanup_program;
 	}
 
-	glEnableVertexAttribArray(vertex);
-	glEnableVertexAttribArray(normal);
+	gpu_EnableVertexAttribArray(vertex);
+	gpu_EnableVertexAttribArray(normal);
 
-	glVertexAttribPointer(vertex,
-	                      LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	                      GL_FLOAT, false, 0, linted_assets_vertices);
-	glVertexAttribPointer(normal,
-	                      LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	                      GL_FLOAT, false, 0, linted_assets_normals);
+	gpu_VertexAttribPointer(vertex,
+	                        LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
+	                        GL_FLOAT, false, 0, linted_assets_vertices);
+	gpu_VertexAttribPointer(normal,
+	                        LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
+	                        GL_FLOAT, false, 0, linted_assets_normals);
 
-	glUseProgram(program);
+	gpu_UseProgram(program);
 
 	gpu_context->context = context;
 	gpu_context->program = program;
@@ -549,7 +589,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	return 0;
 
 cleanup_program:
-	glDeleteProgram(program);
+	gpu_DeleteProgram(program);
 
 use_no_context:
 	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -571,7 +611,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 	bool resize_pending = gpu_context->resize_pending;
 
 	if (resize_pending) {
-		glViewport(0, 0, width, height);
+		gpu_Viewport(0, 0, width, height);
 		gpu_context->resize_pending = false;
 	}
 
@@ -635,22 +675,22 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		struct matrix model_view_projection =
 		    matrix_multiply(model_view, projection);
 
-		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
-		                   1U, false, model_view_projection.x[0U]);
+		gpu_UniformMatrix4fv(gpu_context->model_view_projection_matrix,
+		                     1U, false, model_view_projection.x[0U]);
 
 		gpu_context->update_pending = false;
 	}
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	               GL_UNSIGNED_BYTE, linted_assets_indices);
+	gpu_Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	gpu_DrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
+	                 GL_UNSIGNED_BYTE, linted_assets_indices);
 }
 
 static void flush_gl_errors(void)
 {
 	GLenum error;
 	do {
-		error = glGetError();
+		error = gpu_GetError();
 	} while (error != GL_NO_ERROR);
 }
 
@@ -660,7 +700,7 @@ static linted_error get_gl_error(void)
 	 * return multiple errors so this only gives the first of many
 	 * possible errors.
 	 */
-	switch (glGetError()) {
+	switch (gpu_GetError()) {
 	case GL_NO_ERROR:
 		return 0;
 
@@ -802,4 +842,307 @@ static linted_error log_str(linted_log log, struct linted_str start,
 	linted_mem_free(full_string);
 
 	return errnum;
+}
+
+/* Don't need to query display for support because OpenGL ES 2.0
+ * supports all of these. Also, function pointers aren't local to a
+ * specific display. */
+
+static void init_opengl_once(void);
+
+typedef void (*gpu_ClearColor_func)(GLfloat red, GLfloat green, GLfloat blue,
+                                    GLfloat alpha);
+typedef void (*gpu_Flush_func)(void);
+typedef void (*gpu_Enable_func)(GLenum cap);
+typedef GLuint (*gpu_CreateProgram_func)(void);
+typedef GLuint (*gpu_CreateShader_func)(GLenum shader_type);
+typedef void (*gpu_AttachShader_func)(GLuint program, GLuint shader);
+typedef void (*gpu_DeleteShader_func)(GLuint shader);
+typedef void (*gpu_ShaderSource_func)(GLuint shader, GLsizei count,
+                                      const GLchar **string,
+                                      const GLint *length);
+typedef void (*gpu_CompileShader_func)(GLuint shader);
+typedef void (*gpu_GetShaderiv_func)(GLuint shader, GLenum pname,
+                                     GLint *params);
+typedef void (*gpu_GetShaderInfoLog_func)(GLuint shader, GLsizei maxLength,
+                                          GLsizei *length, GLchar *infoLog);
+typedef void (*gpu_UseProgram_func)(GLuint program);
+typedef void (*gpu_DeleteProgram_func)(GLuint program);
+typedef GLenum (*gpu_GetError_func)(void);
+typedef void (*gpu_LinkProgram_func)(GLuint program);
+typedef void (*gpu_ValidateProgram_func)(GLuint program);
+typedef void (*gpu_GetProgramiv_func)(GLuint program, GLenum pname,
+                                      GLint *params);
+typedef GLint (*gpu_GetUniformLocation_func)(GLuint program,
+                                             GLchar const *name);
+typedef GLint (*gpu_GetAttribLocation_func)(GLuint program, GLchar const *name);
+typedef void (*gpu_EnableVertexAttribArray_func)(GLuint index);
+typedef void (*gpu_GetProgramInfoLog_func)(GLuint program, GLsizei maxLength,
+                                           GLsizei *length, GLchar *infoLog);
+typedef void (*gpu_Viewport_func)(GLint x, GLint y, GLsizei width,
+                                  GLsizei height);
+typedef void (*gpu_UniformMatrix4fv_func)(GLint location, GLsizei count,
+                                          GLboolean transpose, GLfloat *value);
+typedef void (*gpu_Clear_func)(GLbitfield mask);
+typedef void (*gpu_DrawElements_func)(GLenum mode, GLsizei count, GLenum type,
+                                      GLvoid const *indices);
+typedef void (*gpu_VertexAttribPointer_func)(GLuint index, GLint size,
+                                             GLenum type, GLboolean normalized,
+                                             GLsizei stride,
+                                             const GLvoid *pointer);
+static gpu_ClearColor_func gpu_ClearColor_pointer;
+static gpu_Flush_func gpu_Flush_pointer;
+static gpu_Enable_func gpu_Enable_pointer;
+static gpu_CreateProgram_func gpu_CreateProgram_pointer;
+static gpu_CreateShader_func gpu_CreateShader_pointer;
+static gpu_AttachShader_func gpu_AttachShader_pointer;
+static gpu_DeleteShader_func gpu_DeleteShader_pointer;
+static gpu_ShaderSource_func gpu_ShaderSource_pointer;
+static gpu_CompileShader_func gpu_CompileShader_pointer;
+static gpu_GetShaderiv_func gpu_GetShaderiv_pointer;
+static gpu_GetShaderInfoLog_func gpu_GetShaderInfoLog_pointer;
+static gpu_UseProgram_func gpu_UseProgram_pointer;
+static gpu_DeleteProgram_func gpu_DeleteProgram_pointer;
+static gpu_GetError_func gpu_GetError_pointer;
+static gpu_LinkProgram_func gpu_LinkProgram_pointer;
+static gpu_ValidateProgram_func gpu_ValidateProgram_pointer;
+static gpu_GetProgramiv_func gpu_GetProgramiv_pointer;
+static gpu_GetUniformLocation_func gpu_GetUniformLocation_pointer;
+static gpu_GetAttribLocation_func gpu_GetAttribLocation_pointer;
+static gpu_EnableVertexAttribArray_func gpu_EnableVertexAttribArray_pointer;
+static gpu_GetProgramInfoLog_func gpu_GetProgramInfoLog_pointer;
+static gpu_Viewport_func gpu_Viewport_pointer;
+static gpu_UniformMatrix4fv_func gpu_UniformMatrix4fv_pointer;
+static gpu_Clear_func gpu_Clear_pointer;
+static gpu_DrawElements_func gpu_DrawElements_pointer;
+static gpu_VertexAttribPointer_func gpu_VertexAttribPointer_pointer;
+
+static void gpu_ClearColor(GLfloat red, GLfloat green, GLfloat blue,
+                           GLfloat alpha)
+{
+	init_opengl_once();
+	gpu_ClearColor_pointer(red, green, blue, alpha);
+}
+
+static void gpu_Flush(void)
+{
+	init_opengl_once();
+	gpu_Flush_pointer();
+}
+
+static void gpu_Enable(GLenum cap)
+{
+	init_opengl_once();
+	gpu_Enable_pointer(cap);
+}
+
+static GLuint gpu_CreateProgram(void)
+{
+	init_opengl_once();
+	return gpu_CreateProgram_pointer();
+}
+
+static GLuint gpu_CreateShader(GLenum shader_type)
+{
+	init_opengl_once();
+	return gpu_CreateShader_pointer(shader_type);
+}
+
+static void gpu_AttachShader(GLuint program, GLuint shader)
+{
+	init_opengl_once();
+	gpu_AttachShader_pointer(program, shader);
+}
+
+static void gpu_DeleteShader(GLuint shader)
+{
+	init_opengl_once();
+	gpu_DeleteShader_pointer(shader);
+}
+
+static void gpu_ShaderSource(GLuint shader, GLsizei count,
+                             const GLchar **string, const GLint *length)
+{
+	init_opengl_once();
+	gpu_ShaderSource_pointer(shader, count, string, length);
+}
+
+static void gpu_CompileShader(GLuint shader)
+{
+	init_opengl_once();
+	gpu_CompileShader_pointer(shader);
+}
+
+static void gpu_GetShaderiv(GLuint shader, GLenum pname, GLint *params)
+{
+	init_opengl_once();
+	gpu_GetShaderiv_pointer(shader, pname, params);
+}
+
+static void gpu_GetShaderInfoLog(GLuint shader, GLsizei maxLength,
+                                 GLsizei *length, GLchar *infoLog)
+{
+	init_opengl_once();
+	gpu_GetShaderInfoLog_pointer(shader, maxLength, length, infoLog);
+}
+
+static void gpu_UseProgram(GLuint program)
+{
+	init_opengl_once();
+	gpu_UseProgram_pointer(program);
+}
+
+static void gpu_DeleteProgram(GLuint program)
+{
+	init_opengl_once();
+	gpu_DeleteProgram_pointer(program);
+}
+
+static GLenum gpu_GetError(void)
+{
+	init_opengl_once();
+	return gpu_GetError_pointer();
+}
+
+static void gpu_LinkProgram(GLuint program)
+{
+	init_opengl_once();
+	gpu_LinkProgram_pointer(program);
+}
+
+static void gpu_ValidateProgram(GLuint program)
+{
+	init_opengl_once();
+	gpu_ValidateProgram_pointer(program);
+}
+
+static void gpu_GetProgramiv(GLuint program, GLenum pname, GLint *params)
+{
+	init_opengl_once();
+	gpu_GetProgramiv_pointer(program, pname, params);
+}
+
+static GLint gpu_GetUniformLocation(GLuint program, GLchar const *name)
+{
+	init_opengl_once();
+	return gpu_GetUniformLocation_pointer(program, name);
+}
+
+static GLint gpu_GetAttribLocation(GLuint program, GLchar const *name)
+{
+	init_opengl_once();
+	return gpu_GetAttribLocation_pointer(program, name);
+}
+
+static void gpu_EnableVertexAttribArray(GLuint index)
+{
+	init_opengl_once();
+	gpu_EnableVertexAttribArray_pointer(index);
+}
+
+static void gpu_GetProgramInfoLog(GLuint program, GLsizei maxLength,
+                                  GLsizei *length, GLchar *infoLog)
+{
+	init_opengl_once();
+	gpu_GetProgramInfoLog_pointer(program, maxLength, length, infoLog);
+}
+
+static void gpu_Viewport(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	init_opengl_once();
+	gpu_Viewport_pointer(x, y, width, height);
+}
+
+static void gpu_UniformMatrix4fv(GLint location, GLsizei count,
+                                 GLboolean transpose, GLfloat *value)
+{
+	init_opengl_once();
+	gpu_UniformMatrix4fv_pointer(location, count, transpose, value);
+}
+
+static void gpu_Clear(GLbitfield mask)
+{
+	init_opengl_once();
+	gpu_Clear_pointer(mask);
+}
+
+static void gpu_DrawElements(GLenum mode, GLsizei count, GLenum type,
+                             GLvoid const *indices)
+{
+	init_opengl_once();
+	gpu_DrawElements_pointer(mode, count, type, indices);
+}
+
+static void gpu_VertexAttribPointer(GLuint index, GLint size, GLenum type,
+                                    GLboolean normalized, GLsizei stride,
+                                    const GLvoid *pointer)
+{
+	init_opengl_once();
+	gpu_VertexAttribPointer_pointer(index, size, type, normalized, stride,
+	                                pointer);
+}
+
+static pthread_once_t init_opengl_once_control = PTHREAD_ONCE_INIT;
+
+static void opengl_init_routine(void)
+{
+	gpu_ClearColor_pointer =
+	    (gpu_ClearColor_func)eglGetProcAddress("glClearColor");
+	gpu_Flush_pointer = (gpu_Flush_func)eglGetProcAddress("glFlush");
+	gpu_Enable_pointer = (gpu_Enable_func)eglGetProcAddress("glEnable");
+	gpu_CreateProgram_pointer =
+	    (gpu_CreateProgram_func)eglGetProcAddress("glCreateProgram");
+	gpu_CreateShader_pointer =
+	    (gpu_CreateShader_func)eglGetProcAddress("glCreateShader");
+	gpu_AttachShader_pointer =
+	    (gpu_AttachShader_func)eglGetProcAddress("glAttachShader");
+	gpu_DeleteShader_pointer =
+	    (gpu_DeleteShader_func)eglGetProcAddress("glDeleteShader");
+	gpu_ShaderSource_pointer =
+	    (gpu_ShaderSource_func)eglGetProcAddress("glShaderSource");
+	gpu_CompileShader_pointer =
+	    (gpu_CompileShader_func)eglGetProcAddress("glCompileShader");
+	gpu_GetShaderiv_pointer =
+	    (gpu_GetShaderiv_func)eglGetProcAddress("glGetShaderiv");
+	gpu_GetShaderInfoLog_pointer =
+	    (gpu_GetShaderInfoLog_func)eglGetProcAddress("glGetShaderInfoLog");
+	gpu_UseProgram_pointer =
+	    (gpu_UseProgram_func)eglGetProcAddress("glUseProgram");
+	gpu_DeleteProgram_pointer =
+	    (gpu_DeleteProgram_func)eglGetProcAddress("glDeleteProgram");
+	gpu_GetError_pointer =
+	    (gpu_GetError_func)eglGetProcAddress("glGetError");
+	gpu_LinkProgram_pointer =
+	    (gpu_LinkProgram_func)eglGetProcAddress("glLinkProgram");
+	gpu_ValidateProgram_pointer =
+	    (gpu_ValidateProgram_func)eglGetProcAddress("glValidateProgram");
+	gpu_GetProgramiv_pointer =
+	    (gpu_GetProgramiv_func)eglGetProcAddress("glGetProgramiv");
+	gpu_GetUniformLocation_pointer =
+	    (gpu_GetUniformLocation_func)eglGetProcAddress(
+	        "glGetUniformLocation");
+	gpu_GetAttribLocation_pointer =
+	    (gpu_GetAttribLocation_func)eglGetProcAddress(
+	        "glGetAttribLocation");
+	gpu_EnableVertexAttribArray_pointer =
+	    (gpu_EnableVertexAttribArray_func)eglGetProcAddress(
+	        "glEnableVertexAttribArray");
+	gpu_GetProgramInfoLog_pointer =
+	    (gpu_GetProgramInfoLog_func)eglGetProcAddress(
+	        "glGetProgramInfoLog");
+	gpu_Viewport_pointer =
+	    (gpu_Viewport_func)eglGetProcAddress("glViewport");
+	gpu_UniformMatrix4fv_pointer =
+	    (gpu_UniformMatrix4fv_func)eglGetProcAddress("glUniformMatrix4fv");
+	gpu_Clear_pointer = (gpu_Clear_func)eglGetProcAddress("glClear");
+	gpu_DrawElements_pointer =
+	    (gpu_DrawElements_func)eglGetProcAddress("glDrawElements");
+	gpu_VertexAttribPointer_pointer =
+	    (gpu_VertexAttribPointer_func)eglGetProcAddress(
+	        "glVertexAttribPointer");
+}
+
+static void init_opengl_once(void)
+{
+	pthread_once(&init_opengl_once_control, opengl_init_routine);
 }
