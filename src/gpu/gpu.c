@@ -312,9 +312,6 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
 		break;
 
 	case SWAP_BUFFERS:
-		/* Poll to see if the buffer is ready for swapping, if
-		 * it is not ready we can listen for updates in the
-		 * meanwhile. */
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			errnum = get_egl_error();
 			break;
