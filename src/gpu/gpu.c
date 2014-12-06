@@ -622,15 +622,14 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	               linted_assets_normals, GL_STATIC_DRAW);
 	gpu_BindBuffer(GL_ARRAY_BUFFER, 0);
 
-	gpu_BindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu_context->index_buffer);
+	gpu_UseProgram(program);
 
+	gpu_BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 	gpu_BufferData(GL_ELEMENT_ARRAY_BUFFER,
 	               3U * linted_assets_indices_size *
 	                   sizeof linted_assets_indices[0U],
 	               linted_assets_indices, GL_STATIC_DRAW);
-	/* Leave it bound for draw elements */
-
-	gpu_UseProgram(program);
+	/* Leave bound for DrawElements */
 
 	gpu_context->context = context;
 	gpu_context->program = program;
