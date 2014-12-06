@@ -50,6 +50,7 @@ struct linted_gpu_context
 	GLuint program;
 	GLuint vertex_buffer;
 	GLuint normal_buffer;
+	GLuint index_buffer;
 
 	EGLContext context;
 	GLint model_view_projection_matrix;
@@ -335,9 +336,12 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context)
 	EGLDisplay display = gpu_context->display;
 	EGLContext context = gpu_context->context;
 
+	gpu_BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 	{
 		GLuint xx[] = { gpu_context->vertex_buffer,
-			        gpu_context->normal_buffer };
+			        gpu_context->normal_buffer,
+			        gpu_context->index_buffer };
 		gpu_DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 	}
 
@@ -565,11 +569,13 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 
 	GLuint vertex_buffer;
 	GLuint normal_buffer;
+	GLuint index_buffer;
 	{
-		GLuint xx[2U];
+		GLuint xx[3U];
 		gpu_GenBuffers(LINTED_ARRAY_SIZE(xx), xx);
 		vertex_buffer = xx[0U];
 		normal_buffer = xx[1U];
+		index_buffer = xx[2U];
 	}
 
 	GLint mvp_matrix =
@@ -616,12 +622,21 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	               linted_assets_normals, GL_STATIC_DRAW);
 	gpu_BindBuffer(GL_ARRAY_BUFFER, 0);
 
+	gpu_BindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu_context->index_buffer);
+
+	gpu_BufferData(GL_ELEMENT_ARRAY_BUFFER,
+	               3U * linted_assets_indices_size *
+	                   sizeof linted_assets_indices[0U],
+	               linted_assets_indices, GL_STATIC_DRAW);
+	/* Leave it bound for draw elements */
+
 	gpu_UseProgram(program);
 
 	gpu_context->context = context;
 	gpu_context->program = program;
 	gpu_context->vertex_buffer = vertex_buffer;
 	gpu_context->normal_buffer = normal_buffer;
+	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
 	gpu_context->state = BUFFER_COMMANDS;
 	gpu_context->has_gl_context = true;
@@ -632,7 +647,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	return 0;
 
 cleanup_buffers : {
-	GLuint xx[] = { vertex_buffer, normal_buffer };
+	GLuint xx[] = { vertex_buffer, normal_buffer, index_buffer };
 	gpu_DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 }
 
@@ -731,7 +746,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 
 	gpu_Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	gpu_DrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	                 GL_UNSIGNED_BYTE, linted_assets_indices);
+	                 GL_UNSIGNED_BYTE, NULL);
 }
 
 static void flush_gl_errors(void)
@@ -1119,6 +1134,7 @@ static void gpu_GenBuffers(GLsizei n, GLuint *buffers)
 
 static void gpu_DeleteBuffers(GLsizei n, GLuint const *buffers)
 {
+	fprintf(stderr, "delete\n");
 	gpu_DeleteBuffers_pointer(n, buffers);
 }
 
