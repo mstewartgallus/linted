@@ -20,6 +20,7 @@
 
 typedef float linted_assets_point[3U];
 
+extern size_t const linted_assets_size;
 extern linted_assets_point const *const linted_assets_vertices;
 extern linted_assets_point const *const linted_assets_normals;
 

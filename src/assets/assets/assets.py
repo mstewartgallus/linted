@@ -83,6 +83,8 @@ def output():
 static linted_assets_point const vertices[] = $vertices;
 linted_assets_point const * const linted_assets_vertices = vertices;
 
+size_t const linted_assets_size = LINTED_ARRAY_SIZE(vertices);
+
 static linted_assets_point const normals[] = $normals;
 linted_assets_point const * const linted_assets_normals = normals;
 

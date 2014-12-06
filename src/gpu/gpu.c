@@ -48,6 +48,9 @@ struct linted_gpu_context
 	unsigned height;
 
 	GLuint program;
+	GLuint vertex_buffer;
+	GLuint normal_buffer;
+
 	EGLContext context;
 	GLint model_view_projection_matrix;
 	enum renderer_state state;
@@ -109,8 +112,6 @@ static void gpu_AttachShader(GLuint program, GLuint shader);
 static void gpu_DeleteShader(GLuint shader);
 static void gpu_ShaderSource(GLuint shader, GLsizei count,
                              const GLchar **string, const GLint *length);
-static void gpu_ShaderSource(GLuint shader, GLsizei count,
-                             const GLchar **string, const GLint *length);
 static void gpu_CompileShader(GLuint shader);
 static void gpu_GetShaderiv(GLuint shader, GLenum pname, GLint *params);
 static void gpu_GetShaderInfoLog(GLuint shader, GLsizei maxLength,
@@ -126,7 +127,6 @@ static GLint gpu_GetAttribLocation(GLuint program, GLchar const *name);
 static void gpu_EnableVertexAttribArray(GLuint index);
 static void gpu_GetProgramInfoLog(GLuint program, GLsizei maxLength,
                                   GLsizei *length, GLchar *infoLog);
-static void gpu_DeleteProgram(GLuint program);
 static void gpu_Viewport(GLint x, GLint y, GLsizei width, GLsizei height);
 static void gpu_UniformMatrix4fv(GLint location, GLsizei count,
                                  GLboolean transpose, GLfloat *value);
@@ -136,6 +136,11 @@ static void gpu_DrawElements(GLenum mode, GLsizei count, GLenum type,
 static void gpu_VertexAttribPointer(GLuint index, GLint size, GLenum type,
                                     GLboolean normalized, GLsizei stride,
                                     const GLvoid *pointer);
+static void gpu_GenBuffers(GLsizei n, GLuint *buffers);
+static void gpu_DeleteBuffers(GLsizei n, GLuint const *buffers);
+static void gpu_BufferData(GLenum target, GLsizeiptr size, const GLvoid *data,
+                           GLenum usage);
+static void gpu_BindBuffer(GLenum target, GLuint buffer);
 
 linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
                                        linted_gpu_native_window native_window,
@@ -329,6 +334,12 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context)
 
 	EGLDisplay display = gpu_context->display;
 	EGLContext context = gpu_context->context;
+
+	{
+		GLuint xx[] = { gpu_context->vertex_buffer,
+			        gpu_context->normal_buffer };
+		gpu_DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+	}
 
 	gpu_UseProgram(0);
 	gpu_DeleteProgram(gpu_context->program);
@@ -552,39 +563,65 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		goto cleanup_program;
 	}
 
+	GLuint vertex_buffer;
+	GLuint normal_buffer;
+	{
+		GLuint xx[2U];
+		gpu_GenBuffers(LINTED_ARRAY_SIZE(xx), xx);
+		vertex_buffer = xx[0U];
+		normal_buffer = xx[1U];
+	}
+
 	GLint mvp_matrix =
 	    gpu_GetUniformLocation(program, "model_view_projection_matrix");
 	if (-1 == mvp_matrix) {
 		errnum = EINVAL;
-		goto cleanup_program;
+		goto cleanup_buffers;
 	}
 
 	GLint vertex = gpu_GetAttribLocation(program, "vertex");
 	if (-1 == vertex) {
 		errnum = EINVAL;
-		goto cleanup_program;
+		goto cleanup_buffers;
 	}
 
 	GLint normal = gpu_GetAttribLocation(program, "normal");
 	if (-1 == normal) {
 		errnum = EINVAL;
-		goto cleanup_program;
+		goto cleanup_buffers;
 	}
 
 	gpu_EnableVertexAttribArray(vertex);
 	gpu_EnableVertexAttribArray(normal);
 
+	gpu_BindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	gpu_VertexAttribPointer(vertex,
 	                        LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	                        GL_FLOAT, false, 0, linted_assets_vertices);
+	                        GL_FLOAT, false, 0, NULL);
+
+	gpu_BindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	gpu_VertexAttribPointer(normal,
 	                        LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	                        GL_FLOAT, false, 0, linted_assets_normals);
+	                        GL_FLOAT, false, 0, NULL);
+	gpu_BindBuffer(GL_ARRAY_BUFFER, 0);
+
+	gpu_BindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	gpu_BufferData(GL_ARRAY_BUFFER,
+	               linted_assets_size * sizeof linted_assets_vertices[0U],
+	               linted_assets_vertices, GL_STATIC_DRAW);
+
+	gpu_BindBuffer(GL_ARRAY_BUFFER, normal_buffer);
+	gpu_BufferData(GL_ARRAY_BUFFER,
+	               linted_assets_size * sizeof linted_assets_normals[0U],
+	               linted_assets_normals, GL_STATIC_DRAW);
+	gpu_BindBuffer(GL_ARRAY_BUFFER, 0);
 
 	gpu_UseProgram(program);
 
 	gpu_context->context = context;
 	gpu_context->program = program;
+	gpu_context->vertex_buffer = vertex_buffer;
+	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
 	gpu_context->state = BUFFER_COMMANDS;
 	gpu_context->has_gl_context = true;
@@ -593,6 +630,11 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	gpu_context->resize_pending = true;
 
 	return 0;
+
+cleanup_buffers : {
+	GLuint xx[] = { vertex_buffer, normal_buffer };
+	gpu_DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+}
 
 cleanup_program:
 	gpu_DeleteProgram(program);
@@ -894,6 +936,12 @@ typedef void (*gpu_VertexAttribPointer_func)(GLuint index, GLint size,
                                              GLenum type, GLboolean normalized,
                                              GLsizei stride,
                                              const GLvoid *pointer);
+typedef void (*gpu_GenBuffers_func)(GLsizei n, GLuint *buffers);
+typedef void (*gpu_DeleteBuffers_func)(GLsizei n, GLuint const *buffers);
+typedef void (*gpu_BufferData_func)(GLenum target, GLsizeiptr size,
+                                    const GLvoid *data, GLenum usage);
+typedef void (*gpu_BindBuffer_func)(GLenum target, GLuint buffer);
+
 static gpu_ClearColor_func gpu_ClearColor_pointer;
 static gpu_Flush_func gpu_Flush_pointer;
 static gpu_Enable_func gpu_Enable_pointer;
@@ -920,6 +968,10 @@ static gpu_UniformMatrix4fv_func gpu_UniformMatrix4fv_pointer;
 static gpu_Clear_func gpu_Clear_pointer;
 static gpu_DrawElements_func gpu_DrawElements_pointer;
 static gpu_VertexAttribPointer_func gpu_VertexAttribPointer_pointer;
+static gpu_GenBuffers_func gpu_GenBuffers_pointer;
+static gpu_DeleteBuffers_func gpu_DeleteBuffers_pointer;
+static gpu_BufferData_func gpu_BufferData_pointer;
+static gpu_BindBuffer_func gpu_BindBuffer_pointer;
 
 static void gpu_ClearColor(GLfloat red, GLfloat green, GLfloat blue,
                            GLfloat alpha)
@@ -1060,6 +1112,27 @@ static void gpu_VertexAttribPointer(GLuint index, GLint size, GLenum type,
 	                                pointer);
 }
 
+static void gpu_GenBuffers(GLsizei n, GLuint *buffers)
+{
+	gpu_GenBuffers_pointer(n, buffers);
+}
+
+static void gpu_DeleteBuffers(GLsizei n, GLuint const *buffers)
+{
+	gpu_DeleteBuffers_pointer(n, buffers);
+}
+
+static void gpu_BufferData(GLenum target, GLsizeiptr size, const GLvoid *data,
+                           GLenum usage)
+{
+	gpu_BufferData_pointer(target, size, data, usage);
+}
+
+static void gpu_BindBuffer(GLenum target, GLuint buffer)
+{
+	gpu_BindBuffer_pointer(target, buffer);
+}
+
 static pthread_mutex_t init_procedures_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool init_successful = false;
 
@@ -1191,6 +1264,26 @@ static linted_error gpu_init_procedures(void)
 	if (NULL == (gpu_VertexAttribPointer_pointer =
 	                 (gpu_VertexAttribPointer_func)eglGetProcAddress(
 	                     "glVertexAttribPointer")))
+		goto fail_init;
+
+	if (NULL ==
+	    (gpu_GenBuffers_pointer =
+	         (gpu_GenBuffers_func)eglGetProcAddress("glGenBuffers")))
+		goto fail_init;
+
+	if (NULL ==
+	    (gpu_DeleteBuffers_pointer =
+	         (gpu_DeleteBuffers_func)eglGetProcAddress("glDeleteBuffers")))
+		goto fail_init;
+
+	if (NULL ==
+	    (gpu_BufferData_pointer =
+	         (gpu_BufferData_func)eglGetProcAddress("glBufferData")))
+		goto fail_init;
+
+	if (NULL ==
+	    (gpu_BindBuffer_pointer =
+	         (gpu_BindBuffer_func)eglGetProcAddress("glBindBuffer")))
 		goto fail_init;
 
 	init_successful = true;
