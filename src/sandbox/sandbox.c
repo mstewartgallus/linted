@@ -115,8 +115,8 @@ static char const *const argstrs[] = {
 };
 
 static pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid, uid_t uid,
-    gid_t mapped_gid, gid_t gid, unsigned long clone_flags, linted_ko cwd,
+    linted_ko err_reader, linted_ko err_writer, char const *uid_map,
+    char const *gid_map, unsigned long clone_flags, linted_ko cwd,
     char const *chrootdir, char const *chdir_path, cap_t caps,
     struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
     char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
@@ -138,8 +138,8 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
 
-static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
-                        gid_t mapped_gid, gid_t gid);
+static void set_id_maps(linted_ko err_writer, char const *uid_map,
+                        char const *gid_map);
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
                            char const *chrootdir,
                            struct mount_args const *mount_args, size_t size);
@@ -569,6 +569,12 @@ exit_loop:
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
 
+	char uid_map[] = "XXXXXXXXXXXXX XXXXXXXXXXXXX 1\n";
+	char gid_map[] = "XXXXXXXXXXXXX XXXXXXXXXXXXX 1\n";
+
+	sprintf(uid_map, "%i %i 1\n", mapped_uid, uid);
+	sprintf(gid_map, "%i %i 1\n", mapped_gid, gid);
+
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -582,12 +588,12 @@ exit_loop:
 	}
 
 	pid_t child = do_first_fork(
-	    err_reader, err_writer, mapped_uid, uid, mapped_gid, gid,
-	    clone_flags, cwd, chrootdir, chdir_path, caps, mount_args,
-	    mount_args_size, no_new_privs, listen_pid_str, listen_fds_str,
-	    stdin_writer, stdout_reader, stderr_reader, stdin_reader,
-	    stdout_writer, stderr_writer, waiter,
-	    (char const * const *)env_copy, command, num_fds);
+	    err_reader, err_writer, uid_map, gid_map, clone_flags, cwd,
+	    chrootdir, chdir_path, caps, mount_args, mount_args_size,
+	    no_new_privs, listen_pid_str, listen_fds_str, stdin_writer,
+	    stdout_reader, stderr_reader, stdin_reader, stdout_writer,
+	    stderr_writer, waiter, (char const * const *)env_copy, command,
+	    num_fds);
 	if (-1 == child) {
 		perror("clone");
 		return EXIT_FAILURE;
@@ -620,8 +626,8 @@ close_err_reader:
 }
 
 pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid, uid_t uid,
-    gid_t mapped_gid, gid_t gid, unsigned long clone_flags, linted_ko cwd,
+    linted_ko err_reader, linted_ko err_writer, char const *uid_map,
+    char const *gid_map, unsigned long clone_flags, linted_ko cwd,
     char const *chrootdir, char const *chdir_path, cap_t caps,
     struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
     char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
@@ -645,7 +651,7 @@ pid_t do_first_fork(
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
-		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
+		set_id_maps(err_writer, uid_map, gid_map);
 
 		if (-1 == my_setgroups(0U, NULL))
 			exit_with_error(err_writer, errno);
@@ -756,7 +762,7 @@ pid_t do_first_fork(
 	if (-1 == dup2(stderr_reader, 5))
 		exit_with_error(err_writer, errno);
 
-	sprintf(listen_fds_str, "LISTEN_FDS=%i", 3);
+	pid_to_str(listen_fds_str + strlen("LISTEN_FDS="), 3);
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	char const *arguments[] = { waiter, NULL };
@@ -812,8 +818,8 @@ static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
 	return 0;
 }
 
-static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
-                        gid_t mapped_gid, gid_t gid)
+static void set_id_maps(linted_ko err_writer, char const *uid_map,
+                        char const *gid_map)
 {
 	linted_error errnum;
 
@@ -839,8 +845,7 @@ static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
 			file = xx;
 		}
 
-		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-		                                mapped_uid, uid);
+		errnum = linted_io_write_string(file, NULL, uid_map);
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 
@@ -861,8 +866,7 @@ static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
 			file = xx;
 		}
 
-		errnum = linted_io_write_format(file, NULL, "%i %i 1\n",
-		                                mapped_gid, gid);
+		errnum = linted_io_write_string(file, NULL, gid_map);
 		if (errnum != 0)
 			exit_with_error(err_writer, errnum);
 
