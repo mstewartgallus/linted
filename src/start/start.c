@@ -31,14 +31,18 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <link.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/auxv.h>
+#include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+
+#include <linux/random.h>
 
 static void do_nothing(int signo);
 
@@ -420,36 +424,56 @@ static linted_error sanitize_kos(size_t kos_size)
 
 static linted_error get_system_entropy(unsigned *entropyp)
 {
-	/*
-	 * Use /dev/random so we block when asking for entropy after
-	 * startup.
-	 */
 	linted_error errnum;
 	linted_ko random;
-	unsigned entropy;
 
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/random",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/urandom",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0)
 			return errnum;
 		random = xx;
 	}
 
+	/* Minor time of check to time of use bug here but this is
+	 * only a minor helper for check for bad system
+	 * configurations.  Indeed, arguable this code SHOULD NOT be
+	 * here because it prevents administrators from putting a
+	 * custom socket, pipe, or file on /dev/urandom and providing
+	 * their own implementation of the interface.  For example,
+	 * one could put a normal file on /dev/urandom that provides
+	 * some pregenerated data for deterministic tests of programs
+	 * that use it.
+	 */
+	int entropy;
+	{
+		int xx;
+		if (-1 == ioctl(random, RNDGETENTCNT, &xx)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		entropy = xx;
+	}
+
+	unsigned data;
+	if ((unsigned)entropy < sizeof entropy * CHAR_BIT)
+		return EAGAIN;
+
 	{
 		unsigned xx;
 		errnum = linted_io_read_all(random, NULL, &xx, sizeof xx);
 		if (errnum != 0)
 			return errnum;
-		entropy = xx;
+		data = xx;
 	}
 
 	errnum = linted_ko_close(random);
 	if (errnum != 0)
 		return errnum;
 
-	*entropyp = entropy;
+	*entropyp = data;
 	return 0;
 }
 
