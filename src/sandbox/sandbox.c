@@ -120,7 +120,7 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
                         gid_t mapped_gid, gid_t gid);
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir, char const *fstab_path);
+                           char const *chrootdir, FILE *file);
 
 static void pid_to_str(char *buf, pid_t pid);
 
@@ -356,6 +356,80 @@ exit_loop:
 		stderr_writer = xx[1U];
 	}
 
+	FILE *fstab_file = NULL;
+	if (fstab != NULL) {
+		FILE *xx;
+		errnum = my_setmntentat(&xx, cwd, fstab, "re");
+		if (errnum != 0) {
+			errno = errnum;
+			perror("setmntent");
+			return EXIT_FAILURE;
+		}
+		fstab_file = xx;
+	}
+
+	cap_t caps = NULL;
+	if (drop_caps) {
+		caps = cap_get_proc();
+		if (NULL == caps) {
+			perror("cap_get_proc");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
+			perror("cap_clear_flag");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (priority != NULL) {
+		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
+			perror("setpriority");
+			return EXIT_FAILURE;
+		}
+	}
+
+	char **env_copy = NULL;
+	size_t env_size = 0U;
+	for (char const *const *env = (char const * const *)environ;
+	     *env != NULL; ++env)
+		++env_size;
+
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, env_size + 3U,
+		                                sizeof env_copy[0U]);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_mem_alloc_array");
+			return EXIT_FAILURE;
+		}
+		env_copy = xx;
+	}
+
+	for (size_t ii = 0U; ii < env_size; ++ii)
+		env_copy[2U + ii] = environ[ii];
+
+	size_t num_fds = atoi(listen_fds);
+	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
+	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
+
+	sprintf(listen_fds_str, "LISTEN_FDS=%lu", num_fds);
+
+	env_copy[0U] = listen_fds_str;
+	env_copy[1U] = listen_pid_str;
+	env_copy[env_size + 2U] = NULL;
+
 	gid_t gid = getgid();
 	uid_t uid = getuid();
 
@@ -422,11 +496,11 @@ exit_loop:
 			exit_with_error(err_writer, errno);
 	}
 
-	if (fstab != NULL)
-		chroot_process(err_writer, cwd, chrootdir, fstab);
+	if (fstab_file != NULL)
+		chroot_process(err_writer, cwd, chrootdir, fstab_file);
 
-	if (priority != NULL) {
-		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority)))
+	if (chdir_path != NULL) {
+		if (-1 == chdir(chdir_path))
 			exit_with_error(err_writer, errno);
 	}
 
@@ -438,35 +512,14 @@ exit_loop:
 	if (errnum != 0)
 		exit_with_error(err_writer, errnum);
 
-	if (chdir_path != NULL) {
-		if (-1 == chdir(chdir_path))
-			exit_with_error(err_writer, errno);
-	}
-
 	/* Drop all capabilities I might possibly have. Note that
 	 * currently we do not use PR_SET_KEEPCAPS and do not map our
 	 * sandboxed user to root but if we did in the future we would
 	 * need this.
 	 */
 
-	if (drop_caps) {
-		cap_t caps = cap_get_proc();
-		if (NULL == caps)
-			exit_with_error(err_writer, errno);
-
-		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == cap_clear_flag(caps, CAP_PERMITTED))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE))
-			exit_with_error(err_writer, errno);
-
+	if (caps != NULL) {
 		if (-1 == cap_set_proc(caps))
-			exit_with_error(err_writer, errno);
-
-		if (-1 == cap_free(caps))
 			exit_with_error(err_writer, errno);
 	}
 
@@ -490,33 +543,6 @@ exit_loop:
 			exit_with_error(err_writer, errnum);
 	}
 
-	char **env_copy = NULL;
-	size_t env_size = 0U;
-	for (char const *const *env = (char const * const *)environ;
-	     *env != NULL; ++env)
-		++env_size;
-
-	{
-		void *xx;
-		errnum = linted_mem_alloc_array(&xx, env_size + 3U,
-		                                sizeof env_copy[0U]);
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-		env_copy = xx;
-	}
-
-	for (size_t ii = 0U; ii < env_size; ++ii)
-		env_copy[2U + ii] = environ[ii];
-
-	size_t num_fds = atoi(listen_fds);
-	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
-	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
-
-	sprintf(listen_fds_str, "LISTEN_FDS=%lu", num_fds);
-
-	env_copy[0U] = listen_fds_str;
-	env_copy[1U] = listen_pid_str;
-
 	linted_ko vfork_err_reader;
 	linted_ko vfork_err_writer;
 	{
@@ -526,8 +552,6 @@ exit_loop:
 		vfork_err_reader = xx[0U];
 		vfork_err_writer = xx[1U];
 	}
-
-	env_copy[env_size + 2U] = NULL;
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
@@ -693,18 +717,9 @@ static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
 }
 
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir, char const *fstab_path)
+                           char const *chrootdir, FILE *fstab)
 {
 	linted_error errnum;
-
-	FILE *fstab;
-	{
-		FILE *xx;
-		errnum = my_setmntentat(&xx, cwd, fstab_path, "re");
-		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
-		fstab = xx;
-	}
 
 	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
 		exit_with_error(err_writer, errno);
