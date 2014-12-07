@@ -57,8 +57,6 @@
  * @file
  *
  * Sandbox applications.
- *
- * @todo Use vfork instead of fork for the first fork
  */
 
 enum {
@@ -116,22 +114,20 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
-void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
-                   uid_t uid, gid_t mapped_gid, gid_t gid,
-                   unsigned long clone_flags, linted_ko cwd,
-                   char const *chrootdir, char const *chdir_path, cap_t caps,
-                   struct mount_args *mount_args, size_t mount_args_size,
-                   bool no_new_privs, char *listen_pid_str,
-                   char *listen_fds_str, linted_ko stdin_writer,
-                   linted_ko stdout_reader, linted_ko stderr_reader,
-                   linted_ko stdin_reader, linted_ko stdout_writer,
-                   linted_ko stderr_writer, char const *waiter, char **env_copy,
-                   char const *const *command, size_t num_fds);
+static pid_t do_first_fork(
+    linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid, uid_t uid,
+    gid_t mapped_gid, gid_t gid, unsigned long clone_flags, linted_ko cwd,
+    char const *chrootdir, char const *chdir_path, cap_t caps,
+    struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
+    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
+    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
+    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
+    char const *const *env_copy, char const *const *command, size_t num_fds);
 
-static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
-                      linted_ko stdout_writer, linted_ko stderr_writer,
-                      char *listen_pid_str, char const *const *argv,
-                      char const *const *env, bool no_new_privs);
+static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
+                            linted_ko stdout_writer, linted_ko stderr_writer,
+                            char *listen_pid_str, char const *const *argv,
+                            char const *const *env, bool no_new_privs);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -585,21 +581,17 @@ exit_loop:
 		err_writer = xx[1U];
 	}
 
-	pid_t child =
-	    clone_flags != 0U ? my_clone(SIGCHLD | clone_flags) : fork();
+	pid_t child = do_first_fork(
+	    err_reader, err_writer, mapped_uid, uid, mapped_gid, gid,
+	    clone_flags, cwd, chrootdir, chdir_path, caps, mount_args,
+	    mount_args_size, no_new_privs, listen_pid_str, listen_fds_str,
+	    stdin_writer, stdout_reader, stderr_reader, stdin_reader,
+	    stdout_writer, stderr_writer, waiter,
+	    (char const * const *)env_copy, command, num_fds);
 	if (-1 == child) {
 		perror("clone");
 		return EXIT_FAILURE;
 	}
-
-	if (0 == child)
-		do_first_fork(err_reader, err_writer, mapped_uid, uid,
-		              mapped_gid, gid, clone_flags, cwd, chrootdir,
-		              chdir_path, caps, mount_args, mount_args_size,
-		              no_new_privs, listen_pid_str, listen_fds_str,
-		              stdin_writer, stdout_reader, stderr_reader,
-		              stdin_reader, stdout_writer, stderr_writer,
-		              waiter, env_copy, command, num_fds);
 
 	linted_ko_close(err_writer);
 
@@ -627,18 +619,26 @@ close_err_reader:
 	return EXIT_SUCCESS;
 }
 
-void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
-                   uid_t uid, gid_t mapped_gid, gid_t gid,
-                   unsigned long clone_flags, linted_ko cwd,
-                   char const *chrootdir, char const *chdir_path, cap_t caps,
-                   struct mount_args *mount_args, size_t mount_args_size,
-                   bool no_new_privs, char *listen_pid_str,
-                   char *listen_fds_str, linted_ko stdin_writer,
-                   linted_ko stdout_reader, linted_ko stderr_reader,
-                   linted_ko stdin_reader, linted_ko stdout_writer,
-                   linted_ko stderr_writer, char const *waiter, char **env_copy,
-                   char const *const *command, size_t num_fds)
+pid_t do_first_fork(
+    linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid, uid_t uid,
+    gid_t mapped_gid, gid_t gid, unsigned long clone_flags, linted_ko cwd,
+    char const *chrootdir, char const *chdir_path, cap_t caps,
+    struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
+    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
+    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
+    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
+    char const *const *env_copy, char const *const *command, size_t num_fds)
 {
+	pid_t child;
+	if (clone_flags != 0U) {
+		child =
+		    my_clone(SIGCHLD | CLONE_VM | CLONE_VFORK | clone_flags);
+	} else {
+		child = vfork();
+	}
+	if (child != 0)
+		return child;
+
 	linted_error errnum = 0;
 
 	linted_ko_close(err_reader);
@@ -716,11 +716,10 @@ void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
 			exit_with_error(err_writer, errnum);
 	}
 
-	pid_t child = do_vfork(vfork_err_writer, stdin_reader, stdout_writer,
-	                       stderr_writer, listen_pid_str,
-	                       (char const * const *)command,
-	                       (char const * const *)env_copy, no_new_privs);
-	if (-1 == child)
+	pid_t grand_child = do_second_fork(
+	    vfork_err_writer, stdin_reader, stdout_writer, stderr_writer,
+	    listen_pid_str, command, env_copy, no_new_privs);
+	if (-1 == grand_child)
 		exit_with_error(err_writer, errno);
 
 	linted_ko_close(vfork_err_writer);
@@ -761,14 +760,16 @@ void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	char const *arguments[] = { waiter, NULL };
-	execve(waiter, (char * const *)arguments, env_copy);
+	execve(waiter, (char * const *)arguments, (char * const *)env_copy);
 	exit_with_error(err_writer, errno);
+	/* Not reached */
+	return 0;
 }
 
-static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
-                      linted_ko stdout_writer, linted_ko stderr_writer,
-                      char *listen_pid_str, char const *const *argv,
-                      char const *const *env, bool no_new_privs)
+static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
+                            linted_ko stdout_writer, linted_ko stderr_writer,
+                            char *listen_pid_str, char const *const *argv,
+                            char const *const *env, bool no_new_privs)
 {
 	pid_t child = vfork();
 	if (child != 0)
@@ -905,9 +906,8 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 
 		if ((mountflags & MS_BIND) != 0U) {
 			mountflags |= MS_REMOUNT;
-			if (-1 == mount(fsname, dir, type, mountflags, data)) {
+			if (-1 == mount(fsname, dir, type, mountflags, data))
 				exit_with_error(err_writer, errno);
-			}
 		}
 	}
 
