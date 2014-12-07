@@ -55,6 +55,30 @@ struct linted_asynch_pool
 	linted_ko workers[];
 };
 
+struct linted_asynch_task_sleep_until
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	struct timespec request;
+	int flags;
+};
+
+struct linted_asynch_task
+{
+	struct linted_queue_node parent;
+
+	CRITICAL_SECTION owner_lock;
+	linted_ko owner;
+	bool owned : 1U;
+	bool in_flight : 1U;
+	bool *cancel_replier;
+
+	void *data;
+	linted_error errnum;
+	unsigned type;
+	unsigned task_action;
+};
+
 static DWORD WINAPI worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,

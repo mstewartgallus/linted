@@ -44,6 +44,45 @@
 #define POLLOUT (1U << 1U)
 #define POLLNVAL (1U << 2U)
 
+struct linted_ko_task_accept
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	linted_ko ko;
+	linted_ko returned_ko;
+};
+
+struct linted_ko_task_poll
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	linted_ko ko;
+	short events;
+	short revents;
+};
+
+struct linted_ko_task_read
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	char *buf;
+	size_t size;
+	size_t current_position;
+	size_t bytes_read;
+	linted_ko ko;
+};
+
+struct linted_ko_task_write
+{
+	struct linted_asynch_task *parent;
+	void *data;
+	char const *buf;
+	size_t size;
+	size_t current_position;
+	size_t bytes_wrote;
+	linted_ko ko;
+};
+
 static void ko_to_str(char *buf, linted_ko fd);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
@@ -200,51 +239,261 @@ linted_error linted_ko_close(linted_ko ko)
 
 	return 0;
 }
-
-void linted_ko_task_poll(struct linted_ko_task_poll *task, unsigned task_action,
-                         linted_ko ko, short events)
+linted_error linted_ko_task_poll_create(struct linted_ko_task_poll **taskp,
+                                        void *data)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_POLL,
-	                   task_action);
-
-	task->ko = ko;
-	task->events = events;
+	linted_error errnum;
+	struct linted_ko_task_poll *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_POLL);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
 }
 
-void linted_ko_task_read(struct linted_ko_task_read *task, unsigned task_action,
-                         linted_ko ko, char *buf, size_t size)
+void linted_ko_task_poll_destroy(struct linted_ko_task_poll *task)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_READ,
-	                   task_action);
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
 
+void linted_ko_task_poll_prepare(struct linted_ko_task_poll *task,
+                                 unsigned task_action, linted_ko ko, int flags)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
+	task->ko = ko;
+	task->events = flags;
+}
+
+struct linted_ko_task_poll *
+linted_ko_task_poll_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+struct linted_asynch_task *
+linted_ko_task_poll_to_asynch(struct linted_ko_task_poll *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_poll_data(struct linted_ko_task_poll *task)
+{
+	return task->data;
+}
+
+linted_error linted_ko_task_read_create(struct linted_ko_task_read **taskp,
+                                        void *data)
+{
+	linted_error errnum;
+	struct linted_ko_task_read *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_READ);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_ko_task_read_destroy(struct linted_ko_task_read *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void linted_ko_task_read_prepare(struct linted_ko_task_read *task,
+                                 unsigned task_action, linted_ko ko, char *buf,
+                                 size_t size)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	task->current_position = 0U;
-	task->bytes_read = 0U;
 }
 
-void linted_ko_task_write(struct linted_ko_task_write *task,
-                          unsigned task_action, linted_ko ko, char const *buf,
-                          size_t size)
+struct linted_ko_task_read *
+linted_ko_task_read_from_asynch(struct linted_asynch_task *task)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_WRITE,
-	                   task_action);
+	return linted_asynch_task_data(task);
+}
 
+struct linted_asynch_task *
+linted_ko_task_read_to_asynch(struct linted_ko_task_read *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_read_data(struct linted_ko_task_read *task)
+{
+	return task->data;
+}
+
+linted_ko linted_ko_task_read_ko(struct linted_ko_task_read *task)
+{
+	return task->ko;
+}
+
+linted_error linted_ko_task_write_create(struct linted_ko_task_write **taskp,
+                                         void *data)
+{
+	linted_error errnum;
+	struct linted_ko_task_write *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_WRITE);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_ko_task_write_destroy(struct linted_ko_task_write *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void linted_ko_task_write_prepare(struct linted_ko_task_write *task,
+                                  unsigned task_action, linted_ko ko,
+                                  char const *buf, size_t size)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	task->current_position = 0U;
-	task->bytes_wrote = 0U;
 }
 
-void linted_ko_task_accept(struct linted_ko_task_accept *task,
-                           unsigned task_action, linted_ko ko)
+struct linted_ko_task_write *
+linted_ko_task_write_from_asynch(struct linted_asynch_task *task)
 {
-	linted_asynch_task(LINTED_UPCAST(task), LINTED_ASYNCH_TASK_ACCEPT,
-	                   task_action);
+	return linted_asynch_task_data(task);
+}
 
+struct linted_asynch_task *
+linted_ko_task_write_to_asynch(struct linted_ko_task_write *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_write_data(struct linted_ko_task_write *task)
+{
+	return task->data;
+}
+
+linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
+                                          void *data)
+{
+	linted_error errnum;
+	struct linted_ko_task_accept *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_ACCEPT);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_ko_task_accept_destroy(struct linted_ko_task_accept *task)
+{
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void linted_ko_task_accept_prepare(struct linted_ko_task_accept *task,
+                                   unsigned task_action, linted_ko ko)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
 	task->ko = ko;
+}
+
+struct linted_ko_task_accept *
+linted_ko_task_accept_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+struct linted_asynch_task *
+linted_ko_task_accept_to_asynch(struct linted_ko_task_accept *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_accept_data(struct linted_ko_task_accept *task)
+{
+	return task->data;
+}
+
+linted_ko linted_ko_task_accept_returned_ko(struct linted_ko_task_accept *task)
+{
+	return task->returned_ko;
 }
 
 void linted_ko_do_poll(struct linted_asynch_pool *pool,
@@ -266,7 +515,7 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	} while (EINTR == errnum);
 
 	task_poll->revents = revents;
-	task->errnum = errnum;
+	linted_asynch_task_seterrnum(task, errnum);
 
 	linted_asynch_pool_complete(pool, task);
 }
@@ -311,7 +560,7 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 			break;
 	}
 
-	task->errnum = errnum;
+	linted_asynch_task_seterrnum(task, errnum);
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = 0U;
 
@@ -353,7 +602,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 			break;
 	}
 
-	task->errnum = errnum;
+	linted_asynch_task_seterrnum(task, errnum);
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = 0U;
 
@@ -409,7 +658,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 			break;
 	}
 
-	task->errnum = errnum;
+	linted_asynch_task_seterrnum(task, errnum);
 	task_accept->returned_ko = new_ko;
 
 	linted_asynch_pool_complete(pool, task);
