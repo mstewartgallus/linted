@@ -89,6 +89,7 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(mknod),
 	/**/ ALLOW(pipe),
 	/**/ ALLOW(pread64),
+	/**/ ALLOW(prctl),
 	/**/ ALLOW(readlink),
 	/**/ ALLOW(rt_sigreturn),
 	/**/ ALLOW(sched_yield),
