@@ -116,6 +116,18 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
+void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
+                   uid_t uid, gid_t mapped_gid, gid_t gid,
+                   unsigned long clone_flags, linted_ko cwd,
+                   char const *chrootdir, char const *chdir_path, cap_t caps,
+                   struct mount_args *mount_args, size_t mount_args_size,
+                   bool no_new_privs, char *listen_pid_str,
+                   char *listen_fds_str, linted_ko stdin_writer,
+                   linted_ko stdout_reader, linted_ko stderr_reader,
+                   linted_ko stdin_reader, linted_ko stdout_writer,
+                   linted_ko stderr_writer, char const *waiter, char **env_copy,
+                   char const *const *command, size_t num_fds);
+
 static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
                       linted_ko stdout_writer, linted_ko stderr_writer,
                       char *listen_pid_str, char const *const *argv,
@@ -143,6 +155,7 @@ static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t real_getpid(void);
+static int my_setgroups(size_t size, gid_t const *list);
 static pid_t my_clone(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
@@ -572,51 +585,69 @@ exit_loop:
 		err_writer = xx[1U];
 	}
 
-	{
-		pid_t child = clone_flags != 0U
-		                  ? my_clone(SIGCHLD | clone_flags)
-		                  : fork();
-
-		if (-1 == child) {
-			perror("clone");
-			return EXIT_FAILURE;
-		}
-
-		if (child != 0) {
-			linted_ko_close(err_writer);
-
-			{
-				size_t xx;
-				linted_error yy;
-				errnum = linted_io_read_all(err_reader, &xx,
-				                            &yy, sizeof yy);
-				if (errnum != 0)
-					goto close_err_reader;
-
-				/* If bytes_read is zero then a succesful exec
-				 * occured */
-				if (xx == sizeof yy)
-					errnum = yy;
-			}
-		close_err_reader:
-			linted_ko_close(err_reader);
-
-			if (errnum != 0) {
-				errno = errnum;
-				perror("spawning");
-				_Exit(EXIT_FAILURE);
-			}
-
-			_Exit(EXIT_SUCCESS);
-		}
+	pid_t child =
+	    clone_flags != 0U ? my_clone(SIGCHLD | clone_flags) : fork();
+	if (-1 == child) {
+		perror("clone");
+		return EXIT_FAILURE;
 	}
+
+	if (0 == child)
+		do_first_fork(err_reader, err_writer, mapped_uid, uid,
+		              mapped_gid, gid, clone_flags, cwd, chrootdir,
+		              chdir_path, caps, mount_args, mount_args_size,
+		              no_new_privs, listen_pid_str, listen_fds_str,
+		              stdin_writer, stdout_reader, stderr_reader,
+		              stdin_reader, stdout_writer, stderr_writer,
+		              waiter, env_copy, command, num_fds);
+
+	linted_ko_close(err_writer);
+
+	{
+		size_t xx;
+		linted_error yy;
+		errnum = linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+		if (errnum != 0)
+			goto close_err_reader;
+
+		/* If bytes_read is zero then a succesful exec
+		 * occured */
+		if (xx == sizeof yy)
+			errnum = yy;
+	}
+close_err_reader:
+	linted_ko_close(err_reader);
+
+	if (errnum != 0) {
+		errno = errnum;
+		perror("spawning");
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+void do_first_fork(linted_ko err_reader, linted_ko err_writer, uid_t mapped_uid,
+                   uid_t uid, gid_t mapped_gid, gid_t gid,
+                   unsigned long clone_flags, linted_ko cwd,
+                   char const *chrootdir, char const *chdir_path, cap_t caps,
+                   struct mount_args *mount_args, size_t mount_args_size,
+                   bool no_new_privs, char *listen_pid_str,
+                   char *listen_fds_str, linted_ko stdin_writer,
+                   linted_ko stdout_reader, linted_ko stderr_reader,
+                   linted_ko stdin_reader, linted_ko stdout_writer,
+                   linted_ko stderr_writer, char const *waiter, char **env_copy,
+                   char const *const *command, size_t num_fds)
+{
+	linted_error errnum = 0;
+
 	linted_ko_close(err_reader);
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
 		set_id_maps(err_writer, mapped_uid, uid, mapped_gid, gid);
 
-		if (-1 == setgroups(0U, NULL))
+		if (-1 == my_setgroups(0U, NULL))
 			exit_with_error(err_writer, errno);
 	}
 
@@ -731,8 +762,7 @@ exit_loop:
 
 	char const *arguments[] = { waiter, NULL };
 	execve(waiter, (char * const *)arguments, env_copy);
-	perror("execve");
-	return EXIT_FAILURE;
+	exit_with_error(err_writer, errno);
 }
 
 static pid_t do_vfork(linted_ko err_writer, linted_ko stdin_reader,
@@ -1179,6 +1209,12 @@ static linted_error set_seccomp(struct sock_fprog const *program)
 static pid_t real_getpid(void)
 {
 	return syscall(__NR_getpid);
+}
+
+/* Avoid setXid synchronization after vfork */
+static int my_setgroups(size_t size, gid_t const *list)
+{
+	return syscall(__NR_setgroups, size, list);
 }
 
 /* Unfortunately, the clone system call interface varies a lot between
