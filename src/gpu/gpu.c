@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <EGL/egl.h>
@@ -1130,7 +1129,6 @@ static void gpu_GenBuffers(GLsizei n, GLuint *buffers)
 
 static void gpu_DeleteBuffers(GLsizei n, GLuint const *buffers)
 {
-	fprintf(stderr, "delete\n");
 	gpu_DeleteBuffers_pointer(n, buffers);
 }
 
