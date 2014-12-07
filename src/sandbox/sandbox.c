@@ -81,6 +81,19 @@ enum {
 	NEWUTS_ARG
 };
 
+struct mount_args
+{
+	char const *fsname;
+	char const *dir;
+	char const *type;
+	char const *data;
+
+	unsigned long mountflags;
+
+	bool mkdir_flag : 1U;
+	bool touch_flag : 1U;
+};
+
 static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
@@ -120,7 +133,8 @@ static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
 static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
                         gid_t mapped_gid, gid_t gid);
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir, FILE *file);
+                           char const *chrootdir,
+                           struct mount_args const *mount_args, size_t size);
 
 static void pid_to_str(char *buf, pid_t pid);
 
@@ -356,16 +370,126 @@ exit_loop:
 		stderr_writer = xx[1U];
 	}
 
-	FILE *fstab_file = NULL;
+	size_t mount_args_size = 0U;
+	struct mount_args *mount_args = NULL;
 	if (fstab != NULL) {
-		FILE *xx;
-		errnum = my_setmntentat(&xx, cwd, fstab, "re");
-		if (errnum != 0) {
-			errno = errnum;
-			perror("setmntent");
+		FILE *fstab_file;
+		{
+			FILE *xx;
+			errnum = my_setmntentat(&xx, cwd, fstab, "re");
+			if (errnum != 0) {
+				errno = errnum;
+				perror("setmntent");
+				return EXIT_FAILURE;
+			}
+			fstab_file = xx;
+		}
+
+		for (;;) {
+			errno = 0;
+			struct mntent *entry = getmntent(fstab_file);
+			if (NULL == entry) {
+				errnum = errno;
+				if (errnum != 0) {
+					perror("getmntent");
+					return EXIT_FAILURE;
+				}
+				break;
+			}
+
+			char const *fsname = entry->mnt_fsname;
+			char const *dir = entry->mnt_dir;
+			char const *type = entry->mnt_type;
+			char const *opts = entry->mnt_opts;
+
+			if (0 == strcmp("none", fsname))
+				fsname = NULL;
+
+			if (0 == strcmp("none", opts))
+				opts = NULL;
+
+			bool mkdir_flag = false;
+			bool touch_flag = false;
+			unsigned long mountflags = 0U;
+			char const *data = NULL;
+			if (opts != NULL) {
+				bool xx;
+				bool yy;
+				unsigned long zz;
+				char const *ww;
+				errnum =
+				    parse_mount_opts(opts, &xx, &yy, &zz, &ww);
+				if (errnum != 0) {
+					errno = errnum;
+					perror("parse_mount_opts");
+					return EXIT_FAILURE;
+				}
+				mkdir_flag = xx;
+				touch_flag = yy;
+				mountflags = zz;
+				data = ww;
+			}
+
+			size_t new_mount_args_size = mount_args_size + 1U;
+			{
+				void *xx;
+				errnum = linted_mem_realloc_array(
+				    &xx, mount_args, new_mount_args_size,
+				    sizeof mount_args[0U]);
+				if (errnum != 0) {
+					errno = errnum;
+					perror("linted_mem_realloc_array");
+					return EXIT_FAILURE;
+				}
+				mount_args = xx;
+			}
+
+			if (fsname != NULL) {
+				fsname = strdup(fsname);
+				if (NULL == fsname) {
+					perror("strdup");
+					return EXIT_FAILURE;
+				}
+			}
+
+			if (dir != NULL) {
+				dir = strdup(dir);
+				if (NULL == dir) {
+					perror("strdup");
+					return EXIT_FAILURE;
+				}
+			}
+
+			if (type != NULL) {
+				type = strdup(type);
+				if (NULL == type) {
+					perror("strdup");
+					return EXIT_FAILURE;
+				}
+			}
+
+			if (data != NULL) {
+				data = strdup(data);
+				if (NULL == data) {
+					perror("strdup");
+					return EXIT_FAILURE;
+				}
+			}
+
+			mount_args[mount_args_size].fsname = fsname;
+			mount_args[mount_args_size].dir = dir;
+			mount_args[mount_args_size].type = type;
+			mount_args[mount_args_size].data = data;
+			mount_args[mount_args_size].mountflags = mountflags;
+			mount_args[mount_args_size].mkdir_flag = mkdir_flag;
+			mount_args[mount_args_size].touch_flag = touch_flag;
+			mount_args_size = new_mount_args_size;
+		}
+
+		if (endmntent(fstab_file) != 1) {
+			perror("endmntent");
 			return EXIT_FAILURE;
 		}
-		fstab_file = xx;
 	}
 
 	cap_t caps = NULL;
@@ -496,8 +620,9 @@ exit_loop:
 			exit_with_error(err_writer, errno);
 	}
 
-	if (fstab_file != NULL)
-		chroot_process(err_writer, cwd, chrootdir, fstab_file);
+	if (mount_args_size > 0U)
+		chroot_process(err_writer, cwd, chrootdir, mount_args,
+		               mount_args_size);
 
 	if (chdir_path != NULL) {
 		if (-1 == chdir(chdir_path))
@@ -717,7 +842,8 @@ static void set_id_maps(linted_ko err_writer, uid_t mapped_uid, uid_t uid,
 }
 
 static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir, FILE *fstab)
+                           char const *chrootdir,
+                           struct mount_args const *mount_args, size_t size)
 {
 	linted_error errnum;
 
@@ -727,44 +853,14 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 	if (-1 == chdir(chrootdir))
 		exit_with_error(err_writer, errno);
 
-	for (;;) {
-		errno = 0;
-		struct mntent *entry = getmntent(fstab);
-		if (NULL == entry) {
-			errnum = errno;
-			if (errnum != 0)
-				exit_with_error(err_writer, errnum);
-			break;
-		}
-
-		char const *fsname = entry->mnt_fsname;
-		char const *dir = entry->mnt_dir;
-		char const *type = entry->mnt_type;
-		char const *opts = entry->mnt_opts;
-
-		if (0 == strcmp("none", fsname))
-			fsname = NULL;
-
-		if (0 == strcmp("none", opts))
-			opts = NULL;
-
-		bool mkdir_flag = false;
-		bool touch_flag = false;
-		unsigned long mountflags = 0U;
-		char const *data = NULL;
-		if (opts != NULL) {
-			bool xx;
-			bool yy;
-			unsigned long zz;
-			char const *ww;
-			errnum = parse_mount_opts(opts, &xx, &yy, &zz, &ww);
-			if (errnum != 0)
-				goto close_file;
-			mkdir_flag = xx;
-			touch_flag = yy;
-			mountflags = zz;
-			data = ww;
-		}
+	for (size_t ii = 0U; ii < size; ++ii) {
+		char const *fsname = mount_args[ii].fsname;
+		char const *dir = mount_args[ii].dir;
+		char const *type = mount_args[ii].type;
+		char const *data = mount_args[ii].data;
+		bool mkdir_flag = mount_args[ii].mkdir_flag;
+		bool touch_flag = mount_args[ii].touch_flag;
+		unsigned long mountflags = mount_args[ii].mountflags;
 
 		if (mkdir_flag) {
 			if (-1 == mkdir(dir, S_IRWXU))
@@ -779,14 +875,11 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 
 		if ((mountflags & MS_BIND) != 0U) {
 			mountflags |= MS_REMOUNT;
-			if (-1 == mount(fsname, dir, type, mountflags, data))
+			if (-1 == mount(fsname, dir, type, mountflags, data)) {
 				exit_with_error(err_writer, errno);
+			}
 		}
 	}
-
-close_file:
-	if (endmntent(fstab) != 1)
-		exit_with_error(err_writer, errno);
 
 	/* Magic incantation that clears up /proc/mounts more than
 	 * mount MS_MOVE
