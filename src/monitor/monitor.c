@@ -113,16 +113,52 @@ struct conn
 struct conn_pool;
 
 #define COMM_MAX 16U
-#define PIDSTAT_FIELDS 4U
 struct pidstat
 {
 	pid_t pid;
 	char comm[1U + COMM_MAX + 1U + 1U];
 	char state;
-	pid_t ppid;
-	pid_t ngid;
-	pid_t tid;
-	pid_t tracer_pid;
+	int ppid;
+	int pgrp;
+	int session;
+	int tty_nr;
+	int tpgid;
+	unsigned flags;
+	unsigned long minflt;
+	unsigned long cminflt;
+	unsigned long majflt;
+	unsigned long cmajflt;
+	unsigned long utime;
+	unsigned long stime;
+	long cutime;
+	long cstime;
+	long priority;
+	long nice;
+	long num_threads;
+	long itrealvalue;
+	unsigned long long starttime;
+	unsigned long vsize;
+	long rss;
+	unsigned long rsslim;
+	unsigned long startcode;
+	unsigned long endcode;
+	unsigned long startstack;
+	unsigned long kstkesp;
+	unsigned long kstkeip;
+	unsigned long signal;
+	unsigned long blocked;
+	unsigned long sigignore;
+	unsigned long sigcatch;
+	unsigned long wchan;
+	unsigned long nswap;
+	unsigned long cnswap;
+	int exit_signal;
+	int processor;
+	unsigned rt_priority;
+	unsigned policy;
+	unsigned long long delayacct_blkio_ticks;
+	unsigned long guest_time;
+	long cguest_time;
 };
 
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
@@ -2338,14 +2374,11 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 {
 	linted_error errnum = 0;
 
-	/* Use /proc/<pid>/status to avoid troubles with processes
-	 * that have names like ':-) 0 1 2 3 4 5'. procps-ng takes a
-	 * different approach that I'm not actually sure works. */
 	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/status";
-		sprintf(path, "/proc/%i/status", pid);
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
+		sprintf(path, "/proc/%i/stat", pid);
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
 		if (errnum != 0)
@@ -2365,59 +2398,95 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 
 	memset(buf, 0, sizeof *buf);
 
-	int num_match = fscanf(
-	    file,
-	    "Name: %16s\n"
-	    "State: %c (%*[^)])\n"
-	    "Tgid: %d\n" /* pid */
-	    "Ngid: %d\n" /* no idea what this is */
-	    "Pid: %d\n"  /* Thread ID */
-	    "PPid: %d\n"
-	    "TracerPid: %d\n"
-	    "Uid: %*d %*d %*d %*d\n" /* real, effective, saved, filesystem */
-	    "Gid: %*d %*d %*d %*d\n" /* real, effective, saved, filesystem */
-	    "FDSize: %*lu\n"
-	    "Groups: %*[^\n]\n"
-	    "VmPeak: %*lu kB\n"
-	    "VmSize: %*lu kB\n"
-	    "VmLck: %*lu kB\n"
-	    "VmPin: %*lu kB\n"
-	    "VmHWM: %*lu kB\n"
-	    "VmRSS: %*lu kB\n"
-	    "VmData: %*lu kB\n"
-	    "VmStk: %*lu kB\n"
-	    "VmExe: %*lu kB\n"
-	    "VmLib: %*lu kB\n"
-	    "VmPTE: %*lu kB\n"
-	    "VmSwap: %*lu kB\n"
-	    "Threads: %*lu kB\n"
-	    "SigQ: %*u/%*u\n" /* queued signals / max queued signals */
-	    "SigPnd: %*lux\n"
-	    "ShdPnd: %*lux\n"
-	    "ShdBlk: %*lux\n"
-	    "ShdIgn: %*lux\n"
-	    "ShdCgt: %*lux\n"
-	    "CapInh: %*lux\n"
-	    "CapPrm: %*lux\n"
-	    "CapEff: %*lux\n"
-	    "CapBnd: %*lux\n"
-	    "Seccomp: %*d\n"
-	    "CapBnd: %*x\n"
-	    "Cpus_allowed: %*d-%*d\n"
-	    "Mems_allowed: %*x,%*x\n"
-	    "Mems_allowed_list: %*d\n"
-	    "voluntary_ctxt_switches: %*lu\n"
-	    "nonvoluntary_ctxt_switches: %*lu\n",
-	    buf->comm, &buf->state, &buf->pid, &buf->ngid, &buf->tid,
-	    &buf->ppid, &buf->tracer_pid);
-	if (EOF == num_match) {
+	char *line;
+	{
+		char *xx = NULL;
+		size_t yy = 0U;
+		if (-1 == getline(&xx, &yy, file)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_file;
+		}
+		line = xx;
+	}
+
+	/* If some fields are missing just leave them to be zero */
+	if (EOF == sscanf(line, "%d (" /* pid */
+	                  ,
+	                  &buf->pid)) {
 		errnum = errno;
-		if (0 == errnum)
-			errnum = ENOSYS;
+		LINTED_ASSUME(errnum != 0);
 		goto close_file;
 	}
-	if ((unsigned)num_match < PIDSTAT_FIELDS) {
-		errnum = ENOSYS;
+
+	/* Avoid troubles with processes that have names like ':-) 0 1
+	 * 2 3 4 5'. procps-ng takes a different approach involving
+	 * limits on the possible size of a name that I'm not actually
+	 * sure works. */
+
+	char *start = strchr(line, '(');
+	char *end = strrchr(line, ')');
+	memcpy(&buf->comm, start, end - start);
+
+	if (EOF ==
+	    sscanf(end, ")\n"
+	                "%c\n"   /* state */
+	                "%d\n"   /* ppid */
+	                "%d\n"   /* pgrp */
+	                "%d\n"   /* session */
+	                "%d\n"   /* tty_nr */
+	                "%d\n"   /* tpgid */
+	                "%u\n"   /* flags */
+	                "%lu\n"  /* minflt */
+	                "%lu\n"  /* cminflt */
+	                "%lu\n"  /* majflt */
+	                "%lu\n"  /* cmajflt */
+	                "%lu\n"  /* utime */
+	                "%lu\n"  /* stime */
+	                "%ld\n"  /* cutime */
+	                "%ld\n"  /* cstime */
+	                "%ld\n"  /* priority */
+	                "%ld\n"  /* nice */
+	                "%ld\n"  /* num_threads */
+	                "%ld\n"  /* itrealvalue */
+	                "%llu\n" /* starttime */
+	                "%lu\n"  /* vsize */
+	                "%ld\n"  /* rss */
+	                "%lu\n"  /* rsslim */
+	                "%lu\n"  /* startcode */
+	                "%lu\n"  /* endcode */
+	                "%lu\n"  /* startstack */
+	                "%lu\n"  /* kstkesp */
+	                "%lu\n"  /* kstkeip */
+	                "%lu\n"  /* signal */
+	                "%lu\n"  /* blocked */
+	                "%lu\n"  /* sigignore */
+	                "%lu\n"  /* sigcatch */
+	                "%lu\n"  /* wchan */
+	                "%lu\n"  /* nswap */
+	                "%lu\n"  /* cnswap */
+	                "%d\n"   /* exit_signal */
+	                "%d\n"   /* processor */
+	                "%u\n"   /* rt_priority */
+	                "%u\n"   /* policy */
+	                "%llu\n" /* delayacct_blkio_ticks */
+	                "%lu\n"  /* guest_time */
+	                "%ld\n"  /* cguest_time */
+	           ,
+	           &buf->state, &buf->ppid, &buf->pgrp, &buf->session,
+	           &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
+	           &buf->cminflt, &buf->majflt, &buf->cmajflt, &buf->utime,
+	           &buf->stime, &buf->cutime, &buf->cstime, &buf->priority,
+	           &buf->nice, &buf->num_threads, &buf->itrealvalue,
+	           &buf->starttime, &buf->vsize, &buf->rss, &buf->rsslim,
+	           &buf->startcode, &buf->endcode, &buf->startstack,
+	           &buf->kstkesp, &buf->kstkeip, &buf->signal, &buf->blocked,
+	           &buf->sigignore, &buf->sigcatch, &buf->wchan, &buf->nswap,
+	           &buf->cnswap, &buf->exit_signal, &buf->processor,
+	           &buf->rt_priority, &buf->policy, &buf->delayacct_blkio_ticks,
+	           &buf->guest_time, &buf->cguest_time)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
 		goto close_file;
 	}
 
