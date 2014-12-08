@@ -116,8 +116,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		linted_io_write_str(STDOUT_FILENO, NULL,
-		                    LINTED_STR("spawning monitor\n"));
+		fprintf(stderr, "%s: spawning %s\n", process_name, monitor);
 
 		pid_t child;
 		{

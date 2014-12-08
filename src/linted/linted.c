@@ -198,7 +198,7 @@ requires XDG_RUNTIME_DIR\n"));
 	}
 	linted_ko_close(linted_run_dir);
 
-	fprintf(stderr, "LINTED_PID=%i\n", getpid());
+	fprintf(stdout, "LINTED_PID=%i\n", getpid());
 
 	errnum = exec_init(init, private_run_dir);
 	if (errnum != 0) {
