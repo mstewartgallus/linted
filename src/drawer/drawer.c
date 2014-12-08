@@ -501,6 +501,36 @@ static linted_error get_xcb_conn_error(xcb_connection_t *connection)
 
 static linted_error get_xcb_error(xcb_generic_error_t *error)
 {
-	/* For now just be crappy. */
-	return ENOSYS;
+	switch (error->error_code) {
+	case Success:
+		return 0;
+
+	case BadRequest:
+	case BadValue:
+	case BadWindow:
+	case BadPixmap:
+	case BadAtom:
+	case BadCursor:
+	case BadFont:
+	case BadMatch:
+	case BadDrawable:
+	case BadColor:
+	case BadGC:
+	case BadIDChoice:
+	case BadName:
+	case BadLength:
+		return EINVAL;
+
+	case BadAccess:
+		return EPERM;
+
+	case BadAlloc:
+		return ENOMEM;
+
+	case BadImplementation:
+		return ENOSYS;
+
+	default:
+		return ENOSYS;
+	}
 }
