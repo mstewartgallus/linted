@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stddef.h>
 
 #include <xcb/xcb.h>
@@ -45,14 +46,21 @@
  * @todo Handle sudden window death better.
  */
 
-enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
+enum {
+	ON_RECEIVE_NOTICE,
+	ON_POLL_CONN,
+	ON_POLL_KEY_CONN,
+	ON_SENT_CONTROL,
+	MAX_TASKS
+};
 
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
-	                                    XCB_EVENT_MASK_KEY_PRESS |
-	                                    XCB_EVENT_MASK_KEY_RELEASE |
 	                                    XCB_EVENT_MASK_POINTER_MOTION |
 	                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
 	                                0 };
+static uint32_t const keyboard_opts[] = {
+	XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE, 0
+};
 
 struct controller_data;
 
@@ -64,7 +72,6 @@ struct window_model
 
 struct poll_conn_data
 {
-	Display *display;
 	xcb_connection_t *connection;
 	struct window_model *window_model;
 	struct linted_asynch_pool *pool;
@@ -72,6 +79,15 @@ struct poll_conn_data
 	struct linted_controller_task_send *controller_task;
 	xcb_window_t *window;
 	struct linted_window_notifier_task_receive *notice_task;
+	linted_ko controller;
+};
+
+struct poll_key_conn_data
+{
+	Display *display;
+	struct linted_asynch_pool *pool;
+	struct controller_data *controller_data;
+	struct linted_controller_task_send *controller_task;
 	linted_ko controller;
 };
 
@@ -93,6 +109,7 @@ struct notice_data
 {
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
+	xcb_connection_t *keyboard_connection;
 	struct window_model *window_model;
 	struct controller_data *controller_data;
 	struct linted_controller_task_send *controller_task;
@@ -110,6 +127,7 @@ struct linted_start_config const linted_start_config = {
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
+static linted_error on_poll_key_conn(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
@@ -154,10 +172,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct notice_data notice_data;
 	struct controller_task_data controller_task_data;
 	struct poll_conn_data poll_conn_data;
+	struct poll_key_conn_data poll_key_conn_data;
 
 	struct linted_window_notifier_task_receive *notice_task;
 	struct linted_controller_task_send *controller_task;
 	struct linted_ko_task_poll *poll_conn_task;
+	struct linted_ko_task_poll *poll_key_conn_task;
 
 	{
 		struct linted_window_notifier_task_receive *xx;
@@ -185,18 +205,33 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		poll_conn_task = xx;
 	}
 
-	Display *display = XOpenDisplay(NULL);
-	if (NULL == display) {
+	{
+		struct linted_ko_task_poll *xx;
+		errnum = linted_ko_task_poll_create(&xx, &poll_key_conn_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		poll_key_conn_task = xx;
+	}
+
+	xcb_connection_t *connection = xcb_connect(NULL, NULL);
+	if (NULL == connection) {
 		errnum = ENOSYS;
 		goto destroy_pool;
 	}
 
-	xcb_connection_t *connection = XGetXCBConnection(display);
+	Display *keyboard_display = XOpenDisplay(NULL);
+	if (NULL == keyboard_display) {
+		errnum = ENOSYS;
+		goto close_connection;
+	}
+	xcb_connection_t *keyboard_connection =
+	    XGetXCBConnection(keyboard_display);
 
 	notice_data.window = &window;
 	notice_data.pool = pool;
 	notice_data.window_model = &window_model;
 	notice_data.connection = connection;
+	notice_data.keyboard_connection = keyboard_connection;
 	notice_data.controller = controller;
 	notice_data.controller_data = &controller_data;
 	notice_data.controller_task = controller_task;
@@ -212,7 +247,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	poll_conn_data.window = &window;
 	poll_conn_data.pool = pool;
 	poll_conn_data.window_model = &window_model;
-	poll_conn_data.display = display;
 	poll_conn_data.connection = connection;
 	poll_conn_data.controller = controller;
 	poll_conn_data.controller_data = &controller_data;
@@ -222,26 +256,39 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
 
+	linted_ko_task_poll_prepare(
+	    poll_key_conn_task, ON_POLL_KEY_CONN,
+	    xcb_get_file_descriptor(keyboard_connection), POLLIN);
+	poll_key_conn_data.pool = pool;
+	poll_key_conn_data.display = keyboard_display;
+	poll_key_conn_data.controller = controller;
+	poll_key_conn_data.controller_data = &controller_data;
+	poll_key_conn_data.controller_task = controller_task;
+
+	linted_asynch_pool_submit(
+	    pool, linted_ko_task_poll_to_asynch(poll_key_conn_task));
+
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-
 			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
-				goto close_display;
-
+				goto close_keyboard_display;
 			completed_task = xx;
 		}
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto close_display;
+			goto close_keyboard_display;
 	}
 
-close_display:
-	XCloseDisplay(display);
+close_keyboard_display:
+	XCloseDisplay(keyboard_display);
+
+close_connection:
+	xcb_disconnect(connection);
 
 destroy_pool:
 	linted_asynch_pool_stop(pool);
@@ -283,6 +330,9 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
+	case ON_POLL_KEY_CONN:
+		return on_poll_key_conn(task);
+
 	case ON_RECEIVE_NOTICE:
 		return on_receive_notice(task);
 
@@ -307,7 +357,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	struct poll_conn_data *poll_conn_data =
 	    linted_ko_task_poll_data(poll_conn_task);
 
-	Display *display = poll_conn_data->display;
 	xcb_connection_t *connection = poll_conn_data->connection;
 	xcb_window_t *window = poll_conn_data->window;
 	struct window_model *window_model = poll_conn_data->window_model;
@@ -333,8 +382,122 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	unsigned resize_height;
 
 	bool window_destroyed = false;
+	for (;;) {
+		xcb_generic_event_t *event = xcb_poll_for_event(connection);
+		if (NULL == event)
+			break;
 
-	/* We have to use the Xlib event queue for input events as XCB
+		switch (event->response_type & ~0x80) {
+		case XCB_CONFIGURE_NOTIFY: {
+			xcb_configure_notify_event_t const *configure_event =
+			    (void *)event;
+
+			resize_width = configure_event->width;
+			resize_height = configure_event->height;
+			had_resize = true;
+			break;
+		}
+
+		case XCB_DESTROY_NOTIFY:
+			window_destroyed = true;
+			break;
+
+		case XCB_MOTION_NOTIFY: {
+			xcb_motion_notify_event_t const *motion_event =
+			    (void *)event;
+
+			motion_x = motion_event->event_x;
+			motion_y = motion_event->event_y;
+			had_motion = true;
+			break;
+		}
+
+		case XCB_FOCUS_IN:
+			focused = true;
+			had_focus_change = true;
+			break;
+
+		case XCB_FOCUS_OUT:
+			focused = false;
+			had_focus_change = true;
+			break;
+
+		default:
+			/* Unknown event type, ignore it */
+			break;
+		}
+		linted_mem_free(event);
+	}
+
+	if (had_resize) {
+		window_model->width = resize_width;
+		window_model->height = resize_height;
+	}
+
+	if (had_motion)
+		on_tilt(motion_x, motion_y, window_model, controller_data);
+
+	if (had_focus_change) {
+		if (focused) {
+			int x, y;
+			errnum =
+			    get_mouse_position(connection, *window, &x, &y);
+			if (errnum != 0)
+				return errnum;
+
+			on_tilt(x, y, window_model, controller_data);
+		} else {
+			controller_data->update.x_tilt = 0;
+			controller_data->update.y_tilt = 0;
+
+			controller_data->update.left = 0;
+			controller_data->update.right = 0;
+			controller_data->update.forward = 0;
+			controller_data->update.back = 0;
+
+			controller_data->update.jumping = 0;
+
+			controller_data->update_pending = true;
+		}
+	}
+
+	if (window_destroyed) {
+		linted_asynch_pool_submit(
+		    pool,
+		    linted_window_notifier_task_receive_to_asynch(notice_task));
+	}
+
+	maybe_update_controller(pool, controller_data, controller_task,
+	                        controller);
+
+	linted_asynch_pool_submit(pool, task);
+
+	return 0;
+}
+
+static linted_error on_poll_key_conn(struct linted_asynch_task *task)
+{
+	linted_error errnum;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
+		return errnum;
+
+	struct linted_ko_task_poll *poll_conn_task =
+	    linted_ko_task_poll_from_asynch(task);
+	struct poll_key_conn_data *poll_conn_data =
+	    linted_ko_task_poll_data(poll_conn_task);
+
+	Display *display = poll_conn_data->display;
+
+	struct linted_asynch_pool *pool = poll_conn_data->pool;
+	linted_ko controller = poll_conn_data->controller;
+	struct controller_data *controller_data =
+	    poll_conn_data->controller_data;
+	struct linted_controller_task_send *controller_task =
+	    poll_conn_data->controller_task;
+
+	/* We have to use the Xlib event queue for keyboard events as XCB
 	 * isn't quite ready in this respect yet.
 	 */
 	while (XPending(display) > 0) {
@@ -343,39 +506,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 		bool is_key_down;
 		switch (event.type) {
-		case ConfigureNotify: {
-			XConfigureEvent const *configure_event =
-			    &event.xconfigure;
-
-			resize_width = configure_event->width;
-			resize_height = configure_event->height;
-			had_resize = true;
-			break;
-		}
-
-		case DestroyNotify:
-			window_destroyed = true;
-			break;
-
-		case MotionNotify: {
-			XMotionEvent const *motion_event = &event.xmotion;
-
-			motion_x = motion_event->x;
-			motion_y = motion_event->y;
-			had_motion = true;
-			break;
-		}
-
-		case FocusIn:
-			focused = true;
-			had_focus_change = true;
-			break;
-
-		case FocusOut:
-			focused = false;
-			had_focus_change = true;
-			break;
-
 		case KeyPress:
 			is_key_down = true;
 			goto on_key_event;
@@ -445,58 +575,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		}
 	}
 
-	if (had_resize) {
-		window_model->width = resize_width;
-		window_model->height = resize_height;
-	}
-
-	if (had_motion)
-		on_tilt(motion_x, motion_y, window_model, controller_data);
-
-	if (had_focus_change) {
-		if (focused) {
-			int x, y;
-			errnum =
-			    get_mouse_position(connection, *window, &x, &y);
-			if (errnum != 0)
-				return errnum;
-
-			on_tilt(x, y, window_model, controller_data);
-		} else {
-			controller_data->update.x_tilt = 0;
-			controller_data->update.y_tilt = 0;
-
-			controller_data->update.left = 0;
-			controller_data->update.right = 0;
-			controller_data->update.forward = 0;
-			controller_data->update.back = 0;
-
-			controller_data->update.jumping = 0;
-
-			controller_data->update_pending = true;
-		}
-	}
-
-	if (window_destroyed) {
-		linted_asynch_pool_submit(
-		    pool,
-		    linted_window_notifier_task_receive_to_asynch(notice_task));
-	}
-
 	maybe_update_controller(pool, controller_data, controller_task,
 	                        controller);
-
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
-	poll_conn_data->window = window;
-	poll_conn_data->pool = pool;
-	poll_conn_data->window_model = window_model;
-	poll_conn_data->display = display;
-	poll_conn_data->connection = connection;
-	poll_conn_data->controller = controller;
-	poll_conn_data->controller_data = controller_data;
-	poll_conn_data->controller_task = controller_task;
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -517,6 +597,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	    linted_window_notifier_task_receive_data(notice_task);
 	struct linted_asynch_pool *pool = notice_data->pool;
 	xcb_connection_t *connection = notice_data->connection;
+	xcb_connection_t *keyboard_connection =
+	    notice_data->keyboard_connection;
 	struct window_model *window_model = notice_data->window_model;
 	linted_ko controller = notice_data->controller;
 	struct controller_data *controller_data = notice_data->controller_data;
@@ -525,6 +607,17 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_window_t *windowp = notice_data->window;
 
 	uint_fast32_t window = linted_window_notifier_decode(notice_task);
+
+	xcb_change_window_attributes(keyboard_connection, window,
+	                             XCB_CW_EVENT_MASK, keyboard_opts);
+	errnum = get_xcb_conn_error(keyboard_connection);
+	if (errnum != 0)
+		return errnum;
+
+	xcb_flush(keyboard_connection);
+	errnum = get_xcb_conn_error(keyboard_connection);
+	if (errnum != 0)
+		return errnum;
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);

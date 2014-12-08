@@ -487,7 +487,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	bool *time_to_quitp = poll_conn_data->time_to_quit;
 
 	for (;;) {
-		xcb_generic_event_t *event = xcb_wait_for_event(connection);
+		xcb_generic_event_t *event = xcb_poll_for_event(connection);
 		if (NULL == event)
 			break;
 
