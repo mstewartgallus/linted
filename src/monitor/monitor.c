@@ -113,6 +113,8 @@ struct conn
 
 struct conn_pool;
 
+#define SERVICE_NAME_MAX 32U
+
 #define COMM_MAX 16U
 struct pidstat
 {
@@ -222,6 +224,9 @@ static linted_error bool_from_cstring(char const *str, bool *boolp);
 static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error kill_pid_children(pid_t pid, int signo);
+
+static linted_error service_name(pid_t pid,
+                                 char name[static SERVICE_NAME_MAX + 1U]);
 
 static linted_error pid_of_service(pid_t *pidp, char const *name);
 static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
@@ -960,7 +965,7 @@ static linted_error service_activate(char const *process_name,
 {
 	linted_error errnum = 0;
 
-	char const *service_name = unit->name;
+	char const *name = unit->name;
 
 	struct linted_unit_service *unit_service = (void *)unit;
 
@@ -970,14 +975,13 @@ static linted_error service_activate(char const *process_name,
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = pid_of_service(&xx, service_name);
+		errnum = pid_of_service(&xx, name);
 		if (errnum != 0)
 			goto service_not_found;
 		child = xx;
 	}
 
-	fprintf(stderr, "%s: %s: starting to ptrace\n", process_name,
-	        service_name);
+	fprintf(stderr, "%s: %s: starting to ptrace\n", process_name, name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1059,7 +1063,7 @@ manager_asprintf_succeeded:
 	char *service_name_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", service_name))
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", name))
 			goto service_asprintf_failed;
 		service_name_setting = xx;
 		goto service_asprintf_succeeded;
@@ -1669,14 +1673,13 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 			break;
 		}
 
-		char service_name[COMM_MAX + 16U];
-
-		errnum = pid_comm(pid, service_name);
+		char name[SERVICE_NAME_MAX + 1U];
+		errnum = service_name(pid, name);
 		if (errnum != 0)
 			return errnum;
 
 		fprintf(stderr, "%s: %s: starting to ptrace\n", process_name,
-		        service_name);
+		        name);
 
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
@@ -1713,35 +1716,33 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 		sandboxed_pid = info.si_pid;
 		status = info.si_status;
 
-		char service_name[COMM_MAX + 1U];
-
-		errnum = pid_comm(pid, service_name);
+		char name[SERVICE_NAME_MAX + 1U];
+		errnum = service_name(pid, name);
 		if (errnum != 0)
 			goto restart_process;
 
 		switch (code) {
 		case CLD_EXITED:
 			fprintf(stderr, "%s: %s: process %i exited with %i\n",
-			        process_name, service_name, sandboxed_pid,
-			        status);
+			        process_name, name, sandboxed_pid, status);
 			break;
 
 		case CLD_DUMPED:
 		case CLD_KILLED:
 			fprintf(stderr, "%s: %s: process %i killed by %s\n",
-			        process_name, service_name, sandboxed_pid,
+			        process_name, name, sandboxed_pid,
 			        strsignal(status));
 			break;
 
 		case CLD_STOPPED:
 			fprintf(stderr, "%s: %s: process %i stopped by %s\n",
-			        process_name, service_name, sandboxed_pid,
+			        process_name, name, sandboxed_pid,
 			        strsignal(status));
 			break;
 
 		case CLD_CONTINUED:
 			fprintf(stderr, "%s: %s: process %i continued by %s\n",
-			        process_name, service_name, sandboxed_pid,
+			        process_name, name, sandboxed_pid,
 			        strsignal(status));
 			break;
 
@@ -1794,28 +1795,27 @@ static linted_error on_child_about_to_exit(char const *process_name,
 		status = xx;
 	}
 
-	char service_name[COMM_MAX + 1U];
-
-	errnum = pid_comm(pid, service_name);
+	char name[SERVICE_NAME_MAX + 1U];
+	errnum = service_name(pid, name);
 	if (errnum != 0)
 		goto detach_from_process;
 
 	if (WIFEXITED(status)) {
 		int exit_status = WEXITSTATUS(status);
 
-		fprintf(stderr, "%s: %s: exited with %i\n", process_name,
-		        service_name, exit_status);
+		fprintf(stderr, "%s: %s: exited with %i\n", process_name, name,
+		        exit_status);
 
 	} else if (WIFSIGNALED(status)) {
 		int signo = WTERMSIG(status);
 
-		fprintf(stderr, "%s: %s: killed by %s\n", process_name,
-		        service_name, strsignal(signo));
+		fprintf(stderr, "%s: %s: killed by %s\n", process_name, name,
+		        strsignal(signo));
 	} else {
 		LINTED_ASSUME_UNREACHABLE();
 	}
 
-	unit = linted_unit_db_get_unit_by_name(unit_db, service_name);
+	unit = linted_unit_db_get_unit_by_name(unit_db, name);
 
 detach_from_process:
 	errnum = ptrace_detach(pid, 0);
@@ -1948,12 +1948,12 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 		if (errnum != 0)
 			goto free_buf;
 
-		char service_name[COMM_MAX + 1U];
-		errnum = pid_comm(child, service_name);
+		char other_name[SERVICE_NAME_MAX + 1U];
+		errnum = service_name(child, other_name);
 		if (errnum != 0)
 			goto free_buf;
 
-		if (strcmp(name, service_name) != 0)
+		if (strcmp(name, other_name) != 0)
 			goto move_on;
 
 		errnum = 0;
@@ -1982,6 +1982,12 @@ free_buf:
 	linted_mem_free(buf);
 
 	return errnum;
+}
+
+static linted_error service_name(pid_t pid,
+                                 char comm[static SERVICE_NAME_MAX + 1U])
+{
+	return pid_comm(pid, comm);
 }
 
 static linted_error kill_pid_children(pid_t pid, int signo)
