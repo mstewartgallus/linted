@@ -44,6 +44,8 @@
  * @file
  *
  * @todo Handle sudden window death better.
+ *
+ * @todo Look into replacing XLib keyboard input with libxkbcommon
  */
 
 enum {
