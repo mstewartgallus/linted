@@ -27,3 +27,12 @@ X-LintedFstab="${LINTED_GUI_FSTAB}"
 WorkingDirectory=/var
 
 X-LintedEnvironmentWhitelist=DISPLAY
+
+X-LintedEnvironmentWhitelist=XKB_LOG_LEVEL
+X-LintedEnvironmentWhitelist=XKB_LOG_VERBOSITY
+X-LintedEnvironmentWhitelist=XKB_DEFAULT_RULES
+X-LintedEnvironmentWhitelist=XKB_DEFAULT_MODEL
+X-LintedEnvironmentWhitelist=XKB_DEFAULT_LAYOUT
+X-LintedEnvironmentWhitelist=XKB_DEFAULT_VARIANT
+X-LintedEnvironmentWhitelist=XKB_DEFAULT_OPTIONS
+

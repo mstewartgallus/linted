@@ -15,9 +15,6 @@
  */
 #define _POSIX_C_SOURCE 200112L
 
-#define XK_LATIN1
-#define XK_MISCELLANY
-
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -32,37 +29,29 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stddef.h>
 
 #include <xcb/xcb.h>
-#include <X11/keysymdef.h>
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
+#include <xcb/xkb.h>
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
+#include <xkbcommon/xkbcommon-x11.h>
 
 /**
  * @file
  *
- * @todo Handle sudden window death better.
- *
- * @todo Look into replacing XLib keyboard input with libxkbcommon
+ * @todo Replace as much xkbcommon code with xcb-xkb code as possible
+ * to get more accurate error handling.
  */
 
-enum {
-	ON_RECEIVE_NOTICE,
-	ON_POLL_CONN,
-	ON_POLL_KEY_CONN,
-	ON_SENT_CONTROL,
-	MAX_TASKS
-};
+enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
 	                                    XCB_EVENT_MASK_POINTER_MOTION |
-	                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+	                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+	                                    XCB_EVENT_MASK_KEY_PRESS |
+	                                    XCB_EVENT_MASK_KEY_RELEASE,
 	                                0 };
-static uint32_t const keyboard_opts[] = {
-	XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE, 0
-};
 
 struct controller_data;
 
@@ -82,15 +71,9 @@ struct poll_conn_data
 	xcb_window_t *window;
 	struct linted_window_notifier_task_receive *notice_task;
 	linted_ko controller;
-};
-
-struct poll_key_conn_data
-{
-	Display *display;
-	struct linted_asynch_pool *pool;
-	struct controller_data *controller_data;
-	struct linted_controller_task_send *controller_task;
-	linted_ko controller;
+	int32_t device_id;
+	struct xkb_state **keyboard_state;
+	struct xkb_keymap *keymap;
 };
 
 struct controller_data
@@ -111,7 +94,6 @@ struct notice_data
 {
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
-	xcb_connection_t *keyboard_connection;
 	struct window_model *window_model;
 	struct controller_data *controller_data;
 	struct linted_controller_task_send *controller_task;
@@ -129,7 +111,6 @@ struct linted_start_config const linted_start_config = {
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
-static linted_error on_poll_key_conn(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 static linted_error on_sent_control(struct linted_asynch_task *task);
 
@@ -174,12 +155,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct notice_data notice_data;
 	struct controller_task_data controller_task_data;
 	struct poll_conn_data poll_conn_data;
-	struct poll_key_conn_data poll_key_conn_data;
 
 	struct linted_window_notifier_task_receive *notice_task;
 	struct linted_controller_task_send *controller_task;
 	struct linted_ko_task_poll *poll_conn_task;
-	struct linted_ko_task_poll *poll_key_conn_task;
 
 	{
 		struct linted_window_notifier_task_receive *xx;
@@ -207,33 +186,77 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		poll_conn_task = xx;
 	}
 
-	{
-		struct linted_ko_task_poll *xx;
-		errnum = linted_ko_task_poll_create(&xx, &poll_key_conn_data);
-		if (errnum != 0)
-			goto destroy_pool;
-		poll_key_conn_task = xx;
-	}
-
 	xcb_connection_t *connection = xcb_connect(NULL, NULL);
 	if (NULL == connection) {
 		errnum = ENOSYS;
 		goto destroy_pool;
 	}
 
-	Display *keyboard_display = XOpenDisplay(NULL);
-	if (NULL == keyboard_display) {
+	if (!xkb_x11_setup_xkb_extension(
+	        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,
+	        XKB_X11_MIN_MINOR_XKB_VERSION, 0, NULL, NULL, NULL, NULL)) {
 		errnum = ENOSYS;
 		goto close_connection;
 	}
-	xcb_connection_t *keyboard_connection =
-	    XGetXCBConnection(keyboard_display);
+
+	struct xkb_context *keyboard_ctx =
+	    xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	if (NULL == keyboard_ctx) {
+		errnum = ENOSYS;
+		goto close_connection;
+	}
+
+	int32_t device_id;
+	xcb_xkb_get_device_info_cookie_t device_info_ck =
+	    xcb_xkb_get_device_info(connection, XCB_XKB_ID_USE_CORE_KBD, 0, 0,
+	                            0, 0, 0, 0);
+	errnum = get_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_keyboard_ctx;
+
+	{
+		xcb_generic_error_t *error;
+		xcb_xkb_get_device_info_reply_t *reply;
+		{
+			xcb_generic_error_t *xx;
+			reply = xcb_xkb_get_device_info_reply(
+			    connection, device_info_ck, &xx);
+			errnum = get_xcb_conn_error(connection);
+			if (errnum != 0)
+				goto destroy_keyboard_ctx;
+
+			error = xx;
+		}
+
+		if (error != NULL) {
+			errnum = get_xcb_error(error);
+			linted_mem_free(error);
+			goto destroy_keyboard_ctx;
+		}
+
+		device_id = reply->deviceID;
+
+		linted_mem_free(reply);
+	}
+
+	struct xkb_keymap *keymap = xkb_x11_keymap_new_from_device(
+	    keyboard_ctx, connection, device_id, XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (NULL == keymap) {
+		errnum = ENOSYS;
+		goto destroy_keyboard_ctx;
+	}
+
+	struct xkb_state *keyboard_state =
+	    xkb_x11_state_new_from_device(keymap, connection, device_id);
+	if (NULL == keyboard_state) {
+		errnum = ENOSYS;
+		goto destroy_keymap;
+	}
 
 	notice_data.window = &window;
 	notice_data.pool = pool;
 	notice_data.window_model = &window_model;
 	notice_data.connection = connection;
-	notice_data.keyboard_connection = keyboard_connection;
 	notice_data.controller = controller;
 	notice_data.controller_data = &controller_data;
 	notice_data.controller_task = controller_task;
@@ -254,21 +277,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	poll_conn_data.controller_data = &controller_data;
 	poll_conn_data.controller_task = controller_task;
 	poll_conn_data.notice_task = notice_task;
+	poll_conn_data.device_id = device_id;
+	poll_conn_data.keyboard_state = &keyboard_state;
+	poll_conn_data.keymap = keymap;
 
 	linted_asynch_pool_submit(
 	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
-
-	linted_ko_task_poll_prepare(
-	    poll_key_conn_task, ON_POLL_KEY_CONN,
-	    xcb_get_file_descriptor(keyboard_connection), POLLIN);
-	poll_key_conn_data.pool = pool;
-	poll_key_conn_data.display = keyboard_display;
-	poll_key_conn_data.controller = controller;
-	poll_key_conn_data.controller_data = &controller_data;
-	poll_key_conn_data.controller_task = controller_task;
-
-	linted_asynch_pool_submit(
-	    pool, linted_ko_task_poll_to_asynch(poll_key_conn_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -277,17 +291,23 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			struct linted_asynch_task *xx;
 			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
-				goto close_keyboard_display;
+				goto destroy_keystate;
 			completed_task = xx;
 		}
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto close_keyboard_display;
+			goto destroy_keystate;
 	}
 
-close_keyboard_display:
-	XCloseDisplay(keyboard_display);
+destroy_keystate:
+	xkb_state_unref(keyboard_state);
+
+destroy_keymap:
+	xkb_keymap_unref(keymap);
+
+destroy_keyboard_ctx:
+	xkb_context_unref(keyboard_ctx);
 
 close_connection:
 	xcb_disconnect(connection);
@@ -332,9 +352,6 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
-	case ON_POLL_KEY_CONN:
-		return on_poll_key_conn(task);
-
 	case ON_RECEIVE_NOTICE:
 		return on_receive_notice(task);
 
@@ -371,6 +388,9 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	    poll_conn_data->controller_task;
 	struct linted_window_notifier_task_receive *notice_task =
 	    poll_conn_data->notice_task;
+	int32_t device_id = poll_conn_data->device_id;
+	struct xkb_state **keyboard_state = poll_conn_data->keyboard_state;
+	struct xkb_keymap *keymap = poll_conn_data->keymap;
 
 	bool had_focus_change = false;
 	bool focused;
@@ -383,12 +403,15 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	unsigned resize_width;
 	unsigned resize_height;
 
+	bool mapping_notify = false;
+
 	bool window_destroyed = false;
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
 		if (NULL == event)
 			break;
 
+		bool is_key_down;
 		switch (event->response_type & ~0x80) {
 		case XCB_CONFIGURE_NOTIFY: {
 			xcb_configure_notify_event_t const *configure_event =
@@ -424,11 +447,82 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			had_focus_change = true;
 			break;
 
+		case XCB_KEY_PRESS:
+			is_key_down = true;
+			goto on_key_event;
+
+		case XCB_KEY_RELEASE:
+			is_key_down = false;
+			goto on_key_event;
+
+		case XCB_MAPPING_NOTIFY:
+			mapping_notify = true;
+			break;
+
 		default:
 			/* Unknown event type, ignore it */
 			break;
+
+		on_key_event : {
+			xcb_key_press_event_t *key_event = (void *)event;
+			xcb_keycode_t keycode = key_event->detail;
+			xkb_keysym_t keysym =
+			    xkb_state_key_get_one_sym(*keyboard_state, keycode);
+			switch (keysym) {
+			case XKB_KEY_space:
+				goto jump;
+
+			case XKB_KEY_Control_L:
+				goto move_left;
+
+			case XKB_KEY_Alt_L:
+				goto move_right;
+
+			case XKB_KEY_z:
+				goto move_forward;
+
+			case XKB_KEY_Shift_L:
+				goto move_backward;
+
+			default:
+				break;
+			}
+			break;
+		}
+
+		jump:
+			controller_data->update.jumping = is_key_down;
+			controller_data->update_pending = true;
+			break;
+
+		move_left:
+			controller_data->update.left = is_key_down;
+			controller_data->update_pending = true;
+			break;
+
+		move_right:
+			controller_data->update.right = is_key_down;
+			controller_data->update_pending = true;
+			break;
+
+		move_forward:
+			controller_data->update.forward = is_key_down;
+			controller_data->update_pending = true;
+			break;
+
+		move_backward:
+			controller_data->update.back = is_key_down;
+			controller_data->update_pending = true;
+			break;
 		}
 		linted_mem_free(event);
+	}
+
+	if (mapping_notify) {
+		struct xkb_state *new_state = xkb_x11_state_new_from_device(
+		    keymap, connection, device_id);
+		xkb_state_unref(*keyboard_state);
+		*keyboard_state = new_state;
 	}
 
 	if (had_resize) {
@@ -477,114 +571,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	return 0;
 }
 
-static linted_error on_poll_key_conn(struct linted_asynch_task *task)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
-
-	struct linted_ko_task_poll *poll_conn_task =
-	    linted_ko_task_poll_from_asynch(task);
-	struct poll_key_conn_data *poll_conn_data =
-	    linted_ko_task_poll_data(poll_conn_task);
-
-	Display *display = poll_conn_data->display;
-
-	struct linted_asynch_pool *pool = poll_conn_data->pool;
-	linted_ko controller = poll_conn_data->controller;
-	struct controller_data *controller_data =
-	    poll_conn_data->controller_data;
-	struct linted_controller_task_send *controller_task =
-	    poll_conn_data->controller_task;
-
-	/* We have to use the Xlib event queue for keyboard events as XCB
-	 * isn't quite ready in this respect yet.
-	 */
-	while (XPending(display) > 0) {
-		XEvent event;
-		XNextEvent(display, &event);
-
-		bool is_key_down;
-		switch (event.type) {
-		case KeyPress:
-			is_key_down = true;
-			goto on_key_event;
-
-		case KeyRelease:
-			is_key_down = false;
-			goto on_key_event;
-
-		case MappingNotify: {
-			XMappingEvent *mapping_event = &event.xmapping;
-			XRefreshKeyboardMapping(mapping_event);
-			break;
-		}
-
-		default:
-			/* Unknown event type, ignore it */
-			break;
-
-		on_key_event : {
-			XKeyEvent *key_event = &event.xkey;
-			switch (XLookupKeysym(key_event, 0)) {
-			case XK_space:
-				goto jump;
-
-			case XK_Control_L:
-				goto move_left;
-
-			case XK_Alt_L:
-				goto move_right;
-
-			case XK_z:
-				goto move_forward;
-
-			case XK_Shift_L:
-				goto move_backward;
-
-			default:
-				break;
-			}
-			break;
-		}
-
-		jump:
-			controller_data->update.jumping = is_key_down;
-			controller_data->update_pending = true;
-			break;
-
-		move_left:
-			controller_data->update.left = is_key_down;
-			controller_data->update_pending = true;
-			break;
-
-		move_right:
-			controller_data->update.right = is_key_down;
-			controller_data->update_pending = true;
-			break;
-
-		move_forward:
-			controller_data->update.forward = is_key_down;
-			controller_data->update_pending = true;
-			break;
-
-		move_backward:
-			controller_data->update.back = is_key_down;
-			controller_data->update_pending = true;
-			break;
-		}
-	}
-
-	maybe_update_controller(pool, controller_data, controller_task,
-	                        controller);
-
-	linted_asynch_pool_submit(pool, task);
-
-	return 0;
-}
-
 static linted_error on_receive_notice(struct linted_asynch_task *task)
 {
 	linted_error errnum;
@@ -599,8 +585,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	    linted_window_notifier_task_receive_data(notice_task);
 	struct linted_asynch_pool *pool = notice_data->pool;
 	xcb_connection_t *connection = notice_data->connection;
-	xcb_connection_t *keyboard_connection =
-	    notice_data->keyboard_connection;
 	struct window_model *window_model = notice_data->window_model;
 	linted_ko controller = notice_data->controller;
 	struct controller_data *controller_data = notice_data->controller_data;
@@ -609,17 +593,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_window_t *windowp = notice_data->window;
 
 	uint_fast32_t window = linted_window_notifier_decode(notice_task);
-
-	xcb_change_window_attributes(keyboard_connection, window,
-	                             XCB_CW_EVENT_MASK, keyboard_opts);
-	errnum = get_xcb_conn_error(keyboard_connection);
-	if (errnum != 0)
-		return errnum;
-
-	xcb_flush(keyboard_connection);
-	errnum = get_xcb_conn_error(keyboard_connection);
-	if (errnum != 0)
-		return errnum;
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);

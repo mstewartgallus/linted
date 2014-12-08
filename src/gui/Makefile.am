@@ -28,12 +28,13 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/controller/libcontroller.la\
   src/window-notifier/libwindow-notifier.la\
   \
-  $(X11_LIBS)\
   $(XCB_LIBS)\
-  $(X11_XCB_LIBS)
+  $(XCB_XKB_LIBS)\
+  $(XKB_LIBS)\
+  $(XKB_X11_LIBS)
 
 %C%_gui_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS) $(X11_XCB_FLAGS)\
+  $(XCB_FLAGS) $(XCB_XKB_FLAGS) $(XKB_FLAGS) $(XKB_X11_FLAGS)\
   $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/gui-fstab

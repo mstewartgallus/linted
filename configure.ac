@@ -130,6 +130,16 @@ PKG_CHECK_MODULES(XCB, xcb, [], [
 PKG_CHECK_MODULES(X11_XCB, x11-xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB-X11 interop library])
 ])
+PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
+ AC_MSG_ERROR([Unable to find an xcb-xkb library])
+])
+dnl
+PKG_CHECK_MODULES(XKB, xkbcommon, [], [
+ AC_MSG_ERROR([Unable to find an xkbcommon library])
+])
+PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
+ AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
+])
 dnl
 PKG_CHECK_MODULES(EGL, egl, [], [
  AC_MSG_ERROR([Unable to find an EGL library])
