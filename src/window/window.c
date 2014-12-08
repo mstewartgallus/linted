@@ -392,38 +392,20 @@ get_hostname_succeeded:
 			goto destroy_window;
 	}
 
-destroy_window:
-	/**
-	 * @todo Move the monitor killing further down and after the
-	 * window is destroyed.
-	 */
+destroy_window : {
+	xcb_void_cookie_t destroy_ck =
+	    xcb_destroy_window_checked(connection, window);
+	if (0 == errnum)
+		errnum = get_xcb_conn_error(connection);
 
-	/* Tell the manager to exit everything */
-	if (0 == errnum) {
-		if (-1 == kill(root_pid, SIGTERM)) {
-			perror("kill");
-			return EXIT_FAILURE;
-		}
-
-		/* Wait for the manager to exit everything */
-		for (;;)
-			pause();
-	}
-
-	{
-		xcb_void_cookie_t destroy_ck =
-		    xcb_destroy_window_checked(connection, window);
-		if (0 == errnum)
-			errnum = get_xcb_conn_error(connection);
-
-		xcb_generic_error_t *destroy_err =
-		    xcb_request_check(connection, destroy_ck);
-		if (0 == errnum)
-			errnum = get_xcb_conn_error(connection);
-		if (0 == errnum && destroy_err != NULL)
-			errnum = get_xcb_error(destroy_err);
-		linted_mem_free(destroy_err);
-	}
+	xcb_generic_error_t *destroy_err =
+	    xcb_request_check(connection, destroy_ck);
+	if (0 == errnum)
+		errnum = get_xcb_conn_error(connection);
+	if (0 == errnum && destroy_err != NULL)
+		errnum = get_xcb_error(destroy_err);
+	linted_mem_free(destroy_err);
+}
 
 close_display:
 	xcb_disconnect(connection);
@@ -457,6 +439,18 @@ destroy_pool:
 	 * terminated */
 	(void)notice_task;
 	(void)poll_conn_task;
+
+	/* Tell the manager to exit everything */
+	if (0 == errnum) {
+		if (-1 == kill(root_pid, SIGTERM)) {
+			perror("kill");
+			return EXIT_FAILURE;
+		}
+
+		/* Wait for the manager to exit everything */
+		for (;;)
+			pause();
+	}
 
 	return errnum;
 }

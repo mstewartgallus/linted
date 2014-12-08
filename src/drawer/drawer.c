@@ -38,6 +38,12 @@
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 
+/**
+ * @file
+ *
+ * @todo Handle sudden window death better.
+ */
+
 enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
 
 struct window_model
@@ -52,7 +58,7 @@ struct poll_conn_data
 	struct linted_asynch_pool *pool;
 
 	struct window_model *window_model;
-	bool *time_to_quit;
+	struct linted_window_notifier_task_receive *notice_task;
 };
 
 struct updater_data
@@ -63,17 +69,10 @@ struct updater_data
 
 struct notice_data
 {
-	struct linted_ko_task_poll *poll_conn_task;
-	struct linted_updater_task_receive *updater_task;
-
-	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
-	Display *gpu_display;
-	linted_ko updater;
 
 	struct window_model *window_model;
-	bool *time_to_quit;
-	struct linted_gpu_context **gpu_context;
+	struct linted_gpu_context *gpu_context;
 	xcb_window_t *window;
 };
 
@@ -115,9 +114,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pool = xx;
 	}
 
-	bool time_to_quit;
 	xcb_window_t window;
-	struct linted_gpu_context *gpu_context = NULL;
 
 	struct notice_data notice_data;
 	struct updater_data updater_data;
@@ -168,17 +165,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto close_display;
 	}
 
-	notice_data.poll_conn_task = poll_conn_task;
-	notice_data.updater_task = updater_task;
+	struct linted_gpu_context *gpu_context;
+	{
+		struct linted_gpu_context *xx;
+		errnum = linted_gpu_context_create(gpu_display, &xx);
+		if (errnum != 0)
+			return errnum;
+		gpu_context = xx;
+	}
 
-	notice_data.pool = pool;
 	notice_data.connection = connection;
-	notice_data.gpu_display = gpu_display;
-	notice_data.updater = updater;
 
 	notice_data.window_model = &window_model;
-	notice_data.time_to_quit = &time_to_quit;
-	notice_data.gpu_context = &gpu_context;
+	notice_data.gpu_context = gpu_context;
 	notice_data.window = &window;
 
 	linted_window_notifier_task_receive_prepare(
@@ -186,10 +185,27 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
 
+	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	                            xcb_get_file_descriptor(connection),
+	                            POLLIN);
+	poll_conn_data.window_model = &window_model;
+	poll_conn_data.gpu_context = gpu_context;
+	poll_conn_data.pool = pool;
+	poll_conn_data.connection = connection;
+	poll_conn_data.notice_task = notice_task;
+
+	linted_asynch_pool_submit(
+	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
+
+	linted_updater_task_receive_prepare(updater_task, ON_RECEIVE_UPDATE,
+	                                    updater);
+	updater_data.gpu_context = gpu_context;
+	updater_data.pool = pool;
+	linted_asynch_pool_submit(
+	    pool, linted_updater_task_receive_to_asynch(updater_task));
+
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
-		time_to_quit = false;
-
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
@@ -210,9 +226,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0)
 			goto cleanup_gpu;
 
-		if (time_to_quit)
-			goto cleanup_gpu;
-
 		continue;
 
 	draw_frame:
@@ -221,8 +234,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 cleanup_gpu:
-	if (gpu_context != NULL)
-		linted_gpu_context_destroy(gpu_context);
+	linted_gpu_context_destroy(gpu_context);
 	XCloseDisplay(gpu_display);
 
 close_display:
@@ -292,18 +304,19 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	struct poll_conn_data *poll_conn_data =
 	    linted_ko_task_poll_data(poll_conn_task);
 
+	struct linted_window_notifier_task_receive *notice_task =
+	    poll_conn_data->notice_task;
 	xcb_connection_t *connection = poll_conn_data->connection;
 	struct linted_asynch_pool *pool = poll_conn_data->pool;
 	struct window_model *window_model = poll_conn_data->window_model;
 	struct linted_gpu_context *gpu_context = poll_conn_data->gpu_context;
-	bool *time_to_quitp = poll_conn_data->time_to_quit;
 
+	bool window_destroyed = false;
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
 		if (NULL == event)
 			break;
 
-		bool time_to_quit = false;
 		switch (event->response_type & ~0x80) {
 		case XCB_CONFIGURE_NOTIFY: {
 			xcb_configure_notify_event_t const *configure_event =
@@ -322,27 +335,28 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 
 		case XCB_DESTROY_NOTIFY:
-			goto quit_application;
+			window_destroyed = true;
+			break;
 
 		default:
 			/* Unknown event type, ignore it */
 			break;
-
-		quit_application:
-			time_to_quit = true;
-			break;
 		}
 		linted_mem_free(event);
+	}
 
-		*time_to_quitp = time_to_quit;
-		if (time_to_quit)
-			return 0;
+	if (window_destroyed) {
+		linted_gpu_unsetwindow(gpu_context);
+		window_model->viewable = false;
+
+		linted_asynch_pool_submit(
+		    pool,
+		    linted_window_notifier_task_receive_to_asynch(notice_task));
 	}
 
 	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
 	                            POLLIN);
-	poll_conn_data->time_to_quit = time_to_quitp;
 	poll_conn_data->window_model = window_model;
 	poll_conn_data->pool = pool;
 	poll_conn_data->connection = connection;
@@ -401,21 +415,12 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	    linted_window_notifier_task_receive_from_asynch(task);
 	struct notice_data *notice_data =
 	    linted_window_notifier_task_receive_data(notice_task);
-	struct linted_ko_task_poll *poll_conn_task =
-	    notice_data->poll_conn_task;
-	Display *gpu_display = notice_data->gpu_display;
-	struct linted_asynch_pool *pool = notice_data->pool;
 
 	xcb_connection_t *connection = notice_data->connection;
 	struct window_model *window_model = notice_data->window_model;
 
-	linted_ko updater = notice_data->updater;
-	struct linted_updater_task_receive *updater_task =
-	    notice_data->updater_task;
-
-	bool *time_to_quitp = notice_data->time_to_quit;
 	xcb_window_t *windowp = notice_data->window;
-	struct linted_gpu_context **gpu_contextp = notice_data->gpu_context;
+	struct linted_gpu_context *gpu_context = notice_data->gpu_context;
 
 	xcb_window_t window = linted_window_notifier_decode(notice_task);
 
@@ -462,39 +467,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	window_model->viewable = true;
 	*windowp = window;
 
-	struct linted_gpu_context *gpu_context;
-	{
-		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(gpu_display, window, &xx);
-		if (errnum != 0)
-			return errnum;
-		gpu_context = xx;
-	}
+	linted_gpu_setwindow(gpu_context, window);
 	linted_gpu_resize(gpu_context, width, height);
-	*gpu_contextp = gpu_context;
-
-	struct updater_data *updater_data =
-	    linted_updater_task_receive_data(updater_task);
-	linted_updater_task_receive_prepare(updater_task, ON_RECEIVE_UPDATE,
-	                                    updater);
-	updater_data->gpu_context = gpu_context;
-	updater_data->pool = pool;
-	linted_asynch_pool_submit(
-	    pool, linted_updater_task_receive_to_asynch(updater_task));
-
-	struct poll_conn_data *poll_conn_data =
-	    linted_ko_task_poll_data(poll_conn_task);
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
-	poll_conn_data->time_to_quit = time_to_quitp;
-	poll_conn_data->window_model = window_model;
-	poll_conn_data->gpu_context = gpu_context;
-	poll_conn_data->pool = pool;
-	poll_conn_data->connection = connection;
-
-	linted_asynch_pool_submit(
-	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
 
 	return 0;
 }

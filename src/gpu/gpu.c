@@ -143,13 +143,9 @@ static void gpu_BufferData(GLenum target, GLsizeiptr size, const GLvoid *data,
 static void gpu_BindBuffer(GLenum target, GLuint buffer);
 
 linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
-                                       linted_gpu_native_window native_window,
                                        struct linted_gpu_context **gpu_contextp)
 {
 	linted_error errnum = 0;
-
-	if (native_window > UINT32_MAX)
-		return EINVAL;
 
 	struct linted_gpu_context *gpu_context;
 	{
@@ -191,14 +187,6 @@ choose_config_failed:
 	goto destroy_display;
 
 choose_config_succeeded:
-	;
-	EGLSurface surface =
-	    eglCreateWindowSurface(display, config, native_window, NULL);
-	if (EGL_NO_SURFACE == surface) {
-		errnum = get_egl_error();
-		goto destroy_display;
-	}
-
 	gpu_context->update.x_rotation = 0;
 	gpu_context->update.y_rotation = 0;
 
@@ -214,7 +202,7 @@ choose_config_succeeded:
 
 	gpu_context->display = display;
 	gpu_context->config = config;
-	gpu_context->surface = surface;
+	gpu_context->surface = EGL_NO_SURFACE;
 	gpu_context->has_gl_context = false;
 
 	*gpu_contextp = gpu_context;
@@ -266,6 +254,29 @@ linted_error linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 	linted_mem_free(gpu_context);
 
 	return errnum;
+}
+
+linted_error linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
+                                  linted_gpu_native_window native_window)
+{
+	if (native_window > UINT32_MAX)
+		return EINVAL;
+
+	EGLSurface surface = eglCreateWindowSurface(
+	    gpu_context->display, gpu_context->config, native_window, NULL);
+	if (EGL_NO_SURFACE == surface)
+		return get_egl_error();
+	gpu_context->surface = surface;
+
+	return 0;
+}
+
+linted_error linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context)
+{
+	if (EGL_FALSE ==
+	    eglDestroySurface(gpu_context->display, gpu_context->surface))
+		return get_egl_error();
+	return 0;
 }
 
 void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
@@ -368,6 +379,9 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
 	EGLConfig config = gpu_context->config;
+
+	if (EGL_NO_SURFACE == surface)
+		return 0;
 
 	EGLContext context =
 	    eglCreateContext(display, config, EGL_NO_CONTEXT, context_attr);
