@@ -231,7 +231,6 @@ static linted_error service_name(pid_t pid,
 static linted_error pid_of_service(pid_t *pidp, char const *name);
 static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
 
-static linted_error pid_comm(pid_t pid, char comm[static COMM_MAX + 1U]);
 static linted_error pid_stat(pid_t pid, struct pidstat *buf);
 
 static linted_error pid_children(pid_t pid, char **childrenp);
@@ -1985,9 +1984,88 @@ free_buf:
 }
 
 static linted_error service_name(pid_t pid,
-                                 char comm[static SERVICE_NAME_MAX + 1U])
+                                 char name[static SERVICE_NAME_MAX + 1U])
 {
-	return pid_comm(pid, comm);
+	linted_error errnum;
+
+	linted_ko ko;
+	{
+		linted_ko xx;
+		char path[] = "/proc/XXXXXXXXXXXXXXXX/environ";
+		sprintf(path, "/proc/%i/environ", pid);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		ko = xx;
+	}
+	if (ENOENT == errnum)
+		return ESRCH;
+	if (errnum != 0)
+		return errnum;
+
+	FILE *file = fdopen(ko, "r");
+	if (NULL == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(ko);
+
+		return errnum;
+	}
+
+	/* Get the child all at once to avoid raciness. */
+	char *buf = NULL;
+	size_t buf_size = 0U;
+
+	{
+		char *xx = buf;
+		size_t yy = buf_size;
+
+		errno = 0;
+		ssize_t zz = getline(&xx, &yy, file);
+		if (-1 == zz) {
+			errnum = errno;
+			/* May be zero */
+			goto close_file;
+		}
+		buf = xx;
+		buf_size = yy;
+	}
+
+close_file:
+	if (EOF == fclose(file)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
+	if (NULL == buf)
+		return errnum;
+
+	char *iter = buf;
+	for (;;) {
+		if (0 == strncmp("LINTED_SERVICE=", iter,
+		                 strlen("LINTED_SERVICE="))) {
+			strncpy(name, iter + strlen("LINTED_SERVICE="),
+			        SERVICE_NAME_MAX);
+			name[SERVICE_NAME_MAX] = '\0';
+			break;
+		}
+		iter = strchr(iter, '\0');
+		if (NULL == iter) {
+			errnum = EINVAL;
+			break;
+		}
+		++iter;
+		if ('\0' == *iter)
+			break;
+		if ('\n' == *iter)
+			break;
+	}
+
+	linted_mem_free(buf);
+
+	return errnum;
 }
 
 static linted_error kill_pid_children(pid_t pid, int signo)
@@ -2343,54 +2421,6 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)
 	}
 
 	*isp = ppid == parent;
-
-	return errnum;
-}
-
-static linted_error pid_comm(pid_t pid, char comm[static COMM_MAX + 1U])
-{
-	linted_error errnum;
-
-	linted_ko ko;
-	{
-		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX";
-		sprintf(path, "/proc/%i/comm", pid);
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-		ko = xx;
-	}
-	if (ENOENT == errnum)
-		return ESRCH;
-	if (errnum != 0)
-		return errnum;
-
-	FILE *file = fdopen(ko, "r");
-	if (NULL == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(ko);
-
-		return errnum;
-	}
-
-	int nr = fscanf(file, "%16s", comm);
-	if (EOF == nr) {
-		errnum = errno;
-		goto close_file;
-	}
-	if (nr < 1) {
-		errnum = ENOSYS;
-		goto close_file;
-	}
-
-close_file:
-	if (EOF == fclose(file)) {
-		if (0 == errnum)
-			errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
 
 	return errnum;
 }
