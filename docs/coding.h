@@ -34,7 +34,7 @@
  *
  * Don't do security theater and don't do cargo cult security. Use
  * simple, understandable and secure methods of making one's code
- * correct. If you can't prove it's secure it's not.
+ * correct. If you can't prove the code is correct it's not.
  *
  * </li>
  *
