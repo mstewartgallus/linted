@@ -41,10 +41,10 @@
  * <li> Do not leak private data to other actors.
  *
  * For example, when one copies data from structures to external
- * sources using mq_send, write or other functions as if they are byte
- * arrays one can leak data through data structure padding. See also
- * CERT rule DCL39-C: Avoid information leakage in structure padding
- * (as of 2014-02-15 available at
+ * sources using `mq_send`, write or other functions as if they are
+ * byte arrays one can leak data through data structure padding. See
+ * also CERT rule DCL39-C: Avoid information leakage in structure
+ * padding (as of 2014-02-15 available at
  * https://www.securecoding.cert.org/confluence/display/seccode/DCL39-C.+Avoid+information+leakage+in+structure+padding
  * ).
  *
@@ -60,9 +60,9 @@
  *
  * <li> Maintain compatibility with all supported targets.
  *
- * For example, names ending in _t are reserved by POSIX and should
+ * For example, names ending in `_t` are reserved by POSIX and should
  * not be defined in code that should be POSIX compatible (although
- * code reimplementing POSIX functionality should probable define _t
+ * code reimplementing POSIX functionality should probable define `_t`
  * ending names to names of replacement types).
  *
  * </li>
@@ -135,11 +135,11 @@
  *
  * </li>
  *
- * <li> Do not communicate privileges between actors
+ * <li> Do not communicate credentials or privileges between actors
  *
- * When privileges are communicated between actors it is often
- * possible for an attacker to forge a session cookie that
- * impersonates another user and that gives the attacker privileges
+ * When credentials or privileges are communicated between actors it
+ * is often possible for an attacker to forge fake credentials that
+ * impersonate someone else and that gives the attacker privileges
  * they should not have.
  *
  * For example, many insecure web electronic store fronts implement
@@ -186,8 +186,8 @@
  *
  * <li> Directly return error values.
  *
- * For example, we often return values of type linted_error instead of
- * passing values through the thread local errno variable.
+ * For example, we often return values of type `linted_error` instead
+ * of passing values through the thread local `errno` variable.
  *
  * </li>
  *
