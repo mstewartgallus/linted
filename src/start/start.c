@@ -369,23 +369,6 @@ close_fds_dir:
  * patches to the Linux kernel that extend the functionality to UNIX
  * sockets and therefore get this part working).
  *
- * You don't see why one might want to unshare file descriptions
- * between file descriptors?  But I already explained above!  Because
- * I don't want different processes in my multiprocess program to
- * interfere with each other I want to unshare file descriptions
- * between file descriptors.  But I'll give you a concrete example.
- * Suppose, I have a file descriptor for a POSIX message queue and I
- * want to pass it to a child to communicate with.  For sandboxing
- * purposes, I want the child to only be able to write to it (so I
- * reopen it as write-only) and I don't want the child to be able to
- * change the blocking status of the parent's handle to the message
- * queue.  Similar arguments apply for sockets.  Suppose I have a
- * parent with two children that creates SEQPACKET communication
- * channel using socketpair.  I might want the children to receive two
- * separate file descriptions that don't share blocking status and
- * other file description state so that they are isolated from each
- * other.
- *
  * @bug Reopening pseudo-terminals doesn't work properly.  See bug
  * https://bugzilla.kernel.org/show_bug.cgi?id=89111 for details.
  * Basically, the problem is that `posix_openpt` is implemented by
