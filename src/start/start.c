@@ -40,6 +40,7 @@
 #include <sys/auxv.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <linux/random.h>
@@ -354,7 +355,6 @@ close_fds_dir:
 	return errnum;
 }
 
-
 /**
  * @bug Reopening sockets doesn't work properly. See bug
  * https://bugzilla.kernel.org/show_bug.cgi?id=79771 for details.
@@ -407,6 +407,21 @@ static linted_error sanitize_kos(size_t kos_size)
 			return errnum;
 		}
 
+		mode_t mode;
+		{
+			struct stat buf;
+			if (-1 == fstat(fd, &buf)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
+			mode = buf.st_mode;
+		}
+
+		/* Reopening sockets fails with ENXIO. So just skip
+		 * them for now. */
+		if (S_ISSOCK(mode))
+			continue;
+
 		linted_ko new_fd;
 		{
 			char pathname[10U];
@@ -424,9 +439,6 @@ static linted_error sanitize_kos(size_t kos_size)
 				}
 			} while (EINTR == errnum);
 		}
-
-		if (ENXIO == errnum)
-			continue;
 
 		if (errnum != 0)
 			return errnum;
