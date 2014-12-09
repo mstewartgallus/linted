@@ -354,6 +354,53 @@ close_fds_dir:
 	return errnum;
 }
 
+
+/**
+ * @bug Reopening sockets doesn't work properly. See bug
+ * https://bugzilla.kernel.org/show_bug.cgi?id=79771 for details.
+ *
+ * Opening a UNIX socket file via `open` or similar system calls fails
+ * with an error. And so, reopening a UNIX socket file via
+ * `/proc/self/fd` fails with an error. `bind` does not work with
+ * symbolic links so one can't reopen a UNIX socket file. As well,
+ * there is no way to currently bind to an already created UNIX socket
+ * file anyways (curiously enough, `SO_REUSEPORT` does allow the same
+ * thing but for TCP sockets only so it might be possible to submit
+ * patches to the Linux kernel that extend the functionality to UNIX
+ * sockets and therefore get this part working).
+ *
+ * You don't see why one might want to unshare file descriptions
+ * between file descriptors?  But I already explained above!  Because
+ * I don't want different processes in my multiprocess program to
+ * interfere with each other I want to unshare file descriptions
+ * between file descriptors.  But I'll give you a concrete example.
+ * Suppose, I have a file descriptor for a POSIX message queue and I
+ * want to pass it to a child to communicate with.  For sandboxing
+ * purposes, I want the child to only be able to write to it (so I
+ * reopen it as write-only) and I don't want the child to be able to
+ * change the blocking status of the parent's handle to the message
+ * queue.  Similar arguments apply for sockets.  Suppose I have a
+ * parent with two children that creates SEQPACKET communication
+ * channel using socketpair.  I might want the children to receive two
+ * separate file descriptions that don't share blocking status and
+ * other file description state so that they are isolated from each
+ * other.
+ *
+ * @bug Reopening pseudo-terminals doesn't work properly.  See bug
+ * https://bugzilla.kernel.org/show_bug.cgi?id=89111 for details.
+ * Basically, the problem is that `posix_openpt` is implemented by
+ * opening the file `/dev/ptmx`.  Each time one opens `/dev/ptmx` one
+ * receives a new file description that points to the same `/dev/ptmx`
+ * file each time.  Each file description points to the exact same
+ * inode of `/dev/ptmx`.  This is extremely confusing and weird
+ * behaviour because `posix_openpt` does not create a new inode each
+ * time but only creates a new file description that still points to
+ * the same file at `/dev/ptmx`.  One confusing result of this
+ * implementation of `posix_openpt` is that reopening a master
+ * pseudo-terminal opens up a new file description that points to
+ * `/dev/ptmx` and does not give one the old master pseudo-terminal
+ * but instead creates a new one.
+ */
 static linted_error sanitize_kos(size_t kos_size)
 {
 	linted_error errnum;
@@ -395,13 +442,6 @@ static linted_error sanitize_kos(size_t kos_size)
 			} while (EINTR == errnum);
 		}
 
-		/**
-		 * @bug Reopening sockets doesn't work properly.
-		 *
-		 * @bug Reopening pseudo-terminals doesn't work
-		 * properly and ends up sending SIGHUP to users of the
-		 * slave terminal.
-		 */
 		if (ENXIO == errnum)
 			continue;
 
