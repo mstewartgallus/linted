@@ -24,6 +24,7 @@ pkglibexec_PROGRAMS+=%D%/gui
   src/error/liberror.la\
   src/ko/libko.la\
   src/mem/libmem.la\
+  src/xcb/libxcb.la\
   \
   src/controller/libcontroller.la\
   src/window-notifier/libwindow-notifier.la\

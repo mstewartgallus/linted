@@ -23,6 +23,7 @@
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
+#include "linted/xcb.h"
 #include "linted/window-notifier.h"
 
 #include <errno.h>
@@ -64,9 +65,6 @@ static uint32_t const window_opts[] = { 0 };
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_sent_notice(struct linted_asynch_task *task);
-
-static linted_error get_xcb_conn_error(xcb_connection_t *connection);
-static linted_error get_xcb_error(xcb_generic_error_t *error);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -163,7 +161,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	xcb_window_t window = xcb_generate_id(connection);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto close_display;
 
@@ -171,25 +169,25 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640,
 	    480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
 	    window_opts);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto close_display;
 
 	xcb_intern_atom_cookie_t protocols_ck = xcb_intern_atom(
 	    connection, 1, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t delete_ck = xcb_intern_atom(
 	    connection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t pid_ck = xcb_intern_atom(
 	    connection, 0, strlen("_NET_WM_PID"), "_NET_WM_PID");
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -203,12 +201,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			                                    protocols_ck, &xx);
 			proto_err = xx;
 		}
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 		if (errnum != 0)
 			goto destroy_window;
 
 		if (proto_err != NULL) {
-			errnum = get_xcb_error(proto_err);
+			errnum = linted_xcb_error(proto_err);
 			linted_mem_free(proto_err);
 			goto destroy_window;
 		}
@@ -227,12 +225,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			    xcb_intern_atom_reply(connection, delete_ck, &xx);
 			delete_ck_err = xx;
 		}
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 		if (errnum != 0)
 			goto destroy_window;
 
 		if (delete_ck_err != NULL) {
-			errnum = get_xcb_error(delete_ck_err);
+			errnum = linted_xcb_error(delete_ck_err);
 			linted_mem_free(delete_ck_err);
 			goto destroy_window;
 		}
@@ -247,7 +245,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		                    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U,
 		                    &xx);
 	}
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -261,12 +259,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			    xcb_intern_atom_reply(connection, pid_ck, &xx);
 			pid_ck_err = xx;
 		}
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 		if (errnum != 0)
 			goto destroy_window;
 
 		if (pid_ck_err != NULL) {
-			errnum = get_xcb_error(pid_ck_err);
+			errnum = linted_xcb_error(pid_ck_err);
 			linted_mem_free(pid_ck_err);
 			goto destroy_window;
 		}
@@ -279,21 +277,21 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
 	                    sizeof PACKAGE_TARNAME + sizeof PACKAGE_NAME,
 	                    PACKAGE_TARNAME "\0" PACKAGE_NAME);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -314,7 +312,7 @@ get_hostname_failed:
 	goto destroy_window;
 
 get_hostname_succeeded:
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -324,31 +322,31 @@ get_hostname_succeeded:
 		                    net_wm_pid_atom, XCB_ATOM_CARDINAL, 32, 1,
 		                    &xx);
 	}
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_map_window(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *create_win_err =
 	    xcb_request_check(connection, create_win_ck);
 	if (create_win_err != NULL) {
-		errnum = get_xcb_error(create_win_err);
+		errnum = linted_xcb_error(create_win_err);
 		linted_mem_free(create_win_err);
 		goto destroy_window;
 	}
 
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
 
@@ -396,14 +394,14 @@ destroy_window : {
 	xcb_void_cookie_t destroy_ck =
 	    xcb_destroy_window_checked(connection, window);
 	if (0 == errnum)
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 
 	xcb_generic_error_t *destroy_err =
 	    xcb_request_check(connection, destroy_ck);
 	if (0 == errnum)
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 	if (0 == errnum && destroy_err != NULL)
-		errnum = get_xcb_error(destroy_err);
+		errnum = linted_xcb_error(destroy_err);
 	linted_mem_free(destroy_err);
 }
 
@@ -539,36 +537,4 @@ static linted_error on_sent_notice(struct linted_asynch_task *task)
 	linted_asynch_pool_submit(notice_data->pool, task);
 
 	return 0;
-}
-
-static linted_error get_xcb_conn_error(xcb_connection_t *connection)
-{
-	switch (xcb_connection_has_error(connection)) {
-	case 0:
-		return 0;
-
-	case XCB_CONN_ERROR:
-		return EPROTO;
-
-	case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
-		return ENOSYS;
-
-	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-		return ENOMEM;
-
-	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
-		return EINVAL;
-
-	case XCB_CONN_CLOSED_PARSE_ERR:
-		return EINVAL;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
-static linted_error get_xcb_error(xcb_generic_error_t *error)
-{
-	/* For now just be crappy. */
-	return ENOSYS;
 }

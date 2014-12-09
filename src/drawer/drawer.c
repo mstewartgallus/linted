@@ -26,6 +26,7 @@
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
+#include "linted/xcb.h"
 #include "linted/window-notifier.h"
 
 #include <errno.h>
@@ -90,9 +91,6 @@ static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
-
-static linted_error get_xcb_conn_error(xcb_connection_t *connection);
-static linted_error get_xcb_error(xcb_generic_error_t *error);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -426,13 +424,13 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
 	xcb_get_geometry_cookie_t geom_ck =
 	    xcb_get_geometry(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
@@ -445,7 +443,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			reply =
 			    xcb_get_geometry_reply(connection, geom_ck, &xx);
 
-			errnum = get_xcb_conn_error(connection);
+			errnum = linted_xcb_conn_error(connection);
 			if (errnum != 0)
 				return errnum;
 
@@ -453,7 +451,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		}
 
 		if (error != NULL) {
-			errnum = get_xcb_error(error);
+			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;
 		}
@@ -471,66 +469,4 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	linted_gpu_resize(gpu_context, width, height);
 
 	return 0;
-}
-
-static linted_error get_xcb_conn_error(xcb_connection_t *connection)
-{
-	switch (xcb_connection_has_error(connection)) {
-	case 0:
-		return 0;
-
-	case XCB_CONN_ERROR:
-		return EPROTO;
-
-	case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
-		return ENOSYS;
-
-	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-		return ENOMEM;
-
-	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
-		return EINVAL;
-
-	case XCB_CONN_CLOSED_PARSE_ERR:
-		return EINVAL;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
-static linted_error get_xcb_error(xcb_generic_error_t *error)
-{
-	switch (error->error_code) {
-	case Success:
-		return 0;
-
-	case BadRequest:
-	case BadValue:
-	case BadWindow:
-	case BadPixmap:
-	case BadAtom:
-	case BadCursor:
-	case BadFont:
-	case BadMatch:
-	case BadDrawable:
-	case BadColor:
-	case BadGC:
-	case BadIDChoice:
-	case BadName:
-	case BadLength:
-		return EINVAL;
-
-	case BadAccess:
-		return EPERM;
-
-	case BadAlloc:
-		return ENOMEM;
-
-	case BadImplementation:
-		return ENOSYS;
-
-	default:
-		return ENOSYS;
-	}
 }

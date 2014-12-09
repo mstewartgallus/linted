@@ -25,6 +25,7 @@ pkglibexec_PROGRAMS+=%D%/drawer
   src/gpu/libgpu.la\
   src/ko/libko.la\
   src/mem/libmem.la\
+  src/xcb/libxcb.la\
   \
   src/log/liblog.la\
   src/updater/libupdater.la\

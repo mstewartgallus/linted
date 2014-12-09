@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/window
+noinst_LTLIBRARIES+=%D%/libxcb.la
 
-%C%_window_SOURCES=%D%/window.c
-%C%_window_LDADD=\
-  src/start/libstart.la\
-  \
-  src/asynch/libasynch.la\
-  src/error/liberror.la\
-  src/ko/libko.la\
-  src/mem/libmem.la\
-  src/xcb/libxcb.la\
-  \
-  src/window-notifier/libwindow-notifier.la\
-  \
-  $(XCB_LIBS)
-
-%C%_window_CPPFLAGS=\
-  $(XCB_FLAGS)\
-  $(AM_CPPFLAGS)
-
-dist_pkgdefaultunits_DATA+=%D%/units/window.service
+%C%_libxcb_la_SOURCES=%D%/xcb.c include/linted/xcb.h
+%C%_libxcb_la_LIBADD=$(XCB_LIBS)
+%C%_libxcb_la_CPPFLAGS=$(XCB_FLAGS) $(AM_CPPFLAGS)

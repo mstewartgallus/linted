@@ -24,6 +24,7 @@
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
+#include "linted/xcb.h"
 #include "linted/window-notifier.h"
 
 #include <errno.h>
@@ -120,9 +121,6 @@ maybe_update_controller(struct linted_asynch_pool *pool,
                         struct linted_controller_task_send *controller_task,
                         linted_controller controller);
 
-static linted_error get_xcb_conn_error(xcb_connection_t *connection);
-static linted_error get_xcb_error(xcb_generic_error_t *error);
-
 static linted_error get_mouse_position(xcb_connection_t *connection,
                                        xcb_window_t window, int *x, int *y);
 
@@ -210,7 +208,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	xcb_xkb_get_device_info_cookie_t device_info_ck =
 	    xcb_xkb_get_device_info(connection, XCB_XKB_ID_USE_CORE_KBD, 0, 0,
 	                            0, 0, 0, 0);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_keyboard_ctx;
 
@@ -221,7 +219,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			xcb_generic_error_t *xx;
 			reply = xcb_xkb_get_device_info_reply(
 			    connection, device_info_ck, &xx);
-			errnum = get_xcb_conn_error(connection);
+			errnum = linted_xcb_conn_error(connection);
 			if (errnum != 0)
 				goto destroy_keyboard_ctx;
 
@@ -229,7 +227,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 
 		if (error != NULL) {
-			errnum = get_xcb_error(error);
+			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			goto destroy_keyboard_ctx;
 		}
@@ -596,19 +594,19 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
 	xcb_get_geometry_cookie_t geom_ck =
 	    xcb_get_geometry(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
 	xcb_query_pointer_cookie_t point_ck =
 	    xcb_query_pointer(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
@@ -621,7 +619,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			reply =
 			    xcb_get_geometry_reply(connection, geom_ck, &xx);
 
-			errnum = get_xcb_conn_error(connection);
+			errnum = linted_xcb_conn_error(connection);
 			if (errnum != 0)
 				return errnum;
 
@@ -629,7 +627,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		}
 
 		if (error != NULL) {
-			errnum = get_xcb_error(error);
+			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;
 		}
@@ -649,7 +647,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			reply =
 			    xcb_query_pointer_reply(connection, point_ck, &xx);
 
-			errnum = get_xcb_conn_error(connection);
+			errnum = linted_xcb_conn_error(connection);
 			if (errnum != 0)
 				return errnum;
 
@@ -657,7 +655,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		}
 
 		if (error != NULL) {
-			errnum = get_xcb_error(error);
+			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;
 		}
@@ -760,7 +758,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	linted_error errnum;
 
 	xcb_query_pointer_cookie_t ck = xcb_query_pointer(connection, window);
-	errnum = get_xcb_conn_error(connection);
+	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		return errnum;
 
@@ -770,7 +768,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 		xcb_generic_error_t *xx;
 		reply = xcb_query_pointer_reply(connection, ck, &xx);
 
-		errnum = get_xcb_conn_error(connection);
+		errnum = linted_xcb_conn_error(connection);
 		if (errnum != 0)
 			return errnum;
 
@@ -778,7 +776,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	}
 
 	if (error != NULL) {
-		errnum = get_xcb_error(error);
+		errnum = linted_xcb_error(error);
 		linted_mem_free(error);
 		return errnum;
 	}
@@ -789,36 +787,4 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	linted_mem_free(reply);
 
 	return 0;
-}
-
-static linted_error get_xcb_conn_error(xcb_connection_t *connection)
-{
-	switch (xcb_connection_has_error(connection)) {
-	case 0:
-		return 0;
-
-	case XCB_CONN_ERROR:
-		return EPROTO;
-
-	case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
-		return ENOSYS;
-
-	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-		return ENOMEM;
-
-	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
-		return EINVAL;
-
-	case XCB_CONN_CLOSED_PARSE_ERR:
-		return EINVAL;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
-static linted_error get_xcb_error(xcb_generic_error_t *error)
-{
-	/* For now just be crappy. */
-	return ENOSYS;
 }
