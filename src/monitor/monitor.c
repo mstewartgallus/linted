@@ -1988,6 +1988,8 @@ static linted_error service_name(pid_t pid,
 {
 	linted_error errnum;
 
+	memset(name, 0, SERVICE_NAME_MAX + 1U);
+
 	linted_ko ko;
 	{
 		linted_ko xx;
@@ -2048,7 +2050,6 @@ close_file:
 		                 strlen("LINTED_SERVICE="))) {
 			strncpy(name, iter + strlen("LINTED_SERVICE="),
 			        SERVICE_NAME_MAX);
-			name[SERVICE_NAME_MAX] = '\0';
 			break;
 		}
 		iter = strchr(iter, '\0');
