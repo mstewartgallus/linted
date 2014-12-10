@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <sys/poll.h>
 #include <unistd.h>
 
 /**
@@ -55,6 +56,7 @@ struct linted_asynch_pool
 	 * A one writer to many readers queue.
 	 */
 	struct linted_queue *worker_command_queue;
+	struct linted_queue *poll_queue;
 
 	/**
 	 * A one reader to many writers queue. Should be able to retrieve
@@ -115,9 +117,13 @@ struct linted_asynch_task
 	linted_error errnum;
 	unsigned type;
 	unsigned task_action;
+
+	linted_ko poll_ko;
+	unsigned short poll_flags;
 };
 
 static void *worker_routine(void *arg);
+static void *poller_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
@@ -129,6 +135,9 @@ static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task);
 
+static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error check_for_poll_error(short revents);
+
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
 {
@@ -136,7 +145,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	size_t created_threads = 0U;
 	struct linted_asynch_pool *pool;
 
-	size_t workers_size = max_tasks * sizeof pool->workers[0U];
+	size_t workers_count = 2U * max_tasks;
+	size_t workers_size = workers_count * sizeof pool->workers[0U];
 
 	{
 		void *xx;
@@ -152,11 +162,15 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	if (errnum != 0)
 		goto free_pool;
 
-	errnum = linted_queue_create(&pool->event_queue);
+	errnum = linted_queue_create(&pool->poll_queue);
 	if (errnum != 0)
 		goto destroy_worker_command_queue;
 
-	pool->worker_count = max_tasks;
+	errnum = linted_queue_create(&pool->event_queue);
+	if (errnum != 0)
+		goto destroy_poll_queue;
+
+	pool->worker_count = workers_count;
 
 	/*
 	 * Our tasks are only I/O tasks and have extremely tiny stacks.
@@ -170,7 +184,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t worker_stacks_size =
-	    page_size + stack_and_guard_size * max_tasks;
+	    page_size + stack_and_guard_size * workers_count;
 	void *worker_stacks = mmap(
 	    NULL, worker_stacks_size, PROT_READ | PROT_WRITE,
 	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
@@ -187,7 +201,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		goto destroy_stacks;
 	}
 
-	for (size_t ii = 0U; ii < max_tasks; ++ii) {
+	for (size_t ii = 0U; ii < workers_count; ++ii) {
 		if (-1 == mprotect((char *)worker_stacks + page_size +
 		                       ii * stack_and_guard_size + stack_size,
 		                   page_size, PROT_NONE)) {
@@ -223,6 +237,22 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 				break;
 		}
 
+		for (; created_threads < 2u * max_tasks; ++created_threads) {
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)worker_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
+			}
+
+			errnum = pthread_create(&pool->workers[created_threads],
+			                        &attr, poller_routine, pool);
+			if (errnum != 0)
+				break;
+		}
+
 		linted_error destroy_errnum = pthread_attr_destroy(&attr);
 		if (0 == errnum)
 			errnum = destroy_errnum;
@@ -247,6 +277,9 @@ destroy_stacks:
 
 destroy_event_queue:
 	linted_queue_destroy(pool->event_queue);
+
+destroy_poll_queue:
+	linted_queue_destroy(pool->poll_queue);
 
 destroy_worker_command_queue:
 	linted_queue_destroy(pool->worker_command_queue);
@@ -309,6 +342,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 
 	munmap(pool->worker_stacks, pool->worker_stacks_size);
 
+	linted_queue_destroy(pool->poll_queue);
 	linted_queue_destroy(pool->worker_command_queue);
 
 	linted_queue_destroy(pool->event_queue);
@@ -394,6 +428,49 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	}
 
 	linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+}
+
+void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_task *task,
+                                     linted_ko ko, unsigned short flags)
+{
+	bool cancelled;
+	linted_error errnum;
+
+	assert(pool != NULL);
+	assert(!pool->stopped);
+
+	task->poll_ko = ko;
+	task->poll_flags = flags;
+
+	errnum = pthread_spin_lock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	task->in_flight = true;
+	task->owned = false;
+	{
+		bool *cancel_replier = task->cancel_replier;
+		cancelled = cancel_replier != NULL;
+		if (cancelled)
+			*cancel_replier = true;
+		task->cancel_replier = NULL;
+	}
+
+	errnum = pthread_spin_unlock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
+	if (cancelled) {
+		task->errnum = ECANCELED;
+		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
+	} else {
+		linted_queue_send(pool->poll_queue, LINTED_UPCAST(task));
+	}
 }
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
@@ -833,6 +910,79 @@ static void *worker_routine(void *arg)
 	LINTED_ASSUME_UNREACHABLE();
 }
 
+static void *poller_routine(void *arg)
+{
+	struct linted_asynch_pool *pool = arg;
+	linted_error errnum;
+
+	pthread_t self = pthread_self();
+
+	for (;;) {
+		bool cancelled;
+
+		struct linted_asynch_task *task;
+		{
+			struct linted_queue_node *node;
+			linted_queue_recv(pool->poll_queue, &node);
+			task = LINTED_DOWNCAST(struct linted_asynch_task, node);
+		}
+
+		errnum = pthread_spin_lock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+
+		{
+			cancelled = task->cancel_replier != NULL;
+
+			/* Don't actually complete the cancellation if
+			 * cancelled and let the completion do that.
+			 */
+			task->owner = self;
+			task->owned = true;
+		}
+
+		errnum = pthread_spin_unlock(&task->owner_lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
+
+		if (cancelled) {
+			task->errnum = ECANCELED;
+			linted_asynch_pool_complete(pool, task);
+		}
+
+		short revents = 0;
+		{
+			short xx;
+			errnum = poll_one(task->poll_ko, task->poll_flags, &xx);
+			if (0 == errnum)
+				revents = xx;
+		}
+
+		if (EINTR == errnum || 0 == errnum)
+			goto submit_retry;
+
+		if (errnum != 0)
+			goto complete_task;
+
+		errnum = check_for_poll_error(revents);
+		if (errnum != 0)
+			goto complete_task;
+
+	submit_retry:
+		linted_asynch_pool_submit(pool, task);
+		continue;
+
+	complete_task:
+		linted_asynch_pool_complete(pool, task);
+	}
+
+	LINTED_ASSUME_UNREACHABLE();
+}
+
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {
@@ -949,4 +1099,39 @@ static void run_task_sleep_until(struct linted_asynch_pool *pool,
 	task->errnum = errnum;
 
 	linted_asynch_pool_complete(pool, task);
+}
+
+static linted_error poll_one(linted_ko ko, short events, short *reventsp)
+{
+	linted_error errnum;
+
+	short revents;
+	{
+		struct pollfd pollfd = { .fd = ko, .events = events };
+		int poll_status = poll(&pollfd, 1U, -1);
+		if (-1 == poll_status)
+			goto poll_failed;
+
+		revents = pollfd.revents;
+		goto poll_succeeded;
+	}
+
+poll_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
+
+poll_succeeded:
+	*reventsp = revents;
+	return 0;
+}
+
+static linted_error check_for_poll_error(short revents)
+{
+	linted_error errnum = 0;
+
+	if ((revents & POLLNVAL) != 0)
+		errnum = EBADF;
+
+	return errnum;
 }

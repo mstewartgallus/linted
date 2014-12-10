@@ -83,7 +83,6 @@ static linted_error eat_sigpipes(void);
 static void fd_to_str(char *buf, linted_ko fd);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(short revents);
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 {
@@ -545,25 +544,8 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	if (EINTR == errnum)
 		goto submit_retry;
 
-	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
-		short revents = 0;
-		{
-			short xx;
-			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum)
-				revents = xx;
-		}
-
-		if (EINTR == errnum)
-			goto submit_retry;
-
-		if (errnum != 0)
-			goto complete_task;
-
-		errnum = check_for_poll_error(revents);
-		if (0 == errnum)
-			goto submit_retry;
-	}
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
+		goto wait_on_poll;
 
 	if (errnum != 0)
 		goto complete_task;
@@ -588,6 +570,10 @@ submit_retry:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = bytes_read;
 	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
 }
 
 void linted_ko_do_write(struct linted_asynch_pool *pool,
@@ -635,25 +621,8 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	if (EINTR == errnum)
 		goto submit_retry;
 
-	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
-		short revents = 0;
-		{
-			short xx;
-			errnum = poll_one(ko, POLLOUT, &xx);
-			if (0 == errnum)
-				revents = xx;
-		}
-
-		if (EINTR == errnum)
-			goto submit_retry;
-
-		if (errnum != 0)
-			goto complete_task;
-
-		errnum = check_for_poll_error(revents);
-		if (0 == errnum)
-			goto submit_retry;
-	}
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
+		goto wait_on_poll;
 
 	if (errnum != 0)
 		goto complete_task;
@@ -678,6 +647,10 @@ submit_retry:
 	task_write->current_position = bytes_wrote;
 
 	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLOUT);
 }
 
 static struct timespec const zero_timeout = { 0 };
@@ -744,24 +717,9 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 		goto submit_retry;
 	}
 
-	if (EAGAIN == errnum || EWOULDBLOCK == errnum) {
-		short revents = 0;
-		{
-			short xx;
-			errnum = poll_one(ko, POLLIN, &xx);
-			if (EINTR == errnum)
-				goto submit_retry;
-			if (errnum != 0)
-				goto complete_task;
-			revents = xx;
-		}
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
+		goto wait_on_poll;
 
-		errnum = check_for_poll_error(revents);
-		if (0 == errnum)
-			goto submit_retry;
-	}
-
-complete_task:
 	linted_asynch_task_seterrnum(task, errnum);
 	task_accept->returned_ko = new_ko;
 
@@ -770,6 +728,10 @@ complete_task:
 
 submit_retry:
 	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
 }
 
 static sigset_t pipeset;
@@ -814,16 +776,6 @@ poll_failed:
 poll_succeeded:
 	*reventsp = revents;
 	return 0;
-}
-
-static linted_error check_for_poll_error(short revents)
-{
-	linted_error errnum = 0;
-
-	if ((revents & POLLNVAL) != 0)
-		errnum = EBADF;
-
-	return errnum;
 }
 
 static void fd_to_str(char *buf, linted_ko fd)

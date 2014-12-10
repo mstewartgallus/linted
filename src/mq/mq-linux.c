@@ -58,8 +58,6 @@ struct linted_mq_task_send
 };
 
 static void gen_name(char *name, size_t size);
-static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(short revents);
 
 /**
  * Implemented using POSIX message queues.
@@ -296,26 +294,9 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 	if (EINTR == errnum)
 		goto submit_retry;
 
-	if (EAGAIN == errnum) {
-		short revents = 0;
-		{
-			short xx;
-			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum)
-				revents = xx;
-		}
-		if (EINTR == errnum)
-			goto submit_retry;
+	if (EAGAIN == errnum)
+		goto wait_on_poll;
 
-		if (errnum != 0)
-			goto complete_task;
-
-		errnum = check_for_poll_error(revents);
-		if (0 == errnum)
-			goto submit_retry;
-	}
-
-complete_task:
 	linted_asynch_task_seterrnum(task, errnum);
 	task_receive->bytes_read = result;
 
@@ -325,6 +306,9 @@ complete_task:
 submit_retry:
 	linted_asynch_pool_submit(pool, task);
 	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
 }
 
 void linted_mq_do_send(struct linted_asynch_pool *pool,
@@ -347,27 +331,9 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 	if (EINTR == errnum)
 		goto submit_retry;
 
-	if (EAGAIN == errnum) {
-		short revents = 0;
-		{
-			short xx;
-			errnum = poll_one(task_send->ko, POLLOUT, &xx);
-			if (0 == errnum)
-				revents = xx;
-		}
+	if (EAGAIN == errnum)
+		goto wait_on_poll;
 
-		if (EINTR == errnum)
-			goto submit_retry;
-
-		if (errnum != 0)
-			goto complete_task;
-
-		errnum = check_for_poll_error(revents);
-		if (0 == errnum)
-			goto submit_retry;
-	}
-
-complete_task:
 	linted_asynch_task_seterrnum(task, errnum);
 	task_send->bytes_wrote = bytes_wrote;
 
@@ -376,6 +342,10 @@ complete_task:
 
 submit_retry:
 	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLOUT);
 }
 
 static void gen_name(char *name, size_t size)
@@ -400,39 +370,4 @@ static void gen_name(char *name, size_t size)
 
 		name[ii] = random_char;
 	}
-}
-
-static linted_error poll_one(linted_ko ko, short events, short *reventsp)
-{
-	linted_error errnum;
-
-	short revents;
-	{
-		struct pollfd pollfd = { .fd = ko, .events = events };
-		int poll_status = poll(&pollfd, 1U, -1);
-		if (-1 == poll_status)
-			goto poll_failed;
-
-		revents = pollfd.revents;
-		goto poll_succeeded;
-	}
-
-poll_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
-
-poll_succeeded:
-	*reventsp = revents;
-	return 0;
-}
-
-static linted_error check_for_poll_error(short revents)
-{
-	linted_error errnum = 0;
-
-	if ((revents & POLLNVAL) != 0)
-		errnum = EBADF;
-
-	return errnum;
 }
