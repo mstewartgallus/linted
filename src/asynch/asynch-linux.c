@@ -962,7 +962,7 @@ static void *poller_routine(void *arg)
 				revents = xx;
 		}
 
-		if (EINTR == errnum || 0 == errnum)
+		if (EINTR == errnum)
 			goto submit_retry;
 
 		if (errnum != 0)
