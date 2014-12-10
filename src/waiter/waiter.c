@@ -237,12 +237,12 @@ static void drain_from_to(int in, int out)
 		case -1:
 			if (EAGAIN == errno)
 				return;
-			perror("read");
+			if (EINTR == errno)
+				return;
 			exit(EXIT_FAILURE);
 
 		default:
 			if (-1 == write(out, buf, bytes_read)) {
-				perror("write");
 				exit(EXIT_FAILURE);
 			}
 			break;
