@@ -50,14 +50,7 @@
  * Sandbox applications.
  */
 
-enum {
-	STOP_OPTIONS,
-	HELP,
-	VERSION_OPTION,
-	TRACEME,
-	CHDIR,
-	WAITER
-};
+enum { STOP_OPTIONS, HELP, VERSION_OPTION, TRACEME, CHDIR, WAITER };
 
 static char const *const argstrs[] = {
 	    /**/[STOP_OPTIONS] = "--",
@@ -68,13 +61,14 @@ static char const *const argstrs[] = {
 	    /**/ [WAITER] = "--waiter"
 };
 
-static pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, linted_ko cwd,
-    char const *chdir_path,
-    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
-    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
-    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
-    char const *const *env_copy, char const *const *command, size_t num_fds);
+static pid_t do_first_fork(linted_ko err_reader, linted_ko err_writer,
+                           linted_ko cwd, char const *chdir_path,
+                           char *listen_pid_str, char *listen_fds_str,
+                           linted_ko stdin_writer, linted_ko stdout_reader,
+                           linted_ko stderr_reader, linted_ko stdin_reader,
+                           linted_ko stdout_writer, linted_ko stderr_writer,
+                           char const *waiter, char const *const *env_copy,
+                           char const *const *command, size_t num_fds);
 
 static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
                             linted_ko stdout_writer, linted_ko stderr_writer,
@@ -288,12 +282,10 @@ exit_loop:
 	}
 
 	pid_t child = do_first_fork(
-	    err_reader, err_writer, cwd,
-	    chdir_path,
-	    listen_pid_str, listen_fds_str, stdin_writer,
-	    stdout_reader, stderr_reader, stdin_reader, stdout_writer,
-	    stderr_writer, waiter, (char const * const *)env_copy, command,
-	    num_fds);
+	    err_reader, err_writer, cwd, chdir_path, listen_pid_str,
+	    listen_fds_str, stdin_writer, stdout_reader, stderr_reader,
+	    stdin_reader, stdout_writer, stderr_writer, waiter,
+	    (char const * const *)env_copy, command, num_fds);
 	if (-1 == child) {
 		perror("clone");
 		return EXIT_FAILURE;
@@ -325,13 +317,14 @@ close_err_reader:
 	return EXIT_SUCCESS;
 }
 
-pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, linted_ko cwd,
-    char const *chdir_path,
-    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
-    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
-    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
-    char const *const *env_copy, char const *const *command, size_t num_fds)
+pid_t do_first_fork(linted_ko err_reader, linted_ko err_writer, linted_ko cwd,
+                    char const *chdir_path, char *listen_pid_str,
+                    char *listen_fds_str, linted_ko stdin_writer,
+                    linted_ko stdout_reader, linted_ko stderr_reader,
+                    linted_ko stdin_reader, linted_ko stdout_writer,
+                    linted_ko stderr_writer, char const *waiter,
+                    char const *const *env_copy, char const *const *command,
+                    size_t num_fds)
 {
 	pid_t child = fork();
 	if (child != 0)
@@ -384,9 +377,9 @@ pid_t do_first_fork(
 		vfork_err_writer = xx[1U];
 	}
 
-	pid_t grand_child = do_second_fork(
-	    vfork_err_writer, stdin_reader, stdout_writer, stderr_writer,
-	    listen_pid_str, command, env_copy);
+	pid_t grand_child =
+	    do_second_fork(vfork_err_writer, stdin_reader, stdout_writer,
+	                   stderr_writer, listen_pid_str, command, env_copy);
 	if (-1 == grand_child)
 		exit_with_error(err_writer, errno);
 

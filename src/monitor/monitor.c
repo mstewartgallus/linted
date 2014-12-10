@@ -51,11 +51,7 @@
 
 #define BACKLOG 20U
 
-enum {
-	WAITID,
-	SIGWAITINFO,
-	MAX_TASKS
-};
+enum { WAITID, SIGWAITINFO, MAX_TASKS };
 
 struct wait_service_data
 {
@@ -140,8 +136,8 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
-                                     linted_ko cwd,
-                                     char const *sandbox, char const *waiter,
+                                     linted_ko cwd, char const *sandbox,
+                                     char const *waiter,
                                      sigset_t const *orig_mask);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -345,8 +341,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated unit_db.
 	 */
-	errnum = activate_unit_db(process_name, unit_db, cwd,
-	                          sandbox, waiter, &orig_mask);
+	errnum = activate_unit_db(process_name, unit_db, cwd, sandbox, waiter,
+	                          &orig_mask);
 	if (errnum != 0)
 		goto kill_procs;
 
@@ -681,8 +677,8 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
-                                     linted_ko cwd,
-                                     char const *sandbox, char const *waiter,
+                                     linted_ko cwd, char const *sandbox,
+                                     char const *waiter,
                                      sigset_t const *orig_mask)
 {
 	linted_error errnum;
@@ -706,8 +702,8 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate(process_name, unit, cwd,
-		                          unit_db, true);
+		errnum =
+		    service_activate(process_name, unit, cwd, unit_db, true);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -875,11 +871,10 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 
-	struct option options[] = {
-		{ true, "--traceme", NULL },
-		{ waiter != NULL, "--waiter", waiter },
-		{ chdir_path != NULL, "--chdir", chdir_path }
-	};
+	struct option options[] = { { true, "--traceme", NULL },
+		                    { waiter != NULL, "--waiter", waiter },
+		                    { chdir_path != NULL, "--chdir",
+			              chdir_path } };
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
@@ -1451,8 +1446,7 @@ detach_from_process:
 	if (NULL == unit)
 		return errnum;
 
-	errnum = service_activate(process_name, unit, cwd, unit_db,
-	                          false);
+	errnum = service_activate(process_name, unit, cwd, unit_db, false);
 
 	return errnum;
 }

@@ -399,7 +399,6 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	linted_gpu_setwindow(gpu_context, window);
 	linted_gpu_resize(gpu_context, width, height);
 
-
 	struct linted_gpu_update gpu_update;
 
 	gpu_update.x_rotation = 3.141593;

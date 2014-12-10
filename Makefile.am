@@ -49,12 +49,4 @@ indent: $(SOURCES)
 
 linted_CLANG_FORMATFLAGS=-i
 
-.PHONY: doxygen
-doxygen:
-	sed \
-	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
-	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
-	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
-	  $(srcdir)/Doxyfile.in | doxygen -
-
 include src/Makefile.am
