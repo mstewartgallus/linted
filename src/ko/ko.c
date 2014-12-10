@@ -34,17 +34,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
-
-struct linted_ko_task_accept
-{
-	struct linted_asynch_task *parent;
-	struct linted_asynch_waiter *waiter;
-	void *data;
-	linted_ko ko;
-	linted_ko returned_ko;
-};
 
 struct linted_ko_task_poll
 {

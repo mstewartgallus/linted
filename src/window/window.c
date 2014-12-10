@@ -185,12 +185,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_intern_atom_cookie_t pid_ck = xcb_intern_atom(
-	    connection, 0, strlen("_NET_WM_PID"), "_NET_WM_PID");
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
 	xcb_atom_t wm_protocols_atom;
 	{
 		xcb_intern_atom_reply_t *proto_reply;
@@ -245,90 +239,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		                    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U,
 		                    &xx);
 	}
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_atom_t net_wm_pid_atom;
-	{
-		xcb_intern_atom_reply_t *pid_ck_reply;
-		xcb_generic_error_t *pid_ck_err;
-		{
-			xcb_generic_error_t *xx = NULL;
-			pid_ck_reply =
-			    xcb_intern_atom_reply(connection, pid_ck, &xx);
-			pid_ck_err = xx;
-		}
-		errnum = linted_xcb_conn_error(connection);
-		if (errnum != 0)
-			goto destroy_window;
-
-		if (pid_ck_err != NULL) {
-			errnum = linted_xcb_error(pid_ck_err);
-			linted_mem_free(pid_ck_err);
-			goto destroy_window;
-		}
-
-		net_wm_pid_atom = pid_ck_reply->atom;
-		linted_mem_free(pid_ck_reply);
-	}
-
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
-	                    sizeof PACKAGE_TARNAME + sizeof PACKAGE_NAME,
-	                    PACKAGE_TARNAME "\0" PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-	                    XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
-	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-	                    XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8,
-	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	{
-		char buf[HOST_NAME_MAX + 1U];
-		if (-1 == gethostname(buf, sizeof buf))
-			goto get_hostname_failed;
-
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING,
-		                    8, strlen(buf), buf);
-		goto get_hostname_succeeded;
-	}
-
-get_hostname_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	goto destroy_window;
-
-get_hostname_succeeded:
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	{
-		uint32_t xx = root_pid;
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    net_wm_pid_atom, XCB_ATOM_CARDINAL, 32, 1,
-		                    &xx);
-	}
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
-		goto destroy_window;
-
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-	                    XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8,
-	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
