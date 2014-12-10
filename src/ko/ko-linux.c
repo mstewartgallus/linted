@@ -40,6 +40,7 @@
 struct linted_ko_task_accept
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	linted_ko ko;
 	linted_ko returned_ko;
@@ -48,6 +49,7 @@ struct linted_ko_task_accept
 struct linted_ko_task_poll
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	linted_ko ko;
 	short events;
@@ -57,6 +59,7 @@ struct linted_ko_task_poll
 struct linted_ko_task_read
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	char *buf;
 	size_t size;
@@ -68,6 +71,7 @@ struct linted_ko_task_read
 struct linted_ko_task_write
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	char const *buf;
 	size_t size;
@@ -316,10 +320,21 @@ linted_error linted_ko_task_read_create(struct linted_ko_task_read **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+free_parent:
+	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -327,6 +342,7 @@ free_task:
 
 void linted_ko_task_read_destroy(struct linted_ko_task_read *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -384,10 +400,23 @@ linted_error linted_ko_task_write_create(struct linted_ko_task_write **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+
+free_parent:
+	linted_asynch_task_destroy(parent);
+
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -395,6 +424,7 @@ free_task:
 
 void linted_ko_task_write_destroy(struct linted_ko_task_write *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -447,10 +477,21 @@ linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+free_parent:
+	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -458,6 +499,7 @@ free_task:
 
 void linted_ko_task_accept_destroy(struct linted_ko_task_accept *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -573,7 +615,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
+	linted_asynch_pool_wait_on_poll(pool, task_read->waiter, task, ko,
+	                                POLLIN);
 }
 
 void linted_ko_do_write(struct linted_asynch_pool *pool,
@@ -650,7 +693,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLOUT);
+	linted_asynch_pool_wait_on_poll(pool, task_write->waiter, task, ko,
+	                                POLLOUT);
 }
 
 static struct timespec const zero_timeout = { 0 };
@@ -731,7 +775,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
+	linted_asynch_pool_wait_on_poll(pool, task_accept->waiter, task, ko,
+	                                POLLIN);
 }
 
 static sigset_t pipeset;

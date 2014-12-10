@@ -40,6 +40,7 @@
 struct linted_mq_task_receive
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	char *buf;
 	size_t size;
@@ -50,6 +51,7 @@ struct linted_mq_task_receive
 struct linted_mq_task_send
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	char const *buf;
 	size_t size;
@@ -162,10 +164,22 @@ linted_mq_task_receive_create(struct linted_mq_task_receive **taskp, void *data)
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+
+free_parent:
+	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -173,6 +187,7 @@ free_task:
 
 void linted_mq_task_receive_destroy(struct linted_mq_task_receive *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -231,10 +246,22 @@ linted_error linted_mq_task_send_create(struct linted_mq_task_send **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+
+free_parent:
+	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -242,6 +269,7 @@ free_task:
 
 void linted_mq_task_send_destroy(struct linted_mq_task_send *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -308,7 +336,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLIN);
+	linted_asynch_pool_wait_on_poll(pool, task_receive->waiter, task, ko,
+	                                POLLIN);
 }
 
 void linted_mq_do_send(struct linted_asynch_pool *pool,
@@ -345,7 +374,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task, ko, POLLOUT);
+	linted_asynch_pool_wait_on_poll(pool, task_send->waiter, task, ko,
+	                                POLLOUT);
 }
 
 static void gen_name(char *name, size_t size)

@@ -58,6 +58,8 @@ struct linted_asynch_task_waitid;
 struct linted_asynch_task_sigwaitinfo;
 struct linted_asynch_task_sleep_until;
 
+struct linted_asynch_waiter;
+
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks);
 linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool);
@@ -68,6 +70,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task);
 void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_waiter *waiter,
                                      struct linted_asynch_task *task, int ko,
                                      unsigned short flags);
 
@@ -76,6 +79,9 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 
 linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp);
+
+linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp);
+void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter);
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
                                        void *data, unsigned type);

@@ -117,9 +117,14 @@ struct linted_asynch_task
 	linted_error errnum;
 	unsigned type;
 	unsigned task_action;
+};
 
-	linted_ko poll_ko;
-	unsigned short poll_flags;
+struct linted_asynch_waiter
+{
+	struct linted_queue_node parent;
+	struct linted_asynch_task *task;
+	linted_ko ko;
+	unsigned short flags;
 };
 
 static void *worker_routine(void *arg);
@@ -431,6 +436,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 }
 
 void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
+                                     struct linted_asynch_waiter *waiter,
                                      struct linted_asynch_task *task,
                                      linted_ko ko, unsigned short flags)
 {
@@ -440,8 +446,9 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 	assert(pool != NULL);
 	assert(!pool->stopped);
 
-	task->poll_ko = ko;
-	task->poll_flags = flags;
+	waiter->task = task;
+	waiter->ko = ko;
+	waiter->flags = flags;
 
 	errnum = pthread_spin_lock(&task->owner_lock);
 	if (errnum != 0) {
@@ -469,7 +476,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 		task->errnum = ECANCELED;
 		linted_queue_send(pool->event_queue, LINTED_UPCAST(task));
 	} else {
-		linted_queue_send(pool->poll_queue, LINTED_UPCAST(task));
+		linted_queue_send(pool->poll_queue, LINTED_UPCAST(waiter));
 	}
 }
 
@@ -498,6 +505,28 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 	*completionp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
 	return 0;
+}
+
+linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp)
+{
+	linted_error errnum;
+	struct linted_asynch_waiter *waiter;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *waiter);
+		if (errnum != 0)
+			return errnum;
+		waiter = xx;
+	}
+	linted_queue_node(&waiter->parent);
+
+	*waiterp = waiter;
+	return 0;
+}
+
+void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter)
+{
+	linted_mem_free(waiter);
 }
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
@@ -920,12 +949,17 @@ static void *poller_routine(void *arg)
 	for (;;) {
 		bool cancelled;
 
-		struct linted_asynch_task *task;
+		struct linted_asynch_waiter *waiter;
 		{
 			struct linted_queue_node *node;
 			linted_queue_recv(pool->poll_queue, &node);
-			task = LINTED_DOWNCAST(struct linted_asynch_task, node);
+			waiter =
+			    LINTED_DOWNCAST(struct linted_asynch_waiter, node);
 		}
+
+		struct linted_asynch_task *task = waiter->task;
+		linted_ko ko = waiter->ko;
+		unsigned short flags = waiter->flags;
 
 		errnum = pthread_spin_lock(&task->owner_lock);
 		if (errnum != 0) {
@@ -957,7 +991,7 @@ static void *poller_routine(void *arg)
 		short revents = 0;
 		{
 			short xx;
-			errnum = poll_one(task->poll_ko, task->poll_flags, &xx);
+			errnum = poll_one(ko, flags, &xx);
 			if (0 == errnum)
 				revents = xx;
 		}
