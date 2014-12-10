@@ -45,7 +45,6 @@ typedef int linted_ko;
 
 #define LINTED_KO_DIRECTORY (1UL << 4U)
 
-struct linted_ko_task_accept;
 struct linted_ko_task_poll;
 struct linted_ko_task_read;
 struct linted_ko_task_write;
@@ -91,20 +90,6 @@ void linted_ko_task_poll_prepare(struct linted_ko_task_poll *task,
                                  unsigned task_action, linted_ko ko, int flags);
 void *linted_ko_task_poll_data(struct linted_ko_task_poll *task);
 
-linted_error linted_ko_task_read_create(struct linted_ko_task_read **taskp,
-                                        void *data);
-void linted_ko_task_read_destroy(struct linted_ko_task_read *task);
-
-struct linted_ko_task_read *
-linted_ko_task_read_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *
-linted_ko_task_read_to_asynch(struct linted_ko_task_read *);
-void linted_ko_task_read_prepare(struct linted_ko_task_read *task,
-                                 unsigned task_action, linted_ko ko, char *buf,
-                                 size_t size);
-void *linted_ko_task_read_data(struct linted_ko_task_read *task);
-linted_ko linted_ko_task_read_ko(struct linted_ko_task_read *task);
-
 linted_error linted_ko_task_write_create(struct linted_ko_task_write **taskp,
                                          void *data);
 void linted_ko_task_write_destroy(struct linted_ko_task_write *task);
@@ -118,23 +103,7 @@ void linted_ko_task_write_prepare(struct linted_ko_task_write *task,
                                   char const *buf, size_t size);
 void *linted_ko_task_write_data(struct linted_ko_task_write *task);
 
-linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
-                                          void *data);
-void linted_ko_task_accept_destroy(struct linted_ko_task_accept *task);
-
-struct linted_ko_task_accept *
-linted_ko_task_accept_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *
-linted_ko_task_accept_to_asynch(struct linted_ko_task_accept *);
-void linted_ko_task_accept_prepare(struct linted_ko_task_accept *task,
-                                   unsigned task_action, linted_ko ko);
-void *linted_ko_task_accept_data(struct linted_ko_task_accept *task);
-linted_ko linted_ko_task_accept_returned_ko(struct linted_ko_task_accept *task);
-
 void linted_ko_do_poll(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *task);
-
-void linted_ko_do_read(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *task);
 
 /**
@@ -142,8 +111,5 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
  */
 void linted_ko_do_write(struct linted_asynch_pool *pool,
                         struct linted_asynch_task *task);
-
-void linted_ko_do_accept(struct linted_asynch_pool *pool,
-                         struct linted_asynch_task *task);
 
 #endif /* LINTED_KO_H */

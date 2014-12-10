@@ -73,22 +73,12 @@ struct linted_unit_service
 
 	char const *const *exec_start;
 	char const *const *files;
-	char const *fstab;
 	char const *chdir_path;
 	char const *const *env_whitelist;
 
 	sigset_t const *sigmask;
 	char const *sandbox;
 	char const *waiter;
-
-	_Bool clone_newuser : 1U;
-	_Bool clone_newpid : 1U;
-	_Bool clone_newipc : 1U;
-	_Bool clone_newnet : 1U;
-	_Bool clone_newns : 1U;
-	_Bool clone_newuts : 1U;
-
-	_Bool no_new_privs : 1U;
 };
 #endif
 

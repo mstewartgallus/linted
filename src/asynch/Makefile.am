@@ -16,8 +16,7 @@
 # limitations under the License.
 noinst_LTLIBRARIES+=%D%/libasynch.la
 
-%C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
-EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-linux.c %D%/asynch-windows.c
+%C%_libasynch_la_SOURCES=%D%/asynch.c
 %C%_libasynch_la_LIBADD=\
   src/ko/libko.la\
   src/mem/libmem.la\
