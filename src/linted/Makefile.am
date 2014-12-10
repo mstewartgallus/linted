@@ -25,7 +25,6 @@ linted_LDADD=\
   src/gpu/libgpu.la\
   src/ko/libko.la\
   src/mem/libmem.la\
-  src/xcb/libxcb.la\
   \
   $(X11_LIBS)\
   $(XCB_LIBS)

@@ -24,7 +24,6 @@
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
-#include "linted/xcb.h"
 
 #include <errno.h>
 #include <poll.h>
@@ -73,6 +72,9 @@ static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
+
+static linted_error linted_xcb_conn_error(xcb_connection_t *connection);
+static linted_error linted_xcb_error(xcb_generic_error_t *error);
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
@@ -487,4 +489,66 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	linted_asynch_pool_submit(pool, task);
 
 	return 0;
+}
+
+static linted_error linted_xcb_conn_error(xcb_connection_t *connection)
+{
+	switch (xcb_connection_has_error(connection)) {
+	case 0:
+		return 0;
+
+	case XCB_CONN_ERROR:
+		return EPROTO;
+
+	case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
+		return ENOSYS;
+
+	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
+		return ENOMEM;
+
+	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
+		return EINVAL;
+
+	case XCB_CONN_CLOSED_PARSE_ERR:
+		return EINVAL;
+
+	default:
+		LINTED_ASSUME_UNREACHABLE();
+	}
+}
+
+static linted_error linted_xcb_error(xcb_generic_error_t *error)
+{
+	switch (error->error_code) {
+	case Success:
+		return 0;
+
+	case BadRequest:
+	case BadValue:
+	case BadWindow:
+	case BadPixmap:
+	case BadAtom:
+	case BadCursor:
+	case BadFont:
+	case BadMatch:
+	case BadDrawable:
+	case BadColor:
+	case BadGC:
+	case BadIDChoice:
+	case BadName:
+	case BadLength:
+		return EINVAL;
+
+	case BadAccess:
+		return EPERM;
+
+	case BadAlloc:
+		return ENOMEM;
+
+	case BadImplementation:
+		return ENOSYS;
+
+	default:
+		return ENOSYS;
+	}
 }

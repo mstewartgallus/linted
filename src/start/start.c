@@ -24,7 +24,6 @@
 #include "linted/locale.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/random.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -43,8 +42,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <linux/random.h>
-
 static void do_nothing(int signo);
 
 static bool is_open(linted_ko ko);
@@ -56,7 +53,6 @@ static linted_error find_open_kos(linted_ko **kosp, size_t *size);
 static void sort_kos(linted_ko *ko, size_t size);
 static linted_error sanitize_kos(size_t kos_size);
 
-static linted_error get_system_entropy(unsigned *entropyp);
 static linted_error open_fds_dir(linted_ko *kop);
 
 int main(int argc, char *argv[])
@@ -191,19 +187,6 @@ It is insecure to run a game with high privileges!\n"));
 
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
-
-	{
-		unsigned entropy;
-		errnum = get_system_entropy(&entropy);
-		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not read a source of system entropy: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return errnum;
-		}
-		linted_random_seed_generator(entropy);
-	}
 
 	{
 		struct sigaction act = { 0 };
@@ -455,61 +438,6 @@ static linted_error sanitize_kos(size_t kos_size)
 	}
 
 	return linted_ko_close(fds_dir_ko);
-}
-
-static linted_error get_system_entropy(unsigned *entropyp)
-{
-	linted_error errnum;
-	linted_ko random;
-
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/urandom",
-		                        LINTED_KO_RDONLY);
-		if (errnum != 0)
-			return errnum;
-		random = xx;
-	}
-
-	/* Minor time of check to time of use bug here but this is
-	 * only a minor helper for check for bad system
-	 * configurations.  Indeed, arguable this code SHOULD NOT be
-	 * here because it prevents administrators from putting a
-	 * custom socket, pipe, or file on /dev/urandom and providing
-	 * their own implementation of the interface.  For example,
-	 * one could put a normal file on /dev/urandom that provides
-	 * some pregenerated data for deterministic tests of programs
-	 * that use it.
-	 */
-	int entropy;
-	{
-		int xx;
-		if (-1 == ioctl(random, RNDGETENTCNT, &xx)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		entropy = xx;
-	}
-
-	unsigned data;
-	if ((unsigned)entropy < sizeof entropy * CHAR_BIT)
-		return EAGAIN;
-
-	{
-		unsigned xx;
-		errnum = linted_io_read_all(random, NULL, &xx, sizeof xx);
-		if (errnum != 0)
-			return errnum;
-		data = xx;
-	}
-
-	errnum = linted_ko_close(random);
-	if (errnum != 0)
-		return errnum;
-
-	*entropyp = data;
-	return 0;
 }
 
 #if defined __linux__
