@@ -81,6 +81,10 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(sched_getaffinity),
 	/**/ ALLOW(setrlimit),
 
+	/* Apitrace related system calls */
+	/**/ ALLOW(dup),
+	/**/ ALLOW(lseek),
+
 	/* Valgrind related system calls */
 	/**/ ALLOW(getcwd),
 	/**/ ALLOW(getppid),
