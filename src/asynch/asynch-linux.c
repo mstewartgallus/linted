@@ -33,6 +33,22 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+/**
+ * @file Asynchronous IO implementation.
+ *
+ * You may think we could use GLibc's AIO implementation but GLibc's
+ * is implemented in userspace and allocates memory dynamically.
+ *
+ * You may think we could use libaio and `io_setup` can statically
+ * allocate a work queue that is `max_tasks` large for us but as of
+ * yet there would be no point as we cannot take advantage of the
+ * syscalls that libaio provides asynchronous implementations
+ * of. libaio provides asynchronous implementations of `pread`,
+ * `pwrite`, `fsync`, `fdatasync`, `preadv` and `pwritev`. libaio
+ * defines a constant for running `poll` asynchronously that we could
+ * use but the command was never implemented.
+ */
+
 struct linted_asynch_pool
 {
 	/**
