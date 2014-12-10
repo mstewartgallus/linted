@@ -16,7 +16,6 @@
 # limitations under the License.
 
 EXTRA_DIST+=\
-  include/linted/rpc.h\
   include/linted/test.h\
   include/linted/unit.h\
   include/linted/util.h
@@ -25,7 +24,6 @@ include %C%/linted/Makefile.am
 
 include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am
-include %C%/conf/Makefile.am
 include %C%/dir/Makefile.am
 include %C%/error/Makefile.am
 include %C%/gpu/Makefile.am
@@ -33,11 +31,9 @@ include %C%/io/Makefile.am
 include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am
 include %C%/mem/Makefile.am
-include %C%/mq/Makefile.am
 include %C%/pool/Makefile.am
 include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
-include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
 include %C%/unit/Makefile.am

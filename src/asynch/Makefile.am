@@ -20,6 +20,5 @@ noinst_LTLIBRARIES+=%D%/libasynch.la
 %C%_libasynch_la_LIBADD=\
   src/ko/libko.la\
   src/mem/libmem.la\
-  src/mq/libmq.la\
   src/queue/libqueue.la\
   -lrt

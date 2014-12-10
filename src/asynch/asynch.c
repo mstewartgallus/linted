@@ -21,7 +21,6 @@
 
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/mq.h"
 #include "linted/queue.h"
 #include "linted/util.h"
 
@@ -1023,14 +1022,6 @@ static void run_task(struct linted_asynch_pool *pool,
 	switch (task->type) {
 	case LINTED_ASYNCH_TASK_POLL:
 		linted_ko_do_poll(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_MQ_RECEIVE:
-		linted_mq_do_receive(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_MQ_SEND:
-		linted_mq_do_send(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_WAITID:
