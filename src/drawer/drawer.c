@@ -21,10 +21,8 @@
 #include "linted/error.h"
 #include "linted/gpu.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
-#include "linted/updater.h"
 #include "linted/util.h"
 #include "linted/xcb.h"
 #include "linted/window-notifier.h"
@@ -45,7 +43,7 @@
  * @todo Handle sudden window death better.
  */
 
-enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
+enum { ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
 
 struct window_model
 {
@@ -62,12 +60,6 @@ struct poll_conn_data
 	struct linted_window_notifier_task_receive *notice_task;
 };
 
-struct updater_data
-{
-	struct linted_gpu_context *gpu_context;
-	struct linted_asynch_pool *pool;
-};
-
 struct notice_data
 {
 	xcb_connection_t *connection;
@@ -77,7 +69,7 @@ struct notice_data
 	xcb_window_t *window;
 };
 
-static linted_ko kos[3U];
+static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer",
@@ -89,7 +81,6 @@ static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
-static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 
 unsigned char linted_start(char const *process_name, size_t argc,
@@ -97,9 +88,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_log log = kos[0U];
-	linted_window_notifier notifier = kos[1U];
-	linted_updater updater = kos[2U];
+	linted_window_notifier notifier = kos[0U];
 
 	struct window_model window_model = { .viewable = false };
 
@@ -115,11 +104,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	xcb_window_t window;
 
 	struct notice_data notice_data;
-	struct updater_data updater_data;
 	struct poll_conn_data poll_conn_data;
 
 	struct linted_window_notifier_task_receive *notice_task;
-	struct linted_updater_task_receive *updater_task;
 	struct linted_ko_task_poll *poll_conn_task;
 
 	{
@@ -129,14 +116,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0)
 			goto destroy_pool;
 		notice_task = xx;
-	}
-
-	{
-		struct linted_updater_task_receive *xx;
-		errnum = linted_updater_task_receive_create(&xx, &updater_data);
-		if (errnum != 0)
-			goto destroy_pool;
-		updater_task = xx;
 	}
 
 	{
@@ -195,13 +174,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
 
-	linted_updater_task_receive_prepare(updater_task, ON_RECEIVE_UPDATE,
-	                                    updater);
-	updater_data.gpu_context = gpu_context;
-	updater_data.pool = pool;
-	linted_asynch_pool_submit(
-	    pool, linted_updater_task_receive_to_asynch(updater_task));
-
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		struct linted_asynch_task *completed_task;
@@ -228,7 +200,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	draw_frame:
 		/* Draw or resize if we have time to waste */
-		linted_gpu_draw(gpu_context, log);
+		linted_gpu_draw(gpu_context);
 	}
 
 cleanup_gpu:
@@ -265,7 +237,6 @@ destroy_pool:
 	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
-	(void)updater_task;
 	(void)notice_task;
 	(void)poll_conn_task;
 
@@ -275,9 +246,6 @@ destroy_pool:
 static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (linted_asynch_task_action(task)) {
-	case ON_RECEIVE_UPDATE:
-		return on_receive_update(task);
-
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -364,43 +332,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	return 0;
 }
 
-static linted_error on_receive_update(struct linted_asynch_task *task)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
-
-	struct linted_updater_task_receive *updater_task =
-	    linted_updater_task_receive_from_asynch(task);
-	struct updater_data *updater_data =
-	    linted_updater_task_receive_data(updater_task);
-	struct linted_gpu_context *gpu_context = updater_data->gpu_context;
-	struct linted_asynch_pool *pool = updater_data->pool;
-
-	struct linted_updater_update update;
-
-	linted_updater_decode(updater_task, &update);
-
-	linted_asynch_pool_submit(pool, task);
-
-	struct linted_gpu_update gpu_update;
-
-	gpu_update.x_rotation =
-	    linted_updater_angle_to_float(update.x_rotation);
-	gpu_update.y_rotation =
-	    linted_updater_angle_to_float(update.y_rotation);
-
-	gpu_update.x_position = update.x_position * (1 / 2048.0);
-	gpu_update.y_position = update.y_position * (1 / 2048.0);
-	gpu_update.z_position = update.z_position * (1 / 2048.0);
-
-	linted_gpu_update_state(gpu_context, &gpu_update);
-
-	return 0;
-}
-
 static linted_error on_receive_notice(struct linted_asynch_task *task)
 {
 	linted_error errnum;
@@ -467,6 +398,18 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 
 	linted_gpu_setwindow(gpu_context, window);
 	linted_gpu_resize(gpu_context, width, height);
+
+
+	struct linted_gpu_update gpu_update;
+
+	gpu_update.x_rotation = 3.141593;
+	gpu_update.y_rotation = 0.000000;
+
+	gpu_update.x_position = 0.000000;
+	gpu_update.y_position = 0.000000;
+	gpu_update.z_position = 1.500000;
+
+	linted_gpu_update_state(gpu_context, &gpu_update);
 
 	return 0;
 }

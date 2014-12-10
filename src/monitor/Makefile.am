@@ -28,6 +28,4 @@ pkglibexec_PROGRAMS+=%D%/monitor
   src/mq/libmq.la\
   src/pool/libpool.la\
   src/spawn/libspawn.la\
-  src/unit/libunit.la\
-  \
-  src/admin/libadmin.la
+  src/unit/libunit.la

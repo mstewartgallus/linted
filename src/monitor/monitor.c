@@ -17,7 +17,6 @@
 
 #include "config.h"
 
-#include "linted/admin.h"
 #include "linted/asynch.h"
 #include "linted/conf.h"
 #include "linted/dir.h"
@@ -40,6 +39,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
@@ -50,17 +50,12 @@
 #include <linux/ptrace.h>
 
 #define BACKLOG 20U
-#define MAX_MANAGE_CONNECTIONS 10U
 
 enum {
 	WAITID,
 	SIGWAITINFO,
-	ADMIN_ACCEPTED_CONNECTION,
-	ADMIN_READ_CONNECTION,
-	ADMIN_WROTE_CONNECTION
+	MAX_TASKS
 };
-
-enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
 
 struct wait_service_data
 {
@@ -80,38 +75,6 @@ struct sigwait_data
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
 };
-
-struct conn;
-
-struct accepted_conn_data
-{
-	struct linted_asynch_pool *pool;
-	struct conn_pool *conn_pool;
-};
-
-struct read_conn_data
-{
-	struct linted_asynch_pool *pool;
-	struct conn *conn;
-};
-
-struct wrote_conn_data
-{
-	struct linted_asynch_pool *pool;
-	struct conn *conn;
-};
-
-struct conn
-{
-	struct linted_pool_node node;
-	struct read_conn_data read_data;
-	struct wrote_conn_data write_data;
-	struct linted_admin_task_recv_request *read_task;
-	struct linted_admin_task_send_reply *write_task;
-	linted_ko ko;
-};
-
-struct conn_pool;
 
 #define SERVICE_NAME_MAX 32U
 
@@ -186,14 +149,6 @@ static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_sigwaitinfo(struct linted_asynch_task *task);
-static linted_error on_accepted_conn(struct linted_asynch_task *task);
-static linted_error on_read_conn(struct linted_asynch_task *task);
-static linted_error on_wrote_conn(struct linted_asynch_task *task);
-
-static linted_error on_status_request(union linted_admin_request const *request,
-                                      union linted_admin_reply *reply);
-static linted_error on_stop_request(union linted_admin_request const *request,
-                                    union linted_admin_reply *reply);
 
 static linted_error on_child_trapped(char const *process_name,
                                      bool time_to_exit, pid_t pid,
@@ -243,13 +198,6 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
 static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_error set_death_sig(int signum);
-
-static linted_error conn_pool_create(struct conn_pool **poolp);
-static void conn_pool_destroy(struct conn_pool *pool);
-
-static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
-                                linted_ko ko);
-static void conn_discard(struct conn *conn);
 
 static linted_ko kos[1U];
 
@@ -341,28 +289,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-retry_bind:
-	;
-	linted_admin admin;
-	{
-		linted_admin xx;
-		errnum = linted_admin_bind(&xx, BACKLOG, "admin-socket",
-		                           strlen("admin-socket"));
-		if (EADDRINUSE == errnum) {
-			if (-1 == unlink("admin-socket")) {
-				perror("unlink");
-				return EXIT_FAILURE;
-			}
-			goto retry_bind;
-		}
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_admin_bind");
-			return EXIT_FAILURE;
-		}
-		admin = xx;
-	}
-
 	if (-1 == chdir("/")) {
 		perror("chdir");
 		return EXIT_FAILURE;
@@ -381,11 +307,9 @@ retry_bind:
 
 	struct sigwait_data sigwait_data;
 	struct wait_service_data sandbox_data;
-	struct accepted_conn_data accepted_conn_data;
 
 	struct linted_asynch_task_waitid *sandbox_task;
 	struct linted_asynch_task_sigwaitinfo *sigwait_task;
-	struct linted_admin_task_accept *accepted_conn_task;
 
 	{
 		struct linted_asynch_task_waitid *xx;
@@ -404,30 +328,12 @@ retry_bind:
 		sigwait_task = xx;
 	}
 
-	{
-		struct linted_admin_task_accept *xx;
-		errnum =
-		    linted_admin_task_accept_create(&xx, &accepted_conn_data);
-		if (errnum != 0)
-			goto destroy_pool;
-		accepted_conn_task = xx;
-	}
-
-	struct conn_pool *conn_pool;
-	{
-		struct conn_pool *xx;
-		errnum = conn_pool_create(&xx);
-		if (errnum != 0)
-			goto drain_asynch_pool;
-		conn_pool = xx;
-	}
-
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
 		errnum = linted_conf_db_create_from_path(&xx, unit_path);
 		if (errnum != 0)
-			goto destroy_conn_pool;
+			goto drain_asynch_pool;
 		conf_db = xx;
 	}
 
@@ -448,14 +354,6 @@ retry_bind:
 
 	linted_asynch_pool_submit(
 	    pool, linted_asynch_task_sigwaitinfo_to_asynch(sigwait_task));
-
-	linted_admin_task_accept_prepare(accepted_conn_task,
-	                                 ADMIN_ACCEPTED_CONNECTION, admin);
-	accepted_conn_data.pool = pool;
-	accepted_conn_data.conn_pool = conn_pool;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 	/**
 	 * @todo Warn about unactivated unit_db.
@@ -499,8 +397,6 @@ cancel_tasks:
 
 	linted_asynch_task_cancel(
 	    linted_asynch_task_waitid_to_asynch(sandbox_task));
-	linted_asynch_task_cancel(
-	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 kill_procs:
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
@@ -527,9 +423,6 @@ kill_procs:
 destroy_confs:
 	linted_conf_db_destroy(conf_db);
 
-destroy_conn_pool:
-	conn_pool_destroy(conn_pool);
-
 drain_asynch_pool:
 	linted_asynch_pool_stop(pool);
 	for (;;) {
@@ -554,7 +447,6 @@ destroy_pool : {
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)sandbox_task;
-	(void)accepted_conn_task;
 }
 
 exit_monitor:
@@ -666,18 +558,12 @@ static linted_error service_create(struct linted_unit_service *unit,
 	char const *const *types = linted_conf_find(conf, "Service", "Type");
 	char const *const *exec_start =
 	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privss =
-	    linted_conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *chdir_paths =
 	    linted_conf_find(conf, "Service", "WorkingDirectory");
 	char const *const *files =
 	    linted_conf_find(conf, "Service", "X-LintedFiles");
-	char const *const *fstabs =
-	    linted_conf_find(conf, "Service", "X-LintedFstab");
 	char const *const *env_whitelist =
 	    linted_conf_find(conf, "Service", "X-LintedEnvironmentWhitelist");
-	char const *const *clone_flags =
-	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
 
 	char const *type;
 	{
@@ -691,24 +577,6 @@ static linted_error service_create(struct linted_unit_service *unit,
 	if (NULL == exec_start)
 		return EINVAL;
 
-	char const *no_new_privs;
-	{
-		char const *xx;
-		errnum = str_from_strs(no_new_privss, &xx);
-		if (errnum != 0)
-			return errnum;
-		no_new_privs = xx;
-	}
-
-	char const *fstab;
-	{
-		char const *xx;
-		errnum = str_from_strs(fstabs, &xx);
-		if (errnum != 0)
-			return errnum;
-		fstab = xx;
-	}
-
 	char const *chdir_path;
 	{
 		char const *xx;
@@ -716,37 +584,6 @@ static linted_error service_create(struct linted_unit_service *unit,
 		if (errnum != 0)
 			return errnum;
 		chdir_path = xx;
-	}
-
-	bool clone_newuser = false;
-	bool clone_newpid = false;
-	bool clone_newipc = false;
-	bool clone_newnet = false;
-	bool clone_newns = false;
-	bool clone_newuts = false;
-	if (clone_flags != NULL) {
-		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
-			if (0 == strcmp("CLONE_NEWUSER", clone_flags[ii])) {
-				clone_newuser = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWPID", clone_flags[ii])) {
-				clone_newpid = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWIPC", clone_flags[ii])) {
-				clone_newipc = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWNET", clone_flags[ii])) {
-				clone_newnet = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWNS", clone_flags[ii])) {
-				clone_newns = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWUTS", clone_flags[ii])) {
-				clone_newuts = true;
-			} else {
-				return EINVAL;
-			}
-		}
 	}
 
 	if (NULL == type) {
@@ -757,32 +594,14 @@ static linted_error service_create(struct linted_unit_service *unit,
 		return EINVAL;
 	}
 
-	bool no_new_privs_value = false;
-	if (no_new_privs != NULL) {
-		bool xx;
-		errnum = bool_from_cstring(no_new_privs, &xx);
-		if (errnum != 0)
-			return errnum;
-		no_new_privs_value = xx;
-	}
-
 	unit->sigmask = orig_mask;
 	unit->sandbox = sandbox;
 	unit->waiter = waiter;
 
 	unit->exec_start = exec_start;
-	unit->no_new_privs = no_new_privs_value;
 	unit->files = files;
-	unit->fstab = fstab;
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
-
-	unit->clone_newuser = clone_newuser;
-	unit->clone_newpid = clone_newpid;
-	unit->clone_newipc = clone_newipc;
-	unit->clone_newnet = clone_newnet;
-	unit->clone_newns = clone_newns;
-	unit->clone_newuts = clone_newuts;
 
 	return 0;
 }
@@ -990,9 +809,7 @@ service_not_found:
 spawn_service:
 	;
 	char const *const *exec_start = unit_service->exec_start;
-	bool no_new_privs = unit_service->no_new_privs;
 	char const *const *files = unit_service->files;
-	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
 	char const *const *env_whitelist = unit_service->env_whitelist;
 
@@ -1000,38 +817,8 @@ spawn_service:
 	char const *sandbox = unit_service->sandbox;
 	char const *waiter = unit_service->waiter;
 
-	bool clone_newuser = unit_service->clone_newuser;
-	bool clone_newpid = unit_service->clone_newpid;
-	bool clone_newipc = unit_service->clone_newipc;
-	bool clone_newnet = unit_service->clone_newnet;
-	bool clone_newns = unit_service->clone_newns;
-	bool clone_newuts = unit_service->clone_newuts;
-
-	if (fstab != NULL && !clone_newns)
-		return EINVAL;
-
 	if (NULL == env_whitelist)
 		env_whitelist = default_envvars;
-
-	bool drop_caps = true;
-	int priority;
-
-	/* Favor other processes over this process hierarchy.  Only
-	 * superuser may lower priorities so this is not
-	 * stoppable. This also makes the process hierarchy nicer for
-	 * the OOM killer.
-	 */
-	errno = 0;
-	int current_priority = getpriority(PRIO_PROCESS, 0);
-	if (-1 == current_priority) {
-		errnum = errno;
-		if (errnum != 0)
-			return errnum;
-	}
-	priority = current_priority + 1;
-
-	char prio_str[] = "XXXXXXXXXXXXXXXXX";
-	sprintf(prio_str, "%i", priority);
 
 	pid_t ppid = getppid();
 
@@ -1106,18 +893,7 @@ envvar_allocate_succeeded:
 	struct option options[] = {
 		{ true, "--traceme", NULL },
 		{ waiter != NULL, "--waiter", waiter },
-		{ fstab != NULL, "--chrootdir", chrootdir },
-		{ fstab != NULL, "--fstab", fstab },
-		{ no_new_privs, "--nonewprivs", NULL },
-		{ drop_caps, "--dropcaps", NULL },
-		{ chdir_path != NULL, "--chdir", chdir_path },
-		{ prio_str != NULL, "--priority", prio_str },
-		{ clone_newuser, "--clone-newuser", NULL },
-		{ clone_newpid, "--clone-newpid", NULL },
-		{ clone_newipc, "--clone-newipc", NULL },
-		{ clone_newnet, "--clone-newnet", NULL },
-		{ clone_newns, "--clone-newns", NULL },
-		{ clone_newuts, "--clone-newuts", NULL }
+		{ chdir_path != NULL, "--chdir", chdir_path }
 	};
 
 	size_t num_options = 0U;
@@ -1370,15 +1146,6 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case SIGWAITINFO:
 		return on_sigwaitinfo(task);
 
-	case ADMIN_ACCEPTED_CONNECTION:
-		return on_accepted_conn(task);
-
-	case ADMIN_READ_CONNECTION:
-		return on_read_conn(task);
-
-	case ADMIN_WROTE_CONNECTION:
-		return on_wrote_conn(task);
-
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
@@ -1492,131 +1259,6 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	*time_to_exit = true;
 
 	return 0;
-}
-
-static linted_error on_accepted_conn(struct linted_asynch_task *task)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (ECANCELED == errnum)
-		return 0;
-	if (errnum != 0)
-		return errnum;
-
-	struct linted_admin_task_accept *accepted_conn_task =
-	    linted_admin_task_accept_from_asynch(task);
-	struct accepted_conn_data *accepted_conn_data =
-	    linted_admin_task_accept_data(accepted_conn_task);
-
-	struct linted_asynch_pool *pool = accepted_conn_data->pool;
-	struct conn_pool *conn_pool = accepted_conn_data->conn_pool;
-
-	linted_admin new_socket =
-	    linted_admin_task_accept_returned_ko(accepted_conn_task);
-
-	linted_asynch_pool_submit(pool, task);
-
-	struct conn *conn;
-	{
-		struct conn *xx;
-		if (conn_insert(conn_pool, &xx, new_socket) != 0)
-			goto close_new_socket;
-		conn = xx;
-	}
-
-	linted_admin_task_recv_request_prepare(
-	    conn->read_task, ADMIN_READ_CONNECTION, new_socket);
-	conn->read_data.pool = pool;
-	conn->read_data.conn = conn;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_recv_request_to_asynch(conn->read_task));
-	return 0;
-
-close_new_socket : {
-	linted_error close_errnum = linted_ko_close(new_socket);
-	if (0 == errnum)
-		errnum = close_errnum;
-}
-
-	return errnum;
-}
-
-static linted_error on_read_conn(struct linted_asynch_task *task)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-
-	struct linted_admin_task_recv_request *read_conn_task =
-	    linted_admin_task_recv_request_from_asynch(task);
-	struct read_conn_data *read_conn_data =
-	    linted_admin_task_recv_request_data(read_conn_task);
-
-	struct linted_asynch_pool *pool = read_conn_data->pool;
-	struct conn *conn = read_conn_data->conn;
-
-	if (errnum != 0)
-		goto conn_remove;
-
-	linted_ko ko = linted_admin_task_recv_request_ko(read_conn_task);
-
-	union linted_admin_request const *request =
-	    linted_admin_task_recv_request_request(read_conn_task);
-	union linted_admin_reply reply;
-
-	switch (request->type) {
-	case LINTED_ADMIN_STATUS:
-		errnum = on_status_request(request, &reply);
-		break;
-
-	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(request, &reply);
-		break;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-conn_remove:
-	/* Assume the other end did something bad and don't exit with
-	 * an error (unless conn_remove screws up.) */
-	if (errnum != 0) {
-		conn_discard(conn);
-
-		if (ECANCELED == errnum)
-			return 0;
-
-		return 0;
-	}
-
-	linted_admin_task_send_reply_prepare(
-	    conn->write_task, ADMIN_WROTE_CONNECTION, ko, &reply);
-	conn->write_data.pool = pool;
-	conn->write_data.conn = conn;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_send_reply_to_asynch(conn->write_task));
-	return 0;
-}
-
-static linted_error on_wrote_conn(struct linted_asynch_task *task)
-{
-	linted_error errnum = linted_asynch_task_errnum(task);
-
-	struct linted_admin_task_send_reply *wrote_conn_task =
-	    linted_admin_task_send_reply_from_asynch(task);
-	struct wrote_conn_data *wrote_conn_data =
-	    linted_admin_task_send_reply_data(wrote_conn_task);
-
-	struct conn *conn = wrote_conn_data->conn;
-
-	conn_discard(conn);
-
-	if (ECANCELED == errnum)
-		return 0;
-
-	return errnum;
 }
 
 static linted_error on_child_trapped(char const *process_name,
@@ -1837,88 +1479,6 @@ detach_from_process:
 static linted_error on_child_about_to_clone(pid_t pid)
 {
 	return ptrace_detach(pid, 0);
-}
-
-static linted_error on_status_request(union linted_admin_request const *request,
-                                      union linted_admin_reply *reply)
-{
-	linted_error errnum = 0;
-	bool is_up;
-
-	pid_t pid;
-	{
-		pid_t xx;
-		errnum = pid_of_service(&xx, request->status.name);
-		if (errnum != 0)
-			goto pid_find_failure;
-		pid = xx;
-		goto found_pid;
-	}
-pid_find_failure:
-	errnum = 0;
-	is_up = false;
-	goto reply;
-
-found_pid:
-	if (-1 == kill(pid, 0)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		assert(errnum != EINVAL);
-		if (ESRCH == errnum)
-			errnum = 0;
-
-		is_up = false;
-	} else {
-		is_up = true;
-	}
-
-reply:
-	if (errnum != 0)
-		return errnum;
-
-	reply->status.is_up = is_up;
-	return 0;
-}
-
-static linted_error on_stop_request(union linted_admin_request const *request,
-                                    union linted_admin_reply *reply)
-{
-	linted_error errnum = 0;
-	bool was_up;
-
-	pid_t pid;
-	{
-		pid_t xx;
-		errnum = pid_of_service(&xx, request->status.name);
-		if (errnum != 0)
-			goto pid_find_failure;
-		pid = xx;
-		goto found_pid;
-	}
-pid_find_failure:
-	errnum = 0;
-	was_up = false;
-	goto reply;
-
-found_pid:
-	if (-1 == kill(pid, SIGKILL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		assert(errnum != EINVAL);
-		if (ESRCH == errnum)
-			errnum = 0;
-
-		was_up = false;
-	} else {
-		was_up = true;
-	}
-
-reply:
-	if (errnum != 0)
-		return errnum;
-
-	reply->stop.was_up = was_up;
-	return 0;
 }
 
 static linted_error pid_of_service(pid_t *pidp, char const *name)
@@ -2338,72 +1898,6 @@ set_childrenp:
 	}
 
 	return errnum;
-}
-
-static linted_error conn_pool_create(struct conn_pool **poolp)
-{
-	linted_error errnum;
-
-	struct linted_pool *pool;
-	{
-		struct linted_pool *xx;
-		errnum = linted_pool_create(&xx);
-		if (errnum != 0)
-			return errnum;
-		pool = xx;
-	}
-
-	*poolp = (void *)pool;
-
-	return 0;
-}
-
-static void conn_pool_destroy(struct conn_pool *pool)
-{
-	struct linted_pool *poolx = (void *)pool;
-	for (;;) {
-		struct conn *conn;
-		{
-			struct linted_pool_node *xx;
-			if (EAGAIN == linted_pool_remove_node(poolx, &xx))
-				break;
-			conn = (void *)xx;
-		}
-		linted_ko_close(conn->ko);
-		linted_mem_free(conn);
-	}
-
-	linted_pool_destroy(poolx);
-}
-
-static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
-                                linted_ko ko)
-{
-	linted_error errnum;
-
-	struct conn *conn;
-	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *conn);
-		if (errnum != 0)
-			return errnum;
-		conn = xx;
-	}
-	linted_pool_node_create(&conn->node);
-	conn->ko = ko;
-
-	linted_pool_insert_node((void *)pool, &conn->node);
-
-	*connp = conn;
-
-	return errnum;
-}
-
-static void conn_discard(struct conn *conn)
-{
-	linted_pool_node_discard(&conn->node);
-	linted_ko_close(conn->ko);
-	linted_mem_free(conn);
 }
 
 static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)

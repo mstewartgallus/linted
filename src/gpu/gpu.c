@@ -18,7 +18,6 @@
 #include "linted/assets.h"
 #include "linted/error.h"
 #include "linted/gpu.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/str.h"
 #include "linted/util.h"
@@ -80,8 +79,7 @@ static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /**/
 	                               EGL_NONE };
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
-static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
-                                      linted_log log);
+static linted_error assure_gl_context(struct linted_gpu_context *gpu_context);
 
 static void real_draw(struct linted_gpu_context *gpu_context);
 
@@ -96,9 +94,6 @@ static linted_error get_gl_error(void);
 static linted_error get_egl_error(void);
 
 static double square(double x);
-
-static linted_error log_str(linted_log log, struct linted_str start,
-                            char const *str);
 
 static linted_error gpu_init_procedures(void);
 
@@ -303,14 +298,14 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
 	gpu_context->state = BUFFER_COMMANDS;
 }
 
-void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log)
+void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 {
 	linted_error errnum;
 
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
 
-	errnum = assure_gl_context(gpu_context, log);
+	errnum = assure_gl_context(gpu_context);
 	if (errnum != 0)
 		return;
 
@@ -367,8 +362,7 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context)
 	return errnum;
 }
 
-static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
-                                      linted_log log)
+static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 {
 
 	linted_error errnum;
@@ -492,7 +486,6 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		}
 		gpu_GetShaderInfoLog(fragment_shader, info_log_length, NULL,
 		                     info_log);
-		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 	}
 
@@ -537,7 +530,6 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 
 		gpu_GetShaderInfoLog(vertex_shader, info_log_length, NULL,
 		                     info_log);
-		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
@@ -572,7 +564,6 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		}
 
 		gpu_GetProgramInfoLog(program, info_log_length, NULL, info_log);
-		log_str(log, LINTED_STR("Invalid program: "), info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
@@ -888,32 +879,6 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 static double square(double x)
 {
 	return x * x;
-}
-
-static linted_error log_str(linted_log log, struct linted_str start,
-                            char const *error)
-{
-	linted_error errnum;
-	size_t error_size = strlen(error);
-
-	char *full_string;
-	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, error_size + start.size);
-		if (errnum != 0)
-			/* Silently drop log */
-			return errnum;
-		full_string = xx;
-	}
-
-	memcpy(full_string, start.bytes, start.size);
-	memcpy(full_string + start.size, error, error_size);
-
-	errnum = linted_log_write(log, full_string, start.size + error_size);
-
-	linted_mem_free(full_string);
-
-	return errnum;
 }
 
 /* Don't need to query display for support because OpenGL ES 2.0

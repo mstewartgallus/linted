@@ -27,8 +27,6 @@ pkglibexec_PROGRAMS+=%D%/drawer
   src/mem/libmem.la\
   src/xcb/libxcb.la\
   \
-  src/log/liblog.la\
-  src/updater/libupdater.la\
   src/window-notifier/libwindow-notifier.la\
   \
   $(X11_LIBS)\
@@ -38,5 +36,4 @@ pkglibexec_PROGRAMS+=%D%/drawer
   $(X11_FLAGS) $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/drawer-fstab
 dist_pkgdefaultunits_DATA+=%D%/units/drawer.service
