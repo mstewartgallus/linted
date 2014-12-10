@@ -56,8 +56,7 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_CHECK_HEADERS([[mntent.h]dnl
-                  [sys/mount.h]dnl
+AC_CHECK_HEADERS([[sys/mount.h]dnl
                   [sys/socket.h]], [], [
   AC_MSG_WARN([Unable to find header ${ac_header}])
 ], [])
@@ -67,10 +66,6 @@ AC_SEARCH_LIBS([sin], [m], [], [
 ])
 AC_SEARCH_LIBS([clock_gettime], [rt], [], [
    AC_MSG_ERROR([Unable to find a realtime functions library])
-])
-dnl
-AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
-   AC_MSG_WARN([Unable to find a POSIX capabilities library])
 ])
 dnl
 AC_CHECK_FUNCS([[dup2]dnl
@@ -85,10 +80,6 @@ AC_CHECK_FUNCS([[clock_gettime]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
-AC_FUNC_GETMNTENT
-AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
- AC_MSG_WARN([Unable to find getmntent function])
-])
 AC_FUNC_STRERROR_R
 AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
  AC_MSG_WARN([Unable to find strerror_r function])
@@ -100,7 +91,6 @@ AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
 dnl
 AC_CHECK_FUNCS([[fchdir]dnl
                 [getdelim]dnl
-                [getmntent]dnl
                 [setenv]dnl
                 [socket]dnl
                 [strndup]], [], [
@@ -129,16 +119,6 @@ PKG_CHECK_MODULES(XCB, xcb, [], [
 ])
 PKG_CHECK_MODULES(X11_XCB, x11-xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB-X11 interop library])
-])
-PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
- AC_MSG_ERROR([Unable to find an xcb-xkb library])
-])
-dnl
-PKG_CHECK_MODULES(XKB, xkbcommon, [], [
- AC_MSG_ERROR([Unable to find an xkbcommon library])
-])
-PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
- AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
 ])
 dnl
 PKG_CHECK_MODULES(EGL, egl, [], [
@@ -169,11 +149,7 @@ CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([scripts/test
-                 scripts/check-cbmc
-                 scripts/check-clang-analysis
-                 scripts/check-cppcheck
-                 scripts/check-frama-c],[
+AC_CONFIG_FILES([scripts/test],[
                  chmod u+x "${ac_file}"
 ])
 dnl
