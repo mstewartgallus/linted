@@ -12,9 +12,7 @@ ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/drawer/units\
 :${SRCDIR}/src/gui/units\
 :${SRCDIR}/src/logger/units\
-:${SRCDIR}/src/updater/units\
-:${SRCDIR}/src/window-notifier/units\
-:${SRCDIR}/src/window/units"}
+:${SRCDIR}/src/updater/units}
 
 : ${LINTED_INIT:="${ROOT}/../src/init/init"}
 : ${LINTED_MONITOR:="${ROOT}/../src/monitor/monitor"}
@@ -23,14 +21,11 @@ ${SRCDIR}/src/controller/units\
 
 : ${LINTED_DRAWER:="${ROOT}/../src/drawer/drawer"}
 
-: ${LINTED_WINDOW:="${ROOT}/../src/window/window"}
-
 export LINTED_UNIT_PATH
 export LINTED_INIT
 export LINTED_MONITOR
 export LINTED_SANDBOX
 export LINTED_WAITER
 export LINTED_DRAWER
-export LINTED_WINDOW
 
 exec "${ROOT}/../src/linted/linted" "$@"

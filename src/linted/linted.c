@@ -62,7 +62,6 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/sandbox" EXEEXT },
 	{ "LINTED_WAITER", PKGLIBEXECDIR "/waiter" EXEEXT },
 	{ "LINTED_DRAWER", PKGLIBEXECDIR "/drawer" EXEEXT },
-	{ "LINTED_WINDOW", PKGLIBEXECDIR "/window" EXEEXT }
 };
 
 static linted_error exec_init(char const *init, linted_ko ko);

@@ -27,8 +27,6 @@ pkglibexec_PROGRAMS+=%D%/drawer
   src/mem/libmem.la\
   src/xcb/libxcb.la\
   \
-  src/window-notifier/libwindow-notifier.la\
-  \
   $(X11_LIBS)\
   $(XCB_LIBS)
 
