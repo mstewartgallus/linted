@@ -57,7 +57,6 @@ struct linted_start_config const linted_start_config = {
 static struct envvar const default_envvars[] = {
 	{ "LINTED_PROCESS_NAME", "linted" },
 	{ "LINTED_UNIT_PATH", PKGUNITSDIR ":" PKGDEFAULTUNITSDIR },
-	{ "LINTED_CHROOT", CHROOTDIR },
 	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
 	{ "LINTED_MONITOR", PKGLIBEXECDIR "/monitor" EXEEXT },
 	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/sandbox" EXEEXT },
