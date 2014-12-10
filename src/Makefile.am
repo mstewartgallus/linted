@@ -21,12 +21,7 @@ EXTRA_DIST+=\
   include/linted/unit.h\
   include/linted/util.h
 
-include %C%/drawer/Makefile.am
-include %C%/init/Makefile.am
 include %C%/linted/Makefile.am
-include %C%/monitor/Makefile.am
-include %C%/sandbox/Makefile.am
-include %C%/waiter/Makefile.am
 
 include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am

@@ -14,26 +14,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-bin_PROGRAMS+=%D%/linted
+bin_PROGRAMS+=linted
 
-%C%_linted_SOURCES=%D%/linted.c
-%C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
-%C%_linted_LDADD=\
-  src/dir/libdir.la\
-  src/io/libio.la\
-  src/locale/liblocale.la\
-  src/start/libstart.la
+linted_SOURCES=%D%/linted.c
+linted_LDADD=\
+  src/start/libstart.la\
+  \
+  src/asynch/libasynch.la\
+  src/error/liberror.la\
+  src/gpu/libgpu.la\
+  src/ko/libko.la\
+  src/mem/libmem.la\
+  src/xcb/libxcb.la\
+  \
+  $(X11_LIBS)\
+  $(XCB_LIBS)
 
-BUILT_SOURCES+=%D%/settings.h
-EXTRA_DIST+=%D%/settings.h.in
-MOSTLYCLEANFILES+=%D%/settings.h
-%D%/settings.h: Makefile %D%/settings.h.in
-	sed \
-	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
-	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
-	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
-	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
-	  -e 's|[@]pkgunitsdir[@]|$(pkgunitsdir)|g'\
-	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
-	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $(srcdir)/%D%/settings.h.in > $@
+linted_CPPFLAGS=\
+  $(X11_FLAGS) $(XCB_FLAGS)\
+  $(AM_CPPFLAGS)
