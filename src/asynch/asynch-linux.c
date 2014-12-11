@@ -534,7 +534,9 @@ void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter)
 
 short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter)
 {
-	return waiter->revents;
+	short ev = waiter->revents;
+	waiter->revents = 0;
+	return ev;
 }
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
