@@ -157,7 +157,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		struct linted_gpu_context *xx;
 		errnum = linted_gpu_context_create(&xx);
 		if (errnum != 0)
-			return errnum;
+			goto close_display;
 		gpu_context = xx;
 	}
 
