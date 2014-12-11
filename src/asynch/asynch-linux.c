@@ -52,16 +52,16 @@
 
 struct worker_pool;
 static linted_error worker_pool_create(struct worker_pool **poolp,
-				       struct linted_queue *worker_queue,
-				       struct linted_asynch_pool *pool,
-				       unsigned max_tasks);
+                                       struct linted_queue *worker_queue,
+                                       struct linted_asynch_pool *pool,
+                                       unsigned max_tasks);
 static void worker_pool_stop(struct worker_pool *pool);
 static void worker_pool_destroy(struct worker_pool *pool);
 
 struct poll_pool;
 static linted_error poll_pool_create(struct poll_pool **poolp,
-				     struct linted_queue *poll_queue,
-				     struct linted_asynch_pool *pool,
+                                     struct linted_queue *poll_queue,
+                                     struct linted_asynch_pool *pool,
                                      unsigned max_pollers);
 static void poll_pool_stop(struct poll_pool *pool);
 static void poll_pool_destroy(struct poll_pool *pool);
@@ -283,8 +283,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 		task->errnum = ECANCELED;
 		linted_queue_send(pool->completion_queue, LINTED_UPCAST(task));
 	} else {
-		linted_queue_send(pool->worker_queue,
-		                  LINTED_UPCAST(task));
+		linted_queue_send(pool->worker_queue, LINTED_UPCAST(task));
 	}
 }
 
@@ -801,7 +800,8 @@ static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task);
 
-struct worker_pool {
+struct worker_pool
+{
 	struct linted_asynch_pool *asynch_pool;
 	struct linted_queue *worker_queue;
 	size_t worker_stacks_size;
@@ -815,9 +815,9 @@ struct worker_pool {
 };
 
 static linted_error worker_pool_create(struct worker_pool **poolp,
-				       struct linted_queue *worker_queue,
-				       struct linted_asynch_pool *asynch_pool,
-				       unsigned max_tasks)
+                                       struct linted_queue *worker_queue,
+                                       struct linted_asynch_pool *asynch_pool,
+                                       unsigned max_tasks)
 {
 	linted_error errnum = 0;
 
@@ -935,7 +935,7 @@ static void worker_pool_stop(struct worker_pool *pool)
 {
 	linted_error errnum = 0;
 
-	assert (!pool->stopped);
+	assert(!pool->stopped);
 
 	pool->stopped = true;
 
@@ -958,7 +958,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 {
 	linted_error errnum = 0;
 
-	assert (pool->stopped);
+	assert(pool->stopped);
 
 	/* All workers should have had their results retrieved by
 	 * now. */
