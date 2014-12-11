@@ -778,6 +778,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	if (error != NULL) {
 		errnum = linted_xcb_error(error);
 		linted_mem_free(error);
+		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
 
