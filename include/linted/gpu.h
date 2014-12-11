@@ -37,8 +37,7 @@ struct linted_gpu_update
 };
 
 linted_error
-linted_gpu_context_create(linted_gpu_native_display native_display,
-                          struct linted_gpu_context **gpu_contextp);
+linted_gpu_context_create(struct linted_gpu_context **gpu_contextp);
 linted_error linted_gpu_context_destroy(struct linted_gpu_context *gpu_context);
 
 linted_error linted_gpu_setwindow(struct linted_gpu_context *gpu_context,

@@ -21,7 +21,25 @@
 #include <errno.h>
 
 #include <xcb/xcb.h>
-#include <X11/Xlib.h>
+
+#define Success 0
+#define BadRequest 1
+#define BadValue 2
+#define BadWindow 3
+#define BadPixmap 4
+#define BadAtom 5
+#define BadCursor 6
+#define BadFont 7
+#define BadMatch 8
+#define BadDrawable 9
+#define BadAccess 10
+#define BadAlloc 11
+#define BadColor 12
+#define BadGC 13
+#define BadIDChoice 14
+#define BadName 15
+#define BadLength 16
+#define BadImplementation 17
 
 linted_error linted_xcb_conn_error(xcb_connection_t *connection)
 {

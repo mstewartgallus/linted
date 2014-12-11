@@ -37,7 +37,6 @@
 #include <stdio.h>
 
 #include <xcb/xcb.h>
-#include <X11/Xlib.h>
 
 /**
  * @file
@@ -153,20 +152,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		goto destroy_pool;
 	}
 
-	/* Use a separate connection just for GPU functions so that we
-	 * don't get false notifications of notices from GPU
-	 * functionality getting a notification.
-	 */
-	Display *gpu_display = XOpenDisplay(NULL);
-	if (NULL == gpu_display) {
-		errnum = ENOSYS;
-		goto close_display;
-	}
-
 	struct linted_gpu_context *gpu_context;
 	{
 		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(gpu_display, &xx);
+		errnum = linted_gpu_context_create(&xx);
 		if (errnum != 0)
 			return errnum;
 		gpu_context = xx;
@@ -233,7 +222,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 cleanup_gpu:
 	linted_gpu_context_destroy(gpu_context);
-	XCloseDisplay(gpu_display);
 
 close_display:
 	xcb_disconnect(connection);
