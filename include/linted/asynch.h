@@ -82,6 +82,7 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 
 linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp);
 void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter);
+short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter);
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
                                        void *data, unsigned type);

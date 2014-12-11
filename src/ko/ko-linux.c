@@ -86,8 +86,6 @@ static linted_error eat_sigpipes(void);
 
 static void fd_to_str(char *buf, linted_ko fd);
 
-static linted_error poll_one(linted_ko ko, short events, short *revents);
-
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
 {
 	size_t length = strlen(str);
@@ -259,10 +257,21 @@ linted_error linted_ko_task_poll_create(struct linted_ko_task_poll **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+free_parent:
+	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -270,6 +279,7 @@ free_task:
 
 void linted_ko_task_poll_destroy(struct linted_ko_task_poll *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -538,30 +548,20 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 {
 	struct linted_ko_task_poll *task_poll =
 	    linted_ko_task_poll_from_asynch(task);
-	linted_error errnum;
 
+	struct linted_asynch_waiter *waiter = task_poll->waiter;
 	linted_ko ko = task_poll->ko;
 	short events = task_poll->events;
 
-	short revents = 0;
-	{
-		short xx;
-		errnum = poll_one(ko, events, &xx);
-		if (0 == errnum)
-			revents = xx;
+	short revents = linted_asynch_waiter_revents(waiter);
+	if (0 == revents) {
+		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, events);
+		return;
 	}
 
-	if (EINTR == errnum)
-		goto submit_retry;
-
 	task_poll->revents = revents;
-	linted_asynch_task_seterrnum(task, errnum);
-
+	linted_asynch_task_seterrnum(task, 0);
 	linted_asynch_pool_complete(pool, task);
-	return;
-
-submit_retry:
-	linted_asynch_pool_submit(pool, task);
 }
 
 void linted_ko_do_read(struct linted_asynch_pool *pool,
@@ -574,6 +574,8 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 
 	linted_ko ko = task_read->ko;
 	char *buf = task_read->buf;
+
+	struct linted_asynch_waiter *waiter = task_read->waiter;
 
 	linted_error errnum = 0;
 
@@ -615,8 +617,7 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task_read->waiter, task, ko,
-	                                POLLIN);
+	linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
 }
 
 void linted_ko_do_write(struct linted_asynch_pool *pool,
@@ -796,31 +797,6 @@ static void pipe_set_init(void)
 {
 	sigemptyset(&pipeset);
 	sigaddset(&pipeset, SIGPIPE);
-}
-
-static linted_error poll_one(linted_ko ko, short events, short *reventsp)
-{
-	linted_error errnum;
-
-	short revents;
-	{
-		struct pollfd pollfd = { .fd = ko, .events = events };
-		int poll_status = poll(&pollfd, 1U, -1);
-		if (-1 == poll_status)
-			goto poll_failed;
-
-		revents = pollfd.revents;
-		goto poll_succeeded;
-	}
-
-poll_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
-
-poll_succeeded:
-	*reventsp = revents;
-	return 0;
 }
 
 static void fd_to_str(char *buf, linted_ko fd)

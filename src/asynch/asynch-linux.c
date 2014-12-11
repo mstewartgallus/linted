@@ -125,6 +125,7 @@ struct linted_asynch_waiter
 	struct linted_asynch_task *task;
 	linted_ko ko;
 	unsigned short flags;
+	unsigned short revents;
 };
 
 static void *worker_routine(void *arg);
@@ -520,6 +521,8 @@ linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp)
 	}
 	linted_queue_node(&waiter->parent);
 
+	waiter->revents = 0;
+
 	*waiterp = waiter;
 	return 0;
 }
@@ -527,6 +530,11 @@ linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp)
 void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter)
 {
 	linted_mem_free(waiter);
+}
+
+short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter)
+{
+	return waiter->revents;
 }
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
@@ -997,7 +1005,7 @@ static void *poller_routine(void *arg)
 		}
 
 		if (EINTR == errnum)
-			goto submit_retry;
+			goto wait_on_poll;
 
 		if (errnum != 0)
 			goto complete_task;
@@ -1006,12 +1014,17 @@ static void *poller_routine(void *arg)
 		if (errnum != 0)
 			goto complete_task;
 
-	submit_retry:
+		waiter->revents = revents;
+
 		linted_asynch_pool_submit(pool, task);
 		continue;
 
 	complete_task:
 		linted_asynch_pool_complete(pool, task);
+		continue;
+
+	wait_on_poll:
+		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, flags);
 	}
 
 	LINTED_ASSUME_UNREACHABLE();
