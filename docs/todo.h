@@ -24,12 +24,6 @@
  *
  * @todo Eventually reduce -Wstack-usage to 500.
  *
- * @todo Investigate security projects
- * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project
- * - The Open Source Quality Project at Berkeley is investigating
- *   tools and techniques for assuring software quality (not just
- *   security) of OSS/FS programs.
- *
  * @todo Port to --host=i685-linux-gnu
  * - This works well except that I can't test the drawer because EGL
  *   and GLES don't work well with multilib.

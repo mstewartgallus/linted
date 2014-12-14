@@ -261,5 +261,9 @@
  *
  * </li>
  *
+ * @section also See Also
+ * - https://www.gnu.org/software/hurd/open_issues/code_analysis.html
+ * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project.
+ * - The Open Source Quality Project at Berkeley.
  * </ul>
  */
