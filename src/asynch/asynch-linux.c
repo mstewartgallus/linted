@@ -143,15 +143,18 @@ struct linted_asynch_task
 	struct linted_queue_node parent;
 
 	pthread_spinlock_t owner_lock;
-	pthread_t owner;
-	bool owned : 1U;
-	bool in_flight : 1U;
-	bool *cancel_replier;
-
-	void *data;
 	linted_error errnum;
+
+	pthread_t owner;
+
+	bool *cancel_replier;
+	void *data;
+
 	unsigned type;
 	unsigned task_action;
+
+	bool owned : 1U;
+	bool in_flight : 1U;
 };
 
 struct linted_asynch_waiter
