@@ -43,7 +43,7 @@ void linted_queue_node(struct linted_queue_node *node)
 	node->next = NULL;
 }
 
-linted_error linted_queue_create(struct linted_queue **restrict queuep)
+linted_error linted_queue_create(struct linted_queue **queuep)
 {
 	linted_error errnum;
 	struct linted_queue *queue;
@@ -65,7 +65,7 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 		if (errnum != 0)
 			goto free_queue;
 
-#if !defined NDBEBUG
+#if 1
 		errnum =
 		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
 		assert(errnum != EINVAL);
@@ -102,7 +102,7 @@ free_queue:
 	return errnum;
 }
 
-void linted_queue_destroy(struct linted_queue *restrict queue)
+void linted_queue_destroy(struct linted_queue *queue)
 {
 	linted_error errnum;
 

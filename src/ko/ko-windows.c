@@ -499,7 +499,7 @@ linted_ko linted_ko_task_accept_returned_ko(struct linted_ko_task_accept *task)
 void linted_ko_do_poll(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *task)
 {
-	struct linted_ko_task_poll *restrict task_poll =
+	struct linted_ko_task_poll *task_poll =
 	    LINTED_DOWNCAST(struct linted_ko_task_poll, task);
 	linted_error errnum;
 

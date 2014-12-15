@@ -29,9 +29,8 @@
 static linted_error valloc_sprintf(char **strbp, size_t *sizep, const char *fmt,
                                    va_list ap) LINTED_FORMAT_ANNOT(3, 0);
 
-linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
-                               size_t *restrict sizep, char const *str,
-                               size_t strsize)
+linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
+                               char const *str, size_t strsize)
 {
 	linted_error errnum;
 	char *buf = *bufp;
@@ -70,24 +69,20 @@ linted_error linted_str_append(char **restrict bufp, size_t *restrict capp,
 	return 0;
 }
 
-linted_error linted_str_append_str(char **restrict bufp, size_t *restrict capp,
-                                   size_t *restrict sizep,
+linted_error linted_str_append_str(char **bufp, size_t *capp, size_t *sizep,
                                    struct linted_str str)
 {
 	return linted_str_append(bufp, capp, sizep, str.bytes, str.size);
 }
 
-linted_error linted_str_append_cstring(char **restrict bufp,
-                                       size_t *restrict capp,
-                                       size_t *restrict sizep, char const *str)
+linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
+                                       char const *str)
 {
 	return linted_str_append(bufp, capp, sizep, str, strlen(str));
 }
 
-linted_error linted_str_append_format(char **restrict bufp,
-                                      size_t *restrict capp,
-                                      size_t *restrict sizep, char const *fmt,
-                                      ...)
+linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
+                                      char const *fmt, ...)
 {
 	linted_error errnum = 0;
 	size_t strsize;

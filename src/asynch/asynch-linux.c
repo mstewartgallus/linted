@@ -924,11 +924,24 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 	return 0;
 
 destroy_threads:
-	for (size_t ii = 0U; ii < created_threads; ++ii)
-		pthread_cancel(pool->workers[ii]);
+	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		linted_error cancel_errnum = pthread_cancel(pool->workers[ii]);
+		if (cancel_errnum != 0) {
+			assert(cancel_errnum != ESRCH);
+			assert(false);
+		}
+	}
 
-	for (size_t ii = 0U; ii < created_threads; ++ii)
-		pthread_join(pool->workers[ii], NULL);
+	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		linted_error join_errnum =
+		    pthread_join(pool->workers[ii], NULL);
+		if (join_errnum != 0) {
+			assert(join_errnum != EDEADLK);
+			assert(join_errnum != EINVAL);
+			assert(join_errnum != ESRCH);
+			assert(false);
+		}
+	}
 
 destroy_stacks:
 	munmap(worker_stacks, worker_stacks_size);
@@ -1136,7 +1149,7 @@ static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
 static void run_task_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	struct linted_asynch_task_sleep_until *restrict task_sleep = task->data;
+	struct linted_asynch_task_sleep_until *task_sleep = task->data;
 	linted_error errnum = 0;
 
 	int flags = task_sleep->flags;
@@ -1279,11 +1292,25 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 	return 0;
 
 destroy_threads:
-	for (size_t ii = 0U; ii < created_threads; ++ii)
-		pthread_cancel(manager->pollers[ii]);
+	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		linted_error cancel_errnum =
+		    pthread_cancel(manager->pollers[ii]);
+		if (cancel_errnum != 0) {
+			assert(cancel_errnum != ESRCH);
+			assert(false);
+		}
+	}
 
-	for (size_t ii = 0U; ii < created_threads; ++ii)
-		pthread_join(manager->pollers[ii], NULL);
+	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		linted_error join_errnum =
+		    pthread_join(manager->pollers[ii], NULL);
+		if (join_errnum != 0) {
+			assert(join_errnum != EDEADLK);
+			assert(join_errnum != EINVAL);
+			assert(join_errnum != ESRCH);
+			assert(false);
+		}
+	}
 
 destroy_stacks:
 	munmap(pollers_stacks, pollers_stacks_size);

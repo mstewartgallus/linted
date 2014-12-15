@@ -34,13 +34,13 @@ struct linted_queue_node
 
 void linted_queue_node(struct linted_queue_node *node);
 
-linted_error linted_queue_create(struct linted_queue **restrict queuep);
+linted_error linted_queue_create(struct linted_queue **queuep);
 
 /**
  * @warning It is the responsibility of the caller to fetch and
  * destroy all nodes in the queue.
  */
-void linted_queue_destroy(struct linted_queue *restrict queue);
+void linted_queue_destroy(struct linted_queue *queue);
 
 /**
  * Is not a cancellation point.
