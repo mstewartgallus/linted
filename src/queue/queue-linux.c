@@ -130,10 +130,7 @@ void linted_queue_send(struct linted_queue *queue,
 	/* Guard against double insertions */
 	assert(NULL == node->next);
 
-	pthread_mutex_t *lock = &queue->lock;
-	pthread_cond_t *gains_member = &queue->gains_member;
-
-	errnum = pthread_mutex_lock(lock);
+	errnum = pthread_mutex_lock(&queue->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -144,9 +141,9 @@ void linted_queue_send(struct linted_queue *queue,
 	queue->tailp = &node->next;
 
 	/* Not a cancellation point */
-	pthread_cond_signal(gains_member);
+	pthread_cond_signal(&queue->gains_member);
 
-	errnum = pthread_mutex_unlock(lock);
+	errnum = pthread_mutex_unlock(&queue->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -158,27 +155,23 @@ void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
 	linted_error errnum;
-	struct linted_queue_node *removed;
 
-	pthread_mutex_t *lock = &queue->lock;
-	pthread_cond_t *gains_member = &queue->gains_member;
-
-	errnum = pthread_mutex_lock(lock);
+	errnum = pthread_mutex_lock(&queue->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
 	}
 
 	/* The nodes next to the tip are the head */
-	removed = queue->head;
+	struct linted_queue_node *removed = queue->head;
 	if (removed != NULL)
 		goto got_node;
 
 	/* The slow path, only bother to push the cancellation point
 	 * handler if we ever start waiting.*/
-	pthread_cleanup_push(unlock_routine, lock);
+	pthread_cleanup_push(unlock_routine, &queue->lock);
 	do {
-		errnum = pthread_cond_wait(gains_member, lock);
+		errnum = pthread_cond_wait(&queue->gains_member, &queue->lock);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);
@@ -187,9 +180,8 @@ void linted_queue_recv(struct linted_queue *queue,
 		removed = queue->head;
 	} while (removed == NULL);
 	pthread_cleanup_pop(false);
-got_node:
-	;
 
+got_node:
 	if (queue->tailp == &removed->next)
 		queue->tailp = &queue->head;
 
@@ -197,7 +189,7 @@ got_node:
 
 	/* The fast path doesn't bother with the handler */
 
-	errnum = pthread_mutex_unlock(lock);
+	errnum = pthread_mutex_unlock(&queue->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -212,12 +204,9 @@ got_node:
 linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **nodep)
 {
-	linted_error errnum = 0;
-	struct linted_queue_node *removed;
+	linted_error errnum;
 
-	pthread_mutex_t *lock = &queue->lock;
-
-	errnum = pthread_mutex_lock(lock);
+	errnum = pthread_mutex_lock(&queue->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -226,7 +215,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	/* No cancellation points in the critical section */
 
 	/* The nodes next to the tip are the head */
-	removed = queue->head;
+	struct linted_queue_node *removed = queue->head;
 	if (removed == NULL) {
 		errnum = EAGAIN;
 		goto pop_cleanup;
@@ -238,7 +227,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	queue->head = removed->next;
 
 pop_cleanup : {
-	linted_error unlock_errnum = pthread_mutex_unlock(lock);
+	linted_error unlock_errnum = pthread_mutex_unlock(&queue->lock);
 	if (unlock_errnum != 0) {
 		assert(unlock_errnum != EPERM);
 		assert(false);
