@@ -65,7 +65,7 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 		if (errnum != 0)
 			goto free_queue;
 
-#if 1
+#if !defined NDEBUG
 		errnum =
 		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
 		assert(errnum != EINVAL);
