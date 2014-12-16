@@ -16,13 +16,31 @@
  *      (not my bug works with glxgears too.)
  *
  * @bug Intermittently restarting a process fails and a new process is
- *      not spawned successfully and ptrace(PTRACE_SEIZE); fails with
- *      EPERM.
+ *      not spawned successfully and `ptrace(PTRACE_SEIZE)`; fails
+ *      with `EPERM`.
+ *
+ * @todo Fix collision handling. I want to prevent interpenetration
+ *       and properly handle discontinuities in velocity. I need
+ *       proper collision response and not the hacky spring like thing
+ *       I have currently.
+ *       Resources:
+ *       - http://www.gdcvault.com/play/1018239/Physics-for-Game-Programmers-Continuous
+ *       - http://gafferongames.com/virtualgo/collision-response-and-coulomb-friction/
+ *       - http://www.codezealot.org/archives/55
+ *       - http://www.codezealot.org/archives/88
+ *       - http://mollyrocket.com/849
+ *       - http://chrishecker.com/images/d/df/Gdmphys1.pdf
+ *       - http://chrishecker.com/images/c/c2/Gdmphys2.pdf
+ *       - http://chrishecker.com/images/e/e7/Gdmphys3.pdf
+ *       - http://chrishecker.com/images/b/bb/Gdmphys4.pdf
+ *       - http://www.pixar.com/companyinfo/research/pbm2001/pdf/notesg.pdf
+ *       - http://www.wildbunny.co.uk/blog/2011/04/06/physics-engines-for-dummies/
+ *       - http://www.bulletphysics.com/ftp/pub/test/physics/papers/IterativeDynamics.pdf
  *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
- * @todo Eventually reduce -Wstack-usage to 500.
+ * @todo Eventually reduce `-Wstack-usage` to 500.
  *
  * @todo Port to --host=i685-linux-gnu
  * - This works well except that I can't test the drawer because EGL
