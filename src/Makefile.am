@@ -17,7 +17,6 @@
 
 EXTRA_DIST+=\
   include/linted/rpc.h\
-  include/linted/sim.h\
   include/linted/test.h\
   include/linted/util.h
 
@@ -49,6 +48,7 @@ include %C%/mq/Makefile.am
 include %C%/pool/Makefile.am
 include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
+include %C%/sim/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am

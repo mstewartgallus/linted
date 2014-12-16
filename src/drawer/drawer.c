@@ -375,8 +375,8 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 
 	struct linted_gpu_update gpu_update;
 
-	gpu_update.x_rotation = linted_sim_angle_to_float(update.x_rotation);
-	gpu_update.y_rotation = linted_sim_angle_to_float(update.y_rotation);
+	gpu_update.x_rotation = linted_sim_angle_to_double(update.x_rotation);
+	gpu_update.y_rotation = linted_sim_angle_to_double(update.y_rotation);
 
 	gpu_update.x_position = update.x_position * (1 / 2048.0);
 	gpu_update.y_position = update.y_position * (1 / 2048.0);

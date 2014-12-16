@@ -36,32 +36,31 @@ typedef struct linted_sim__angle
 
 #define LINTED_SIM_Id PRIdLEAST32
 
-#define LINTED_SIM_ANGLE(X, Y)                                             \
+#define LINTED_SIM_ANGLE(X, Y)                                                 \
 	{                                                                      \
-		._value = (((uintmax_t)LINTED_SIM_UINT_MAX) / (Y)) * (X)   \
+		._value = (((uintmax_t)LINTED_SIM_UINT_MAX) / (Y)) * (X)       \
 	}
 
 static linted_sim_int linted_sim__saturate(int_fast64_t x);
 
-static inline float linted_sim_angle_to_float(linted_sim_angle theta)
+static inline double linted_sim_angle_to_double(linted_sim_angle theta)
 {
-	return theta._value *
-	       (2 * 3.14159265358979323846264338327 / UINT32_MAX);
+	return theta._value * (6.2831853071795864769252867665590 / UINT32_MAX);
 }
 
-static inline linted_sim_angle linted_sim_angle_add(int sign,
-						    linted_sim_angle theta,
-						    linted_sim_angle phi)
+static inline linted_sim_angle
+linted_sim_angle_add(int sign, linted_sim_angle theta, linted_sim_angle phi)
 {
 	linted_sim_angle angle;
-	angle._value =
-	    (theta._value + sign * (int_fast64_t)phi._value) % LINTED_SIM_UINT_MAX;
+	angle._value = (theta._value + sign * (int_fast64_t)phi._value) %
+	               LINTED_SIM_UINT_MAX;
 	return angle;
 }
 
-static inline linted_sim_angle linted_sim_angle_add_clamped(
-    int sign, linted_sim_angle min, linted_sim_angle max,
-    linted_sim_angle theta, linted_sim_angle phi)
+static inline linted_sim_angle
+linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
+                             linted_sim_angle max, linted_sim_angle theta,
+                             linted_sim_angle phi)
 {
 	assert(max._value <= LINTED_SIM_UINT_MAX / 2U);
 	assert(LINTED_SIM_UINT_MAX / 2U < min._value);
@@ -69,8 +68,7 @@ static inline linted_sim_angle linted_sim_angle_add_clamped(
 	linted_sim_uint result =
 	    (theta._value + sign * (int_fast64_t)phi._value) %
 	    LINTED_SIM_UINT_MAX;
-	switch ((sign > 0) | (theta._value > LINTED_SIM_UINT_MAX / 2U)
-	                         << 1U) {
+	switch ((sign > 0) | (theta._value > LINTED_SIM_UINT_MAX / 2U) << 1U) {
 	case 1U | (1U << 1U) :
 		break;
 
@@ -95,22 +93,18 @@ static inline linted_sim_angle linted_sim_angle_add_clamped(
  */
 static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 {
-	linted_sim_uint x = angle._value;
 	/* Hack it in using the math library for now */
-	return sin(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) *
-	       INT32_MAX;
+	return sin(linted_sim_angle_to_double(angle)) * INT32_MAX;
 }
 
 static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 {
-	linted_sim_uint x = angle._value;
 	/* Hack it in using the math library for now */
-	return cos(x * ((2 * 3.1415926535897932384626433832) / UINT32_MAX)) *
-	       INT32_MAX;
+	return cos(linted_sim_angle_to_double(angle)) * INT32_MAX;
 }
 
 static inline linted_sim_int linted_sim_isatadd(linted_sim_int x,
-                                                        linted_sim_int y)
+                                                linted_sim_int y)
 {
 	return linted_sim__saturate((int_fast64_t)x + y);
 }
