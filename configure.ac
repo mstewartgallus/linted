@@ -137,6 +137,9 @@ dnl
 PKG_CHECK_MODULES(EGL, egl, [], [
  AC_MSG_ERROR([Unable to find an EGL library])
 ])
+PKG_CHECK_MODULES(GLES, glesv2, [], [
+ AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
+])
 dnl
 LINTED_PROG_BLENDER
 AS_IF([test -z "${BLENDER}"],[
