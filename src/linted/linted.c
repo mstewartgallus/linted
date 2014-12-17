@@ -37,7 +37,6 @@
 #include <unistd.h>
 
 #include <xcb/xcb.h>
-#include <X11/Xlib.h>
 
 /**
  * @file
@@ -136,20 +135,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		screen = iter.data;
 	}
 
-	/* Use a separate connection just for GPU functions so that we
-	 * don't get false notifications of notices from GPU
-	 * functionality getting a notification.
-	 */
-	Display *gpu_display = XOpenDisplay(NULL);
-	if (NULL == gpu_display) {
-		errnum = ENOSYS;
-		goto close_display;
-	}
-
 	struct linted_gpu_context *gpu_context;
 	{
 		struct linted_gpu_context *xx;
-		errnum = linted_gpu_context_create(gpu_display, &xx);
+		errnum = linted_gpu_context_create(&xx);
 		if (errnum != 0)
 			return errnum;
 		gpu_context = xx;
@@ -358,7 +347,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 cleanup_gpu:
 	linted_gpu_context_destroy(gpu_context);
-	XCloseDisplay(gpu_display);
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
@@ -516,6 +504,25 @@ static linted_error linted_xcb_conn_error(xcb_connection_t *connection)
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
+
+#define Success 0
+#define BadRequest 1
+#define BadValue 2
+#define BadWindow 3
+#define BadPixmap 4
+#define BadAtom 5
+#define BadCursor 6
+#define BadFont 7
+#define BadMatch 8
+#define BadDrawable 9
+#define BadAccess 10
+#define BadAlloc 11
+#define BadColor 12
+#define BadGC 13
+#define BadIDChoice 14
+#define BadName 15
+#define BadLength 16
+#define BadImplementation 17
 
 static linted_error linted_xcb_error(xcb_generic_error_t *error)
 {

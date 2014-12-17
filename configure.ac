@@ -110,15 +110,8 @@ AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
 dnl
-PKG_CHECK_MODULES(X11, x11, [], [
- AC_MSG_ERROR([Unable to find an X11 library])
-])
-dnl
 PKG_CHECK_MODULES(XCB, xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB library])
-])
-PKG_CHECK_MODULES(X11_XCB, x11-xcb, [], [
- AC_MSG_ERROR([Unable to find an XCB-X11 interop library])
 ])
 dnl
 PKG_CHECK_MODULES(EGL, egl, [], [

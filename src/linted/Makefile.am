@@ -26,9 +26,8 @@ linted_LDADD=\
   src/ko/libko.la\
   src/mem/libmem.la\
   \
-  $(X11_LIBS)\
   $(XCB_LIBS)
 
 linted_CPPFLAGS=\
-  $(X11_FLAGS) $(XCB_FLAGS)\
+  $(XCB_FLAGS)\
   $(AM_CPPFLAGS)

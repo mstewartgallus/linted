@@ -137,8 +137,7 @@ static void gpu_BufferData(GLenum target, GLsizeiptr size, const GLvoid *data,
                            GLenum usage);
 static void gpu_BindBuffer(GLenum target, GLuint buffer);
 
-linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
-                                       struct linted_gpu_context **gpu_contextp)
+linted_error linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 {
 	linted_error errnum = 0;
 
@@ -155,7 +154,7 @@ linted_error linted_gpu_context_create(linted_gpu_native_display native_display,
 	if (errnum != 0)
 		goto release_thread;
 
-	EGLDisplay display = eglGetDisplay(native_display);
+	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 	if (EGL_NO_DISPLAY == display) {
 		errnum = get_egl_error();
 		goto release_thread;
