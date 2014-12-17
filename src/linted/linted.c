@@ -330,13 +330,13 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			if (EAGAIN == errnum)
 				goto draw_frame;
 			if (errnum != 0)
-				goto cleanup_gpu;
+				goto finish_main_loop;
 			completed_task = xx;
 		}
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto cleanup_gpu;
+			goto finish_main_loop;
 
 		continue;
 
@@ -344,8 +344,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		/* Draw or resize if we have time to waste */
 		linted_gpu_draw(gpu_context);
 	}
+finish_main_loop:
+	if (ECANCELED == errnum)
+		errnum = 0;
 
-cleanup_gpu:
 	linted_gpu_context_destroy(gpu_context);
 
 destroy_window : {
