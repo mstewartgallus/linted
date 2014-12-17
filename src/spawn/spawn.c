@@ -244,8 +244,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 				envp_copy[ii] = listen_fds;
 		}
 
-		sprintf(listen_fds + strlen("LISTEN_FDS="),
-			"%i", (int)file_actions->action_count - 3U);
+		sprintf(listen_fds + strlen("LISTEN_FDS="), "%i",
+		        (int)file_actions->action_count - 3U);
 
 		envp = envp_copy;
 	}

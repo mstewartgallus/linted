@@ -94,8 +94,6 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b);
 static linted_error get_gl_error(void);
 static linted_error get_egl_error(void);
 
-static double square(double x);
-
 static linted_error log_str(linted_log log, struct linted_str start,
                             char const *str);
 
@@ -348,53 +346,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	/* The brightest colour is (1, 1, 1) */
-	/* The darkest colour is (0, 0, 0) */
-	/* We want a neutral, middle brightness */
-
-	/* It might be possible to use a physically based model based
-	 * off the energy contained in a ray of light of a certain hue
-	 * but we have chosen to model brightnes as:
-	 */
-	/* brightness = r red + g green + b blue */
-
-	/* Note that this is a crappy approximation that only works
-	 * for some monitors and eyes.
-	 */
-
-	/* brightest = r + g + b */
-	/* darkest = 0 */
-
-	/* We calculate a middling brightness taking into account
-	 * gamma and nonlinearity.
-	 */
-
-	/* Note that how bright we want our background colour to be is
-	 * really a matter of taste and not math. The halfway point is
-	 * simply a good starting point.
-	 */
-	double r = 0.2126;
-	double g = 0.7152;
-	double b = 0.0722;
-
-	double brightness = (r + g + b) * square(0.5);
-
-	/* We can then carve off some red and green to make room for more
-	 * blue but still keep the same amount of brightness.
-	 */
-	/* brightness = r red + g green + b blue */
-	/* red = green = x */
-	/* brightness = (r + g) x + b blue */
-	/* brightness - b blue = (r + g) x */
-	/* (brightness - b blue) / (r + g) = x */
-
-	/* adjust blue to taste */
-	double blue = square(0.75);
-	double x = (brightness - b * blue) / (r + g);
-	double red = x;
-	double green = x;
-
-	glClearColor(red, green, blue, 1);
+	/* Use the default clear color for performance */
 
 	flush_gl_errors();
 	GLuint program = glCreateProgram();
@@ -413,7 +365,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	glDeleteShader(fragment_shader);
 
 	glShaderSource(fragment_shader, 1U,
-	                 (GLchar const **)&linted_assets_fragment_shader, NULL);
+	               (GLchar const **)&linted_assets_fragment_shader, NULL);
 	glCompileShader(fragment_shader);
 
 	GLint fragment_is_valid;
@@ -428,8 +380,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		GLint info_log_length;
 		{
 			GLint xx = 0;
-			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH,
-			                &xx);
+			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -443,7 +394,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 			info_log = xx;
 		}
 		glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
-		                     info_log);
+		                   info_log);
 		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 	}
@@ -458,7 +409,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	glDeleteShader(vertex_shader);
 
 	glShaderSource(vertex_shader, 1U,
-	                 (GLchar const **)&linted_assets_vertex_shader, NULL);
+	               (GLchar const **)&linted_assets_vertex_shader, NULL);
 	glCompileShader(vertex_shader);
 
 	GLint vertex_is_valid;
@@ -488,7 +439,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		}
 
 		glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
-		                     info_log);
+		                   info_log);
 		log_str(log, LINTED_STR("Invalid shader: "), info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
@@ -564,33 +515,33 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	glVertexAttribPointer(vertex,
-	                        LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	                        GL_FLOAT, false, 0, NULL);
+	                      LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
+	                      GL_FLOAT, false, 0, NULL);
 
 	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	glVertexAttribPointer(normal,
-	                        LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	                        GL_FLOAT, false, 0, NULL);
+	                      LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
+	                      GL_FLOAT, false, 0, NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	glBufferData(GL_ARRAY_BUFFER,
-	               linted_assets_size * sizeof linted_assets_vertices[0U],
-	               linted_assets_vertices, GL_STATIC_DRAW);
+	             linted_assets_size * sizeof linted_assets_vertices[0U],
+	             linted_assets_vertices, GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	glBufferData(GL_ARRAY_BUFFER,
-	               linted_assets_size * sizeof linted_assets_normals[0U],
-	               linted_assets_normals, GL_STATIC_DRAW);
+	             linted_assets_size * sizeof linted_assets_normals[0U],
+	             linted_assets_normals, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glUseProgram(program);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-	               3U * linted_assets_indices_size *
-	                   sizeof linted_assets_indices[0U],
-	               linted_assets_indices, GL_STATIC_DRAW);
+	             3U * linted_assets_indices_size *
+	                 sizeof linted_assets_indices[0U],
+	             linted_assets_indices, GL_STATIC_DRAW);
 	/* Leave bound for DrawElements */
 
 	gpu_context->context = context;
@@ -700,14 +651,14 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		    matrix_multiply(model_view, projection);
 
 		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
-		                     1U, false, model_view_projection.x[0U]);
+		                   1U, false, model_view_projection.x[0U]);
 
 		gpu_context->update_pending = false;
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	                 GL_UNSIGNED_BYTE, NULL);
+	               GL_UNSIGNED_BYTE, NULL);
 }
 
 static void flush_gl_errors(void)
@@ -835,11 +786,6 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 	} while (ii != 0U);
 
 	return result;
-}
-
-static double square(double x)
-{
-	return x * x;
 }
 
 static linted_error log_str(linted_log log, struct linted_str start,
