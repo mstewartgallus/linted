@@ -35,7 +35,9 @@
 #include <unistd.h>
 
 /**
- * @file Asynchronous IO implementation.
+ * @file
+ *
+ * Asynchronous IO implementation.
  *
  * You may think we could use GLibc's AIO implementation but GLibc's
  * is implemented in userspace and allocates memory dynamically.
