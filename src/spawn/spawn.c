@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
@@ -74,6 +75,8 @@ static pid_t do_vfork(sigset_t const *sigset,
 static linted_error default_signals(void);
 
 static void pid_to_str(char *buf, pid_t pid);
+
+static pid_t real_getpid(void);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -241,8 +244,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 				envp_copy[ii] = listen_fds;
 		}
 
-		pid_to_str(listen_fds + strlen("LISTEN_FDS="),
-		           (int)file_actions->action_count - 3U);
+		sprintf(listen_fds + strlen("LISTEN_FDS="),
+			"%i", (int)file_actions->action_count - 3U);
 
 		envp = envp_copy;
 	}
@@ -459,7 +462,7 @@ do_vfork(sigset_t const *sigset,
 
 	/* This is the ONE write to memory done. */
 	if (file_actions != NULL && file_actions->action_count > 0U)
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), getpid());
+		pid_to_str(listen_pid + strlen("LISTEN_PID="), real_getpid());
 
 	execve(filename, (char * const *)argv, (char * const *)envp);
 	errnum = errno;
@@ -539,4 +542,9 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+static pid_t real_getpid(void)
+{
+	return syscall(__NR_getpid);
 }
