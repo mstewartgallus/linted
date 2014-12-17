@@ -25,7 +25,6 @@
 
 #include <errno.h>
 #include <math.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
