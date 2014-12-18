@@ -154,7 +154,7 @@ static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t real_getpid(void);
 static int my_setgroups(size_t size, gid_t const *list);
-static pid_t my_clone(unsigned long flags);
+static pid_t my_vfork(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 int main(int argc, char *argv[])
@@ -601,7 +601,6 @@ exit_loop:
 		perror("clone");
 		return EXIT_FAILURE;
 	}
-
 	linted_ko_close(err_writer);
 
 	{
@@ -663,8 +662,7 @@ pid_t do_first_fork(
 {
 	pid_t child;
 	if (clone_flags != 0U) {
-		child =
-		    my_clone(SIGCHLD | CLONE_VM | CLONE_VFORK | clone_flags);
+		child = my_vfork(SIGCHLD | clone_flags);
 	} else {
 		child = vfork();
 	}
@@ -1251,9 +1249,12 @@ static int my_setgroups(size_t size, gid_t const *list)
  * architectures on Linux.
  */
 #if defined __amd64__ || defined __i386__
-static pid_t my_clone(unsigned long flags)
+/*
+ * Sadly, using CLONE_VM would require complicated assembly hackery.
+ */
+static pid_t my_vfork(unsigned long flags)
 {
-	return syscall(__NR_clone, flags, NULL, NULL, NULL, NULL);
+	return syscall(__NR_clone, CLONE_VFORK | flags, NULL, NULL, NULL, NULL);
 }
 #else
 #error No clone implementation has been defined for this architecture
