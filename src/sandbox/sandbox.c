@@ -63,6 +63,7 @@ enum {
 	STOP_OPTIONS,
 	HELP,
 	VERSION_OPTION,
+	WAIT,
 	TRACEME,
 	DROP_CAPS,
 	NO_NEW_PRIVS,
@@ -98,6 +99,7 @@ static char const *const argstrs[] = {
 	    /**/[STOP_OPTIONS] = "--",
 	    /**/ [HELP] = "--help",
 	    /**/ [VERSION_OPTION] = "--version",
+	    /**/ [WAIT] = "--wait",
 	    /**/ [TRACEME] = "--traceme",
 	    /**/ [DROP_CAPS] = "--dropcaps",
 	    /**/ [NO_NEW_PRIVS] = "--nonewprivs",
@@ -161,16 +163,11 @@ int main(int argc, char *argv[])
 
 	size_t arguments_length = argc;
 
-	char const *listen_fds = getenv("LISTEN_FDS");
-	if (NULL == listen_fds) {
-		fprintf(stderr, "need LISTEN_FDS\n");
-		return EXIT_FAILURE;
-	}
-
 	char const *bad_option = NULL;
 	bool need_version = false;
 	bool need_help = false;
 
+	bool wait = false;
 	bool traceme = false;
 	bool no_new_privs = false;
 	bool drop_caps = false;
@@ -212,6 +209,10 @@ int main(int argc, char *argv[])
 
 		case VERSION_OPTION:
 			need_version = true;
+			break;
+
+		case WAIT:
+			wait = true;
 			break;
 
 		case TRACEME:
@@ -553,7 +554,9 @@ exit_loop:
 	for (size_t ii = 0U; ii < env_size; ++ii)
 		env_copy[2U + ii] = environ[ii];
 
-	size_t num_fds = atoi(listen_fds);
+	char const *listen_fds = getenv("LISTEN_FDS");
+
+	size_t num_fds = NULL == listen_fds ? 0U : atoi(listen_fds);
 	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
 	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
 
@@ -620,6 +623,29 @@ close_err_reader:
 		errno = errnum;
 		perror("spawning");
 		return EXIT_FAILURE;
+	}
+
+	linted_ko_close(STDIN_FILENO);
+	linted_ko_close(STDOUT_FILENO);
+
+	if (!wait)
+		return EXIT_SUCCESS;
+
+	for (;;) {
+		int xx;
+		switch (waitpid(child, &xx, 0)) {
+		case -1:
+			switch (errno) {
+			case EINTR:
+				continue;
+			default:
+				perror("waitpid");
+				return EXIT_FAILURE;
+			}
+
+		default:
+			return EXIT_SUCCESS;
+		}
 	}
 
 	return EXIT_SUCCESS;
