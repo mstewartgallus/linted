@@ -453,6 +453,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			break;
 
 		case XCB_CLIENT_MESSAGE:
+			raise(SIGTERM);
 			time_to_quit = true;
 			break;
 
