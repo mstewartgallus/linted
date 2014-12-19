@@ -17,7 +17,6 @@
 pkgconfdir=$(sysconfdir)/$(PACKAGE)
 pkgdefaultconfdir=$(datadir)/factory/$(PACKAGE)/etc
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
-chrootdir=$(pkgdatadir)/chroot
 
 TESTS=
 XFAIL_TESTS=
@@ -35,9 +34,6 @@ MOSTLYCLEANFILES=
 
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
-
-install-data-hook:
-	$(mkinstalldirs) '$(chrootdir)'
 
 AM_LDFLAGS=\
   -Xcompiler '$(linted_LDFLAGS_LANGUAGE)\

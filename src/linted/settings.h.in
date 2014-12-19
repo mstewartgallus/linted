@@ -17,7 +17,6 @@
 #define LINTED_LINTED_SETTINGS_H
 
 #define PKGLIBEXECDIR "@pkglibexecdir@"
-#define CHROOTDIR "@chrootdir@"
 #define PKGCONFDIR "@pkgconfdir@"
 #define PKGDEFAULTCONFDIR "@pkgdefaultconfdir@"
 #define PKGUNITSDIR "@pkgunitsdir@"

@@ -57,7 +57,6 @@ struct linted_start_config const linted_start_config = {
 static struct envvar const default_envvars[] = {
 	{ "LINTED_PROCESS_NAME", "linted" },
 	{ "LINTED_UNIT_PATH", PKGUNITSDIR ":" PKGDEFAULTUNITSDIR },
-	{ "LINTED_CHROOT", CHROOTDIR },
 	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
 	{ "LINTED_MONITOR", PKGLIBEXECDIR "/monitor" EXEEXT },
 	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/sandbox" EXEEXT },
@@ -313,7 +312,6 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 
 	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
   LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
-  LINTED_CHROOT       the directory the chroot is mounted to\n\
   LINTED_LOGGER_FSTAB the location of the logger fstab\n\
   LINTED_LOGGER       the location of the logger executable\n\
   LINTED_GUI_FSTAB    the location of the GUI fstab\n\

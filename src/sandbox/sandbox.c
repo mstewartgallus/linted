@@ -98,6 +98,7 @@ struct mount_args
 
 	bool mkdir_flag : 1U;
 	bool touch_flag : 1U;
+	bool nomount_flag : 1U;
 };
 
 static struct sock_fprog const default_filter;
@@ -159,7 +160,7 @@ static linted_error exec_second_fork(linted_ko stdin_reader,
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
-                                     bool *touch_flagp,
+                                     bool *touch_flagp, bool *nomount_flagp,
                                      unsigned long *mountflagsp,
                                      char const **leftoversp);
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
@@ -444,15 +445,17 @@ exit_loop:
 
 			bool mkdir_flag = false;
 			bool touch_flag = false;
+			bool nomount_flag = false;
 			unsigned long mountflags = 0U;
 			char const *data = NULL;
 			if (opts != NULL) {
 				bool xx;
 				bool yy;
-				unsigned long zz;
-				char const *ww;
-				errnum =
-				    parse_mount_opts(opts, &xx, &yy, &zz, &ww);
+				bool zz;
+				unsigned long ww;
+				char const *uu;
+				errnum = parse_mount_opts(opts, &xx, &yy, &zz,
+				                          &ww, &uu);
 				if (errnum != 0) {
 					errno = errnum;
 					perror("parse_mount_opts");
@@ -460,8 +463,9 @@ exit_loop:
 				}
 				mkdir_flag = xx;
 				touch_flag = yy;
-				mountflags = zz;
-				data = ww;
+				nomount_flag = zz;
+				mountflags = ww;
+				data = uu;
 			}
 
 			size_t new_mount_args_size = mount_args_size + 1U;
@@ -517,6 +521,7 @@ exit_loop:
 			mount_args[mount_args_size].mountflags = mountflags;
 			mount_args[mount_args_size].mkdir_flag = mkdir_flag;
 			mount_args[mount_args_size].touch_flag = touch_flag;
+			mount_args[mount_args_size].nomount_flag = nomount_flag;
 			mount_args_size = new_mount_args_size;
 		}
 
@@ -976,7 +981,7 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 {
 	linted_error errnum;
 
-	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
+	if (-1 == mount(chrootdir, chrootdir, NULL, MS_BIND, NULL))
 		return errno;
 
 	if (-1 == chdir(chrootdir))
@@ -989,15 +994,21 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		char const *data = mount_args[ii].data;
 		bool mkdir_flag = mount_args[ii].mkdir_flag;
 		bool touch_flag = mount_args[ii].touch_flag;
+		bool nomount_flag = mount_args[ii].nomount_flag;
 		unsigned long mountflags = mount_args[ii].mountflags;
 
 		if (mkdir_flag) {
 			if (-1 == mkdir(dir, S_IRWXU))
-				return errno;
+				if (errno != EEXIST)
+					return errno;
 		} else if (touch_flag) {
 			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
-				return errno;
+				if (errno != EEXIST)
+					return errno;
 		}
+
+		if (nomount_flag)
+			continue;
 
 		if (-1 == mount(fsname, dir, type, mountflags, data))
 			return errno;
@@ -1042,10 +1053,23 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 	return 0;
 }
 
-enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };
+enum {
+	MKDIR,
+	TOUCH,
+	NOMOUNT,
+	BIND,
+	RBIND,
+	RO,
+	RW,
+	SUID,
+	NOSUID,
+	NODEV,
+	NOEXEC
+};
 
 static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
 	                                    [TOUCH] = "touch",        /**/
+	                                    [NOMOUNT] = "nomount",    /**/
 	                                    [BIND] = "bind",          /**/
 	                                    [RBIND] = "rbind",        /**/
 	                                    [RO] = MNTOPT_RO,         /**/
@@ -1057,12 +1081,13 @@ static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
 	                                    NULL };
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
-                                     bool *touch_flagp,
+                                     bool *touch_flagp, bool *nomount_flagp,
                                      unsigned long *mountflagsp,
                                      char const **leftoversp)
 {
 	linted_error errnum;
 
+	bool nomount_flag = false;
 	bool touch_flag = false;
 	bool mkdir_flag = false;
 	bool bind = false;
@@ -1101,6 +1126,10 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 
 		case TOUCH:
 			touch_flag = true;
+			break;
+
+		case NOMOUNT:
+			nomount_flag = true;
 			break;
 
 		case BIND:
@@ -1166,6 +1195,9 @@ free_subopts_str:
 	if (mkdir_flag && touch_flag)
 		return EINVAL;
 
+	if (nomount_flag && bind)
+		return EINVAL;
+
 	unsigned long mountflags = 0U;
 
 	if (bind)
@@ -1189,6 +1221,7 @@ free_subopts_str:
 	*leftoversp = leftovers;
 	*mkdir_flagp = mkdir_flag;
 	*touch_flagp = touch_flag;
+	*nomount_flagp = nomount_flag;
 	*mountflagsp = mountflags;
 	return 0;
 }

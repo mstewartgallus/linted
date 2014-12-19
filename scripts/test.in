@@ -26,8 +26,6 @@ ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/window-notifier/units\
 :${SRCDIR}/src/window/units"}
 
-: ${LINTED_CHROOT:="${XDG_RUNTIME_DIR}/linted/chroot"}
-
 : ${LINTED_INIT:="${ROOT}/../src/init/init"}
 : ${LINTED_MONITOR:="${ROOT}/../src/monitor/monitor"}
 : ${LINTED_SANDBOX:="${ROOT}/../src/sandbox/sandbox"}
@@ -48,7 +46,6 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_WINDOW:="${ROOT}/../src/window/window"}
 
 export LINTED_UNIT_PATH
-export LINTED_CHROOT
 export LINTED_INIT
 export LINTED_MONITOR
 export LINTED_SANDBOX

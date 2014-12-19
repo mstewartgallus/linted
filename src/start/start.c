@@ -59,7 +59,11 @@ static linted_error sanitize_kos(size_t kos_size);
 static linted_error get_system_entropy(unsigned *entropyp);
 static linted_error open_fds_dir(linted_ko *kop);
 
-int main(int argc, char *argv[])
+/*
+ * Linked in libraries can do a lot of nastiness on startup so startup
+ * before main even happens.
+ */
+static int real_setup(void)
 {
 	linted_error errnum;
 
@@ -81,6 +85,61 @@ It is insecure to run a game with high privileges!\n"));
 		return EPERM;
 	}
 
+	size_t kos_size = linted_start_config.kos_size;
+	linted_ko *kos = linted_start_config.kos;
+
+	linted_ko *open_kos;
+	size_t open_kos_size;
+	{
+		linted_ko *xx;
+		size_t yy;
+		errnum = find_open_kos(&xx, &yy);
+		if (errnum != 0) {
+			return errnum;
+		}
+		open_kos = xx;
+		open_kos_size = yy;
+	}
+
+	if (open_kos_size < kos_size + 3U)
+		return EINVAL;
+
+	/* Sort the fds from smallest to largest */
+	sort_kos(open_kos, open_kos_size);
+
+	/* Close leaked files over and don't check for errors as they
+	 * could just be leaked /dev/full handles or similar. */
+	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
+		linted_ko_close(open_kos[ii]);
+
+	for (size_t ii = 0U; ii < kos_size + 3U; ++ii) {
+		if (open_kos[ii] != (linted_ko)ii)
+			return EINVAL;
+	}
+
+	linted_mem_free(open_kos);
+
+	errnum = sanitize_kos(3U + kos_size);
+	if (errnum != 0)
+		return errnum;
+
+	for (size_t ii = 0U; ii < kos_size; ++ii)
+		kos[ii] = (linted_ko)(ii + 3U);
+
+	return 0;
+}
+
+__attribute__((constructor)) static void setup(void)
+{
+	linted_error errnum = real_setup();
+	if (errnum != 0)
+		_Exit(errnum);
+}
+
+int main(int argc, char *argv[])
+{
+	linted_error errnum = 0;
+
 	if (argc < 1) {
 		linted_locale_missing_process_name(
 		    STDERR_FILENO, linted_start_config.canonical_process_name);
@@ -90,7 +149,6 @@ It is insecure to run a game with high privileges!\n"));
 	char const *const process_name = argv[0U];
 
 	size_t kos_size = linted_start_config.kos_size;
-	linted_ko *kos = linted_start_config.kos;
 
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
@@ -137,60 +195,6 @@ It is insecure to run a game with high privileges!\n"));
 			return EINVAL;
 		}
 	}
-
-	linted_ko *open_kos;
-	size_t open_kos_size;
-	{
-		linted_ko *xx;
-		size_t yy;
-		errnum = find_open_kos(&xx, &yy);
-		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: couldn't find open files: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
-			return errnum;
-		}
-		open_kos = xx;
-		open_kos_size = yy;
-	}
-
-	if (open_kos_size < kos_size + 3U) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: too little files passed in\n",
-		                       process_name);
-		return EINVAL;
-	}
-	/* Sort the fds from smallest to largest */
-	sort_kos(open_kos, open_kos_size);
-
-	/* Close leaked files over and don't check for errors as they
-	 * could just be leaked /dev/full handles or similar. */
-	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
-		linted_ko_close(open_kos[ii]);
-
-	for (size_t ii = 0U; ii < kos_size + 3U; ++ii) {
-		if (open_kos[ii] != (linted_ko)ii) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: files passed in aren't in strict order\n",
-			                       process_name);
-			return EINVAL;
-		}
-	}
-
-	linted_mem_free(open_kos);
-
-	errnum = sanitize_kos(3U + kos_size);
-	if (errnum != 0) {
-		linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: sanitize_kos: %s\n",
-		                       process_name,
-		                       linted_error_string(errnum));
-		return errnum;
-	}
-
-	for (size_t ii = 0U; ii < kos_size; ++ii)
-		kos[ii] = (linted_ko)(ii + 3U);
 
 	{
 		unsigned entropy;
