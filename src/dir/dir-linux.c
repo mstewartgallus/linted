@@ -38,9 +38,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	linted_error errnum;
 	linted_ko fildes = -1;
 
-	if (LINTED_KO_CWD == dirko) {
-		dirko = AT_FDCWD;
-	} else if (dirko < 0) {
+	if (dirko < 0 && dirko != LINTED_KO_CWD) {
 		return EINVAL;
 	}
 

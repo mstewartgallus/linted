@@ -1069,11 +1069,15 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		if (-1 == mount(fsname, dir, type, mountflags, data))
 			return errno;
 
-		if ((mountflags & MS_BIND) != 0U) {
-			mountflags |= MS_REMOUNT;
-			if (-1 == mount(fsname, dir, type, mountflags, data))
-				return errno;
-		}
+		if (0 == (mountflags & MS_BIND))
+			continue;
+
+		if (MS_BIND == mountflags)
+			continue;
+
+		mountflags |= MS_REMOUNT;
+		if (-1 == mount(fsname, dir, type, mountflags, data))
+			return errno;
 	}
 
 	/* Magic incantation that clears up /proc/mounts more than

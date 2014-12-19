@@ -989,13 +989,25 @@ spawn_service:
 	bool clone_newuts = unit_service->clone_newuts;
 
 	if (fstab != NULL) {
-		if (-1 == mkdir(name, S_IRWXU)) {
+		linted_ko name_dir;
+		{
+			linted_ko xx;
+			errnum = linted_dir_create(&xx, LINTED_KO_CWD, name, 0U,
+			                           S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+			name_dir = xx;
+		}
+
+		if (-1 == mkdirat(name_dir, "chroot", S_IRWXU)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			if (errnum != EEXIST)
 				return errno;
 			errnum = 0;
 		}
+
+		linted_ko_close(name_dir);
 	}
 
 	if (fstab != NULL && !clone_newns)
@@ -1026,12 +1038,20 @@ spawn_service:
 
 	pid_t ppid = getppid();
 
+	char *chrootdir;
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "%s/chroot", name))
+			return errno;
+		chrootdir = xx;
+	}
+
 	char **envvars;
 	{
 		char **xx;
 		errnum = filter_envvars(&xx, env_whitelist);
 		if (errnum != 0)
-			return errnum;
+			goto free_chrootdir;
 		envvars = xx;
 	}
 
@@ -1097,7 +1117,7 @@ envvar_allocate_succeeded:
 	struct option options[] = {
 		{ true, "--traceme", NULL },
 		{ waiter != NULL, "--waiter", waiter },
-		{ fstab != NULL, "--chrootdir", name },
+		{ fstab != NULL, "--chrootdir", chrootdir },
 		{ fstab != NULL, "--fstab", fstab },
 		{ no_new_privs, "--nonewprivs", NULL },
 		{ drop_caps, "--dropcaps", NULL },
@@ -1348,6 +1368,9 @@ free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
 		linted_mem_free(*envp);
 	linted_mem_free(envvars);
+
+free_chrootdir:
+	linted_mem_free(chrootdir);
 
 	return errnum;
 }
