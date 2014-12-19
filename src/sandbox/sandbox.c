@@ -59,6 +59,13 @@
  * Sandbox applications.
  */
 
+/* Don't inline to work around a bug in Clang */
+#ifdef __clang__
+#define DO_VFORK_ATTR __attribute__((noinline))
+#else
+#define DO_VFORK_ATTR
+#endif
+
 enum {
 	STOP_OPTIONS,
 	HELP,
@@ -116,7 +123,7 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
-static pid_t do_first_fork(
+DO_VFORK_ATTR static pid_t do_first_fork(
     linted_ko err_reader, linted_ko err_writer, char const *uid_map,
     char const *gid_map, unsigned long clone_flags, linted_ko cwd,
     char const *chrootdir, char const *chdir_path, cap_t caps,
@@ -126,10 +133,28 @@ static pid_t do_first_fork(
     linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
     char const *const *env_copy, char const *const *command, size_t num_fds);
 
-static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
-                            linted_ko stdout_writer, linted_ko stderr_writer,
-                            char *listen_pid_str, char const *const *argv,
-                            char const *const *env, bool no_new_privs);
+static linted_error exec_first_fork(
+    linted_ko err_reader, char const *uid_map, char const *gid_map,
+    unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
+    char const *chdir_path, cap_t caps, struct mount_args *mount_args,
+    size_t mount_args_size, bool no_new_privs, char *listen_pid_str,
+    char *listen_fds_str, linted_ko stdin_writer, linted_ko stdout_reader,
+    linted_ko stderr_reader, linted_ko stdin_reader, linted_ko stdout_writer,
+    linted_ko stderr_writer, char const *waiter, char const *const *env_copy,
+    char const *const *command, size_t num_fds);
+
+DO_VFORK_ATTR static pid_t
+do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
+               linted_ko stdout_writer, linted_ko stderr_writer,
+               char *listen_pid_str, char const *const *argv,
+               char const *const *env, bool no_new_privs);
+
+static linted_error exec_second_fork(linted_ko stdin_reader,
+                                     linted_ko stdout_writer,
+                                     linted_ko stderr_writer,
+                                     char *listen_pid_str,
+                                     char const *const *argv,
+                                     char const *const *env, bool no_new_privs);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -140,11 +165,10 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
                                    char const *filename, char const *type);
 
-static void set_id_maps(linted_ko err_writer, char const *uid_map,
-                        char const *gid_map);
-static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir,
-                           struct mount_args const *mount_args, size_t size);
+static linted_error set_id_maps(char const *uid_map, char const *gid_map);
+static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
+                                   struct mount_args const *mount_args,
+                                   size_t size);
 
 static void pid_to_str(char *buf, pid_t pid);
 
@@ -650,7 +674,7 @@ close_err_reader:
 	return EXIT_SUCCESS;
 }
 
-pid_t do_first_fork(
+DO_VFORK_ATTR static pid_t do_first_fork(
     linted_ko err_reader, linted_ko err_writer, char const *uid_map,
     char const *gid_map, unsigned long clone_flags, linted_ko cwd,
     char const *chrootdir, char const *chdir_path, cap_t caps,
@@ -660,34 +684,69 @@ pid_t do_first_fork(
     linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
     char const *const *env_copy, char const *const *command, size_t num_fds)
 {
-	pid_t child;
 	if (clone_flags != 0U) {
-		child = my_vfork(SIGCHLD | clone_flags);
-	} else {
-		child = vfork();
-	}
-	if (child != 0)
+		pid_t child = my_vfork(SIGCHLD | clone_flags);
+		if (0 == child) {
+			linted_error errnum = exec_first_fork(
+			    err_reader, uid_map, gid_map, clone_flags, cwd,
+			    chrootdir, chdir_path, caps, mount_args,
+			    mount_args_size, no_new_privs, listen_pid_str,
+			    listen_fds_str, stdin_writer, stdout_reader,
+			    stderr_reader, stdin_reader, stdout_writer,
+			    stderr_writer, waiter, env_copy, command, num_fds);
+			exit_with_error(err_writer, errnum);
+		}
 		return child;
+	} else {
+		pid_t child = vfork();
+		if (0 == child) {
+			linted_error errnum = exec_first_fork(
+			    err_reader, uid_map, gid_map, clone_flags, cwd,
+			    chrootdir, chdir_path, caps, mount_args,
+			    mount_args_size, no_new_privs, listen_pid_str,
+			    listen_fds_str, stdin_writer, stdout_reader,
+			    stderr_reader, stdin_reader, stdout_writer,
+			    stderr_writer, waiter, env_copy, command, num_fds);
+			exit_with_error(err_writer, errnum);
+		}
+		return child;
+	}
+}
 
+static linted_error exec_first_fork(
+    linted_ko err_reader, char const *uid_map, char const *gid_map,
+    unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
+    char const *chdir_path, cap_t caps, struct mount_args *mount_args,
+    size_t mount_args_size, bool no_new_privs, char *listen_pid_str,
+    char *listen_fds_str, linted_ko stdin_writer, linted_ko stdout_reader,
+    linted_ko stderr_reader, linted_ko stdin_reader, linted_ko stdout_writer,
+    linted_ko stderr_writer, char const *waiter, char const *const *env_copy,
+    char const *const *command, size_t num_fds)
+{
 	linted_error errnum = 0;
 
 	linted_ko_close(err_reader);
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
-		set_id_maps(err_writer, uid_map, gid_map);
+		errnum = set_id_maps(uid_map, gid_map);
+		if (errnum != 0)
+			return errnum;
 
 		if (-1 == my_setgroups(0U, NULL))
-			exit_with_error(err_writer, errno);
+			return errno;
 	}
 
-	if (mount_args_size > 0U)
-		chroot_process(err_writer, cwd, chrootdir, mount_args,
-		               mount_args_size);
+	if (mount_args_size > 0U) {
+		errnum =
+		    chroot_process(cwd, chrootdir, mount_args, mount_args_size);
+		if (errnum != 0)
+			return errnum;
+	}
 
 	if (chdir_path != NULL) {
 		if (-1 == chdir(chdir_path))
-			exit_with_error(err_writer, errno);
+			return errno;
 	}
 
 	/*
@@ -696,7 +755,7 @@ pid_t do_first_fork(
 	 */
 	errnum = set_child_subreaper(true);
 	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
+		return errnum;
 
 	/* Drop all capabilities I might possibly have. Note that
 	 * currently we do not use PR_SET_KEEPCAPS and do not map our
@@ -706,7 +765,7 @@ pid_t do_first_fork(
 
 	if (caps != NULL) {
 		if (-1 == cap_set_proc(caps))
-			exit_with_error(err_writer, errno);
+			return errno;
 	}
 
 	{
@@ -715,7 +774,7 @@ pid_t do_first_fork(
 		sigaddset(&sigset, SIGCHLD);
 		errnum = pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
 
 	sigset_t sigchld_unblocked;
@@ -726,7 +785,7 @@ pid_t do_first_fork(
 		errnum =
 		    pthread_sigmask(SIG_BLOCK, &sigset, &sigchld_unblocked);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
 
 	linted_ko vfork_err_reader;
@@ -734,7 +793,7 @@ pid_t do_first_fork(
 	{
 		linted_ko xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
-			exit_with_error(err_writer, errno);
+			return errno;
 		vfork_err_reader = xx[0U];
 		vfork_err_writer = xx[1U];
 	}
@@ -743,14 +802,14 @@ pid_t do_first_fork(
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
 
 	pid_t grand_child = do_second_fork(
 	    vfork_err_writer, stdin_reader, stdout_writer, stderr_writer,
 	    listen_pid_str, command, env_copy, no_new_privs);
 	if (-1 == grand_child)
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	linted_ko_close(vfork_err_writer);
 
@@ -764,7 +823,7 @@ pid_t do_first_fork(
 		errnum =
 		    linted_io_read_all(vfork_err_reader, &xx, &yy, sizeof yy);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
@@ -772,7 +831,7 @@ pid_t do_first_fork(
 			errnum = yy;
 	}
 	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
+		return errnum;
 
 	linted_ko_close(cwd);
 
@@ -780,70 +839,79 @@ pid_t do_first_fork(
 		linted_ko_close(3 + ii);
 
 	if (-1 == dup2(stdin_writer, 3))
-		exit_with_error(err_writer, errno);
+		return errno;
 	if (-1 == dup2(stdout_reader, 4))
-		exit_with_error(err_writer, errno);
+		return errno;
 	if (-1 == dup2(stderr_reader, 5))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	pid_to_str(listen_fds_str + strlen("LISTEN_FDS="), 3);
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	char const *arguments[] = { waiter, NULL };
 	execve(waiter, (char * const *)arguments, (char * const *)env_copy);
-	exit_with_error(err_writer, errno);
-	/* Not reached */
-	return 0;
+	return errno;
 }
 
-static pid_t do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
-                            linted_ko stdout_writer, linted_ko stderr_writer,
-                            char *listen_pid_str, char const *const *argv,
-                            char const *const *env, bool no_new_privs)
+DO_VFORK_ATTR static pid_t
+do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
+               linted_ko stdout_writer, linted_ko stderr_writer,
+               char *listen_pid_str, char const *const *argv,
+               char const *const *env, bool no_new_privs)
 {
 	pid_t child = vfork();
-	if (child != 0)
-		return child;
+	if (0 == child) {
+		linted_error errnum =
+		    exec_second_fork(stdin_reader, stdout_writer, stderr_writer,
+		                     listen_pid_str, argv, env, no_new_privs);
+		exit_with_error(err_writer, errnum);
+	}
+	return child;
+}
 
+static linted_error exec_second_fork(linted_ko stdin_reader,
+                                     linted_ko stdout_writer,
+                                     linted_ko stderr_writer,
+                                     char *listen_pid_str,
+                                     char const *const *argv,
+                                     char const *const *env, bool no_new_privs)
+{
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 
 	/* Terminals are really ugly and horrible, avoid them. */
 	int tty = open("/dev/tty", O_CLOEXEC);
 	if (-1 == tty) {
 		if (errno != ENXIO)
-			exit_with_error(err_writer, errno);
+			return errno;
 	} else {
 		if (-1 == ioctl(tty, TIOCNOTTY))
-			exit_with_error(err_writer, errno);
+			return errno;
 	}
 
 	if (-1 == dup2(stdin_reader, STDIN_FILENO))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == dup2(stdout_writer, STDOUT_FILENO))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == dup2(stderr_writer, STDERR_FILENO))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == setsid())
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	/* Do seccomp filter last of all */
 	if (no_new_privs) {
 		linted_error errnum = set_seccomp(&default_filter);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
 
 	execve(argv[0U], (char * const *)argv, (char * const *)env);
-	exit_with_error(err_writer, errno);
-
-	return 0;
+	return errno;
 }
 
-static void set_id_maps(linted_ko err_writer, char const *uid_map,
-                        char const *gid_map)
+static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 {
 	linted_error errnum;
 
@@ -865,17 +933,17 @@ static void set_id_maps(linted_ko err_writer, char const *uid_map,
 			                        "/proc/self/uid_map",
 			                        LINTED_KO_WRONLY);
 			if (errnum != 0)
-				exit_with_error(err_writer, errnum);
+				return errnum;
 			file = xx;
 		}
 
 		errnum = linted_io_write_string(file, NULL, uid_map);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 
 		errnum = linted_ko_close(file);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
 
 	{
@@ -886,31 +954,33 @@ static void set_id_maps(linted_ko err_writer, char const *uid_map,
 			                        "/proc/self/gid_map",
 			                        LINTED_KO_WRONLY);
 			if (errnum != 0)
-				exit_with_error(err_writer, errnum);
+				return errnum;
 			file = xx;
 		}
 
 		errnum = linted_io_write_string(file, NULL, gid_map);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 
 		errnum = linted_ko_close(file);
 		if (errnum != 0)
-			exit_with_error(err_writer, errnum);
+			return errnum;
 	}
+
+	return 0;
 }
 
-static void chroot_process(linted_ko err_writer, linted_ko cwd,
-                           char const *chrootdir,
-                           struct mount_args const *mount_args, size_t size)
+static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
+                                   struct mount_args const *mount_args,
+                                   size_t size)
 {
 	linted_error errnum;
 
 	if (-1 == mount(NULL, chrootdir, "tmpfs", 0, "mode=700"))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == chdir(chrootdir))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		char const *fsname = mount_args[ii].fsname;
@@ -923,19 +993,19 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 
 		if (mkdir_flag) {
 			if (-1 == mkdir(dir, S_IRWXU))
-				exit_with_error(err_writer, errno);
+				return errno;
 		} else if (touch_flag) {
 			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
-				exit_with_error(err_writer, errno);
+				return errno;
 		}
 
 		if (-1 == mount(fsname, dir, type, mountflags, data))
-			exit_with_error(err_writer, errno);
+			return errno;
 
 		if ((mountflags & MS_BIND) != 0U) {
 			mountflags |= MS_REMOUNT;
 			if (-1 == mount(fsname, dir, type, mountflags, data))
-				exit_with_error(err_writer, errno);
+				return errno;
 		}
 	}
 
@@ -944,10 +1014,10 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 	 */
 	int old_root = open("/", O_DIRECTORY | O_CLOEXEC);
 	if (-1 == old_root)
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == my_pivot_root(".", "."))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	/* pivot_root() may or may not affect its current working
 	 * directory.  It is therefore recommended to call chdir("/")
@@ -957,17 +1027,19 @@ static void chroot_process(linted_ko err_writer, linted_ko cwd,
 	 */
 
 	if (-1 == fchdir(old_root))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	errnum = linted_ko_close(old_root);
 	if (errnum != 0)
-		exit_with_error(err_writer, errnum);
+		return errnum;
 
 	if (-1 == umount2(".", MNT_DETACH))
-		exit_with_error(err_writer, errno);
+		return errno;
 
 	if (-1 == chdir("/"))
-		exit_with_error(err_writer, errno);
+		return errno;
+
+	return 0;
 }
 
 enum { MKDIR, TOUCH, BIND, RBIND, RO, RW, SUID, NOSUID, NODEV, NOEXEC };

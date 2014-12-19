@@ -72,6 +72,12 @@ static pid_t do_vfork(sigset_t const *sigset,
                       char const *const *argv, char const *const *envp,
                       char *listen_pid, char const *filename);
 
+static linted_error
+exec_vfork(sigset_t const *sigset,
+           struct linted_spawn_file_actions const *file_actions,
+           linted_ko err_reader, linted_ko err_writer, char const *const *argv,
+           char const *const *envp, char *listen_pid, char const *filename);
+
 static linted_error default_signals(void);
 
 static void pid_to_str(char *buf, pid_t pid);
@@ -402,25 +408,39 @@ free_relative_path:
 #else
 #define DO_VFORK_ATTR
 #endif
+
 static DO_VFORK_ATTR pid_t
 do_vfork(sigset_t const *sigset,
          struct linted_spawn_file_actions const *file_actions,
          linted_ko err_reader, linted_ko err_writer, char const *const *argv,
          char const *const *envp, char *listen_pid, char const *filename)
 {
-	pid_t const child = vfork();
-	if (child != 0)
-		return child;
+	pid_t child = vfork();
+	if (0 == child) {
+		linted_error xx =
+		    exec_vfork(sigset, file_actions, err_reader, err_writer,
+		               argv, envp, listen_pid, filename);
+		linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
+		_Exit(EXIT_FAILURE);
+	}
+	return child;
+}
 
+static linted_error
+exec_vfork(sigset_t const *sigset,
+           struct linted_spawn_file_actions const *file_actions,
+           linted_ko err_reader, linted_ko err_writer, char const *const *argv,
+           char const *const *envp, char *listen_pid, char const *filename)
+{
 	linted_error errnum = 0;
 
 	errnum = default_signals();
 	if (errnum != 0)
-		goto fail;
+		return errnum;
 
 	errnum = pthread_sigmask(SIG_SETMASK, sigset, NULL);
 	if (errnum != 0)
-		goto fail;
+		return errnum;
 
 	linted_ko_close(err_reader);
 
@@ -435,27 +455,20 @@ do_vfork(sigset_t const *sigset,
 				linted_ko newfd = action->adddup2.newfildes;
 
 				int flags = fcntl(oldfd, F_GETFD);
-				if (-1 == flags) {
-					errnum = errno;
-					goto fail;
-				}
+				if (-1 == flags)
+					return errno;
 
-				if (-1 == dup2(oldfd, newfd)) {
-					errnum = errno;
-					goto fail;
-				}
+				if (-1 == dup2(oldfd, newfd))
+					return errno;
 
-				if (-1 == fcntl(newfd, F_SETFD,
-				                flags & ~FD_CLOEXEC)) {
-					errnum = errno;
-					goto fail;
-				}
+				if (-1 ==
+				    fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
+					return errno;
 				break;
 			}
 
 			default:
-				errnum = EINVAL;
-				goto fail;
+				return EINVAL;
 			}
 		}
 	}
@@ -465,15 +478,7 @@ do_vfork(sigset_t const *sigset,
 		pid_to_str(listen_pid + strlen("LISTEN_PID="), real_getpid());
 
 	execve(filename, (char * const *)argv, (char * const *)envp);
-	errnum = errno;
-
-fail : {
-	linted_error xx = errnum;
-	linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
-	_Exit(EXIT_SUCCESS);
-}
-	/* Impossible */
-	return 0;
+	return errno;
 }
 
 static linted_error default_signals(void)
