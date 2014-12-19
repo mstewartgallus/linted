@@ -6,14 +6,6 @@ set -u
 
 SRCDIR="@top_srcdir@"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-if test "x${XDG_RUNTIME_DIR:+x}" = "x"
-then
-    # TODO: Find a fallback
-    echo "XDG_RUNTIME_DIR is a required environment variable" >&2
-    exit 1
-fi
-
-mkdir -p "${XDG_RUNTIME_DIR}/linted/chroot"
 
 : ${LINTED_UNIT_PATH:="\
 ${SRCDIR}/src/controller/units\
