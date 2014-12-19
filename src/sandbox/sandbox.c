@@ -36,6 +36,7 @@
 #include <string.h>
 #include <sys/capability.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/poll.h>
 #include <sys/prctl.h>
@@ -59,7 +60,6 @@
  * Sandbox applications.
  */
 
-/* Don't inline to work around a bug in Clang */
 #ifdef __clang__
 #define DO_VFORK_ATTR __attribute__((noinline))
 #else
@@ -124,17 +124,36 @@ static char const *const argstrs[] = {
 	    /**/ [NEWUTS_ARG] = "--clone-newuts"
 };
 
-DO_VFORK_ATTR static pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, char const *uid_map,
-    char const *gid_map, unsigned long clone_flags, linted_ko cwd,
-    char const *chrootdir, char const *chdir_path, cap_t caps,
-    struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
-    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
-    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
-    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
-    char const *const *env_copy, char const *const *command, size_t num_fds);
+struct first_fork_args
+{
+	linted_ko err_reader;
+	linted_ko err_writer;
+	char const *uid_map;
+	char const *gid_map;
+	unsigned long clone_flags;
+	linted_ko cwd;
+	char const *chrootdir;
+	char const *chdir_path;
+	cap_t caps;
+	struct mount_args *mount_args;
+	size_t mount_args_size;
+	bool no_new_privs;
+	char *listen_pid_str;
+	char *listen_fds_str;
+	linted_ko stdin_writer;
+	linted_ko stdout_reader;
+	linted_ko stderr_reader;
+	linted_ko stdin_reader;
+	linted_ko stdout_writer;
+	linted_ko stderr_writer;
+	char const *waiter;
+	char const *const *env_copy;
+	char const *const *command;
+	size_t num_fds;
+};
 
-static linted_error exec_first_fork(
+static int first_fork_routine(void *arg);
+static linted_error do_first_fork(
     linted_ko err_reader, char const *uid_map, char const *gid_map,
     unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
     char const *chdir_path, cap_t caps, struct mount_args *mount_args,
@@ -179,7 +198,6 @@ static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t real_getpid(void);
 static int my_setgroups(size_t size, gid_t const *list);
-static pid_t my_vfork(unsigned long flags);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 int main(int argc, char *argv[])
@@ -619,17 +637,54 @@ exit_loop:
 		err_writer = xx[1U];
 	}
 
-	pid_t child = do_first_fork(
-	    err_reader, err_writer, uid_map, gid_map, clone_flags, cwd,
-	    chrootdir, chdir_path, caps, mount_args, mount_args_size,
-	    no_new_privs, listen_pid_str, listen_fds_str, stdin_writer,
-	    stdout_reader, stderr_reader, stdin_reader, stdout_writer,
-	    stderr_writer, waiter, (char const * const *)env_copy, command,
-	    num_fds);
+	struct first_fork_args args = {
+		err_reader,                     err_writer,      uid_map,
+		gid_map,                        clone_flags,     cwd,
+		chrootdir,                      chdir_path,      caps,
+		mount_args,                     mount_args_size, no_new_privs,
+		listen_pid_str,                 listen_fds_str,  stdin_writer,
+		stdout_reader,                  stderr_reader,   stdin_reader,
+		stdout_writer,                  stderr_writer,   waiter,
+		(char const * const *)env_copy, command,         num_fds
+	};
+
+	long page_size = sysconf(_SC_PAGE_SIZE);
+	assert(page_size != -1);
+
+	/* We need an extra page for signals */
+	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
+	assert(stack_size != -1);
+
+	size_t stack_and_guard_size = page_size + stack_size + page_size;
+	void *child_stack = mmap(
+	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
+	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+	if (NULL == child_stack) {
+		perror("mmap");
+		return EXIT_FAILURE;
+	}
+
+	/* Guard pages are shared between the stacks */
+	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE)) {
+		perror("mprotect");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
+	                   page_size, PROT_NONE)) {
+		perror("mprotect");
+		return EXIT_FAILURE;
+	}
+
+	void *stack_start = (char *)child_stack + page_size + stack_size;
+	pid_t child =
+	    clone(first_fork_routine, stack_start,
+	          SIGCHLD | CLONE_VFORK | CLONE_VM | clone_flags, &args);
 	if (-1 == child) {
 		perror("clone");
 		return EXIT_FAILURE;
 	}
+
 	linted_ko_close(err_writer);
 
 	{
@@ -679,46 +734,47 @@ close_err_reader:
 	return EXIT_SUCCESS;
 }
 
-DO_VFORK_ATTR static pid_t do_first_fork(
-    linted_ko err_reader, linted_ko err_writer, char const *uid_map,
-    char const *gid_map, unsigned long clone_flags, linted_ko cwd,
-    char const *chrootdir, char const *chdir_path, cap_t caps,
-    struct mount_args *mount_args, size_t mount_args_size, bool no_new_privs,
-    char *listen_pid_str, char *listen_fds_str, linted_ko stdin_writer,
-    linted_ko stdout_reader, linted_ko stderr_reader, linted_ko stdin_reader,
-    linted_ko stdout_writer, linted_ko stderr_writer, char const *waiter,
-    char const *const *env_copy, char const *const *command, size_t num_fds)
+static int first_fork_routine(void *arg)
 {
-	if (clone_flags != 0U) {
-		pid_t child = my_vfork(SIGCHLD | clone_flags);
-		if (0 == child) {
-			linted_error errnum = exec_first_fork(
-			    err_reader, uid_map, gid_map, clone_flags, cwd,
-			    chrootdir, chdir_path, caps, mount_args,
-			    mount_args_size, no_new_privs, listen_pid_str,
-			    listen_fds_str, stdin_writer, stdout_reader,
-			    stderr_reader, stdin_reader, stdout_writer,
-			    stderr_writer, waiter, env_copy, command, num_fds);
-			exit_with_error(err_writer, errnum);
-		}
-		return child;
-	} else {
-		pid_t child = vfork();
-		if (0 == child) {
-			linted_error errnum = exec_first_fork(
-			    err_reader, uid_map, gid_map, clone_flags, cwd,
-			    chrootdir, chdir_path, caps, mount_args,
-			    mount_args_size, no_new_privs, listen_pid_str,
-			    listen_fds_str, stdin_writer, stdout_reader,
-			    stderr_reader, stdin_reader, stdout_writer,
-			    stderr_writer, waiter, env_copy, command, num_fds);
-			exit_with_error(err_writer, errnum);
-		}
-		return child;
-	}
+	struct first_fork_args *args = arg;
+
+	linted_ko err_reader = args->err_reader;
+	linted_ko err_writer = args->err_writer;
+	char const *uid_map = args->uid_map;
+	char const *gid_map = args->gid_map;
+	unsigned long clone_flags = args->clone_flags;
+	linted_ko cwd = args->cwd;
+	char const *chrootdir = args->chrootdir;
+	char const *chdir_path = args->chdir_path;
+	cap_t caps = args->caps;
+	struct mount_args *mount_args = args->mount_args;
+	size_t mount_args_size = args->mount_args_size;
+	bool no_new_privs = args->no_new_privs;
+	char *listen_pid_str = args->listen_pid_str;
+	char *listen_fds_str = args->listen_fds_str;
+	linted_ko stdin_writer = args->stdin_writer;
+	linted_ko stdout_reader = args->stdout_reader;
+	linted_ko stderr_reader = args->stderr_reader;
+	linted_ko stdin_reader = args->stdin_reader;
+	linted_ko stdout_writer = args->stdout_writer;
+	linted_ko stderr_writer = args->stderr_writer;
+	char const *waiter = args->waiter;
+	char const *const *env_copy = args->env_copy;
+	char const *const *command = args->command;
+	size_t num_fds = args->num_fds;
+
+	linted_error errnum = do_first_fork(
+	    err_reader, uid_map, gid_map, clone_flags, cwd, chrootdir,
+	    chdir_path, caps, mount_args, mount_args_size, no_new_privs,
+	    listen_pid_str, listen_fds_str, stdin_writer, stdout_reader,
+	    stderr_reader, stdin_reader, stdout_writer, stderr_writer, waiter,
+	    env_copy, command, num_fds);
+	exit_with_error(err_writer, errnum);
+	/* Never reached */
+	return 0;
 }
 
-static linted_error exec_first_fork(
+static linted_error do_first_fork(
     linted_ko err_reader, char const *uid_map, char const *gid_map,
     unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
     char const *chdir_path, cap_t caps, struct mount_args *mount_args,
@@ -1349,21 +1405,6 @@ static int my_setgroups(size_t size, gid_t const *list)
 {
 	return syscall(__NR_setgroups, size, list);
 }
-
-/* Unfortunately, the clone system call interface varies a lot between
- * architectures on Linux.
- */
-#if defined __amd64__ || defined __i386__
-/*
- * Sadly, using CLONE_VM would require complicated assembly hackery.
- */
-static pid_t my_vfork(unsigned long flags)
-{
-	return syscall(__NR_clone, CLONE_VFORK | flags, NULL, NULL, NULL, NULL);
-}
-#else
-#error No clone implementation has been defined for this architecture
-#endif
 
 static int my_pivot_root(char const *new_root, char const *put_old)
 {
