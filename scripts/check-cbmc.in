@@ -27,8 +27,8 @@ source_files() {
     --div-by-zero-check\
     --nan-check\
     --pointer-check\
-    --signed-overflow-check\
     --unwind 100 --depth 200\
+    -DNDEBUG\
     $(source_cflags)\
     $(source_files)\
     $@
