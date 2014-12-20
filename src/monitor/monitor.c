@@ -2492,7 +2492,8 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 
 	char *start = strchr(line, '(');
 	char *end = strrchr(line, ')');
-	memcpy(&buf->comm, start, end - start);
+	memset(buf->comm, 0, sizeof buf->comm);
+	memcpy(buf->comm, start, end - start);
 
 	if (EOF ==
 	    sscanf(end, ")\n"
