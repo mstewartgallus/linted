@@ -60,12 +60,6 @@
  * Sandbox applications.
  */
 
-#ifdef __clang__
-#define DO_VFORK_ATTR __attribute__((noinline))
-#else
-#define DO_VFORK_ATTR
-#endif
-
 enum {
 	STOP_OPTIONS,
 	HELP,
@@ -152,6 +146,18 @@ struct first_fork_args
 	size_t num_fds;
 };
 
+struct second_fork_args
+{
+	linted_ko err_writer;
+	linted_ko stdin_reader;
+	linted_ko stdout_writer;
+	linted_ko stderr_writer;
+	char *listen_pid_str;
+	char const *const *argv;
+	char const *const *env;
+	bool no_new_privs;
+};
+
 static int first_fork_routine(void *arg);
 static linted_error do_first_fork(
     linted_ko err_reader, char const *uid_map, char const *gid_map,
@@ -163,18 +169,13 @@ static linted_error do_first_fork(
     linted_ko stderr_writer, char const *waiter, char const *const *env_copy,
     char const *const *command, size_t num_fds);
 
-DO_VFORK_ATTR static pid_t
-do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
-               linted_ko stdout_writer, linted_ko stderr_writer,
-               char *listen_pid_str, char const *const *argv,
-               char const *const *env, bool no_new_privs);
-
-static linted_error exec_second_fork(linted_ko stdin_reader,
-                                     linted_ko stdout_writer,
-                                     linted_ko stderr_writer,
-                                     char *listen_pid_str,
-                                     char const *const *argv,
-                                     char const *const *env, bool no_new_privs);
+static int second_fork_routine(void *arg);
+static linted_error do_second_fork(linted_ko stdin_reader,
+                                   linted_ko stdout_writer,
+                                   linted_ko stderr_writer,
+                                   char *listen_pid_str,
+                                   char const *const *argv,
+                                   char const *const *env, bool no_new_privs);
 
 static void exit_with_error(linted_ko writer, linted_error errnum);
 
@@ -866,9 +867,36 @@ static linted_error do_first_fork(
 			return errnum;
 	}
 
-	pid_t grand_child = do_second_fork(
-	    vfork_err_writer, stdin_reader, stdout_writer, stderr_writer,
-	    listen_pid_str, command, env_copy, no_new_privs);
+	struct second_fork_args args = { vfork_err_writer, stdin_reader,
+		                         stdout_writer,    stderr_writer,
+		                         listen_pid_str,   command,
+		                         env_copy,         no_new_privs };
+
+	long page_size = sysconf(_SC_PAGE_SIZE);
+	assert(page_size != -1);
+
+	/* We need an extra page for signals */
+	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
+	assert(stack_size != -1);
+
+	size_t stack_and_guard_size = page_size + stack_size + page_size;
+	void *child_stack = mmap(
+	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
+	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+	if (NULL == child_stack)
+		return errno;
+
+	/* Guard pages are shared between the stacks */
+	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE))
+		return errno;
+
+	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
+	                   page_size, PROT_NONE))
+		return errno;
+
+	void *stack_start = (char *)child_stack + page_size + stack_size;
+	pid_t grand_child = clone(second_fork_routine, stack_start,
+	                          SIGCHLD | CLONE_VFORK | CLONE_VM, &args);
 	if (-1 == grand_child)
 		return errno;
 
@@ -914,28 +942,32 @@ static linted_error do_first_fork(
 	return errno;
 }
 
-DO_VFORK_ATTR static pid_t
-do_second_fork(linted_ko err_writer, linted_ko stdin_reader,
-               linted_ko stdout_writer, linted_ko stderr_writer,
-               char *listen_pid_str, char const *const *argv,
-               char const *const *env, bool no_new_privs)
+static int second_fork_routine(void *arg)
 {
-	pid_t child = vfork();
-	if (0 == child) {
-		linted_error errnum =
-		    exec_second_fork(stdin_reader, stdout_writer, stderr_writer,
-		                     listen_pid_str, argv, env, no_new_privs);
-		exit_with_error(err_writer, errnum);
-	}
-	return child;
+	struct second_fork_args *args = arg;
+
+	linted_ko err_writer = args->err_writer;
+	linted_ko stdin_reader = args->stdin_reader;
+	linted_ko stdout_writer = args->stdout_writer;
+	linted_ko stderr_writer = args->stderr_writer;
+	char *listen_pid_str = args->listen_pid_str;
+	char const *const *argv = args->argv;
+	char const *const *env = args->env;
+	bool no_new_privs = args->no_new_privs;
+
+	linted_error errnum =
+	    do_second_fork(stdin_reader, stdout_writer, stderr_writer,
+	                   listen_pid_str, argv, env, no_new_privs);
+	exit_with_error(err_writer, errnum);
+	return 0;
 }
 
-static linted_error exec_second_fork(linted_ko stdin_reader,
-                                     linted_ko stdout_writer,
-                                     linted_ko stderr_writer,
-                                     char *listen_pid_str,
-                                     char const *const *argv,
-                                     char const *const *env, bool no_new_privs)
+static linted_error do_second_fork(linted_ko stdin_reader,
+                                   linted_ko stdout_writer,
+                                   linted_ko stderr_writer,
+                                   char *listen_pid_str,
+                                   char const *const *argv,
+                                   char const *const *env, bool no_new_privs)
 {
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
 

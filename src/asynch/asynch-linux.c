@@ -52,6 +52,8 @@
  * use but the command was never implemented.
  */
 
+#define ASYNCH_SIGNO SIGUSR1
+
 /**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
@@ -513,7 +515,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 
 			bool owned = task->owned;
 			if (owned) {
-				errnum = pthread_kill(task->owner, SIGUSR1);
+				errnum = pthread_kill(task->owner, ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);
@@ -548,7 +550,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 		if (!cancel_replied) {
 			bool owned = task->owned;
 			if (owned) {
-				errnum = pthread_kill(task->owner, SIGUSR1);
+				errnum = pthread_kill(task->owner, ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);
