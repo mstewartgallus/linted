@@ -16,8 +16,8 @@ Description=Linted-Updater Game Updater
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenMessageQueue=/updater
-MessageQueueMaxMessages=1
-MessageQueueMessageSize=20
+ListenDirectory=updater
+# MessageQueueMaxMessages=1
+# MessageQueueMessageSize=20
 
-X-LintedTemporary=true
+# X-LintedTemporary=true

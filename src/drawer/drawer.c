@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200112L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -35,6 +35,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <xcb/xcb.h>
 
@@ -76,7 +81,7 @@ struct notice_data
 	xcb_window_t *window;
 };
 
-static linted_ko kos[3U];
+static linted_ko kos[2U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer",
@@ -98,9 +103,34 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_log log = kos[0U];
 	linted_window_notifier notifier = kos[1U];
-	linted_updater updater = kos[2U];
 
 	struct window_model window_model = { .viewable = false };
+
+	linted_ko updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == updater) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "updater/updater");
+
+		for (;;) {
+			if (-1 == bind(updater, (void *)&addr,
+			               offsetof(struct sockaddr_un, sun_path) +
+			                   strlen(addr.sun_path))) {
+				if (errno == EADDRINUSE) {
+					unlink(addr.sun_path);
+					continue;
+				}
+				perror("bind");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
 
 	struct linted_asynch_pool *pool;
 	{

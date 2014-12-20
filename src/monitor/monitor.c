@@ -489,7 +489,7 @@ kill_procs:
 	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != UNIT_TYPE_SOCKET)
+		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
 			continue;
 
 		struct linted_unit_socket *socket = (void *)unit;
@@ -588,9 +588,9 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 
 		enum linted_unit_type unit_type;
 		if (0 == strcmp(suffix, "socket")) {
-			unit_type = UNIT_TYPE_SOCKET;
+			unit_type = LINTED_UNIT_TYPE_SOCKET;
 		} else if (0 == strcmp(suffix, "service")) {
-			unit_type = UNIT_TYPE_SERVICE;
+			unit_type = LINTED_UNIT_TYPE_SERVICE;
 		} else {
 			errnum = EINVAL;
 			goto destroy_unit_db;
@@ -607,7 +607,7 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		unit->name = unit_name;
 
 		switch (unit_type) {
-		case UNIT_TYPE_SERVICE: {
+		case LINTED_UNIT_TYPE_SERVICE: {
 			struct linted_unit_service *s = (void *)unit;
 
 			errnum =
@@ -617,7 +617,7 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 			break;
 		}
 
-		case UNIT_TYPE_SOCKET: {
+		case LINTED_UNIT_TYPE_SOCKET: {
 			struct linted_unit_socket *s = (void *)unit;
 			s->is_open = false;
 
@@ -774,8 +774,12 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 {
 	linted_error errnum;
 
-	char const *const *paths =
+	char const *const *listen_mqs =
 	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
+
+	char const *const *listen_dirs =
+	    linted_conf_find(conf, "Socket", "ListenDirectory");
+
 	char const *const *maxmsgss =
 	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
 	char const *const *msgsizes =
@@ -783,75 +787,111 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	char const *const *temps =
 	    linted_conf_find(conf, "Socket", "X-LintedTemporary");
 
-	char const *path;
+	char const *listen_mq;
 	{
 		char const *xx;
-		errnum = str_from_strs(paths, &xx);
+		errnum = str_from_strs(listen_mqs, &xx);
 		if (errnum != 0)
 			return errnum;
-		path = xx;
+		listen_mq = xx;
 	}
 
-	char const *maxmsgs;
+	char const *listen_dir;
 	{
 		char const *xx;
-		errnum = str_from_strs(maxmsgss, &xx);
+		errnum = str_from_strs(listen_dirs, &xx);
 		if (errnum != 0)
 			return errnum;
-		maxmsgs = xx;
+		listen_dir = xx;
 	}
 
-	char const *msgsize;
-	{
-		char const *xx;
-		errnum = str_from_strs(msgsizes, &xx);
-		if (errnum != 0)
-			return errnum;
-		msgsize = xx;
+	enum linted_unit_socket_type socket_type;
+	char const *path = NULL;
+
+	if (listen_mq != NULL) {
+		socket_type = LINTED_UNIT_SOCKET_TYPE_MQ;
+		path = listen_mq;
 	}
 
-	char const *temp;
-	{
-		char const *xx;
-		errnum = str_from_strs(temps, &xx);
-		if (errnum != 0)
-			return errnum;
-		temp = xx;
+	if (listen_dir != NULL) {
+		if (path != NULL)
+			return EINVAL;
+		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
+		path = listen_dir;
 	}
-
-	long maxmsgs_value;
-	{
-		long xx;
-		errnum = long_from_cstring(maxmsgs, &xx);
-		if (errnum != 0)
-			return errnum;
-		maxmsgs_value = xx;
-	}
-
-	long msgsize_value;
-	{
-		long xx;
-		errnum = long_from_cstring(msgsize, &xx);
-		if (errnum != 0)
-			return errnum;
-		msgsize_value = xx;
-	}
-
-	bool temp_value;
-	{
-		bool xx;
-		errnum = bool_from_cstring(temp, &xx);
-		if (errnum != 0)
-			return errnum;
-		temp_value = xx;
-	}
-
-	if (!temp_value)
+	if (NULL == path)
 		return EINVAL;
 
+	switch (socket_type) {
+	case LINTED_UNIT_SOCKET_TYPE_MQ: {
+		char const *temp;
+		{
+			char const *xx;
+			errnum = str_from_strs(temps, &xx);
+			if (errnum != 0)
+				return errnum;
+			temp = xx;
+		}
+
+		char const *maxmsgs;
+		{
+			char const *xx;
+			errnum = str_from_strs(maxmsgss, &xx);
+			if (errnum != 0)
+				return errnum;
+			maxmsgs = xx;
+		}
+
+		char const *msgsize;
+		{
+			char const *xx;
+			errnum = str_from_strs(msgsizes, &xx);
+			if (errnum != 0)
+				return errnum;
+			msgsize = xx;
+		}
+
+		long maxmsgs_value;
+		{
+			long xx;
+			errnum = long_from_cstring(maxmsgs, &xx);
+			if (errnum != 0)
+				return errnum;
+			maxmsgs_value = xx;
+		}
+
+		long msgsize_value;
+		{
+			long xx;
+			errnum = long_from_cstring(msgsize, &xx);
+			if (errnum != 0)
+				return errnum;
+			msgsize_value = xx;
+		}
+
+		bool temp_value;
+		{
+			bool xx;
+			errnum = bool_from_cstring(temp, &xx);
+			if (errnum != 0)
+				return errnum;
+			temp_value = xx;
+		}
+
+		if (!temp_value)
+			return EINVAL;
+
+		unit->maxmsgs = maxmsgs_value;
+		unit->msgsize = msgsize_value;
+		break;
+	}
+
+	case LINTED_UNIT_SOCKET_TYPE_DIR:
+		break;
+	}
+
+	unit->type = socket_type;
 	unit->path = path;
-	unit->maxmsgs = maxmsgs_value;
-	unit->msgsize = msgsize_value;
 
 	return 0;
 }
@@ -868,7 +908,7 @@ static linted_error activate_unit_db(char const *process_name,
 	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != UNIT_TYPE_SOCKET)
+		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
 			continue;
 
 		errnum = socket_activate((void *)unit);
@@ -880,7 +920,7 @@ static linted_error activate_unit_db(char const *process_name,
 	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != UNIT_TYPE_SERVICE)
+		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
 		errnum =
@@ -895,18 +935,40 @@ static linted_error activate_unit_db(char const *process_name,
 static linted_error socket_activate(struct linted_unit_socket *unit)
 {
 	linted_error errnum;
-	linted_ko ko;
-	{
-		linted_ko xx;
-		errnum = linted_mq_create(&xx, unit->path, unit->maxmsgs,
-		                          unit->msgsize, 0);
-		if (errnum != 0)
-			return errnum;
-		ko = xx;
+
+	switch (unit->type) {
+	case LINTED_UNIT_SOCKET_TYPE_MQ: {
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum = linted_mq_create(
+			    &xx, unit->path, unit->maxmsgs, unit->msgsize, 0);
+			if (errnum != 0)
+				return errnum;
+			ko = xx;
+		}
+
+		unit->ko = ko;
+		unit->is_open = true;
+		break;
 	}
 
-	unit->ko = ko;
-	unit->is_open = true;
+	case LINTED_UNIT_SOCKET_TYPE_DIR: {
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum = linted_dir_create(&xx, LINTED_KO_CWD,
+			                           unit->path, 0, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+			ko = xx;
+		}
+
+		unit->ko = ko;
+		unit->is_open = true;
+		break;
+	}
+	}
 
 	return 0;
 }
@@ -1474,7 +1536,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	     ++ii) {
 		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != UNIT_TYPE_SERVICE)
+		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
 		pid_t pid;

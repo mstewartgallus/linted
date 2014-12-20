@@ -5,6 +5,8 @@
 none	var	none	mkdir,nomount
 /home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
 
+../../updater	var/updater	none	mkdir,bind
+
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/null	dev/null	none	touch,bind
 /dev/urandom	dev/urandom	none	touch,bind

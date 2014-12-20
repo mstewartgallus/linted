@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 199309L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -29,8 +29,14 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <time.h>
 
 #define ROTATION_SPEED 512U
@@ -93,7 +99,7 @@ struct updater_data
 	linted_ko updater;
 };
 
-static linted_ko kos[3U];
+static linted_ko kos[2U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
@@ -126,13 +132,39 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 {
 	linted_log log = kos[0U];
 	linted_controller controller = kos[1U];
-	linted_updater updater = kos[2U];
 
 	linted_error errnum;
 
 	{
 		static char const message[] = "starting simulator";
 		linted_log_write(log, message, sizeof message - 1U);
+	}
+
+	linted_updater updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == updater) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "updater/updater");
+
+		for (;;) {
+			if (-1 ==
+			    connect(updater, (void *)&addr,
+			            offsetof(struct sockaddr_un, sun_path) +
+			                strlen(addr.sun_path))) {
+				if (ENOENT == errno || ECONNREFUSED == errno) {
+					sched_yield();
+					continue;
+				}
+				perror("connect");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
 	}
 
 	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };

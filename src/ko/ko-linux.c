@@ -341,6 +341,8 @@ linted_error linted_ko_task_read_create(struct linted_ko_task_read **taskp,
 
 	task->parent = parent;
 	task->data = data;
+	task->current_position = 0U;
+
 	*taskp = task;
 	return 0;
 free_parent:
@@ -421,6 +423,7 @@ linted_error linted_ko_task_write_create(struct linted_ko_task_write **taskp,
 
 	task->parent = parent;
 	task->data = data;
+	task->current_position = 0U;
 	*taskp = task;
 	return 0;
 

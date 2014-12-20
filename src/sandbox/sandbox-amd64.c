@@ -26,6 +26,7 @@ static struct sock_filter const real_filter[] = {
 	              offsetof(struct seccomp_data, nr)),
 	/**/ ALLOW(access),
 	/**/ ALLOW(arch_prctl),
+	/**/ ALLOW(bind),
 	/**/ ALLOW(brk),
 	/**/ ALLOW(clock_gettime),
 	/**/ ALLOW(clock_nanosleep),

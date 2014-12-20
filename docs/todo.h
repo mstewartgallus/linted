@@ -59,6 +59,11 @@
  * @todo Stop graphical banding problems
  *
  * @todo Preserve socket files between restarts
+ * @todo Switch over to Unix domain sockets completely
+ * @todo Once Unix domain sockets are used completely switch over to
+ *       unconnected and unreliable sockets.
+ *
+ * @todo Eventually reduce `-Wstack-usage` to 500.
  *
  * @todo Check child processes for hangups
  *

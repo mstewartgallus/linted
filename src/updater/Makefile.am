@@ -22,7 +22,7 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 %C%_libupdater_la_LIBADD=\
   src/asynch/libasynch.la\
   src/mem/libmem.la\
-  src/mq/libmq.la\
+  src/ko/libko.la\
   \
   -lm
 dist_pkgdefaultunits_DATA+=%D%/units/updater.socket

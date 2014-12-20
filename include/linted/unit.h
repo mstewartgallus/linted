@@ -31,7 +31,11 @@
 enum { LINTED_UNIT_NAME_MAX = 255 };
 #define LINTED_UNIT_NAME_MAX ((unsigned)LINTED_UNIT_NAME_MAX)
 
-enum linted_unit_type { UNIT_TYPE_SOCKET, UNIT_TYPE_SERVICE };
+enum linted_unit_type { LINTED_UNIT_TYPE_SOCKET, LINTED_UNIT_TYPE_SERVICE };
+enum linted_unit_socket_type {
+	LINTED_UNIT_SOCKET_TYPE_MQ,
+	LINTED_UNIT_SOCKET_TYPE_DIR
+};
 
 struct linted_unit_db;
 
@@ -59,6 +63,7 @@ struct linted_unit
 struct linted_unit_socket
 {
 	struct linted_unit common;
+	enum linted_unit_socket_type type;
 	char const *path;
 	long maxmsgs;
 	long msgsize;

@@ -515,7 +515,8 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 
 			bool owned = task->owned;
 			if (owned) {
-				errnum = pthread_kill(task->owner, ASYNCH_SIGNO);
+				errnum =
+				    pthread_kill(task->owner, ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);
@@ -550,7 +551,8 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 		if (!cancel_replied) {
 			bool owned = task->owned;
 			if (owned) {
-				errnum = pthread_kill(task->owner, ASYNCH_SIGNO);
+				errnum =
+				    pthread_kill(task->owner, ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);
