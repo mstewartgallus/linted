@@ -26,6 +26,7 @@ pkglibexec_PROGRAMS+=%D%/simulator
   \
   src/controller/libcontroller.la\
   src/log/liblog.la\
+  src/mem/libmem.la\
   src/updater/libupdater.la
 
 dist_pkgdefaultconf_DATA+=%D%/simulator-fstab

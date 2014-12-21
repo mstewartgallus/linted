@@ -34,7 +34,13 @@
  */
 typedef linted_ko linted_log;
 
-linted_error linted_log_write(linted_log log, char const *msg_ptr,
-                              size_t msg_len);
+struct linted_log_entry
+{
+	uint32_t size;
+	char bytes[];
+};
+
+linted_error linted_log_write(linted_log log,
+                              struct linted_log_entry const *entry);
 
 #endif /* LINTED_LOG_H */

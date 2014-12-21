@@ -25,6 +25,7 @@
 #include "linted/start.h"
 #include "linted/util.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -80,17 +81,41 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 
-		ssize_t bytes_read =
-		    read(log, logger_buffer, sizeof logger_buffer);
+		uint32_t log_size;
+		{
+			uint32_t xx;
+			ssize_t bytes_read = read(log, &xx, sizeof xx);
+			if (-1 == bytes_read) {
+				perror("read");
+				return EXIT_FAILURE;
+			}
+			if (0 == bytes_read)
+				continue;
+			if (bytes_read != sizeof xx) {
+				fprintf(stderr, "%s: malformed log\n",
+				        process_name);
+				return EXIT_FAILURE;
+			}
+			log_size = ntohl(xx);
+		}
+
+		if (log_size > LINTED_LOG_MAX) {
+			fprintf(stderr, "%s: malformed log\n", process_name);
+			return EXIT_FAILURE;
+		}
+
+		ssize_t bytes_read = read(log, logger_buffer, log_size);
 		if (-1 == bytes_read) {
 			perror("read");
 			return EXIT_FAILURE;
 		}
-		if (0 == bytes_read)
-			continue;
+		if (log_size != bytes_read) {
+			fprintf(stderr, "%s: malformed log\n", process_name);
+			return EXIT_FAILURE;
+		}
 
-		fprintf(stderr, "%s: ", process_name);
-		fwrite(logger_buffer, 1U, bytes_read, stderr);
+		fprintf(stderr, "%s: %u ", process_name, log_size);
+		fwrite(logger_buffer, 1U, log_size, stderr);
 		fprintf(stderr, "\n");
 		fflush(stderr);
 

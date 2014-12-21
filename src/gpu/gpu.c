@@ -23,6 +23,7 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -794,20 +795,22 @@ static linted_error log_str(linted_log log, struct linted_str start,
 	linted_error errnum;
 	size_t error_size = strlen(error);
 
-	char *full_string;
+	size_t len = sizeof(struct linted_log_entry) + error_size + start.size;
+	struct linted_log_entry *full_string;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, error_size + start.size);
+		errnum = linted_mem_alloc(&xx, len);
 		if (errnum != 0)
 			/* Silently drop log */
 			return errnum;
 		full_string = xx;
 	}
 
-	memcpy(full_string, start.bytes, start.size);
-	memcpy(full_string + start.size, error, error_size);
+	full_string->size = htonl(len);
+	memcpy(full_string->bytes, start.bytes, start.size);
+	memcpy(full_string->bytes + start.size, error, error_size);
 
-	errnum = linted_log_write(log, full_string, start.size + error_size);
+	errnum = linted_log_write(log, full_string);
 
 	linted_mem_free(full_string);
 

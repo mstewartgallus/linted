@@ -20,16 +20,18 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
 
 /**
  * @todo Make asynchronous
  */
-linted_error linted_log_write(linted_log log, char const *msg_ptr,
-                              size_t msg_len)
+linted_error linted_log_write(linted_log log,
+                              struct linted_log_entry const *entry)
 {
-	if (-1 == write(log, msg_ptr, msg_len)) {
+	if (-1 == write(log, entry,
+	                sizeof(struct linted_log_entry) + ntohl(entry->size))) {
 		return errno;
 	}
 	return 0;
