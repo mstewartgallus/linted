@@ -72,7 +72,7 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_WINDOW", PKGLIBEXECDIR "/window" EXEEXT }
 };
 
-static linted_error exec_init(char const *init, linted_ko ko);
+static linted_error exec_init(char const *init);
 
 static linted_error linted_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
@@ -146,60 +146,9 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	linted_error errnum;
 
-	/* TODO: Create a fallback */
-	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
-	if (NULL == runtime_dir_path) {
-		linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
-requires XDG_RUNTIME_DIR\n"));
-		return EXIT_FAILURE;
-	}
-
-	linted_ko runtime_dir;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, runtime_dir_path,
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_ko_open");
-			return EXIT_FAILURE;
-		}
-		runtime_dir = xx;
-	}
-
-	linted_ko linted_run_dir;
-	{
-		linted_ko xx;
-		errnum = linted_dir_create(&xx, runtime_dir, PACKAGE_TARNAME, 0,
-		                           S_IRWXU);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_dir_create");
-			return EXIT_FAILURE;
-		}
-		linted_run_dir = xx;
-	}
-	linted_ko_close(runtime_dir);
-
-	linted_ko private_run_dir;
-	{
-		linted_ko xx;
-		char path[10U];
-		sprintf(path, "%i", getpid());
-		errnum =
-		    linted_dir_create(&xx, linted_run_dir, path, 0, S_IRWXU);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_dir_create");
-			return EXIT_FAILURE;
-		}
-		private_run_dir = xx;
-	}
-	linted_ko_close(linted_run_dir);
-
 	fprintf(stdout, "LINTED_PID=%i\n", getpid());
 
-	errnum = exec_init(init, private_run_dir);
+	errnum = exec_init(init);
 	if (errnum != 0) {
 		errno = errnum;
 		perror("exec_init");
@@ -208,12 +157,11 @@ requires XDG_RUNTIME_DIR\n"));
 	return EXIT_SUCCESS;
 }
 
-static linted_error exec_init(char const *init, linted_ko passed_ko)
+static linted_error exec_init(char const *init)
 {
 	linted_error errnum;
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
-		                 passed_ko };
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
 
 	pid_t myself = getpid();
 	int setenv_pid_status;

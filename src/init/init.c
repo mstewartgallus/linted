@@ -34,12 +34,10 @@
 
 extern char **environ;
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static volatile sig_atomic_t monitor_pid = 0;
@@ -75,8 +73,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_ko admin = kos[0U];
-
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
 
@@ -102,8 +98,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		attr = xx;
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,
-		                 admin };
+	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 		errnum =

@@ -248,20 +248,16 @@ static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
                                 linted_ko ko);
 static void conn_discard(struct conn *conn);
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-monitor",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
-
-	linted_dir private_run_dir = kos[0U];
 
 	sigset_t orig_mask;
 
@@ -284,29 +280,108 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char const *unit_path = getenv("LINTED_UNIT_PATH");
 	char const *sandbox = getenv("LINTED_SANDBOX");
 	char const *waiter = getenv("LINTED_WAITER");
+	char const *data_dir_path = getenv("XDG_DATA_HOME");
+	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
 
 	if (NULL == unit_path) {
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
-		    "%s: LINTED_UNIT_PATH is a required environment variable\n",
-		    process_name);
+		    "%s: %s is a required environment variable\n", process_name,
+		    "LINTED_UNIT_PATH");
 		return EXIT_FAILURE;
 	}
 
 	if (NULL == sandbox) {
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
-		    "%s: LINTED_SANDBOX is a required environment variable\n",
-		    process_name);
+		    "%s: %s is a required environment variable\n", process_name,
+		    "LINTED_SANDBOX");
 		return EXIT_FAILURE;
 	}
 
 	if (NULL == waiter) {
 		linted_io_write_format(
 		    STDERR_FILENO, NULL,
-		    "%s: LINTED_waiter is a required environment variable\n",
-		    process_name);
+		    "%s: %s is a required environment variable\n", process_name,
+		    "LINTED_WAITER");
 		return EXIT_FAILURE;
+	}
+
+	/**
+	 * @todo Use fallbacks for missing XDG environment variables.
+	 */
+	if (NULL == runtime_dir_path) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: %s is a required environment variable\n", process_name,
+		    "XDG_RUNTIME_DIR");
+		return EXIT_FAILURE;
+	}
+
+	if (NULL == data_dir_path) {
+		linted_io_write_format(
+		    STDERR_FILENO, NULL,
+		    "%s: %s is a required environment variable\n", process_name,
+		    "XDG_DATA_HOME");
+		return EXIT_FAILURE;
+	}
+
+	pid_t parent = getppid();
+
+	char *package_runtime_dir_path;
+	if (-1 == asprintf(&package_runtime_dir_path, "%s/%s", runtime_dir_path,
+	                   PACKAGE_TARNAME)) {
+		perror("asprintf");
+		return EXIT_FAILURE;
+	}
+
+	char *package_data_dir_path;
+	if (-1 == asprintf(&package_data_dir_path, "%s/%s", data_dir_path,
+	                   PACKAGE_TARNAME)) {
+		perror("asprintf");
+		return EXIT_FAILURE;
+	}
+
+	char *process_runtime_dir_path;
+	if (-1 == asprintf(&process_runtime_dir_path, "%s/%i",
+	                   package_runtime_dir_path, parent)) {
+		perror("asprintf");
+		return EXIT_FAILURE;
+	}
+
+	char *process_data_dir_path;
+	if (-1 == asprintf(&process_data_dir_path, "%s/%i",
+	                   package_data_dir_path, parent)) {
+		perror("asprintf");
+		return EXIT_FAILURE;
+	}
+
+	if (-1 == mkdir(package_runtime_dir_path, S_IRWXU)) {
+		if (errno != EEXIST) {
+			perror("mkdir");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (-1 == mkdir(package_data_dir_path, S_IRWXU)) {
+		if (errno != EEXIST) {
+			perror("mkdir");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (-1 == mkdir(process_runtime_dir_path, S_IRWXU)) {
+		if (errno != EEXIST) {
+			perror("mkdir");
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (-1 == mkdir(process_data_dir_path, S_IRWXU)) {
+		if (errno != EEXIST) {
+			perror("mkdir");
+			return EXIT_FAILURE;
+		}
 	}
 
 	linted_ko cwd;
@@ -324,9 +399,16 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		cwd = xx;
 	}
 
-	if (-1 == fchdir(private_run_dir)) {
-		perror("fchdir");
+	if (-1 == chdir(process_runtime_dir_path)) {
+		perror("chdir");
 		return EXIT_FAILURE;
+	}
+
+	if (-1 == symlink(process_data_dir_path, "var")) {
+		if (errno != EEXIST) {
+			perror("symlink");
+			return EXIT_FAILURE;
+		}
 	}
 
 retry_bind:
