@@ -50,7 +50,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 		for (;;) {
 			ssize_t result =
 			    read(ko, (char *)buf + bytes_read, bytes_left);
-			if (-1 == result) {
+			if (result < 0) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 
@@ -208,7 +208,7 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 	va_start(ap, format_str);
 
 	int bytes = vdprintf(ko, format_str, ap);
-	if (-1 == bytes) {
+	if (bytes < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_va_list;

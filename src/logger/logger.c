@@ -85,7 +85,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		{
 			uint32_t xx;
 			ssize_t bytes_read = read(log, &xx, sizeof xx);
-			if (-1 == bytes_read) {
+			if (bytes_read < 0) {
 				perror("read");
 				return EXIT_FAILURE;
 			}

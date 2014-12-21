@@ -378,7 +378,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	if (!fragment_is_valid) {
 		errnum = EINVAL;
 
-		GLint info_log_length;
+		size_t info_log_length;
 		{
 			GLint xx = 0;
 			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &xx);
@@ -422,7 +422,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	if (!vertex_is_valid) {
 		errnum = EINVAL;
 
-		GLint info_log_length = 0;
+		size_t info_log_length = 0;
 		{
 			GLint xx;
 			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &xx);
@@ -458,7 +458,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 	if (!program_is_valid) {
 		errnum = EINVAL;
 
-		GLint info_log_length;
+		size_t info_log_length;
 		{
 			GLint xx = 0;
 			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &xx);
@@ -499,17 +499,19 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context,
 		goto cleanup_buffers;
 	}
 
-	GLint vertex = glGetAttribLocation(program, "vertex");
-	if (-1 == vertex) {
+	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
+	if (maybe_vertex < 0) {
 		errnum = EINVAL;
 		goto cleanup_buffers;
 	}
+	GLuint vertex = maybe_vertex;
 
-	GLint normal = glGetAttribLocation(program, "normal");
-	if (-1 == normal) {
+	GLint maybe_normal = glGetAttribLocation(program, "normal");
+	if (maybe_normal < 0) {
 		errnum = EINVAL;
 		goto cleanup_buffers;
 	}
+	GLuint normal = maybe_normal;
 
 	glEnableVertexAttribArray(vertex);
 	glEnableVertexAttribArray(normal);

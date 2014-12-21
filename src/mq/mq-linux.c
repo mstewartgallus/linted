@@ -75,6 +75,12 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 	if (flags != 0U)
 		return EINVAL;
 
+	if (maxmsg > LONG_MAX)
+		return EINVAL;
+
+	if (msgsize > LONG_MAX)
+		return EINVAL;
+
 	if (debugpath[0U] != '/')
 		return EINVAL;
 
@@ -314,7 +320,7 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 	size_t size = task_receive->size;
 
 	ssize_t result = mq_receive(ko, buf, size, NULL);
-	if (-1 == result) {
+	if (result < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}

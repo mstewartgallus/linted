@@ -166,8 +166,8 @@ struct linted_asynch_waiter
 	struct linted_queue_node parent;
 	struct linted_asynch_task *task;
 	linted_ko ko;
-	unsigned short flags;
-	unsigned short revents;
+	short flags;
+	short revents;
 };
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
@@ -358,7 +358,7 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_waiter *waiter,
                                      struct linted_asynch_task *task,
-                                     linted_ko ko, unsigned short flags)
+                                     linted_ko ko, short flags)
 {
 	assert(pool != NULL);
 
@@ -853,12 +853,17 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 	/*
 	 * Our tasks are only I/O tasks and have extremely tiny stacks.
 	 */
-	long page_size = sysconf(_SC_PAGE_SIZE);
-	assert(page_size != -1);
+	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
+	assert(maybe_page_size >= 0);
+
+	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
+	assert(maybe_stack_min_size >= 0);
+
+	size_t page_size = maybe_page_size;
+	size_t stack_min_size = maybe_stack_min_size;
 
 	/* We need an extra page for signals */
-	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
-	assert(stack_size != -1);
+	size_t stack_size = stack_min_size + page_size;
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t worker_stacks_size =
@@ -1230,11 +1235,17 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 	/*
 	 * Our tasks are only I/O tasks and have extremely tiny stacks.
 	 */
-	long page_size = sysconf(_SC_PAGE_SIZE);
-	assert(page_size != -1);
+	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
+	assert(maybe_page_size >= 0);
 
-	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
-	assert(stack_size != -1);
+	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
+	assert(maybe_stack_min_size >= 0);
+
+	size_t page_size = maybe_page_size;
+	size_t stack_min_size = maybe_stack_min_size;
+
+	/* We need an extra page for signals */
+	size_t stack_size = stack_min_size + page_size;
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t pollers_stacks_size =

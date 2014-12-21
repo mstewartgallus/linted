@@ -327,7 +327,7 @@ linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
 			size_t yy = line_capacity;
 			errno = 0;
 			ssize_t zz = getline(&xx, &yy, conf_file);
-			if (-1 == zz)
+			if (zz < 0)
 				goto getline_failed;
 			line_buffer = xx;
 			line_capacity = yy;
@@ -872,6 +872,6 @@ static size_t string_hash(char const *str)
 {
 	size_t hash = 0U;
 	for (size_t ii = 0U; str[ii] != '\0'; ++ii)
-		hash = hash * 31 + str[ii];
+		hash = hash * 31U + (unsigned)str[ii];
 	return hash;
 }

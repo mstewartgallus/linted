@@ -781,7 +781,7 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	linted_error errnum = 0;
 
 	ssize_t result = read(ko, buf + bytes_read, bytes_left);
-	if (-1 == result) {
+	if (result < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}
@@ -991,7 +991,7 @@ void linted_ko_do_sendto(struct linted_asynch_pool *pool,
 	ssize_t result = sendto(ko, buf, size, MSG_NOSIGNAL | MSG_DONTWAIT,
 	                        (void *)&task_sendto->dest_addr,
 	                        task_sendto->dest_addr_size);
-	if (-1 == result) {
+	if (result < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}
