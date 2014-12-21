@@ -17,7 +17,7 @@
 #define LINTED_LOG_H
 
 #include "linted/error.h"
-#include "linted/mq.h"
+#include "linted/ko.h"
 
 #include <stddef.h>
 
@@ -32,30 +32,9 @@
 /**
  * A handle to access the log. Is safe to share between processes.
  */
-typedef linted_mq linted_log;
-
-struct linted_log_task_receive;
-
-struct sockaddr;
-
-linted_error
-linted_log_task_receive_create(struct linted_log_task_receive **taskp,
-                               void *data);
-void linted_log_task_receive_destroy(struct linted_log_task_receive *task);
-
-struct linted_asynch_task *
-linted_log_task_receive_to_asynch(struct linted_log_task_receive *task);
-struct linted_log_task_receive *
-linted_log_task_receive_from_asynch(struct linted_asynch_task *task);
-void *linted_log_task_receive_data(struct linted_log_task_receive *task);
-void linted_log_task_receive_prepare(struct linted_log_task_receive *task,
-                                     unsigned task_action, linted_log log,
-                                     char msg_ptr[static LINTED_LOG_MAX]);
-size_t linted_log_task_receive_bytes_read(struct linted_log_task_receive *task);
-char *linted_log_task_receive_buf(struct linted_log_task_receive *task);
+typedef linted_ko linted_log;
 
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
-                              size_t msg_len, struct sockaddr const *addr,
-                              size_t addr_len);
+                              size_t msg_len);
 
 #endif /* LINTED_LOG_H */

@@ -26,12 +26,12 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <sys/inotify.h>
 #include <unistd.h>
 
 enum { ON_RECEIVE_LOG, MAX_TASKS };
@@ -51,152 +51,57 @@ struct linted_start_config const linted_start_config = {
 
 static char logger_buffer[LINTED_LOG_MAX];
 
-static linted_error dispatch(struct linted_asynch_task *completed_task);
-
-static linted_error on_receive_log(struct linted_asynch_task *completed_task);
-
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	linted_log log = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	linted_log log = open("log/log", O_RDWR | O_CLOEXEC | O_CREAT, S_IRWXU);
 	if (-1 == log) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
 
-	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "log/log");
-
-		for (;;) {
-			if (-1 == bind(log, (void *)&addr,
-			               offsetof(struct sockaddr_un, sun_path) +
-			                   strlen(addr.sun_path))) {
-				if (errno == EADDRINUSE) {
-					unlink(addr.sun_path);
-					continue;
-				}
-				perror("bind");
-				return EXIT_FAILURE;
-			}
-			break;
-		}
+	int inotify = inotify_init1(IN_CLOEXEC);
+	if (-1 == inotify) {
+		perror("inotify_init1");
+		return EXIT_FAILURE;
 	}
 
-	linted_error errnum;
-
-	struct linted_asynch_pool *pool;
-	{
-		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
-			goto exit;
-		pool = xx;
+	int wd = inotify_add_watch(inotify, "log/log", IN_MODIFY);
+	if (-1 == wd) {
+		perror("inotify_add_watch");
+		return EXIT_FAILURE;
 	}
 
-	struct linted_log_task_receive *logger_task;
-	struct logger_data logger_data;
-
-	{
-		struct linted_log_task_receive *xx;
-		errnum = linted_log_task_receive_create(&xx, &logger_data);
-		if (errnum != 0)
-			goto destroy_pool;
-		logger_task = xx;
-	}
-
-	linted_log_task_receive_prepare(logger_task, ON_RECEIVE_LOG, log,
-	                                logger_buffer);
-	logger_data.log_ko = STDERR_FILENO;
-	logger_data.process_name = process_name;
-	logger_data.pool = pool;
-
-	linted_asynch_pool_submit(
-	    pool, linted_log_task_receive_to_asynch(logger_task));
-
-	/* TODO: Detect SIGTERM and exit normally */
+	off_t file_offset = lseek(log, 0U, SEEK_HOLE);
 	for (;;) {
-		struct linted_asynch_task *completed_task;
-		{
-			struct linted_asynch_task *xx;
-			linted_asynch_pool_wait(pool, &xx);
-			completed_task = xx;
+		struct inotify_event event;
+		if (-1 == read(inotify, &event, sizeof event)) {
+			perror("read");
+			return EXIT_FAILURE;
 		}
 
-		errnum = dispatch(completed_task);
-		if (errnum != 0)
-			goto destroy_pool;
-	}
-
-destroy_pool : {
-	linted_asynch_pool_stop(pool);
-
-	/* TODO: Print left over messages */
-	for (;;) {
-		struct linted_asynch_task *task;
-		linted_error poll_errnum;
-		{
-			struct linted_asynch_task *xx;
-			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
-				break;
-			task = xx;
+		ssize_t bytes_read =
+		    read(log, logger_buffer, sizeof logger_buffer);
+		if (-1 == bytes_read) {
+			perror("read");
+			return EXIT_FAILURE;
 		}
+		if (0 == bytes_read)
+			continue;
 
-		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
-		if (0 == errnum)
-			errnum = dispatch_errnum;
+		fprintf(stderr, "%s: ", process_name);
+		fwrite(logger_buffer, 1U, bytes_read, stderr);
+		fprintf(stderr, "\n");
+		fflush(stderr);
+
+		file_offset += (size_t)bytes_read;
+		if (-1 == fallocate(log,
+		                    FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
+		                    0U, file_offset + 1U)) {
+			perror("fallocate");
+			return EXIT_FAILURE;
+		}
 	}
 
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
-	/* Insure that the tasks are in proper scope until they are
-	 * terminated */
-	(void)logger_task;
-}
-
-exit:
-	return errnum;
-}
-
-static linted_error dispatch(struct linted_asynch_task *completed_task)
-{
-	switch (linted_asynch_task_action(completed_task)) {
-	case ON_RECEIVE_LOG:
-		return on_receive_log(completed_task);
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-}
-
-static linted_error on_receive_log(struct linted_asynch_task *task)
-{
-	linted_error errnum;
-
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
-
-	struct linted_log_task_receive *logger_task =
-	    linted_log_task_receive_from_asynch(task);
-	struct logger_data *logger_data =
-	    linted_log_task_receive_data(logger_task);
-
-	struct linted_asynch_pool *pool = logger_data->pool;
-	linted_ko log_ko = logger_data->log_ko;
-	char const *process_name = logger_data->process_name;
-	size_t log_size = linted_log_task_receive_bytes_read(logger_task);
-	char const *buf = linted_log_task_receive_buf(logger_task);
-
-	linted_io_write_string(log_ko, NULL, process_name);
-	linted_io_write_str(log_ko, NULL, LINTED_STR(": "));
-	linted_io_write_all(log_ko, NULL, buf, log_size);
-	linted_io_write_str(log_ko, NULL, LINTED_STR("\n"));
-
-	linted_asynch_pool_submit(pool, task);
-
-	return 0;
+	return EXIT_SUCCESS;
 }

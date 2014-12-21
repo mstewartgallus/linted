@@ -30,6 +30,7 @@
 #include "linted/window-notifier.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -111,9 +112,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_ko log = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	linted_log log =
+	    open("log/log", O_WRONLY | O_APPEND | O_CLOEXEC | O_CREAT, S_IRWXU);
 	if (-1 == log) {
-		perror("socket");
+		perror("open");
 		return EXIT_FAILURE;
 	}
 
@@ -252,15 +254,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	draw_frame:
 		/* Draw or resize if we have time to waste */
-		;
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "log/log");
-
-		size_t len = offsetof(struct sockaddr_un, sun_path) +
-		             strlen(addr.sun_path);
-
-		linted_gpu_draw(gpu_context, log, (void *)&addr, len);
+		linted_gpu_draw(gpu_context, log);
 	}
 
 cleanup_gpu:

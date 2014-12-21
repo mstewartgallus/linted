@@ -46,8 +46,7 @@ linted_error linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context);
 
 void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
                              struct linted_gpu_update const *gpu_update);
-void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log,
-                     struct sockaddr const *log_addr, size_t addr_size);
+void linted_gpu_draw(struct linted_gpu_context *gpu_context, linted_log log);
 void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
                        unsigned height);
 
