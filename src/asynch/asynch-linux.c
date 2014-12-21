@@ -1093,12 +1093,16 @@ static void run_task(struct linted_asynch_pool *pool,
 		run_task_sigwaitinfo(pool, task);
 		break;
 
+	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
+		run_task_sleep_until(pool, task);
+		break;
+
 	case LINTED_ASYNCH_TASK_ACCEPT:
 		linted_ko_do_accept(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
-		run_task_sleep_until(pool, task);
+	case LINTED_ASYNCH_TASK_RECV:
+		linted_ko_do_recv(pool, task);
 		break;
 
 	default:

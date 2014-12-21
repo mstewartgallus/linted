@@ -16,8 +16,4 @@ Description=Linted-Log Game Log
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenMessageQueue=/log
-MessageQueueMaxMessages=10
-MessageQueueMessageSize=1024
-
-X-LintedTemporary=true
+ListenDirectory=log

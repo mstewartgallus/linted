@@ -100,11 +100,10 @@ struct updater_data
 	linted_ko updater;
 };
 
-static linted_ko kos[1U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
@@ -131,13 +130,12 @@ static linted_sim_int sign(linted_sim_int x);
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[])
 {
-	linted_log log = kos[0U];
-
 	linted_error errnum;
 
-	{
-		static char const message[] = "starting simulator";
-		linted_log_write(log, message, sizeof message - 1U);
+	linted_log log = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == log) {
+		perror("socket");
+		return EXIT_FAILURE;
 	}
 
 	linted_controller controller =
@@ -192,6 +190,32 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			}
 			break;
 		}
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "log/log");
+
+		for (;;) {
+			if (-1 ==
+			    connect(log, (void *)&addr,
+			            offsetof(struct sockaddr_un, sun_path) +
+			                strlen(addr.sun_path))) {
+				if (ENOENT == errno || ECONNREFUSED == errno) {
+					sched_yield();
+					continue;
+				}
+				perror("connect");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
+
+	{
+		static char const message[] = "starting simulator";
+		linted_log_write(log, message, sizeof message - 1U);
 	}
 
 	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };

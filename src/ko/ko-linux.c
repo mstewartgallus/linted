@@ -80,6 +80,17 @@ struct linted_ko_task_write
 	linted_ko ko;
 };
 
+struct linted_ko_task_recv
+{
+	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
+	void *data;
+	char *buf;
+	size_t size;
+	size_t bytes_read;
+	linted_ko ko;
+};
+
 static void pipe_set_init(void);
 static sigset_t const *get_pipe_set(void);
 static linted_error eat_sigpipes(void);
@@ -391,6 +402,11 @@ linted_ko linted_ko_task_read_ko(struct linted_ko_task_read *task)
 	return task->ko;
 }
 
+size_t linted_ko_task_read_bytes_read(struct linted_ko_task_read *task)
+{
+	return task->bytes_read;
+}
+
 linted_error linted_ko_task_write_create(struct linted_ko_task_write **taskp,
                                          void *data)
 {
@@ -467,6 +483,92 @@ linted_ko_task_write_to_asynch(struct linted_ko_task_write *task)
 void *linted_ko_task_write_data(struct linted_ko_task_write *task)
 {
 	return task->data;
+}
+
+linted_error linted_ko_task_recv_create(struct linted_ko_task_recv **taskp,
+                                        void *data)
+{
+	linted_error errnum;
+	struct linted_ko_task_recv *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_RECV);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
+	task->parent = parent;
+	task->data = data;
+
+	*taskp = task;
+	return 0;
+free_parent:
+	linted_mem_free(parent);
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_ko_task_recv_destroy(struct linted_ko_task_recv *task)
+{
+	linted_asynch_waiter_destroy(task->waiter);
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void linted_ko_task_recv_prepare(struct linted_ko_task_recv *task,
+                                 unsigned task_action, linted_ko ko, char *buf,
+                                 size_t size)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
+	task->ko = ko;
+	task->buf = buf;
+	task->size = size;
+}
+
+struct linted_ko_task_recv *
+linted_ko_task_recv_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+struct linted_asynch_task *
+linted_ko_task_recv_to_asynch(struct linted_ko_task_recv *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_recv_data(struct linted_ko_task_recv *task)
+{
+	return task->data;
+}
+
+linted_ko linted_ko_task_recv_ko(struct linted_ko_task_recv *task)
+{
+	return task->ko;
+}
+
+size_t linted_ko_task_recv_bytes_read(struct linted_ko_task_recv *task)
+{
+	return task->bytes_read;
 }
 
 linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
@@ -727,6 +829,54 @@ static linted_error eat_sigpipes(void)
 	}
 
 	return errnum;
+}
+
+void linted_ko_do_recv(struct linted_asynch_pool *pool,
+                       struct linted_asynch_task *task)
+{
+	struct linted_ko_task_recv *task_recv =
+	    linted_ko_task_recv_from_asynch(task);
+	size_t bytes_read = 0U;
+	size_t size = task_recv->size;
+
+	linted_ko ko = task_recv->ko;
+	char *buf = task_recv->buf;
+
+	struct linted_asynch_waiter *waiter = task_recv->waiter;
+
+	linted_error errnum = 0;
+
+	ssize_t result = recv(ko, buf, size, MSG_DONTWAIT);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (EINTR == errnum)
+		goto submit_retry;
+
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
+		goto wait_on_poll;
+
+	if (errnum != 0)
+		goto complete_task;
+
+	bytes_read = result;
+
+complete_task:
+	linted_asynch_task_seterrnum(task, errnum);
+	task_recv->bytes_read = bytes_read;
+
+	linted_asynch_pool_complete(pool, task);
+	return;
+
+submit_retry:
+	task_recv->bytes_read = bytes_read;
+	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
 }
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,

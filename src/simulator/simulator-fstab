@@ -7,6 +7,7 @@ none	var	none	mkdir,nomount
 
 ../../updater	var/updater	none	mkdir,bind
 ../../controller	var/controller	none	mkdir,bind
+../../log	var/log	none	mkdir,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/null	dev/null	none	touch,bind

@@ -81,7 +81,7 @@ struct notice_data
 	xcb_window_t *window;
 };
 
-static linted_ko kos[2U];
+static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer",
@@ -101,13 +101,18 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_log log = kos[0U];
-	linted_window_notifier notifier = kos[1U];
+	linted_window_notifier notifier = kos[0U];
 
 	struct window_model window_model = { .viewable = false };
 
 	linted_ko updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (-1 == updater) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+	linted_ko log = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == log) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
@@ -126,6 +131,27 @@ unsigned char linted_start(char const *process_name, size_t argc,
 					continue;
 				}
 				perror("bind");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "log/log");
+
+		for (;;) {
+			if (-1 ==
+			    connect(log, (void *)&addr,
+			            offsetof(struct sockaddr_un, sun_path) +
+			                strlen(addr.sun_path))) {
+				if (ENOENT == errno || ECONNREFUSED == errno) {
+					sched_yield();
+					continue;
+				}
+				perror("connect");
 				return EXIT_FAILURE;
 			}
 			break;

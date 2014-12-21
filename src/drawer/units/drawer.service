@@ -18,7 +18,7 @@ Documentation='man:linted-drawer(6)'
 [Service]
 ExecStart="${LINTED_DRAWER}"
 
-X-LintedFiles=OPEN:log,wronly OPEN:window-notifier,rdonly
+X-LintedFiles=OPEN:window-notifier,rdonly
 
 NoNewPrivileges=true
 X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS

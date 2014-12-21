@@ -15,24 +15,20 @@
  */
 #include "config.h"
 
+#include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
-#include "linted/mq.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <mqueue.h>
-#include <sys/poll.h>
 
 struct linted_log_task_receive
 {
-	struct linted_mq_task_receive *parent;
+	struct linted_ko_task_recv *parent;
 	void *data;
 	char *buf;
 };
-
-static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(short revents);
 
 linted_error
 linted_log_task_receive_create(struct linted_log_task_receive **taskp,
@@ -47,10 +43,10 @@ linted_log_task_receive_create(struct linted_log_task_receive **taskp,
 			return errnum;
 		task = xx;
 	}
-	struct linted_mq_task_receive *parent;
+	struct linted_ko_task_recv *parent;
 	{
-		struct linted_mq_task_receive *xx;
-		errnum = linted_mq_task_receive_create(&xx, task);
+		struct linted_ko_task_recv *xx;
+		errnum = linted_ko_task_recv_create(&xx, task);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -66,21 +62,20 @@ free_task:
 
 void linted_log_task_receive_destroy(struct linted_log_task_receive *task)
 {
-	linted_mq_task_receive_destroy(task->parent);
+	linted_ko_task_recv_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 struct linted_asynch_task *
 linted_log_task_receive_to_asynch(struct linted_log_task_receive *task)
 {
-	return linted_mq_task_receive_to_asynch(task->parent);
+	return linted_ko_task_recv_to_asynch(task->parent);
 }
 
 struct linted_log_task_receive *
 linted_log_task_receive_from_asynch(struct linted_asynch_task *task)
 {
-	return linted_mq_task_receive_data(
-	    linted_mq_task_receive_from_asynch(task));
+	return linted_ko_task_recv_data(linted_ko_task_recv_from_asynch(task));
 }
 
 void *linted_log_task_receive_data(struct linted_log_task_receive *task)
@@ -92,14 +87,14 @@ void linted_log_task_receive_prepare(struct linted_log_task_receive *task,
                                      unsigned task_action, linted_log log,
                                      char msg_ptr[static LINTED_LOG_MAX])
 {
-	linted_mq_task_receive_prepare(task->parent, task_action, log, msg_ptr,
-	                               LINTED_LOG_MAX);
+	linted_ko_task_recv_prepare(task->parent, task_action, log, msg_ptr,
+	                            LINTED_LOG_MAX);
 	task->buf = msg_ptr;
 }
 
 size_t linted_log_task_receive_bytes_read(struct linted_log_task_receive *task)
 {
-	return linted_mq_task_receive_bytes_read(task->parent);
+	return linted_ko_task_recv_bytes_read(task->parent);
 }
 
 char *linted_log_task_receive_buf(struct linted_log_task_receive *task)
@@ -113,78 +108,5 @@ char *linted_log_task_receive_buf(struct linted_log_task_receive *task)
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
                               size_t msg_len)
 {
-	linted_error errnum = 0;
-
-	for (;;) {
-		int send_status;
-		do {
-			send_status = mq_send(log, msg_ptr, msg_len, 0);
-			if (0 == send_status) {
-				errnum = 0;
-			} else {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			}
-		} while (EINTR == errnum);
-		if (errnum != EAGAIN)
-			break;
-
-		short revents;
-		for (;;) {
-			short xx;
-			errnum = poll_one(log, POLLOUT, &xx);
-			switch (errnum) {
-			case EINTR:
-				continue;
-
-			case 0:
-				revents = xx;
-				goto check_for_poll_error;
-
-			default:
-				return errnum;
-			}
-		}
-
-	check_for_poll_error:
-		errnum = check_for_poll_error(revents);
-		if (errnum != 0)
-			break;
-	}
-	return errnum;
-}
-
-static linted_error check_for_poll_error(short revents)
-{
-	linted_error errnum = 0;
-
-	if ((revents & POLLNVAL) != 0)
-		errnum = EBADF;
-
-	return errnum;
-}
-
-static linted_error poll_one(linted_ko ko, short events, short *reventsp)
-{
-	linted_error errnum;
-
-	short revents;
-	{
-		struct pollfd pollfd = { .fd = ko, .events = events };
-		int poll_status = poll(&pollfd, 1U, -1);
-		if (-1 == poll_status)
-			goto poll_failed;
-
-		revents = pollfd.revents;
-		goto poll_succeeded;
-	}
-
-poll_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
-
-poll_succeeded:
-	*reventsp = revents;
-	return 0;
+	return linted_io_write_all(log, NULL, msg_ptr, msg_len);
 }

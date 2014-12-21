@@ -52,7 +52,7 @@ struct notice_data
 	struct linted_asynch_pool *pool;
 };
 
-static linted_ko kos[2U];
+static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-window",
@@ -71,7 +71,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_window_notifier notifier = kos[1U];
+	linted_window_notifier notifier = kos[0U];
 
 	char const *root = getenv("MANAGERPID");
 	if (NULL == root) {

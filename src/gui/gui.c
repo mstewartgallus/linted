@@ -108,7 +108,7 @@ struct notice_data
 	linted_ko controller;
 };
 
-static linted_ko kos[2U];
+static linted_ko kos[1U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-gui",
@@ -139,7 +139,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_window_notifier notifier = kos[1U];
+	linted_window_notifier notifier = kos[0U];
 
 	linted_controller controller =
 	    socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);

@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -25,6 +27,11 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 enum { ON_RECEIVE_LOG, MAX_TASKS };
@@ -36,11 +43,10 @@ struct logger_data
 	linted_ko log_ko;
 };
 
-static linted_ko kos[1U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-logger",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static char logger_buffer[LINTED_LOG_MAX];
@@ -52,7 +58,31 @@ static linted_error on_receive_log(struct linted_asynch_task *completed_task);
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	linted_log log = kos[0U];
+	linted_log log = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == log) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "log/log");
+
+		for (;;) {
+			if (-1 == bind(log, (void *)&addr,
+			               offsetof(struct sockaddr_un, sun_path) +
+			                   strlen(addr.sun_path))) {
+				if (errno == EADDRINUSE) {
+					unlink(addr.sun_path);
+					continue;
+				}
+				perror("bind");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
 
 	linted_error errnum;
 
