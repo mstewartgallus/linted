@@ -67,6 +67,8 @@
  * @todo Make the window notifier use Unix domain sockets
  * @todo Make tasks that connect to Unix sockets unable to delete them
  *
+ * @todo Harden bind mounts with extra flags
+ *
  * @todo Eventually reduce `-Wstack-usage` to 500.
  *
  * @todo Check child processes for hangups

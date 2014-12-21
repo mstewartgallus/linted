@@ -1104,7 +1104,9 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		if (0 == (mountflags & MS_BIND))
 			continue;
 
-		if (MS_BIND == mountflags && NULL == data)
+		if (0 == (mountflags & ~(MS_BIND | MS_SHARED | MS_SLAVE |
+		                         MS_PRIVATE | MS_UNBINDABLE)) &&
+		    NULL == data)
 			continue;
 
 		mountflags |= MS_REMOUNT;
@@ -1149,6 +1151,7 @@ enum {
 	MKDIR,
 	TOUCH,
 	NOMOUNT,
+	SHARED,
 	BIND,
 	RBIND,
 	RO,
@@ -1162,6 +1165,7 @@ enum {
 static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
 	                                    [TOUCH] = "touch",        /**/
 	                                    [NOMOUNT] = "nomount",    /**/
+	                                    [SHARED] = "shared",      /**/
 	                                    [BIND] = "bind",          /**/
 	                                    [RBIND] = "rbind",        /**/
 	                                    [RO] = MNTOPT_RO,         /**/
@@ -1182,6 +1186,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 	bool nomount_flag = false;
 	bool touch_flag = false;
 	bool mkdir_flag = false;
+	bool shared = false;
 	bool bind = false;
 	bool rec = false;
 	bool readonly = false;
@@ -1222,6 +1227,10 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 
 		case NOMOUNT:
 			nomount_flag = true;
+			break;
+
+		case SHARED:
+			shared = true;
 			break;
 
 		case BIND:
@@ -1269,7 +1278,8 @@ free_subopts_str:
 	if (readwrite && readonly)
 		return EINVAL;
 
-	if (bind && rec && readonly)
+	if (((bind && rec) || (bind && shared)) &&
+	    (readonly || !suid || !dev || !exec))
 		/*
 		 * Due to a completely idiotic kernel bug (see
 		 * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
@@ -1291,6 +1301,9 @@ free_subopts_str:
 		return EINVAL;
 
 	unsigned long mountflags = 0U;
+
+	if (shared)
+		mountflags |= MS_SHARED;
 
 	if (bind)
 		mountflags |= MS_BIND;

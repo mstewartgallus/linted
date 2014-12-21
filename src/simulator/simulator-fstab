@@ -3,26 +3,26 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	var	none	mkdir,nomount
-/home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
+/home	home	none	mkdir,shared,bind
 
-../../controller	var/controller	none	mkdir,bind
-../../updater	var/updater	none	mkdir,bind
-../../log	var/log	none	mkdir,bind
+../../controller	var/controller	none	mkdir,shared,bind
+../../updater	var/updater	none	mkdir,shared,bind
+../../log	var/log	none	mkdir,shared,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
-/dev/null	dev/null	none	touch,bind
-/dev/urandom	dev/urandom	none	touch,bind
-/dev/tty	dev/tty	none	touch,bind
+/dev/null	dev/null	none	touch,shared,bind
+/dev/urandom	dev/urandom	none	touch,shared,bind
+/dev/tty	dev/tty	none	touch,shared,bind
 
-proc	proc	proc	mkdir,ro,nosuid,nodev,noexec,hidepid=2
+proc	proc	proc	mkdir,nosuid,nodev,noexec,hidepid=2
 
-/etc	etc	none	mkdir,ro,nosuid,nodev,noexec,bind
+/etc	etc	none	mkdir,shared,bind
 
-/lib	lib	none	mkdir,ro,nosuid,nodev,bind
-/lib64	lib64	none	mkdir,ro,nosuid,nodev,bind 
+/lib	lib	none	mkdir,shared,bind
+/lib64	lib64	none	mkdir,shared,bind 
 
-/usr	usr	none	mkdir,ro,nosuid,nodev,bind 
+/usr	usr	none	mkdir,shared,bind 
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 
-/bin	bin	none	mkdir,ro,nosuid,nodev,bind
+/bin	bin	none	mkdir,shared,bind
