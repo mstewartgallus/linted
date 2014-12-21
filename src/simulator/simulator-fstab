@@ -5,8 +5,8 @@
 none	var	none	mkdir,nomount
 /home	home	none	mkdir,rbind	# TODO: This doesn't work with ro,rbind
 
-../../updater	var/updater	none	mkdir,bind
 ../../controller	var/controller	none	mkdir,bind
+../../updater	var/updater	none	mkdir,bind
 ../../log	var/log	none	mkdir,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700

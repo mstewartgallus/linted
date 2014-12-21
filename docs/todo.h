@@ -59,9 +59,13 @@
  * @todo Stop graphical banding problems
  *
  * @todo Preserve socket files between restarts
- * @todo Switch over to Unix domain sockets completely
+ * @todo Make the window notifier use Unix domain sockets
+ *       - The window notifier needs to act as a broadcaster
+ *       - The window tasks cannot currently use bind mounts
  * @todo Once Unix domain sockets are used completely switch over to
  *       unconnected and unreliable sockets.
+ * @todo Make the window notifier use Unix domain sockets
+ * @todo Make tasks that connect to Unix sockets unable to delete them
  *
  * @todo Eventually reduce `-Wstack-usage` to 500.
  *

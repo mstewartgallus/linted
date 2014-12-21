@@ -1104,7 +1104,7 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		if (0 == (mountflags & MS_BIND))
 			continue;
 
-		if (MS_BIND == mountflags)
+		if (MS_BIND == mountflags && NULL == data)
 			continue;
 
 		mountflags |= MS_REMOUNT;
