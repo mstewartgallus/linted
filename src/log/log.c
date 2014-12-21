@@ -15,13 +15,14 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
 #include <errno.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 struct linted_log_task_receive
 {
@@ -106,7 +107,11 @@ char *linted_log_task_receive_buf(struct linted_log_task_receive *task)
  * @todo Make asynchronous
  */
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
-                              size_t msg_len)
+                              size_t msg_len, struct sockaddr const *addr,
+                              size_t addr_len)
 {
-	return linted_io_write_all(log, NULL, msg_ptr, msg_len);
+	if (-1 == sendto(log, msg_ptr, msg_len, MSG_NOSIGNAL, addr, addr_len)) {
+		return errno;
+	}
+	return 0;
 }

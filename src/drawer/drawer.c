@@ -137,27 +137,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 
-	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "log/log");
-
-		for (;;) {
-			if (-1 ==
-			    connect(log, (void *)&addr,
-			            offsetof(struct sockaddr_un, sun_path) +
-			                strlen(addr.sun_path))) {
-				if (ENOENT == errno || ECONNREFUSED == errno) {
-					sched_yield();
-					continue;
-				}
-				perror("connect");
-				return EXIT_FAILURE;
-			}
-			break;
-		}
-	}
-
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
@@ -273,7 +252,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	draw_frame:
 		/* Draw or resize if we have time to waste */
-		linted_gpu_draw(gpu_context, log);
+		;
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "log/log");
+
+		size_t len = offsetof(struct sockaddr_un, sun_path) +
+		             strlen(addr.sun_path);
+
+		linted_gpu_draw(gpu_context, log, (void *)&addr, len);
 	}
 
 cleanup_gpu:

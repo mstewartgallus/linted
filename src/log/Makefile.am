@@ -22,7 +22,6 @@ noinst_LTLIBRARIES+=%D%/liblog.la
 %C%_liblog_la_LIBADD=\
   src/asynch/libasynch.la\
   src/ko/libko.la\
-  src/io/libio.la\
   src/mem/libmem.la\
   -lrt
 dist_pkgdefaultunits_DATA+=%D%/units/log.socket

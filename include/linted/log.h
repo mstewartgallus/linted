@@ -36,6 +36,8 @@ typedef linted_mq linted_log;
 
 struct linted_log_task_receive;
 
+struct sockaddr;
+
 linted_error
 linted_log_task_receive_create(struct linted_log_task_receive **taskp,
                                void *data);
@@ -53,6 +55,7 @@ size_t linted_log_task_receive_bytes_read(struct linted_log_task_receive *task);
 char *linted_log_task_receive_buf(struct linted_log_task_receive *task);
 
 linted_error linted_log_write(linted_log log, char const *msg_ptr,
-                              size_t msg_len);
+                              size_t msg_len, struct sockaddr const *addr,
+                              size_t addr_len);
 
 #endif /* LINTED_LOG_H */

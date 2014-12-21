@@ -148,27 +148,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "controller/controller");
-
-		for (;;) {
-			if (-1 ==
-			    connect(controller, (void *)&addr,
-			            offsetof(struct sockaddr_un, sun_path) +
-			                strlen(addr.sun_path))) {
-				if (ENOENT == errno || ECONNREFUSED == errno) {
-					sched_yield();
-					continue;
-				}
-				perror("connect");
-				return EXIT_FAILURE;
-			}
-			break;
-		}
-	}
-
 	struct controller_data controller_data = { 0 };
 	struct window_model window_model = { .width = 1, .height = 1 };
 
@@ -717,6 +696,10 @@ static linted_error on_sent_control(struct linted_asynch_task *task)
 	linted_error errnum;
 
 	errnum = linted_asynch_task_errnum(task);
+	if (ENOENT == errnum)
+		errnum = 0;
+	if (ECONNREFUSED == errnum)
+		errnum = 0;
 	if (errnum != 0)
 		return errnum;
 
@@ -749,11 +732,18 @@ maybe_update_controller(struct linted_asynch_pool *pool,
 	if (controller_data->update_in_progress)
 		return;
 
+	struct sockaddr_un addr = { 0 };
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, "controller/controller");
+
+	size_t addr_len =
+	    offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
+
 	struct controller_task_data *controller_task_data =
 	    linted_controller_task_send_data(controller_task);
-	linted_controller_task_send_prepare(controller_task, ON_SENT_CONTROL,
-	                                    controller,
-	                                    &controller_data->update);
+	linted_controller_task_send_prepare(
+	    controller_task, ON_SENT_CONTROL, controller,
+	    &controller_data->update, (void *)&addr, addr_len);
 	controller_task_data->controller_data = controller_data;
 	controller_task_data->pool = pool;
 	controller_task_data->controller = controller;

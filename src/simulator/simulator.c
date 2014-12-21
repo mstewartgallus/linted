@@ -172,50 +172,17 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "updater/updater");
+		static char const message[] = "starting simulator";
 
-		for (;;) {
-			if (-1 ==
-			    connect(updater, (void *)&addr,
-			            offsetof(struct sockaddr_un, sun_path) +
-			                strlen(addr.sun_path))) {
-				if (ENOENT == errno || ECONNREFUSED == errno) {
-					sched_yield();
-					continue;
-				}
-				perror("connect");
-				return EXIT_FAILURE;
-			}
-			break;
-		}
-	}
-
-	{
 		struct sockaddr_un addr = { 0 };
 		addr.sun_family = AF_UNIX;
 		strcpy(addr.sun_path, "log/log");
 
-		for (;;) {
-			if (-1 ==
-			    connect(log, (void *)&addr,
-			            offsetof(struct sockaddr_un, sun_path) +
-			                strlen(addr.sun_path))) {
-				if (ENOENT == errno || ECONNREFUSED == errno) {
-					sched_yield();
-					continue;
-				}
-				perror("connect");
-				return EXIT_FAILURE;
-			}
-			break;
-		}
-	}
+		size_t len = offsetof(struct sockaddr_un, sun_path) +
+		             strlen(addr.sun_path);
 
-	{
-		static char const message[] = "starting simulator";
-		linted_log_write(log, message, sizeof message - 1U);
+		linted_log_write(log, message, sizeof message - 1U,
+		                 (void *)&addr, len);
 	}
 
 	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
@@ -454,6 +421,10 @@ static linted_error on_sent_update(struct linted_asynch_task *task)
 	linted_error errnum;
 
 	errnum = linted_asynch_task_errnum(task);
+	if (ENOENT == errnum)
+		errnum = 0;
+	if (ECONNREFUSED == errnum)
+		errnum = 0;
 	if (errnum != 0)
 		return errnum;
 
@@ -493,8 +464,15 @@ static void maybe_update(linted_updater updater,
 			.y_rotation = simulator_state->y_rotation
 		};
 
-		linted_updater_task_send_prepare(
-		    updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "updater/updater");
+
+		size_t len = offsetof(struct sockaddr_un, sun_path) +
+		             strlen(addr.sun_path);
+		linted_updater_task_send_prepare(updater_task,
+		                                 ON_SENT_UPDATER_EVENT, updater,
+		                                 &update, (void *)&addr, len);
 	}
 
 	struct updater_data *updater_data =

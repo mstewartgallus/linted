@@ -1105,6 +1105,10 @@ static void run_task(struct linted_asynch_pool *pool,
 		linted_ko_do_recv(pool, task);
 		break;
 
+	case LINTED_ASYNCH_TASK_SENDTO:
+		linted_ko_do_sendto(pool, task);
+		break;
+
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}

@@ -91,6 +91,19 @@ struct linted_ko_task_recv
 	linted_ko ko;
 };
 
+struct linted_ko_task_sendto
+{
+	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
+	void *data;
+	char const *buf;
+	size_t size;
+	size_t bytes_wrote;
+	linted_ko ko;
+	struct sockaddr_storage dest_addr;
+	size_t dest_addr_size;
+};
+
 static void pipe_set_init(void);
 static sigset_t const *get_pipe_set(void);
 static linted_error eat_sigpipes(void);
@@ -571,6 +584,89 @@ size_t linted_ko_task_recv_bytes_read(struct linted_ko_task_recv *task)
 	return task->bytes_read;
 }
 
+linted_error linted_ko_task_sendto_create(struct linted_ko_task_sendto **taskp,
+                                          void *data)
+{
+	linted_error errnum;
+	struct linted_ko_task_sendto *task;
+	{
+		void *xx;
+		errnum = linted_mem_alloc(&xx, sizeof *task);
+		if (errnum != 0)
+			return errnum;
+		task = xx;
+	}
+	struct linted_asynch_task *parent;
+	{
+		struct linted_asynch_task *xx;
+		errnum = linted_asynch_task_create(&xx, task,
+		                                   LINTED_ASYNCH_TASK_SENDTO);
+		if (errnum != 0)
+			goto free_task;
+		parent = xx;
+	}
+
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		task->waiter = xx;
+	}
+
+	task->parent = parent;
+	task->data = data;
+	*taskp = task;
+	return 0;
+
+free_parent:
+	linted_asynch_task_destroy(parent);
+
+free_task:
+	linted_mem_free(task);
+	return errnum;
+}
+
+void linted_ko_task_sendto_destroy(struct linted_ko_task_sendto *task)
+{
+	linted_asynch_waiter_destroy(task->waiter);
+	linted_asynch_task_destroy(task->parent);
+	linted_mem_free(task);
+}
+
+void linted_ko_task_sendto_prepare(struct linted_ko_task_sendto *task,
+                                   unsigned task_action, linted_ko ko,
+                                   char const *buf, size_t size,
+                                   struct sockaddr const *addr,
+                                   size_t dest_addr_size)
+{
+	linted_asynch_task_prepare(task->parent, task_action);
+	task->ko = ko;
+	task->buf = buf;
+	task->size = size;
+
+	memset(&task->dest_addr, 0, sizeof task->dest_addr);
+	memcpy(&task->dest_addr, addr, dest_addr_size);
+	task->dest_addr_size = dest_addr_size;
+}
+
+struct linted_ko_task_sendto *
+linted_ko_task_sendto_from_asynch(struct linted_asynch_task *task)
+{
+	return linted_asynch_task_data(task);
+}
+
+struct linted_asynch_task *
+linted_ko_task_sendto_to_asynch(struct linted_ko_task_sendto *task)
+{
+	return task->parent;
+}
+
+void *linted_ko_task_sendto_data(struct linted_ko_task_sendto *task)
+{
+	return task->data;
+}
+
 linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
                                           void *data)
 {
@@ -877,6 +973,55 @@ submit_retry:
 
 wait_on_poll:
 	linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
+}
+
+void linted_ko_do_sendto(struct linted_asynch_pool *pool,
+                         struct linted_asynch_task *task)
+{
+	struct linted_ko_task_sendto *task_sendto =
+	    linted_ko_task_sendto_from_asynch(task);
+	size_t bytes_wrote = 0U;
+	size_t size = task_sendto->size;
+
+	linted_error errnum = 0;
+
+	linted_ko ko = task_sendto->ko;
+	char const *buf = task_sendto->buf;
+
+	ssize_t result = sendto(ko, buf, size, MSG_NOSIGNAL | MSG_DONTWAIT,
+	                        (void *)&task_sendto->dest_addr,
+	                        task_sendto->dest_addr_size);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	if (EINTR == errnum)
+		goto submit_retry;
+
+	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
+		goto wait_on_poll;
+
+	if (errnum != 0)
+		goto complete_task;
+
+	bytes_wrote = result;
+
+complete_task:
+	linted_asynch_task_seterrnum(task, errnum);
+	task_sendto->bytes_wrote = bytes_wrote;
+
+	linted_asynch_pool_complete(pool, task);
+	return;
+
+submit_retry:
+	task_sendto->bytes_wrote = bytes_wrote;
+	linted_asynch_pool_submit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, task_sendto->waiter, task, ko,
+	                                POLLOUT);
 }
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,

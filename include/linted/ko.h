@@ -49,7 +49,10 @@ struct linted_ko_task_poll;
 struct linted_ko_task_read;
 struct linted_ko_task_write;
 struct linted_ko_task_recv;
+struct linted_ko_task_sendto;
 struct linted_ko_task_accept;
+
+struct sockaddr;
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 
@@ -135,6 +138,21 @@ void *linted_ko_task_recv_data(struct linted_ko_task_recv *task);
 linted_ko linted_ko_task_recv_ko(struct linted_ko_task_recv *task);
 size_t linted_ko_task_recv_bytes_read(struct linted_ko_task_recv *task);
 
+linted_error linted_ko_task_sendto_create(struct linted_ko_task_sendto **taskp,
+                                          void *data);
+void linted_ko_task_sendto_destroy(struct linted_ko_task_sendto *task);
+
+struct linted_ko_task_sendto *
+linted_ko_task_sendto_from_asynch(struct linted_asynch_task *task);
+struct linted_asynch_task *
+linted_ko_task_sendto_to_asynch(struct linted_ko_task_sendto *);
+void linted_ko_task_sendto_prepare(struct linted_ko_task_sendto *task,
+                                   unsigned task_action, linted_ko ko,
+                                   char const *buf, size_t size,
+                                   struct sockaddr const *addr,
+                                   size_t dest_addr_size);
+void *linted_ko_task_sendto_data(struct linted_ko_task_sendto *task);
+
 linted_error linted_ko_task_accept_create(struct linted_ko_task_accept **taskp,
                                           void *data);
 void linted_ko_task_accept_destroy(struct linted_ko_task_accept *task);
@@ -162,6 +180,9 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 
 void linted_ko_do_recv(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *task);
+
+void linted_ko_do_sendto(struct linted_asynch_pool *pool,
+                         struct linted_asynch_task *task);
 
 void linted_ko_do_accept(struct linted_asynch_pool *pool,
                          struct linted_asynch_task *task);
