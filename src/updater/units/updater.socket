@@ -17,7 +17,3 @@ Documentation='man:linted.special(6)'
 
 [Socket]
 ListenDirectory=updater
-# MessageQueueMaxMessages=1
-# MessageQueueMessageSize=20
-
-# X-LintedTemporary=true

@@ -31,6 +31,12 @@
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xkb.h>
@@ -102,7 +108,7 @@ struct notice_data
 	linted_ko controller;
 };
 
-static linted_ko kos[3U];
+static linted_ko kos[2U];
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-gui",
@@ -133,8 +139,35 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_controller controller = kos[1U];
-	linted_window_notifier notifier = kos[2U];
+	linted_window_notifier notifier = kos[1U];
+
+	linted_controller controller =
+	    socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == controller) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "controller/controller");
+
+		for (;;) {
+			if (-1 ==
+			    connect(controller, (void *)&addr,
+			            offsetof(struct sockaddr_un, sun_path) +
+			                strlen(addr.sun_path))) {
+				if (ENOENT == errno || ECONNREFUSED == errno) {
+					sched_yield();
+					continue;
+				}
+				perror("connect");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
 
 	struct controller_data controller_data = { 0 };
 	struct window_model window_model = { .width = 1, .height = 1 };

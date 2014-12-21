@@ -38,6 +38,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <time.h>
+#include <unistd.h>
 
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_SIM_INT_MAX / 8)
@@ -99,7 +100,7 @@ struct updater_data
 	linted_ko updater;
 };
 
-static linted_ko kos[2U];
+static linted_ko kos[1U];
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-simulator",
 	.kos_size = LINTED_ARRAY_SIZE(kos),
@@ -131,7 +132,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_log log = kos[0U];
-	linted_controller controller = kos[1U];
 
 	linted_error errnum;
 
@@ -140,10 +140,37 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		linted_log_write(log, message, sizeof message - 1U);
 	}
 
+	linted_controller controller =
+	    socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (-1 == controller) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
 	linted_updater updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (-1 == updater) {
 		perror("socket");
 		return EXIT_FAILURE;
+	}
+
+	{
+		struct sockaddr_un addr = { 0 };
+		addr.sun_family = AF_UNIX;
+		strcpy(addr.sun_path, "controller/controller");
+
+		for (;;) {
+			if (-1 == bind(controller, (void *)&addr,
+			               offsetof(struct sockaddr_un, sun_path) +
+			                   strlen(addr.sun_path))) {
+				if (errno == EADDRINUSE) {
+					unlink(addr.sun_path);
+					continue;
+				}
+				perror("bind");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
 	}
 
 	{

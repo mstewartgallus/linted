@@ -16,8 +16,4 @@ Description=Linted-Controller Game Controller
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenMessageQueue=/controller
-MessageQueueMaxMessages=1
-MessageQueueMessageSize=9
-
-X-LintedTemporary=true
+ListenDirectory=controller

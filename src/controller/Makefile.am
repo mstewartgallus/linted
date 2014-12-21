@@ -21,6 +21,6 @@ noinst_LTLIBRARIES+=%D%/libcontroller.la
   include/linted/controller.h
 %C%_libcontroller_la_LIBADD=\
   src/asynch/libasynch.la\
-  src/mem/libmem.la\
-  src/mq/libmq.la
+  src/ko/libko.la\
+  src/mem/libmem.la
 dist_pkgdefaultunits_DATA+=%D%/units/controller.socket
