@@ -55,7 +55,7 @@ static char logger_buffer[LINTED_LOG_MAX];
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	linted_log log = open("log/log", O_RDWR | O_CLOEXEC | O_CREAT, S_IRWXU);
+	linted_log log = open("log", O_RDWR | O_CLOEXEC);
 	if (-1 == log) {
 		perror("socket");
 		return EXIT_FAILURE;
@@ -67,7 +67,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	int wd = inotify_add_watch(inotify, "log/log", IN_MODIFY);
+	int wd = inotify_add_watch(inotify, "log", IN_MODIFY);
 	if (-1 == wd) {
 		perror("inotify_add_watch");
 		return EXIT_FAILURE;

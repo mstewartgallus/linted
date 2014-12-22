@@ -22,6 +22,7 @@
 #include "linted/conf.h"
 #include "linted/dir.h"
 #include "linted/error.h"
+#include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
@@ -862,6 +863,9 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	char const *const *listen_dirs =
 	    linted_conf_find(conf, "Socket", "ListenDirectory");
 
+	char const *const *listen_files =
+	    linted_conf_find(conf, "Socket", "ListenFile");
+
 	char const *const *maxmsgss =
 	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
 	char const *const *msgsizes =
@@ -887,6 +891,15 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		listen_dir = xx;
 	}
 
+	char const *listen_file;
+	{
+		char const *xx;
+		errnum = str_from_strs(listen_files, &xx);
+		if (errnum != 0)
+			return errnum;
+		listen_file = xx;
+	}
+
 	enum linted_unit_socket_type socket_type;
 	char const *path = NULL;
 
@@ -901,6 +914,14 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
 		path = listen_dir;
 	}
+
+	if (listen_file != NULL) {
+		if (path != NULL)
+			return EINVAL;
+		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
+		path = listen_file;
+	}
+
 	if (NULL == path)
 		return EINVAL;
 
@@ -969,6 +990,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	}
 
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
+	case LINTED_UNIT_SOCKET_TYPE_FILE:
 		break;
 	}
 
@@ -1041,6 +1063,23 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			linted_ko xx;
 			errnum = linted_dir_create(&xx, LINTED_KO_CWD,
 			                           unit->path, 0, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+			ko = xx;
+		}
+
+		unit->ko = ko;
+		unit->is_open = true;
+		break;
+	}
+
+	case LINTED_UNIT_SOCKET_TYPE_FILE: {
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_file_create(&xx, LINTED_KO_CWD, unit->path,
+			                       LINTED_FILE_RDWR, S_IRWXU);
 			if (errnum != 0)
 				return errnum;
 			ko = xx;

@@ -143,8 +143,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 {
 	linted_error errnum;
 
-	linted_log log =
-	    open("log/log", O_WRONLY | O_APPEND | O_CLOEXEC | O_CREAT, S_IRWXU);
+	linted_log log = open("log", O_WRONLY | O_APPEND | O_CLOEXEC);
 	if (-1 == log) {
 		perror("open");
 		return EXIT_FAILURE;

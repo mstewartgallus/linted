@@ -16,4 +16,4 @@ Description=Linted-Log Game Log
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenDirectory=log
+ListenFile=var/log
