@@ -66,22 +66,30 @@ struct linted_spawn_attr
 	sigset_t const *mask;
 };
 
-static pid_t do_vfork(sigset_t const *sigset,
-                      struct linted_spawn_file_actions const *file_actions,
-                      linted_ko err_reader, linted_ko err_writer,
-                      char const *const *argv, char const *const *envp,
-                      char *listen_pid, char const *filename);
+struct fork_args
+{
+	sigset_t const *sigset;
+	struct linted_spawn_file_actions const *file_actions;
+	linted_ko err_reader;
+	linted_ko err_writer;
+	char const *const *argv;
+	char const *const *envp;
+	char *listen_pid;
+	char const *filename;
+};
 
+static int fork_routine(void *args);
 static linted_error
-exec_vfork(sigset_t const *sigset,
-           struct linted_spawn_file_actions const *file_actions,
-           linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-           char const *const *envp, char *listen_pid, char const *filename);
+do_fork(sigset_t const *sigset,
+        struct linted_spawn_file_actions const *file_actions,
+        linted_ko err_reader, linted_ko err_writer, char const *const *argv,
+        char const *const *envp, char *listen_pid, char const *filename);
 
 static linted_error default_signals(void);
 
 static void pid_to_str(char *buf, pid_t pid);
 
+__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
 static pid_t real_getpid(void);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
@@ -339,8 +347,10 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	if (errnum != 0)
 		goto close_err_pipes;
 
-	pid_t child = do_vfork(child_mask, file_actions, err_reader, err_writer,
-	                       argv, envp, listen_pid, filename);
+	struct fork_args fork_args = { child_mask, file_actions, err_reader,
+		                       err_writer, argv,         envp,
+		                       listen_pid, filename };
+	pid_t child = safe_vfork(fork_routine, &fork_args);
 	if (-1 == child) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -402,35 +412,30 @@ free_relative_path:
 	return 0;
 }
 
-/* Don't inline to work around a bug in Clang */
-#ifdef __clang__
-#define DO_VFORK_ATTR __attribute__((noinline))
-#else
-#define DO_VFORK_ATTR
-#endif
-
-static DO_VFORK_ATTR pid_t
-do_vfork(sigset_t const *sigset,
-         struct linted_spawn_file_actions const *file_actions,
-         linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-         char const *const *envp, char *listen_pid, char const *filename)
+static int fork_routine(void *arg)
 {
-	pid_t child = vfork();
-	if (0 == child) {
-		linted_error xx =
-		    exec_vfork(sigset, file_actions, err_reader, err_writer,
-		               argv, envp, listen_pid, filename);
-		linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
-		_Exit(EXIT_FAILURE);
-	}
-	return child;
+	struct fork_args *args = arg;
+	sigset_t const *sigset = args->sigset;
+	struct linted_spawn_file_actions const *file_actions =
+	    args->file_actions;
+	linted_ko err_reader = args->err_reader;
+	linted_ko err_writer = args->err_writer;
+	char const *const *argv = args->argv;
+	char const *const *envp = args->envp;
+	char *listen_pid = args->listen_pid;
+	char const *filename = args->filename;
+
+	linted_error xx = do_fork(sigset, file_actions, err_reader, err_writer,
+	                          argv, envp, listen_pid, filename);
+	linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
+	return EXIT_FAILURE;
 }
 
 static linted_error
-exec_vfork(sigset_t const *sigset,
-           struct linted_spawn_file_actions const *file_actions,
-           linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-           char const *const *envp, char *listen_pid, char const *filename)
+do_fork(sigset_t const *sigset,
+        struct linted_spawn_file_actions const *file_actions,
+        linted_ko err_reader, linted_ko err_writer, char const *const *argv,
+        char const *const *envp, char *listen_pid, char const *filename)
 {
 	linted_error errnum = 0;
 
@@ -547,6 +552,23 @@ static void pid_to_str(char *buf, pid_t pid)
 	}
 
 	buf[strsize] = '\0';
+}
+
+/* Most compilers can't handle the weirdness of vfork so contain it in
+ * a safe abstraction.
+ */
+__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
+{
+	void *volatile arg_copy = arg;
+	int (*volatile f_copy)(void *) = f;
+
+	__atomic_signal_fence(__ATOMIC_SEQ_CST);
+
+	pid_t child = vfork();
+	if (0 == child)
+		_Exit(f_copy(arg_copy));
+
+	return child;
 }
 
 static pid_t real_getpid(void)

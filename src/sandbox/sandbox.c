@@ -197,6 +197,8 @@ static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
 
+static pid_t safe_vfork(int (*f)(void *), void *args);
+static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
 static pid_t real_getpid(void);
 static int my_setgroups(size_t size, gid_t const *list);
 static int my_pivot_root(char const *new_root, char const *put_old);
@@ -649,38 +651,8 @@ exit_loop:
 		(char const * const *)env_copy, command,         num_fds
 	};
 
-	long page_size = sysconf(_SC_PAGE_SIZE);
-	assert(page_size != -1);
-
-	/* We need an extra page for signals */
-	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
-	assert(stack_size != -1);
-
-	size_t stack_and_guard_size = page_size + stack_size + page_size;
-	void *child_stack = mmap(
-	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
-	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (NULL == child_stack) {
-		perror("mmap");
-		return EXIT_FAILURE;
-	}
-
-	/* Guard pages are shared between the stacks */
-	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE)) {
-		perror("mprotect");
-		return EXIT_FAILURE;
-	}
-
-	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
-	                   page_size, PROT_NONE)) {
-		perror("mprotect");
-		return EXIT_FAILURE;
-	}
-
-	void *stack_start = (char *)child_stack + page_size + stack_size;
 	pid_t child =
-	    clone(first_fork_routine, stack_start,
-	          SIGCHLD | CLONE_VFORK | CLONE_VM | clone_flags, &args);
+	    safe_vclone(SIGCHLD | clone_flags, first_fork_routine, &args);
 	if (-1 == child) {
 		perror("clone");
 		return EXIT_FAILURE;
@@ -871,32 +843,7 @@ static linted_error do_first_fork(
 		                         stdout_writer,    stderr_writer,
 		                         listen_pid_str,   command,
 		                         env_copy,         no_new_privs };
-
-	long page_size = sysconf(_SC_PAGE_SIZE);
-	assert(page_size != -1);
-
-	/* We need an extra page for signals */
-	long stack_size = sysconf(_SC_THREAD_STACK_MIN) + page_size;
-	assert(stack_size != -1);
-
-	size_t stack_and_guard_size = page_size + stack_size + page_size;
-	void *child_stack = mmap(
-	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
-	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (NULL == child_stack)
-		return errno;
-
-	/* Guard pages are shared between the stacks */
-	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE))
-		return errno;
-
-	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
-	                   page_size, PROT_NONE))
-		return errno;
-
-	void *stack_start = (char *)child_stack + page_size + stack_size;
-	pid_t grand_child = clone(second_fork_routine, stack_start,
-	                          SIGCHLD | CLONE_VFORK | CLONE_VM, &args);
+	pid_t grand_child = safe_vfork(second_fork_routine, &args);
 	if (-1 == grand_child)
 		return errno;
 
@@ -1442,6 +1389,72 @@ static linted_error set_seccomp(struct sock_fprog const *program)
 		return errnum;
 	}
 	return 0;
+}
+
+/* Most compilers can't handle the weirdness of vfork so contain it in
+ * a safe abstraction.
+ */
+__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
+{
+	void *volatile arg_copy = arg;
+	int (*volatile f_copy)(void *) = f;
+
+	__atomic_signal_fence(__ATOMIC_SEQ_CST);
+
+	pid_t child = vfork();
+	if (0 == child)
+		_Exit(f_copy(arg_copy));
+	return child;
+}
+
+static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *arg)
+{
+	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
+	assert(maybe_page_size >= 0);
+
+	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
+	assert(maybe_stack_min_size >= 0);
+
+	size_t page_size = maybe_page_size;
+	size_t stack_min_size = maybe_stack_min_size;
+
+	/* We need an extra page for signals */
+	size_t stack_size = stack_min_size + page_size;
+
+	size_t stack_and_guard_size = page_size + stack_size + page_size;
+	void *child_stack = mmap(
+	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
+	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+	if (NULL == child_stack)
+		return -1;
+
+	/* Guard pages are shared between the stacks */
+	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE))
+		goto on_err;
+
+	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
+	                   page_size, PROT_NONE))
+		goto on_err;
+
+	void *stack_start = (char *)child_stack + page_size + stack_size;
+
+	__atomic_signal_fence(__ATOMIC_SEQ_CST);
+
+	pid_t child =
+	    clone(f, stack_start, CLONE_VFORK | CLONE_VM | clone_flags, arg);
+	if (-1 == child)
+		goto on_err;
+
+	munmap(child_stack, stack_and_guard_size);
+
+	return child;
+
+on_err:
+	;
+	int errnum = errno;
+	munmap(child_stack, stack_and_guard_size);
+	errno = errnum;
+	return -1;
 }
 
 static pid_t real_getpid(void)
