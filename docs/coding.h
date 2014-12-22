@@ -246,15 +246,16 @@
  *
  * Use %%i instead of %%d in format string specifiers.
  *
+ * </li>
  * </ul>
  *
  * @section resources Other Resources
  *
  * <ul>
- * - [The CERT C Coding Standards](https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard)
- * - [EC-- Rule Set](http://www.leshatton.org/ISOC_subset1103.html)
+ * <li> [The CERT C Coding Standards](https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard) </li>
+ * <li> [EC-- Rule Set](http://www.leshatton.org/ISOC_subset1103.html) </li>
  * <li> [Cryptography Coding Standard](https://cryptocoding.net/index.php/Coding_rules)
-
+ *
  * Note that this standard currently has dangerous and incorrect
  * advice on how to use the volatile qualifier to guarantee that
  * memory is zeroed. In general, the compiler and the hardware are
@@ -271,7 +272,7 @@
  * and hardware support. Instead one should use encryption or hashing
  * to prevent any possible leakage of data through timing attacks.
  * </li>
- * - [OWASP Secure Coding Principles](https://www.owasp.org/index.php/Secure_Coding_Principles)
- * - [JPL Institutional Coding Standard for the C Programming Language](http://lars-lab.jpl.nasa.gov/JPL_Coding_Standard_C.pdf)
+ * <li> [OWASP Secure Coding Principles](https://www.owasp.org/index.php/Secure_Coding_Principles) </li>
+ * <li> [JPL Institutional Coding Standard for the C Programming Language](http://lars-lab.jpl.nasa.gov/JPL_Coding_Standard_C.pdf) </li>
  * </ul>
  */
