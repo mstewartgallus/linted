@@ -150,13 +150,14 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	linted_controller controller =
-	    socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (-1 == controller) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
 
-	linted_updater updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	linted_updater updater =
+	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (-1 == updater) {
 		perror("socket");
 		return EXIT_FAILURE;

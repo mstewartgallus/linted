@@ -106,7 +106,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	struct window_model window_model = { .viewable = false };
 
-	linted_ko updater = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	linted_ko updater =
+	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (-1 == updater) {
 		perror("socket");
 		return EXIT_FAILURE;
