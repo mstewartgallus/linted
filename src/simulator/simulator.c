@@ -143,7 +143,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 {
 	linted_error errnum;
 
-	linted_log log = open("log", O_WRONLY | O_APPEND | O_CLOEXEC);
+	linted_log log = open("/run/log", O_WRONLY | O_APPEND | O_CLOEXEC);
 	if (-1 == log) {
 		perror("open");
 		return EXIT_FAILURE;
@@ -166,7 +166,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	{
 		struct sockaddr_un addr = { 0 };
 		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "controller/controller");
+		strcpy(addr.sun_path, "/run/controller/controller");
 
 		for (;;) {
 			if (-1 == bind(controller, (void *)&addr,
@@ -467,7 +467,7 @@ static void maybe_update(linted_updater updater,
 
 		struct sockaddr_un addr = { 0 };
 		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "updater/updater");
+		strcpy(addr.sun_path, "/run/updater/updater");
 
 		size_t len = offsetof(struct sockaddr_un, sun_path) +
 		             strlen(addr.sun_path);

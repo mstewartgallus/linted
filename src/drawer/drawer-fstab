@@ -2,14 +2,19 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
-none	var	none	mkdir,nomount
 /home	home	none	mkdir,shared,bind
 
-../../var/log	var/log	none	touch,bind
-../../updater	var/updater	none	mkdir,shared,bind
+none	../../var/drawer	none	mkdir,nomount
+../../var/drawer	var	none	mkdir,shared,bind
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
+tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
+
+
+../../var/log	run/log	none	touch,bind
+../../updater	run/updater	none	mkdir,shared,bind
+
 
 # Allow connecting to X11\n
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,shared,bind

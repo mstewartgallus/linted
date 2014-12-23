@@ -2,10 +2,13 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
-none	var	none	mkdir,nomount
 /home	home	none	mkdir,shared,bind
 
-../../var/log	var/log	none	touch,bind
+none	../../var/logger	none	mkdir,nomount
+../../var/logger	var	none	mkdir,shared,bind
+
+tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
+../../var/log	run/log	none	touch,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/null	dev/null	none	touch,bind

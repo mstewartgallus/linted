@@ -107,10 +107,14 @@ It is insecure to run a game with high privileges!\n"));
 	/* Sort the fds from smallest to largest */
 	sort_kos(open_kos, open_kos_size);
 
-	/* Close leaked files over and don't check for errors as they
-	 * could just be leaked /dev/full handles or similar. */
-	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii)
-		linted_ko_close(open_kos[ii]);
+	/* Duplicate over leaked files with STDERR_FILENO in case
+	 * someone tries to write to them later.
+	 */
+	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
+		if (-1 == dup3(STDERR_FILENO, open_kos[ii], O_CLOEXEC)) {
+			return errno;
+		}
+	}
 
 	for (size_t ii = 0U; ii < kos_size + 3U; ++ii) {
 		if (open_kos[ii] != (linted_ko)ii)

@@ -734,7 +734,7 @@ maybe_update_controller(struct linted_asynch_pool *pool,
 
 	struct sockaddr_un addr = { 0 };
 	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, "controller/controller");
+	strcpy(addr.sun_path, "/run/controller/controller");
 
 	size_t addr_len =
 	    offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
