@@ -761,6 +761,17 @@ static linted_error do_first_fork(
 
 	linted_ko_close(err_reader);
 
+	/* Terminals are really ugly and horrible, avoid them. */
+	int tty = open("/dev/tty", O_CLOEXEC);
+	if (-1 == tty) {
+		if (errno != ENXIO)
+			return errno;
+	} else {
+		if (-1 == ioctl(tty, TIOCNOTTY))
+			return errno;
+	}
+	linted_ko_close(tty);
+
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
 		errnum = set_id_maps(uid_map, gid_map);
@@ -917,16 +928,6 @@ static linted_error do_second_fork(linted_ko stdin_reader,
                                    char const *const *env, bool no_new_privs)
 {
 	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
-
-	/* Terminals are really ugly and horrible, avoid them. */
-	int tty = open("/dev/tty", O_CLOEXEC);
-	if (-1 == tty) {
-		if (errno != ENXIO)
-			return errno;
-	} else {
-		if (-1 == ioctl(tty, TIOCNOTTY))
-			return errno;
-	}
 
 	if (-1 == dup2(stdin_reader, STDIN_FILENO))
 		return errno;

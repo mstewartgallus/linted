@@ -18,7 +18,6 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 
 /dev/null	dev/null	none	touch,bind
 /dev/urandom	dev/urandom	none	touch,bind
-/dev/tty	dev/tty	none	touch,bind
 
 proc	proc	proc	mkdir,nosuid,nodev,noexec,hidepid=2
 
