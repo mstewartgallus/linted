@@ -18,20 +18,6 @@
 
 #include "linted/error.h"
 
-#if _POSIX_C_SOURCE >= 199309L
-#include <signal.h>
-#endif
-
-#include <sys/types.h>
-
-#if _POSIX_C_SOURCE >= 199309L
-#include <time.h>
-#endif
-
-#if _POSIX_C_SOURCE >= 200809L
-#include <sys/wait.h>
-#endif
-
 /**
  * @file
  *
@@ -56,11 +42,6 @@ enum {
 };
 
 struct linted_asynch_task;
-struct linted_asynch_task_idle;
-struct linted_asynch_task_waitid;
-struct linted_asynch_task_sigwaitinfo;
-struct linted_asynch_task_sleep_until;
-
 struct linted_asynch_waiter;
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
@@ -99,74 +80,5 @@ linted_error linted_asynch_task_errnum(struct linted_asynch_task *task);
 void linted_asynch_task_seterrnum(struct linted_asynch_task *task,
                                   linted_error errnum);
 void *linted_asynch_task_data(struct linted_asynch_task *task);
-
-linted_error
-linted_asynch_task_idle_create(struct linted_asynch_task_idle **taskp,
-                               void *data);
-void linted_asynch_task_idle_destroy(struct linted_asynch_task_idle *task);
-
-void *linted_asynch_task_idle_data(struct linted_asynch_task_idle *task);
-struct linted_asynch_task *
-linted_asynch_task_idle_to_asynch(struct linted_asynch_task_idle *task);
-struct linted_asynch_task_idle *
-linted_asynch_task_idle_from_asynch(struct linted_asynch_task *task);
-void linted_asynch_task_idle_prepare(struct linted_asynch_task_idle *task,
-                                     unsigned task_action);
-
-linted_error
-linted_asynch_task_waitid_create(struct linted_asynch_task_waitid **taskp,
-                                 void *data);
-void linted_asynch_task_waitid_destroy(struct linted_asynch_task_waitid *task);
-
-#if _POSIX_C_SOURCE >= 200809L
-void linted_asynch_task_waitid_prepare(struct linted_asynch_task_waitid *task,
-                                       unsigned task_action, idtype_t type,
-                                       id_t id, int options);
-void linted_asynch_task_waitid_info(struct linted_asynch_task_waitid *task,
-                                    siginfo_t *info);
-#endif
-void *linted_asynch_task_waitid_data(struct linted_asynch_task_waitid *task);
-struct linted_asynch_task *
-linted_asynch_task_waitid_to_asynch(struct linted_asynch_task_waitid *task);
-struct linted_asynch_task_waitid *
-linted_asynch_task_waitid_from_asynch(struct linted_asynch_task *task);
-
-linted_error linted_asynch_task_sigwaitinfo_create(
-    struct linted_asynch_task_sigwaitinfo **taskp, void *data);
-void linted_asynch_task_sigwaitinfo_destroy(
-    struct linted_asynch_task_sigwaitinfo *task);
-
-#if _POSIX_C_SOURCE >= 199309L
-void linted_asynch_task_sigwaitinfo_prepare(
-    struct linted_asynch_task_sigwaitinfo *task, unsigned task_action,
-    sigset_t const *set);
-#endif
-void *linted_asynch_task_sigwaitinfo_data(
-    struct linted_asynch_task_sigwaitinfo *task);
-int linted_asynch_task_sigwaitinfo_signo(
-    struct linted_asynch_task_sigwaitinfo *task);
-struct linted_asynch_task *linted_asynch_task_sigwaitinfo_to_asynch(
-    struct linted_asynch_task_sigwaitinfo *task);
-struct linted_asynch_task_sigwaitinfo *
-linted_asynch_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task);
-
-linted_error linted_asynch_task_sleep_until_create(
-    struct linted_asynch_task_sleep_until **taskp, void *data);
-void linted_asynch_task_sleep_until_destroy(
-    struct linted_asynch_task_sleep_until *task);
-
-#if _POSIX_C_SOURCE >= 199309L
-void linted_asynch_task_sleep_until_prepare(
-    struct linted_asynch_task_sleep_until *task, unsigned task_action,
-    int flags, struct timespec const *req);
-void linted_asynch_task_sleep_until_request(
-    struct linted_asynch_task_sleep_until *task, struct timespec *req);
-#endif
-void *linted_asynch_task_sleep_until_data(
-    struct linted_asynch_task_sleep_until *task);
-struct linted_asynch_task *linted_asynch_task_sleep_until_to_asynch(
-    struct linted_asynch_task_sleep_until *task);
-struct linted_asynch_task_sleep_until *
-linted_asynch_task_sleep_until_from_asynch(struct linted_asynch_task *task);
 
 #endif /* LINTED_ASYNCH_H */

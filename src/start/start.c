@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <link.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

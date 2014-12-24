@@ -21,6 +21,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/sched.h"
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -174,14 +175,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct updater_data updater_data;
 	struct poll_conn_data poll_conn_data;
 
-	struct linted_asynch_task_idle *idle_task;
+	struct linted_sched_task_idle *idle_task;
 	struct linted_window_notifier_task_receive *notice_task;
 	struct linted_updater_task_receive *updater_task;
 	struct linted_ko_task_poll *poll_conn_task;
 
 	{
-		struct linted_asynch_task_idle *xx;
-		errnum = linted_asynch_task_idle_create(&xx, &idle_data);
+		struct linted_sched_task_idle *xx;
+		errnum = linted_sched_task_idle_create(&xx, &idle_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		idle_task = xx;
@@ -227,12 +228,12 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		gpu_context = xx;
 	}
 
-	linted_asynch_task_idle_prepare(idle_task, ON_IDLE);
+	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
 	idle_data.log = log;
 	idle_data.pool = pool;
 	idle_data.gpu_context = gpu_context;
 	linted_asynch_pool_submit(pool,
-	                          linted_asynch_task_idle_to_asynch(idle_task));
+	                          linted_sched_task_idle_to_asynch(idle_task));
 
 	linted_window_notifier_task_receive_prepare(
 	    notice_task, ON_RECEIVE_NOTICE, notifier);
@@ -346,9 +347,9 @@ static linted_error on_idle(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_asynch_task_idle *idle_task =
-	    linted_asynch_task_idle_from_asynch(task);
-	struct idle_data *idle_data = linted_asynch_task_idle_data(idle_task);
+	struct linted_sched_task_idle *idle_task =
+	    linted_sched_task_idle_from_asynch(task);
+	struct idle_data *idle_data = linted_sched_task_idle_data(idle_task);
 
 	linted_log log = idle_data->log;
 	struct linted_gpu_context *gpu_context = idle_data->gpu_context;
@@ -357,7 +358,7 @@ static linted_error on_idle(struct linted_asynch_task *task)
 	/* Draw or resize if we have time to waste */
 	linted_gpu_draw(gpu_context, log);
 
-	linted_asynch_task_idle_prepare(idle_task, ON_IDLE);
+	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
 	linted_asynch_pool_submit(pool, task);
 
 	return 0;

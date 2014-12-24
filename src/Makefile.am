@@ -28,8 +28,8 @@ include %C%/linted-enter/Makefile.am
 include %C%/linted/Makefile.am
 include %C%/logger/Makefile.am
 include %C%/monitor/Makefile.am
-include %C%/simulator/Makefile.am
 include %C%/sandbox/Makefile.am
+include %C%/simulator/Makefile.am
 include %C%/waiter/Makefile.am
 include %C%/window/Makefile.am
 
@@ -45,9 +45,12 @@ include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/mq/Makefile.am
+include %C%/pid/Makefile.am
 include %C%/pool/Makefile.am
-include %C%/random/Makefile.am
 include %C%/queue/Makefile.am
+include %C%/random/Makefile.am
+include %C%/sched/Makefile.am
+include %C%/signal/Makefile.am
 include %C%/sim/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am

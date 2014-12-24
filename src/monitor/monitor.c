@@ -27,7 +27,9 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/mq.h"
+#include "linted/pid.h"
 #include "linted/pool.h"
+#include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
 #include "linted/unit.h"
@@ -456,22 +458,22 @@ retry_bind:
 	struct wait_service_data sandbox_data;
 	struct accepted_conn_data accepted_conn_data;
 
-	struct linted_asynch_task_waitid *sandbox_task;
-	struct linted_asynch_task_sigwaitinfo *sigwait_task;
+	struct linted_pid_task_waitid *sandbox_task;
+	struct linted_signal_task_sigwaitinfo *sigwait_task;
 	struct linted_admin_task_accept *accepted_conn_task;
 
 	{
-		struct linted_asynch_task_waitid *xx;
-		errnum = linted_asynch_task_waitid_create(&xx, &sandbox_data);
+		struct linted_pid_task_waitid *xx;
+		errnum = linted_pid_task_waitid_create(&xx, &sandbox_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		sandbox_task = xx;
 	}
 
 	{
-		struct linted_asynch_task_sigwaitinfo *xx;
+		struct linted_signal_task_sigwaitinfo *xx;
 		errnum =
-		    linted_asynch_task_sigwaitinfo_create(&xx, &sigwait_data);
+		    linted_signal_task_sigwaitinfo_create(&xx, &sigwait_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		sigwait_task = xx;
@@ -514,13 +516,13 @@ retry_bind:
 		unit_db = xx;
 	}
 
-	linted_asynch_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
+	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
 	                                       &exit_signals);
 	sigwait_data.time_to_exit = &time_to_exit;
 	sigwait_data.unit_db = unit_db;
 
 	linted_asynch_pool_submit(
-	    pool, linted_asynch_task_sigwaitinfo_to_asynch(sigwait_task));
+	    pool, linted_signal_task_sigwaitinfo_to_asynch(sigwait_task));
 
 	linted_admin_task_accept_prepare(accepted_conn_task,
 	                                 ADMIN_ACCEPTED_CONNECTION, admin);
@@ -538,8 +540,8 @@ retry_bind:
 	if (errnum != 0)
 		goto kill_procs;
 
-	linted_asynch_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
-	                                  WEXITED);
+	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
+	                               WEXITED);
 	sandbox_data.process_name = process_name;
 	sandbox_data.pool = pool;
 	sandbox_data.cwd = cwd;
@@ -550,7 +552,7 @@ retry_bind:
 	sandbox_data.time_to_exit = &time_to_exit;
 
 	linted_asynch_pool_submit(
-	    pool, linted_asynch_task_waitid_to_asynch(sandbox_task));
+	    pool, linted_pid_task_waitid_to_asynch(sandbox_task));
 
 	for (;;) {
 		struct linted_asynch_task *completed_task;
@@ -570,7 +572,7 @@ cancel_tasks:
 		errnum = 0;
 
 	linted_asynch_task_cancel(
-	    linted_asynch_task_waitid_to_asynch(sandbox_task));
+	    linted_pid_task_waitid_to_asynch(sandbox_task));
 	linted_asynch_task_cancel(
 	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
@@ -1610,10 +1612,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_asynch_task_waitid *sandbox_task =
-	    linted_asynch_task_waitid_from_asynch(task);
+	struct linted_pid_task_waitid *sandbox_task =
+	    linted_pid_task_waitid_from_asynch(task);
 	struct wait_service_data *wait_service_data =
-	    linted_asynch_task_waitid_data(sandbox_task);
+	    linted_pid_task_waitid_data(sandbox_task);
 	struct linted_asynch_pool *pool = wait_service_data->pool;
 
 	char const *process_name = wait_service_data->process_name;
@@ -1626,7 +1628,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	int exit_code;
 	{
 		siginfo_t exit_info;
-		linted_asynch_task_waitid_info(sandbox_task, &exit_info);
+		linted_pid_task_waitid_info(sandbox_task, &exit_info);
 		pid = exit_info.si_pid;
 		exit_status = exit_info.si_status;
 		exit_code = exit_info.si_code;
@@ -1663,10 +1665,10 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_asynch_task_sigwaitinfo *sigwait_task =
-	    linted_asynch_task_sigwaitinfo_from_asynch(task);
+	struct linted_signal_task_sigwaitinfo *sigwait_task =
+	    linted_signal_task_sigwaitinfo_from_asynch(task);
 	struct sigwait_data *sigwait_data =
-	    linted_asynch_task_sigwaitinfo_data(sigwait_task);
+	    linted_signal_task_sigwaitinfo_data(sigwait_task);
 	bool *time_to_exit = sigwait_data->time_to_exit;
 	struct linted_unit_db *unit_db = sigwait_data->unit_db;
 

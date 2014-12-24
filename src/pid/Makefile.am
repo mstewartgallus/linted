@@ -14,16 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/libasynch.la
+noinst_LTLIBRARIES+=%D%/libpid.la
 
-%C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
-EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-linux.c %D%/asynch-windows.c
-%C%_libasynch_la_LIBADD=\
+%C%_libpid_la_SOURCES=%D%/pid.c include/linted/pid.h
+%C%_libpid_la_LIBADD=\
   src/ko/libko.la\
   src/mem/libmem.la\
   src/mq/libmq.la\
-  src/pid/libpid.la\
   src/queue/libqueue.la\
-  src/sched/libsched.la\
-  src/signal/libsignal.la\
   -lrt

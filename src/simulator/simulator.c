@@ -23,6 +23,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/sched.h"
 #include "linted/sim.h"
 #include "linted/start.h"
 #include "linted/updater.h"
@@ -218,14 +219,13 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	struct controller_data controller_data;
 	struct updater_data updater_data;
 
-	struct linted_asynch_task_sleep_until *tick_task;
+	struct linted_sched_task_sleep_until *tick_task;
 	struct linted_controller_task_receive *controller_task;
 	struct linted_updater_task_send *updater_task;
 
 	{
-		struct linted_asynch_task_sleep_until *xx;
-		errnum =
-		    linted_asynch_task_sleep_until_create(&xx, &timer_data);
+		struct linted_sched_task_sleep_until *xx;
+		errnum = linted_sched_task_sleep_until_create(&xx, &timer_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		tick_task = xx;
@@ -255,8 +255,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 
-		linted_asynch_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
-		                                       TIMER_ABSTIME, &now);
+		linted_sched_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
+		                                      TIMER_ABSTIME, &now);
 	}
 	timer_data.pool = pool;
 	timer_data.updater_task = updater_task;
@@ -270,7 +270,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	controller_data.action_state = &action_state;
 
 	linted_asynch_pool_submit(
-	    pool, linted_asynch_task_sleep_until_to_asynch(tick_task));
+	    pool, linted_sched_task_sleep_until_to_asynch(tick_task));
 	linted_asynch_pool_submit(
 	    pool, linted_controller_task_receive_to_asynch(controller_task));
 
@@ -346,10 +346,10 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_asynch_task_sleep_until *timer_task =
-	    linted_asynch_task_sleep_until_from_asynch(task);
+	struct linted_sched_task_sleep_until *timer_task =
+	    linted_sched_task_sleep_until_from_asynch(task);
 	struct tick_data *timer_data =
-	    linted_asynch_task_sleep_until_data(timer_task);
+	    linted_sched_task_sleep_until_data(timer_task);
 
 	struct linted_asynch_pool *pool = timer_data->pool;
 	linted_ko updater = timer_data->updater;
@@ -363,7 +363,7 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 
 	{
 		struct timespec request;
-		linted_asynch_task_sleep_until_request(timer_task, &request);
+		linted_sched_task_sleep_until_request(timer_task, &request);
 		requested_sec = request.tv_sec;
 		requested_nsec = request.tv_nsec;
 	}
@@ -381,8 +381,8 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 		request.tv_sec = requested_sec;
 		request.tv_nsec = requested_nsec;
 
-		linted_asynch_task_sleep_until_prepare(
-		    timer_task, ON_READ_TIMER, TIMER_ABSTIME, &request);
+		linted_sched_task_sleep_until_prepare(timer_task, ON_READ_TIMER,
+		                                      TIMER_ABSTIME, &request);
 	}
 	linted_asynch_pool_submit(pool, task);
 
