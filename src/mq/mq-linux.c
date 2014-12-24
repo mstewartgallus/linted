@@ -331,10 +331,9 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 	if (EAGAIN == errnum)
 		goto wait_on_poll;
 
-	linted_asynch_task_seterrnum(task, errnum);
 	task_receive->bytes_read = result;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:
@@ -369,10 +368,9 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 	if (EAGAIN == errnum)
 		goto wait_on_poll;
 
-	linted_asynch_task_seterrnum(task, errnum);
 	task_send->bytes_wrote = bytes_wrote;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:

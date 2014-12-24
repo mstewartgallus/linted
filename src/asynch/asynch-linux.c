@@ -297,7 +297,8 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 }
 
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *task)
+                                 struct linted_asynch_task *task,
+                                 linted_error task_errnum)
 {
 	linted_error errnum = 0;
 
@@ -322,6 +323,8 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 
 	task->in_flight = false;
 	task->owned = false;
+
+	task->errnum = task_errnum;
 	errnum = pthread_spin_unlock(&task->owner_lock);
 
 	if (errnum != 0) {
@@ -816,8 +819,8 @@ static void *worker_routine(void *arg)
 		}
 
 		if (cancelled) {
-			task->errnum = ECANCELED;
-			linted_asynch_pool_complete(asynch_pool, task);
+			linted_asynch_pool_complete(asynch_pool, task,
+			                            ECANCELED);
 		} else {
 			run_task(asynch_pool, task);
 		}
@@ -1135,8 +1138,8 @@ static void *poller_routine(void *arg)
 		}
 
 		if (cancelled) {
-			task->errnum = ECANCELED;
-			linted_asynch_pool_complete(asynch_pool, task);
+			errnum = ECANCELED;
+			goto complete_task;
 		}
 
 		short revents = 0;
@@ -1181,8 +1184,7 @@ static void *poller_routine(void *arg)
 		continue;
 
 	complete_task:
-		linted_asynch_task_seterrnum(task, errnum);
-		linted_asynch_pool_complete(asynch_pool, task);
+		linted_asynch_pool_complete(asynch_pool, task, errnum);
 		continue;
 
 	wait_on_poll:

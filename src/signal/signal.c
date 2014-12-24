@@ -123,6 +123,5 @@ void linted_signal_do_sigwaitinfo(struct linted_asynch_pool *pool,
 
 	task_wait->signo = signo;
 
-	linted_asynch_task_seterrnum(task, errnum);
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 }

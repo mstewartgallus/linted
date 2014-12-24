@@ -768,8 +768,7 @@ void linted_ko_do_poll(struct linted_asynch_pool *pool,
 	}
 
 	task_poll->revents = revents;
-	linted_asynch_task_seterrnum(task, 0);
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, 0);
 }
 
 void linted_ko_do_read(struct linted_asynch_pool *pool,
@@ -811,11 +810,10 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 		goto submit_retry;
 
 complete_task:
-	linted_asynch_task_seterrnum(task, errnum);
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = 0U;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:
@@ -887,11 +885,10 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 		goto submit_retry;
 
 complete_task:
-	linted_asynch_task_seterrnum(task, errnum);
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = 0U;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:
@@ -967,10 +964,9 @@ void linted_ko_do_recv(struct linted_asynch_pool *pool,
 	bytes_read = result;
 
 complete_task:
-	linted_asynch_task_seterrnum(task, errnum);
 	task_recv->bytes_read = bytes_read;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:
@@ -1015,10 +1011,9 @@ void linted_ko_do_sendto(struct linted_asynch_pool *pool,
 	bytes_wrote = result;
 
 complete_task:
-	linted_asynch_task_seterrnum(task, errnum);
 	task_sendto->bytes_wrote = bytes_wrote;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:
@@ -1070,10 +1065,9 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
 		goto wait_on_poll;
 
-	linted_asynch_task_seterrnum(task, errnum);
 	task_accept->returned_ko = new_ko;
 
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 submit_retry:

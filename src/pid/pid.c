@@ -125,6 +125,5 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 		return;
 	}
 
-	linted_asynch_task_seterrnum(task, errnum);
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 }

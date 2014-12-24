@@ -148,8 +148,7 @@ linted_sched_task_sleep_until_from_asynch(struct linted_asynch_task *task)
 void linted_sched_do_idle(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-	linted_asynch_task_seterrnum(task, 0);
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, 0);
 }
 
 void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
@@ -172,6 +171,5 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 		return;
 	}
 
-	linted_asynch_task_seterrnum(task, errnum);
-	linted_asynch_pool_complete(pool, task);
+	linted_asynch_pool_complete(pool, task, errnum);
 }
