@@ -41,9 +41,11 @@ typedef int linted_ko;
 #define LINTED_KO_WRONLY (1UL << 1U)
 #define LINTED_KO_RDWR (1UL << 2U)
 
-#define LINTED_KO_SYNC (1UL << 3U)
+#define LINTED_KO_APPEND (1UL << 3U)
 
-#define LINTED_KO_DIRECTORY (1UL << 4U)
+#define LINTED_KO_SYNC (1UL << 4U)
+
+#define LINTED_KO_DIRECTORY (1UL << 5U)
 
 struct linted_ko_task_poll;
 struct linted_ko_task_read;

@@ -155,13 +155,14 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	}
 
 	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR &
-	     ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
+	     ~LINTED_KO_APPEND & ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
 		return EINVAL;
 
 	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
 	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
 	bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0U;
 
+	bool ko_append = (flags & LINTED_KO_APPEND) != 0U;
 	bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
 
 	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
@@ -173,6 +174,9 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		return EINVAL;
 
 	if (ko_rdwr && ko_wronly)
+		return EINVAL;
+
+	if (ko_append && !ko_wronly)
 		return EINVAL;
 
 	if ((ko_directory && ko_rdonly) || (ko_directory && ko_wronly) ||
@@ -193,6 +197,9 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 	if (ko_rdwr)
 		oflags |= O_RDWR;
+
+	if (ko_append)
+		oflags |= O_APPEND;
 
 	if (ko_sync)
 		oflags |= O_SYNC;

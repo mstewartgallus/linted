@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/poll.h>
+#include <sys/inotify.h>
 #include <unistd.h>
 
 enum { ON_RECEIVE_LOG, MAX_TASKS };
@@ -55,14 +55,43 @@ static char logger_buffer[LINTED_LOG_MAX];
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	linted_log log = open("/run/log", O_RDWR | O_CLOEXEC);
-	if (-1 == log) {
-		perror("socket");
+	linted_error errnum = 0;
+
+	linted_log log;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/log",
+		                        LINTED_KO_RDWR);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_ko_open");
+			return EXIT_FAILURE;
+		}
+		log = xx;
+	}
+
+	linted_ko inotify = inotify_init1(IN_CLOEXEC);
+	if (-1 == inotify) {
+		perror("inotify_init1");
+		return EXIT_FAILURE;
+	}
+
+	int wd = inotify_add_watch(inotify, "/run/log", IN_MODIFY);
+	if (-1 == wd) {
+		perror("inotify_add_watch");
 		return EXIT_FAILURE;
 	}
 
 	off_t file_offset = lseek(log, 0U, SEEK_HOLE);
 	for (;;) {
+		{
+			struct inotify_event event;
+			if (-1 == read(inotify, &event, sizeof event)) {
+				perror("read");
+				return EXIT_FAILURE;
+			}
+		}
+
 		uint32_t log_size;
 		{
 			uint32_t xx;
@@ -71,21 +100,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 				perror("read");
 				return EXIT_FAILURE;
 			}
-			if (0 == bytes_read) {
-				struct pollfd pollfd = { .fd = log,
-					                 .events = POLLMSG |
-					                           POLLREMOVE };
-				if (-1 == poll(&pollfd, 1U, -1)) {
-					if (EINTR == errno)
-						continue;
-					perror("poll");
-					return EXIT_FAILURE;
-				}
-				if ((pollfd.revents & POLLMSG) != 0)
-					fprintf(stderr, "pollmsg\n");
-				if ((pollfd.revents & POLLREMOVE) != 0)
-					fprintf(stderr, "pollremove\n");
-			}
+			if (0 == bytes_read)
+				continue;
 			if (bytes_read != sizeof xx) {
 				fprintf(stderr, "%s: malformed log\n",
 				        process_name);

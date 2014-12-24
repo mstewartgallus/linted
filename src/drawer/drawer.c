@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
-
 #include "config.h"
 
 #include "linted/asynch.h"
@@ -113,10 +111,17 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_log log = open("/run/log", O_WRONLY | O_APPEND | O_CLOEXEC);
-	if (-1 == log) {
-		perror("open");
-		return EXIT_FAILURE;
+	linted_log log;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/log",
+		                        LINTED_KO_WRONLY | LINTED_KO_APPEND);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_ko_open");
+			return EXIT_FAILURE;
+		}
+		log = xx;
 	}
 
 	{
