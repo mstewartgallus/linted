@@ -17,7 +17,6 @@
 #define LINTED_ASYNCH_H
 
 #include "linted/error.h"
-#include "linted/queue.h"
 
 #if _POSIX_C_SOURCE >= 199309L
 #include <signal.h>
