@@ -250,7 +250,10 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	{
 		struct timespec now;
-		clock_gettime(CLOCK_MONOTONIC, &now);
+		if (-1 == clock_gettime(CLOCK_MONOTONIC, &now)) {
+			perror("clock_gettime");
+			return EXIT_FAILURE;
+		}
 
 		linted_asynch_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
 		                                       TIMER_ABSTIME, &now);
