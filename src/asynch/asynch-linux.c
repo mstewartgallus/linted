@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 /**
@@ -1210,7 +1211,6 @@ struct wait_manager
 static void *poller_routine(void *arg);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
-static linted_error check_for_poll_error(short revents);
 
 static linted_error wait_manager_create(struct wait_manager **managerp,
                                         struct waiter_queue *waiter_queue,
@@ -1463,9 +1463,27 @@ static void *poller_routine(void *arg)
 		if (errnum != 0)
 			goto complete_task;
 
-		errnum = check_for_poll_error(revents);
-		if (errnum != 0)
+		if ((revents & POLLNVAL) != 0) {
+			errnum = EBADF;
 			goto complete_task;
+		}
+
+		if ((revents & POLLERR) != 0) {
+			int xx;
+			socklen_t yy = sizeof xx;
+			if (-1 ==
+			    getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &yy)) {
+				errnum = errno;
+				goto complete_task;
+			}
+			errnum = xx;
+			/* If another poller got the error then we
+			 * could get zero instead so just resubmit in
+			 * that case.
+			 */
+			if (errnum != 0)
+				goto complete_task;
+		}
 
 		waiter->revents = revents;
 
@@ -1473,6 +1491,7 @@ static void *poller_routine(void *arg)
 		continue;
 
 	complete_task:
+		linted_asynch_task_seterrnum(task, errnum);
 		linted_asynch_pool_complete(asynch_pool, task);
 		continue;
 
@@ -1507,16 +1526,6 @@ poll_failed:
 poll_succeeded:
 	*reventsp = revents;
 	return 0;
-}
-
-static linted_error check_for_poll_error(short revents)
-{
-	linted_error errnum = 0;
-
-	if ((revents & POLLNVAL) != 0)
-		errnum = EBADF;
-
-	return errnum;
 }
 
 /* struct complete_queue is just a fake */
