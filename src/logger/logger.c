@@ -76,10 +76,14 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	int wd = inotify_add_watch(inotify, "/run/log", IN_MODIFY);
-	if (-1 == wd) {
-		perror("inotify_add_watch");
-		return EXIT_FAILURE;
+	{
+		char path[] = "/proc/self/fd/XXXXXXXXXXXXX";
+		sprintf(path, "/proc/self/fd/%i", log);
+		int wd = inotify_add_watch(inotify, path, IN_MODIFY);
+		if (-1 == wd) {
+			perror("inotify_add_watch");
+			return EXIT_FAILURE;
+		}
 	}
 
 	off_t file_offset = lseek(log, 0U, SEEK_HOLE);
