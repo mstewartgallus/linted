@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200112L
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
@@ -27,6 +27,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -190,6 +191,14 @@ static linted_error exec_init(char const *init)
 		return errnum;
 	}
 
+	char *init_dup = strdup(init);
+	if (NULL == init_dup) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+	char *init_base = basename(init_dup);
+
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 
@@ -213,7 +222,7 @@ static linted_error exec_init(char const *init)
 		}
 	}
 
-	char const *const init_argv[] = { init, NULL };
+	char const *const init_argv[] = { init_base, NULL };
 	execve(init, (char * const *)init_argv, environ);
 	errnum = errno;
 	LINTED_ASSUME(errnum != 0);

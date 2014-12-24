@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,6 +66,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	char const *monitor = getenv("LINTED_MONITOR");
+
+	char *monitor_dup = strdup(monitor);
+	if (NULL == monitor_dup) {
+		perror("strdup");
+		return EXIT_FAILURE;
+	}
+
+	char *monitor_base = basename(monitor_dup);
 
 	errnum = set_child_subreaper(true);
 	if (errnum != 0) {
@@ -118,7 +127,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			pid_t xx;
 			errnum = linted_spawn(
 			    &xx, LINTED_KO_CWD, monitor, file_actions, attr,
-			    (char const * const[]) { monitor, NULL },
+			    (char const * const[]) { monitor_base, NULL },
 			    (char const * const *)environ);
 			if (errnum != 0) {
 				linted_io_write_format(

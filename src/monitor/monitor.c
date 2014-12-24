@@ -37,6 +37,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -1290,6 +1291,14 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 1U] = service_name_setting;
 	envvars[envvars_size + 2U] = NULL;
 
+	char *sandbox_dup = strdup(sandbox);
+	if (NULL == sandbox_dup) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto free_envvars;
+	}
+	char *sandbox_base = basename(sandbox_dup);
+
 	size_t files_size = 0U;
 	if (files != NULL)
 		files_size = null_list_size(files);
@@ -1332,10 +1341,10 @@ envvar_allocate_succeeded:
 		errnum = linted_mem_alloc_array(&xx, args_size + 1U,
 		                                sizeof exec_start[0U]);
 		if (errnum != 0)
-			goto free_envvars;
+			goto free_sandbox_dup;
 		args = xx;
 	}
-	args[0U] = sandbox;
+	args[0U] = sandbox_base;
 
 	size_t ix = 1U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
@@ -1526,7 +1535,7 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 	}
 
-	errnum = linted_spawn(NULL, cwd, args[0U], file_actions, attr, args,
+	errnum = linted_spawn(NULL, cwd, sandbox, file_actions, attr, args,
 	                      (char const * const *)envvars);
 	if (errnum != 0)
 		goto destroy_proc_kos;
@@ -1546,6 +1555,9 @@ destroy_file_actions:
 
 free_args:
 	linted_mem_free(args);
+
+free_sandbox_dup:
+	linted_mem_free(sandbox_dup);
 
 free_envvars:
 	for (char **envp = envvars; *envp != NULL; ++envp)
