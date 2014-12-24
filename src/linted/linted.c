@@ -27,6 +27,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <libgen.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -83,6 +84,11 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
+	if (NULL == setlocale(LC_ALL, "")) {
+		perror("setlocale");
+		return EXIT_FAILURE;
+	}
+
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 		if (-1 == setenv(envvar->key, envvar->value, false)) {

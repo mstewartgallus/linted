@@ -26,6 +26,17 @@ X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NE
 X-LintedFstab="${LINTED_DRAWER_FSTAB}"
 WorkingDirectory=/var
 
+# The GUI needs to display localized information
+X-LintedEnvironmentWhitelist=LANG
+X-LintedEnvironmentWhitelist=LC_ALL
+X-LintedEnvironmentWhitelist=LC_COLLATE
+X-LintedEnvironmentWhitelist=LC_CTYPE
+X-LintedEnvironmentWhitelist=LC_MESSAGES
+X-LintedEnvironmentWhitelist=LC_MONETARY
+X-LintedEnvironmentWhitelist=LC_NUMERIC
+X-LintedEnvironmentWhitelist=LC_TIME
+X-LintedEnvironmentWhitelist=NLSPATH
+
 X-LintedEnvironmentWhitelist=DISPLAY
 
 X-LintedEnvironmentWhitelist=LD_PRELOAD

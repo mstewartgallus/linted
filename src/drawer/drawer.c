@@ -29,6 +29,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -99,6 +100,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum = 0;
+
+	if (NULL == setlocale(LC_ALL, "")) {
+		perror("setlocale");
+		return EXIT_FAILURE;
+	}
 
 	linted_window_notifier notifier = kos[0U];
 

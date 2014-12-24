@@ -37,6 +37,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -260,6 +261,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
+
+	if (NULL == setlocale(LC_ALL, "")) {
+		perror("setlocale");
+		return EXIT_FAILURE;
+	}
 
 	sigset_t orig_mask;
 
@@ -1113,10 +1119,9 @@ struct option
 static char const *const file_flags[] = {[RDONLY] = "rdonly",
 	                                 [WRONLY] = "wronly", NULL };
 
-static char const *const default_envvars[] = { "LANG", "USER", "LOGNAME",
-	                                       "HOME", "SHELL",
-	                                       "XDG_RUNTIME_DIR"
-	                                       "XDG_SESSION_ID",
+static char const *const default_envvars[] = { "USER", "LOGNAME", "HOME",
+	                                       "SHELL", "XDG_RUNTIME_DIR"
+	                                                "XDG_SESSION_ID",
 	                                       "XDG_SEAT", "TERM" };
 
 static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },

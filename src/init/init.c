@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <locale.h>
 #include <libgen.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -50,6 +51,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
+
+	if (NULL == setlocale(LC_ALL, "")) {
+		perror("setlocale");
+		return EXIT_FAILURE;
+	}
 
 	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 
