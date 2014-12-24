@@ -42,6 +42,7 @@
 struct linted_asynch_pool;
 
 enum {
+	LINTED_ASYNCH_TASK_IDLE,
 	LINTED_ASYNCH_TASK_POLL,
 	LINTED_ASYNCH_TASK_READ,
 	LINTED_ASYNCH_TASK_WRITE,
@@ -56,6 +57,7 @@ enum {
 };
 
 struct linted_asynch_task;
+struct linted_asynch_task_idle;
 struct linted_asynch_task_waitid;
 struct linted_asynch_task_sigwaitinfo;
 struct linted_asynch_task_sleep_until;
@@ -98,6 +100,19 @@ linted_error linted_asynch_task_errnum(struct linted_asynch_task *task);
 void linted_asynch_task_seterrnum(struct linted_asynch_task *task,
                                   linted_error errnum);
 void *linted_asynch_task_data(struct linted_asynch_task *task);
+
+linted_error
+linted_asynch_task_idle_create(struct linted_asynch_task_idle **taskp,
+                               void *data);
+void linted_asynch_task_idle_destroy(struct linted_asynch_task_idle *task);
+
+void *linted_asynch_task_idle_data(struct linted_asynch_task_idle *task);
+struct linted_asynch_task *
+linted_asynch_task_idle_to_asynch(struct linted_asynch_task_idle *task);
+struct linted_asynch_task_idle *
+linted_asynch_task_idle_from_asynch(struct linted_asynch_task *task);
+void linted_asynch_task_idle_prepare(struct linted_asynch_task_idle *task,
+                                     unsigned task_action);
 
 linted_error
 linted_asynch_task_waitid_create(struct linted_asynch_task_waitid **taskp,

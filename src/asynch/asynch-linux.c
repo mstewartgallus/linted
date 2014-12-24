@@ -597,6 +597,49 @@ void *linted_asynch_task_data(struct linted_asynch_task *task)
 	return task->data;
 }
 
+/* task_idle is just a fake */
+linted_error
+linted_asynch_task_idle_create(struct linted_asynch_task_idle **taskp,
+                               void *data)
+{
+	struct linted_asynch_task *xx;
+	linted_error errnum =
+	    linted_asynch_task_create(&xx, data, LINTED_ASYNCH_TASK_IDLE);
+	if (errnum != 0)
+		return errnum;
+	*taskp = (struct linted_asynch_task_idle *)xx;
+
+	return 0;
+}
+
+void linted_asynch_task_idle_destroy(struct linted_asynch_task_idle *task)
+{
+	linted_asynch_task_destroy((void *)task);
+}
+
+void *linted_asynch_task_idle_data(struct linted_asynch_task_idle *task)
+{
+	return ((struct linted_asynch_task *)task)->data;
+}
+
+struct linted_asynch_task *
+linted_asynch_task_idle_to_asynch(struct linted_asynch_task_idle *task)
+{
+	return (void *)task;
+}
+
+struct linted_asynch_task_idle *
+linted_asynch_task_idle_from_asynch(struct linted_asynch_task *task)
+{
+	return (void *)task;
+}
+
+void linted_asynch_task_idle_prepare(struct linted_asynch_task_idle *task,
+                                     unsigned task_action)
+{
+	linted_asynch_task_prepare((void *)task, task_action);
+}
+
 linted_error
 linted_asynch_task_waitid_create(struct linted_asynch_task_waitid **taskp,
                                  void *data)
@@ -811,6 +854,8 @@ static void *worker_routine(void *arg);
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
 
+static void run_task_idle(struct linted_asynch_pool *pool,
+                          struct linted_asynch_task *task);
 static void run_task_waitid(struct linted_asynch_pool *pool,
                             struct linted_asynch_task *task);
 static void run_task_sigwaitinfo(struct linted_asynch_pool *pool,
@@ -1071,6 +1116,10 @@ static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {
 	switch (task->type) {
+	case LINTED_ASYNCH_TASK_IDLE:
+		run_task_idle(pool, task);
+		break;
+
 	case LINTED_ASYNCH_TASK_POLL:
 		linted_ko_do_poll(pool, task);
 		break;
@@ -1118,6 +1167,13 @@ static void run_task(struct linted_asynch_pool *pool,
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+}
+
+static void run_task_idle(struct linted_asynch_pool *pool,
+                          struct linted_asynch_task *task)
+{
+	task->errnum = 0;
+	linted_asynch_pool_complete(pool, task);
 }
 
 static void run_task_waitid(struct linted_asynch_pool *pool,

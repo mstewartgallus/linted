@@ -49,11 +49,18 @@
  * @todo Handle sudden window death better.
  */
 
-enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
+enum { ON_IDLE, ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
 
 struct window_model
 {
 	bool viewable : 1U;
+};
+
+struct idle_data
+{
+	struct linted_gpu_context *gpu_context;
+	struct linted_asynch_pool *pool;
+	linted_log log;
 };
 
 struct poll_conn_data
@@ -92,6 +99,7 @@ struct linted_start_config const linted_start_config = {
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
 
 static linted_error dispatch(struct linted_asynch_task *task);
+static linted_error on_idle(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
@@ -161,13 +169,23 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	xcb_window_t window;
 
+	struct idle_data idle_data;
 	struct notice_data notice_data;
 	struct updater_data updater_data;
 	struct poll_conn_data poll_conn_data;
 
+	struct linted_asynch_task_idle *idle_task;
 	struct linted_window_notifier_task_receive *notice_task;
 	struct linted_updater_task_receive *updater_task;
 	struct linted_ko_task_poll *poll_conn_task;
+
+	{
+		struct linted_asynch_task_idle *xx;
+		errnum = linted_asynch_task_idle_create(&xx, &idle_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		idle_task = xx;
+	}
 
 	{
 		struct linted_window_notifier_task_receive *xx;
@@ -209,14 +227,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		gpu_context = xx;
 	}
 
-	notice_data.connection = connection;
-
-	notice_data.window_model = &window_model;
-	notice_data.gpu_context = gpu_context;
-	notice_data.window = &window;
+	linted_asynch_task_idle_prepare(idle_task, ON_IDLE);
+	idle_data.log = log;
+	idle_data.pool = pool;
+	idle_data.gpu_context = gpu_context;
+	linted_asynch_pool_submit(pool,
+	                          linted_asynch_task_idle_to_asynch(idle_task));
 
 	linted_window_notifier_task_receive_prepare(
 	    notice_task, ON_RECEIVE_NOTICE, notifier);
+	notice_data.connection = connection;
+	notice_data.window_model = &window_model;
+	notice_data.gpu_context = gpu_context;
+	notice_data.window = &window;
 	linted_asynch_pool_submit(
 	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
 
@@ -228,7 +251,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	poll_conn_data.pool = pool;
 	poll_conn_data.connection = connection;
 	poll_conn_data.notice_task = notice_task;
-
 	linted_asynch_pool_submit(
 	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
 
@@ -244,14 +266,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-
-			if (window_model.viewable) {
-				errnum = linted_asynch_pool_poll(pool, &xx);
-			} else {
-				errnum = linted_asynch_pool_wait(pool, &xx);
-			}
-			if (EAGAIN == errnum)
-				goto draw_frame;
+			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
 				goto cleanup_gpu;
 			completed_task = xx;
@@ -260,12 +275,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
 			goto cleanup_gpu;
-
-		continue;
-
-	draw_frame:
-		/* Draw or resize if we have time to waste */
-		linted_gpu_draw(gpu_context, log);
 	}
 
 cleanup_gpu:
@@ -301,6 +310,7 @@ destroy_pool:
 	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
+	(void)idle_task;
 	(void)updater_task;
 	(void)notice_task;
 	(void)poll_conn_task;
@@ -311,6 +321,9 @@ destroy_pool:
 static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (linted_asynch_task_action(task)) {
+	case ON_IDLE:
+		return on_idle(task);
+
 	case ON_RECEIVE_UPDATE:
 		return on_receive_update(task);
 
@@ -323,6 +336,31 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+}
+
+static linted_error on_idle(struct linted_asynch_task *task)
+{
+	linted_error errnum;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (errnum != 0)
+		return errnum;
+
+	struct linted_asynch_task_idle *idle_task =
+	    linted_asynch_task_idle_from_asynch(task);
+	struct idle_data *idle_data = linted_asynch_task_idle_data(idle_task);
+
+	linted_log log = idle_data->log;
+	struct linted_gpu_context *gpu_context = idle_data->gpu_context;
+	struct linted_asynch_pool *pool = idle_data->pool;
+
+	/* Draw or resize if we have time to waste */
+	linted_gpu_draw(gpu_context, log);
+
+	linted_asynch_task_idle_prepare(idle_task, ON_IDLE);
+	linted_asynch_pool_submit(pool, task);
+
+	return 0;
 }
 
 static linted_error on_poll_conn(struct linted_asynch_task *task)
