@@ -168,35 +168,6 @@ static linted_error exec_init(char const *init)
 {
 	linted_error errnum;
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
-
-	pid_t myself = getpid();
-	int setenv_pid_status;
-	{
-		char listen_pid[] = INT_STRING_PADDING;
-		sprintf(listen_pid, "%i", myself);
-		setenv_pid_status = setenv("LISTEN_PID", listen_pid, true);
-	}
-	if (-1 == setenv_pid_status) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	int setenv_fd_status;
-	{
-		char listen_fds[] = INT_STRING_PADDING;
-		sprintf(listen_fds, "%i",
-		        (int)LINTED_ARRAY_SIZE(stdfiles) - 3U);
-
-		setenv_fd_status = setenv("LISTEN_FDS", listen_fds, true);
-	}
-	if (-1 == setenv_fd_status) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
 	char *init_dup = strdup(init);
 	if (NULL == init_dup) {
 		errnum = errno;
@@ -204,29 +175,6 @@ static linted_error exec_init(char const *init)
 		return errnum;
 	}
 	char *init_base = basename(init_dup);
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
-		linted_ko ko = stdfiles[ii];
-
-		if (-1 == dup2(ko, ii)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		int flags = fcntl(ii, F_GETFD);
-		if (-1 == flags) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		if (-1 == fcntl(ii, F_SETFD, (long)flags & !FD_CLOEXEC)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-	}
 
 	char const *const init_argv[] = { init_base, NULL };
 	execve(init, (char * const *)init_argv, environ);

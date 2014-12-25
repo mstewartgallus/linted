@@ -128,6 +128,19 @@ It is insecure to run a game with high privileges!\n"));
 	if (errnum != 0)
 		return errnum;
 
+	for (linted_ko ii = 0; ii < 3; ++ii) {
+		int flags = fcntl(ii, F_GETFD);
+		if (-1 == flags) {
+			perror("fcntl");
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == fcntl(ii, F_SETFD, flags & ~FD_CLOEXEC)) {
+			perror("fcntl");
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
 

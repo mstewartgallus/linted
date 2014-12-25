@@ -88,19 +88,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
-
-	{
-		struct linted_spawn_file_actions *xx;
-		errnum = linted_spawn_file_actions_init(&xx);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_spawn_file_actions_init");
-			return EXIT_FAILURE;
-		}
-		file_actions = xx;
-	}
 
 	{
 		struct linted_spawn_attr *xx;
@@ -113,26 +101,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		attr = xx;
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
-		linted_ko ko = stdfiles[ii];
-		errnum =
-		    linted_spawn_file_actions_adddup2(&file_actions, ko, ii);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_spawn_file_actions_adddup2");
-			return EXIT_FAILURE;
-		}
-	}
-
 	for (;;) {
-		fprintf(stderr, "%s: spawning %s\n", process_name, monitor);
+		fprintf(stderr, "%s: spawning %s\n", process_name,
+		        monitor_base);
 
 		pid_t child;
 		{
 			pid_t xx;
 			errnum = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, file_actions, attr,
+			    &xx, LINTED_KO_CWD, monitor, NULL, attr,
 			    (char const * const[]) { monitor_base, NULL },
 			    (char const * const *)environ);
 			if (errnum != 0) {
