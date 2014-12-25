@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
 {
 	linted_error errnum = 0;
 
-
 	/* Check whether basics are open */
 	if (!is_open(STDERR_FILENO))
 		/* Sadly, this is all we can do */
@@ -82,6 +81,14 @@ Bad administrator!\n\
 It is insecure to run a game with high privileges!\n"));
 		return EPERM;
 	}
+
+	if (argc < 1) {
+		linted_locale_missing_process_name(
+		    STDERR_FILENO, linted_start_config.canonical_process_name);
+		return EINVAL;
+	}
+
+	char const *const process_name = argv[0U];
 
 	size_t kos_size = linted_start_config.kos_size;
 	linted_ko *kos = linted_start_config.kos;
@@ -105,13 +112,10 @@ It is insecure to run a game with high privileges!\n"));
 	/* Sort the fds from smallest to largest */
 	sort_kos(open_kos, open_kos_size);
 
-	/* Duplicate over leaked files with STDERR_FILENO in case
-	 * someone tries to write to them later.
-	 */
 	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
-		if (-1 == dup3(STDERR_FILENO, open_kos[ii], O_CLOEXEC)) {
-			return errno;
-		}
+		fprintf(stderr, "%s: closing leaked file descriptor %i\n",
+			process_name, open_kos[ii]);
+		linted_ko_close(open_kos[ii]);
 	}
 
 	for (size_t ii = 0U; ii < kos_size + 3U; ++ii) {
@@ -140,14 +144,6 @@ It is insecure to run a game with high privileges!\n"));
 
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
-
-	if (argc < 1) {
-		linted_locale_missing_process_name(
-		    STDERR_FILENO, linted_start_config.canonical_process_name);
-		return EINVAL;
-	}
-
-	char const *const process_name = argv[0U];
 
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
