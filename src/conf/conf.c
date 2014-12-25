@@ -201,15 +201,16 @@ linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
 				goto free_file_names;
 			}
 
-			struct linted_conf *unit = NULL;
+			struct linted_conf *conf = NULL;
 			{
 				struct linted_conf *xx;
-				errnum = linted_conf_parse_file(&xx, unit_file,
-				                                file_name);
+				errnum = linted_conf_create(&xx, file_name);
 				if (errnum != 0)
 					goto close_unit_file;
-				unit = xx;
+				conf = xx;
 			}
+
+			errnum = linted_conf_parse_file(conf, unit_file);
 
 		close_unit_file:
 			if (EOF == fclose(unit_file)) {
@@ -233,14 +234,14 @@ linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
 					goto free_unit;
 				new_units = xx;
 			}
-			new_units[units_size] = unit;
+			new_units[units_size] = conf;
 
 			units = new_units;
 			units_size = new_units_size;
 
 		free_unit:
 			if (errnum != 0)
-				linted_conf_put(unit);
+				linted_conf_put(conf);
 		}
 
 	free_file_names:
@@ -301,22 +302,12 @@ struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
 	return db->confs[ii];
 }
 
-linted_error linted_conf_parse_file(struct linted_conf **confp, FILE *conf_file,
-                                    char const *name)
+linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 {
 	linted_error errnum = 0;
 
 	char *line_buffer = NULL;
 	size_t line_capacity = 0U;
-
-	struct linted_conf *conf;
-	{
-		struct linted_conf *xx;
-		errnum = linted_conf_create(&xx, name);
-		if (errnum != 0)
-			return errnum;
-		conf = xx;
-	}
 
 	struct linted_conf_section *current_section = NULL;
 
@@ -517,9 +508,6 @@ free_line_buffer:
 
 	if (errnum != 0)
 		linted_conf_put(conf);
-
-	if (0 == errnum)
-		*confp = conf;
 
 	return errnum;
 }

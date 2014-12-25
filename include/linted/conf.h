@@ -34,11 +34,10 @@ size_t linted_conf_db_size(struct linted_conf_db *db);
 struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
                                             size_t ii);
 
-linted_error linted_conf_parse_file(struct linted_conf **unitp, FILE *unit_file,
-                                    char const *name);
-
 linted_error linted_conf_create(struct linted_conf **unitp,
                                 char const *file_name);
+
+linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file);
 
 void linted_conf_put(struct linted_conf *unit);
 
