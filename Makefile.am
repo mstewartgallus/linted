@@ -35,11 +35,21 @@ MOSTLYCLEANFILES=
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
-AM_LDFLAGS=\
-  -Xcompiler '$(linted_LDFLAGS_LANGUAGE)\
+AM_LDFLAGS=-Xcompiler '\
+  $(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
-  $(linted_LDFLAGS_DEBUG)'
+  $(linted_LDFLAGS_ASSERT)\
+  $(linted_LDFLAGS_DEBUG)\
+  $(linted_LDFLAGS_DEBUG_INFO)'
+
+AM_CFLAGS=\
+  $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_ASSERT)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_DEBUG_INFO)
 
 AM_CPPFLAGS=-I$(srcdir)/include
 

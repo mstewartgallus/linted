@@ -7,23 +7,19 @@ dnl This program is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
-dnl Enables debug flags
-AC_DEFUN([LINTED_MINOR_DEBUG],[
+dnl Disables assertions
+AC_DEFUN([LINTED_ASSERT],[
 dnl
 AC_ARG_ENABLE(
-        [debug],
+        [assert],
         AS_HELP_STRING(
-                [--enable-minor-debug],
-                [enable minor debug mode features (still secure)]))
+                [--disable-assert],
+                [disable assertions (still secure)]))
 dnl
-AS_IF([test "x${enable_minor_debug}" != "xno"], [
-dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_MINOR_DEBUG],[dnl
-        [-g]dnl
-        [-fno-omit-frame-pointer]dnl
+AS_IF([test "x${enable_assert}" != "xno"], [],[
+LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
+        [-DNDEBUG]dnl
 ])
-dnl
-AC_SUBST([linted_CFLAGS_MINOR_DEBUG])
-dnl
+AC_SUBST([linted_CFLAGS_DEBUG])
 ])
 ])

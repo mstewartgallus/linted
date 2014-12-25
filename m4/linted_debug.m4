@@ -14,7 +14,7 @@ AC_ARG_ENABLE(
         [debug],
         AS_HELP_STRING(
                 [--enable-debug],
-                [enable debug mode (insecure!)]))
+                [enable debug mode (possibly insecure!)]))
 dnl
 AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl
@@ -36,10 +36,5 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
-], [
-LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
-        [-DNDEBUG]dnl
-])
-AC_SUBST([linted_CFLAGS_DEBUG])
 ])
 ])
