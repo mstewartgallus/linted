@@ -64,7 +64,6 @@
  *       - The window tasks cannot currently use bind mounts
  * @todo Once Unix domain sockets are used completely switch over to
  *       unconnected and unreliable sockets.
- * @todo Make the window notifier use Unix domain sockets
  * @todo Make tasks that connect to Unix sockets unable to delete them
  *
  * @todo Harden bind mounts with extra flags
@@ -72,6 +71,8 @@
  * @todo Eventually reduce `-Wstack-usage` to 500.
  *
  * @todo Check child processes for hangups
+ *
+ * @todo Move the logger into the monitor
  *
  * @todo Use the monitor to report crashes such as from seccomp rule
  *       violations.
