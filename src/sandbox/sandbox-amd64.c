@@ -47,6 +47,7 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(getgid),
 	/**/ ALLOW(getpeername),
 	/**/ ALLOW(getrlimit),
+	/**/ ALLOW(getsockname),
 	/**/ ALLOW(getuid),
 	/**/ ALLOW(inotify_add_watch),
 	/**/ ALLOW(inotify_init1),

@@ -1123,11 +1123,6 @@ struct option
 static char const *const file_flags[] = {[RDONLY] = "rdonly",
 	                                 [WRONLY] = "wronly", NULL };
 
-static char const *const default_envvars[] = { "USER", "LOGNAME", "HOME",
-	                                       "SHELL", "XDG_RUNTIME_DIR"
-	                                                "XDG_SESSION_ID",
-	                                       "XDG_SEAT", "TERM" };
-
 static struct pair const defaults[] = { { LINTED_KO_RDONLY, STDIN_FILENO },
 	                                { LINTED_KO_WRONLY, STDOUT_FILENO },
 	                                { LINTED_KO_WRONLY, STDERR_FILENO } };
@@ -1205,9 +1200,6 @@ spawn_service:
 
 	if (fstab != NULL && !clone_newns)
 		return EINVAL;
-
-	if (NULL == env_whitelist)
-		env_whitelist = default_envvars;
 
 	bool drop_caps = true;
 	int priority;
@@ -2197,6 +2189,11 @@ free_buf:
 	return errnum;
 }
 
+static char const *default_envvars[] = { "USER", "LOGNAME", "HOME", "SHELL",
+	                                 "XDG_RUNTIME_DIR"
+	                                 "XDG_SESSION_ID",
+	                                 "XDG_SEAT", "TERM", NULL };
+
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       char const *path)
 {
@@ -2327,6 +2324,50 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 				if (errnum != 0)
 					goto close_unit_file;
 				conf = xx;
+			}
+
+			char const *dot = strchr(file_name, '.');
+
+			char const *suffix = dot + 1U;
+
+			if (0 == strcmp(suffix, "socket")) {
+				/* Okay but we have no defaults for this */
+			} else if (0 == strcmp(suffix, "service")) {
+				char *section_name = strdup("Service");
+				if (NULL == section_name) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+					goto close_unit_file;
+				}
+
+				char *env_whitelist =
+				    strdup("X-LintedEnvironmentWhitelist");
+				if (NULL == env_whitelist) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+					linted_mem_free(section_name);
+					goto close_unit_file;
+				}
+
+				struct linted_conf_section *service;
+				{
+					struct linted_conf_section *xx;
+					errnum = linted_conf_add_section(
+					    conf, &xx, section_name);
+					if (errnum != 0) {
+						linted_mem_free(env_whitelist);
+						linted_mem_free(section_name);
+						goto close_unit_file;
+					}
+					service = xx;
+				}
+
+				errnum = linted_conf_add_setting(
+				    service, env_whitelist, default_envvars);
+
+			} else {
+				errnum = EINVAL;
+				goto close_unit_file;
 			}
 
 			errnum = linted_conf_parse_file(conf, unit_file);
