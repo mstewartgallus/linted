@@ -82,15 +82,15 @@ linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
 
 	struct linted_conf_db *db;
 	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *db);
+		struct linted_conf_db *xx;
+		errnum = linted_conf_db_create(&xx);
 		if (errnum != 0)
 			return errnum;
 		db = xx;
 	}
 
-	struct linted_conf **units = NULL;
-	size_t units_size = 0U;
+	struct linted_conf **units = db->confs;
+	size_t units_size = db->size;
 
 	char const *dirstart = path;
 	for (;;) {
@@ -272,14 +272,35 @@ free_units:
 		linted_mem_free(units);
 
 		linted_mem_free(db);
-	} else {
-		db->size = units_size;
-		db->confs = units;
 
-		*dbp = db;
+		return errnum;
 	}
 
-	return errnum;
+	db->size = units_size;
+	db->confs = units;
+
+	*dbp = db;
+
+	return 0;
+}
+
+linted_error linted_conf_db_create(struct linted_conf_db **dbp)
+{
+	struct linted_conf_db *db;
+	{
+		void *xx;
+		linted_error errnum = linted_mem_alloc(&xx, sizeof *db);
+		if (errnum != 0)
+			return errnum;
+		db = xx;
+	}
+
+	db->size = 0U;
+	db->confs = NULL;
+
+	*dbp = db;
+
+	return 0;
 }
 
 void linted_conf_db_destroy(struct linted_conf_db *db)
