@@ -29,8 +29,8 @@ struct linted_conf_db;
 linted_error linted_conf_db_create(struct linted_conf_db **dbp);
 void linted_conf_db_destroy(struct linted_conf_db *db);
 
-linted_error linted_conf_db_create_from_path(struct linted_conf_db **dbp,
-                                             char const *path);
+linted_error linted_conf_db_add_conf(struct linted_conf_db *db,
+                                     struct linted_conf *conf);
 
 size_t linted_conf_db_size(struct linted_conf_db *db);
 struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,

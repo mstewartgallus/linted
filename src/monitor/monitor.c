@@ -169,6 +169,8 @@ struct pidstat
 	long cguest_time;
 };
 
+static linted_error conf_db_from_path(struct linted_conf_db **dbp,
+                                      char const *path);
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
                                    struct linted_conf_db *conf_db,
                                    sigset_t const *orig_mask,
@@ -500,7 +502,7 @@ retry_bind:
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
-		errnum = linted_conf_db_create_from_path(&xx, unit_path);
+		errnum = conf_db_from_path(&xx, unit_path);
 		if (errnum != 0)
 			goto destroy_conn_pool;
 		conf_db = xx;
@@ -2193,6 +2195,191 @@ free_buf:
 	linted_mem_free(buf);
 
 	return errnum;
+}
+
+static linted_error conf_db_from_path(struct linted_conf_db **dbp,
+                                      char const *path)
+{
+	linted_ko errnum = 0;
+
+	struct linted_conf_db *db;
+	{
+		struct linted_conf_db *xx;
+		errnum = linted_conf_db_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		db = xx;
+	}
+
+	char const *dirstart = path;
+	for (;;) {
+		char const *dirend = strchr(dirstart, ':');
+
+		char *dir_name;
+		if (NULL == dirend) {
+			dir_name = strdup(dirstart);
+		} else {
+			dir_name = strndup(dirstart, dirend - dirstart);
+		}
+
+		if (NULL == dir_name) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_units;
+		}
+
+		DIR *units_dir = opendir(dir_name);
+		if (NULL == units_dir) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+
+		linted_mem_free(dir_name);
+
+		if (ENOENT == errnum) {
+			errnum = 0;
+			goto next_dir;
+		}
+
+		if (errnum != 0)
+			goto free_units;
+
+		linted_ko dirko = dirfd(units_dir);
+
+		size_t files_count = 0U;
+		char **files = NULL;
+		for (;;) {
+			errno = 0;
+			struct dirent const *entry = readdir(units_dir);
+			if (NULL == entry) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+
+				goto free_file_names;
+			}
+
+			char const *name = entry->d_name;
+
+			if (0 == strcmp(".", name))
+				continue;
+
+			if (0 == strcmp("..", name))
+				continue;
+
+			char *name_copy = strdup(name);
+			if (NULL == name_copy) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_file_names;
+			}
+
+			size_t new_files_count = files_count + 1U;
+			char **new_files;
+			{
+				void *xx;
+				errnum = linted_mem_realloc_array(
+				    &xx, files, new_files_count,
+				    sizeof files[0U]);
+				if (errnum != 0)
+					goto free_file_name;
+				new_files = xx;
+			}
+			new_files[files_count] = name_copy;
+
+			files = new_files;
+			files_count = new_files_count;
+
+			if (errnum != 0) {
+			free_file_name:
+				linted_mem_free(name_copy);
+				goto free_file_names;
+			}
+		}
+
+		for (size_t ii = 0U; ii < files_count; ++ii) {
+			char const *file_name = files[ii];
+
+			linted_ko unit_fd;
+			{
+				linted_ko xx;
+				errnum = linted_ko_open(&xx, dirko, file_name,
+				                        LINTED_KO_RDONLY);
+				if (errnum != 0)
+					goto free_file_names;
+				unit_fd = xx;
+			}
+
+			FILE *unit_file = fdopen(unit_fd, "r");
+			if (NULL == unit_file) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+
+				linted_ko_close(unit_fd);
+
+				goto free_file_names;
+			}
+
+			struct linted_conf *conf = NULL;
+			{
+				struct linted_conf *xx;
+				errnum = linted_conf_create(&xx, file_name);
+				if (errnum != 0)
+					goto close_unit_file;
+				conf = xx;
+			}
+
+			errnum = linted_conf_parse_file(conf, unit_file);
+
+		close_unit_file:
+			if (EOF == fclose(unit_file)) {
+				if (0 == errnum) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+				}
+			}
+
+			if (errnum != 0)
+				goto free_unit;
+
+			errnum = linted_conf_db_add_conf(db, conf);
+
+		free_unit:
+			if (errnum != 0)
+				linted_conf_put(conf);
+		}
+
+	free_file_names:
+		for (size_t ii = 0U; ii < files_count; ++ii)
+			linted_mem_free(files[ii]);
+		linted_mem_free(files);
+
+		if (-1 == closedir(units_dir)) {
+			if (0 == errnum) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
+		}
+		if (errnum != 0)
+			goto free_units;
+
+	next_dir:
+		if (NULL == dirend)
+			break;
+
+		dirstart = dirend + 1U;
+	}
+
+free_units:
+	if (errnum != 0) {
+		linted_conf_db_destroy(db);
+
+		return errnum;
+	}
+
+	*dbp = db;
+
+	return 0;
 }
 
 static linted_error service_name(pid_t pid,

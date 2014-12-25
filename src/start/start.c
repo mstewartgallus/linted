@@ -114,7 +114,7 @@ It is insecure to run a game with high privileges!\n"));
 
 	for (size_t ii = 3U + kos_size; ii < open_kos_size; ++ii) {
 		fprintf(stderr, "%s: closing leaked file descriptor %i\n",
-			process_name, open_kos[ii]);
+		        process_name, open_kos[ii]);
 		linted_ko_close(open_kos[ii]);
 	}
 
