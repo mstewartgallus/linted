@@ -154,6 +154,7 @@ choose_config_succeeded:
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = EGL_NO_SURFACE;
+	gpu_context->state = BUFFER_COMMANDS;
 	gpu_context->has_gl_context = false;
 
 	*gpu_contextp = gpu_context;
