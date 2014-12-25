@@ -60,13 +60,10 @@ static linted_error sanitize_kos(size_t kos_size);
 static linted_error get_system_entropy(unsigned *entropyp);
 static linted_error open_fds_dir(linted_ko *kop);
 
-/*
- * Linked in libraries can do a lot of nastiness on startup so startup
- * before main even happens.
- */
-static int real_setup(void)
+int main(int argc, char *argv[])
 {
-	linted_error errnum;
+	linted_error errnum = 0;
+
 
 	/* Check whether basics are open */
 	if (!is_open(STDERR_FILENO))
@@ -144,20 +141,6 @@ It is insecure to run a game with high privileges!\n"));
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
 
-	return 0;
-}
-
-__attribute__((constructor)) static void setup(void)
-{
-	linted_error errnum = real_setup();
-	if (errnum != 0)
-		_Exit(errnum);
-}
-
-int main(int argc, char *argv[])
-{
-	linted_error errnum = 0;
-
 	if (argc < 1) {
 		linted_locale_missing_process_name(
 		    STDERR_FILENO, linted_start_config.canonical_process_name);
@@ -165,8 +148,6 @@ int main(int argc, char *argv[])
 	}
 
 	char const *const process_name = argv[0U];
-
-	size_t kos_size = linted_start_config.kos_size;
 
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
