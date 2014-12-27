@@ -19,8 +19,11 @@ dnl
 AS_IF([test "x${enable_debug_info}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
-        [-g]dnl
         [-fno-omit-frame-pointer]dnl
+        [-g]dnl
+        [-g3]dnl
+        [-ggdb]dnl
+        [-fvar-tracking-assignments]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG_INFO])

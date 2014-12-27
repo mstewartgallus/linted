@@ -19,14 +19,14 @@ dnl
 dnl
         [-Wdate-time]dnl Reproducible builds are GOOD
 dnl
-        [-Wcast-align]dnl
         [-Woverflow]dnl
         [-Wformat=2]dnl
         [-Wunused] [-Wno-unused-parameter]dnl
         [-Wshadow]dnl
-        [-Wwrite-strings]dnl
+        [-Wunreachable-code]dnl
         [-Wstrict-prototypes]dnl
         [-Wmissing-prototypes]dnl
+        [-Wmissing-declarations]dnl
         [-Wold-style-definition]dnl
         [-Wredundant-decls]dnl
         [-Wnested-externs]

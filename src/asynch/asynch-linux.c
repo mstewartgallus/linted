@@ -261,7 +261,6 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-	bool cancelled;
 	linted_error errnum;
 
 	assert(pool != NULL);
