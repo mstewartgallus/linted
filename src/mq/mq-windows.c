@@ -199,12 +199,9 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 {
 	struct linted_mq_task_receive *task_receive =
 	    LINTED_DOWNCAST(struct linted_mq_task_receive, task);
-	size_t bytes_read = 0U;
 
-	linted_asynch_task_seterrnum(task, ENOSYS);
-	task_receive->bytes_read = bytes_read;
-
-	linted_asynch_pool_complete(pool, task);
+	task_receive->bytes_read = 0U;
+	linted_asynch_pool_complete(pool, task, ENOSYS);
 }
 
 void linted_mq_do_send(struct linted_asynch_pool *pool,
@@ -212,10 +209,7 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 {
 	struct linted_mq_task_send *task_send =
 	    LINTED_DOWNCAST(struct linted_mq_task_send, task);
-	size_t bytes_wrote = 0U;
 
-	linted_asynch_task_seterrnum(task, ENOSYS);
-	task_send->bytes_wrote = bytes_wrote;
-
-	linted_asynch_pool_complete(pool, task);
+	task_send->bytes_wrote = 0U;
+	linted_asynch_pool_complete(pool, task, ENOSYS);
 }
