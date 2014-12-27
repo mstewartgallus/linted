@@ -20,6 +20,12 @@
 
 #include <stdio.h>
 
+/**
+ * @file
+ *
+ * Parses configuration data.
+ */
+
 struct linted_conf_db;
 struct linted_conf;
 struct linted_conf_section;

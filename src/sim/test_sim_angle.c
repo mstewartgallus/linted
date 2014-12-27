@@ -21,7 +21,7 @@
 
 #include <stdlib.h>
 
-/**
+/*
  * LINTED_SIM_UINT_MAX / 4U
  * / \
  *  |

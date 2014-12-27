@@ -29,6 +29,12 @@
 #include <time.h>
 #endif
 
+/**
+ * @file
+ *
+ * Task scheduling.
+ */
+
 struct linted_sched_task_idle;
 struct linted_sched_task_sleep_until;
 

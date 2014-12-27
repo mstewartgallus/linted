@@ -20,6 +20,12 @@
 
 #include <xcb/xcb.h>
 
+/**
+ * @file
+ *
+ * XCB functionality.
+ */
+
 linted_error linted_xcb_error(xcb_generic_error_t *error);
 linted_error linted_xcb_conn_error(xcb_connection_t *connection);
 

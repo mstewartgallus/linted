@@ -17,9 +17,14 @@
 #define LINTED_START_H
 
 #include "linted/ko.h"
-#include "linted/str.h"
 
 #include <stddef.h>
+
+/**
+ * @file
+ *
+ * Implements common startup functionality.
+ */
 
 struct linted_start_config
 {

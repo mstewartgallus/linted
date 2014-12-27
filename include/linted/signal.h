@@ -23,6 +23,12 @@
 #include <signal.h>
 #endif
 
+/**
+ * @file
+ *
+ * Signal handling.
+ */
+
 struct linted_signal_task_sigwaitinfo;
 
 linted_error linted_signal_task_sigwaitinfo_create(

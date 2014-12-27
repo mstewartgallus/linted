@@ -18,6 +18,12 @@
 
 #include <stddef.h>
 
+/**
+ * @file
+ *
+ * Stores asset data.
+ */
+
 typedef float linted_assets_point[3U];
 
 extern size_t const linted_assets_size;

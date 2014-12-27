@@ -21,6 +21,12 @@
 #include <math.h>
 #include <stdint.h>
 
+/**
+ * @file
+ *
+ * Simulation functionality.
+ */
+
 typedef uint_least32_t linted_sim_uint;
 typedef int_least32_t linted_sim_int;
 

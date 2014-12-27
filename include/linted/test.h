@@ -21,6 +21,12 @@
 
 #include <unistd.h>
 
+/**
+ * @file
+ *
+ * Implements common test functionality.
+ */
+
 #define LINTED_TEST_FAILURE(format_string, ...)                               \
     do {                                                                       \
         linted_io_write_format(STDERR_FILENO, NULL, "\

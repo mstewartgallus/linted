@@ -23,6 +23,12 @@
 #include <sys/wait.h>
 #endif
 
+/**
+ * @file
+ *
+ * System processes.
+ */
+
 struct linted_pid_task_waitid;
 
 linted_error

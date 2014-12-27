@@ -18,6 +18,12 @@
 
 #include "linted/log.h"
 
+/**
+ * @file
+ *
+ * Draws graphics using the GPU.
+ */
+
 #if defined __linux__
 #include "gpu-x11.h"
 #else
