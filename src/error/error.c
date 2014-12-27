@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 
 static char const invalid_error_string[] = "invalid error number";
@@ -30,6 +31,9 @@ static char const out_of_memory_string[] = "cannot print error, out of memory";
 
 char const *linted_error_string(linted_error errnum_to_print)
 {
+	if (errnum_to_print > INT_MAX)
+		return invalid_error_string;
+
 	linted_error errnum;
 
 	char *buf = NULL;

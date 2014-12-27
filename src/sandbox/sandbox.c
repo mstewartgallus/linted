@@ -416,7 +416,7 @@ exit_loop:
 	linted_ko stdin_reader;
 	linted_ko stdin_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			perror("pipe2");
 			return EXIT_FAILURE;
@@ -428,7 +428,7 @@ exit_loop:
 	linted_ko stdout_reader;
 	linted_ko stdout_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			perror("pipe2");
 			return EXIT_FAILURE;
@@ -440,7 +440,7 @@ exit_loop:
 	linted_ko stderr_reader;
 	linted_ko stderr_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			perror("pipe2");
 			return EXIT_FAILURE;
@@ -654,7 +654,7 @@ exit_loop:
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			perror("pipe2");
 			return EXIT_FAILURE;
@@ -880,7 +880,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 	linted_ko vfork_err_reader;
 	linted_ko vfork_err_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
 			return errno;
 		vfork_err_reader = xx[0U];

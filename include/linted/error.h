@@ -16,21 +16,19 @@
 #ifndef LINTED_ERROR_H
 #define LINTED_ERROR_H
 
-#include <stdint.h>
+#if defined __WIN32 || defined _WIN64
+#include "error-windows.h"
+#elif defined __linux__
+#include "error-linux.h"
+#else
+#error no error code method for this platform has been implemented
+#endif
 
 /**
  * @file
  *
  * Abstracts over the system's basic error type.
  */
-
-#if defined __WIN32 || defined _WIN64
-typedef uint_fast32_t linted_error;
-#elif defined __linux__
-typedef int linted_error;
-#else
-#error no known most primitive platform error type
-#endif
 
 char const *linted_error_string(linted_error errnum);
 

@@ -101,6 +101,7 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 			gen_name(random_mq_name + 1U + path_size + 1U,
 			         RANDOM_BYTES);
 
+			int fd;
 			{
 				struct mq_attr mq_attr;
 
@@ -109,15 +110,16 @@ linted_error linted_mq_create(linted_mq *mqp, char const *debugpath,
 				mq_attr.mq_maxmsg = maxmsg;
 				mq_attr.mq_msgsize = msgsize;
 
-				ko = mq_open(random_mq_name,
+				fd = mq_open(random_mq_name,
 				             O_RDWR | O_CREAT | O_EXCL |
 				                 O_NONBLOCK,
 				             0, &mq_attr);
 			}
-			if (-1 == ko) {
+			if (-1 == fd) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 			} else {
+				ko = fd;
 				errnum = 0;
 			}
 		} while (EEXIST == errnum);

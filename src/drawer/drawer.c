@@ -119,11 +119,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	struct window_model window_model = { .viewable = false };
 
-	linted_ko updater =
-	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (-1 == updater) {
-		perror("socket");
-		return EXIT_FAILURE;
+	linted_ko updater;
+	{
+		int fd = socket(AF_UNIX,
+		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (-1 == fd) {
+			perror("socket");
+			return EXIT_FAILURE;
+		}
+		updater = fd;
 	}
 
 	linted_log log;

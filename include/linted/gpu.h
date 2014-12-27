@@ -18,10 +18,10 @@
 
 #include "linted/log.h"
 
-#ifdef __linux__
+#if defined __linux__
 #include "gpu-x11.h"
 #else
-#error no 3d implementation for this platform has been implemented
+#error no GPU acceleration for this platform has been implemented
 #endif
 
 struct linted_gpu_context;

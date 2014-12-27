@@ -19,25 +19,21 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 
-#include <sys/types.h>
+#include <stddef.h>
+
+#if defined _WIN32 || defined _WIN64
+#include "ko-windows.h"
+#elif defined __linux__
+#include "ko-linux.h"
+#else
+#error kernel object support has not beeen implemented for this platform
+#endif
 
 /**
  * @file
  *
  * Abstracts over the concept of a kernel object.
  */
-
-#if defined _WIN32 || defined _WIN64
-typedef void *linted_ko;
-
-#define LINTED_KO_CWD ((linted_ko) - 1)
-#elif defined __linux__
-typedef int linted_ko;
-
-#define LINTED_KO_CWD (-1)
-#else
-#error kernel object support has not beeen implemented for this platform
-#endif
 
 #define LINTED_KO_RDONLY 1UL
 #define LINTED_KO_WRONLY (1UL << 1U)

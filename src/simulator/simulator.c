@@ -157,18 +157,26 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		log = xx;
 	}
 
-	linted_controller controller =
-	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (-1 == controller) {
-		perror("socket");
-		return EXIT_FAILURE;
+	linted_controller controller;
+	{
+		int fd = socket(AF_UNIX,
+		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (-1 == fd) {
+			perror("socket");
+			return EXIT_FAILURE;
+		}
+		controller = fd;
 	}
 
-	linted_updater updater =
-	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (-1 == updater) {
-		perror("socket");
-		return EXIT_FAILURE;
+	linted_updater updater;
+	{
+		int fd = socket(AF_UNIX,
+		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (-1 == fd) {
+			perror("socket");
+			return EXIT_FAILURE;
+		}
+		updater = fd;
 	}
 
 	{

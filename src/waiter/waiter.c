@@ -134,10 +134,10 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 		struct pollfd fds[FDS_COUNT];
 
-		fds[STDOUT_FD].fd = out_closed ? -1 : stdout_reader;
+		fds[STDOUT_FD].fd = out_closed ? -1 : (int)stdout_reader;
 		fds[STDOUT_FD].events = POLLIN;
 
-		fds[STDERR_FD].fd = err_closed ? -1 : stderr_reader;
+		fds[STDERR_FD].fd = err_closed ? -1 : (int)stderr_reader;
 		fds[STDERR_FD].events = POLLIN;
 
 		fds[IN_FD].fd = input_closed ? -1 : STDIN_FILENO;

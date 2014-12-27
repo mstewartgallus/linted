@@ -421,7 +421,7 @@ static linted_error sanitize_kos(size_t kos_size)
 		if (S_ISSOCK(mode))
 			continue;
 
-		linted_ko new_fd;
+		int new_fd;
 		{
 			char pathname[10U];
 			sprintf(pathname, "%i", fd);

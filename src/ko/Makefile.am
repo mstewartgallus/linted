@@ -17,7 +17,12 @@
 
 noinst_LTLIBRARIES+=%D%/libko.la
 %C%_libko_la_SOURCES=%D%/ko.c include/linted/ko.h
-EXTRA_%C%_libko_la_SOURCES=%D%/ko-linux.c %D%/ko-windows.c
+EXTRA_%C%_libko_la_SOURCES=\
+  %D%/ko-linux.c\
+  %D%/ko-windows.c\
+  include/linted/ko-linux.h\
+  include/linted/ko-windows.h
+
 %C%_libko_la_LIBADD=\
   src/mem/libmem.la
 # Circular depedence with libasynch

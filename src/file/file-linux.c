@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdbool.h>
 
 linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
@@ -33,7 +34,7 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 
 	if (LINTED_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
-	} else if (dirko < 0) {
+	} else if (dirko > INT_MAX) {
 		return EINVAL;
 	}
 

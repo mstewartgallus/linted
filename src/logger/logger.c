@@ -70,10 +70,14 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		log = xx;
 	}
 
-	linted_ko inotify = inotify_init1(IN_CLOEXEC);
-	if (-1 == inotify) {
-		perror("inotify_init1");
-		return EXIT_FAILURE;
+	linted_ko inotify;
+	{
+		int fd = inotify_init1(IN_CLOEXEC);
+		if (-1 == fd) {
+			perror("inotify_init1");
+			return EXIT_FAILURE;
+		}
+		inotify = fd;
 	}
 
 	{

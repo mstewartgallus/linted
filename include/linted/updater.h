@@ -17,7 +17,7 @@
 #define LINTED_UPDATER_H
 
 #include "linted/error.h"
-#include "linted/mq.h"
+#include "linted/ko.h"
 #include "linted/sim.h"
 
 /**
@@ -30,7 +30,7 @@
 /**
  * A handle to access the updater. Is safe to share between processes.
  */
-typedef linted_mq linted_updater;
+typedef linted_ko linted_updater;
 
 struct linted_updater_update
 {

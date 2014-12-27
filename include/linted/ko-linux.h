@@ -13,24 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINTED_START_H
-#define LINTED_START_H
+#ifndef LINTED_KO_H
+#error this header should never be included directly
+#endif
 
-#include "linted/ko.h"
-#include "linted/str.h"
+typedef unsigned linted_ko;
 
-#include <stddef.h>
-
-struct linted_start_config
-{
-	char const *canonical_process_name;
-	size_t kos_size;
-	linted_ko *kos;
-};
-
-extern struct linted_start_config const linted_start_config;
-
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[]);
-
-#endif /* LINTED_START_H */
+#define LINTED_KO_CWD ((linted_ko) - 1)

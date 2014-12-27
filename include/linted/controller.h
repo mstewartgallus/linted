@@ -17,7 +17,7 @@
 #define LINTED_CONTROLLER_H
 
 #include "linted/error.h"
-#include "linted/mq.h"
+#include "linted/ko.h"
 
 #include <stdint.h>
 
@@ -27,7 +27,7 @@
  * Communicates user input to another process.
  */
 
-typedef linted_mq linted_controller;
+typedef linted_ko linted_controller;
 
 struct linted_controller_message
 {

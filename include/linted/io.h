@@ -22,7 +22,6 @@
 #include "linted/util.h"
 
 #include <stddef.h>
-#include <sys/types.h>
 
 /**
  * @file

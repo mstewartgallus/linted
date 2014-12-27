@@ -141,11 +141,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_window_notifier notifier = kos[0U];
 
-	linted_controller controller =
-	    socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (-1 == controller) {
-		perror("socket");
-		return EXIT_FAILURE;
+	linted_controller controller;
+	{
+		int fd = socket(AF_UNIX,
+		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (-1 == fd) {
+			perror("socket");
+			return EXIT_FAILURE;
+		}
+		controller = fd;
 	}
 
 	struct controller_data controller_data = { 0 };

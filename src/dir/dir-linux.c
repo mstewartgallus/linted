@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -36,11 +37,10 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                mode_t mode)
 {
 	linted_error errnum;
-	linted_ko fildes = -1;
+	int fildes = -1;
 
-	if (dirko < 0 && dirko != LINTED_KO_CWD) {
+	if (dirko > INT_MAX && dirko != LINTED_KO_CWD)
 		return EINVAL;
-	}
 
 	if (flags != 0UL)
 		return EINVAL;

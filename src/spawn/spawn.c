@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -143,8 +144,8 @@ linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 }
 
 linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **file_actionsp, int oldfildes,
-    int newfildes)
+    struct linted_spawn_file_actions **file_actionsp, linted_ko oldfildes,
+    linted_ko newfildes)
 {
 	linted_error errnum;
 	struct linted_spawn_file_actions *file_actions;
@@ -198,7 +199,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	bool is_relative_path = filename[0U] != '/';
 	bool at_fdcwd = LINTED_KO_CWD == dirko;
 
-	if (is_relative_path && !at_fdcwd && dirko < 0)
+	if (is_relative_path && !at_fdcwd && dirko > INT_MAX)
 		return EBADF;
 
 	sigset_t const *child_mask = NULL;
@@ -267,7 +268,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
-		linted_ko xx[2U];
+		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
@@ -295,18 +296,18 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		}
 	}
 
-	linted_ko dirko_copy = -1;
+	int dirko_copy = -1;
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != NULL) {
 		if (!at_fdcwd && is_relative_path) {
-			dirko_copy =
-			    fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
-			if (-1 == dirko_copy) {
+			int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
+			if (-1 == fd) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 				goto close_err_pipes;
 			}
+			dirko_copy = fd;
 		}
 
 		int err_writer_copy =

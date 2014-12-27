@@ -150,7 +150,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 	if (LINTED_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
-	} else if (dirko < 0) {
+	} else if (dirko > INT_MAX) {
 		return EINVAL;
 	}
 
@@ -1035,8 +1035,8 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	linted_error errnum = 0;
 	linted_ko ko = task_accept->ko;
 
-	linted_ko new_ko = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
-	if (-1 == new_ko) {
+	int new_fd = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+	if (-1 == new_fd) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}
@@ -1065,7 +1065,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	if (EAGAIN == errnum || EWOULDBLOCK == errnum)
 		goto wait_on_poll;
 
-	task_accept->returned_ko = new_ko;
+	task_accept->returned_ko = new_fd;
 
 	linted_asynch_pool_complete(pool, task, errnum);
 	return;
@@ -1102,7 +1102,7 @@ static void fd_to_str(char *buf, linted_ko fd)
 {
 	size_t strsize = 0U;
 
-	assert(fd >= 0);
+	assert(fd <= INT_MAX);
 
 	for (;;) {
 		memmove(buf + 1U, buf, strsize);

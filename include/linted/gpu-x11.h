@@ -17,7 +17,7 @@
 #error this header should never be included directly
 #endif
 
-typedef void *linted_gpu_native_display;
+#include <stdint.h>
 
-/* An unsigned long is at least 32 bits in size */
-typedef unsigned long linted_gpu_native_window;
+typedef void *linted_gpu_native_display;
+typedef uint_fast32_t linted_gpu_native_window;
