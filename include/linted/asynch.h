@@ -59,8 +59,8 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 
 void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_waiter *waiter,
-                                     struct linted_asynch_task *task, void *ko,
-                                     short flags);
+                                     struct linted_asynch_task *task,
+                                     unsigned ko, short flags);
 
 linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task **completionp);
