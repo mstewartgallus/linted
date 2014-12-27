@@ -167,7 +167,7 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 	}
 
 	if (EINTR == errnum) {
-		linted_asynch_pool_submit(pool, task);
+		linted_asynch_pool_resubmit(pool, task);
 		return;
 	}
 

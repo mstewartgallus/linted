@@ -337,7 +337,7 @@ void linted_mq_do_receive(struct linted_asynch_pool *pool,
 	return;
 
 submit_retry:
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
@@ -374,7 +374,7 @@ void linted_mq_do_send(struct linted_asynch_pool *pool,
 	return;
 
 submit_retry:
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:

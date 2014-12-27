@@ -819,7 +819,7 @@ complete_task:
 submit_retry:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = bytes_read;
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
@@ -895,7 +895,7 @@ submit_retry:
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = bytes_wrote;
 
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
@@ -971,7 +971,7 @@ complete_task:
 
 submit_retry:
 	task_recv->bytes_read = bytes_read;
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
@@ -1018,7 +1018,7 @@ complete_task:
 
 submit_retry:
 	task_sendto->bytes_wrote = bytes_wrote;
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
@@ -1071,7 +1071,7 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
 	return;
 
 submit_retry:
-	linted_asynch_pool_submit(pool, task);
+	linted_asynch_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:

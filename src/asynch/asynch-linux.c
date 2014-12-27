@@ -272,7 +272,38 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 		assert(false);
 	}
 
+	assert(!task->in_flight);
+	assert(!task->owned);
+
 	task->in_flight = true;
+	task->owned = false;
+
+	errnum = pthread_spin_unlock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
+	job_submit(pool->worker_queue, task);
+}
+
+void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
+                                 struct linted_asynch_task *task)
+{
+	bool cancelled;
+	linted_error errnum;
+
+	assert(pool != NULL);
+
+	errnum = pthread_spin_lock(&task->owner_lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	assert(task->in_flight);
+	assert(task->owned);
+
 	task->owned = false;
 	{
 		bool *cancel_replier = task->cancel_replier;
@@ -1180,7 +1211,7 @@ static void *poller_routine(void *arg)
 
 		waiter->revents = revents;
 
-		linted_asynch_pool_submit(asynch_pool, task);
+		linted_asynch_pool_resubmit(asynch_pool, task);
 		continue;
 
 	complete_task:

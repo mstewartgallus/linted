@@ -121,7 +121,7 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 	}
 
 	if (EINTR == errnum) {
-		linted_asynch_pool_submit(pool, task);
+		linted_asynch_pool_resubmit(pool, task);
 		return;
 	}
 
