@@ -17,6 +17,9 @@
 #error this header should never be included directly
 #endif
 
-typedef void *linted_ko;
+/* Use a fake type to give a little more type safety. */
+struct linted_ko_;
+
+typedef struct linted_ko_ *linted_ko;
 
 #define LINTED_KO_CWD ((linted_ko) - 1)

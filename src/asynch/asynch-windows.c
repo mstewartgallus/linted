@@ -24,6 +24,7 @@
 
 #include "linted/asynch.h"
 
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/mq.h"
@@ -621,7 +622,7 @@ static DWORD WINAPI worker_routine(void *arg)
 
 	linted_ko self;
 	{
-		linted_ko xx;
+		HANDLE xx;
 		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
 		                GetCurrentProcess(), &xx, 0, FALSE,
 		                DUPLICATE_SAME_ACCESS);
@@ -672,15 +673,15 @@ static void run_task(struct linted_asynch_pool *pool,
 		break;
 
 	case LINTED_ASYNCH_TASK_POLL:
-		linted_ko_do_poll(pool, task);
+		linted_io_do_poll(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_READ:
-		linted_ko_do_read(pool, task);
+		linted_io_do_read(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_WRITE:
-		linted_ko_do_write(pool, task);
+		linted_io_do_write(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_MQ_RECEIVE:
@@ -704,15 +705,15 @@ static void run_task(struct linted_asynch_pool *pool,
 		break;
 
 	case LINTED_ASYNCH_TASK_ACCEPT:
-		linted_ko_do_accept(pool, task);
+		linted_io_do_accept(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_RECV:
-		linted_ko_do_recv(pool, task);
+		linted_io_do_recv(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_SENDTO:
-		linted_ko_do_sendto(pool, task);
+		linted_io_do_sendto(pool, task);
 		break;
 
 	default:
@@ -827,7 +828,7 @@ static DWORD WINAPI poller_routine(void *arg)
 
 	linted_ko self;
 	{
-		linted_ko xx;
+		HANDLE xx;
 		DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
 		                GetCurrentProcess(), &xx, 0, FALSE,
 		                DUPLICATE_SAME_ACCESS);
