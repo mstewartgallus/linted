@@ -20,7 +20,6 @@ noinst_LTLIBRARIES+=%D%/libwindow-notifier.la
   %D%/window-notifier.c\
   include/linted/window-notifier.h
 %C%_libwindow_notifier_la_LIBADD=\
-  src/asynch/libasynch.la\
   src/mem/libmem.la\
   src/mq/libmq.la
 dist_pkgdefaultunits_DATA+=%D%/units/window-notifier.socket

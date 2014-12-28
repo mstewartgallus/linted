@@ -18,6 +18,7 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/gpu.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
@@ -25,8 +26,8 @@
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
-#include "linted/xcb.h"
 #include "linted/window-notifier.h"
+#include "linted/xcb.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -182,7 +183,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct linted_sched_task_idle *idle_task;
 	struct linted_window_notifier_task_receive *notice_task;
 	struct linted_updater_task_receive *updater_task;
-	struct linted_ko_task_poll *poll_conn_task;
+	struct linted_io_task_poll *poll_conn_task;
 
 	{
 		struct linted_sched_task_idle *xx;
@@ -210,8 +211,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	{
-		struct linted_ko_task_poll *xx;
-		errnum = linted_ko_task_poll_create(&xx, &poll_conn_data);
+		struct linted_io_task_poll *xx;
+		errnum = linted_io_task_poll_create(&xx, &poll_conn_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		poll_conn_task = xx;
@@ -248,7 +249,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_asynch_pool_submit(
 	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
 
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
 	                            POLLIN);
 	poll_conn_data.window_model = &window_model;
@@ -257,7 +258,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	poll_conn_data.connection = connection;
 	poll_conn_data.notice_task = notice_task;
 	linted_asynch_pool_submit(
-	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
+	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
 	linted_updater_task_receive_prepare(updater_task, ON_RECEIVE_UPDATE,
 	                                    updater);
@@ -376,10 +377,10 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_ko_task_poll *poll_conn_task =
-	    linted_ko_task_poll_from_asynch(task);
+	struct linted_io_task_poll *poll_conn_task =
+	    linted_io_task_poll_from_asynch(task);
 	struct poll_conn_data *poll_conn_data =
-	    linted_ko_task_poll_data(poll_conn_task);
+	    linted_io_task_poll_data(poll_conn_task);
 
 	struct linted_window_notifier_task_receive *notice_task =
 	    poll_conn_data->notice_task;
@@ -431,7 +432,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		    linted_window_notifier_task_receive_to_asynch(notice_task));
 	}
 
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
 	                            POLLIN);
 	poll_conn_data->window_model = window_model;

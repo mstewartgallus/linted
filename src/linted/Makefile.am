@@ -19,6 +19,7 @@ bin_PROGRAMS+=%D%/linted
 %C%_linted_SOURCES=%D%/linted.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
+  src/asynch/libasynch.la\
   src/dir/libdir.la\
   src/io/libio.la\
   src/locale/liblocale.la\

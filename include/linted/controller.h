@@ -19,6 +19,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 /**

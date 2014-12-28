@@ -16,6 +16,7 @@
 #ifndef LINTED_MQ_H
 #define LINTED_MQ_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/util.h"

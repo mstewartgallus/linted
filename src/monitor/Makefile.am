@@ -20,12 +20,13 @@ pkglibexec_PROGRAMS+=%D%/monitor
 %C%_monitor_LDADD=\
   src/start/libstart.la\
   \
+  src/asynch/libasynch.la\
   src/conf/libconf.la\
   src/dir/libdir.la\
   src/error/liberror.la\
   src/file/libfile.la\
-  src/ko/libko.la\
   src/io/libio.la\
+  src/ko/libko.la\
   src/mem/libmem.la\
   src/mq/libmq.la\
   src/pool/libpool.la\

@@ -25,4 +25,3 @@ EXTRA_%C%_libko_la_SOURCES=\
 
 %C%_libko_la_LIBADD=\
   src/mem/libmem.la
-# Circular depedence with libasynch

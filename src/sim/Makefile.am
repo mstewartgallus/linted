@@ -24,5 +24,6 @@ TESTS+=%D%/test_sim_angle
 check_PROGRAMS+=%D%/test_sim_angle
 %C%_test_sim_angle_SOURCES=%D%/test_sim_angle.c
 %C%_test_sim_angle_LDADD=\
+  src/asynch/libasynch.la\
   src/io/libio.la\
   src/sim/libsim.la

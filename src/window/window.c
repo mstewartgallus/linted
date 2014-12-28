@@ -19,12 +19,13 @@
 
 #include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
-#include "linted/xcb.h"
 #include "linted/window-notifier.h"
+#include "linted/xcb.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -109,7 +110,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	struct notice_data notice_data;
 	struct poll_conn_data poll_conn_data;
 
-	struct linted_ko_task_poll *poll_conn_task;
+	struct linted_io_task_poll *poll_conn_task;
 	struct linted_window_notifier_task_send *notice_task;
 
 	{
@@ -122,8 +123,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	{
-		struct linted_ko_task_poll *xx;
-		errnum = linted_ko_task_poll_create(&xx, &poll_conn_data);
+		struct linted_io_task_poll *xx;
+		errnum = linted_io_task_poll_create(&xx, &poll_conn_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		poll_conn_task = xx;
@@ -361,7 +362,7 @@ get_hostname_succeeded:
 
 	bool time_to_quit;
 
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
 	                            POLLIN);
 	poll_conn_data.time_to_quit = &time_to_quit;
@@ -369,7 +370,7 @@ get_hostname_succeeded:
 	poll_conn_data.connection = connection;
 
 	linted_asynch_pool_submit(
-	    pool, linted_ko_task_poll_to_asynch(poll_conn_task));
+	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -476,10 +477,10 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_ko_task_poll *poll_conn_task =
-	    linted_ko_task_poll_from_asynch(task);
+	struct linted_io_task_poll *poll_conn_task =
+	    linted_io_task_poll_from_asynch(task);
 	struct poll_conn_data *poll_conn_data =
-	    linted_ko_task_poll_data(poll_conn_task);
+	    linted_io_task_poll_data(poll_conn_task);
 
 	xcb_connection_t *connection = poll_conn_data->connection;
 	struct linted_asynch_pool *pool = poll_conn_data->pool;
@@ -510,7 +511,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 			return 0;
 	}
 
-	linted_ko_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
 	                            POLLIN);
 	poll_conn_data->time_to_quit = time_to_quitp;

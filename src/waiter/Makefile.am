@@ -18,9 +18,7 @@ pkglibexec_PROGRAMS+=%D%/waiter
 
 %C%_waiter_SOURCES=%D%/waiter.c
 %C%_waiter_LDADD=\
-  src/asynch/libasynch.la\
   src/error/liberror.la\
-  src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
   src/start/libstart.la

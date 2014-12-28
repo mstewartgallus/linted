@@ -17,7 +17,10 @@
 
 noinst_LTLIBRARIES+=%D%/libio.la
 %C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
+EXTRA_%C%_libio_la_SOURCES=\
+  %D%/io-linux.c\
+  %D%/io-windows.c
 %C%_libio_la_LIBADD=\
-  src/asynch/libasynch.la\
   src/ko/libko.la\
   src/mem/libmem.la
+# Circular depedence with libasynch

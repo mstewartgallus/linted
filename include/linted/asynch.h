@@ -17,6 +17,7 @@
 #define LINTED_ASYNCH_H
 
 #include "linted/error.h"
+#include "linted/ko.h"
 
 /**
  * @file
