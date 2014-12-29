@@ -124,7 +124,7 @@ struct conn_pool;
 struct pidstat
 {
 	pid_t pid;
-	char comm[1U + COMM_MAX + 1U + 1U];
+	char comm[COMM_MAX + 1U];
 	char state;
 	int ppid;
 	int pgrp;
@@ -2920,7 +2920,7 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 	 * limits on the possible size of a name that I'm not actually
 	 * sure works. */
 
-	char *start = strchr(line, '(');
+	char *start = strchr(line, '(') + 1U;
 	char *end = strrchr(line, ')');
 	memset(buf->comm, 0, sizeof buf->comm);
 	memcpy(buf->comm, start, end - start);
