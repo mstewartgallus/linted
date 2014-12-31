@@ -25,6 +25,7 @@
 #include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/mq.h"
 #include "linted/pid.h"
@@ -35,16 +36,18 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <locale.h>
 #include <libgen.h>
 #include <limits.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/inotify.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
@@ -59,6 +62,7 @@
 #define MAX_MANAGE_CONNECTIONS 10U
 
 enum {
+	LOG_NOTIFY,
 	WAITID,
 	SIGWAITINFO,
 	ADMIN_ACCEPTED_CONNECTION,
@@ -67,6 +71,15 @@ enum {
 };
 
 enum { MAX_TASKS = ADMIN_READ_CONNECTION + MAX_MANAGE_CONNECTIONS };
+
+struct log_notify_data
+{
+	struct linted_asynch_pool *pool;
+	char const *process_name;
+	char *logger_buffer;
+	size_t file_offset;
+	linted_log log;
+};
 
 struct wait_service_data
 {
@@ -191,6 +204,7 @@ static linted_error activate_unit_db(char const *process_name,
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
+static linted_error on_log_notify(struct linted_asynch_task *task);
 static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_sigwaitinfo(struct linted_asynch_task *task);
 static linted_error on_accepted_conn(struct linted_asynch_task *task);
@@ -445,6 +459,41 @@ retry_bind:
 		admin = xx;
 	}
 
+	linted_log log;
+	{
+		linted_ko xx;
+		errnum = linted_file_create(&xx, LINTED_KO_CWD, "var/log",
+		                            LINTED_KO_RDWR, S_IRWXU);
+		if (errnum != 0) {
+			errno = errnum;
+			perror("linted_file_create");
+			return EXIT_FAILURE;
+		}
+		log = xx;
+	}
+
+	linted_ko inotify;
+	{
+		int fd = inotify_init1(IN_CLOEXEC);
+		if (-1 == fd) {
+			perror("inotify_init1");
+			return EXIT_FAILURE;
+		}
+		inotify = fd;
+	}
+
+	{
+		char path[] = "/proc/self/fd/XXXXXXXXXXXXX";
+		sprintf(path, "/proc/self/fd/%i", log);
+		int wd = inotify_add_watch(inotify, path, IN_MODIFY);
+		if (-1 == wd) {
+			perror("inotify_add_watch");
+			return EXIT_FAILURE;
+		}
+	}
+
+	off_t file_offset = lseek(log, 0U, SEEK_HOLE);
+
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
@@ -456,13 +505,23 @@ retry_bind:
 
 	bool time_to_exit = false;
 
+	struct log_notify_data log_notify_data;
 	struct sigwait_data sigwait_data;
 	struct wait_service_data sandbox_data;
 	struct accepted_conn_data accepted_conn_data;
 
+	struct linted_io_task_read *log_notify_task;
 	struct linted_pid_task_waitid *sandbox_task;
 	struct linted_signal_task_sigwaitinfo *sigwait_task;
 	struct linted_admin_task_accept *accepted_conn_task;
+
+	{
+		struct linted_io_task_read *xx;
+		errnum = linted_io_task_read_create(&xx, &log_notify_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		log_notify_task = xx;
+	}
 
 	{
 		struct linted_pid_task_waitid *xx;
@@ -517,6 +576,21 @@ retry_bind:
 			goto destroy_confs;
 		unit_db = xx;
 	}
+
+	static struct inotify_event inotify_event;
+	linted_io_task_read_prepare(log_notify_task, LOG_NOTIFY, inotify,
+	                            (void *)&inotify_event,
+	                            sizeof inotify_event);
+	log_notify_data.pool = pool;
+	log_notify_data.process_name = process_name;
+	log_notify_data.log = log;
+
+	static char logger_buffer[LINTED_LOG_MAX];
+	log_notify_data.logger_buffer = logger_buffer;
+	log_notify_data.file_offset = file_offset;
+
+	linted_asynch_pool_submit(
+	    pool, linted_io_task_read_to_asynch(log_notify_task));
 
 	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
 	                                       &exit_signals);
@@ -1574,6 +1648,9 @@ free_chrootdir:
 static linted_error dispatch(struct linted_asynch_task *task)
 {
 	switch (linted_asynch_task_action(task)) {
+	case LOG_NOTIFY:
+		return on_log_notify(task);
+
 	case WAITID:
 		return on_process_wait(task);
 
@@ -1592,6 +1669,81 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+}
+
+static linted_error on_log_notify(struct linted_asynch_task *task)
+{
+	linted_error errnum = 0;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (ECANCELED == errnum)
+		return 0;
+	if (errnum != 0)
+		return errnum;
+
+	struct linted_io_task_read *log_notify_task =
+	    linted_io_task_read_from_asynch(task);
+	struct log_notify_data *log_notify_data =
+	    linted_io_task_read_data(log_notify_task);
+
+	struct linted_asynch_pool *pool = log_notify_data->pool;
+	linted_log log = log_notify_data->log;
+	char const *process_name = log_notify_data->process_name;
+	char *logger_buffer = log_notify_data->logger_buffer;
+	size_t file_offset = log_notify_data->file_offset;
+
+	for (;;) {
+		uint32_t log_size;
+		{
+			uint32_t xx;
+			ssize_t bytes_read = read(log, &xx, sizeof xx);
+			if (bytes_read < 0) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				return errnum;
+			}
+			if (0 == bytes_read)
+				goto done_read;
+			if (bytes_read != sizeof xx) {
+				return EINVAL;
+			}
+			log_size = ntohl(xx);
+		}
+
+		if (log_size > LINTED_LOG_MAX)
+			return EINVAL;
+
+		ssize_t bytes_read = read(log, logger_buffer, log_size);
+		if (-1 == bytes_read) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		if (log_size != bytes_read) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		fprintf(stderr, "%s: %u ", process_name, log_size);
+		fwrite(logger_buffer, 1U, log_size, stderr);
+		fprintf(stderr, "\n");
+		fflush(stderr);
+
+		file_offset += (size_t)bytes_read;
+		if (-1 == fallocate(log,
+		                    FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
+		                    0U, file_offset + 1U)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+	}
+done_read:
+	log_notify_data->file_offset = file_offset;
+	linted_asynch_pool_submit(pool, task);
+
+	return 0;
 }
 
 static linted_error on_process_wait(struct linted_asynch_task *task)

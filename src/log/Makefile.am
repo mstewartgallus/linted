@@ -24,4 +24,3 @@ noinst_LTLIBRARIES+=%D%/liblog.la
   src/ko/libko.la\
   src/mem/libmem.la\
   -lrt
-dist_pkgdefaultunits_DATA+=%D%/units/log.socket

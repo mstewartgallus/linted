@@ -72,8 +72,6 @@
  *
  * @todo Check child processes for hangups
  *
- * @todo Move the logger into the monitor
- *
  * @todo Use the monitor to report crashes such as from seccomp rule
  *       violations.
  *
