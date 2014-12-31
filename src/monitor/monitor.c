@@ -1266,7 +1266,6 @@ spawn_service:
 			LINTED_ASSUME(errnum != 0);
 			if (errnum != EEXIST)
 				return errno;
-			errnum = 0;
 		}
 
 		linted_ko_close(name_dir);
@@ -2330,15 +2329,19 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 		if ('\0' == *start)
 			break;
 	}
-	if (-1 == pid)
-		errnum = ESRCH;
-
-	*pidp = pid;
 
 free_buf:
 	linted_mem_free(buf);
 
-	return errnum;
+	if (errnum != 0)
+		return errnum;
+
+	if (-1 == pid)
+		return ESRCH;
+
+	*pidp = pid;
+
+	return 0;
 }
 
 static char const *default_envvars[] = { "USER", "LOGNAME", "HOME", "SHELL",
@@ -2517,6 +2520,8 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 
 				errnum = linted_conf_add_setting(
 				    service, env_whitelist, default_envvars);
+				if (errnum != 0)
+					goto close_unit_file;
 
 			} else {
 				errnum = EINVAL;
@@ -2607,7 +2612,7 @@ static linted_error service_name(pid_t pid,
 		return errnum;
 	}
 
-	/* Get the child all at once to avoid raciness. */
+	/* Get the buffer all at once to avoid raciness. */
 	char *buf = NULL;
 	size_t buf_size = 0U;
 
@@ -2623,7 +2628,6 @@ static linted_error service_name(pid_t pid,
 			goto close_file;
 		}
 		buf = xx;
-		buf_size = yy;
 	}
 
 close_file:
@@ -2903,11 +2907,10 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 
 	/* Get the child all at once to avoid raciness. */
 	char *buf = NULL;
-	size_t buf_size = 0U;
 
 	{
 		char *xx = buf;
-		size_t yy = buf_size;
+		size_t yy = 0U;
 
 		errno = 0;
 		ssize_t zz = getline(&xx, &yy, file);
@@ -2917,12 +2920,9 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 			goto set_childrenp;
 		}
 		buf = xx;
-		buf_size = yy;
 	}
 
 set_childrenp:
-	*childrenp = buf;
-
 	if (EOF == fclose(file)) {
 		if (0 == errnum) {
 			errnum = errno;
@@ -2930,7 +2930,14 @@ set_childrenp:
 		}
 	}
 
-	return errnum;
+	if (errnum != 0) {
+		linted_mem_free(buf);
+		return errnum;
+	}
+
+	*childrenp = buf;
+
+	return 0;
 }
 
 static linted_error conn_pool_create(struct conn_pool **poolp)
