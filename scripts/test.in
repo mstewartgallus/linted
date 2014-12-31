@@ -9,12 +9,12 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 : ${LINTED_UNIT_PATH:="\
 ${SRCDIR}/src/controller/units\
-:${SRCDIR}/src/drawer/units\
-:${SRCDIR}/src/gui/units\
-:${SRCDIR}/src/simulator/units\
 :${SRCDIR}/src/updater/units\
 :${SRCDIR}/src/window-notifier/units\
-:${SRCDIR}/src/window/units"}
+:${SRCDIR}/src/simulator/units\
+:${SRCDIR}/src/window/units\
+:${SRCDIR}/src/gui/units\
+:${SRCDIR}/src/drawer/units"}
 
 : ${LINTED_INIT:="${ROOT}/../src/init/init"}
 : ${LINTED_MONITOR:="${ROOT}/../src/monitor/monitor"}

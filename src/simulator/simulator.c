@@ -21,7 +21,6 @@
 #include "linted/error.h"
 #include "linted/controller.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/sched.h"
 #include "linted/sim.h"
@@ -39,6 +38,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <time.h>
@@ -131,38 +131,18 @@ static linted_sim_uint absolute(linted_sim_int x);
 static linted_sim_int min_int(linted_sim_int x, linted_sim_int y);
 static linted_sim_int sign(linted_sim_int x);
 
-#define MESSAGE "starting simulator"
-
-static struct
-{
-	uint32_t size;
-	char bytes[sizeof MESSAGE - 1U];
-} log_entry = { .size = sizeof MESSAGE - 1U, .bytes = MESSAGE };
-
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[])
 {
 	linted_error errnum;
-
-	linted_log log;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/log",
-		                        LINTED_KO_WRONLY | LINTED_KO_APPEND);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_ko_open");
-			return EXIT_FAILURE;
-		}
-		log = xx;
-	}
 
 	linted_controller controller;
 	{
 		int fd = socket(AF_UNIX,
 		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 		if (-1 == fd) {
-			perror("socket");
+			syslog(LOG_ERR, "socket: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		controller = fd;
@@ -173,7 +153,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		int fd = socket(AF_UNIX,
 		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 		if (-1 == fd) {
-			perror("socket");
+			syslog(LOG_ERR, "socket: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		updater = fd;
@@ -192,15 +173,15 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 					unlink(addr.sun_path);
 					continue;
 				}
-				perror("bind");
+				syslog(LOG_ERR, "bind: %s",
+				       linted_error_string(errno));
 				return EXIT_FAILURE;
 			}
 			break;
 		}
 	}
 
-	log_entry.size = htonl(log_entry.size);
-	linted_log_write(log, (struct linted_log_entry *)&log_entry);
+	syslog(LOG_INFO, "starting simulator");
 
 	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
@@ -259,8 +240,9 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	{
 		struct timespec now;
 		if (-1 == clock_gettime(CLOCK_MONOTONIC, &now)) {
-			perror("clock_gettime");
-			return EXIT_FAILURE;
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto destroy_pool;
 		}
 
 		linted_sched_task_sleep_until_prepare(tick_task, ON_READ_TIMER,

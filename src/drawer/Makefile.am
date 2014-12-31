@@ -27,7 +27,6 @@ pkglibexec_PROGRAMS+=%D%/drawer
   src/mem/libmem.la\
   src/xcb/libxcb.la\
   \
-  src/log/liblog.la\
   src/updater/libupdater.la\
   src/window-notifier/libwindow-notifier.la\
   \

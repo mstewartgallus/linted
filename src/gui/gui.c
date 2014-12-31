@@ -37,6 +37,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -147,7 +148,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		int fd = socket(AF_UNIX,
 		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 		if (-1 == fd) {
-			perror("socket");
+			syslog(LOG_ERR, "socket: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		controller = fd;

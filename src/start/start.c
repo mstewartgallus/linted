@@ -40,6 +40,7 @@
 #include <string.h>
 #include <sys/auxv.h>
 #include <sys/ioctl.h>
+#include <syslog.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -145,28 +146,29 @@ It is insecure to run a game with high privileges!\n"));
 	for (size_t ii = 0U; ii < kos_size; ++ii)
 		kos[ii] = (linted_ko)(ii + 3U);
 
+	/* Currently, don't use LOG_PID because syslog is confused by
+	 * CLONE_NEWPID.
+	 */
+	openlog(process_name, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
+
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
 		if (NULL == listen_pid_string) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: need LISTEN_PID\n",
-			                       process_name);
+			syslog(LOG_ERR, "need LISTEN_PID");
 			return EINVAL;
 		}
 
 		pid_t pid = atoi(listen_pid_string);
 		if (getpid() != pid) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: LISTEN_PID %i != getpid() %i\n",
-			                       process_name, pid, getpid());
+			syslog(LOG_ERR, "\
+LISTEN_PID %i != getpid() %i",
+			       pid, getpid());
 			return EINVAL;
 		}
 
 		char *listen_fds_string = getenv("LISTEN_FDS");
 		if (NULL == listen_fds_string) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: need LISTEN_FDS\n",
-			                       process_name);
+			syslog(LOG_ERR, "need LISTEN_FDS");
 			return EINVAL;
 		}
 
@@ -175,18 +177,16 @@ It is insecure to run a game with high privileges!\n"));
 			linted_ko xx;
 			errnum = linted_ko_from_cstring(listen_fds_string, &xx);
 			if (errnum != 0) {
-				errno = errnum;
-				perror("linted_ko_from_cstring");
+				syslog(LOG_ERR, "linted_ko_from_cstring: %s",
+				       linted_error_string(errnum));
 				return errnum;
 			}
 			fds_count = xx;
 		}
 
 		if ((uintmax_t)fds_count != kos_size) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: LISTEN_FDS %i != %lu\n",
-			                       process_name, fds_count,
-			                       kos_size);
+			syslog(LOG_ERR, "LISTEN_FDS %i != %lu", fds_count,
+			       kos_size);
 			return EINVAL;
 		}
 	}
@@ -195,10 +195,8 @@ It is insecure to run a game with high privileges!\n"));
 		unsigned entropy;
 		errnum = get_system_entropy(&entropy);
 		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not read a source of system entropy: %s\n",
-			                       process_name,
-			                       linted_error_string(errnum));
+			syslog(LOG_ERR, "get_system_entropy: %s",
+			       linted_error_string(errnum));
 			return errnum;
 		}
 		linted_random_seed_generator(entropy);
@@ -209,7 +207,8 @@ It is insecure to run a game with high privileges!\n"));
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
 		if (-1 == sigaction(SIGUSR1, &act, NULL)) {
-			perror("sigaction");
+			syslog(LOG_ERR, "sigaction: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}

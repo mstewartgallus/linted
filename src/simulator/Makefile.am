@@ -25,7 +25,6 @@ pkglibexec_PROGRAMS+=%D%/simulator
   src/ko/libko.la\
   \
   src/controller/libcontroller.la\
-  src/log/liblog.la\
   src/mem/libmem.la\
   src/updater/libupdater.la
 

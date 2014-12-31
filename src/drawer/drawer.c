@@ -20,7 +20,6 @@
 #include "linted/gpu.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/sched.h"
 #include "linted/start.h"
@@ -41,6 +40,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -62,7 +62,6 @@ struct idle_data
 {
 	struct linted_gpu_context *gpu_context;
 	struct linted_asynch_pool *pool;
-	linted_log log;
 };
 
 struct poll_conn_data
@@ -112,7 +111,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	if (NULL == setlocale(LC_ALL, "")) {
-		perror("setlocale");
+		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -125,23 +124,11 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		int fd = socket(AF_UNIX,
 		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 		if (-1 == fd) {
-			perror("socket");
+			syslog(LOG_ERR, "socket: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		updater = fd;
-	}
-
-	linted_log log;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/log",
-		                        LINTED_KO_WRONLY | LINTED_KO_APPEND);
-		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_ko_open");
-			return EXIT_FAILURE;
-		}
-		log = xx;
 	}
 
 	{
@@ -157,7 +144,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 					unlink(addr.sun_path);
 					continue;
 				}
-				perror("bind");
+				syslog(LOG_ERR, "bind: %s",
+				       linted_error_string(errno));
 				return EXIT_FAILURE;
 			}
 			break;
@@ -234,7 +222,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
-	idle_data.log = log;
 	idle_data.pool = pool;
 	idle_data.gpu_context = gpu_context;
 	linted_asynch_pool_submit(pool,
@@ -356,12 +343,11 @@ static linted_error on_idle(struct linted_asynch_task *task)
 	    linted_sched_task_idle_from_asynch(task);
 	struct idle_data *idle_data = linted_sched_task_idle_data(idle_task);
 
-	linted_log log = idle_data->log;
 	struct linted_gpu_context *gpu_context = idle_data->gpu_context;
 	struct linted_asynch_pool *pool = idle_data->pool;
 
 	/* Draw or resize if we have time to waste */
-	linted_gpu_draw(gpu_context, log);
+	linted_gpu_draw(gpu_context);
 
 	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
 	linted_asynch_pool_submit(pool, task);

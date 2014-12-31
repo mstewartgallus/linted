@@ -11,15 +11,12 @@ tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 
-
-../../var/log	run/log	none	touch,bind
 ../../updater	run/updater	none	mkdir,shared,bind
 
-
-# Allow connecting to X11\n
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,shared,bind
-/dev/dri	dev/dri	none	mkdir,shared,bind
 
+/dev/dri	dev/dri	none	mkdir,shared,bind
+/dev/log	dev/log	none	touch,bind
 /dev/null	dev/null	none	touch,bind
 /dev/urandom	dev/urandom	none	touch,bind
 
