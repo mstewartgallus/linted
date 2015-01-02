@@ -76,4 +76,7 @@
  *       violations.
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
+ *
+ * @todo Sandbox leaked file descriptors before spawning new processes
+ *       in sandbox.c
  */
