@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -33,8 +34,6 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-extern char **environ;
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",

@@ -35,7 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -493,22 +492,19 @@ static linted_error default_signals(void)
 	 * Get rid of signal handlers so that they can't be called
 	 * before execve.
 	 */
+
+	/* We need to use the direct system call to trample over OS
+	 * signals. */
 	for (int ii = 1; ii < NSIG; ++ii) {
 		/* Uncatchable, avoid Valgrind warnings */
 		if (SIGSTOP == ii || SIGKILL == ii)
 			continue;
 
 		struct sigaction action;
-		if (-1 == sigaction(ii, NULL, &action)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, NULL, &action,
+				  8U)) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-
-			/* If sigerrnum == EINVAL then we are
-			 * trampling on OS signals.
-			 */
-			if (EINVAL == errnum)
-				continue;
-
 			return errnum;
 		}
 
@@ -517,14 +513,10 @@ static linted_error default_signals(void)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == sigaction(ii, &action, NULL)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, NULL,
+				  8U)) {
 			linted_error errnum = errno;
-
-			/* Workaround a bug in Clang's thread
-			 * sanitizer. */
-			if (EINVAL == errnum)
-				continue;
-
+			LINTED_ASSUME(errnum != 0);
 			return errnum;
 		}
 	}

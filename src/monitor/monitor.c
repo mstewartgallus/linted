@@ -245,7 +245,6 @@ static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_detach(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, unsigned options);
 static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
-static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo);
 
 static linted_error set_death_sig(int signum);
 
@@ -1852,7 +1851,7 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 
 	switch (signo) {
 	default:
-		goto restart_process;
+		break;
 
 	case SIGSTOP: {
 		signo = 0;
@@ -1888,73 +1887,8 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 	case SIGTRAP:
 		signo = 0;
 		break;
-
-	case SIGHUP:
-	case SIGINT:
-	case SIGQUIT:
-	case SIGTERM:
-		/* Propagate to the rest of the sandbox */
-		errnum = kill_pid_children(pid, signo);
-		break;
-
-	case SIGCHLD: {
-		int code;
-		pid_t sandboxed_pid;
-		int status;
-
-		siginfo_t info = { 0 };
-		errnum = ptrace_getsiginfo(pid, &info);
-		if (errnum != 0)
-			goto restart_process;
-
-		code = info.si_code;
-
-		/* User generated signal */
-		if (code < 0)
-			goto restart_process;
-
-		sandboxed_pid = info.si_pid;
-		status = info.si_status;
-
-		char name[SERVICE_NAME_MAX + 1U];
-		errnum = service_name(pid, name);
-		if (errnum != 0)
-			goto restart_process;
-
-		switch (code) {
-		case CLD_EXITED:
-			fprintf(stderr, "%s: %s: process %i exited with %i\n",
-			        process_name, name, sandboxed_pid, status);
-			break;
-
-		case CLD_DUMPED:
-		case CLD_KILLED:
-			fprintf(stderr, "%s: %s: process %i killed by %s\n",
-			        process_name, name, sandboxed_pid,
-			        strsignal(status));
-			break;
-
-		case CLD_STOPPED:
-			fprintf(stderr, "%s: %s: process %i stopped by %s\n",
-			        process_name, name, sandboxed_pid,
-			        strsignal(status));
-			break;
-
-		case CLD_CONTINUED:
-			fprintf(stderr, "%s: %s: process %i continued by %s\n",
-			        process_name, name, sandboxed_pid,
-			        strsignal(status));
-			break;
-
-		default:
-			LINTED_ASSUME_UNREACHABLE();
-		}
-		break;
-	}
 	}
 
-restart_process:
-	;
 	linted_error cont_errnum = ptrace_cont(pid, signo);
 	if (0 == errnum)
 		errnum = cont_errnum;
@@ -1971,19 +1905,10 @@ static linted_error on_child_about_to_exit(char const *process_name,
 	linted_error errnum = 0;
 	struct linted_unit *unit = NULL;
 
+
 	errnum = kill_pid_children(pid, SIGKILL);
 	if (errnum != 0)
 		goto detach_from_process;
-
-	pid_t self = getpid();
-	{
-		bool is;
-		errnum = pid_is_child_of(self, pid, &is);
-		if (errnum != 0)
-			goto detach_from_process;
-		if (is)
-			goto detach_from_process;
-	}
 
 	unsigned long status;
 	{
@@ -3029,20 +2954,6 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 	linted_error errnum;
 
 	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)NULL, (void *)msg)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_getsiginfo(pid_t pid, siginfo_t *siginfo)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    ptrace(PTRACE_GETSIGINFO, pid, (void *)NULL, (void *)siginfo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
