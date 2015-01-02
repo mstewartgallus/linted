@@ -1374,7 +1374,7 @@ __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
 
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
-	pid_t child = vfork();
+	pid_t child = fork();
 	if (0 == child)
 		_Exit(f_copy(arg_copy));
 	return child;
@@ -1382,12 +1382,6 @@ __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
 
 static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *arg)
 {
-#if 0
-	pid_t child = syscall(__NR_clone, clone_flags, NULL, NULL, NULL, NULL);
-	if (0 == child)
-		_Exit(f(arg));
-	return child;
-#endif
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);
 

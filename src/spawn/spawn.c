@@ -557,7 +557,7 @@ __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
 
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
-	pid_t child = vfork();
+	pid_t child = fork();
 	if (0 == child)
 		_Exit(f_copy(arg_copy));
 

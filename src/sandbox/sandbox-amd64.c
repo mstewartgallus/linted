@@ -85,6 +85,7 @@ static struct sock_filter const real_filter[] = {
 	/* Debugging related system calls */
 	/**/ ALLOW(gettid),
 	/**/ ALLOW(getpid),
+	/**/ ALLOW(nanosleep),
 	/**/ ALLOW(sched_getaffinity),
 	/**/ ALLOW(setrlimit),
 
