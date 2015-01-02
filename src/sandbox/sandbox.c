@@ -169,7 +169,17 @@ static linted_error do_second_fork(char *listen_pid_str, char const *binary,
                                    char const *const *argv,
                                    char const *const *env, bool no_new_privs);
 
-static void exit_with_error(linted_ko writer, linted_error errnum);
+/* Clang fucks up generating code for this for some reason when using
+ * an inline function and address sanitizer. It might also just be
+ * that address sanitizer doesn't work together well with the
+ * weirdness of forking.
+ */
+#define exit_with_error(writer, errnum)                                        \
+	do {                                                                   \
+		linted_error xx = errnum;                                      \
+		linted_io_write_all(writer, NULL, &xx, sizeof xx);             \
+		_Exit(EXIT_FAILURE);                                           \
+	} while (0)
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
@@ -671,7 +681,6 @@ exit_loop:
 		errnum = linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
 		if (errnum != 0)
 			goto close_err_reader;
-
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
 		if (xx == sizeof yy)
@@ -714,7 +723,7 @@ close_err_reader:
 
 static int first_fork_routine(void *arg)
 {
-	struct first_fork_args *args = arg;
+	struct first_fork_args const *args = arg;
 
 	linted_ko err_reader = args->err_reader;
 	linted_ko err_writer = args->err_writer;
@@ -889,7 +898,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 
 static int second_fork_routine(void *arg)
 {
-	struct second_fork_args *args = arg;
+	struct second_fork_args const *args = arg;
 
 	linted_ko err_writer = args->err_writer;
 	char *listen_pid_str = args->listen_pid_str;
@@ -1249,12 +1258,6 @@ free_subopts_str:
 	*nomount_flagp = nomount_flag;
 	*mountflagsp = mountflags;
 	return 0;
-}
-
-static void exit_with_error(linted_ko writer, linted_error errnum)
-{
-	linted_io_write_all(writer, NULL, &errnum, sizeof errnum);
-	_Exit(EXIT_FAILURE);
 }
 
 static linted_error my_setmntentat(FILE **filep, linted_ko cwd,

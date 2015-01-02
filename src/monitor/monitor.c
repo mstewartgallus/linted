@@ -23,7 +23,6 @@
 #include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/file.h"
-#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/mq.h"
@@ -650,10 +649,8 @@ destroy_pool : {
 
 exit_monitor:
 	if (errnum != 0) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL, "%s: could not run the game: %s\n",
-		    process_name, linted_error_string(errnum));
-
+		syslog(LOG_ERR, "could not run the game: %s",
+		       linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

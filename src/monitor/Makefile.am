@@ -25,7 +25,6 @@ pkglibexec_PROGRAMS+=%D%/monitor
   src/dir/libdir.la\
   src/error/liberror.la\
   src/file/libfile.la\
-  src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
   src/mq/libmq.la\

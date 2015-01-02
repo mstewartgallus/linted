@@ -118,53 +118,65 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 {
 	size_t bytes_read = 0U;
 	size_t bytes_left = size;
+	char *buf_offset = buf;
 
 	linted_error errnum = 0;
-	for (;;) {
-		for (;;) {
-			ssize_t result =
-			    read(ko, (char *)buf + bytes_read, bytes_left);
-			if (result < 0) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
 
-				if (EINTR == errnum)
-					continue;
-
-				break;
-			}
-
-			size_t bytes_read_delta = result;
-			if (0U == bytes_read_delta)
-				break;
-
-			bytes_read += bytes_read_delta;
-			bytes_left -= bytes_read_delta;
-			if (0U == bytes_left)
-				break;
-		}
-
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
-			break;
-
-		short revents = 0;
-		do {
-			short xx;
-			errnum = poll_one(ko, POLLIN, &xx);
-			if (0 == errnum)
-				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
-
-		errnum = check_for_poll_error(revents);
-		if (errnum != 0)
-			break;
+restart_reading:
+	;
+	ssize_t result = read(ko, buf_offset, bytes_left);
+	if (result < 0) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		if (EINTR == errnum)
+			goto restart_reading;
+		if (EAGAIN == errnum)
+			goto poll_for_readability;
+		if (EWOULDBLOCK == errnum)
+			goto poll_for_readability;
+		return errnum;
 	}
 
+	size_t bytes_read_delta = result;
+	if (0U == bytes_read_delta)
+		goto finish_reading;
+
+	buf_offset += bytes_read_delta;
+	bytes_read += bytes_read_delta;
+	bytes_left -= bytes_read_delta;
+
+	if (bytes_left != 0)
+		goto restart_reading;
+
+finish_reading:
 	if (bytes_read_out != NULL)
 		*bytes_read_out = bytes_read;
 	return errnum;
+
+poll_for_readability:
+	;
+	short revents;
+	{
+		short xx;
+		errnum = poll_one(ko, POLLIN, &xx);
+		if (EINTR == errnum)
+			goto poll_for_readability;
+		if (errnum != 0)
+			goto finish_reading;
+		revents = xx;
+	}
+
+	errnum = check_for_poll_error(revents);
+	if (errnum != 0)
+		goto finish_reading;
+
+	if ((revents & POLLIN) != 0)
+		goto restart_reading;
+
+	if ((revents & POLLHUP) != 0)
+		goto finish_reading;
+
+	LINTED_ASSUME_UNREACHABLE();
 }
 
 linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
@@ -173,6 +185,7 @@ linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
 	linted_error errnum = 0;
 	size_t bytes_wrote = 0U;
 	size_t bytes_left = size;
+	char const *buf_offset = buf;
 
 	sigset_t oldset;
 	/* Get EPIPEs */
@@ -183,71 +196,52 @@ linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
 
 	errnum = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
 	if (errnum != 0)
-		return errnum;
+		goto write_bytes_wrote;
 
-	for (;;) {
-		for (;;) {
-			ssize_t result =
-			    write(ko, (char *)buf + bytes_wrote, bytes_left);
-			if (-1 == result) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-
-				if (EINTR == errnum)
-					continue;
-
-				break;
-			}
-
-			size_t bytes_wrote_delta = result;
-
-			bytes_wrote += bytes_wrote_delta;
-			bytes_left -= bytes_wrote_delta;
-			if (0U == bytes_left)
-				break;
-		}
-
-		if (errnum != EAGAIN && errnum != EWOULDBLOCK)
-			break;
-
-		short revents = 0;
-		do {
-			short xx;
-			errnum = poll_one(ko, POLLOUT, &xx);
-			if (0 == errnum)
-				revents = xx;
-		} while (EINTR == errnum);
-		if (errnum != 0)
-			break;
-
-		errnum = check_for_poll_error(revents);
-		if (errnum != 0)
-			break;
+restart_writing:
+	;
+	ssize_t result = write(ko, buf_offset, bytes_left);
+	if (-1 == result) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		if (EINTR == errnum)
+			goto restart_writing;
+		if (EAGAIN == errnum)
+			goto poll_for_writeability;
+		goto get_sigpipe;
 	}
 
-	/* Consume SIGPIPEs */
-	{
-		sigset_t sigpipeset;
+	size_t bytes_wrote_delta = result;
 
-		sigemptyset(&sigpipeset);
-		sigaddset(&sigpipeset, SIGPIPE);
+	buf_offset += bytes_wrote_delta;
+	bytes_wrote += bytes_wrote_delta;
+	bytes_left -= bytes_wrote_delta;
+	if (bytes_left != 0)
+		goto restart_writing;
 
-		linted_error wait_errnum;
-		do {
-			struct timespec timeout = { 0 };
+/* Consume SIGPIPEs */
+get_sigpipe : {
+	sigset_t sigpipeset;
 
-			if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
-				wait_errnum = errno;
-				LINTED_ASSUME(wait_errnum != 0);
-			} else {
-				wait_errnum = 0;
-			}
-		} while (EINTR == wait_errnum);
-		if (wait_errnum != 0 && wait_errnum != EAGAIN) {
-			if (0 == errnum)
-				errnum = wait_errnum;
+	sigemptyset(&sigpipeset);
+	sigaddset(&sigpipeset, SIGPIPE);
+
+	linted_error wait_errnum;
+	do {
+		struct timespec timeout = { 0 };
+
+		if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
+			wait_errnum = errno;
+			LINTED_ASSUME(wait_errnum != 0);
+		} else {
+			wait_errnum = 0;
 		}
+	} while (EINTR == wait_errnum);
+	if (wait_errnum != 0 && wait_errnum != EAGAIN) {
+		if (0 == errnum)
+			errnum = wait_errnum;
 	}
+}
 
 	{
 		linted_error mask_errnum =
@@ -256,9 +250,32 @@ linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
 			errnum = mask_errnum;
 	}
 
+write_bytes_wrote:
 	if (bytes_wrote_out != NULL)
 		*bytes_wrote_out = bytes_wrote;
 	return errnum;
+
+poll_for_writeability:
+	;
+	short revents;
+	{
+		short xx;
+		errnum = poll_one(ko, POLLIN, &xx);
+		if (EINTR == errnum)
+			goto poll_for_writeability;
+		if (errnum != 0)
+			goto get_sigpipe;
+		revents = xx;
+	}
+
+	errnum = check_for_poll_error(revents);
+	if (errnum != 0)
+		goto get_sigpipe;
+
+	if ((revents & POLLOUT) != 0)
+		goto restart_writing;
+
+	LINTED_ASSUME_UNREACHABLE();
 }
 
 linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
