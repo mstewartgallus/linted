@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -93,8 +94,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 	if (errnum != 0) {
-		errno = errnum;
-		perror("strtol");
+		syslog(LOG_ERR, "strtol: %s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
@@ -443,7 +443,7 @@ destroy_pool:
 	/* Tell the manager to exit everything */
 	if (0 == errnum) {
 		if (-1 == kill(root_pid, SIGTERM)) {
-			perror("kill");
+			syslog(LOG_ERR, "kill: %s", linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 

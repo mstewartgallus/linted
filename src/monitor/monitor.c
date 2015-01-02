@@ -46,6 +46,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <syslog.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
@@ -267,7 +268,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	if (NULL == setlocale(LC_ALL, "")) {
-		perror("setlocale");
+		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -296,26 +297,20 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
 
 	if (NULL == unit_path) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: %s is a required environment variable\n", process_name,
-		    "LINTED_UNIT_PATH");
+		syslog(LOG_ERR, "%s is a required environment variable",
+		       "LINTED_UNIT_PATH");
 		return EXIT_FAILURE;
 	}
 
 	if (NULL == sandbox) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: %s is a required environment variable\n", process_name,
-		    "LINTED_SANDBOX");
+		syslog(LOG_ERR, "%s is a required environment variable",
+		       "LINTED_SANDBOX");
 		return EXIT_FAILURE;
 	}
 
 	if (NULL == waiter) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: %s is a required environment variable\n", process_name,
-		    "LINTED_WAITER");
+		syslog(LOG_ERR, "%s is a required environment variable",
+		       "LINTED_WAITER");
 		return EXIT_FAILURE;
 	}
 
@@ -323,75 +318,95 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	 * @todo Use fallbacks for missing XDG environment variables.
 	 */
 	if (NULL == runtime_dir_path) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: %s is a required environment variable\n", process_name,
-		    "XDG_RUNTIME_DIR");
+		syslog(LOG_ERR, "%s is a required environment variable",
+		       "XDG_RUNTIME_HOME");
 		return EXIT_FAILURE;
 	}
 
 	if (NULL == data_dir_path) {
-		linted_io_write_format(
-		    STDERR_FILENO, NULL,
-		    "%s: %s is a required environment variable\n", process_name,
-		    "XDG_DATA_HOME");
+		syslog(LOG_ERR, "%s is a required environment variable",
+		       "XDG_DATA_HOME");
 		return EXIT_FAILURE;
 	}
 
 	pid_t parent = getppid();
 
 	char *package_runtime_dir_path;
-	if (-1 == asprintf(&package_runtime_dir_path, "%s/%s", runtime_dir_path,
-	                   PACKAGE_TARNAME)) {
-		perror("asprintf");
-		return EXIT_FAILURE;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%s", runtime_dir_path, PACKAGE_TARNAME)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		package_runtime_dir_path = xx;
 	}
 
 	char *package_data_dir_path;
-	if (-1 == asprintf(&package_data_dir_path, "%s/%s", data_dir_path,
-	                   PACKAGE_TARNAME)) {
-		perror("asprintf");
-		return EXIT_FAILURE;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%s", data_dir_path, PACKAGE_TARNAME)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		package_data_dir_path = xx;
 	}
 
 	char *process_runtime_dir_path;
-	if (-1 == asprintf(&process_runtime_dir_path, "%s/%i",
-	                   package_runtime_dir_path, parent)) {
-		perror("asprintf");
-		return EXIT_FAILURE;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%i", package_runtime_dir_path, parent)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		process_runtime_dir_path = xx;
 	}
 
 	char *process_data_dir_path;
-	if (-1 == asprintf(&process_data_dir_path, "%s/%i",
-	                   package_data_dir_path, parent)) {
-		perror("asprintf");
-		return EXIT_FAILURE;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%i", package_data_dir_path, parent)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		process_data_dir_path = xx;
 	}
 
 	if (-1 == mkdir(package_runtime_dir_path, S_IRWXU)) {
 		if (errno != EEXIST) {
-			perror("mkdir");
+			syslog(LOG_ERR, "mkdir: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (-1 == mkdir(package_data_dir_path, S_IRWXU)) {
 		if (errno != EEXIST) {
-			perror("mkdir");
+			syslog(LOG_ERR, "mkdir: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (-1 == mkdir(process_runtime_dir_path, S_IRWXU)) {
 		if (errno != EEXIST) {
-			perror("mkdir");
+			syslog(LOG_ERR, "mkdir: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (-1 == mkdir(process_data_dir_path, S_IRWXU)) {
 		if (errno != EEXIST) {
-			perror("mkdir");
+			syslog(LOG_ERR, "mkdir: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -402,23 +417,22 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
 		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
-			linted_io_write_format(STDERR_FILENO, NULL, "\
-%s: can not open the current working directory: %s\n",
-			                       process_name,
-			                       linted_error_string(errno));
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		cwd = xx;
 	}
 
 	if (-1 == chdir(process_runtime_dir_path)) {
-		perror("chdir");
+		syslog(LOG_ERR, "chdir: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
 	if (-1 == symlink(process_data_dir_path, "var")) {
 		if (errno != EEXIST) {
-			perror("symlink");
+			syslog(LOG_ERR, "symlink: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -432,14 +446,15 @@ retry_bind:
 		                           strlen("admin-socket"));
 		if (EADDRINUSE == errnum) {
 			if (-1 == unlink("admin-socket")) {
-				perror("unlink");
+				syslog(LOG_ERR, "unlink: %s",
+				       linted_error_string(errno));
 				return EXIT_FAILURE;
 			}
 			goto retry_bind;
 		}
 		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_admin_bind");
+			syslog(LOG_ERR, "linted_admin_bind: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		admin = xx;
@@ -1904,7 +1919,6 @@ static linted_error on_child_about_to_exit(char const *process_name,
 
 	linted_error errnum = 0;
 	struct linted_unit *unit = NULL;
-
 
 	errnum = kill_pid_children(pid, SIGKILL);
 	if (errnum != 0)

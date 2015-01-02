@@ -19,6 +19,7 @@
 
 #include "settings.h"
 
+#include "linted/error.h"
 #include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/locale.h"
@@ -33,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -83,14 +85,16 @@ unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
 	if (NULL == setlocale(LC_ALL, "")) {
-		perror("setlocale");
+		syslog(LOG_ERR, "linted_spawn_attr_init: %s",
+		       linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 		if (-1 == setenv(envvar->key, envvar->value, false)) {
-			perror("setenv");
+			syslog(LOG_ERR, "linted_spawn_attr_init: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -155,8 +159,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	errnum = exec_init(init);
 	if (errnum != 0) {
-		errno = errnum;
-		perror("exec_init");
+		syslog(LOG_ERR, "exec_init: %s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

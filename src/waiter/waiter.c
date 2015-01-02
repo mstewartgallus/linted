@@ -69,7 +69,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_handler = sigchld_handler;
 		sigfillset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
-			perror("sigaction");
+			syslog(LOG_ERR, "sigaction: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
-#define _GNU_SOURCE
 
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/io.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -31,9 +31,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+extern char **environ;
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-init",
@@ -52,7 +55,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	if (NULL == setlocale(LC_ALL, "")) {
-		perror("setlocale");
+		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -65,7 +68,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_flags = SA_RESTART;
 		sigfillset(&action.sa_mask);
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
-			perror("sigaction");
+			syslog(LOG_ERR, "sigaction: %s",
+			       linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -74,7 +78,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	char *monitor_dup = strdup(monitor);
 	if (NULL == monitor_dup) {
-		perror("strdup");
+		syslog(LOG_ERR, "strdup: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -82,8 +86,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	errnum = set_child_subreaper(true);
 	if (errnum != 0) {
-		errno = errnum;
-		perror("set_child_subreaper");
+		syslog(LOG_ERR, "set_child_subreaper: %s",
+		       linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
@@ -93,8 +97,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		struct linted_spawn_attr *xx;
 		errnum = linted_spawn_attr_init(&xx);
 		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_spawn_attr_init");
+			syslog(LOG_ERR, "linted_spawn_attr_init: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		attr = xx;
@@ -112,10 +116,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			    (char const * const[]) { monitor_base, NULL },
 			    (char const * const *)environ);
 			if (errnum != 0) {
-				linted_io_write_format(
-				    STDERR_FILENO, NULL,
-				    "%s: can't spawn process: %s\n",
-				    process_name, linted_error_string(errnum));
+				syslog(LOG_ERR, "linted_spawn: %s",
+				       linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 			child = xx;

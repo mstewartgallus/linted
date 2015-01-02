@@ -501,8 +501,7 @@ static linted_error default_signals(void)
 			continue;
 
 		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, NULL, &action,
-				  8U)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, NULL, &action, 8U)) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
@@ -513,8 +512,7 @@ static linted_error default_signals(void)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, NULL,
-				  8U)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, NULL, 8U)) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
