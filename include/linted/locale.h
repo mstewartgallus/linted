@@ -26,9 +26,6 @@
  * Abstracts over various localizations of common text.
  */
 
-linted_error linted_locale_missing_process_name(linted_ko ko,
-                                                char const *package_name);
-
 linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
                                          char const *bad_option);
 

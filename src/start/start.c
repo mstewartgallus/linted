@@ -21,7 +21,6 @@
 
 #include "linted/error.h"
 #include "linted/io.h"
-#include "linted/locale.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/random.h"
@@ -49,8 +48,6 @@
 
 static void do_nothing(int signo);
 
-static bool is_open(linted_ko ko);
-
 static bool is_privileged(void);
 static bool was_privileged(void);
 
@@ -60,85 +57,100 @@ int main(int argc, char *argv[])
 {
 	linted_error errnum = 0;
 
-	/* Check whether basics are open */
-	if (!is_open(STDERR_FILENO))
-		/* Sadly, this is all we can do */
-		return EINVAL;
-
-	if (!is_open(STDOUT_FILENO))
-		return EINVAL;
-
-	if (!is_open(STDIN_FILENO))
-		return EINVAL;
-
-	if (is_privileged()) {
-		linted_io_write_str(STDERR_FILENO, NULL, LINTED_STR("\
-Bad administrator!\n\
-It is insecure to run a game with high privileges!\n"));
-		return EPERM;
-	}
-
-	if (argc < 1) {
-		linted_locale_missing_process_name(
-		    STDERR_FILENO, linted_start_config.canonical_process_name);
-		return EINVAL;
-	}
-
-	char const *const process_name = argv[0U];
-
-	/* Currently, don't use LOG_PID because syslog is confused by
-	 * CLONE_NEWPID.
-	 */
-	openlog(process_name, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
-
 	size_t kos_size = linted_start_config.kos_size;
 	linted_ko *kos = linted_start_config.kos;
+
+	for (;;) {
+		int fd = open("/dev/null", 0);
+		if (-1 == fd)
+			return EINVAL;
+
+		if ((size_t)fd > 3U + kos_size) {
+			linted_ko_close(fd);
+			break;
+		}
+	}
+
 	for (size_t ii = 0U; ii < kos_size; ++ii) {
 		linted_ko ko = 3U + ii;
-
-		if (!is_open(ko))
-			return EINVAL;
 
 		kos[ii] = ko;
 	}
 
+	char const *process_name;
+	if (argc < 1) {
+		process_name = linted_start_config.canonical_process_name;
+	} else {
+		process_name = argv[0U];
+	}
+
+	/* For now, don't use LOG_PID because syslog is confused by
+	 * CLONE_NEWPID.
+	 */
+	openlog(process_name, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
+
+	if (argc < 1) {
+		syslog(LOG_ERR, "missing process name");
+		return EXIT_FAILURE;
+	}
+
+	if (is_privileged()) {
+		syslog(LOG_ERR, "%s should not be run with high privileges",
+		       PACKAGE_NAME);
+		return EPERM;
+	}
+
 	if (kos_size > 0U) {
 		char *listen_pid_string = getenv("LISTEN_PID");
-		if (NULL == listen_pid_string) {
-			syslog(LOG_ERR, "need LISTEN_PID");
-			return EINVAL;
-		}
-
-		pid_t pid = atoi(listen_pid_string);
-		if (getpid() != pid) {
-			syslog(LOG_ERR, "\
-LISTEN_PID %i != getpid() %i",
-			       pid, getpid());
-			return EINVAL;
-		}
-
 		char *listen_fds_string = getenv("LISTEN_FDS");
-		if (NULL == listen_fds_string) {
-			syslog(LOG_ERR, "need LISTEN_FDS");
-			return EINVAL;
-		}
 
-		linted_ko fds_count;
-		{
-			linted_ko xx;
-			errnum = linted_ko_from_cstring(listen_fds_string, &xx);
-			if (errnum != 0) {
-				syslog(LOG_ERR, "linted_ko_from_cstring: %s",
-				       linted_error_string(errnum));
-				return errnum;
+		switch ((listen_pid_string != NULL) << 1U |
+		        (listen_fds_string != NULL)) {
+		case false << 1U | false:
+			/* This protocol is not being used */
+			break;
+
+		case true << 1U | false:
+			syslog(LOG_ERR,
+			       "if %s is provided %s should be as well",
+			       "LISTEN_PID", "LISTEN_FDS");
+			return EXIT_FAILURE;
+
+		case false << 1U | true:
+			syslog(LOG_ERR,
+			       "if %s is provided %s should be as well",
+			       "LISTEN_FDS", "LISTEN_PID");
+			return EXIT_FAILURE;
+
+		case true << 1U | true: {
+			pid_t pid = atoi(listen_pid_string);
+			if (getpid() != pid) {
+				syslog(LOG_ERR, "\
+LISTEN_PID %i != getpid() %i",
+				       pid, getpid());
+				return EINVAL;
 			}
-			fds_count = xx;
-		}
 
-		if ((uintmax_t)fds_count != kos_size) {
-			syslog(LOG_ERR, "LISTEN_FDS %i != %lu", fds_count,
-			       kos_size);
-			return EINVAL;
+			linted_ko fds_count;
+			{
+				linted_ko xx;
+				errnum = linted_ko_from_cstring(
+				    listen_fds_string, &xx);
+				if (errnum != 0) {
+					syslog(LOG_ERR,
+					       "linted_ko_from_cstring: %s",
+					       linted_error_string(errnum));
+					return errnum;
+				}
+				fds_count = xx;
+			}
+
+			if ((uintmax_t)fds_count != kos_size) {
+				syslog(LOG_ERR, "LISTEN_FDS %i != %lu",
+				       fds_count, kos_size);
+				return EINVAL;
+			}
+		}
 		}
 	}
 
@@ -192,11 +204,6 @@ static bool was_privileged(void)
 #else
 #error "was privileged" check has not been implemented for this system yet
 #endif
-
-static bool is_open(linted_ko ko)
-{
-	return fcntl(ko, F_GETFD) != -1;
-}
 
 static linted_error get_system_entropy(unsigned *entropyp)
 {

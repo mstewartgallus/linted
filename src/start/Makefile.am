@@ -21,7 +21,6 @@ noinst_LTLIBRARIES+=%D%/libstart.la
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/io/libio.la\
-  src/locale/liblocale.la\
   src/ko/libko.la\
   src/mem/libmem.la\
   src/random/librandom.la

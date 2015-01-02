@@ -21,34 +21,6 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 
-linted_error linted_locale_missing_process_name(linted_ko ko,
-                                                char const *package_name)
-{
-	linted_error errnum;
-
-	size_t size = 0U;
-	size_t capacity = 0U;
-	char *buffer = NULL;
-
-	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, package_name);
-	if (errnum != 0)
-		goto free_buffer;
-
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-: missing process name\n"));
-	if (errnum != 0)
-		goto free_buffer;
-
-	errnum = linted_io_write_all(ko, NULL, buffer, size);
-	if (errnum != 0)
-		goto free_buffer;
-
-free_buffer:
-	linted_mem_free(buffer);
-	return errnum;
-}
-
 linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
                                          char const *bad_option)
 {
