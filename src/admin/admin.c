@@ -30,14 +30,14 @@
 
 struct linted_admin_task_accept
 {
-	struct linted_io_task_accept *data;
-	void *parent;
+	struct linted_io_task_accept *parent;
+	void *data;
 };
 
 struct linted_admin_task_recv_request
 {
-	struct linted_io_task_read *data;
-	void *parent;
+	struct linted_io_task_read *parent;
+	void *data;
 	union linted_admin_request request;
 };
 

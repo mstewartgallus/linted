@@ -138,8 +138,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	linted_controller controller;
 	{
-		int fd = socket(AF_UNIX,
-		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		int fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 		if (-1 == fd) {
 			syslog(LOG_ERR, "socket: %s",
 			       linted_error_string(errno));

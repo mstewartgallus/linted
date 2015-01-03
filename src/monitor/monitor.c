@@ -1738,11 +1738,33 @@ static linted_error on_accepted_conn(struct linted_asynch_task *task)
 		conn = xx;
 	}
 
-	linted_admin_task_recv_request_prepare(
-	    conn->read_task, ADMIN_READ_CONNECTION, new_socket);
+	struct linted_admin_task_recv_request *read_task;
+	{
+		struct linted_admin_task_recv_request *xx;
+		errnum = linted_admin_task_recv_request_create(
+		    &xx, &conn->read_data);
+		if (errnum != 0)
+			goto close_new_socket;
+		read_task = xx;
+	}
+
+	struct linted_admin_task_send_reply *write_task;
+	{
+		struct linted_admin_task_send_reply *xx;
+		errnum =
+		    linted_admin_task_send_reply_create(&xx, &conn->write_data);
+		if (errnum != 0)
+			goto close_new_socket;
+		write_task = xx;
+	}
+
+	conn->read_task = read_task;
+	conn->write_task = write_task;
+
 	conn->read_data.pool = pool;
 	conn->read_data.conn = conn;
-
+	linted_admin_task_recv_request_prepare(read_task, ADMIN_READ_CONNECTION,
+	                                       new_socket);
 	linted_asynch_pool_submit(
 	    pool, linted_admin_task_recv_request_to_asynch(conn->read_task));
 	return 0;
@@ -2070,8 +2092,12 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 			return errnum;
 		buf = xx;
 	}
-	if (NULL == buf)
+	/* buf of NULL might also mean empty process list  */
+	if (NULL == buf) {
+		if (0 == errnum)
+			return ESRCH;
 		return errnum;
+	}
 
 	pid_t pid = -1;
 	char const *start = buf;
