@@ -26,7 +26,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <grp.h>
 #include <libgen.h>
 #include <mntent.h>
 #include <sched.h>
@@ -37,19 +36,15 @@
 #include <string.h>
 #include <sys/capability.h>
 #include <sys/ioctl.h>
+#include <syslog.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
-#include <sys/poll.h>
 #include <sys/prctl.h>
-#include <sys/ptrace.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/time.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #include <linux/audit.h>
