@@ -42,6 +42,31 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	if (dirko > INT_MAX && dirko != LINTED_KO_CWD)
 		return EINVAL;
 
+	if (NULL == kop) {
+		if (flags != 0U)
+			return EINVAL;
+
+		int dirfd;
+		if (LINTED_KO_CWD == dirko) {
+			dirfd = AT_FDCWD;
+		} else if (dirko > INT_MAX) {
+			return EINVAL;
+		} else {
+			dirfd = dirko;
+		}
+
+		if (-1 == mkdirat(dirfd, pathname, mode)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			if (EEXIST == errnum)
+				return 0;
+
+			return errnum;
+		}
+
+		return 0;
+	}
+
 	if (flags != 0UL)
 		return EINVAL;
 

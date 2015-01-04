@@ -17,7 +17,9 @@
 
 #include "config.h"
 
+#include "linted/dir.h"
 #include "linted/error.h"
+#include "linted/file.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
@@ -1010,13 +1012,15 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		unsigned long mountflags = mount_args[ii].mountflags;
 
 		if (mkdir_flag) {
-			if (-1 == mkdir(dir, S_IRWXU))
-				if (errno != EEXIST)
-					return errno;
+			errnum = linted_dir_create(NULL, LINTED_KO_CWD, dir, 0U,
+			                           S_IRWXU);
+			if (errnum != 0)
+				return errnum;
 		} else if (touch_flag) {
-			if (-1 == mknod(dir, S_IRWXU | S_IFREG, 0))
-				if (errno != EEXIST)
-					return errno;
+			errnum = linted_file_create(NULL, LINTED_KO_CWD, dir,
+			                            0U, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
 		}
 
 		if (nomount_flag)

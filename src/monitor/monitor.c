@@ -50,7 +50,6 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -379,36 +378,36 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		process_data_dir_path = xx;
 	}
 
-	if (-1 == mkdir(package_runtime_dir_path, S_IRWXU)) {
-		if (errno != EEXIST) {
-			syslog(LOG_ERR, "mkdir: %s",
-			       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
+	errnum = linted_dir_create(NULL, LINTED_KO_CWD,
+	                           package_runtime_dir_path, 0U, S_IRWXU);
+	if (errnum != 0) {
+		syslog(LOG_ERR, "linted_dir_create: %s",
+		       linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
-	if (-1 == mkdir(package_data_dir_path, S_IRWXU)) {
-		if (errno != EEXIST) {
-			syslog(LOG_ERR, "mkdir: %s",
-			       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
+	errnum = linted_dir_create(NULL, LINTED_KO_CWD, package_data_dir_path,
+	                           0U, S_IRWXU);
+	if (errnum != 0) {
+		syslog(LOG_ERR, "linted_dir_create: %s",
+		       linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
-	if (-1 == mkdir(process_runtime_dir_path, S_IRWXU)) {
-		if (errno != EEXIST) {
-			syslog(LOG_ERR, "mkdir: %s",
-			       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
+	errnum = linted_dir_create(NULL, LINTED_KO_CWD,
+	                           process_runtime_dir_path, 0U, S_IRWXU);
+	if (errnum != 0) {
+		syslog(LOG_ERR, "linted_dir_create: %s",
+		       linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
-	if (-1 == mkdir(process_data_dir_path, S_IRWXU)) {
-		if (errno != EEXIST) {
-			syslog(LOG_ERR, "mkdir: %s",
-			       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
+	errnum = linted_dir_create(NULL, LINTED_KO_CWD, process_data_dir_path,
+	                           0U, S_IRWXU);
+	if (errnum != 0) {
+		syslog(LOG_ERR, "linted_dir_create: %s",
+		       linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
 	linted_ko cwd;
@@ -1091,17 +1090,16 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		errnum = linted_dir_create(&unit->ko, LINTED_KO_CWD, unit->path,
-		                           0, S_IRWXU);
+		errnum = linted_dir_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		                           S_IRWXU);
 		if (errnum != 0)
 			return errnum;
-
-		unit->is_open = true;
+		unit->is_open = false;
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		errnum = linted_file_create(NULL, LINTED_KO_CWD, unit->path,
-		                            LINTED_FILE_RDWR, S_IRWXU);
+		errnum = linted_file_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		                            S_IRWXU);
 		if (errnum != 0)
 			return errnum;
 		unit->is_open = false;
@@ -1197,14 +1195,13 @@ spawn_service:
 			name_dir = xx;
 		}
 
-		if (-1 == mkdirat(name_dir, "chroot", S_IRWXU)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			if (errnum != EEXIST)
-				return errno;
-		}
+		errnum =
+		    linted_dir_create(NULL, name_dir, "chroot", 0U, S_IRWXU);
 
 		linted_ko_close(name_dir);
+
+		if (errnum != 0)
+			return errnum;
 	}
 
 	if (fstab != NULL && !clone_newns)

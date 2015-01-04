@@ -20,7 +20,9 @@ pkglibexec_PROGRAMS+=%D%/sandbox
 EXTRA_%C%_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
 %C%_sandbox_LDADD=\
   src/asynch/libasynch.la\
+  src/dir/libdir.la\
   src/error/liberror.la\
+  src/file/libfile.la\
   src/io/libio.la\
   src/ko/libko.la\
   src/mem/libmem.la\
