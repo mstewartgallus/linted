@@ -15,10 +15,6 @@
  *      draw to a part of the window opposite from the part offscreen
  *      (not my bug works with glxgears too.)
  *
- * @bug Intermittently restarting a process fails and a new process is
- *      not spawned successfully and `ptrace(PTRACE_SEIZE)`; fails
- *      with `EPERM`.
- *
  * @todo Fix collision handling. I want to prevent interpenetration
  *       and properly handle discontinuities in velocity. I need
  *       proper collision response and not the hacky spring like thing
@@ -76,5 +72,5 @@
  * @todo Sandbox leaked file descriptors before spawning new processes
  *       in sandbox.c
  *
- * @todo Don't reopen files using /proc/self/fd with linted_ko_reopen
+ * @todo Don't reopen files using `/proc/self/fd` with `linted_ko_reopen`
  */
