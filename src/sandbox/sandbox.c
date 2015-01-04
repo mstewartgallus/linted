@@ -1022,19 +1022,24 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		if (nomount_flag)
 			continue;
 
-		if (-1 == mount(fsname, dir, type, mountflags, data))
+		unsigned long aliasflags =
+		    mountflags & (MS_BIND | MS_SHARED | MS_SLAVE);
+		if (0 == aliasflags) {
+			if (-1 == mount(fsname, dir, type, mountflags, data))
+				return errno;
+			continue;
+		}
+
+		unsigned long nonaliasflags = mountflags & ~aliasflags;
+
+		if (-1 == mount(fsname, dir, type, aliasflags, NULL))
 			return errno;
 
-		if (0 == (mountflags & MS_BIND))
+		if (NULL == data && 0 == nonaliasflags)
 			continue;
 
-		if (0 == (mountflags & ~(MS_BIND | MS_SHARED | MS_SLAVE |
-		                         MS_PRIVATE | MS_UNBINDABLE)) &&
-		    NULL == data)
-			continue;
-
-		mountflags |= MS_REMOUNT;
-		if (-1 == mount(fsname, dir, type, mountflags, data))
+		if (-1 ==
+		    mount(fsname, dir, type, MS_REMOUNT | nonaliasflags, data))
 			return errno;
 	}
 
