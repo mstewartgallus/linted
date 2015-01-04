@@ -23,6 +23,7 @@
 #include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/file.h"
+#include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/mq.h"
@@ -1080,76 +1081,43 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	linted_error errnum;
 
 	switch (unit->type) {
-	case LINTED_UNIT_SOCKET_TYPE_MQ: {
-		linted_ko ko;
-		{
-			linted_ko xx;
-			errnum = linted_mq_create(
-			    &xx, unit->path, unit->maxmsgs, unit->msgsize, 0);
-			if (errnum != 0)
-				return errnum;
-			ko = xx;
-		}
-
-		unit->ko = ko;
-		unit->is_open = true;
-		break;
-	}
-
-	case LINTED_UNIT_SOCKET_TYPE_DIR: {
-		linted_ko ko;
-		{
-			linted_ko xx;
-			errnum = linted_dir_create(&xx, LINTED_KO_CWD,
-			                           unit->path, 0, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
-			ko = xx;
-		}
-
-		unit->ko = ko;
-		unit->is_open = true;
-		break;
-	}
-
-	case LINTED_UNIT_SOCKET_TYPE_FILE: {
-		linted_ko ko;
-		{
-			linted_ko xx;
-			errnum =
-			    linted_file_create(&xx, LINTED_KO_CWD, unit->path,
-			                       LINTED_FILE_RDWR, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
-			ko = xx;
-		}
-
-		unit->ko = ko;
-		unit->is_open = true;
-		break;
-	}
-
-	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
-		if (-1 == mkfifo(unit->path, S_IRWXU)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+	case LINTED_UNIT_SOCKET_TYPE_MQ:
+		errnum = linted_mq_create(&unit->ko, unit->path, unit->maxmsgs,
+		                          unit->msgsize, 0);
+		if (errnum != 0)
 			return errnum;
-		}
 
-		linted_ko ko;
-		{
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD, unit->path,
-			                        LINTED_FILE_RDWR);
-			if (errnum != 0)
-				return errnum;
-			ko = xx;
-		}
-
-		unit->ko = ko;
 		unit->is_open = true;
 		break;
-	}
+
+	case LINTED_UNIT_SOCKET_TYPE_DIR:
+		errnum = linted_dir_create(&unit->ko, LINTED_KO_CWD, unit->path,
+		                           0, S_IRWXU);
+		if (errnum != 0)
+			return errnum;
+
+		unit->is_open = true;
+		break;
+
+	case LINTED_UNIT_SOCKET_TYPE_FILE:
+		errnum =
+		    linted_file_create(&unit->ko, LINTED_KO_CWD, unit->path,
+		                       LINTED_FILE_RDWR, S_IRWXU);
+		if (errnum != 0)
+			return errnum;
+
+		unit->is_open = true;
+		break;
+
+	case LINTED_UNIT_SOCKET_TYPE_FIFO:
+		errnum =
+		    linted_fifo_create(&unit->ko, LINTED_KO_CWD, unit->path,
+		                       LINTED_FIFO_RDWR, S_IRWXU);
+		if (errnum != 0)
+			return errnum;
+
+		unit->is_open = true;
+		break;
 	}
 
 	return 0;

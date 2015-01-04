@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,23 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/monitor
 
-%C%_monitor_SOURCES=%D%/monitor.c
-%C%_monitor_LDADD=\
-  src/start/libstart.la\
-  \
-  src/asynch/libasynch.la\
-  src/conf/libconf.la\
-  src/dir/libdir.la\
-  src/error/liberror.la\
-  src/file/libfile.la\
-  src/fifo/libfifo.la\
+noinst_LTLIBRARIES+=%D%/libfifo.la
+%C%_libfifo_la_SOURCES=%D%/fifo.c include/linted/fifo.h
+%C%_linted_LDLIBS=\
   src/ko/libko.la\
-  src/mem/libmem.la\
-  src/mq/libmq.la\
-  src/pool/libpool.la\
-  src/spawn/libspawn.la\
-  src/unit/libunit.la\
-  \
-  src/admin/libadmin.la
+  src/mem/libmem.la

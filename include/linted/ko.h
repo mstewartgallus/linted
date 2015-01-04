@@ -41,6 +41,7 @@
 #define LINTED_KO_SYNC (1UL << 4U)
 
 #define LINTED_KO_DIRECTORY (1UL << 5U)
+#define LINTED_KO_FIFO (1UL << 6U)
 
 linted_error linted_ko_from_cstring(char const *str, linted_ko *kop);
 

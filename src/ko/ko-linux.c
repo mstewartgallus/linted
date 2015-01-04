@@ -27,6 +27,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static void fd_to_str(char *buf, linted_ko fd);
@@ -75,8 +76,13 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		return EINVAL;
 	}
 
-	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR &
-	     ~LINTED_KO_APPEND & ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
+	unsigned long perm_flags =
+	    LINTED_KO_RDONLY | LINTED_KO_WRONLY | LINTED_KO_RDWR;
+	unsigned long type_flags = LINTED_KO_DIRECTORY | LINTED_KO_FIFO;
+	unsigned long misc_flags = LINTED_KO_APPEND | LINTED_KO_SYNC;
+	unsigned long all_flags = perm_flags | type_flags | misc_flags;
+
+	if ((flags & ~all_flags) != 0U)
 		return EINVAL;
 
 	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
@@ -87,6 +93,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
 
 	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
+	bool ko_fifo = (flags & LINTED_KO_FIFO) != 0U;
 
 	if (ko_rdonly && ko_wronly)
 		return EINVAL;
@@ -100,8 +107,11 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (ko_append && !ko_wronly)
 		return EINVAL;
 
-	if ((ko_directory && ko_rdonly) || (ko_directory && ko_wronly) ||
-	    (ko_directory && ko_rdwr) || (ko_directory && ko_sync))
+	if (ko_directory &&
+	    (ko_rdonly || ko_wronly || ko_rdwr || ko_append || ko_sync))
+		return EINVAL;
+
+	if (ko_fifo && ko_sync)
 		return EINVAL;
 
 	/*
@@ -141,9 +151,31 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (errnum != 0)
 		return errnum;
 
+	if (ko_fifo) {
+		mode_t mode;
+		{
+			struct stat buf;
+			if (-1 == fstat(fildes, &buf)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_file;
+			}
+			mode = buf.st_mode;
+		}
+
+		if (!S_ISFIFO(mode)) {
+			errnum = EINVAL;
+			goto close_file;
+		}
+	}
+
 	*kop = fildes;
 
 	return 0;
+
+close_file:
+	linted_ko_close(fildes);
+	return errnum;
 }
 
 linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,

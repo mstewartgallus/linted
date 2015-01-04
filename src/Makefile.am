@@ -38,6 +38,7 @@ include %C%/conf/Makefile.am
 include %C%/dir/Makefile.am
 include %C%/error/Makefile.am
 include %C%/file/Makefile.am
+include %C%/fifo/Makefile.am
 include %C%/gpu/Makefile.am
 include %C%/io/Makefile.am
 include %C%/ko/Makefile.am
