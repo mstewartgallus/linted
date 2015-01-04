@@ -16,4 +16,4 @@ Description=Linted-Controller Game Controller
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenDirectory=controller
+ListenFifo=controller

@@ -16,4 +16,4 @@ Description=Linted-Updater Game Updater
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenDirectory=updater
+ListenFifo=updater

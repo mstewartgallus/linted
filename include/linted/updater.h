@@ -47,8 +47,6 @@ struct linted_updater_update
 struct linted_updater_task_send;
 struct linted_updater_task_receive;
 
-struct sockaddr;
-
 linted_error
 linted_updater_task_receive_create(struct linted_updater_task_receive **taskp,
                                    void *data);
@@ -73,8 +71,7 @@ void linted_updater_task_send_destroy(struct linted_updater_task_send *task);
 void
 linted_updater_task_send_prepare(struct linted_updater_task_send *task,
                                  unsigned task_action, linted_ko updater,
-                                 struct linted_updater_update const *update,
-                                 struct sockaddr const *addr, size_t size);
+                                 struct linted_updater_update const *update);
 struct linted_asynch_task *
 linted_updater_task_send_to_asynch(struct linted_updater_task_send *task);
 struct linted_updater_task_send *

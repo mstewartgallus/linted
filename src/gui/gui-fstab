@@ -8,7 +8,7 @@ none	../../var/gui	none	mkdir,nomount
 ../../var/gui	var	none	mkdir,shared,bind
 
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
-../../controller	run/controller	none	mkdir,shared,bind
+../../controller	run/controller	none	touch,bind
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,shared,bind

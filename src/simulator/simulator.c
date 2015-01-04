@@ -39,8 +39,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -138,46 +136,28 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	linted_controller controller;
 	{
-		int fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-		if (-1 == fd) {
-			syslog(LOG_ERR, "socket: %s",
-			       linted_error_string(errno));
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
-		controller = fd;
+		controller = xx;
 	}
 
-	linted_updater updater;
+	linted_ko updater;
 	{
-		int fd = socket(AF_UNIX,
-		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-		if (-1 == fd) {
-			syslog(LOG_ERR, "socket: %s",
-			       linted_error_string(errno));
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
+		                        LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
-		updater = fd;
-	}
-
-	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "/run/controller/controller");
-
-		for (;;) {
-			if (-1 == bind(controller, (void *)&addr,
-			               offsetof(struct sockaddr_un, sun_path) +
-			                   strlen(addr.sun_path))) {
-				if (errno == EADDRINUSE) {
-					unlink(addr.sun_path);
-					continue;
-				}
-				syslog(LOG_ERR, "bind: %s",
-				       linted_error_string(errno));
-				return EXIT_FAILURE;
-			}
-			break;
-		}
+		updater = xx;
 	}
 
 	syslog(LOG_INFO, "starting simulator");
@@ -464,15 +444,8 @@ static void maybe_update(linted_updater updater,
 			.y_rotation = simulator_state->y_rotation
 		};
 
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "/run/updater/updater");
-
-		size_t len = offsetof(struct sockaddr_un, sun_path) +
-		             strlen(addr.sun_path);
-		linted_updater_task_send_prepare(updater_task,
-		                                 ON_SENT_UPDATER_EVENT, updater,
-		                                 &update, (void *)&addr, len);
+		linted_updater_task_send_prepare(
+		    updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
 	}
 
 	struct updater_data *updater_data =

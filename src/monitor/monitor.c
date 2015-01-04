@@ -814,22 +814,18 @@ static linted_error service_create(struct linted_unit_service *unit,
 	bool clone_newuts = false;
 	if (clone_flags != NULL) {
 		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
-			if (0 == strcmp("CLONE_NEWUSER", clone_flags[ii])) {
+			char const *flag = clone_flags[ii];
+			if (0 == strcmp("CLONE_NEWUSER", flag)) {
 				clone_newuser = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWPID", clone_flags[ii])) {
+			} else if (0 == strcmp("CLONE_NEWPID", flag)) {
 				clone_newpid = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWIPC", clone_flags[ii])) {
+			} else if (0 == strcmp("CLONE_NEWIPC", flag)) {
 				clone_newipc = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWNET", clone_flags[ii])) {
+			} else if (0 == strcmp("CLONE_NEWNET", flag)) {
 				clone_newnet = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWNS", clone_flags[ii])) {
+			} else if (0 == strcmp("CLONE_NEWNS", flag)) {
 				clone_newns = true;
-			} else if (0 ==
-			           strcmp("CLONE_NEWUTS", clone_flags[ii])) {
+			} else if (0 == strcmp("CLONE_NEWUTS", flag)) {
 				clone_newuts = true;
 			} else {
 				return EINVAL;
@@ -889,6 +885,9 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	char const *const *listen_files =
 	    linted_conf_find(conf, "Socket", "ListenFile");
 
+	char const *const *listen_fifos =
+	    linted_conf_find(conf, "Socket", "ListenFifo");
+
 	char const *const *maxmsgss =
 	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
 	char const *const *msgsizes =
@@ -923,6 +922,15 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		listen_file = xx;
 	}
 
+	char const *listen_fifo;
+	{
+		char const *xx;
+		errnum = str_from_strs(listen_fifos, &xx);
+		if (errnum != 0)
+			return errnum;
+		listen_fifo = xx;
+	}
+
 	enum linted_unit_socket_type socket_type;
 	char const *path = NULL;
 
@@ -943,6 +951,13 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 			return EINVAL;
 		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
 		path = listen_file;
+	}
+
+	if (listen_fifo != NULL) {
+		if (path != NULL)
+			return EINVAL;
+		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
+		path = listen_fifo;
 	}
 
 	if (NULL == path)
@@ -1014,6 +1029,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
+	case LINTED_UNIT_SOCKET_TYPE_FIFO:
 		break;
 	}
 
@@ -1103,6 +1119,28 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			errnum =
 			    linted_file_create(&xx, LINTED_KO_CWD, unit->path,
 			                       LINTED_FILE_RDWR, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+			ko = xx;
+		}
+
+		unit->ko = ko;
+		unit->is_open = true;
+		break;
+	}
+
+	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
+		if (-1 == mkfifo(unit->path, S_IRWXU)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD, unit->path,
+			                        LINTED_FILE_RDWR);
 			if (errnum != 0)
 				return errnum;
 			ko = xx;

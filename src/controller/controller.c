@@ -28,14 +28,14 @@
 
 struct linted_controller_task_send
 {
-	struct linted_io_task_sendto *parent;
+	struct linted_io_task_write *parent;
 	void *data;
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 struct linted_controller_task_receive
 {
-	struct linted_io_task_recv *parent;
+	struct linted_io_task_read *parent;
 	void *data;
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
@@ -53,10 +53,10 @@ linted_controller_task_send_create(struct linted_controller_task_send **taskp,
 			return errnum;
 		task = xx;
 	}
-	struct linted_io_task_sendto *parent;
+	struct linted_io_task_write *parent;
 	{
-		struct linted_io_task_sendto *xx;
-		errnum = linted_io_task_sendto_create(&xx, task);
+		struct linted_io_task_write *xx;
+		errnum = linted_io_task_write_create(&xx, task);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -73,21 +73,21 @@ free_task:
 void
 linted_controller_task_send_destroy(struct linted_controller_task_send *task)
 {
-	linted_io_task_sendto_destroy(task->parent);
+	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 struct linted_asynch_task *
 linted_controller_task_send_to_asynch(struct linted_controller_task_send *task)
 {
-	return linted_io_task_sendto_to_asynch(task->parent);
+	return linted_io_task_write_to_asynch(task->parent);
 }
 
 struct linted_controller_task_send *
 linted_controller_task_send_from_asynch(struct linted_asynch_task *task)
 {
-	return linted_io_task_sendto_data(
-	    linted_io_task_sendto_from_asynch(task));
+	return linted_io_task_write_data(
+	    linted_io_task_write_from_asynch(task));
 }
 
 void *linted_controller_task_send_data(struct linted_controller_task_send *task)
@@ -98,12 +98,10 @@ void *linted_controller_task_send_data(struct linted_controller_task_send *task)
 void linted_controller_task_send_prepare(
     struct linted_controller_task_send *task, unsigned task_action,
     linted_controller controller,
-    struct linted_controller_message const *message, struct sockaddr *addr,
-    size_t size)
+    struct linted_controller_message const *message)
 {
-	linted_io_task_sendto_prepare(task->parent, task_action, controller,
-	                              task->message, sizeof task->message, addr,
-	                              size);
+	linted_io_task_write_prepare(task->parent, task_action, controller,
+	                             task->message, sizeof task->message);
 
 	char *tip = task->message;
 
@@ -133,10 +131,10 @@ linted_error linted_controller_task_receive_create(
 			return errnum;
 		task = xx;
 	}
-	struct linted_io_task_recv *parent;
+	struct linted_io_task_read *parent;
 	{
-		struct linted_io_task_recv *xx;
-		errnum = linted_io_task_recv_create(&xx, task);
+		struct linted_io_task_read *xx;
+		errnum = linted_io_task_read_create(&xx, task);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -153,20 +151,20 @@ free_task:
 void linted_controller_task_receive_destroy(
     struct linted_controller_task_receive *task)
 {
-	linted_io_task_recv_destroy(task->parent);
+	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 struct linted_asynch_task *linted_controller_task_receive_to_asynch(
     struct linted_controller_task_receive *task)
 {
-	return linted_io_task_recv_to_asynch(task->parent);
+	return linted_io_task_read_to_asynch(task->parent);
 }
 
 struct linted_controller_task_receive *
 linted_controller_task_receive_from_asynch(struct linted_asynch_task *task)
 {
-	return linted_io_task_recv_data(linted_io_task_recv_from_asynch(task));
+	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
 }
 
 void *
@@ -179,7 +177,7 @@ void linted_controller_task_receive_prepare(
     struct linted_controller_task_receive *task, unsigned task_action,
     linted_controller controller)
 {
-	linted_io_task_recv_prepare(task->parent, task_action, controller,
+	linted_io_task_read_prepare(task->parent, task_action, controller,
 	                            task->message, sizeof task->message);
 }
 

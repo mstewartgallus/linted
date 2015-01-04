@@ -35,8 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <syslog.h>
 #include <unistd.h>
 
@@ -145,14 +143,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_controller controller;
 	{
-		int fd = socket(AF_UNIX,
-		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-		if (-1 == fd) {
-			syslog(LOG_ERR, "socket: %s",
-			       linted_error_string(errno));
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
+		                        LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
-		controller = fd;
+		controller = xx;
 	}
 
 	struct controller_data controller_data = { 0 };
@@ -739,18 +738,11 @@ maybe_update_controller(struct linted_asynch_pool *pool,
 	if (controller_data->update_in_progress)
 		return;
 
-	struct sockaddr_un addr = { 0 };
-	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, "/run/controller/controller");
-
-	size_t addr_len =
-	    offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
-
 	struct controller_task_data *controller_task_data =
 	    linted_controller_task_send_data(controller_task);
-	linted_controller_task_send_prepare(
-	    controller_task, ON_SENT_CONTROL, controller,
-	    &controller_data->update, (void *)&addr, addr_len);
+	linted_controller_task_send_prepare(controller_task, ON_SENT_CONTROL,
+	                                    controller,
+	                                    &controller_data->update);
 	controller_task_data->controller_data = controller_data;
 	controller_task_data->pool = pool;
 	controller_task_data->controller = controller;

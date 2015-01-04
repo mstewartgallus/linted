@@ -38,8 +38,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <syslog.h>
 #include <unistd.h>
 
@@ -121,35 +119,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	linted_ko updater;
 	{
-		int fd = socket(AF_UNIX,
-		                SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-		if (-1 == fd) {
-			syslog(LOG_ERR, "socket: %s",
-			       linted_error_string(errno));
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
-		updater = fd;
-	}
-
-	{
-		struct sockaddr_un addr = { 0 };
-		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, "/run/updater/updater");
-
-		for (;;) {
-			if (-1 == bind(updater, (void *)&addr,
-			               offsetof(struct sockaddr_un, sun_path) +
-			                   strlen(addr.sun_path))) {
-				if (errno == EADDRINUSE) {
-					unlink(addr.sun_path);
-					continue;
-				}
-				syslog(LOG_ERR, "bind: %s",
-				       linted_error_string(errno));
-				return EXIT_FAILURE;
-			}
-			break;
-		}
+		updater = xx;
 	}
 
 	struct linted_asynch_pool *pool;

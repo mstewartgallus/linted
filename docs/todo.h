@@ -58,13 +58,9 @@
  *
  * @todo Stop graphical banding problems
  *
- * @todo Preserve socket files between restarts
- * @todo Make the window notifier use Unix domain sockets
+ * @todo Make the window notifier not use POSIX Message Queues
  *       - The window notifier needs to act as a broadcaster
  *       - The window tasks cannot currently use bind mounts
- * @todo Once Unix domain sockets are used completely switch over to
- *       unconnected and unreliable sockets.
- * @todo Make tasks that connect to Unix sockets unable to delete them
  *
  * @todo Harden bind mounts with extra flags
  *

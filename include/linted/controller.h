@@ -46,8 +46,6 @@ struct linted_controller_message
 struct linted_controller_task_send;
 struct linted_controller_task_receive;
 
-struct sockaddr;
-
 linted_error
 linted_controller_task_send_create(struct linted_controller_task_send **taskp,
                                    void *data);
@@ -63,8 +61,7 @@ linted_controller_task_send_data(struct linted_controller_task_send *task);
 void linted_controller_task_send_prepare(
     struct linted_controller_task_send *task, unsigned task_action,
     linted_controller controller,
-    struct linted_controller_message const *message, struct sockaddr *addr,
-    size_t size);
+    struct linted_controller_message const *message);
 
 linted_error linted_controller_task_receive_create(
     struct linted_controller_task_receive **taskp, void *data);
