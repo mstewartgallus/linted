@@ -118,7 +118,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	 * Always, be safe for execs and use O_NONBLOCK because asynch
 	 * functions handle that anyways and open may block otherwise.
 	 */
-	int oflags = O_CLOEXEC | O_NONBLOCK | O_NOCTTY;
+	int oflags = O_CLOEXEC | O_NOCTTY;
 
 	if (ko_rdonly)
 		oflags |= O_RDONLY;
@@ -167,6 +167,20 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 			errnum = EINVAL;
 			goto close_file;
 		}
+	}
+
+	/* Set nonblock after opening so that we can block on opens */
+	int flflags = fcntl(fildes, F_GETFL);
+	if (-1 == flflags) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_file;
+	}
+
+	if (-1 == fcntl(fildes, F_SETFL, (long)flflags | O_NONBLOCK)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		goto close_file;
 	}
 
 	*kop = fildes;
