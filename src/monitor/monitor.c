@@ -1100,23 +1100,19 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		errnum =
-		    linted_file_create(&unit->ko, LINTED_KO_CWD, unit->path,
-		                       LINTED_FILE_RDWR, S_IRWXU);
+		errnum = linted_file_create(NULL, LINTED_KO_CWD, unit->path,
+		                            LINTED_FILE_RDWR, S_IRWXU);
 		if (errnum != 0)
 			return errnum;
-
-		unit->is_open = true;
+		unit->is_open = false;
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		errnum =
-		    linted_fifo_create(&unit->ko, LINTED_KO_CWD, unit->path,
-		                       LINTED_FIFO_RDWR, S_IRWXU);
+		errnum = linted_fifo_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		                            S_IRWXU);
 		if (errnum != 0)
 			return errnum;
-
-		unit->is_open = true;
+		unit->is_open = false;
 		break;
 	}
 

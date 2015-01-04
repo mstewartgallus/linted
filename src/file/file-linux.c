@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 
 #include "config.h"
 
@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 
 linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
                                 char const *pathname, unsigned long flags,
@@ -32,10 +33,26 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 {
 	linted_error errnum;
 
+	int dirfd;
 	if (LINTED_KO_CWD == dirko) {
-		dirko = AT_FDCWD;
+		dirfd = AT_FDCWD;
 	} else if (dirko > INT_MAX) {
 		return EINVAL;
+	} else {
+		dirfd = dirko;
+	}
+
+	if (NULL == kop) {
+		if (flags != 0U)
+			return EINVAL;
+
+		if (-1 == mknodat(dirfd, pathname, mode | S_IFREG, 0)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		return 0;
 	}
 
 	if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY &
@@ -82,7 +99,7 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 
 	int fildes;
 	do {
-		fildes = openat(dirko, pathname, oflags, mode);
+		fildes = openat(dirfd, pathname, oflags, mode);
 		if (-1 == fildes) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
@@ -94,5 +111,6 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 		return errnum;
 
 	*kop = fildes;
+
 	return 0;
 }
