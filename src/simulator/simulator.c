@@ -218,14 +218,12 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	{
 		struct timespec now;
-		if (-1 == clock_gettime(CLOCK_MONOTONIC, &now)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		errnum = linted_sched_time(&now);
+		if (errnum != 0)
 			goto destroy_pool;
-		}
 
 		linted_sched_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
-		                                      TIMER_ABSTIME, &now);
+		                                      &now);
 	}
 	timer_data.pool = pool;
 	timer_data.updater_task = updater_task;
@@ -351,7 +349,7 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 		request.tv_nsec = requested_nsec;
 
 		linted_sched_task_sleep_until_prepare(timer_task, ON_READ_TIMER,
-		                                      TIMER_ABSTIME, &request);
+		                                      &request);
 	}
 	linted_asynch_pool_submit(pool, task);
 

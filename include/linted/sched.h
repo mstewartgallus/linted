@@ -19,15 +19,7 @@
 #include "linted/asynch.h"
 #include "linted/error.h"
 
-#if _POSIX_C_SOURCE >= 199309L
-#include <signal.h>
-#endif
-
 #include <sys/types.h>
-
-#if _POSIX_C_SOURCE >= 199309L
-#include <time.h>
-#endif
 
 /**
  * @file
@@ -37,6 +29,10 @@
 
 struct linted_sched_task_idle;
 struct linted_sched_task_sleep_until;
+
+struct timespec;
+
+linted_error linted_sched_time(struct timespec *data);
 
 linted_error
 linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
@@ -56,13 +52,12 @@ linted_error linted_sched_task_sleep_until_create(
 void linted_sched_task_sleep_until_destroy(
     struct linted_sched_task_sleep_until *task);
 
-#if _POSIX_C_SOURCE >= 199309L
 void linted_sched_task_sleep_until_prepare(
-    struct linted_sched_task_sleep_until *task, unsigned task_action, int flags,
+    struct linted_sched_task_sleep_until *task, unsigned task_action,
     struct timespec const *req);
 void linted_sched_task_sleep_until_request(
     struct linted_sched_task_sleep_until *task, struct timespec *req);
-#endif
+
 void *
 linted_sched_task_sleep_until_data(struct linted_sched_task_sleep_until *task);
 struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(

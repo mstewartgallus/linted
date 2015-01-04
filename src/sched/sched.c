@@ -30,8 +30,18 @@ struct linted_sched_task_sleep_until
 	struct linted_asynch_task *parent;
 	void *data;
 	struct timespec request;
-	int flags;
 };
+
+linted_error linted_sched_time(struct timespec *now)
+{
+	if (-1 == clock_gettime(CLOCK_MONOTONIC, now)) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
 
 /* task_idle is just a fake */
 linted_error
@@ -125,11 +135,10 @@ void linted_sched_task_sleep_until_request(
 }
 
 void linted_sched_task_sleep_until_prepare(
-    struct linted_sched_task_sleep_until *task, unsigned task_action, int flags,
+    struct linted_sched_task_sleep_until *task, unsigned task_action,
     struct timespec const *req)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
-	task->flags = flags;
 	task->request = *req;
 }
 
@@ -158,10 +167,8 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 	    linted_asynch_task_data(task);
 	linted_error errnum = 0;
 
-	int flags = task_sleep->flags;
-
-	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, flags, &task_sleep->request,
-	                          &task_sleep->request)) {
+	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
+	                          &task_sleep->request, &task_sleep->request)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}
