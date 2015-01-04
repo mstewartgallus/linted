@@ -109,6 +109,23 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 static void wait_manager_stop(struct wait_manager *manager);
 static void wait_manager_destroy(struct wait_manager *manager);
 
+struct canceller
+{
+	pthread_spinlock_t lock;
+	pthread_t owner;
+	bool *cancel_replier;
+	bool owned : 1U;
+	bool in_flight : 1U;
+};
+
+static void canceller_init(struct canceller *canceller);
+static void canceller_start(struct canceller *canceller);
+static void canceller_stop(struct canceller *canceller);
+static void canceller_cancel(struct canceller *canceller);
+static bool canceller_check_or_register(struct canceller *canceller,
+                                        pthread_t self);
+static bool canceller_check_and_unregister(struct canceller *canceller);
+
 struct linted_asynch_pool
 {
 	struct wait_manager *wait_manager;
@@ -122,20 +139,13 @@ struct linted_asynch_pool
 struct linted_asynch_task
 {
 	struct linted_queue_node parent;
-
-	pthread_spinlock_t owner_lock;
+	struct canceller canceller;
 	linted_error errnum;
 
-	pthread_t owner;
-
-	bool *cancel_replier;
 	void *data;
 
 	unsigned type;
 	unsigned task_action;
-
-	bool owned : 1U;
-	bool in_flight : 1U;
 };
 
 struct linted_asynch_waiter
@@ -261,27 +271,9 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-	linted_error errnum;
-
 	assert(pool != NULL);
 
-	errnum = pthread_spin_lock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
-		assert(false);
-	}
-
-	assert(!task->in_flight);
-	assert(!task->owned);
-
-	task->in_flight = true;
-	task->owned = false;
-
-	errnum = pthread_spin_unlock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
+	canceller_start(&task->canceller);
 
 	job_submit(pool->worker_queue, task);
 }
@@ -289,79 +281,24 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	bool cancelled;
-	linted_error errnum;
-
 	assert(pool != NULL);
 
-	errnum = pthread_spin_lock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
-		assert(false);
-	}
-
-	assert(task->in_flight);
-	assert(task->owned);
-
-	task->owned = false;
-	{
-		bool *cancel_replier = task->cancel_replier;
-		cancelled = cancel_replier != NULL;
-		if (cancelled)
-			*cancel_replier = true;
-		task->cancel_replier = NULL;
-	}
-
-	errnum = pthread_spin_unlock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
-
-	if (cancelled) {
+	if (canceller_check_and_unregister(&task->canceller)) {
 		task->errnum = ECANCELED;
 		complete_task(pool->completion_queue, task);
-	} else {
-		job_submit(pool->worker_queue, task);
+		return;
 	}
+
+	job_submit(pool->worker_queue, task);
 }
 
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task,
                                  linted_error task_errnum)
 {
-	linted_error errnum = 0;
-
-	/* Aren't a cancellation point so always works */
-
-	errnum = pthread_spin_lock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
-		assert(false);
-	}
-
-	assert(task->owned);
-	assert(task->in_flight);
-
-	{
-		bool *cancel_replier = task->cancel_replier;
-		bool cancelled = cancel_replier != NULL;
-		if (cancelled)
-			*cancel_replier = true;
-		task->cancel_replier = NULL;
-	}
-
-	task->in_flight = false;
-	task->owned = false;
+	canceller_stop(&task->canceller);
 
 	task->errnum = task_errnum;
-	errnum = pthread_spin_unlock(&task->owner_lock);
-
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
-
 	complete_task(pool->completion_queue, task);
 }
 
@@ -372,32 +309,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 {
 	assert(pool != NULL);
 
-	linted_error errnum;
-	bool cancelled;
-
-	errnum = pthread_spin_lock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
-		assert(false);
-	}
-
-	task->in_flight = true;
-	task->owned = false;
-	{
-		bool *cancel_replier = task->cancel_replier;
-		cancelled = cancel_replier != NULL;
-		if (cancelled)
-			*cancel_replier = true;
-		task->cancel_replier = NULL;
-	}
-
-	errnum = pthread_spin_unlock(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
-
-	if (cancelled) {
+	if (canceller_check_and_unregister(&task->canceller)) {
 		task->errnum = ECANCELED;
 		complete_task(pool->completion_queue, task);
 		return;
@@ -467,13 +379,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 	}
 	linted_queue_node(&task->parent);
 
-	errnum = pthread_spin_init(&task->owner_lock, false);
-	if (errnum != 0)
-		goto free_task;
-
-	task->in_flight = false;
-	task->owned = false;
-	task->cancel_replier = NULL;
+	canceller_init(&task->canceller);
 
 	task->data = data;
 	task->type = type;
@@ -481,102 +387,16 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 
 	*taskp = task;
 	return 0;
-
-free_task:
-	linted_mem_free(task);
-	return errnum;
 }
 
 void linted_asynch_task_destroy(struct linted_asynch_task *task)
 {
-	linted_error errnum;
-	errnum = pthread_spin_destroy(&task->owner_lock);
-	if (errnum != 0) {
-		assert(errnum != EBUSY);
-		assert(false);
-	}
 	linted_mem_free(task);
 }
 
 void linted_asynch_task_cancel(struct linted_asynch_task *task)
 {
-	linted_error errnum;
-
-	bool cancel_reply = false;
-	bool in_flight;
-
-	/* This can't be a POSIX real-time signal as those queue up so
-	 * we can end up queuing a barrage of signals that trap the
-	 * thread were waiting in signal handling.
-	 */
-
-	{
-		errnum = pthread_spin_lock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EDEADLK);
-			assert(false);
-		}
-
-		assert(NULL == task->cancel_replier);
-
-		in_flight = task->in_flight;
-		if (in_flight) {
-			task->cancel_replier = &cancel_reply;
-
-			bool owned = task->owned;
-			if (owned) {
-				errnum =
-				    pthread_kill(task->owner, ASYNCH_SIGNO);
-				if (errnum != 0 && errnum != EAGAIN) {
-					assert(errnum != ESRCH);
-					assert(errnum != EINVAL);
-					assert(false);
-				}
-			}
-		}
-
-		errnum = pthread_spin_unlock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EPERM);
-			assert(false);
-		}
-	}
-
-	if (!in_flight)
-		return;
-
-	/* Yes, really, we do have to busy wait to prevent race
-	 * conditions unfortunately */
-	bool cancel_replied;
-	do {
-		pthread_yield();
-
-		errnum = pthread_spin_lock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EDEADLK);
-			assert(false);
-		}
-
-		cancel_replied = cancel_reply;
-		if (!cancel_replied) {
-			bool owned = task->owned;
-			if (owned) {
-				errnum =
-				    pthread_kill(task->owner, ASYNCH_SIGNO);
-				if (errnum != 0 && errnum != EAGAIN) {
-					assert(errnum != ESRCH);
-					assert(errnum != EINVAL);
-					assert(false);
-				}
-			}
-		}
-
-		errnum = pthread_spin_unlock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EPERM);
-			assert(false);
-		}
-	} while (!cancel_replied);
+	canceller_cancel(&task->canceller);
 }
 
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
@@ -812,13 +632,10 @@ static void *worker_routine(void *arg)
 {
 	struct worker_pool *pool = arg;
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
-	linted_error errnum;
 
 	pthread_t self = pthread_self();
 
 	for (;;) {
-		bool cancelled;
-
 		struct linted_asynch_task *task;
 		{
 			struct linted_asynch_task *xx;
@@ -826,34 +643,13 @@ static void *worker_routine(void *arg)
 			task = xx;
 		}
 
-		errnum = pthread_spin_lock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EDEADLK);
-			assert(false);
-		}
-
-		{
-			cancelled = task->cancel_replier != NULL;
-
-			/* Don't actually complete the cancellation if
-			 * cancelled and let the completion do that.
-			 */
-			task->owner = self;
-			task->owned = true;
-		}
-
-		errnum = pthread_spin_unlock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EPERM);
-			assert(false);
-		}
-
-		if (cancelled) {
+		if (canceller_check_or_register(&task->canceller, self)) {
 			linted_asynch_pool_complete(asynch_pool, task,
 			                            ECANCELED);
-		} else {
-			run_task(asynch_pool, task);
+			continue;
 		}
+
+		run_task(asynch_pool, task);
 	}
 
 	LINTED_ASSUME_UNREACHABLE();
@@ -1132,8 +928,6 @@ static void *poller_routine(void *arg)
 	pthread_t self = pthread_self();
 
 	for (;;) {
-		bool cancelled;
-
 		struct linted_asynch_waiter *waiter;
 		{
 			struct linted_asynch_waiter *xx;
@@ -1145,29 +939,7 @@ static void *poller_routine(void *arg)
 		linted_ko ko = waiter->ko;
 		unsigned short flags = waiter->flags;
 
-		errnum = pthread_spin_lock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EDEADLK);
-			assert(false);
-		}
-
-		{
-			cancelled = task->cancel_replier != NULL;
-
-			/* Don't actually complete the cancellation if
-			 * cancelled and let the completion do that.
-			 */
-			task->owner = self;
-			task->owned = true;
-		}
-
-		errnum = pthread_spin_unlock(&task->owner_lock);
-		if (errnum != 0) {
-			assert(errnum != EPERM);
-			assert(false);
-		}
-
-		if (cancelled) {
+		if (canceller_check_or_register(&task->canceller, self)) {
 			errnum = ECANCELED;
 			goto complete_task;
 		}
@@ -1364,4 +1136,213 @@ static linted_error waiter_recv(struct waiter_queue *queue,
 static void waiter_queue_destroy(struct waiter_queue *queue)
 {
 	linted_queue_destroy((struct linted_queue *)queue);
+}
+
+static void canceller_init(struct canceller *canceller)
+{
+	pthread_spin_init(&canceller->lock, false);
+
+	canceller->in_flight = false;
+
+	canceller->owned = false;
+	canceller->cancel_replier = NULL;
+}
+
+static void canceller_start(struct canceller *canceller)
+{
+	linted_error errnum;
+
+	errnum = pthread_spin_lock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	assert(!canceller->in_flight);
+	assert(!canceller->owned);
+
+	canceller->in_flight = true;
+	canceller->owned = false;
+
+	errnum = pthread_spin_unlock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+}
+
+static void canceller_stop(struct canceller *canceller)
+{
+	linted_error errnum;
+
+	errnum = pthread_spin_lock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	assert(canceller->owned);
+	assert(canceller->in_flight);
+
+	{
+		bool *cancel_replier = canceller->cancel_replier;
+		bool cancelled = cancel_replier != NULL;
+		if (cancelled)
+			*cancel_replier = true;
+		canceller->cancel_replier = NULL;
+	}
+
+	canceller->in_flight = false;
+	canceller->owned = false;
+
+	errnum = pthread_spin_unlock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+}
+
+static void canceller_cancel(struct canceller *canceller)
+{
+	linted_error errnum;
+
+	bool cancel_reply = false;
+	bool in_flight;
+
+	/* This can't be a POSIX real-time signal as those queue up so
+	 * we can end up queuing a barrage of signals that trap the
+	 * thread were waiting in signal handling.
+	 */
+
+	{
+		errnum = pthread_spin_lock(&canceller->lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+
+		assert(NULL == canceller->cancel_replier);
+
+		in_flight = canceller->in_flight;
+		if (in_flight) {
+			canceller->cancel_replier = &cancel_reply;
+
+			bool owned = canceller->owned;
+			if (owned) {
+				errnum = pthread_kill(canceller->owner,
+				                      ASYNCH_SIGNO);
+				if (errnum != 0 && errnum != EAGAIN) {
+					assert(errnum != ESRCH);
+					assert(errnum != EINVAL);
+					assert(false);
+				}
+			}
+		}
+
+		errnum = pthread_spin_unlock(&canceller->lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
+	}
+
+	if (!in_flight)
+		return;
+
+	/* Yes, really, we do have to busy wait to prevent race
+	 * conditions unfortunately */
+	bool cancel_replied;
+	do {
+		pthread_yield();
+
+		errnum = pthread_spin_lock(&canceller->lock);
+		if (errnum != 0) {
+			assert(errnum != EDEADLK);
+			assert(false);
+		}
+
+		cancel_replied = cancel_reply;
+		if (!cancel_replied) {
+			bool owned = canceller->owned;
+			if (owned) {
+				errnum = pthread_kill(canceller->owner,
+				                      ASYNCH_SIGNO);
+				if (errnum != 0 && errnum != EAGAIN) {
+					assert(errnum != ESRCH);
+					assert(errnum != EINVAL);
+					assert(false);
+				}
+			}
+		}
+
+		errnum = pthread_spin_unlock(&canceller->lock);
+		if (errnum != 0) {
+			assert(errnum != EPERM);
+			assert(false);
+		}
+	} while (!cancel_replied);
+}
+
+static bool canceller_check_or_register(struct canceller *canceller,
+                                        pthread_t self)
+{
+	linted_error errnum;
+
+	bool cancelled;
+
+	errnum = pthread_spin_lock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	{
+		cancelled = canceller->cancel_replier != NULL;
+
+		/* Don't actually complete the cancellation if
+		 * cancelled and let the completion do that.
+		 */
+		canceller->owner = self;
+		canceller->owned = true;
+	}
+
+	errnum = pthread_spin_unlock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
+	return cancelled;
+}
+
+static bool canceller_check_and_unregister(struct canceller *canceller)
+{
+	linted_error errnum;
+	bool cancelled;
+
+	errnum = pthread_spin_lock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EDEADLK);
+		assert(false);
+	}
+
+	assert(canceller->in_flight);
+	assert(canceller->owned);
+
+	canceller->owned = false;
+	{
+		bool *cancel_replier = canceller->cancel_replier;
+		cancelled = cancel_replier != NULL;
+		if (cancelled)
+			*cancel_replier = true;
+		canceller->cancel_replier = NULL;
+	}
+
+	errnum = pthread_spin_unlock(&canceller->lock);
+	if (errnum != 0) {
+		assert(errnum != EPERM);
+		assert(false);
+	}
+
+	return cancelled;
 }
