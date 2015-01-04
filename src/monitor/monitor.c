@@ -1521,9 +1521,16 @@ envvar_allocate_succeeded:
 		struct linted_unit_socket const *socket = (void *)socket_unit;
 
 		linted_ko ko;
-		{
+		if (LINTED_UNIT_SOCKET_TYPE_MQ == socket->type) {
 			linted_ko xx;
 			errnum = linted_ko_reopen(&xx, socket->ko, flags);
+			if (errnum != 0)
+				goto free_filename;
+			ko = xx;
+		} else {
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+			                        socket->path, flags);
 			if (errnum != 0)
 				goto free_filename;
 			ko = xx;

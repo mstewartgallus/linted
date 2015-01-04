@@ -75,4 +75,6 @@
  *
  * @todo Sandbox leaked file descriptors before spawning new processes
  *       in sandbox.c
+ *
+ * @todo Don't reopen files using /proc/self/fd with linted_ko_reopen
  */
