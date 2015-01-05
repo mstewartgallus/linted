@@ -239,7 +239,7 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
 
 static linted_error pid_stat(pid_t pid, struct pidstat *buf);
 
-static linted_error pid_children(pid_t pid, char **childrenp);
+static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
@@ -2093,58 +2093,37 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 
 	pid_t ppid = getppid();
 
-	char *buf;
+	pid_t *children;
+	size_t len;
 	{
-		char *xx;
-		errnum = pid_children(ppid, &xx);
+		pid_t *xx;
+		size_t yy;
+		errnum = pid_children(ppid, &xx, &yy);
 		if (errnum != 0)
 			return errnum;
-		buf = xx;
+		children = xx;
+		len = yy;
 	}
-	/* buf of NULL might also mean empty process list  */
-	if (NULL == buf) {
-		if (0 == errnum)
-			return ESRCH;
-		return errnum;
-	}
+	if (0U == len)
+		return ESRCH;
 
 	pid_t pid = -1;
-	char const *start = buf;
-	for (;;) {
-		errno = 0;
-		pid_t child = strtol(start, NULL, 10);
-		errnum = errno;
-		if (errnum != 0)
-			goto free_buf;
+	for (size_t ii = 0U; ii < len; ++ii) {
+		pid_t child = children[ii];
 
 		char other_name[SERVICE_NAME_MAX + 1U];
 		errnum = service_name(child, other_name);
 		if (errnum != 0)
 			goto free_buf;
 
-		if (strcmp(name, other_name) != 0)
-			goto move_on;
-
-		errnum = 0;
-		pid = child;
-		break;
-	move_on:
-		start = strchr(start, ' ');
-		if (NULL == start)
+		if (0 == strcmp(name, other_name) != 0) {
+			pid = child;
 			break;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
-		++start;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
+		}
 	}
 
 free_buf:
-	linted_mem_free(buf);
+	linted_mem_free(children);
 
 	if (errnum != 0)
 		return errnum;
@@ -2489,47 +2468,28 @@ static linted_error kill_pid_children(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
-	char *buf;
+	pid_t *children;
+	size_t len;
 	{
-		char *xx;
-		errnum = pid_children(pid, &xx);
+		pid_t *xx;
+		size_t yy;
+		errnum = pid_children(pid, &xx, &yy);
 		if (errnum != 0)
 			return errnum;
-		buf = xx;
+		children = xx;
+		len = yy;
 	}
-	if (NULL == buf)
-		return errnum;
 
-	char const *start = buf;
-	for (;;) {
-		errno = 0;
-		pid_t child = strtol(start, NULL, 10);
-		errnum = errno;
-		if (errnum != 0)
-			goto free_buf;
-
-		if (-1 == kill(child, signo)) {
+	for (size_t ii = 0U; ii < len; ++ii) {
+		if (-1 == kill(children[ii], signo)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto free_buf;
+			goto free_children;
 		}
-
-		start = strchr(start, ' ');
-		if (NULL == start)
-			break;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
-		++start;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
 	}
 
-free_buf:
-	linted_mem_free(buf);
+free_children:
+	linted_mem_free(children);
 
 	return errnum;
 }
@@ -2696,7 +2656,7 @@ static linted_error long_from_cstring(char const *str, long *longp)
 	return 0;
 }
 
-static linted_error pid_children(pid_t pid, char **childrenp)
+static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 {
 	linted_error errnum;
 
@@ -2710,7 +2670,7 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 		return errnum;
 	}
 
-	linted_ko children;
+	linted_ko children_ko;
 	{
 		linted_ko xx;
 		errnum =
@@ -2719,15 +2679,15 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 			return ESRCH;
 		if (errnum != 0)
 			return errnum;
-		children = xx;
+		children_ko = xx;
 	}
 
-	FILE *file = fdopen(children, "r");
+	FILE *file = fdopen(children_ko, "r");
 	if (NULL == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
-		linted_ko_close(children);
+		linted_ko_close(children_ko);
 
 		return errnum;
 	}
@@ -2762,7 +2722,54 @@ set_childrenp:
 		return errnum;
 	}
 
-	*childrenp = buf;
+	size_t ii = 0U;
+	char const *start = buf;
+	pid_t *children = NULL;
+
+	if (NULL == buf)
+		goto finish;
+
+	for (;;) {
+		errno = 0;
+		pid_t child = strtol(start, NULL, 10);
+		errnum = errno;
+		if (errnum != 0)
+			goto free_buf;
+
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(
+			    &xx, children, ii + 1U, sizeof children[0U]);
+			if (errnum != 0) {
+				linted_mem_free(children);
+				linted_mem_free(buf);
+				return errnum;
+			}
+			children = xx;
+		}
+		children[ii] = child;
+		++ii;
+
+		start = strchr(start, ' ');
+		if (NULL == start)
+			break;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
+		++start;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
+	}
+
+free_buf:
+	linted_mem_free(buf);
+
+finish:
+	*lenp = ii;
+	*childrenp = children;
 
 	return 0;
 }
