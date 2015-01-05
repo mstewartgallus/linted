@@ -1035,16 +1035,14 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 			continue;
 		}
 
-		unsigned long nonaliasflags = mountflags & ~aliasflags;
-
 		if (-1 == mount(fsname, dir, type, aliasflags, NULL))
 			return errno;
 
-		if (NULL == data && 0 == nonaliasflags)
+		if (NULL == data && 0 == (mountflags & ~aliasflags))
 			continue;
 
 		if (-1 ==
-		    mount(fsname, dir, type, MS_REMOUNT | nonaliasflags, data))
+		    mount(fsname, dir, type, MS_REMOUNT | mountflags, data))
 			return errno;
 	}
 
@@ -1086,6 +1084,7 @@ enum {
 	TOUCH,
 	NOMOUNT,
 	SHARED,
+	SLAVE,
 	BIND,
 	RBIND,
 	RO,
@@ -1100,6 +1099,7 @@ static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
 	                                    [TOUCH] = "touch",        /**/
 	                                    [NOMOUNT] = "nomount",    /**/
 	                                    [SHARED] = "shared",      /**/
+	                                    [SLAVE] = "slave",        /**/
 	                                    [BIND] = "bind",          /**/
 	                                    [RBIND] = "rbind",        /**/
 	                                    [RO] = MNTOPT_RO,         /**/
@@ -1121,6 +1121,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 	bool touch_flag = false;
 	bool mkdir_flag = false;
 	bool shared = false;
+	bool slave = false;
 	bool bind = false;
 	bool rec = false;
 	bool readonly = false;
@@ -1165,6 +1166,10 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 
 		case SHARED:
 			shared = true;
+			break;
+
+		case SLAVE:
+			slave = true;
 			break;
 
 		case BIND:
@@ -1212,7 +1217,7 @@ free_subopts_str:
 	if (readwrite && readonly)
 		return EINVAL;
 
-	if (((bind && rec) || (bind && shared)) &&
+	if (bind && (rec || shared || slave) &&
 	    (readonly || !suid || !dev || !exec))
 		/*
 		 * Due to a completely idiotic kernel bug (see
@@ -1238,6 +1243,9 @@ free_subopts_str:
 
 	if (shared)
 		mountflags |= MS_SHARED;
+
+	if (slave)
+		mountflags |= MS_SLAVE;
 
 	if (bind)
 		mountflags |= MS_BIND;

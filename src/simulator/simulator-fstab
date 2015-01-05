@@ -13,10 +13,10 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/log	dev/log	none	touch,bind
-/dev/null	dev/null	none	touch,bind
+/dev/null	dev/null	none	touch,ro,bind
 /dev/urandom	dev/urandom	none	touch,bind
 
-proc	proc	proc	mkdir,nosuid,nodev,noexec,hidepid=2
+proc	proc	proc	mkdir,nosuid,nodev,noexec,ro,hidepid=2
 
 /etc	etc	none	mkdir,shared,bind
 
