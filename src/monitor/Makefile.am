@@ -28,7 +28,6 @@ pkglibexec_PROGRAMS+=%D%/monitor
   src/fifo/libfifo.la\
   src/ko/libko.la\
   src/mem/libmem.la\
-  src/mq/libmq.la\
   src/pool/libpool.la\
   src/spawn/libspawn.la\
   src/unit/libunit.la\

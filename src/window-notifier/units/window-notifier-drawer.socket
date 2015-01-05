@@ -16,8 +16,4 @@ Description=Linted-Window-Notifier Window Notifier
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenMessageQueue=/window-notifier
-MessageQueueMaxMessages=1
-MessageQueueMessageSize=4
-
-X-LintedTemporary=true
+ListenFifo=window-notifier-drawer

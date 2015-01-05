@@ -36,8 +36,7 @@ enum linted_unit_type { LINTED_UNIT_TYPE_SOCKET, LINTED_UNIT_TYPE_SERVICE };
 enum linted_unit_socket_type {
 	LINTED_UNIT_SOCKET_TYPE_DIR,
 	LINTED_UNIT_SOCKET_TYPE_FILE,
-	LINTED_UNIT_SOCKET_TYPE_FIFO,
-	LINTED_UNIT_SOCKET_TYPE_MQ
+	LINTED_UNIT_SOCKET_TYPE_FIFO
 };
 
 struct linted_unit_db;
@@ -70,7 +69,6 @@ struct linted_unit_socket
 	char const *path;
 	long maxmsgs;
 	long msgsize;
-	linted_ko ko;
 	_Bool is_open : 1U;
 };
 
@@ -80,7 +78,6 @@ struct linted_unit_service
 	struct linted_unit common;
 
 	char const *const *exec_start;
-	char const *const *files;
 	char const *fstab;
 	char const *chdir_path;
 	char const *const *env_whitelist;

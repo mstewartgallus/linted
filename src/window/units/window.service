@@ -18,11 +18,7 @@ Documentation='man:linted-window(6)'
 [Service]
 ExecStart="${LINTED_WINDOW}"
 
-X-LintedFiles=OPEN:window-notifier,wronly
-
 NoNewPrivileges=true
 X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWIPC CLONE_NEWNET
-
-WorkingDirectory=/var
 
 X-LintedEnvironmentWhitelist=DISPLAY

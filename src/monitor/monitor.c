@@ -26,7 +26,6 @@
 #include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/mq.h"
 #include "linted/pid.h"
 #include "linted/pool.h"
 #include "linted/signal.h"
@@ -227,7 +226,6 @@ static size_t null_list_size(char const *const *list);
 
 static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
-static linted_error long_from_cstring(char const *str, long *longp);
 
 static linted_error kill_pid_children(pid_t pid, int signo);
 
@@ -595,25 +593,6 @@ cancel_tasks:
 	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
 kill_procs:
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
-	     ++ii) {
-		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
-			continue;
-
-		struct linted_unit_socket *socket = (void *)unit;
-
-		if (!socket->is_open)
-			continue;
-
-		linted_error close_errnum = linted_ko_close(socket->ko);
-		if (0 == errnum)
-			errnum = close_errnum;
-
-		socket->is_open = false;
-	}
-
 	linted_unit_db_destroy(unit_db);
 
 destroy_confs:
@@ -760,8 +739,6 @@ static linted_error service_create(struct linted_unit_service *unit,
 	    linted_conf_find(conf, "Service", "NoNewPrivileges");
 	char const *const *chdir_paths =
 	    linted_conf_find(conf, "Service", "WorkingDirectory");
-	char const *const *files =
-	    linted_conf_find(conf, "Service", "X-LintedFiles");
 	char const *const *fstabs =
 	    linted_conf_find(conf, "Service", "X-LintedFstab");
 	char const *const *env_whitelist =
@@ -858,7 +835,6 @@ static linted_error service_create(struct linted_unit_service *unit,
 
 	unit->exec_start = exec_start;
 	unit->no_new_privs = no_new_privs_value;
-	unit->files = files;
 	unit->fstab = fstab;
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
@@ -878,9 +854,6 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 {
 	linted_error errnum;
 
-	char const *const *listen_mqs =
-	    linted_conf_find(conf, "Socket", "ListenMessageQueue");
-
 	char const *const *listen_dirs =
 	    linted_conf_find(conf, "Socket", "ListenDirectory");
 
@@ -889,22 +862,6 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 	char const *const *listen_fifos =
 	    linted_conf_find(conf, "Socket", "ListenFifo");
-
-	char const *const *maxmsgss =
-	    linted_conf_find(conf, "Socket", "MessageQueueMaxMessages");
-	char const *const *msgsizes =
-	    linted_conf_find(conf, "Socket", "MessageQueueMessageSize");
-	char const *const *temps =
-	    linted_conf_find(conf, "Socket", "X-LintedTemporary");
-
-	char const *listen_mq;
-	{
-		char const *xx;
-		errnum = str_from_strs(listen_mqs, &xx);
-		if (errnum != 0)
-			return errnum;
-		listen_mq = xx;
-	}
 
 	char const *listen_dir;
 	{
@@ -936,14 +893,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	enum linted_unit_socket_type socket_type;
 	char const *path = NULL;
 
-	if (listen_mq != NULL) {
-		socket_type = LINTED_UNIT_SOCKET_TYPE_MQ;
-		path = listen_mq;
-	}
-
 	if (listen_dir != NULL) {
-		if (path != NULL)
-			return EINVAL;
 		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
 		path = listen_dir;
 	}
@@ -966,69 +916,6 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		return EINVAL;
 
 	switch (socket_type) {
-	case LINTED_UNIT_SOCKET_TYPE_MQ: {
-		char const *temp;
-		{
-			char const *xx;
-			errnum = str_from_strs(temps, &xx);
-			if (errnum != 0)
-				return errnum;
-			temp = xx;
-		}
-
-		char const *maxmsgs;
-		{
-			char const *xx;
-			errnum = str_from_strs(maxmsgss, &xx);
-			if (errnum != 0)
-				return errnum;
-			maxmsgs = xx;
-		}
-
-		char const *msgsize;
-		{
-			char const *xx;
-			errnum = str_from_strs(msgsizes, &xx);
-			if (errnum != 0)
-				return errnum;
-			msgsize = xx;
-		}
-
-		long maxmsgs_value;
-		{
-			long xx;
-			errnum = long_from_cstring(maxmsgs, &xx);
-			if (errnum != 0)
-				return errnum;
-			maxmsgs_value = xx;
-		}
-
-		long msgsize_value;
-		{
-			long xx;
-			errnum = long_from_cstring(msgsize, &xx);
-			if (errnum != 0)
-				return errnum;
-			msgsize_value = xx;
-		}
-
-		bool temp_value;
-		{
-			bool xx;
-			errnum = bool_from_cstring(temp, &xx);
-			if (errnum != 0)
-				return errnum;
-			temp_value = xx;
-		}
-
-		if (!temp_value)
-			return EINVAL;
-
-		unit->maxmsgs = maxmsgs_value;
-		unit->msgsize = msgsize_value;
-		break;
-	}
-
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
 	case LINTED_UNIT_SOCKET_TYPE_FIFO:
@@ -1082,15 +969,6 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	linted_error errnum;
 
 	switch (unit->type) {
-	case LINTED_UNIT_SOCKET_TYPE_MQ:
-		errnum = linted_mq_create(&unit->ko, unit->path, unit->maxmsgs,
-		                          unit->msgsize, 0);
-		if (errnum != 0)
-			return errnum;
-
-		unit->is_open = true;
-		break;
-
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
 		errnum = linted_dir_create(NULL, LINTED_KO_CWD, unit->path, 0U,
 		                           S_IRWXU);
@@ -1119,23 +997,12 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	return 0;
 }
 
-enum { RDONLY, WRONLY };
-
-struct pair
-{
-	unsigned long flags;
-	linted_ko ko;
-};
-
 struct option
 {
 	bool flag;
 	char const *name;
 	char const *value;
 };
-
-static char const *const file_flags[] = {[RDONLY] = "rdonly",
-	                                 [WRONLY] = "wronly", NULL };
 
 static linted_error service_activate(char const *process_name,
                                      struct linted_unit *unit, linted_ko cwd,
@@ -1170,7 +1037,6 @@ spawn_service:
 	;
 	char const *const *exec_start = unit_service->exec_start;
 	bool no_new_privs = unit_service->no_new_privs;
-	char const *const *files = unit_service->files;
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
 	char const *const *env_whitelist = unit_service->env_whitelist;
@@ -1309,10 +1175,6 @@ envvar_allocate_succeeded:
 	}
 	char *sandbox_base = basename(sandbox_dup);
 
-	size_t files_size = 0U;
-	if (files != NULL)
-		files_size = null_list_size(files);
-
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 
@@ -1398,8 +1260,7 @@ envvar_allocate_succeeded:
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U],
-		                                3U + files_size);
+		errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U], 3U);
 		if (errnum != 0)
 			goto destroy_attr;
 		proc_kos = xx;
@@ -1423,128 +1284,6 @@ envvar_allocate_succeeded:
 
 		errnum = linted_spawn_file_actions_adddup2(&file_actions, null,
 		                                           old_kos_opened);
-		if (errnum != 0)
-			goto destroy_proc_kos;
-	}
-
-	for (size_t ii = 0U; ii < files_size; ++ii) {
-		char const *open_command = files[ii];
-
-		if (strncmp(open_command, "OPEN:", strlen("OPEN:")) != 0) {
-			errnum = EINVAL;
-			goto destroy_proc_kos;
-		}
-
-		open_command = open_command + strlen("OPEN:");
-
-		char *filenameend = strchr(open_command, ',');
-		char *filename;
-		if (NULL == filenameend) {
-			filename = strdup(open_command);
-		} else {
-			filename =
-			    strndup(open_command, filenameend - open_command);
-		}
-		if (NULL == filename) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto destroy_attr;
-		}
-
-		char *opts_buffer =
-		    strdup(open_command + 1U + strlen(filename));
-		if (NULL == opts_buffer) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_filename;
-		}
-
-		bool rdonly = false;
-		bool wronly = false;
-
-		char *opts = opts_buffer;
-		char *value = NULL;
-		while (*opts != '\0') {
-			int token;
-			{
-				char *xx = opts;
-				char *yy = value;
-				token = getsubopt(
-				    &xx, (char * const *)file_flags, &yy);
-				opts = xx;
-				value = yy;
-			}
-			switch (token) {
-			case RDONLY:
-				rdonly = true;
-				break;
-
-			case WRONLY:
-				wronly = true;
-				break;
-
-			default:
-				errnum = EINVAL;
-				goto free_opts_buffer;
-			}
-		}
-
-	free_opts_buffer:
-		linted_mem_free(opts_buffer);
-		if (errnum != 0)
-			goto free_filename;
-
-		if (wronly && rdonly) {
-			errnum = EINVAL;
-			goto free_filename;
-		}
-
-		unsigned long flags = 0;
-
-		if (rdonly)
-			flags |= LINTED_KO_RDONLY;
-
-		if (wronly)
-			flags |= LINTED_KO_WRONLY;
-
-		struct linted_unit const *socket_unit =
-		    linted_unit_db_get_unit_by_name(unit_db, filename);
-		if (NULL == socket_unit) {
-			errnum = EINVAL;
-			goto free_filename;
-		}
-
-		struct linted_unit_socket const *socket = (void *)socket_unit;
-
-		linted_ko ko;
-		if (LINTED_UNIT_SOCKET_TYPE_MQ == socket->type) {
-			linted_ko xx;
-			errnum = linted_ko_reopen(&xx, socket->ko, flags);
-			if (errnum != 0)
-				goto free_filename;
-			ko = xx;
-		} else {
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-			                        socket->path, flags);
-			if (errnum != 0)
-				goto free_filename;
-			ko = xx;
-		}
-
-		proc_kos[kos_opened] = ko;
-
-		size_t old_kos_opened = kos_opened;
-		++kos_opened;
-
-		errnum = linted_spawn_file_actions_adddup2(&file_actions, ko,
-		                                           old_kos_opened);
-		if (errnum != 0)
-			goto free_filename;
-
-	free_filename:
-		linted_mem_free(filename);
-
 		if (errnum != 0)
 			goto destroy_proc_kos;
 	}
@@ -2618,41 +2357,6 @@ static linted_error bool_from_cstring(char const *str, bool *boolp)
 
 return_result:
 	*boolp = result;
-	return 0;
-}
-
-static linted_error long_from_cstring(char const *str, long *longp)
-{
-	size_t length = strlen(str);
-	unsigned long position = 1U;
-
-	if (NULL == str)
-		return EINVAL;
-
-	if ('0' == str[0U] && length != 1U)
-		return EINVAL;
-
-	unsigned long total = 0U;
-	for (; length > 0U; --length) {
-		char const digit = str[length - 1U];
-
-		if (digit < '0' || digit > '9')
-			return EINVAL;
-
-		unsigned long sum =
-		    total + ((unsigned)(digit - '0')) * position;
-		if (sum > LONG_MAX)
-			return ERANGE;
-
-		total = sum;
-
-		unsigned long next_position = 10U * position;
-		if (next_position > LONG_MAX)
-			return ERANGE;
-		position = next_position;
-	}
-
-	*longp = total;
 	return 0;
 }
 

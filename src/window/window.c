@@ -55,12 +55,10 @@ struct notice_data
 	struct linted_asynch_pool *pool;
 };
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-window",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static uint32_t const window_opts[] = { 0 };
@@ -74,7 +72,33 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_window_notifier notifier = kos[0U];
+	linted_ko gui_notifier;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-gui",
+		                   LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		gui_notifier = xx;
+	}
+
+	linted_ko drawer_notifier;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-drawer",
+		                   LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		drawer_notifier = xx;
+	}
 
 	char const *root = getenv("MANAGERPID");
 	if (NULL == root) {
@@ -107,19 +131,30 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct notice_data notice_data;
+	struct notice_data gui_notice_data;
+	struct notice_data drawer_notice_data;
 	struct poll_conn_data poll_conn_data;
 
 	struct linted_io_task_poll *poll_conn_task;
-	struct linted_window_notifier_task_send *notice_task;
+	struct linted_window_notifier_task_send *gui_notice_task;
+	struct linted_window_notifier_task_send *drawer_notice_task;
 
 	{
 		struct linted_window_notifier_task_send *xx;
-		errnum =
-		    linted_window_notifier_task_send_create(&xx, &notice_data);
+		errnum = linted_window_notifier_task_send_create(
+		    &xx, &gui_notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
-		notice_task = xx;
+		gui_notice_task = xx;
+	}
+
+	{
+		struct linted_window_notifier_task_send *xx;
+		errnum = linted_window_notifier_task_send_create(
+		    &xx, &drawer_notice_data);
+		if (errnum != 0)
+			goto destroy_pool;
+		drawer_notice_task = xx;
 	}
 
 	{
@@ -354,11 +389,18 @@ get_hostname_succeeded:
 
 	xcb_flush(connection);
 
-	linted_window_notifier_task_send_prepare(notice_task, ON_SENT_NOTICE,
-	                                         notifier, window);
-	notice_data.pool = pool;
+	linted_window_notifier_task_send_prepare(
+	    gui_notice_task, ON_SENT_NOTICE, gui_notifier, window);
+	gui_notice_data.pool = pool;
 	linted_asynch_pool_submit(
-	    pool, linted_window_notifier_task_send_to_asynch(notice_task));
+	    pool, linted_window_notifier_task_send_to_asynch(gui_notice_task));
+
+	linted_window_notifier_task_send_prepare(
+	    drawer_notice_task, ON_SENT_NOTICE, drawer_notifier, window);
+	drawer_notice_data.pool = pool;
+	linted_asynch_pool_submit(
+	    pool,
+	    linted_window_notifier_task_send_to_asynch(drawer_notice_task));
 
 	bool time_to_quit;
 
@@ -437,7 +479,8 @@ destroy_pool:
 	}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
-	(void)notice_task;
+	(void)gui_notice_task;
+	(void)drawer_notice_task;
 	(void)poll_conn_task;
 
 	/* Tell the manager to exit everything */
@@ -530,13 +573,6 @@ static linted_error on_sent_notice(struct linted_asynch_task *task)
 	errnum = linted_asynch_task_errnum(task);
 	if (errnum != 0)
 		return errnum;
-
-	struct linted_window_notifier_task_send *notice_task =
-	    linted_window_notifier_task_send_from_asynch(task);
-	struct notice_data *notice_data =
-	    linted_window_notifier_task_send_data(notice_task);
-
-	linted_asynch_pool_submit(notice_data->pool, task);
 
 	return 0;
 }

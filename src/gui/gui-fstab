@@ -9,6 +9,7 @@ none	../../var/gui	none	mkdir,nomount
 
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 ../../controller	run/controller	none	touch,bind
+../../window-notifier-gui	run/window-notifier	none	touch,bind
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind

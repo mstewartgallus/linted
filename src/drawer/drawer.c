@@ -87,12 +87,10 @@ struct notice_data
 	xcb_window_t *window;
 };
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
@@ -113,9 +111,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_window_notifier notifier = kos[0U];
-
-	struct window_model window_model = { .viewable = false };
+	linted_window_notifier notifier;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
+		                   LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		notifier = xx;
+	}
 
 	linted_ko updater;
 	{
@@ -129,6 +137,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 		updater = xx;
 	}
+
+	struct window_model window_model = { .viewable = false };
 
 	struct linted_asynch_pool *pool;
 	{

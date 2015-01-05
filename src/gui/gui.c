@@ -108,12 +108,10 @@ struct notice_data
 	linted_ko controller;
 };
 
-static linted_ko kos[1U];
-
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-gui",
-	.kos_size = LINTED_ARRAY_SIZE(kos),
-	.kos = kos
+	.kos_size = 0U,
+	.kos = NULL
 };
 
 static linted_error dispatch(struct linted_asynch_task *task);
@@ -139,7 +137,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	linted_window_notifier notifier = kos[0U];
+	linted_window_notifier notifier;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
+		                   LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		notifier = xx;
+	}
 
 	linted_controller controller;
 	{
