@@ -112,10 +112,10 @@ static void wait_manager_destroy(struct wait_manager *manager);
 struct canceller
 {
 	pthread_spinlock_t lock;
-	pthread_t owner;
-	bool *cancel_replier;
 	bool owned : 1U;
 	bool in_flight : 1U;
+	pthread_t owner;
+	bool *cancel_replier;
 };
 
 static void canceller_init(struct canceller *canceller);
@@ -140,10 +140,8 @@ struct linted_asynch_task
 {
 	struct linted_queue_node parent;
 	struct canceller canceller;
-	linted_error errnum;
-
 	void *data;
-
+	linted_error errnum;
 	unsigned type;
 	unsigned task_action;
 };
