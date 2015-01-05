@@ -358,8 +358,9 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char *process_runtime_dir_path;
 	{
 		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "%s/%i", package_runtime_dir_path, parent)) {
+		if (-1 == asprintf(&xx, "%s/%" PRIuMAX,
+		                   package_runtime_dir_path,
+		                   (uintmax_t)parent)) {
 			syslog(LOG_ERR, "asprintf: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -370,8 +371,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char *process_data_dir_path;
 	{
 		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "%s/%i", package_data_dir_path, parent)) {
+		if (-1 == asprintf(&xx, "%s/%" PRIuMAX, package_data_dir_path,
+		                   (uintmax_t)parent)) {
 			syslog(LOG_ERR, "asprintf: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -1225,7 +1226,7 @@ spawn_service:
 	}
 	priority = current_priority + 1;
 
-	char prio_str[] = "XXXXXXXXXXXXXXXXX";
+	char prio_str[LINTED_NUMBER_TYPE_STRING_SIZE(int)+1U];
 	sprintf(prio_str, "%i", priority);
 
 	pid_t ppid = getppid();
@@ -2400,16 +2401,12 @@ static linted_error service_name(pid_t pid,
 
 	memset(name, 0, SERVICE_NAME_MAX + 1U);
 
-	char *path;
-	{
-		char *xx;
-		if (-1 == asprintf(&xx, "/proc/%" PRIuMAX "/environ",
-		                   (uintmax_t)pid)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		path = xx;
+	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/environ" - 1U + 1U];
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ", (uintmax_t)pid)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
 	}
 
 	linted_ko ko;
@@ -2417,7 +2414,6 @@ static linted_error service_name(pid_t pid,
 		linted_ko xx;
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-		linted_mem_free(path);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -2704,17 +2700,14 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 {
 	linted_error errnum;
 
-	char *path;
-	{
-		char *xx;
-		if (-1 == asprintf(&xx, "/proc/%" PRIuMAX "/task/%" PRIuMAX
-		                        "/children",
-		                   (uintmax_t)pid, (uintmax_t)pid)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		path = xx;
+	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/task/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/children" - 1U + 1U];
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX "/children",
+	                  (uintmax_t)pid, (uintmax_t)pid)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
 	}
 
 	linted_ko children;
@@ -2722,7 +2715,6 @@ static linted_error pid_children(pid_t pid, char **childrenp)
 		linted_ko xx;
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-		linted_mem_free(path);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -2865,16 +2857,12 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 {
 	linted_error errnum = 0;
 
-	char *path;
-	{
-		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		path = xx;
+	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/stat" - 1U + 1U];
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
 	}
 
 	linted_ko stat_ko;
@@ -2882,7 +2870,6 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 		linted_ko xx;
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
-		linted_mem_free(path);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)

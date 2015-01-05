@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <limits.h>
 
 /**
  * @file
@@ -31,6 +32,8 @@
 
 #define LINTED_UPCAST(X) (&(X)->parent)
 #define LINTED_DOWNCAST(T, X) ((T *)(((char *)(X)) - offsetof(T, parent)))
+
+#define LINTED_NUMBER_TYPE_STRING_SIZE(T) ((CHAR_BIT * sizeof (T) - 1U) / 3U + 2U)
 
 #ifndef NDEBUG
 

@@ -19,6 +19,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
+#include <limits.h>
 #include <signal.h>
 #include <sys/types.h>
 

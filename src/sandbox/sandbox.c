@@ -595,8 +595,12 @@ exit_loop:
 	char const *listen_fds = getenv("LISTEN_FDS");
 
 	size_t num_fds = NULL == listen_fds ? 0U : atoi(listen_fds);
-	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
-	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
+
+	char listen_fds_str[sizeof "LISTEN_FDS=" - 1U +
+	                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+	char listen_pid_str[sizeof "LISTEN_PID=" - 1U +
+	                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U] =
+	    "LISTEN_PID=";
 
 	sprintf(listen_fds_str, "LISTEN_FDS=%zu", num_fds);
 
@@ -610,8 +614,12 @@ exit_loop:
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
 
-	char uid_map[] = "XXXXXXXXXXXXX XXXXXXXXXXXXX 1\n";
-	char gid_map[] = "XXXXXXXXXXXXX XXXXXXXXXXXXX 1\n";
+	char uid_map[LINTED_NUMBER_TYPE_STRING_SIZE(uid_t) + 1U +
+	             LINTED_NUMBER_TYPE_STRING_SIZE(uid_t) + 1U + sizeof "1\n" -
+	             1U + 1U];
+	char gid_map[LINTED_NUMBER_TYPE_STRING_SIZE(gid_t) + 1U +
+	             LINTED_NUMBER_TYPE_STRING_SIZE(gid_t) + 1U + sizeof "1\n" -
+	             1U + 1U];
 
 	sprintf(uid_map, "%i %i 1\n", mapped_uid, uid);
 	sprintf(gid_map, "%i %i 1\n", mapped_gid, gid);

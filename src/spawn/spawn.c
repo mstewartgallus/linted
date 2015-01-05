@@ -227,8 +227,11 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	for (char const *const *env = envp; *env != NULL; ++env)
 		++env_size;
 
-	char listen_pid[] = "LISTEN_PID=" INT_STRING_PADDING;
-	char listen_fds[] = "LISTEN_FDS=" INT_STRING_PADDING;
+	char listen_fds[sizeof "LISTEN_FDS=" - 1U +
+	                LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+	char listen_pid[sizeof "LISTEN_PID=" - 1U +
+	                LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U] =
+	    "LISTEN_PID=";
 
 	if (file_actions != NULL && file_actions->action_count > 0U) {
 		{
@@ -257,7 +260,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 				envp_copy[ii] = listen_fds;
 		}
 
-		sprintf(listen_fds + strlen("LISTEN_FDS="), "%zu",
+		sprintf(listen_fds, "LISTEN_FDS=%zu",
 		        file_actions->action_count - 3U);
 
 		envp = envp_copy;

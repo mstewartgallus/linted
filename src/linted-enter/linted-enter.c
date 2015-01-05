@@ -57,8 +57,11 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 
 	linted_ko ns;
 	{
-		char namespace_path[] = "/proc/XXXXXXXXXXXX/ns";
-		sprintf(namespace_path, "/proc/%i/ns", pid);
+		char namespace_path[sizeof "/proc/" - 1U +
+		                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+		                    sizeof "/ns" - 1U + 1U];
+		sprintf(namespace_path, "/proc/%" PRIuMAX "/ns",
+		        (uintmax_t)pid);
 
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, namespace_path,
