@@ -1157,7 +1157,7 @@ static linted_error service_activate(char const *process_name,
 		child = xx;
 	}
 
-	fprintf(stderr, "%s: %s: starting to ptrace\n", process_name, name);
+	fprintf(stderr, "%s: ptracing %i %s\n", process_name, child, name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1917,7 +1917,8 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 		if (errnum != 0)
 			return errnum;
 
-		fprintf(stderr, "%s: %s: starting to ptrace\n", process_name,
+		fprintf(stderr, "%s: ptracing %i %s\n", process_name,
+			pid,
 		        name);
 
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
