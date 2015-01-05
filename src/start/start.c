@@ -30,6 +30,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <link.h>
 #include <signal.h>
@@ -126,8 +127,8 @@ int main(int argc, char *argv[])
 			pid_t pid = atoi(listen_pid_string);
 			if (getpid() != pid) {
 				syslog(LOG_ERR, "\
-LISTEN_PID %i != getpid() %i",
-				       pid, getpid());
+LISTEN_PID %" PRIuMAX " != getpid() %" PRIuMAX,
+				       (uintmax_t)pid, (uintmax_t)getpid());
 				return EINVAL;
 			}
 
@@ -146,7 +147,7 @@ LISTEN_PID %i != getpid() %i",
 			}
 
 			if ((uintmax_t)fds_count != kos_size) {
-				syslog(LOG_ERR, "LISTEN_FDS %i != %lu",
+				syslog(LOG_ERR, "LISTEN_FDS %u != %zu",
 				       fds_count, kos_size);
 				return EINVAL;
 			}

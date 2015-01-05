@@ -40,6 +40,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <limits.h>
 #include <locale.h>
@@ -1249,7 +1250,8 @@ spawn_service:
 	char *root_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "MANAGERPID=%i", ppid))
+		if (-1 ==
+		    asprintf(&xx, "MANAGERPID=%" PRIuMAX "", (uintmax_t)ppid))
 			goto manager_asprintf_failed;
 		root_setting = xx;
 		goto manager_asprintf_succeeded;
@@ -1917,9 +1919,8 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 		if (errnum != 0)
 			return errnum;
 
-		fprintf(stderr, "%s: ptracing %i %s\n", process_name,
-			pid,
-		        name);
+		fprintf(stderr, "%s: ptracing %" PRIuMAX " %s\n", process_name,
+		        (uintmax_t)pid, name);
 
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
@@ -2399,19 +2400,30 @@ static linted_error service_name(pid_t pid,
 
 	memset(name, 0, SERVICE_NAME_MAX + 1U);
 
+	char *path;
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "/proc/%" PRIuMAX "/environ",
+		                   (uintmax_t)pid)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		path = xx;
+	}
+
 	linted_ko ko;
 	{
 		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/environ";
-		sprintf(path, "/proc/%i/environ", pid);
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		linted_mem_free(path);
+		if (ENOENT == errnum)
+			return ESRCH;
+		if (errnum != 0)
+			return errnum;
 		ko = xx;
 	}
-	if (ENOENT == errnum)
-		return ESRCH;
-	if (errnum != 0)
-		return errnum;
 
 	FILE *file = fdopen(ko, "r");
 	if (NULL == file) {
@@ -2691,14 +2703,26 @@ static linted_error long_from_cstring(char const *str, long *longp)
 static linted_error pid_children(pid_t pid, char **childrenp)
 {
 	linted_error errnum;
-	linted_ko children;
 
+	char *path;
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "/proc/%" PRIuMAX "/task/%" PRIuMAX
+		                        "/children",
+		                   (uintmax_t)pid, (uintmax_t)pid)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		path = xx;
+	}
+
+	linted_ko children;
 	{
 		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/task/XXXXXXXXXXXXXXXXX";
-		sprintf(path, "/proc/%i/task/%i/children", pid, pid);
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		linted_mem_free(path);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -2841,13 +2865,26 @@ static linted_error pid_stat(pid_t pid, struct pidstat *buf)
 {
 	linted_error errnum = 0;
 
+	char *path;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		path = xx;
+	}
+
 	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		char path[] = "/proc/XXXXXXXXXXXXXXXX/stat";
-		sprintf(path, "/proc/%i/stat", pid);
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		linted_mem_free(path);
+		if (ENOENT == errnum)
+			return ESRCH;
 		if (errnum != 0)
 			return errnum;
 		stat_ko = xx;

@@ -29,6 +29,7 @@ source_files() {
     --pointer-check\
     --unwind 100 --depth 100\
     -DNDEBUG\
+    --function linted_start\
     $(source_cflags)\
     $(source_files)\
     $@

@@ -182,8 +182,6 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
                                      unsigned long *mountflagsp,
                                      char const **leftoversp);
-static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
-                                   char const *filename, char const *type);
 
 static linted_error set_id_maps(char const *uid_map, char const *gid_map);
 static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
@@ -360,6 +358,19 @@ exit_loop:
 		return EXIT_FAILURE;
 	}
 
+	linted_ko cwd;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
+		                        LINTED_KO_DIRECTORY);
+		if (errnum != 0) {
+			syslog(LOG_ERR, "linted_ko_open: %s",
+			       linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		cwd = xx;
+	}
+
 	if (traceme) {
 		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
 		                 (void *)NULL)) {
@@ -377,19 +388,6 @@ exit_loop:
 	}
 
 	char const **command = (char const **)argv + 1U + command_start;
-
-	linted_ko cwd;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		cwd = xx;
-	}
 
 	char *command_dup = strdup(command[0U]);
 	if (NULL == command_dup) {
@@ -412,16 +410,11 @@ exit_loop:
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = NULL;
 	if (fstab != NULL) {
-		FILE *fstab_file;
-		{
-			FILE *xx;
-			errnum = my_setmntentat(&xx, cwd, fstab, "re");
-			if (errnum != 0) {
-				syslog(LOG_ERR, "setmntent: %s",
-				       linted_error_string(errnum));
-				return EXIT_FAILURE;
-			}
-			fstab_file = xx;
+		FILE *fstab_file = setmntent(fstab, "re");
+		if (NULL == fstab_file) {
+			syslog(LOG_ERR, "setmntent: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
 		}
 
 		for (;;) {
@@ -605,7 +598,7 @@ exit_loop:
 	char listen_fds_str[] = "LISTEN_FDS=XXXXXXXXXXXXXXXXXX";
 	char listen_pid_str[] = "LISTEN_PID=XXXXXXXXXXXXXXXXXX";
 
-	sprintf(listen_fds_str, "LISTEN_FDS=%lu", num_fds);
+	sprintf(listen_fds_str, "LISTEN_FDS=%zu", num_fds);
 
 	env_copy[0U] = listen_fds_str;
 	env_copy[1U] = listen_pid_str;
@@ -1261,46 +1254,6 @@ free_subopts_str:
 	*touch_flagp = touch_flag;
 	*nomount_flagp = nomount_flag;
 	*mountflagsp = mountflags;
-	return 0;
-}
-
-static linted_error my_setmntentat(FILE **filep, linted_ko cwd,
-                                   char const *filename, char const *type)
-{
-	linted_error errnum;
-
-	char const *abspath;
-	if (filename[0U] != '/') {
-		{
-			char *xx;
-			if (-1 ==
-			    asprintf(&xx, "/proc/self/fd/%i/%s", cwd, filename))
-				goto asprintf_failed;
-			abspath = xx;
-			goto asprintf_succeeded;
-		}
-	asprintf_failed:
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	asprintf_succeeded:
-		;
-	} else {
-		abspath = filename;
-	}
-
-	FILE *file = setmntent(abspath, type);
-	errnum = errno;
-
-	if (abspath != filename)
-		linted_mem_free((char *)abspath);
-
-	if (NULL == file) {
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	*filep = file;
 	return 0;
 }
 

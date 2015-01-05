@@ -28,8 +28,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <locale.h>
+#include <inttypes.h>
 #include <libgen.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,7 +156,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 
 	linted_error errnum;
 
-	fprintf(stdout, "LINTED_PID=%i\n", getpid());
+	fprintf(stdout, "LINTED_PID=%" PRIuMAX "\n", (uintmax_t)getpid());
 
 	errnum = exec_init(init);
 	if (errnum != 0) {
