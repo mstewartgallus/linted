@@ -16,7 +16,6 @@
 #ifndef LINTED_SIGNAL_H
 #define LINTED_SIGNAL_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 
 #if _POSIX_C_SOURCE >= 199309L
@@ -28,6 +27,9 @@
  *
  * Signal handling.
  */
+
+struct linted_asynch_pool;
+struct linted_asynch_task;
 
 struct linted_signal_task_sigwaitinfo;
 

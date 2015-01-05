@@ -19,6 +19,7 @@
 
 #include "linted/signal.h"
 
+#include "linted/asynch.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 

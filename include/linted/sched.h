@@ -16,7 +16,6 @@
 #ifndef LINTED_SCHED_H
 #define LINTED_SCHED_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 
 #include <sys/types.h>
@@ -26,6 +25,9 @@
  *
  * Task scheduling.
  */
+
+struct linted_asynch_pool;
+struct linted_asynch_task;
 
 struct linted_sched_task_idle;
 struct linted_sched_task_sleep_until;

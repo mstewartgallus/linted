@@ -17,11 +17,12 @@
 
 #include "config.h"
 
-#include "linted/ko.h"
 #include "linted/io.h"
 
-#include "linted/mem.h"
+#include "linted/asynch.h"
 #include "linted/error.h"
+#include "linted/ko.h"
+#include "linted/mem.h"
 #include "linted/util.h"
 
 #include <assert.h>

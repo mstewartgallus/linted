@@ -16,7 +16,6 @@
 #ifndef LINTED_PID_H
 #define LINTED_PID_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 
 #if _POSIX_C_SOURCE >= 200809L
@@ -28,6 +27,9 @@
  *
  * System processes.
  */
+
+struct linted_asynch_pool;
+struct linted_asynch_task;
 
 struct linted_pid_task_waitid;
 

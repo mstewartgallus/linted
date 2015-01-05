@@ -17,7 +17,7 @@
 #define LINTED_WINDOW_NOTIFIER_H
 
 #include "linted/error.h"
-#include "linted/mq.h"
+#include "linted/ko.h"
 
 #include <stdint.h>
 
@@ -27,7 +27,9 @@
  * Communicates user input to another process.
  */
 
-typedef linted_mq linted_window_notifier;
+struct linted_asynch_task;
+
+typedef linted_ko linted_window_notifier;
 
 struct linted_window_notifier_task_send;
 struct linted_window_notifier_task_receive;

@@ -16,7 +16,6 @@
 #ifndef LINTED_ADMIN_H
 #define LINTED_ADMIN_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/unit.h"
@@ -30,6 +29,9 @@
  */
 
 #define LINTED_ADMIN_PATH_MAX (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
+
+struct linted_asynch_pool;
+struct linted_asynch_task;
 
 typedef linted_ko linted_admin;
 

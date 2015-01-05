@@ -16,13 +16,15 @@
 #ifndef LINTED_IO_H
 #define LINTED_IO_H
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/str.h"
 #include "linted/util.h"
 
 #include <stddef.h>
+
+struct linted_asynch_pool;
+struct linted_asynch_task;
 
 struct linted_io_task_poll;
 struct linted_io_task_read;
