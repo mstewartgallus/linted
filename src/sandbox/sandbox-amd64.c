@@ -56,6 +56,7 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(munmap),
 	/**/ ALLOW(open),
 	/**/ ALLOW(openat),
+	/**/ ALLOW(pause),
 	/**/ ALLOW(poll),
 	/**/ ALLOW(read),
 	/**/ ALLOW(recvfrom),
