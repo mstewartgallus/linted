@@ -58,24 +58,15 @@ int main(int argc, char *argv[])
 {
 	linted_error errnum = 0;
 
-	size_t kos_size = linted_start_config.kos_size;
-	linted_ko *kos = linted_start_config.kos;
-
 	for (;;) {
 		int fd = open("/dev/null", 0);
 		if (-1 == fd)
 			return EINVAL;
 
-		if ((size_t)fd > 3U + kos_size) {
+		if ((size_t)fd > 3U) {
 			linted_ko_close(fd);
 			break;
 		}
-	}
-
-	for (size_t ii = 0U; ii < kos_size; ++ii) {
-		linted_ko ko = 3U + ii;
-
-		kos[ii] = ko;
 	}
 
 	char const *process_name;
@@ -99,60 +90,6 @@ int main(int argc, char *argv[])
 		syslog(LOG_ERR, "%s should not be run with high privileges",
 		       PACKAGE_NAME);
 		return EPERM;
-	}
-
-	if (kos_size > 0U) {
-		char *listen_pid_string = getenv("LISTEN_PID");
-		char *listen_fds_string = getenv("LISTEN_FDS");
-
-		switch ((listen_pid_string != NULL) << 1U |
-		        (listen_fds_string != NULL)) {
-		case false << 1U | false:
-			/* This protocol is not being used */
-			break;
-
-		case true << 1U | false:
-			syslog(LOG_ERR,
-			       "if %s is provided %s should be as well",
-			       "LISTEN_PID", "LISTEN_FDS");
-			return EXIT_FAILURE;
-
-		case false << 1U | true:
-			syslog(LOG_ERR,
-			       "if %s is provided %s should be as well",
-			       "LISTEN_FDS", "LISTEN_PID");
-			return EXIT_FAILURE;
-
-		case true << 1U | true: {
-			pid_t pid = atoi(listen_pid_string);
-			if (getpid() != pid) {
-				syslog(LOG_ERR, "\
-LISTEN_PID %" PRIuMAX " != getpid() %" PRIuMAX,
-				       (uintmax_t)pid, (uintmax_t)getpid());
-				return EINVAL;
-			}
-
-			linted_ko fds_count;
-			{
-				linted_ko xx;
-				errnum = linted_ko_from_cstring(
-				    listen_fds_string, &xx);
-				if (errnum != 0) {
-					syslog(LOG_ERR,
-					       "linted_ko_from_cstring: %s",
-					       linted_error_string(errnum));
-					return errnum;
-				}
-				fds_count = xx;
-			}
-
-			if ((uintmax_t)fds_count != kos_size) {
-				syslog(LOG_ERR, "LISTEN_FDS %u != %zu",
-				       fds_count, kos_size);
-				return EINVAL;
-			}
-		}
-		}
 	}
 
 	{

@@ -253,9 +253,7 @@ static linted_error conn_insert(struct conn_pool *pool, struct conn **connp,
 static void conn_discard(struct conn *conn);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-monitor",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-monitor"
 };
 
 unsigned char linted_start(char const *process_name, size_t argc,

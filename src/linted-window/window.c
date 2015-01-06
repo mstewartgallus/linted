@@ -56,9 +56,7 @@ struct notice_data
 };
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-window",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-window"
 };
 
 static uint32_t const window_opts[] = { 0 };

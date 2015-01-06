@@ -54,9 +54,7 @@ extern char **environ;
 static char const *const argstrs[] = {[HELP] = "--help",
 	                              [VERSION_OPTION] = "--version" };
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-linted",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-linted"
 };
 
 static struct envvar const default_envvars[] = {

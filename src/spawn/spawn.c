@@ -73,7 +73,6 @@ struct fork_args
 	linted_ko err_writer;
 	char const *const *argv;
 	char const *const *envp;
-	char *listen_pid;
 	char const *filename;
 };
 
@@ -82,14 +81,13 @@ static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
         linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-        char const *const *envp, char *listen_pid, char const *filename);
+        char const *const *envp, char const *filename);
 
 static linted_error default_signals(void);
 
 static void pid_to_str(char *buf, pid_t pid);
 
 __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
-static pid_t real_getpid(void);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -222,50 +220,6 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		relative_filename = xx;
 	}
 
-	char const **envp_copy = NULL;
-	size_t env_size = 0U;
-	for (char const *const *env = envp; *env != NULL; ++env)
-		++env_size;
-
-	char listen_fds[sizeof "LISTEN_FDS=" - 1U +
-	                LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
-	char listen_pid[sizeof "LISTEN_PID=" - 1U +
-	                LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U] =
-	    "LISTEN_PID=";
-
-	if (file_actions != NULL && file_actions->action_count > 0U) {
-		{
-			void *xx;
-			errnum = linted_mem_alloc_array(&xx, env_size + 3U,
-			                                sizeof envp[0U]);
-			if (errnum != 0)
-				goto free_relative_path;
-			envp_copy = xx;
-		}
-
-		for (size_t ii = 0U; ii < env_size; ++ii)
-			envp_copy[ii] = envp[ii];
-
-		envp_copy[env_size] = listen_pid;
-		envp_copy[env_size + 1U] = listen_fds;
-		envp_copy[env_size + 2U] = NULL;
-
-		for (size_t ii = 0U; ii < env_size; ++ii) {
-			if (0 == strncmp(envp_copy[ii], "LISTEN_PID=",
-			                 strlen("LISTEN_PID=")))
-				envp_copy[ii] = listen_fds;
-
-			if (0 == strncmp(envp_copy[ii], "LISTEN_FDS=",
-			                 strlen("LISTEN_FDS=")))
-				envp_copy[ii] = listen_fds;
-		}
-
-		sprintf(listen_fds, "LISTEN_FDS=%zu",
-		        file_actions->action_count - 3U);
-
-		envp = envp_copy;
-	}
-
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -273,7 +227,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto free_env;
+			goto free_relative_path;
 		}
 		err_reader = xx[0U];
 		err_writer = xx[1U];
@@ -351,7 +305,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 
 	struct fork_args fork_args = { child_mask, file_actions, err_reader,
 		                       err_writer, argv,         envp,
-		                       listen_pid, filename };
+		                       filename };
 	pid_t child = safe_vfork(fork_routine, &fork_args);
 	if (-1 == child) {
 		errnum = errno;
@@ -399,9 +353,6 @@ close_err_reader : {
 		errnum = close_errnum;
 }
 
-free_env:
-	linted_mem_free(envp_copy);
-
 free_relative_path:
 	linted_mem_free(relative_filename);
 
@@ -424,11 +375,10 @@ static int fork_routine(void *arg)
 	linted_ko err_writer = args->err_writer;
 	char const *const *argv = args->argv;
 	char const *const *envp = args->envp;
-	char *listen_pid = args->listen_pid;
 	char const *filename = args->filename;
 
 	linted_error xx = do_fork(sigset, file_actions, err_reader, err_writer,
-	                          argv, envp, listen_pid, filename);
+	                          argv, envp, filename);
 	linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
 	return EXIT_FAILURE;
 }
@@ -437,7 +387,7 @@ static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
         linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-        char const *const *envp, char *listen_pid, char const *filename)
+        char const *const *envp, char const *filename)
 {
 	linted_error errnum = 0;
 
@@ -479,10 +429,6 @@ do_fork(sigset_t const *sigset,
 			}
 		}
 	}
-
-	/* This is the ONE write to memory done. */
-	if (file_actions != NULL && file_actions->action_count > 0U)
-		pid_to_str(listen_pid + strlen("LISTEN_PID="), real_getpid());
 
 	execve(filename, (char * const *)argv, (char * const *)envp);
 	return errno;
@@ -562,9 +508,4 @@ __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
 		_Exit(f_copy(arg_copy));
 
 	return child;
-}
-
-static pid_t real_getpid(void)
-{
-	return syscall(__NR_getpid);
 }

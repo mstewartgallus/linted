@@ -103,9 +103,7 @@ struct updater_data
 };
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-simulator",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-simulator"
 };
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);

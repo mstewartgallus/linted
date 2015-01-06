@@ -45,9 +45,7 @@ static void sigchld_handler(int signo);
 static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-waiter",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-waiter"
 };
 
 unsigned char linted_start(char const *process_name, size_t argc,

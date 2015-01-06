@@ -39,9 +39,7 @@
 extern char **environ;
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-init",
-	.kos_size = 0U,
-	.kos = NULL
+	.canonical_process_name = PACKAGE_NAME "-init"
 };
 
 static volatile sig_atomic_t monitor_pid = 0;

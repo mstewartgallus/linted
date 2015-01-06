@@ -131,22 +131,16 @@ struct first_fork_args
 	struct mount_args *mount_args;
 	size_t mount_args_size;
 	bool no_new_privs;
-	char *listen_pid_str;
-	char *listen_fds_str;
 	char const *waiter;
 	char const *waiter_base;
-	char const *const *env_copy;
 	char const *const *command;
 	char const *binary;
-	size_t num_fds;
 };
 
 struct second_fork_args
 {
 	linted_ko err_writer;
-	char *listen_pid_str;
 	char const *const *argv;
-	char const *const *env;
 	char const *binary;
 	bool no_new_privs;
 };
@@ -156,15 +150,13 @@ static linted_error
 do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
               unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
               char const *chdir_path, cap_t caps, struct mount_args *mount_args,
-              size_t mount_args_size, bool no_new_privs, char *listen_pid_str,
-              char *listen_fds_str, char const *waiter, char const *waiter_base,
-              char const *const *env_copy, char const *const *command,
-              char const *binary, size_t num_fds);
+              size_t mount_args_size, bool no_new_privs, char const *waiter,
+              char const *waiter_base, char const *const *command,
+              char const *binary);
 
 static int second_fork_routine(void *arg);
-static linted_error do_second_fork(char *listen_pid_str, char const *binary,
-                                   char const *const *argv,
-                                   char const *const *env, bool no_new_privs);
+static linted_error do_second_fork(char const *binary, char const *const *argv,
+                                   bool no_new_privs);
 
 /* Clang fucks up generating code for this for some reason when using
  * an inline function and address sanitizer. It might also just be
@@ -188,15 +180,12 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
                                    struct mount_args const *mount_args,
                                    size_t size);
 
-static void pid_to_str(char *buf, pid_t pid);
-
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
-static pid_t real_getpid(void);
 static int my_setgroups(size_t size, gid_t const *list);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
@@ -571,43 +560,6 @@ exit_loop:
 		}
 	}
 
-	char **env_copy = NULL;
-	size_t env_size = 0U;
-	for (char const *const *env = (char const * const *)environ;
-	     *env != NULL; ++env)
-		++env_size;
-
-	{
-		void *xx;
-		errnum = linted_mem_alloc_array(&xx, env_size + 3U,
-		                                sizeof env_copy[0U]);
-		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_mem_alloc_array: %s",
-			       linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		env_copy = xx;
-	}
-
-	for (size_t ii = 0U; ii < env_size; ++ii)
-		env_copy[2U + ii] = environ[ii];
-
-	char const *listen_fds = getenv("LISTEN_FDS");
-
-	size_t num_fds = NULL == listen_fds ? 0U : atoi(listen_fds);
-
-	char listen_fds_str[sizeof "LISTEN_FDS=" - 1U +
-	                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
-	char listen_pid_str[sizeof "LISTEN_PID=" - 1U +
-	                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U] =
-	    "LISTEN_PID=";
-
-	sprintf(listen_fds_str, "LISTEN_FDS=%zu", num_fds);
-
-	env_copy[0U] = listen_fds_str;
-	env_copy[1U] = listen_pid_str;
-	env_copy[env_size + 2U] = NULL;
-
 	gid_t gid = getgid();
 	uid_t uid = getuid();
 
@@ -649,15 +601,10 @@ exit_loop:
 		                        .mount_args = mount_args,
 		                        .mount_args_size = mount_args_size,
 		                        .no_new_privs = no_new_privs,
-		                        .listen_pid_str = listen_pid_str,
-		                        .listen_fds_str = listen_fds_str,
 		                        .waiter_base = waiter_base,
 		                        .waiter = waiter,
-		                        .env_copy =
-		                            (char const * const *)env_copy,
 		                        .command = command,
-		                        .binary = binary,
-		                        .num_fds = num_fds };
+		                        .binary = binary };
 
 	pid_t child;
 	if (0 == clone_flags) {
@@ -735,20 +682,15 @@ static int first_fork_routine(void *arg)
 	struct mount_args *mount_args = args->mount_args;
 	size_t mount_args_size = args->mount_args_size;
 	bool no_new_privs = args->no_new_privs;
-	char *listen_pid_str = args->listen_pid_str;
-	char *listen_fds_str = args->listen_fds_str;
 	char const *waiter = args->waiter;
 	char const *waiter_base = args->waiter_base;
-	char const *const *env_copy = args->env_copy;
 	char const *const *command = args->command;
 	char const *binary = args->binary;
-	size_t num_fds = args->num_fds;
 
 	linted_error errnum = do_first_fork(
 	    err_reader, uid_map, gid_map, clone_flags, cwd, chrootdir,
-	    chdir_path, caps, mount_args, mount_args_size, no_new_privs,
-	    listen_pid_str, listen_fds_str, waiter, waiter_base, env_copy,
-	    command, binary, num_fds);
+	    chdir_path, caps, mount_args, mount_args_size, no_new_privs, waiter,
+	    waiter_base, command, binary);
 	exit_with_error(err_writer, errnum);
 	/* Never reached */
 	return 0;
@@ -758,10 +700,9 @@ static linted_error
 do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
               unsigned long clone_flags, linted_ko cwd, char const *chrootdir,
               char const *chdir_path, cap_t caps, struct mount_args *mount_args,
-              size_t mount_args_size, bool no_new_privs, char *listen_pid_str,
-              char *listen_fds_str, char const *waiter, char const *waiter_base,
-              char const *const *env_copy, char const *const *command,
-              char const *binary, size_t num_fds)
+              size_t mount_args_size, bool no_new_privs, char const *waiter,
+              char const *waiter_base, char const *const *command,
+              char const *binary)
 {
 	linted_error errnum = 0;
 
@@ -857,10 +798,8 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 	}
 
 	struct second_fork_args args = { .err_writer = vfork_err_writer,
-		                         .listen_pid_str = listen_pid_str,
 		                         .binary = binary,
 		                         .argv = command,
-		                         .env = env_copy,
 		                         .no_new_privs = no_new_privs };
 	pid_t grand_child = safe_vfork(second_fork_routine, &args);
 	if (-1 == grand_child)
@@ -886,11 +825,8 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 
 	linted_ko_close(cwd);
 
-	for (size_t ii = 0U; ii < num_fds; ++ii)
-		linted_ko_close(3 + ii);
-
 	char const *arguments[] = { waiter_base, NULL };
-	execve(waiter, (char * const *)arguments, (char * const *)env_copy);
+	execve(waiter, (char * const *)arguments, environ);
 	return errno;
 }
 
@@ -899,24 +835,18 @@ static int second_fork_routine(void *arg)
 	struct second_fork_args const *args = arg;
 
 	linted_ko err_writer = args->err_writer;
-	char *listen_pid_str = args->listen_pid_str;
 	char const *binary = args->binary;
 	char const *const *argv = args->argv;
-	char const *const *env = args->env;
 	bool no_new_privs = args->no_new_privs;
 
-	linted_error errnum =
-	    do_second_fork(listen_pid_str, binary, argv, env, no_new_privs);
+	linted_error errnum = do_second_fork(binary, argv, no_new_privs);
 	exit_with_error(err_writer, errnum);
 	return 0;
 }
 
-static linted_error do_second_fork(char *listen_pid_str, char const *binary,
-                                   char const *const *argv,
-                                   char const *const *env, bool no_new_privs)
+static linted_error do_second_fork(char const *binary, char const *const *argv,
+                                   bool no_new_privs)
 {
-	pid_to_str(listen_pid_str + strlen("LISTEN_PID="), real_getpid());
-
 	if (-1 == setsid())
 		return errno;
 
@@ -927,7 +857,7 @@ static linted_error do_second_fork(char *listen_pid_str, char const *binary,
 			return errnum;
 	}
 
-	execve(binary, (char * const *)argv, (char * const *)env);
+	execve(binary, (char * const *)argv, environ);
 	return errno;
 }
 
@@ -1273,29 +1203,6 @@ free_subopts_str:
 	return 0;
 }
 
-static void pid_to_str(char *buf, pid_t pid)
-{
-	size_t strsize = 0U;
-
-	assert(pid > 0);
-
-	for (;;) {
-		memmove(buf + 1U, buf, strsize);
-
-		pid_t digit = pid % 10;
-
-		*buf = '0' + digit;
-
-		pid /= 10;
-		++strsize;
-
-		if (0 == pid)
-			break;
-	}
-
-	buf[strsize] = '\0';
-}
-
 static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
@@ -1403,11 +1310,6 @@ on_err:
 	munmap(child_stack, stack_and_guard_size);
 	errno = errnum;
 	return -1;
-}
-
-static pid_t real_getpid(void)
-{
-	return syscall(__NR_getpid);
 }
 
 /* Avoid setXid synchronization after vfork */
