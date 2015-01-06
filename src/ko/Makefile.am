@@ -22,6 +22,3 @@ EXTRA_%C%_libko_la_SOURCES=\
   %D%/ko-windows.c\
   include/linted/ko-linux.h\
   include/linted/ko-windows.h
-
-%C%_libko_la_LIBADD=\
-  src/mem/libmem.la

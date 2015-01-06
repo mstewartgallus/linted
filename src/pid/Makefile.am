@@ -19,7 +19,6 @@ noinst_LTLIBRARIES+=%D%/libpid.la
 %C%_libpid_la_SOURCES=%D%/pid.c include/linted/pid.h
 %C%_libpid_la_LIBADD=\
   src/ko/libko.la\
-  src/mem/libmem.la\
-  src/mq/libmq.la\
+  src/io/libio.la\
   src/queue/libqueue.la\
   -lrt

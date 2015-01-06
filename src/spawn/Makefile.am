@@ -19,5 +19,4 @@ noinst_LTLIBRARIES+=%D%/libspawn.la
 %C%_libspawn_la_SOURCES=%D%/spawn.c include/linted/spawn.h
 %C%_libspawn_la_LIBADD=\
   src/file/libfile.la\
-  src/ko/libko.la\
-  src/mem/libmem.la
+  src/ko/libko.la

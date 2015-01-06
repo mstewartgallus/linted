@@ -19,7 +19,5 @@ noinst_LTLIBRARIES+=%D%/libsched.la
 %C%_libsched_la_SOURCES=%D%/sched.c include/linted/sched.h
 %C%_libsched_la_LIBADD=\
   src/ko/libko.la\
-  src/mem/libmem.la\
-  src/mq/libmq.la\
   src/queue/libqueue.la\
   -lrt

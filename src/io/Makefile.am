@@ -21,6 +21,5 @@ EXTRA_%C%_libio_la_SOURCES=\
   %D%/io-linux.c\
   %D%/io-windows.c
 %C%_libio_la_LIBADD=\
-  src/ko/libko.la\
-  src/mem/libmem.la
+  src/ko/libko.la
 # Circular depedence with libasynch

@@ -11,26 +11,26 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/updater/units\
 :${SRCDIR}/src/window-notifier/units\
-:${SRCDIR}/src/simulator/units\
-:${SRCDIR}/src/window/units\
-:${SRCDIR}/src/gui/units\
-:${SRCDIR}/src/drawer/units"}
+:${SRCDIR}/src/linted-simulator/units\
+:${SRCDIR}/src/linted-window/units\
+:${SRCDIR}/src/linted-gui/units\
+:${SRCDIR}/src/linted-drawer/units"}
 
-: ${LINTED_INIT:="${ROOT}/../src/init/init"}
-: ${LINTED_MONITOR:="${ROOT}/../src/monitor/monitor"}
-: ${LINTED_SANDBOX:="${ROOT}/../src/sandbox/sandbox"}
-: ${LINTED_WAITER:="${ROOT}/../src/waiter/waiter"}
+: ${LINTED_INIT:="${ROOT}/../src/linted-init/linted-init"}
+: ${LINTED_MONITOR:="${ROOT}/../src/linted-monitor/linted-monitor"}
+: ${LINTED_SANDBOX:="${ROOT}/../src/linted-sandbox/linted-sandbox"}
+: ${LINTED_WAITER:="${ROOT}/../src/linted-waiter/linted-waiter"}
 
-: ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/simulator/simulator-fstab"}
-: ${LINTED_SIMULATOR:="${ROOT}/../src/simulator/simulator"}
+: ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/linted-simulator/simulator-fstab"}
+: ${LINTED_SIMULATOR:="${ROOT}/../src/linted-simulator/linted-simulator"}
 
-: ${LINTED_GUI_FSTAB:="${SRCDIR}/src/gui/gui-fstab"}
-: ${LINTED_GUI:="${ROOT}/../src/gui/gui"}
+: ${LINTED_GUI_FSTAB:="${SRCDIR}/src/linted-gui/gui-fstab"}
+: ${LINTED_GUI:="${ROOT}/../src/linted-gui/linted-gui"}
 
-: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/drawer/drawer-fstab"}
-: ${LINTED_DRAWER:="${ROOT}/../src/drawer/drawer"}
+: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/linted-drawer/drawer-fstab"}
+: ${LINTED_DRAWER:="${ROOT}/../src/linted-drawer/linted-drawer"}
 
-: ${LINTED_WINDOW:="${ROOT}/../src/window/window"}
+: ${LINTED_WINDOW:="${ROOT}/../src/linted-window/linted-window"}
 
 export LINTED_UNIT_PATH
 export LINTED_INIT

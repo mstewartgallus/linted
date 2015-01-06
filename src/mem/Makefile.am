@@ -14,9 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/libmem.la
-
-%C%_libmem_la_SOURCES=%D%/mem.c include/linted/mem.h
+EXTRA_DIST+=include/linted/mem.h
 TESTS+=%D%/test_mem
 
 check_PROGRAMS+=%D%/test_mem
@@ -24,5 +22,4 @@ check_PROGRAMS+=%D%/test_mem
 %C%_test_mem_SOURCES=%D%/test_mem.c
 %C%_test_mem_LDADD=\
  src/asynch/libasynch.la\
- src/io/libio.la\
- %D%/libmem.la
+ src/io/libio.la

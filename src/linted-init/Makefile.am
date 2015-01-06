@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/sandbox
+pkglibexec_PROGRAMS+=%D%/linted-init
 
-%C%_sandbox_SOURCES=%D%/sandbox.c
-EXTRA_%C%_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
-%C%_sandbox_LDADD=\
+%C%_linted_init_SOURCES=%D%/init.c
+%C%_linted_init_LDADD=\
+  src/start/libstart.la\
+  \
   src/asynch/libasynch.la\
-  src/dir/libdir.la\
   src/error/liberror.la\
-  src/file/libfile.la\
   src/io/libio.la\
-  src/ko/libko.la\
-  src/mem/libmem.la\
-  -lcap
+  src/spawn/libspawn.la

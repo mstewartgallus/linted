@@ -17,4 +17,3 @@
 
 noinst_LTLIBRARIES+=%D%/libpool.la
 %C%_libpool_la_SOURCES=%D%/pool.c include/linted/pool.h
-%C%_libpool_la_LIBADD=src/mem/libmem.la

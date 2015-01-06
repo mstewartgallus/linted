@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/monitor
+pkglibexec_PROGRAMS+=%D%/linted-monitor
 
-%C%_monitor_SOURCES=%D%/monitor.c
-%C%_monitor_LDADD=\
+%C%_linted_monitor_SOURCES=%D%/monitor.c
+%C%_linted_monitor_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
@@ -27,7 +27,6 @@ pkglibexec_PROGRAMS+=%D%/monitor
   src/file/libfile.la\
   src/fifo/libfifo.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
   src/pool/libpool.la\
   src/spawn/libspawn.la\
   src/unit/libunit.la\

@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2014 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/simulator
+pkglibexec_PROGRAMS+=%D%/linted-waiter
 
-%C%_simulator_SOURCES=%D%/simulator.c
-%C%_simulator_LDADD=\
-  src/start/libstart.la\
-  \
-  src/asynch/libasynch.la\
+%C%_linted_waiter_SOURCES=%D%/waiter.c
+%C%_linted_waiter_LDADD=\
   src/error/liberror.la\
   src/ko/libko.la\
-  \
-  src/controller/libcontroller.la\
-  src/mem/libmem.la\
-  src/updater/libupdater.la
-
-dist_pkgdefaultconf_DATA+=%D%/simulator-fstab
-dist_pkgdefaultunits_DATA+=%D%/units/simulator.service
+  src/start/libstart.la

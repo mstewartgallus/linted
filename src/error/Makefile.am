@@ -20,7 +20,6 @@ noinst_LTLIBRARIES+=%D%/liberror.la
 EXTRA_%C%_liberror_la_SOURCES=\
   include/linted/error-linux.h\
   include/linted/error-windows.h
-%C%_liberror_la_LIBADD=src/mem/libmem.la
 
 TESTS+=%D%/test_unknown_error
 

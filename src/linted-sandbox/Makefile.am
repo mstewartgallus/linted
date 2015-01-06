@@ -14,11 +14,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/waiter
+pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
-%C%_waiter_SOURCES=%D%/waiter.c
-%C%_waiter_LDADD=\
+%C%_linted_sandbox_SOURCES=%D%/sandbox.c
+EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
+%C%_linted_sandbox_LDADD=\
+  src/asynch/libasynch.la\
+  src/dir/libdir.la\
   src/error/liberror.la\
+  src/file/libfile.la\
+  src/io/libio.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
-  src/start/libstart.la
+  -lcap

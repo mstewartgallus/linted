@@ -18,5 +18,4 @@
 noinst_LTLIBRARIES+=%D%/libconf.la
 %C%_libconf_la_SOURCES=%D%/conf.c include/linted/conf.h
 %C%_libconf_la_LIBADD=\
-  src/ko/libko.la\
-  src/mem/libmem.la
+  src/ko/libko.la

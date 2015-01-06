@@ -14,23 +14,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/window
+pkglibexec_PROGRAMS+=%D%/linted-window
 
-%C%_window_SOURCES=%D%/window.c
-%C%_window_LDADD=\
+%C%_linted_window_SOURCES=%D%/window.c
+%C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
   src/xcb/libxcb.la\
   \
   src/window-notifier/libwindow-notifier.la\
   \
   $(XCB_LIBS)
 
-%C%_window_CPPFLAGS=\
+%C%_linted_window_CPPFLAGS=\
   $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 

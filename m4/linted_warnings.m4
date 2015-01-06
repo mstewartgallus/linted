@@ -28,8 +28,6 @@ dnl
         [-Wmissing-prototypes]dnl
         [-Wmissing-declarations]dnl
         [-Wold-style-definition]dnl
-        [-Wredundant-decls]dnl
-        [-Wnested-externs]
         [-Wlogical-op]dnl
         [-Wstrict-aliasing=3]dnl
         [-Wstrict-overflow=5]dnl

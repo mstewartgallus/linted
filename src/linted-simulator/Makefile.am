@@ -14,13 +14,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/init
+pkglibexec_PROGRAMS+=%D%/linted-simulator
 
-%C%_init_SOURCES=%D%/init.c
-%C%_init_LDADD=\
+%C%_linted_simulator_SOURCES=%D%/simulator.c
+%C%_linted_simulator_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
   src/error/liberror.la\
-  src/io/libio.la\
-  src/spawn/libspawn.la
+  src/ko/libko.la\
+  \
+  src/controller/libcontroller.la\
+  src/updater/libupdater.la
+
+dist_pkgdefaultconf_DATA+=%D%/simulator-fstab
+dist_pkgdefaultunits_DATA+=%D%/units/simulator.service

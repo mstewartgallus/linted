@@ -17,5 +17,3 @@
 
 noinst_LTLIBRARIES+=%D%/libunit.la
 %C%_libunit_la_SOURCES=%D%/unit.c include/linted/unit.h
-%C%_libunit_la_LIBADD=\
-  src/mem/libmem.la

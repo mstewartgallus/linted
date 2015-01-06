@@ -122,7 +122,7 @@ struct conn_pool;
 #define SERVICE_NAME_MAX 32U
 
 #define COMM_MAX 16U
-struct pidstat
+struct pid_stat
 {
 	pid_t pid;
 	char comm[COMM_MAX + 1U];
@@ -234,9 +234,7 @@ static linted_error service_name(pid_t pid,
 
 static linted_error pid_of_service(pid_t *pidp, char const *name);
 static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
-
-static linted_error pid_stat(pid_t pid, struct pidstat *buf);
-
+static linted_error pid_stat(pid_t pid, struct pid_stat *buf);
 static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
@@ -1855,7 +1853,7 @@ static linted_error pid_of_service(pid_t *pidp, char const *name)
 		if (errnum != 0)
 			goto free_buf;
 
-		if (0 == strcmp(name, other_name) != 0) {
+		if (0 == strcmp(name, other_name)) {
 			pid = child;
 			break;
 		}
@@ -2550,7 +2548,7 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)
 
 	pid_t ppid;
 	{
-		struct pidstat buf;
+		struct pid_stat buf;
 
 		errnum = pid_stat(child, &buf);
 		if (errnum != 0)
@@ -2564,7 +2562,7 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)
 	return errnum;
 }
 
-static linted_error pid_stat(pid_t pid, struct pidstat *buf)
+static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 {
 	linted_error errnum = 0;
 

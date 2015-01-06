@@ -62,17 +62,17 @@ struct linted_start_config const linted_start_config = {
 static struct envvar const default_envvars[] = {
 	{ "LINTED_PROCESS_NAME", "linted" },
 	{ "LINTED_UNIT_PATH", PKGUNITSDIR ":" PKGDEFAULTUNITSDIR },
-	{ "LINTED_INIT", PKGLIBEXECDIR "/init" EXEEXT },
-	{ "LINTED_MONITOR", PKGLIBEXECDIR "/monitor" EXEEXT },
-	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/sandbox" EXEEXT },
-	{ "LINTED_WAITER", PKGLIBEXECDIR "/waiter" EXEEXT },
-	{ "LINTED_GUI", PKGLIBEXECDIR "/gui" EXEEXT },
+	{ "LINTED_INIT", PKGLIBEXECDIR "/linted-init" EXEEXT },
+	{ "LINTED_MONITOR", PKGLIBEXECDIR "/linted-monitor" EXEEXT },
+	{ "LINTED_SANDBOX", PKGLIBEXECDIR "/linted-sandbox" EXEEXT },
+	{ "LINTED_WAITER", PKGLIBEXECDIR "/linted-waiter" EXEEXT },
+	{ "LINTED_GUI", PKGLIBEXECDIR "/linted-gui" EXEEXT },
 	{ "LINTED_GUI_FSTAB", PKGDEFAULTCONFDIR "/gui-fstab" },
-	{ "LINTED_SIMULATOR", PKGLIBEXECDIR "/simulator" EXEEXT },
+	{ "LINTED_SIMULATOR", PKGLIBEXECDIR "/linted-simulator" EXEEXT },
 	{ "LINTED_SIMULATOR_FSTAB", PKGDEFAULTCONFDIR "/simulator-fstab" },
-	{ "LINTED_DRAWER", PKGLIBEXECDIR "/drawer" EXEEXT },
+	{ "LINTED_DRAWER", PKGLIBEXECDIR "/linted-drawer" EXEEXT },
 	{ "LINTED_DRAWER_FSTAB", PKGDEFAULTCONFDIR "/drawer-fstab" },
-	{ "LINTED_WINDOW", PKGLIBEXECDIR "/window" EXEEXT }
+	{ "LINTED_WINDOW", PKGLIBEXECDIR "/linted-window" EXEEXT }
 };
 
 static linted_error exec_init(char const *init);

@@ -22,6 +22,5 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
 %C%_libadmin_la_LIBADD=\
   src/io/libio.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
   \
   -lrt

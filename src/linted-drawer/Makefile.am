@@ -14,29 +14,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-pkglibexec_PROGRAMS+=%D%/gui
+pkglibexec_PROGRAMS+=%D%/linted-drawer
 
-%C%_gui_SOURCES=%D%/gui.c
-%C%_gui_LDADD=\
+%C%_linted_drawer_SOURCES=%D%/drawer.c
+%C%_linted_drawer_LDADD=\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
   src/error/liberror.la\
+  src/gpu/libgpu.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
   src/xcb/libxcb.la\
   \
-  src/controller/libcontroller.la\
+  src/updater/libupdater.la\
   src/window-notifier/libwindow-notifier.la\
   \
-  $(XCB_LIBS)\
-  $(XCB_XKB_LIBS)\
-  $(XKB_LIBS)\
-  $(XKB_X11_LIBS)
+  $(XCB_LIBS)
 
-%C%_gui_CPPFLAGS=\
-  $(XCB_FLAGS) $(XCB_XKB_FLAGS) $(XKB_FLAGS) $(XKB_X11_FLAGS)\
+%C%_linted_drawer_CPPFLAGS=\
+  $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/gui-fstab
-dist_pkgdefaultunits_DATA+=%D%/units/gui.service
+dist_pkgdefaultconf_DATA+=%D%/drawer-fstab
+dist_pkgdefaultunits_DATA+=%D%/units/drawer.service

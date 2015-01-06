@@ -21,7 +21,6 @@ EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-linux.c %D%/asynch-windows.c
 %C%_libasynch_la_LIBADD=\
   src/io/libio.la\
   src/ko/libko.la\
-  src/mem/libmem.la\
   src/pid/libpid.la\
   src/queue/libqueue.la\
   src/sched/libsched.la\

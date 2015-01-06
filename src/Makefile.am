@@ -20,17 +20,17 @@ EXTRA_DIST+=\
   include/linted/test.h\
   include/linted/util.h
 
-include %C%/drawer/Makefile.am
-include %C%/gui/Makefile.am
-include %C%/init/Makefile.am
 include %C%/linted-control/Makefile.am
+include %C%/linted-drawer/Makefile.am
 include %C%/linted-enter/Makefile.am
+include %C%/linted-gui/Makefile.am
+include %C%/linted-init/Makefile.am
+include %C%/linted-monitor/Makefile.am
+include %C%/linted-sandbox/Makefile.am
+include %C%/linted-simulator/Makefile.am
+include %C%/linted-waiter/Makefile.am
+include %C%/linted-window/Makefile.am
 include %C%/linted/Makefile.am
-include %C%/monitor/Makefile.am
-include %C%/sandbox/Makefile.am
-include %C%/simulator/Makefile.am
-include %C%/waiter/Makefile.am
-include %C%/window/Makefile.am
 
 include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am
