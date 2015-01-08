@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <string.h>
 #include <syslog.h>
 
@@ -113,7 +112,7 @@ linted_error linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		goto release_thread;
 	}
 
-	if (EGL_FALSE == eglInitialize(display, NULL, NULL)) {
+	if (EGL_FALSE == eglInitialize(display, 0, 0)) {
 		errnum = get_egl_error();
 		goto destroy_display;
 	}
@@ -211,7 +210,7 @@ linted_error linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 		return EINVAL;
 
 	EGLSurface surface = eglCreateWindowSurface(
-	    gpu_context->display, gpu_context->config, native_window, NULL);
+	    gpu_context->display, gpu_context->config, native_window, 0);
 	if (EGL_NO_SURFACE == surface)
 		return get_egl_error();
 	gpu_context->surface = surface;
@@ -356,7 +355,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	glDeleteShader(fragment_shader);
 
 	glShaderSource(fragment_shader, 1U,
-	               (GLchar const **)&linted_assets_fragment_shader, NULL);
+	               (GLchar const **)&linted_assets_fragment_shader, 0);
 	glCompileShader(fragment_shader);
 
 	GLint fragment_is_valid;
@@ -384,7 +383,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 				goto cleanup_program;
 			info_log = xx;
 		}
-		glGetShaderInfoLog(fragment_shader, info_log_length, NULL,
+		glGetShaderInfoLog(fragment_shader, info_log_length, 0,
 		                   info_log);
 		syslog(LOG_ERR, "invalid shader: %s", info_log);
 		linted_mem_free(info_log);
@@ -400,7 +399,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	glDeleteShader(vertex_shader);
 
 	glShaderSource(vertex_shader, 1U,
-	               (GLchar const **)&linted_assets_vertex_shader, NULL);
+	               (GLchar const **)&linted_assets_vertex_shader, 0);
 	glCompileShader(vertex_shader);
 
 	GLint vertex_is_valid;
@@ -429,8 +428,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 			info_log = xx;
 		}
 
-		glGetShaderInfoLog(vertex_shader, info_log_length, NULL,
-		                   info_log);
+		glGetShaderInfoLog(vertex_shader, info_log_length, 0, info_log);
 		syslog(LOG_ERR, "invalid shader: %s", info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
@@ -465,7 +463,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 			info_log = xx;
 		}
 
-		glGetProgramInfoLog(program, info_log_length, NULL, info_log);
+		glGetProgramInfoLog(program, info_log_length, 0, info_log);
 		syslog(LOG_ERR, "invalid program: %s", info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
@@ -509,12 +507,12 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	glVertexAttribPointer(vertex,
 	                      LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	                      GL_FLOAT, false, 0, NULL);
+	                      GL_FLOAT, false, 0, 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	glVertexAttribPointer(normal,
 	                      LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	                      GL_FLOAT, false, 0, NULL);
+	                      GL_FLOAT, false, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -651,7 +649,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	               GL_UNSIGNED_BYTE, NULL);
+	               GL_UNSIGNED_BYTE, 0);
 }
 
 static void flush_gl_errors(void)

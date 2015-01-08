@@ -261,7 +261,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	if (NULL == setlocale(LC_ALL, "")) {
+	if (0 == setlocale(LC_ALL, "")) {
 		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -290,19 +290,19 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char const *data_dir_path = getenv("XDG_DATA_HOME");
 	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
 
-	if (NULL == unit_path) {
+	if (0 == unit_path) {
 		syslog(LOG_ERR, "%s is a required environment variable",
 		       "LINTED_UNIT_PATH");
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == sandbox) {
+	if (0 == sandbox) {
 		syslog(LOG_ERR, "%s is a required environment variable",
 		       "LINTED_SANDBOX");
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == waiter) {
+	if (0 == waiter) {
 		syslog(LOG_ERR, "%s is a required environment variable",
 		       "LINTED_WAITER");
 		return EXIT_FAILURE;
@@ -311,13 +311,13 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Use fallbacks for missing XDG environment variables.
 	 */
-	if (NULL == runtime_dir_path) {
+	if (0 == runtime_dir_path) {
 		syslog(LOG_ERR, "%s is a required environment variable",
 		       "XDG_RUNTIME_HOME");
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == data_dir_path) {
+	if (0 == data_dir_path) {
 		syslog(LOG_ERR, "%s is a required environment variable",
 		       "XDG_DATA_HOME");
 		return EXIT_FAILURE;
@@ -374,15 +374,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		process_data_dir_path = xx;
 	}
 
-	errnum = linted_dir_create(NULL, LINTED_KO_CWD,
-	                           package_runtime_dir_path, 0U, S_IRWXU);
-	if (errnum != 0) {
-		syslog(LOG_ERR, "linted_dir_create: %s",
-		       linted_error_string(errnum));
-		return EXIT_FAILURE;
-	}
-
-	errnum = linted_dir_create(NULL, LINTED_KO_CWD, package_data_dir_path,
+	errnum = linted_dir_create(0, LINTED_KO_CWD, package_runtime_dir_path,
 	                           0U, S_IRWXU);
 	if (errnum != 0) {
 		syslog(LOG_ERR, "linted_dir_create: %s",
@@ -390,16 +382,24 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_dir_create(NULL, LINTED_KO_CWD,
-	                           process_runtime_dir_path, 0U, S_IRWXU);
+	errnum = linted_dir_create(0, LINTED_KO_CWD, package_data_dir_path, 0U,
+	                           S_IRWXU);
 	if (errnum != 0) {
 		syslog(LOG_ERR, "linted_dir_create: %s",
 		       linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_dir_create(NULL, LINTED_KO_CWD, process_data_dir_path,
+	errnum = linted_dir_create(0, LINTED_KO_CWD, process_runtime_dir_path,
 	                           0U, S_IRWXU);
+	if (errnum != 0) {
+		syslog(LOG_ERR, "linted_dir_create: %s",
+		       linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
+
+	errnum = linted_dir_create(0, LINTED_KO_CWD, process_data_dir_path, 0U,
+	                           S_IRWXU);
 	if (errnum != 0) {
 		syslog(LOG_ERR, "linted_dir_create: %s",
 		       linted_error_string(errnum));
@@ -680,7 +680,7 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		}
 
 		char *unit_name = strndup(file_name, dot - file_name);
-		if (NULL == unit_name) {
+		if (0 == unit_name) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto destroy_unit_db;
@@ -751,7 +751,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 		type = xx;
 	}
 
-	if (NULL == exec_start)
+	if (0 == exec_start)
 		return EINVAL;
 
 	char const *no_new_privs;
@@ -787,8 +787,8 @@ static linted_error service_create(struct linted_unit_service *unit,
 	bool clone_newnet = false;
 	bool clone_newns = false;
 	bool clone_newuts = false;
-	if (clone_flags != NULL) {
-		for (size_t ii = 0U; clone_flags[ii] != NULL; ++ii) {
+	if (clone_flags != 0) {
+		for (size_t ii = 0U; clone_flags[ii] != 0; ++ii) {
 			char const *flag = clone_flags[ii];
 			if (0 == strcmp("CLONE_NEWUSER", flag)) {
 				clone_newuser = true;
@@ -808,7 +808,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 		}
 	}
 
-	if (NULL == type) {
+	if (0 == type) {
 		/* simple type of service */
 	} else if (0 == strcmp("simple", type)) {
 		/* simple type of service */
@@ -817,7 +817,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 	}
 
 	bool no_new_privs_value = false;
-	if (no_new_privs != NULL) {
+	if (no_new_privs != 0) {
 		bool xx;
 		errnum = bool_from_cstring(no_new_privs, &xx);
 		if (errnum != 0)
@@ -887,28 +887,28 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	}
 
 	enum linted_unit_socket_type socket_type;
-	char const *path = NULL;
+	char const *path = 0;
 
-	if (listen_dir != NULL) {
+	if (listen_dir != 0) {
 		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
 		path = listen_dir;
 	}
 
-	if (listen_file != NULL) {
-		if (path != NULL)
+	if (listen_file != 0) {
+		if (path != 0)
 			return EINVAL;
 		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
 		path = listen_file;
 	}
 
-	if (listen_fifo != NULL) {
-		if (path != NULL)
+	if (listen_fifo != 0) {
+		if (path != 0)
 			return EINVAL;
 		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
 		path = listen_fifo;
 	}
 
-	if (NULL == path)
+	if (0 == path)
 		return EINVAL;
 
 	switch (socket_type) {
@@ -966,7 +966,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 
 	switch (unit->type) {
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		errnum = linted_dir_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		errnum = linted_dir_create(0, LINTED_KO_CWD, unit->path, 0U,
 		                           S_IRWXU);
 		if (errnum != 0)
 			return errnum;
@@ -974,7 +974,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		errnum = linted_file_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		errnum = linted_file_create(0, LINTED_KO_CWD, unit->path, 0U,
 		                            S_IRWXU);
 		if (errnum != 0)
 			return errnum;
@@ -982,7 +982,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		errnum = linted_fifo_create(NULL, LINTED_KO_CWD, unit->path, 0U,
+		errnum = linted_fifo_create(0, LINTED_KO_CWD, unit->path, 0U,
 		                            S_IRWXU);
 		if (errnum != 0)
 			return errnum;
@@ -1048,7 +1048,7 @@ spawn_service:
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
 
-	if (fstab != NULL) {
+	if (fstab != 0) {
 		linted_ko name_dir;
 		{
 			linted_ko xx;
@@ -1059,8 +1059,7 @@ spawn_service:
 			name_dir = xx;
 		}
 
-		errnum =
-		    linted_dir_create(NULL, name_dir, "chroot", 0U, S_IRWXU);
+		errnum = linted_dir_create(0, name_dir, "chroot", 0U, S_IRWXU);
 
 		linted_ko_close(name_dir);
 
@@ -1068,7 +1067,7 @@ spawn_service:
 			return errnum;
 	}
 
-	if (fstab != NULL && !clone_newns)
+	if (fstab != 0 && !clone_newns)
 		return EINVAL;
 
 	bool drop_caps = true;
@@ -1161,10 +1160,10 @@ envvar_allocate_failed:
 envvar_allocate_succeeded:
 	envvars[envvars_size] = root_setting;
 	envvars[envvars_size + 1U] = service_name_setting;
-	envvars[envvars_size + 2U] = NULL;
+	envvars[envvars_size + 2U] = 0;
 
 	char *sandbox_dup = strdup(sandbox);
-	if (NULL == sandbox_dup) {
+	if (0 == sandbox_dup) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_envvars;
@@ -1174,22 +1173,20 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 
-	struct option options[] = {
-		{ true, "--traceme", NULL },
-		{ waiter != NULL, "--waiter", waiter },
-		{ fstab != NULL, "--chrootdir", chrootdir },
-		{ fstab != NULL, "--fstab", fstab },
-		{ no_new_privs, "--nonewprivs", NULL },
-		{ drop_caps, "--dropcaps", NULL },
-		{ chdir_path != NULL, "--chdir", chdir_path },
-		{ prio_str != NULL, "--priority", prio_str },
-		{ clone_newuser, "--clone-newuser", NULL },
-		{ clone_newpid, "--clone-newpid", NULL },
-		{ clone_newipc, "--clone-newipc", NULL },
-		{ clone_newnet, "--clone-newnet", NULL },
-		{ clone_newns, "--clone-newns", NULL },
-		{ clone_newuts, "--clone-newuts", NULL }
-	};
+	struct option options[] = { { true, "--traceme", 0 },
+		                    { waiter != 0, "--waiter", waiter },
+		                    { fstab != 0, "--chrootdir", chrootdir },
+		                    { fstab != 0, "--fstab", fstab },
+		                    { no_new_privs, "--nonewprivs", 0 },
+		                    { drop_caps, "--dropcaps", 0 },
+		                    { chdir_path != 0, "--chdir", chdir_path },
+		                    { prio_str != 0, "--priority", prio_str },
+		                    { clone_newuser, "--clone-newuser", 0 },
+		                    { clone_newpid, "--clone-newpid", 0 },
+		                    { clone_newipc, "--clone-newipc", 0 },
+		                    { clone_newnet, "--clone-newnet", 0 },
+		                    { clone_newns, "--clone-newns", 0 },
+		                    { clone_newuts, "--clone-newuts", 0 } };
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
@@ -1198,7 +1195,7 @@ envvar_allocate_succeeded:
 			continue;
 
 		++num_options;
-		if (option.value != NULL)
+		if (option.value != 0)
 			++num_options;
 	}
 
@@ -1221,14 +1218,14 @@ envvar_allocate_succeeded:
 			continue;
 
 		args[ix++] = option.name;
-		if (option.value != NULL)
+		if (option.value != 0)
 			args[ix++] = option.value;
 	}
 
 	args[1U + num_options] = "--";
 	for (size_t ii = 0U; ii < exec_start_size; ++ii)
 		args[1U + num_options + 1U + ii] = exec_start[ii];
-	args[args_size] = NULL;
+	args[args_size] = 0;
 
 	struct linted_spawn_file_actions *file_actions;
 	struct linted_spawn_attr *attr;
@@ -1251,7 +1248,7 @@ envvar_allocate_succeeded:
 
 	linted_spawn_attr_setmask(attr, sigmask);
 
-	linted_ko *proc_kos = NULL;
+	linted_ko *proc_kos = 0;
 	size_t kos_opened = 0U;
 
 	{
@@ -1284,7 +1281,7 @@ envvar_allocate_succeeded:
 			goto destroy_proc_kos;
 	}
 
-	errnum = linted_spawn(NULL, cwd, sandbox, file_actions, attr, args,
+	errnum = linted_spawn(0, cwd, sandbox, file_actions, attr, args,
 	                      (char const * const *)envvars);
 	if (errnum != 0)
 		goto destroy_proc_kos;
@@ -1309,7 +1306,7 @@ free_sandbox_dup:
 	linted_mem_free(sandbox_dup);
 
 free_envvars:
-	for (char **envp = envvars; *envp != NULL; ++envp)
+	for (char **envp = envvars; *envp != 0; ++envp)
 		linted_mem_free(*envp);
 	linted_mem_free(envvars);
 
@@ -1681,7 +1678,7 @@ static linted_error on_child_about_to_exit(char const *process_name,
 {
 
 	linted_error errnum = 0;
-	struct linted_unit *unit = NULL;
+	struct linted_unit *unit = 0;
 
 	errnum = kill_pid_children(pid, SIGKILL);
 	if (errnum != 0)
@@ -1726,7 +1723,7 @@ detach_from_process:
 	if (time_to_exit)
 		return errnum;
 
-	if (NULL == unit)
+	if (0 == unit)
 		return errnum;
 
 	errnum = service_activate(process_name, unit, cwd, unit_db, false);
@@ -1875,7 +1872,7 @@ static char const *default_envvars[] = { "USER", "LOGNAME", "HOME", "SHELL",
 	                                 "XDG_RUNTIME_DIR"
 	                                 "XDG_SESSION_ID",
 	                                 "XDG_SEAT", "TERM", "LD_DEBUG",
-	                                 "LD_DEBUG_OUTPUT", NULL };
+	                                 "LD_DEBUG_OUTPUT", 0 };
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       char const *path)
@@ -1896,20 +1893,20 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 		char const *dirend = strchr(dirstart, ':');
 
 		char *dir_name;
-		if (NULL == dirend) {
+		if (0 == dirend) {
 			dir_name = strdup(dirstart);
 		} else {
 			dir_name = strndup(dirstart, dirend - dirstart);
 		}
 
-		if (NULL == dir_name) {
+		if (0 == dir_name) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto free_units;
 		}
 
 		DIR *units_dir = opendir(dir_name);
-		if (NULL == units_dir) {
+		if (0 == units_dir) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 		}
@@ -1927,11 +1924,11 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 		linted_ko dirko = dirfd(units_dir);
 
 		size_t files_count = 0U;
-		char **files = NULL;
+		char **files = 0;
 		for (;;) {
 			errno = 0;
 			struct dirent const *entry = readdir(units_dir);
-			if (NULL == entry) {
+			if (0 == entry) {
 				errnum = errno;
 				if (0 == errnum)
 					break;
@@ -1948,7 +1945,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 				continue;
 
 			char *name_copy = strdup(name);
-			if (NULL == name_copy) {
+			if (0 == name_copy) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 				goto free_file_names;
@@ -1991,7 +1988,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			}
 
 			FILE *unit_file = fdopen(unit_fd, "r");
-			if (NULL == unit_file) {
+			if (0 == unit_file) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 
@@ -2000,7 +1997,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 				goto free_file_names;
 			}
 
-			struct linted_conf *conf = NULL;
+			struct linted_conf *conf = 0;
 			{
 				struct linted_conf *xx;
 				errnum = linted_conf_create(&xx, file_name);
@@ -2017,7 +2014,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 				/* Okay but we have no defaults for this */
 			} else if (0 == strcmp(suffix, "service")) {
 				char *section_name = strdup("Service");
-				if (NULL == section_name) {
+				if (0 == section_name) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
 					goto close_unit_file;
@@ -2025,7 +2022,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 
 				char *env_whitelist =
 				    strdup("X-LintedEnvironmentWhitelist");
-				if (NULL == env_whitelist) {
+				if (0 == env_whitelist) {
 					errnum = errno;
 					LINTED_ASSUME(errnum != 0);
 					linted_mem_free(section_name);
@@ -2090,7 +2087,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			goto free_units;
 
 	next_dir:
-		if (NULL == dirend)
+		if (0 == dirend)
 			break;
 
 		dirstart = dirend + 1U;
@@ -2136,7 +2133,7 @@ static linted_error service_name(pid_t pid,
 	}
 
 	FILE *file = fdopen(ko, "r");
-	if (NULL == file) {
+	if (0 == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
@@ -2146,7 +2143,7 @@ static linted_error service_name(pid_t pid,
 	}
 
 	/* Get the buffer all at once to avoid raciness. */
-	char *buf = NULL;
+	char *buf = 0;
 	size_t buf_size = 0U;
 
 	{
@@ -2171,7 +2168,7 @@ close_file:
 		}
 	}
 
-	if (NULL == buf)
+	if (0 == buf)
 		return errnum;
 
 	char *iter = buf;
@@ -2183,7 +2180,7 @@ close_file:
 			break;
 		}
 		iter = strchr(iter, '\0');
-		if (NULL == iter) {
+		if (0 == iter) {
 			errnum = EINVAL;
 			break;
 		}
@@ -2251,7 +2248,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char const *envvar_name = allowed_envvars[ii];
 
 		char const *envvar_value = getenv(envvar_name);
-		if (NULL == envvar_value)
+		if (0 == envvar_value)
 			continue;
 
 		++result_envvars_size;
@@ -2289,7 +2286,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 			goto free_result_envvars;
 		result_envvars = xx;
 	}
-	result_envvars[result_envvars_size] = NULL;
+	result_envvars[result_envvars_size] = 0;
 
 	*result_envvarsp = result_envvars;
 
@@ -2305,19 +2302,19 @@ free_result_envvars:
 static size_t null_list_size(char const *const *list)
 {
 	for (size_t ii = 0U;; ++ii)
-		if (NULL == list[ii])
+		if (0 == list[ii])
 			return ii;
 }
 
 static linted_error str_from_strs(char const *const *strs, char const **strp)
 {
 	char const *str;
-	if (NULL == strs) {
-		str = NULL;
+	if (0 == strs) {
+		str = 0;
 	} else {
 		str = strs[0U];
 
-		if (strs[1U] != NULL)
+		if (strs[1U] != 0)
 			return EINVAL;
 	}
 
@@ -2332,7 +2329,7 @@ static linted_error bool_from_cstring(char const *str, bool *boolp)
 
 	bool result;
 
-	if (NULL == str)
+	if (0 == str)
 		return EINVAL;
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
@@ -2383,7 +2380,7 @@ static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 	}
 
 	FILE *file = fdopen(children_ko, "r");
-	if (NULL == file) {
+	if (0 == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
@@ -2393,7 +2390,7 @@ static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 	}
 
 	/* Get the child all at once to avoid raciness. */
-	char *buf = NULL;
+	char *buf = 0;
 
 	{
 		char *xx = buf;
@@ -2424,14 +2421,14 @@ set_childrenp:
 
 	size_t ii = 0U;
 	char const *start = buf;
-	pid_t *children = NULL;
+	pid_t *children = 0;
 
-	if (NULL == buf)
+	if (0 == buf)
 		goto finish;
 
 	for (;;) {
 		errno = 0;
-		pid_t child = strtol(start, NULL, 10);
+		pid_t child = strtol(start, 0, 10);
 		errnum = errno;
 		if (errnum != 0)
 			goto free_buf;
@@ -2451,7 +2448,7 @@ set_childrenp:
 		++ii;
 
 		start = strchr(start, ' ');
-		if (NULL == start)
+		if (0 == start)
 			break;
 		if ('\n' == *start)
 			break;
@@ -2585,7 +2582,7 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 	}
 
 	FILE *file = fdopen(stat_ko, "r");
-	if (NULL == file) {
+	if (0 == file) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 
@@ -2598,7 +2595,7 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 
 	char *line;
 	{
-		char *xx = NULL;
+		char *xx = 0;
 		size_t yy = 0U;
 		if (-1 == getline(&xx, &yy, file)) {
 			errnum = errno;
@@ -2701,7 +2698,7 @@ static linted_error ptrace_detach(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_DETACH, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+	    ptrace(PTRACE_DETACH, pid, (void *)0, (void *)(intptr_t)signo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2714,7 +2711,7 @@ static linted_error ptrace_setoptions(pid_t pid, unsigned options)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)NULL,
+	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)0,
 	                 (void *)(uintptr_t)options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -2728,7 +2725,7 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)NULL, (void *)msg)) {
+	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)0, (void *)msg)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2741,7 +2738,7 @@ static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)NULL, (void *)options)) {
+	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)0, (void *)options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2755,7 +2752,7 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_CONT, pid, (void *)NULL, (void *)(intptr_t)signo)) {
+	    ptrace(PTRACE_CONT, pid, (void *)0, (void *)(intptr_t)signo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

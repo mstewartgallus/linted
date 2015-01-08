@@ -27,7 +27,7 @@ static HCRYPTPROV crypto_provider;
 
 void linted_random_seed_generator(unsigned seed)
 {
-	if (!CryptAcquireContext(&crypto_provider, NULL, NULL, PROV_RSA_FULL,
+	if (!CryptAcquireContext(&crypto_provider, 0, 0, PROV_RSA_FULL,
 	                         CRYPT_SILENT)) {
 		assert(0);
 	}

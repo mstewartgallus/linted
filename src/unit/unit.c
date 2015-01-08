@@ -23,7 +23,6 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <string.h>
 
 union unit_union
@@ -53,7 +52,7 @@ linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
 	}
 
 	units->size = 0U;
-	units->list = NULL;
+	units->list = 0;
 
 	*unitsp = units;
 
@@ -77,7 +76,7 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 		list = xx;
 	}
 
-	list[size].common.name = NULL;
+	list[size].common.name = 0;
 	*unitp = &list[size].common;
 
 	++size;
@@ -119,5 +118,5 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *units, char const *name)
 			return unit;
 	}
 
-	return NULL;
+	return 0;
 }

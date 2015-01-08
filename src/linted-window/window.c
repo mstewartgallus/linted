@@ -32,7 +32,6 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,13 +98,13 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	}
 
 	char const *root = getenv("MANAGERPID");
-	if (NULL == root) {
+	if (0 == root) {
 		fprintf(stderr, "%s: need MANAGERPID\n", process_name);
 		return EXIT_FAILURE;
 	}
 
 	errno = 0;
-	long int root_pid = strtol(root, NULL, 10);
+	long int root_pid = strtol(root, 0, 10);
 	errnum = errno;
 	if (0 == errnum) {
 		if (root_pid < 1) {
@@ -168,15 +167,15 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	xcb_connection_t *connection;
 	{
 		int xx;
-		connection = xcb_connect(NULL, &xx);
-		if (NULL == connection) {
+		connection = xcb_connect(0, &xx);
+		if (0 == connection) {
 			errnum = ENOSYS;
 			goto destroy_pool;
 		}
 		screen_number = (unsigned)xx;
 	}
 
-	xcb_screen_t *screen = NULL;
+	xcb_screen_t *screen = 0;
 	{
 		xcb_screen_iterator_t iter =
 		    xcb_setup_roots_iterator(xcb_get_setup(connection));
@@ -231,7 +230,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		xcb_intern_atom_reply_t *proto_reply;
 		xcb_generic_error_t *proto_err;
 		{
-			xcb_generic_error_t *xx = NULL;
+			xcb_generic_error_t *xx = 0;
 			proto_reply = xcb_intern_atom_reply(connection,
 			                                    protocols_ck, &xx);
 			proto_err = xx;
@@ -240,7 +239,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0)
 			goto destroy_window;
 
-		if (proto_err != NULL) {
+		if (proto_err != 0) {
 			errnum = linted_xcb_error(proto_err);
 			linted_mem_free(proto_err);
 			goto destroy_window;
@@ -255,7 +254,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		xcb_intern_atom_reply_t *delete_ck_reply;
 		xcb_generic_error_t *delete_ck_err;
 		{
-			xcb_generic_error_t *xx = NULL;
+			xcb_generic_error_t *xx = 0;
 			delete_ck_reply =
 			    xcb_intern_atom_reply(connection, delete_ck, &xx);
 			delete_ck_err = xx;
@@ -264,7 +263,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0)
 			goto destroy_window;
 
-		if (delete_ck_err != NULL) {
+		if (delete_ck_err != 0) {
 			errnum = linted_xcb_error(delete_ck_err);
 			linted_mem_free(delete_ck_err);
 			goto destroy_window;
@@ -289,7 +288,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		xcb_intern_atom_reply_t *pid_ck_reply;
 		xcb_generic_error_t *pid_ck_err;
 		{
-			xcb_generic_error_t *xx = NULL;
+			xcb_generic_error_t *xx = 0;
 			pid_ck_reply =
 			    xcb_intern_atom_reply(connection, pid_ck, &xx);
 			pid_ck_err = xx;
@@ -298,7 +297,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		if (errnum != 0)
 			goto destroy_window;
 
-		if (pid_ck_err != NULL) {
+		if (pid_ck_err != 0) {
 			errnum = linted_xcb_error(pid_ck_err);
 			linted_mem_free(pid_ck_err);
 			goto destroy_window;
@@ -375,7 +374,7 @@ get_hostname_succeeded:
 
 	xcb_generic_error_t *create_win_err =
 	    xcb_request_check(connection, create_win_ck);
-	if (create_win_err != NULL) {
+	if (create_win_err != 0) {
 		errnum = linted_xcb_error(create_win_err);
 		linted_mem_free(create_win_err);
 		goto destroy_window;
@@ -442,7 +441,7 @@ destroy_window : {
 	    xcb_request_check(connection, destroy_ck);
 	if (0 == errnum)
 		errnum = linted_xcb_conn_error(connection);
-	if (0 == errnum && destroy_err != NULL)
+	if (0 == errnum && destroy_err != 0)
 		errnum = linted_xcb_error(destroy_err);
 	linted_mem_free(destroy_err);
 }
@@ -529,7 +528,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
-		if (NULL == event)
+		if (0 == event)
 			break;
 
 		bool time_to_quit = false;

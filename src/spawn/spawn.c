@@ -102,7 +102,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 		attr = xx;
 	}
 
-	attr->mask = NULL;
+	attr->mask = 0;
 
 	*attrp = attr;
 	return 0;
@@ -198,15 +198,15 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	if (is_relative_path && !at_fdcwd && dirko > INT_MAX)
 		return EBADF;
 
-	sigset_t const *child_mask = NULL;
+	sigset_t const *child_mask = 0;
 
-	if (attr != NULL) {
+	if (attr != 0) {
 		child_mask = attr->mask;
 	}
 
 	size_t fd_len;
 	size_t filename_len;
-	char *relative_filename = NULL;
+	char *relative_filename = 0;
 	if (is_relative_path && !at_fdcwd) {
 		fd_len = strlen(fd_str);
 		filename_len = strlen(filename);
@@ -234,7 +234,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	}
 
 	int greatest = -1;
-	if (file_actions != NULL) {
+	if (file_actions != 0) {
 		union file_action const *actions = file_actions->actions;
 		size_t action_count = file_actions->action_count;
 		for (size_t ii = 0U; ii < action_count; ++ii) {
@@ -254,7 +254,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	int dirko_copy = -1;
 
 	/* Copy file descriptors in case they get overridden */
-	if (file_actions != NULL) {
+	if (file_actions != 0) {
 		if (!at_fdcwd && is_relative_path) {
 			int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 			if (-1 == fd) {
@@ -278,7 +278,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		err_writer = err_writer_copy;
 	}
 
-	if (relative_filename != NULL) {
+	if (relative_filename != 0) {
 		memcpy(relative_filename, fd_str, fd_len);
 
 		pid_to_str(relative_filename + fd_len, dirko_copy);
@@ -296,7 +296,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 	sigset_t sigset;
 	sigfillset(&sigset);
 
-	if (NULL == child_mask)
+	if (0 == child_mask)
 		child_mask = &sigset;
 
 	errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
@@ -314,7 +314,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 
 	{
 		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+		    pthread_sigmask(SIG_SETMASK, &sigset, 0);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
@@ -359,7 +359,7 @@ free_relative_path:
 	if (errnum != 0)
 		return errnum;
 
-	if (childp != NULL)
+	if (childp != 0)
 		*childp = child;
 
 	return 0;
@@ -379,7 +379,7 @@ static int fork_routine(void *arg)
 
 	linted_error xx = do_fork(sigset, file_actions, err_reader, err_writer,
 	                          argv, envp, filename);
-	linted_io_write_all(err_writer, NULL, &xx, sizeof xx);
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 	return EXIT_FAILURE;
 }
 
@@ -395,13 +395,13 @@ do_fork(sigset_t const *sigset,
 	if (errnum != 0)
 		return errnum;
 
-	errnum = pthread_sigmask(SIG_SETMASK, sigset, NULL);
+	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);
 	if (errnum != 0)
 		return errnum;
 
 	linted_ko_close(err_reader);
 
-	if (file_actions != NULL) {
+	if (file_actions != 0) {
 		union file_action const *actions = file_actions->actions;
 		size_t action_count = file_actions->action_count;
 		for (size_t ii = 0U; ii < action_count; ++ii) {
@@ -449,7 +449,7 @@ static linted_error default_signals(void)
 			continue;
 
 		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, NULL, &action, 8U)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
@@ -460,7 +460,7 @@ static linted_error default_signals(void)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, NULL, 8U)) {
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;

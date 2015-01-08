@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 		struct sigaction act = { 0 };
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
-		if (-1 == sigaction(SIGUSR1, &act, NULL)) {
+		if (-1 == sigaction(SIGUSR1, &act, 0)) {
 			syslog(LOG_ERR, "sigaction: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -184,7 +184,7 @@ static linted_error get_system_entropy(unsigned *entropyp)
 
 	{
 		unsigned xx;
-		errnum = linted_io_read_all(random, NULL, &xx, sizeof xx);
+		errnum = linted_io_read_all(random, 0, &xx, sizeof xx);
 		if (errnum != 0)
 			return errnum;
 		data = xx;

@@ -52,7 +52,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	if (NULL == setlocale(LC_ALL, "")) {
+	if (0 == setlocale(LC_ALL, "")) {
 		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -65,7 +65,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_handler = delegate_signal;
 		action.sa_flags = SA_RESTART;
 		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+		if (-1 == sigaction(exit_signals[ii], &action, 0)) {
 			syslog(LOG_ERR, "sigaction: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -75,7 +75,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	char const *monitor = getenv("LINTED_MONITOR");
 
 	char *monitor_dup = strdup(monitor);
-	if (NULL == monitor_dup) {
+	if (0 == monitor_dup) {
 		syslog(LOG_ERR, "strdup: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -110,8 +110,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		{
 			pid_t xx;
 			errnum = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, NULL, attr,
-			    (char const * const[]) { monitor_base, NULL },
+			    &xx, LINTED_KO_CWD, monitor, 0, attr,
+			    (char const * const[]) { monitor_base, 0 },
 			    (char const * const *)environ);
 			if (errnum != 0) {
 				syslog(LOG_ERR, "linted_spawn: %s",

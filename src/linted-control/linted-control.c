@@ -62,8 +62,8 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 	bool need_help = false;
 	bool need_version = false;
 
-	char const *bad_option = NULL;
-	char const *command = NULL;
+	char const *bad_option = 0;
+	char const *command = 0;
 	size_t last_index = 1U;
 	for (; last_index < argc; ++last_index) {
 		char const *argument = argv[last_index];
@@ -90,7 +90,7 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	if (bad_option != NULL) {
+	if (bad_option != 0) {
 		linted_locale_on_bad_option(STDERR_FILENO, process_name,
 		                            bad_option);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -104,8 +104,8 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	if (NULL == command) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (0 == command) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: missing COMMAND\n", process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
 		                                LINTED_STR("--help"));
@@ -135,7 +135,7 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		return run_stop(process_name, new_argc, new_argv);
 	}
 
-	linted_io_write_format(STDERR_FILENO, NULL,
+	linted_io_write_format(STDERR_FILENO, 0,
 	                       "%s: unrecognized command '%s'\n", process_name,
 	                       command);
 	linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -149,9 +149,9 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	linted_error errnum;
 	bool need_version = false;
 	bool need_add_help = false;
-	char const *name = NULL;
-	char const *bad_option = NULL;
-	char const *bad_argument = NULL;
+	char const *name = 0;
+	char const *bad_option = 0;
+	char const *bad_argument = 0;
 	size_t last_index = 1U;
 	for (; last_index < argc; ++last_index) {
 		char const *argument = argv[last_index];
@@ -165,7 +165,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 				bad_option = argument;
 			}
 		} else {
-			if (name != NULL) {
+			if (name != 0) {
 				bad_argument = argument;
 				break;
 			} else {
@@ -181,7 +181,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	if (bad_option != NULL) {
+	if (bad_option != 0) {
 		linted_locale_on_bad_option(STDERR_FILENO, process_name,
 		                            bad_option);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -189,8 +189,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (bad_argument != NULL) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (bad_argument != 0) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: too many arguments: '%s'\n",
 		                       process_name, bad_argument);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -205,8 +205,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	char const *path = getenv("LINTED_ADMIN_SOCKET");
-	if (NULL == path) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (0 == path) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -214,8 +214,8 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == name) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (0 == name) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: missing SERVICE\n", process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
 		                                LINTED_STR("--help"));
@@ -244,7 +244,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		admin = xx;
 	}
 
-	linted_io_write_format(STDOUT_FILENO, NULL,
+	linted_io_write_format(STDOUT_FILENO, 0,
 	                       "%s: sending the status request for %s\n",
 	                       process_name, name);
 
@@ -277,25 +277,24 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	if (0U == bytes_read) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: socket hung up\n", process_name);
+		linted_io_write_format(STDERR_FILENO, 0, "%s: socket hung up\n",
+		                       process_name);
 		return EXIT_FAILURE;
 	}
 
 	/* Sent malformed input */
 	if (bytes_read != sizeof reply) {
-		linted_io_write_format(STDERR_FILENO, NULL,
-		                       "%s: reply was too small: %" PRIuMAX
-		                       "\n",
-		                       process_name, (uintmax_t)bytes_read);
+		linted_io_write_format(
+		    STDERR_FILENO, 0, "%s: reply was too small: %" PRIuMAX "\n",
+		    process_name, (uintmax_t)bytes_read);
 		return EXIT_FAILURE;
 	}
 
 	if (reply.status.is_up) {
-		linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is up\n",
+		linted_io_write_format(STDOUT_FILENO, 0, "%s: %s is up\n",
 		                       process_name, name);
 	} else {
-		linted_io_write_format(STDOUT_FILENO, NULL, "%s: %s is down\n",
+		linted_io_write_format(STDOUT_FILENO, 0, "%s: %s is down\n",
 		                       process_name, name);
 	}
 
@@ -308,8 +307,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	linted_error errnum;
 	bool need_version = false;
 	bool need_add_help = false;
-	char const *bad_option = NULL;
-	char const *bad_argument = NULL;
+	char const *bad_option = 0;
+	char const *bad_argument = 0;
 	size_t last_index = 1U;
 	for (; last_index < argc; ++last_index) {
 		char const *argument = argv[last_index];
@@ -335,7 +334,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	if (bad_option != NULL) {
+	if (bad_option != 0) {
 		linted_locale_on_bad_option(STDERR_FILENO, process_name,
 		                            bad_option);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -343,8 +342,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (bad_argument != NULL) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (bad_argument != 0) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: too many arguments: '%s'\n",
 		                       process_name, bad_argument);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -359,8 +358,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	char const *path = getenv("LINTED_ADMIN_SOCKET");
-	if (NULL == path) {
-		linted_io_write_format(STDERR_FILENO, NULL,
+	if (0 == path) {
+		linted_io_write_format(STDERR_FILENO, 0,
 		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -381,7 +380,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		admin = xx;
 	}
 
-	linted_io_write_format(STDOUT_FILENO, NULL,
+	linted_io_write_format(STDOUT_FILENO, 0,
 	                       "%s: sending the stop request for the gui\n",
 	                       process_name);
 
@@ -414,7 +413,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		bytes_read = yy;
 
 		if (0U == bytes_read) {
-			linted_io_write_format(STDERR_FILENO, NULL,
+			linted_io_write_format(STDERR_FILENO, 0,
 			                       "%s: socket hung up\n",
 			                       process_name);
 			return EXIT_FAILURE;
@@ -424,10 +423,10 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	if (was_up) {
-		linted_io_write_format(STDOUT_FILENO, NULL,
-		                       "%s: gui was killed\n", process_name);
+		linted_io_write_format(STDOUT_FILENO, 0, "%s: gui was killed\n",
+		                       process_name);
 	} else {
-		linted_io_write_format(STDOUT_FILENO, NULL,
+		linted_io_write_format(STDOUT_FILENO, 0,
 		                       "%s: the gui was not killed\n",
 		                       process_name);
 	}
@@ -444,7 +443,7 @@ static linted_error ctl_help(linted_ko ko, char const *process_name,
 
 	size_t size = 0U;
 	size_t cap = 0U;
-	char *buf = NULL;
+	char *buf = 0;
 
 	errnum = linted_str_append_str(&buf, &cap, &size, LINTED_STR("\
 Usage: "));
@@ -519,7 +518,7 @@ Report bugs to <"));
 	if (errnum != 0)
 		goto free_buf;
 
-	errnum = linted_io_write_all(ko, NULL, buf, size);
+	errnum = linted_io_write_all(ko, 0, buf, size);
 	if (errnum != 0)
 		goto free_buf;
 
@@ -536,68 +535,68 @@ static linted_error status_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-	    ko, NULL, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
+	    ko, 0, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_string(ko, NULL, process_name);
+	errnum = linted_io_write_string(ko, 0, process_name);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL,
+	errnum = linted_io_write_str(ko, 0,
 	                             LINTED_STR(" status [OPTIONS] SERVICE\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
 Report the status.\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   SOCKET              the socket to connect to\n\
   SERVICE             the service to get the status of\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Report bugs to <"));
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, package_bugreport);
+	errnum = linted_io_write_str(ko, 0, package_bugreport);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, package_name);
+	errnum = linted_io_write_str(ko, 0, package_name);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(" home page: <"));
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, package_url);
+	errnum = linted_io_write_str(ko, 0, package_url);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 
@@ -612,65 +611,65 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 	linted_error errnum;
 
 	errnum = linted_io_write_str(
-	    ko, NULL, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
+	    ko, 0, LINTED_STR("Usage: LINTED_ADMIN_SOCKET=SOCKET "));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_string(ko, NULL, process_name);
+	errnum = linted_io_write_string(ko, 0, process_name);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" stop [OPTIONS]\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(" stop [OPTIONS]\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Stop a service.\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Stop a service.\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   SOCKET              the socket to connect to\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Report bugs to <"));
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, package_bugreport);
+	errnum = linted_io_write_str(ko, 0, package_bugreport);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, package_name);
+	errnum = linted_io_write_str(ko, 0, package_name);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(" home page: <"));
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, package_url);
+	errnum = linted_io_write_str(ko, 0, package_url);
 	if (errnum != 0)
 		return errnum;
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 
@@ -682,28 +681,28 @@ static linted_error failure(linted_ko ko, char const *process_name,
 {
 	linted_error errnum;
 
-	errnum = linted_io_write_string(ko, NULL, process_name);
+	errnum = linted_io_write_string(ko, 0, process_name);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(": "));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, message);
+	errnum = linted_io_write_str(ko, 0, message);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(": "));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(": "));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_string(ko, NULL, linted_error_string(error));
+	errnum = linted_io_write_string(ko, 0, linted_error_string(error));
 
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 

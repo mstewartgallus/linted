@@ -8,7 +8,7 @@ none	../../var/simulator	none	mkdir,nomount
 ../../var/simulator	var	none	mkdir,shared,bind
 
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
-../../controller	run/controller	none	touch,bind
+../../controller	run/controller	none	touch,nosuid,nodev,noexec,bind,comment=500
 ../../updater	run/updater	none	touch,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700

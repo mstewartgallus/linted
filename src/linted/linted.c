@@ -83,7 +83,7 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
-	if (NULL == setlocale(LC_ALL, "")) {
+	if (0 == setlocale(LC_ALL, "")) {
 		syslog(LOG_ERR, "linted_spawn_attr_init: %s",
 		       linted_error_string(errno));
 		return EXIT_FAILURE;
@@ -103,7 +103,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	bool need_help = false;
 	bool need_version = false;
 
-	char const *bad_option = NULL;
+	char const *bad_option = 0;
 
 	for (size_t ii = 1U; ii < argc; ++ii) {
 		char const *argument = argv[ii];
@@ -138,7 +138,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	if (bad_option != NULL) {
+	if (bad_option != 0) {
 		linted_locale_on_bad_option(STDERR_FILENO, process_name,
 		                            bad_option);
 		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
@@ -169,14 +169,14 @@ static linted_error exec_init(char const *init)
 	linted_error errnum;
 
 	char *init_dup = strdup(init);
-	if (NULL == init_dup) {
+	if (0 == init_dup) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
 	char *init_base = basename(init_dup);
 
-	char const *const init_argv[] = { init_base, NULL };
+	char const *const init_argv[] = { init_base, 0 };
 	execve(init, (char * const *)init_argv, environ);
 	errnum = errno;
 	LINTED_ASSUME(errnum != 0);
@@ -191,37 +191,37 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 {
 	linted_error errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Usage: "));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Usage: "));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_string(ko, NULL, process_name);
+	errnum = linted_io_write_string(ko, 0, process_name);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" [OPTIONS]\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(" [OPTIONS]\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Play the game.\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Play the game.\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   --help              display this help and exit\n\
   --version           display version information and exit\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\
   LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
   LINTED_LOGGER_FSTAB the location of the logger fstab\n\
   LINTED_LOGGER       the location of the logger executable\n\
@@ -232,35 +232,35 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR("Report bugs to <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR("Report bugs to <"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, package_bugreport);
+	errnum = linted_io_write_str(ko, 0, package_bugreport);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, package_name);
+	errnum = linted_io_write_str(ko, 0, package_name);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(" home page: <"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(" home page: <"));
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, package_url);
+	errnum = linted_io_write_str(ko, 0, package_url);
 	if (errnum != 0)
 		return errnum;
 
-	errnum = linted_io_write_str(ko, NULL, LINTED_STR(">\n"));
+	errnum = linted_io_write_str(ko, 0, LINTED_STR(">\n"));
 	if (errnum != 0)
 		return errnum;
 

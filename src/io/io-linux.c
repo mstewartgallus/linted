@@ -34,7 +34,6 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -150,7 +149,7 @@ restart_reading:
 		goto restart_reading;
 
 finish_reading:
-	if (bytes_read_out != NULL)
+	if (bytes_read_out != 0)
 		*bytes_read_out = bytes_read;
 	return errnum;
 
@@ -231,7 +230,7 @@ get_sigpipe : {
 	do {
 		struct timespec timeout = { 0 };
 
-		if (-1 == sigtimedwait(&sigpipeset, NULL, &timeout)) {
+		if (-1 == sigtimedwait(&sigpipeset, 0, &timeout)) {
 			wait_errnum = errno;
 			LINTED_ASSUME(wait_errnum != 0);
 		} else {
@@ -246,13 +245,13 @@ get_sigpipe : {
 
 	{
 		linted_error mask_errnum =
-		    pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+		    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
 
 write_bytes_wrote:
-	if (bytes_wrote_out != NULL)
+	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes_wrote;
 	return errnum;
 
@@ -306,7 +305,7 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 		goto free_va_list;
 	}
 
-	if (bytes_wrote_out != NULL)
+	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes;
 
 free_va_list:
@@ -946,7 +945,7 @@ void linted_io_do_write(struct linted_asynch_pool *pool,
 			errnum = eat_errnum;
 
 	reset_sigmask:
-		mask_errnum = pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+		mask_errnum = pthread_sigmask(SIG_SETMASK, &oldset, 0);
 	}
 	if (0 == errnum)
 		errnum = mask_errnum;
@@ -994,7 +993,7 @@ static linted_error eat_sigpipes(void)
 
 	for (;;) {
 		int wait_status =
-		    sigtimedwait(get_pipe_set(), NULL, &zero_timeout);
+		    sigtimedwait(get_pipe_set(), 0, &zero_timeout);
 		if (wait_status != -1)
 			continue;
 
@@ -1118,7 +1117,7 @@ void linted_io_do_accept(struct linted_asynch_pool *pool,
 	linted_error errnum = 0;
 	linted_ko ko = task_accept->ko;
 
-	int new_fd = accept4(ko, NULL, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
+	int new_fd = accept4(ko, 0, 0, SOCK_NONBLOCK | SOCK_CLOEXEC);
 	if (-1 == new_fd) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);

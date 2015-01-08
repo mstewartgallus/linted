@@ -32,8 +32,8 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <poll.h>
 #include <sys/mman.h>
-#include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -268,7 +268,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	canceller_start(&task->canceller);
 
@@ -278,7 +278,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->errnum = ECANCELED;
@@ -304,7 +304,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task *task,
                                      linted_ko ko, short flags)
 {
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->errnum = ECANCELED;
@@ -479,9 +479,9 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 	size_t worker_stacks_size =
 	    page_size + stack_and_guard_size * workers_count;
 	void *worker_stacks = mmap(
-	    NULL, worker_stacks_size, PROT_READ | PROT_WRITE,
+	    0, worker_stacks_size, PROT_READ | PROT_WRITE,
 	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (NULL == worker_stacks) {
+	if (0 == worker_stacks) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_pool;
@@ -557,8 +557,7 @@ destroy_threads:
 	}
 
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
-		linted_error join_errnum =
-		    pthread_join(pool->workers[ii], NULL);
+		linted_error join_errnum = pthread_join(pool->workers[ii], 0);
 		if (join_errnum != 0) {
 			assert(join_errnum != EDEADLK);
 			assert(join_errnum != EINVAL);
@@ -759,9 +758,9 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 	size_t pollers_stacks_size =
 	    page_size + stack_and_guard_size * pollers_count;
 	void *pollers_stacks = mmap(
-	    NULL, pollers_stacks_size, PROT_READ | PROT_WRITE,
+	    0, pollers_stacks_size, PROT_READ | PROT_WRITE,
 	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (NULL == pollers_stacks) {
+	if (0 == pollers_stacks) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_manager;
@@ -839,7 +838,7 @@ destroy_threads:
 
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
 		linted_error join_errnum =
-		    pthread_join(manager->pollers[ii], NULL);
+		    pthread_join(manager->pollers[ii], 0);
 		if (join_errnum != 0) {
 			assert(join_errnum != EDEADLK);
 			assert(join_errnum != EINVAL);
@@ -1134,7 +1133,7 @@ static void canceller_init(struct canceller *canceller)
 	canceller->in_flight = false;
 
 	canceller->owned = false;
-	canceller->cancel_replier = NULL;
+	canceller->cancel_replier = 0;
 }
 
 static void canceller_start(struct canceller *canceller)
@@ -1175,10 +1174,10 @@ static void canceller_stop(struct canceller *canceller)
 
 	{
 		bool *cancel_replier = canceller->cancel_replier;
-		bool cancelled = cancel_replier != NULL;
+		bool cancelled = cancel_replier != 0;
 		if (cancelled)
 			*cancel_replier = true;
-		canceller->cancel_replier = NULL;
+		canceller->cancel_replier = 0;
 	}
 
 	canceller->in_flight = false;
@@ -1210,7 +1209,7 @@ static void canceller_cancel(struct canceller *canceller)
 			assert(false);
 		}
 
-		assert(NULL == canceller->cancel_replier);
+		assert(0 == canceller->cancel_replier);
 
 		in_flight = canceller->in_flight;
 		if (in_flight) {
@@ -1286,7 +1285,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
 	}
 
 	{
-		cancelled = canceller->cancel_replier != NULL;
+		cancelled = canceller->cancel_replier != 0;
 
 		/* Don't actually complete the cancellation if
 		 * cancelled and let the completion do that.
@@ -1321,10 +1320,10 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 	canceller->owned = false;
 	{
 		bool *cancel_replier = canceller->cancel_replier;
-		cancelled = cancel_replier != NULL;
+		cancelled = cancel_replier != 0;
 		if (cancelled)
 			*cancel_replier = true;
-		canceller->cancel_replier = NULL;
+		canceller->cancel_replier = 0;
 	}
 
 	errnum = pthread_spin_unlock(&canceller->lock);

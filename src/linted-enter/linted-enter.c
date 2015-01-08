@@ -120,7 +120,7 @@ uint_fast8_t linted_start(char const *const process_name, size_t argc,
 		}
 	}
 
-	static const char *args[] = { "/bin/sh", NULL };
+	static const char *args[] = { "/bin/sh", 0 };
 	execve(args[0U], (char * const *)args, environ);
 
 	perror("execve");

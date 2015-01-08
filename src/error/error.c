@@ -36,7 +36,7 @@ char const *linted_error_string(linted_error errnum_to_print)
 
 	linted_error errnum;
 
-	char *buf = NULL;
+	char *buf = 0;
 	size_t buf_size = 0U;
 
 	for (;;) {

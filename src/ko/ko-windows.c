@@ -123,7 +123,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		desired_access |= GENERIC_READ | GENERIC_WRITE;
 
 	size_t buffer_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-	                                         pathname, -1, NULL, 0);
+	                                         pathname, -1, 0, 0);
 	if (0 == buffer_size) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
@@ -148,7 +148,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	}
 
 	linted_ko ko =
-	    CreateFile(buffer, desired_access, 0, NULL, OPEN_EXISTING, 0, NULL);
+	    CreateFile(buffer, desired_access, 0, 0, OPEN_EXISTING, 0, 0);
 	if (INVALID_HANDLE_VALUE == ko) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);

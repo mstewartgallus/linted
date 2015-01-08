@@ -61,8 +61,8 @@ void linted_pool_insert_node(struct linted_pool *pool,
                              struct linted_pool_node *node)
 {
 	/* Guard against double insertions */
-	assert(NULL == node->right);
-	assert(NULL == node->left);
+	assert(0 == node->right);
+	assert(0 == node->left);
 
 	struct linted_pool_node *tip = &pool->tip;
 
@@ -77,8 +77,8 @@ void linted_pool_insert_node(struct linted_pool *pool,
 
 void linted_pool_node_create(struct linted_pool_node *node)
 {
-	node->left = NULL;
-	node->right = NULL;
+	node->left = 0;
+	node->right = 0;
 }
 
 void linted_pool_node_discard(struct linted_pool_node *node)
@@ -86,8 +86,8 @@ void linted_pool_node_discard(struct linted_pool_node *node)
 	struct linted_pool_node *left = node->left;
 	struct linted_pool_node *right = node->right;
 
-	node->left = NULL;
-	node->right = NULL;
+	node->left = 0;
+	node->right = 0;
 
 	left->right = right;
 	right->left = left;

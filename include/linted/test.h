@@ -29,7 +29,7 @@
 
 #define LINTED_TEST_FAILURE(format_string, ...)                               \
     do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, NULL, "\
+        linted_io_write_format(STDERR_FILENO, 0, "\
 impossible error in file %s, function %s, and line %i: " format_string,        \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \

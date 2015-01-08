@@ -263,7 +263,7 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 {
 	linted_error errnum = 0;
 
-	if (NULL == path && path_len != 0U)
+	if (0 == path && path_len != 0U)
 		return EINVAL;
 
 	if (path_len > LINTED_ADMIN_PATH_MAX)
@@ -282,7 +282,7 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 
 		address.sun_family = AF_UNIX;
 
-		if (path != NULL) {
+		if (path != 0) {
 			memcpy(address.sun_path, path, path_len);
 			if ('@' == address.sun_path[0U])
 				address.sun_path[0U] = '\0';
@@ -410,7 +410,7 @@ linted_error
 linted_admin_send_request(linted_admin admin,
                           union linted_admin_request const *request)
 {
-	return linted_io_write_all(admin, NULL, request, sizeof *request);
+	return linted_io_write_all(admin, 0, request, sizeof *request);
 }
 
 linted_error linted_admin_recv_reply(linted_admin admin,

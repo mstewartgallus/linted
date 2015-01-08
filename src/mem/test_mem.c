@@ -34,7 +34,7 @@ int main(void)
 
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, NULL, 0U, 0U);
+		errnum = linted_mem_realloc_array(&xx, 0, 0U, 0U);
 		if (errnum != 0)
 			LINTED_TEST_FAILURE("errnum == %i\n", errnum);
 		linted_mem_free(xx);

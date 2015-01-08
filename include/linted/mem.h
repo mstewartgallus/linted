@@ -86,7 +86,7 @@ static inline linted_error linted_mem_alloc(void **memp, size_t size)
 		size = 1U;
 
 	void *memory = malloc(size);
-	if (NULL == memory) {
+	if (0 == memory) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -111,7 +111,7 @@ static inline linted_error linted_mem_alloc_array(void **memp, size_t nmemb, siz
 		return errnum;
 
 	void *memory = malloc(total);
-	if (NULL == memory) {
+	if (0 == memory) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -129,7 +129,7 @@ static inline linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 		size = 1U;
 
 	void *memory = calloc(1U, size);
-	if (NULL == memory) {
+	if (0 == memory) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -147,7 +147,7 @@ static inline linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nme
 
 	if (0U == nmemb || 0U == size) {
 		void *memory = malloc(1U);
-		if (NULL == memory) {
+		if (0 == memory) {
 			linted_error errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
@@ -157,7 +157,7 @@ static inline linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nme
 	}
 
 	void *memory = calloc(nmemb, size);
-	if (NULL == memory) {
+	if (0 == memory) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -176,7 +176,7 @@ static inline linted_error linted_mem_realloc(void **memp, void *memory, size_t 
 		new_size = 1U;
 
 	void *new_memory = realloc(memory, new_size);
-	if (NULL == new_memory) {
+	if (0 == new_memory) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -199,7 +199,7 @@ static inline linted_error linted_mem_realloc_array(void **memp, void *memory, s
 		return errnum;
 
 	void *new_memory = realloc(memory, total);
-	if (NULL == new_memory) {
+	if (0 == new_memory) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

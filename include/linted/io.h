@@ -19,7 +19,6 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/str.h"
-#include "linted/util.h"
 
 #include <stddef.h>
 
@@ -55,7 +54,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
  * @param ko The kernel object to be written to.
  *
  * @param bytes_wrote The amount written. Is set to no larger than
- *                    count bytes and at least zero bytes. If NULL
+ *                    count bytes and at least zero bytes. If 0
  *                    then is not set.
  *
  * @param buf The buffer to be written from. Must be at least count bytes

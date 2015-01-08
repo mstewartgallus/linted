@@ -42,7 +42,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	if (dirko > INT_MAX && dirko != LINTED_KO_CWD)
 		return EINVAL;
 
-	if (NULL == kop) {
+	if (0 == kop) {
 		if (flags != 0U)
 			return EINVAL;
 
@@ -71,14 +71,14 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 		return EINVAL;
 
 	char *pathnamedir_buffer = strdup(pathname);
-	if (NULL == pathnamedir_buffer) {
+	if (0 == pathnamedir_buffer) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
 
 	char *pathnamebase_buffer = strdup(pathname);
-	if (NULL == pathnamebase_buffer) {
+	if (0 == pathnamebase_buffer) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_pathnamedir_buffer;

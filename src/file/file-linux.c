@@ -42,7 +42,7 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 		dirfd = dirko;
 	}
 
-	if (NULL == kop) {
+	if (0 == kop) {
 		if (flags != 0U)
 			return EINVAL;
 

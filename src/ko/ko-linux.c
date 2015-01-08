@@ -227,7 +227,7 @@ linted_error linted_ko_close(linted_ko ko)
 		errnum = 0;
 	}
 
-	linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, NULL);
+	linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, 0);
 	if (0 == errnum)
 		errnum = mask_errnum;
 

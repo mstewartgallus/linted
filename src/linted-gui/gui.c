@@ -31,8 +31,6 @@
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
@@ -210,22 +208,22 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		poll_conn_task = xx;
 	}
 
-	xcb_connection_t *connection = xcb_connect(NULL, NULL);
-	if (NULL == connection) {
+	xcb_connection_t *connection = xcb_connect(0, 0);
+	if (0 == connection) {
 		errnum = ENOSYS;
 		goto destroy_pool;
 	}
 
 	if (!xkb_x11_setup_xkb_extension(
 	        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,
-	        XKB_X11_MIN_MINOR_XKB_VERSION, 0, NULL, NULL, NULL, NULL)) {
+	        XKB_X11_MIN_MINOR_XKB_VERSION, 0, 0, 0, 0, 0)) {
 		errnum = ENOSYS;
 		goto close_connection;
 	}
 
 	struct xkb_context *keyboard_ctx =
 	    xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-	if (NULL == keyboard_ctx) {
+	if (0 == keyboard_ctx) {
 		errnum = ENOSYS;
 		goto close_connection;
 	}
@@ -252,7 +250,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			error = xx;
 		}
 
-		if (error != NULL) {
+		if (error != 0) {
 			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			goto destroy_keyboard_ctx;
@@ -265,14 +263,14 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	struct xkb_keymap *keymap = xkb_x11_keymap_new_from_device(
 	    keyboard_ctx, connection, device_id, XKB_KEYMAP_COMPILE_NO_FLAGS);
-	if (NULL == keymap) {
+	if (0 == keymap) {
 		errnum = ENOSYS;
 		goto destroy_keyboard_ctx;
 	}
 
 	struct xkb_state *keyboard_state =
 	    xkb_x11_state_new_from_device(keymap, connection, device_id);
-	if (NULL == keyboard_state) {
+	if (0 == keyboard_state) {
 		errnum = ENOSYS;
 		goto destroy_keymap;
 	}
@@ -432,7 +430,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	bool window_destroyed = false;
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
-		if (NULL == event)
+		if (0 == event)
 			break;
 
 		bool is_key_down;
@@ -652,7 +650,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			error = xx;
 		}
 
-		if (error != NULL) {
+		if (error != 0) {
 			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;
@@ -680,7 +678,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			error = xx;
 		}
 
-		if (error != NULL) {
+		if (error != 0) {
 			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;
@@ -805,7 +803,7 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 		error = xx;
 	}
 
-	if (error != NULL) {
+	if (error != 0) {
 		errnum = linted_xcb_error(error);
 		linted_mem_free(error);
 		LINTED_ASSUME(errnum != 0);

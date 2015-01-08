@@ -166,7 +166,7 @@ static linted_error do_second_fork(char const *binary, char const *const *argv,
 #define exit_with_error(writer, errnum)                                        \
 	do {                                                                   \
 		linted_error xx = errnum;                                      \
-		linted_io_write_all(writer, NULL, &xx, sizeof xx);             \
+		linted_io_write_all(writer, 0, &xx, sizeof xx);                \
 		_Exit(EXIT_FAILURE);                                           \
 	} while (0)
 
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 
 	size_t arguments_length = argc;
 
-	char const *bad_option = NULL;
+	char const *bad_option = 0;
 	bool need_version = false;
 	bool need_help = false;
 
@@ -206,11 +206,11 @@ int main(int argc, char *argv[])
 
 	unsigned long clone_flags = 0U;
 
-	char const *chdir_path = NULL;
-	char const *priority = NULL;
-	char const *chrootdir = NULL;
-	char const *fstab = NULL;
-	char const *waiter = NULL;
+	char const *chdir_path = 0;
+	char const *priority = 0;
+	char const *chrootdir = 0;
+	char const *fstab = 0;
+	char const *waiter = 0;
 	bool have_command = false;
 	size_t command_start;
 
@@ -330,18 +330,17 @@ exit_loop:
 		return EXIT_FAILURE;
 	}
 
-	if (bad_option != NULL) {
+	if (bad_option != 0) {
 		syslog(LOG_ERR, "bad option: %s", bad_option);
 		return EXIT_FAILURE;
 	}
 
-	if (NULL == waiter) {
+	if (0 == waiter) {
 		syslog(LOG_ERR, "need waiter");
 		return EXIT_FAILURE;
 	}
 
-	if ((fstab != NULL && NULL == chrootdir) ||
-	    (NULL == fstab && chrootdir != NULL)) {
+	if ((fstab != 0 && 0 == chrootdir) || (0 == fstab && chrootdir != 0)) {
 		syslog(LOG_ERR,
 		       "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
@@ -361,8 +360,8 @@ exit_loop:
 	}
 
 	if (traceme) {
-		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)NULL,
-		                 (void *)NULL)) {
+		if (-1 ==
+		    ptrace(PTRACE_TRACEME, (pid_t)0, (void *)0, (void *)0)) {
 			syslog(LOG_ERR, "ptrace: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -379,13 +378,13 @@ exit_loop:
 	char const **command = (char const **)argv + 1U + command_start;
 
 	char *command_dup = strdup(command[0U]);
-	if (NULL == command_dup) {
+	if (0 == command_dup) {
 		syslog(LOG_ERR, "strdup: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
 	char *waiter_dup = strdup(waiter);
-	if (NULL == waiter_dup) {
+	if (0 == waiter_dup) {
 		syslog(LOG_ERR, "strdup: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -397,10 +396,10 @@ exit_loop:
 	command[0U] = command_base;
 
 	size_t mount_args_size = 0U;
-	struct mount_args *mount_args = NULL;
-	if (fstab != NULL) {
+	struct mount_args *mount_args = 0;
+	if (fstab != 0) {
 		FILE *fstab_file = setmntent(fstab, "re");
-		if (NULL == fstab_file) {
+		if (0 == fstab_file) {
 			syslog(LOG_ERR, "setmntent: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -409,7 +408,7 @@ exit_loop:
 		for (;;) {
 			errno = 0;
 			struct mntent *entry = getmntent(fstab_file);
-			if (NULL == entry) {
+			if (0 == entry) {
 				errnum = errno;
 				if (errnum != 0) {
 					syslog(LOG_ERR, "getmntent: %s",
@@ -425,17 +424,17 @@ exit_loop:
 			char const *opts = entry->mnt_opts;
 
 			if (0 == strcmp("none", fsname))
-				fsname = NULL;
+				fsname = 0;
 
 			if (0 == strcmp("none", opts))
-				opts = NULL;
+				opts = 0;
 
 			bool mkdir_flag = false;
 			bool touch_flag = false;
 			bool nomount_flag = false;
 			unsigned long mountflags = 0U;
-			char const *data = NULL;
-			if (opts != NULL) {
+			char const *data = 0;
+			if (opts != 0) {
 				bool xx;
 				bool yy;
 				bool zz;
@@ -470,36 +469,36 @@ exit_loop:
 				mount_args = xx;
 			}
 
-			if (fsname != NULL) {
+			if (fsname != 0) {
 				fsname = strdup(fsname);
-				if (NULL == fsname) {
+				if (0 == fsname) {
 					syslog(LOG_ERR, "strdup: %s",
 					       linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
 			}
 
-			if (dir != NULL) {
+			if (dir != 0) {
 				dir = strdup(dir);
-				if (NULL == dir) {
+				if (0 == dir) {
 					syslog(LOG_ERR, "strdup: %s",
 					       linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
 			}
 
-			if (type != NULL) {
+			if (type != 0) {
 				type = strdup(type);
-				if (NULL == type) {
+				if (0 == type) {
 					syslog(LOG_ERR, "strdup: %s",
 					       linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
 			}
 
-			if (data != NULL) {
+			if (data != 0) {
 				data = strdup(data);
-				if (NULL == data) {
+				if (0 == data) {
 					syslog(LOG_ERR, "strdup: %s",
 					       linted_error_string(errno));
 					return EXIT_FAILURE;
@@ -524,10 +523,10 @@ exit_loop:
 		}
 	}
 
-	cap_t caps = NULL;
+	cap_t caps = 0;
 	if (drop_caps) {
 		caps = cap_get_proc();
-		if (NULL == caps) {
+		if (0 == caps) {
 			syslog(LOG_ERR, "cap_get_proc: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -552,7 +551,7 @@ exit_loop:
 		}
 	}
 
-	if (priority != NULL) {
+	if (priority != 0) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
 			syslog(LOG_ERR, "setpriority: %s",
 			       linted_error_string(errno));
@@ -725,7 +724,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 		if (errnum != 0)
 			return errnum;
 
-		if (-1 == my_setgroups(0U, NULL))
+		if (-1 == my_setgroups(0U, 0))
 			return errno;
 	}
 
@@ -736,7 +735,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 			return errnum;
 	}
 
-	if (chdir_path != NULL) {
+	if (chdir_path != 0) {
 		if (-1 == chdir(chdir_path))
 			return errno;
 	}
@@ -755,7 +754,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 	 * need this.
 	 */
 
-	if (caps != NULL) {
+	if (caps != 0) {
 		if (-1 == cap_set_proc(caps))
 			return errno;
 	}
@@ -764,7 +763,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 		sigset_t sigset;
 		sigemptyset(&sigset);
 		sigaddset(&sigset, SIGCHLD);
-		errnum = pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+		errnum = pthread_sigmask(SIG_UNBLOCK, &sigset, 0);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -825,7 +824,7 @@ do_first_fork(linted_ko err_reader, char const *uid_map, char const *gid_map,
 
 	linted_ko_close(cwd);
 
-	char const *arguments[] = { waiter_base, NULL };
+	char const *arguments[] = { waiter_base, 0 };
 	execve(waiter, (char * const *)arguments, environ);
 	return errno;
 }
@@ -887,7 +886,7 @@ static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 			file = xx;
 		}
 
-		errnum = linted_io_write_string(file, NULL, uid_map);
+		errnum = linted_io_write_string(file, 0, uid_map);
 		if (errnum != 0)
 			return errnum;
 
@@ -908,7 +907,7 @@ static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 			file = xx;
 		}
 
-		errnum = linted_io_write_string(file, NULL, gid_map);
+		errnum = linted_io_write_string(file, 0, gid_map);
 		if (errnum != 0)
 			return errnum;
 
@@ -926,7 +925,7 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 {
 	linted_error errnum;
 
-	if (-1 == mount(chrootdir, chrootdir, NULL, MS_BIND, NULL))
+	if (-1 == mount(chrootdir, chrootdir, 0, MS_BIND, 0))
 		return errno;
 
 	if (-1 == chdir(chrootdir))
@@ -943,13 +942,13 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 		unsigned long mountflags = mount_args[ii].mountflags;
 
 		if (mkdir_flag) {
-			errnum = linted_dir_create(NULL, LINTED_KO_CWD, dir, 0U,
+			errnum = linted_dir_create(0, LINTED_KO_CWD, dir, 0U,
 			                           S_IRWXU);
 			if (errnum != 0)
 				return errnum;
 		} else if (touch_flag) {
-			errnum = linted_file_create(NULL, LINTED_KO_CWD, dir,
-			                            0U, S_IRWXU);
+			errnum = linted_file_create(0, LINTED_KO_CWD, dir, 0U,
+			                            S_IRWXU);
 			if (errnum != 0)
 				return errnum;
 		}
@@ -965,10 +964,10 @@ static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
 			continue;
 		}
 
-		if (-1 == mount(fsname, dir, type, aliasflags, NULL))
+		if (-1 == mount(fsname, dir, type, aliasflags, 0))
 			return errno;
 
-		if (NULL == data && 0 == (mountflags & ~aliasflags))
+		if (0 == data && 0 == (mountflags & ~aliasflags))
 			continue;
 
 		if (-1 ==
@@ -1038,7 +1037,7 @@ static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
 	                                    [NOSUID] = MNTOPT_NOSUID, /**/
 	                                    [NODEV] = "nodev",        /**/
 	                                    [NOEXEC] = "noexec",      /**/
-	                                    NULL };
+	                                    0 };
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
@@ -1059,17 +1058,17 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 	bool suid = true;
 	bool dev = true;
 	bool exec = true;
-	char *leftovers = NULL;
+	char *leftovers = 0;
 
 	char *subopts_str = strdup(opts);
-	if (NULL == subopts_str) {
+	if (0 == subopts_str) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
 	}
 
 	char *subopts = subopts_str;
-	char *value = NULL;
+	char *value = 0;
 
 	while (*subopts != '\0') {
 		int token;
@@ -1279,9 +1278,9 @@ static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *arg)
 
 	size_t stack_and_guard_size = page_size + stack_size + page_size;
 	void *child_stack = mmap(
-	    NULL, stack_and_guard_size, PROT_READ | PROT_WRITE,
+	    0, stack_and_guard_size, PROT_READ | PROT_WRITE,
 	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (NULL == child_stack)
+	if (0 == child_stack)
 		return -1;
 
 	/* Guard pages are shared between the stacks */

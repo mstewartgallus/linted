@@ -124,7 +124,7 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
 	va_list ap_copy;
 	va_copy(ap_copy, ap);
 
-	int bytes_should_write = vsnprintf(NULL, 0, fmt, ap);
+	int bytes_should_write = vsnprintf(0, 0, fmt, ap);
 	if (bytes_should_write < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);

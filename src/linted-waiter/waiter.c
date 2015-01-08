@@ -25,13 +25,9 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/poll.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <syslog.h>
@@ -54,7 +50,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	char const *service = getenv("LINTED_SERVICE");
-	if (service != NULL) {
+	if (service != 0) {
 		errnum = set_name(service);
 		assert(errnum != EINVAL);
 	}
@@ -66,7 +62,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_flags = SA_NOCLDSTOP;
 		action.sa_handler = sigchld_handler;
 		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
+		if (-1 == sigaction(SIGCHLD, &action, 0)) {
 			syslog(LOG_ERR, "sigaction: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -111,7 +107,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		action.sa_handler = handle_exit_sig;
 		action.sa_flags = 0;
 		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+		if (-1 == sigaction(exit_signals[ii], &action, 0)) {
 			assert(errno != EINVAL);
 			assert(0);
 		}

@@ -35,7 +35,6 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -631,7 +630,7 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 	size_t bytes_read_delta;
 	{
 		DWORD xx;
-		if (!ReadFile(ko, buf + bytes_read, bytes_left, &xx, NULL)) {
+		if (!ReadFile(ko, buf + bytes_read, bytes_left, &xx, 0)) {
 			errnum = GetLastError();
 			LINTED_ASSUME(errnum != 0);
 
@@ -690,7 +689,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	size_t bytes_wrote_delta;
 	{
 		DWORD xx;
-		if (!WriteFile(ko, buf + bytes_wrote, bytes_left, &xx, NULL)) {
+		if (!WriteFile(ko, buf + bytes_wrote, bytes_left, &xx, 0)) {
 			errnum = GetLastError();
 			LINTED_ASSUME(errnum != 0);
 

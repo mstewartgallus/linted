@@ -44,7 +44,7 @@ struct linted_queue
 
 void linted_queue_node(struct linted_queue_node *node)
 {
-	node->next = NULL;
+	node->next = 0;
 }
 
 linted_error linted_queue_create(struct linted_queue **restrict queuep)
@@ -59,7 +59,7 @@ linted_error linted_queue_create(struct linted_queue **restrict queuep)
 		queue = xx;
 	}
 
-	queue->head = NULL;
+	queue->head = 0;
 	queue->tailp = &queue->head;
 
 	InitializeCriticalSection(&queue->lock);
@@ -81,7 +81,7 @@ void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
 	/* Guard against double insertions */
-	assert(NULL == node->prev);
+	assert(0 == node->prev);
 
 	EnterCriticalSection(&queue->lock);
 
@@ -106,7 +106,7 @@ void linted_queue_recv(struct linted_queue *queue,
 
 	/* The nodes next to the tip are the head */
 	removed = queue->head;
-	if (removed != NULL)
+	if (removed != 0)
 		goto got_node;
 
 	do {
@@ -115,7 +115,7 @@ void linted_queue_recv(struct linted_queue *queue,
 		}
 
 		removed = queue->head;
-	} while (removed == NULL);
+	} while (removed == 0);
 got_node:
 
 	if (queue->tailp == &removed->next)
@@ -143,7 +143,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
 	/* The nodes next to the tip are the head */
 	removed = queue->head;
-	if (removed == NULL) {
+	if (0 == removed) {
 		errnum = EAGAIN;
 		goto leave_section;
 	}

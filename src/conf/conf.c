@@ -25,7 +25,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <string.h>
 #include <wordexp.h>
 
@@ -114,7 +113,7 @@ linted_error linted_conf_db_create(struct linted_conf_db **dbp)
 	}
 
 	db->size = 0U;
-	db->confs = NULL;
+	db->confs = 0;
 
 	*dbp = db;
 
@@ -145,10 +144,10 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 {
 	linted_error errnum = 0;
 
-	char *line_buffer = NULL;
+	char *line_buffer = 0;
 	size_t line_capacity = 0U;
 
-	struct linted_conf_section *current_section = NULL;
+	struct linted_conf_section *current_section = 0;
 
 	for (;;) {
 		size_t line_size;
@@ -220,7 +219,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 		}
 
 		default: {
-			if (NULL == current_section) {
+			if (0 == current_section) {
 				errnum = EINVAL;
 				goto free_line_buffer;
 			}
@@ -357,7 +356,7 @@ linted_error linted_conf_create(struct linted_conf **confp, char const *name)
 	struct linted_conf *conf;
 
 	char *name_copy = strdup(name);
-	if (NULL == name_copy) {
+	if (0 == name_copy) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -378,7 +377,7 @@ linted_error linted_conf_create(struct linted_conf **confp, char const *name)
 		struct conf_section_bucket *bucket = &conf->buckets[ii];
 
 		bucket->sections_size = 0U;
-		bucket->sections = NULL;
+		bucket->sections = 0;
 	}
 
 free_name_copy:
@@ -394,7 +393,7 @@ free_name_copy:
 
 void linted_conf_put(struct linted_conf *conf)
 {
-	if (NULL == conf)
+	if (0 == conf)
 		return;
 
 	if (--conf->refcount != 0)
@@ -424,7 +423,7 @@ void linted_conf_put(struct linted_conf *conf)
 					linted_mem_free(setting->field);
 
 					for (char **value = setting->value;
-					     *value != NULL; ++value)
+					     *value != 0; ++value)
 						linted_mem_free(*value);
 					linted_mem_free(setting->value);
 				}
@@ -492,7 +491,7 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 
 		for (size_t ii = 0U; ii < SETTING_BUCKETS_SIZE; ++ii) {
 			new_section->buckets[ii].settings_size = 0U;
-			new_section->buckets[ii].settings = NULL;
+			new_section->buckets[ii].settings = 0;
 		}
 
 		bucket->sections_size = new_sections_size;
@@ -527,7 +526,7 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 		}
 
 		if (!have_found_section)
-			return NULL;
+			return 0;
 	}
 
 	struct conf_setting_bucket *buckets = found_section->buckets;
@@ -548,7 +547,7 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 	}
 
 	if (!have_found_setting)
-		return NULL;
+		return 0;
 
 	return (char const * const *)found_setting->value;
 }
@@ -589,7 +588,7 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 
 		size_t value_len;
 		for (size_t ii = 0U;; ++ii) {
-			if (NULL == value[ii]) {
+			if (0 == value[ii]) {
 				value_len = ii;
 				break;
 			}
@@ -606,7 +605,7 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 		}
 		for (size_t ii = 0U; ii < value_len; ++ii)
 			value_copy[ii] = strdup(value[ii]);
-		value_copy[value_len] = NULL;
+		value_copy[value_len] = 0;
 
 		new_settings[settings_size].field = field;
 		new_settings[settings_size].value = value_copy;
@@ -618,14 +617,14 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 	}
 
 found_field:
-	if (NULL == value[0U]) {
+	if (0 == value[0U]) {
 		linted_mem_free(field);
 
 		linted_mem_free(settings[found_field].field);
 
 		char **values = settings[found_field].value;
 
-		for (size_t ii = 0U; values[ii] != NULL; ++ii)
+		for (size_t ii = 0U; values[ii] != 0; ++ii)
 			linted_mem_free(values[ii]);
 
 		linted_mem_free(values);
@@ -640,7 +639,7 @@ found_field:
 
 		size_t old_value_len;
 		for (size_t ii = 0U;; ++ii) {
-			if (NULL == old_value[ii]) {
+			if (0 == old_value[ii]) {
 				old_value_len = ii;
 				break;
 			}
@@ -648,7 +647,7 @@ found_field:
 
 		size_t value_len;
 		for (size_t ii = 0U;; ++ii) {
-			if (NULL == value[ii]) {
+			if (0 == value[ii]) {
 				value_len = ii;
 				break;
 			}
@@ -671,7 +670,7 @@ found_field:
 
 		for (size_t ii = 0U; ii < value_len; ++ii) {
 			char *copy = strdup(value[ii]);
-			if (NULL == copy) {
+			if (0 == copy) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 				for (; ii != 0; --ii)
@@ -683,7 +682,7 @@ found_field:
 			new_value[old_value_len + ii] = copy;
 		}
 
-		new_value[new_value_len] = NULL;
+		new_value[new_value_len] = 0;
 
 		linted_mem_free(settings[found_field].field);
 		linted_mem_free(old_value);

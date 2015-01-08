@@ -40,7 +40,7 @@ static void unlock_routine(void *arg);
 
 void linted_queue_node(struct linted_queue_node *node)
 {
-	node->next = NULL;
+	node->next = 0;
 }
 
 linted_error linted_queue_create(struct linted_queue **queuep)
@@ -55,7 +55,7 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 		queue = xx;
 	}
 
-	queue->head = NULL;
+	queue->head = 0;
 	queue->tailp = &queue->head;
 
 	{
@@ -86,7 +86,7 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 			goto free_queue;
 	}
 
-	errnum = pthread_cond_init(&queue->gains_member, NULL);
+	errnum = pthread_cond_init(&queue->gains_member, 0);
 	if (errnum != 0) {
 		assert(errnum != EINVAL);
 		assert(false);
@@ -128,7 +128,7 @@ void linted_queue_send(struct linted_queue *queue,
 	linted_error errnum;
 
 	/* Guard against double insertions */
-	assert(NULL == node->next);
+	assert(0 == node->next);
 
 	errnum = pthread_mutex_lock(&queue->lock);
 	if (errnum != 0) {
@@ -164,7 +164,7 @@ void linted_queue_recv(struct linted_queue *queue,
 
 	/* The nodes next to the tip are the head */
 	struct linted_queue_node *removed = queue->head;
-	if (removed != NULL)
+	if (removed != 0)
 		goto got_node;
 
 	/* The slow path, only bother to push the cancellation point
@@ -178,7 +178,7 @@ void linted_queue_recv(struct linted_queue *queue,
 		}
 
 		removed = queue->head;
-	} while (removed == NULL);
+	} while (removed == 0);
 	pthread_cleanup_pop(false);
 
 got_node:
@@ -216,7 +216,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
 	/* The nodes next to the tip are the head */
 	struct linted_queue_node *removed = queue->head;
-	if (removed == NULL) {
+	if (0 == removed) {
 		errnum = EAGAIN;
 		goto pop_cleanup;
 	}

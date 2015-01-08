@@ -33,7 +33,6 @@
 #include <locale.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,7 +103,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	if (NULL == setlocale(LC_ALL, "")) {
+	if (0 == setlocale(LC_ALL, "")) {
 		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -192,8 +191,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		poll_conn_task = xx;
 	}
 
-	xcb_connection_t *connection = xcb_connect(NULL, NULL);
-	if (NULL == connection) {
+	xcb_connection_t *connection = xcb_connect(0, 0);
+	if (0 == connection) {
 		errnum = ENOSYS;
 		goto destroy_pool;
 	}
@@ -364,7 +363,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	bool window_destroyed = false;
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
-		if (NULL == event)
+		if (0 == event)
 			break;
 
 		switch (event->response_type & ~0x80) {
@@ -500,7 +499,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 			error = xx;
 		}
 
-		if (error != NULL) {
+		if (error != 0) {
 			errnum = linted_xcb_error(error);
 			linted_mem_free(error);
 			return errnum;

@@ -28,7 +28,7 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 
 	size_t size = 0U;
 	size_t capacity = 0U;
-	char *buffer = NULL;
+	char *buffer = 0;
 
 	errnum =
 	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
@@ -50,7 +50,7 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_io_write_all(ko, NULL, buffer, size);
+	errnum = linted_io_write_all(ko, 0, buffer, size);
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -67,7 +67,7 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 
 	size_t size = 0U;
 	size_t capacity = 0U;
-	char *buffer = NULL;
+	char *buffer = 0;
 
 	errnum = linted_str_append_str(&buffer, &capacity, &size,
 	                               LINTED_STR("Try `"));
@@ -93,7 +93,7 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_io_write_all(ko, NULL, buffer, size);
+	errnum = linted_io_write_all(ko, 0, buffer, size);
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -110,7 +110,7 @@ linted_error linted_locale_version(linted_ko ko,
 
 	size_t size = 0U;
 	size_t capacity = 0U;
-	char *buffer = NULL;
+	char *buffer = 0;
 
 	errnum =
 	    linted_str_append_str(&buffer, &capacity, &size, package_string);
@@ -140,7 +140,7 @@ There is NO WARRANTY, to the extent permitted by law.\n"));
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_io_write_all(ko, NULL, buffer, size);
+	errnum = linted_io_write_all(ko, 0, buffer, size);
 	if (errnum != 0)
 		goto free_buffer;
 

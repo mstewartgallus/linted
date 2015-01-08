@@ -23,9 +23,6 @@
 #include "linted/rpc.h"
 #include "linted/util.h"
 
-#include <errno.h>
-#include <stddef.h>
-
 struct linted_updater_task_send
 {
 	struct linted_io_task_write *parent;

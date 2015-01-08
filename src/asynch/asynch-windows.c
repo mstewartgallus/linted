@@ -253,7 +253,7 @@ linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task)
 {
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	EnterCriticalSection(&task->owner_lock);
 
@@ -273,7 +273,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
 {
 	bool cancelled;
 
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	EnterCriticalSection(&task->owner_lock);
 
@@ -283,10 +283,10 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
 	task->owned = false;
 	{
 		bool *cancel_replier = task->cancel_replier;
-		cancelled = cancel_replier != NULL;
+		cancelled = cancel_replier != 0;
 		if (cancelled)
 			*cancel_replier = true;
-		task->cancel_replier = NULL;
+		task->cancel_replier = 0;
 	}
 
 	LeaveCriticalSection(&task->owner_lock);
@@ -312,10 +312,10 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 
 	{
 		bool *cancel_replier = task->cancel_replier;
-		bool cancelled = cancel_replier != NULL;
+		bool cancelled = cancel_replier != 0;
 		if (cancelled)
 			*cancel_replier = true;
-		task->cancel_replier = NULL;
+		task->cancel_replier = 0;
 	}
 
 	task->in_flight = false;
@@ -333,7 +333,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
                                      struct linted_asynch_task *task,
                                      linted_ko ko, short flags)
 {
-	assert(pool != NULL);
+	assert(pool != 0);
 
 	bool cancelled;
 
@@ -343,10 +343,10 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 	task->owned = false;
 	{
 		bool *cancel_replier = task->cancel_replier;
-		cancelled = cancel_replier != NULL;
+		cancelled = cancel_replier != 0;
 		if (cancelled)
 			*cancel_replier = true;
-		task->cancel_replier = NULL;
+		task->cancel_replier = 0;
 	}
 
 	LeaveCriticalSection(&task->owner_lock);
@@ -425,7 +425,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 
 	task->in_flight = false;
 	task->owned = false;
-	task->cancel_replier = NULL;
+	task->cancel_replier = 0;
 
 	task->data = data;
 	task->type = type;
@@ -454,7 +454,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 	{
 		EnterCriticalSection(&task->owner_lock);
 
-		assert(NULL == task->cancel_replier);
+		assert(0 == task->cancel_replier);
 
 		in_flight = task->in_flight;
 		if (in_flight) {
@@ -561,7 +561,7 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 
 	for (; created_threads < max_tasks; ++created_threads) {
 		linted_ko thread =
-		    CreateThread(NULL, 0, worker_routine, pool, 0, NULL);
+		    CreateThread(0, 0, worker_routine, pool, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			errnum = GetLastError();
 			goto destroy_threads;
@@ -642,7 +642,7 @@ static DWORD WINAPI worker_routine(void *arg)
 		EnterCriticalSection(&task->owner_lock);
 
 		{
-			cancelled = task->cancel_replier != NULL;
+			cancelled = task->cancel_replier != 0;
 
 			/* Don't actually complete the cancellation if
 			 * cancelled and let the completion do that.
@@ -764,7 +764,7 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 
 	for (; created_threads < max_pollers; ++created_threads) {
 		linted_ko thread =
-		    CreateThread(NULL, 0, poller_routine, manager, 0, NULL);
+		    CreateThread(0, 0, poller_routine, manager, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			errnum = GetLastError();
 			goto destroy_threads;
@@ -852,7 +852,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		EnterCriticalSection(&task->owner_lock);
 
 		{
-			cancelled = task->cancel_replier != NULL;
+			cancelled = task->cancel_replier != 0;
 
 			/* Don't actually complete the cancellation if
 			 * cancelled and let the completion do that.
