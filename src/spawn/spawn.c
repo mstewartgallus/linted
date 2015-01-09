@@ -69,23 +69,18 @@ struct fork_args
 {
 	sigset_t const *sigset;
 	struct linted_spawn_file_actions const *file_actions;
-	linted_ko err_reader;
 	linted_ko err_writer;
 	char const *const *argv;
 	char const *const *envp;
-	char const *filename;
+	char const *binary;
 };
 
 static int fork_routine(void *args);
 static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
-        linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-        char const *const *envp, char const *filename);
-
-static linted_error default_signals(void);
-
-static void pid_to_str(char *buf, pid_t pid);
+        linted_ko err_writer, char const *const *argv, char const *const *envp,
+        char const *binary);
 
 __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
 
@@ -184,40 +179,20 @@ void linted_spawn_file_actions_destroy(
 	linted_mem_free(file_actions);
 }
 
-static char const fd_str[] = " /proc/self/fd/";
-
-linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
+linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
                           struct linted_spawn_file_actions const *file_actions,
                           struct linted_spawn_attr const *attr,
                           char const *const argv[], char const *const envp[])
 {
 	linted_error errnum = 0;
-	bool is_relative_path = filename[0U] != '/';
-	bool at_fdcwd = LINTED_KO_CWD == dirko;
 
-	if (is_relative_path && !at_fdcwd && dirko > INT_MAX)
+	if (LINTED_KO_CWD != dirko && dirko > INT_MAX)
 		return EBADF;
 
 	sigset_t const *child_mask = 0;
 
 	if (attr != 0) {
 		child_mask = attr->mask;
-	}
-
-	size_t fd_len;
-	size_t filename_len;
-	char *relative_filename = 0;
-	if (is_relative_path && !at_fdcwd) {
-		fd_len = strlen(fd_str);
-		filename_len = strlen(filename);
-
-		size_t relative_size = fd_len + 10U + filename_len + 1U;
-
-		void *xx;
-		errnum = linted_mem_alloc(&xx, relative_size);
-		if (errnum != 0)
-			return errnum;
-		relative_filename = xx;
 	}
 
 	linted_ko err_reader;
@@ -227,7 +202,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto free_relative_path;
+			return errnum;
 		}
 		err_reader = xx[0U];
 		err_writer = xx[1U];
@@ -251,11 +226,26 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 		}
 	}
 
-	int dirko_copy = -1;
-
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != 0) {
-		if (!at_fdcwd && is_relative_path) {
+		int err_writer_copy =
+		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
+		if (-1 == err_writer_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_err_pipes;
+		}
+
+		linted_ko_close(err_writer);
+
+		err_writer = err_writer_copy;
+	}
+
+	char *relative_binary_path = 0;
+	char const *real_binary_path = binary;
+	linted_ko dirko_copy = LINTED_KO_CWD;
+	if (binary[0U] != '/' && dirko != LINTED_KO_CWD) {
+		if (file_actions != NULL) {
 			int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 			if (-1 == fd) {
 				errnum = errno;
@@ -265,62 +255,51 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *filename,
 			dirko_copy = fd;
 		}
 
-		int err_writer_copy =
-		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
-		if (-1 == err_writer_copy) {
+		{
+			char *xx;
+			if (asprintf(&xx, "/proc/self/fd/%i/%s", dirko_copy,
+			             binary) < 0) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_dirko_copy;
+			}
+			relative_binary_path = xx;
+		}
+		real_binary_path = relative_binary_path;
+	}
+
+	pid_t child;
+	{
+		sigset_t sigset;
+		sigfillset(&sigset);
+
+		if (0 == child_mask)
+			child_mask = &sigset;
+
+		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+		if (errnum != 0)
+			goto free_relative_binary_path;
+
+		struct fork_args fork_args = { child_mask, file_actions,
+			                       err_writer, argv,
+			                       envp,       real_binary_path };
+		child = safe_vfork(fork_routine, &fork_args);
+		if (-1 == child) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto close_dirko_copy;
 		}
 
-		linted_ko_close(err_writer);
-
-		err_writer = err_writer_copy;
-	}
-
-	if (relative_filename != 0) {
-		memcpy(relative_filename, fd_str, fd_len);
-
-		pid_to_str(relative_filename + fd_len, dirko_copy);
-
-		size_t fd_and_dir_len = strlen(relative_filename);
-
-		memcpy(relative_filename + fd_and_dir_len, filename,
-		       filename_len);
-
-		relative_filename[fd_and_dir_len + filename_len] = '\0';
-
-		filename = relative_filename;
-	}
-
-	sigset_t sigset;
-	sigfillset(&sigset);
-
-	if (0 == child_mask)
-		child_mask = &sigset;
-
-	errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
-	if (errnum != 0)
-		goto close_err_pipes;
-
-	struct fork_args fork_args = { child_mask, file_actions, err_reader,
-		                       err_writer, argv,         envp,
-		                       filename };
-	pid_t child = safe_vfork(fork_routine, &fork_args);
-	if (-1 == child) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	{
 		linted_error mask_errnum =
 		    pthread_sigmask(SIG_SETMASK, &sigset, 0);
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
 
+free_relative_binary_path:
+	linted_mem_free(relative_binary_path);
+
 close_dirko_copy:
-	if (dirko_copy != -1)
+	if (dirko_copy != LINTED_KO_CWD)
 		linted_ko_close(dirko_copy);
 
 close_err_pipes : {
@@ -353,9 +332,6 @@ close_err_reader : {
 		errnum = close_errnum;
 }
 
-free_relative_path:
-	linted_mem_free(relative_filename);
-
 	if (errnum != 0)
 		return errnum;
 
@@ -371,14 +347,13 @@ static int fork_routine(void *arg)
 	sigset_t const *sigset = args->sigset;
 	struct linted_spawn_file_actions const *file_actions =
 	    args->file_actions;
-	linted_ko err_reader = args->err_reader;
 	linted_ko err_writer = args->err_writer;
 	char const *const *argv = args->argv;
 	char const *const *envp = args->envp;
-	char const *filename = args->filename;
+	char const *binary = args->binary;
 
-	linted_error xx = do_fork(sigset, file_actions, err_reader, err_writer,
-	                          argv, envp, filename);
+	linted_error xx =
+	    do_fork(sigset, file_actions, err_writer, argv, envp, binary);
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 	return EXIT_FAILURE;
 }
@@ -386,20 +361,45 @@ static int fork_routine(void *arg)
 static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
-        linted_ko err_reader, linted_ko err_writer, char const *const *argv,
-        char const *const *envp, char const *filename)
+        linted_ko err_writer, char const *const *argv, char const *const *envp,
+        char const *binary)
 {
 	linted_error errnum = 0;
 
-	errnum = default_signals();
-	if (errnum != 0)
-		return errnum;
+	/*
+	 * Get rid of signal handlers so that they can't be called
+	 * before execve.
+	 */
+
+	/* We need to use the direct system call to trample over OS
+	 * signals. */
+	for (int ii = 1; ii < NSIG; ++ii) {
+		/* Uncatchable, avoid Valgrind warnings */
+		if (SIGSTOP == ii || SIGKILL == ii)
+			continue;
+
+		struct sigaction action;
+		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+
+		if (SIG_IGN == action.sa_handler)
+			continue;
+
+		action.sa_handler = SIG_DFL;
+
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+	}
 
 	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);
 	if (errnum != 0)
 		return errnum;
-
-	linted_ko_close(err_reader);
 
 	if (file_actions != 0) {
 		union file_action const *actions = file_actions->actions;
@@ -430,67 +430,8 @@ do_fork(sigset_t const *sigset,
 		}
 	}
 
-	execve(filename, (char * const *)argv, (char * const *)envp);
+	execve(binary, (char * const *)argv, (char * const *)envp);
 	return errno;
-}
-
-static linted_error default_signals(void)
-{
-	/*
-	 * Get rid of signal handlers so that they can't be called
-	 * before execve.
-	 */
-
-	/* We need to use the direct system call to trample over OS
-	 * signals. */
-	for (int ii = 1; ii < NSIG; ++ii) {
-		/* Uncatchable, avoid Valgrind warnings */
-		if (SIGSTOP == ii || SIGKILL == ii)
-			continue;
-
-		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
-			linted_error errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		if (SIG_IGN == action.sa_handler)
-			continue;
-
-		action.sa_handler = SIG_DFL;
-
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
-			linted_error errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-	}
-
-	return 0;
-}
-
-static void pid_to_str(char *buf, pid_t pid)
-{
-	size_t strsize = 0U;
-
-	assert(pid > 0);
-
-	for (;;) {
-		memmove(buf + 1U, buf, strsize);
-
-		pid_t digit = pid % 10;
-
-		*buf = '0' + digit;
-
-		pid /= 10;
-		++strsize;
-
-		if (0 == pid)
-			break;
-	}
-
-	buf[strsize] = '\0';
 }
 
 /* Most compilers can't handle the weirdness of vfork so contain it in
