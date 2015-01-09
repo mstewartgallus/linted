@@ -27,6 +27,8 @@
  * Abstracts over the concept of a filesystem directory.
  */
 
+#define LINTED_DIR_ONLY 1UL
+
 typedef linted_ko linted_dir;
 
 linted_error linted_dir_create(linted_dir *dirp, linted_ko dirko,

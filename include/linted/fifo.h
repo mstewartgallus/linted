@@ -33,6 +33,8 @@ typedef linted_ko linted_fifo;
 #define LINTED_FIFO_WRONLY (1UL << 1U)
 #define LINTED_FIFO_RDWR (1UL << 2U)
 
+#define LINTED_FIFO_ONLY (1UL << 3U)
+
 linted_error linted_fifo_create(linted_fifo *fifop, linted_ko dirko,
                                 char const *pathname, unsigned long flags,
                                 mode_t mode);

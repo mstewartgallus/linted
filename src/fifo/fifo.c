@@ -67,10 +67,11 @@ linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
 		return 0;
 	}
 
-	if ((flags & ~LINTED_FIFO_RDONLY & ~LINTED_FIFO_WRONLY &
-	     ~LINTED_FIFO_RDWR) != 0U)
+	if ((flags & ~LINTED_FIFO_ONLY & ~LINTED_FIFO_RDONLY &
+	     ~LINTED_FIFO_WRONLY & ~LINTED_FIFO_RDWR) != 0U)
 		return EINVAL;
 
+	bool fifo_only = (flags & LINTED_FIFO_ONLY) != 0U;
 	bool fifo_rdonly = (flags & LINTED_FIFO_RDONLY) != 0U;
 	bool fifo_wronly = (flags & LINTED_FIFO_WRONLY) != 0U;
 	bool fifo_rdwr = (flags & LINTED_FIFO_RDWR) != 0U;
@@ -84,7 +85,10 @@ linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
 	if (fifo_rdwr && fifo_wronly)
 		return EINVAL;
 
-	unsigned long oflags = LINTED_KO_FIFO;
+	unsigned long oflags = 0U;
+
+	if (fifo_only)
+		oflags |= LINTED_KO_FIFO;
 
 	if (fifo_rdonly)
 		oflags |= LINTED_KO_RDONLY;

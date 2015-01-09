@@ -67,8 +67,15 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 		return 0;
 	}
 
-	if (flags != 0UL)
+	if ((flags & ~LINTED_DIR_ONLY) != 0U)
 		return EINVAL;
+
+	bool dir_only = (flags & LINTED_DIR_ONLY) != 0U;
+
+	unsigned long oflags = 0U;
+
+	if (dir_only)
+		oflags |= LINTED_KO_DIRECTORY;
 
 	char *pathnamedir_buffer = strdup(pathname);
 	if (0 == pathnamedir_buffer) {
@@ -94,8 +101,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	linted_ko realdir;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, dirko, pathnamedir,
-		                        LINTED_KO_DIRECTORY);
+		errnum = linted_ko_open(&xx, dirko, pathnamedir, oflags);
 		if (errnum != 0)
 			goto free_pathnamebase_buffer;
 		realdir = xx;
