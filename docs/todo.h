@@ -54,19 +54,6 @@
  *
  * @todo Stop graphical banding problems
  *
- * @todo Use an alternative to POSIX Message Queues for the window notifier
- *       - The window notifier needs to act as a broadcaster
- *       - The window tasks cannot currently use bind mounts
- *       - Files that may exist in user visible filesystems:
- *         - Regular files
- *         - Directory files
- *         - Symlink
- *         - FIFOs
- *         - Unix domain sockets
- *         - POSIX Message Queues
- *         - Character devices
- *         - Block devices
- *
  * @todo Harden bind mounts with extra flags
  *
  * @todo Eventually reduce `-Wstack-usage` to 500.

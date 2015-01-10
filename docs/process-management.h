@@ -54,6 +54,26 @@
  * `CLONE_NEWPID` type sandboxes are killed by the kernel
  * automatically.
  *
+ * @section ipc IPC
+ *
+ * Files that may exist in user visible filesystems and that can be
+ * used for IPC:
+ *
+ * - Regular files
+ * - Directory files
+ * - Symlink
+ * - FIFOs
+ * - Unix domain sockets
+ * - POSIX Message Queues
+ * - Character devices
+ * - Block devices
+ *
+ * So far we have chosen to use FIFOs as they can be put on many
+ * places.
+ *
+ * Requirements
+ * - Presents a security boundary
+ *
  * @section signals Signal handling
  *
  * Currently `init` forwards all nonurgent exit signals (`SIGHUP`,
