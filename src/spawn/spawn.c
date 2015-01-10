@@ -79,8 +79,7 @@ static int fork_routine(void *args);
 static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
-        linted_ko err_writer, char const *const *argv, char const *const *envp,
-        char const *binary);
+        char const *const *argv, char const *const *envp, char const *binary);
 
 __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
 
@@ -352,8 +351,7 @@ static int fork_routine(void *arg)
 	char const *const *envp = args->envp;
 	char const *binary = args->binary;
 
-	linted_error xx =
-	    do_fork(sigset, file_actions, err_writer, argv, envp, binary);
+	linted_error xx = do_fork(sigset, file_actions, argv, envp, binary);
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 	return EXIT_FAILURE;
 }
@@ -361,8 +359,7 @@ static int fork_routine(void *arg)
 static linted_error
 do_fork(sigset_t const *sigset,
         struct linted_spawn_file_actions const *file_actions,
-        linted_ko err_writer, char const *const *argv, char const *const *envp,
-        char const *binary)
+        char const *const *argv, char const *const *envp, char const *binary)
 {
 	linted_error errnum = 0;
 

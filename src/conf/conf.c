@@ -22,7 +22,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <dirent.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>

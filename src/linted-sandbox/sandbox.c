@@ -176,7 +176,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      char const **leftoversp);
 
 static linted_error set_id_maps(char const *uid_map, char const *gid_map);
-static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
+static linted_error chroot_process(char const *chrootdir,
                                    struct mount_args const *mount_args,
                                    size_t size);
 
@@ -727,8 +727,7 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 	}
 
 	if (mount_args_size > 0U) {
-		errnum =
-		    chroot_process(cwd, chrootdir, mount_args, mount_args_size);
+		errnum = chroot_process(chrootdir, mount_args, mount_args_size);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -904,7 +903,7 @@ static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 	return 0;
 }
 
-static linted_error chroot_process(linted_ko cwd, char const *chrootdir,
+static linted_error chroot_process(char const *chrootdir,
                                    struct mount_args const *mount_args,
                                    size_t size)
 {
