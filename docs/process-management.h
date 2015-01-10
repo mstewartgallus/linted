@@ -74,6 +74,9 @@
  * Requirements
  * - Presents a security boundary
  *
+ * Similar past attempts:
+ * - The Xen hypervisor's shared memory I/O.
+ *
  * @section signals Signal handling
  *
  * Currently `init` forwards all nonurgent exit signals (`SIGHUP`,
