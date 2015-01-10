@@ -92,6 +92,10 @@
  * - Seccomp
  * - Process namespaces
  *
+ * See also:
+ * - http://www.chromium.org/developers/design-documents/sandbox
+ * - http://www.cl.cam.ac.uk/research/security/capsicum/
+ *
  * @section signals Signal handling
  *
  * Currently `init` forwards all nonurgent exit signals (`SIGHUP`,
