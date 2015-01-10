@@ -23,6 +23,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/start.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -189,7 +190,12 @@ static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
 static int my_setgroups(size_t size, gid_t const *list);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
-int main(int argc, char *argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-sandbox"
+};
+
+unsigned char linted_start(char const *const process_name, size_t argc,
+                           char const *const argv[const])
 {
 	linted_error errnum;
 
@@ -213,11 +219,6 @@ int main(int argc, char *argv[])
 	char const *waiter = 0;
 	bool have_command = false;
 	size_t command_start;
-
-	/* Currently, don't use LOG_PID because syslog is confused by
-	 * CLONE_NEWPID.
-	 */
-	openlog(argv[0U], LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
 
 	for (size_t ii = 1U; ii < arguments_length; ++ii) {
 		char const *argument = argv[ii];
