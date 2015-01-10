@@ -168,10 +168,15 @@ void *linted_window_notifier_task_send_data(
 	return task->data;
 }
 
-uint_fast32_t linted_window_notifier_decode(
-    struct linted_window_notifier_task_receive const *task)
+linted_error linted_window_notifier_decode(
+    struct linted_window_notifier_task_receive const *task, uint_fast32_t *outp)
 {
 	char const *tip = task->message;
 
-	return linted_rpc_unpack_uint32(tip);
+	if (linted_io_task_read_bytes_read(task->parent) !=
+	    sizeof task->message)
+		return EPROTO;
+
+	*outp = linted_rpc_unpack_uint32(tip);
+	return 0;
 }

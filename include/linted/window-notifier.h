@@ -65,7 +65,8 @@ struct linted_asynch_task *linted_window_notifier_task_send_to_asynch(
 void *linted_window_notifier_task_send_data(
     struct linted_window_notifier_task_send *task);
 
-uint_fast32_t linted_window_notifier_decode(
-    struct linted_window_notifier_task_receive const *task);
+linted_error linted_window_notifier_decode(
+    struct linted_window_notifier_task_receive const *task,
+    uint_fast32_t *outp);
 
 #endif /* LINTED_WINDOW_NOTIFIER_H */

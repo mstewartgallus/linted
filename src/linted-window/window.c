@@ -492,6 +492,11 @@ destroy_pool:
 			pause();
 	}
 
+	if (errnum != 0) {
+		syslog(LOG_ERR, "%s", linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
+
 	return errnum;
 }
 

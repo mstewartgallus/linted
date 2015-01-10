@@ -365,6 +365,11 @@ destroy_pool:
 	(void)controller_task;
 	(void)poll_conn_task;
 
+	if (errnum != 0) {
+		syslog(LOG_ERR, "%s", linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
+
 	return errnum;
 }
 
@@ -614,7 +619,14 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	    notice_data->controller_task;
 	xcb_window_t *windowp = notice_data->window;
 
-	uint_fast32_t window = linted_window_notifier_decode(notice_task);
+	uint_fast32_t window;
+	{
+		uint_fast32_t xx;
+		errnum = linted_window_notifier_decode(notice_task, &xx);
+		if (errnum != 0)
+			return errnum;
+		window = xx;
+	}
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);

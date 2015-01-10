@@ -469,7 +469,14 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_window_t *windowp = notice_data->window;
 	struct linted_gpu_context *gpu_context = notice_data->gpu_context;
 
-	xcb_window_t window = linted_window_notifier_decode(notice_task);
+	uint_fast32_t window;
+	{
+		uint_fast32_t xx;
+		errnum = linted_window_notifier_decode(notice_task, &xx);
+		if (errnum != 0)
+			return errnum;
+		window = xx;
+	}
 
 	xcb_change_window_attributes(connection, window, XCB_CW_EVENT_MASK,
 	                             window_opts);
