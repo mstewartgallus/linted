@@ -77,6 +77,21 @@
  * Similar past attempts:
  * - The Xen hypervisor's shared memory I/O.
  *
+ * Approaches that won't work:
+ * - We cannot use shared memory because file sealing only works on
+ *   `shmfs` (files created using `memfd_create`) and those files
+ *   cannot be mounted.
+ * - UNIX domain sockets are really messy.
+ *
+ * @section sandboxing Sandboxing
+ *
+ * I cannot use AppArmor as it requires root privileges in order to
+ * load a profile into the kernel in the first place.
+ *
+ * Currently the following are used:
+ * - Seccomp
+ * - Process namespaces
+ *
  * @section signals Signal handling
  *
  * Currently `init` forwards all nonurgent exit signals (`SIGHUP`,
