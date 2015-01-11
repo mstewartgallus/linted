@@ -566,15 +566,28 @@ exit_loop:
 	gid_t mapped_gid = gid;
 	uid_t mapped_uid = uid;
 
-	char uid_map[LINTED_NUMBER_TYPE_STRING_SIZE(uid_t) + 1U +
-	             LINTED_NUMBER_TYPE_STRING_SIZE(uid_t) + 1U + sizeof "1\n" -
-	             1U + 1U];
-	char gid_map[LINTED_NUMBER_TYPE_STRING_SIZE(gid_t) + 1U +
-	             LINTED_NUMBER_TYPE_STRING_SIZE(gid_t) + 1U + sizeof "1\n" -
-	             1U + 1U];
+	char const *uid_map;
+	char const *gid_map;
 
-	sprintf(uid_map, "%i %i 1\n", mapped_uid, uid);
-	sprintf(gid_map, "%i %i 1\n", mapped_gid, gid);
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_uid, uid)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		uid_map = xx;
+	}
+
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_gid, gid)) {
+			syslog(LOG_ERR, "asprintf: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		gid_map = xx;
+	}
 
 	linted_ko err_reader;
 	linted_ko err_writer;
