@@ -1246,7 +1246,7 @@ envvar_allocate_succeeded:
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, sizeof proc_kos[0U], 3U);
+		errnum = linted_mem_alloc_array(&xx, 3U, sizeof proc_kos[0U]);
 		if (errnum != 0)
 			goto destroy_attr;
 		proc_kos = xx;

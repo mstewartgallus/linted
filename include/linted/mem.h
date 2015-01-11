@@ -29,9 +29,9 @@
  * Allocates memory.
  */
 
-static linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
+static inline linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
-	if (nmemb > 0U && SIZE_MAX / nmemb < size)
+	if (size > 0U && SIZE_MAX / size < nmemb)
 		return ENOMEM;
 
 	*resultp = nmemb * size;
@@ -44,6 +44,7 @@ static linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *
 static inline linted_error linted_mem_alloc(void **memp, size_t size)
 {
 	extern void *malloc(size_t size);
+
 	if (0U == size)
 		size = 1U;
 
