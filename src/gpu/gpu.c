@@ -570,6 +570,9 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 {
 	struct linted_gpu_update const *update = &gpu_context->update;
 
+	if (EGL_NO_SURFACE == gpu_context->surface)
+		return;
+
 	unsigned width = gpu_context->width;
 	unsigned height = gpu_context->height;
 

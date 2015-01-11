@@ -1256,8 +1256,8 @@ envvar_allocate_succeeded:
 		linted_ko null;
 		{
 			linted_ko xx;
-			errnum =
-			    linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null", 0);
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
+			                        LINTED_KO_RDWR);
 			if (errnum != 0)
 				goto destroy_proc_kos;
 			null = xx;
@@ -1618,6 +1618,13 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 
 	switch (signo) {
 	default:
+		break;
+
+	case SIGHUP:
+	case SIGINT:
+	case SIGQUIT:
+	case SIGTERM:
+		errnum = kill_pid_children(pid, signo);
 		break;
 
 	case SIGSTOP: {
