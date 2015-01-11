@@ -29,50 +29,12 @@
  * Allocates memory.
  */
 
-
-static linted_error safe_multiply(size_t nmemb, size_t size, size_t *resultp)
+static linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
-	size_t result;
+	if (nmemb > 0U && SIZE_MAX / nmemb < size)
+		return ENOMEM;
 
-	size_t mul_no_overflow = UINTMAX_C(1) << (sizeof(size_t) * 4U);
-	if (0U == size) {
-		result = 1U;
-		/*@ assert result >= size; */
-		/*@ assert result >= nmemb * size; */
-	} else if (0U == nmemb) {
-		result = 1U;
-		/*@ assert result >= nmemb; */
-		/*@ assert result >= nmemb * size; */
-	} else {
-		_Bool check_mul;
-		size_t xx;
-		size_t yy;
-
-		if (nmemb >= mul_no_overflow) {
-			if (size >= mul_no_overflow)
-				return ENOMEM;
-
-			xx = size;
-			yy = nmemb;
-			check_mul = 1;
-		} else if (size >= mul_no_overflow) {
-			xx = nmemb;
-			yy = size;
-			check_mul = 1;
-		} else {
-			result = nmemb * size;
-			check_mul = 0;
-		}
-
-		if (check_mul) {
-			if (SIZE_MAX / yy >= xx)
-				return ENOMEM;
-
-			result = xx * yy;
-		}
-	}
-
-	*resultp = result;
+	*resultp = nmemb * size;
 	return 0;
 }
 
@@ -106,9 +68,12 @@ static inline linted_error linted_mem_alloc_array(void **memp, size_t nmemb, siz
 	linted_error errnum;
 
 	size_t total;
-	errnum = safe_multiply(nmemb, size, &total);
+	errnum = linted_mem_safe_multiply(nmemb, size, &total);
 	if (errnum != 0)
 		return errnum;
+
+	if (0U == total)
+		total = 1U;
 
 	void *memory = malloc(total);
 	if (0 == memory) {
@@ -194,9 +159,12 @@ static inline linted_error linted_mem_realloc_array(void **memp, void *memory, s
 	linted_error errnum;
 
 	size_t total;
-	errnum = safe_multiply(nmemb, size, &total);
+	errnum = linted_mem_safe_multiply(nmemb, size, &total);
 	if (errnum != 0)
 		return errnum;
+
+	if (0U == total)
+		total = 1U;
 
 	void *new_memory = realloc(memory, total);
 	if (0 == new_memory) {

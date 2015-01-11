@@ -41,39 +41,6 @@
 
 #include <winsock2.h>
 
-linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
-{
-	size_t length = strlen(str);
-	unsigned position = 1U;
-
-	if ('0' == str[0U] && length != 1U)
-		return EINVAL;
-
-	unsigned total = 0U;
-	for (; length > 0U; --length) {
-		char const digit = str[length - 1U];
-
-		if ('0' <= digit && digit <= '9') {
-			unsigned long sum =
-			    total + ((unsigned)(digit - '0')) * position;
-			if (sum > INT_MAX)
-				return ERANGE;
-
-			total = sum;
-		} else {
-			return EINVAL;
-		}
-
-		unsigned long next_position = 10U * position;
-		if (next_position > INT_MAX)
-			return ERANGE;
-		position = next_position;
-	}
-
-	*kop = (linted_ko)total;
-	return 0;
-}
-
 /**
  * @bug dirko is not respected.
  */
@@ -163,12 +130,6 @@ free_buffer:
 	*kop = ko;
 
 	return 0;
-}
-
-linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
-                              unsigned long flags)
-{
-	return ENOSYS;
 }
 
 linted_error linted_ko_close(linted_ko ko)

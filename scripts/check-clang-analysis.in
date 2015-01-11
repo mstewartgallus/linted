@@ -72,11 +72,8 @@ if false; then
     # Warn about idempotent operations
     CHECKERS="${CHECKERS} alpha.deadcode.IdempotentOperations"
 fi
-# Way too many false positives
-if false; then
-    # Check unreachable code
-    CHECKERS="${CHECKERS} alpha.deadcode.UnreachableCode"
-fi
+# Check unreachable code
+CHECKERS="${CHECKERS} alpha.deadcode.UnreachableCode"
 # Warn about Objective-C classes that lack a correct implementation of
 # -dealloc
 CHECKERS="${CHECKERS} alpha.osx.cocoa.Dealloc"

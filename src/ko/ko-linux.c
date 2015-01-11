@@ -30,41 +30,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static void fd_to_str(char *buf, linted_ko fd);
-
-linted_error linted_ko_from_cstring(char const *str, linted_ko *kop)
-{
-	size_t length = strlen(str);
-	unsigned position = 1U;
-
-	if ('0' == str[0U] && length != 1U)
-		return EINVAL;
-
-	unsigned total = 0U;
-	for (; length > 0U; --length) {
-		char const digit = str[length - 1U];
-
-		if ('0' <= digit && digit <= '9') {
-			unsigned long sum =
-			    total + ((unsigned)(digit - '0')) * position;
-			if (sum > INT_MAX)
-				return ERANGE;
-
-			total = sum;
-		} else {
-			return EINVAL;
-		}
-
-		unsigned long next_position = 10U * position;
-		if (next_position > INT_MAX)
-			return ERANGE;
-		position = next_position;
-	}
-
-	*kop = total;
-	return 0;
-}
-
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
@@ -192,14 +157,6 @@ close_file:
 	return errnum;
 }
 
-linted_error linted_ko_reopen(linted_ko *kooutp, linted_ko koin,
-                              unsigned long flags)
-{
-	char pathname[] = "/proc/self/fd/XXXXXXXXXXX";
-	fd_to_str(pathname + strlen("/proc/self/fd/"), koin);
-	return linted_ko_open(kooutp, LINTED_KO_CWD, pathname, flags);
-}
-
 linted_error linted_ko_close(linted_ko ko)
 {
 	linted_error errnum;
@@ -232,27 +189,4 @@ linted_error linted_ko_close(linted_ko ko)
 		errnum = mask_errnum;
 
 	return errnum;
-}
-
-static void fd_to_str(char *buf, linted_ko fd)
-{
-	size_t strsize = 0U;
-
-	assert(fd <= INT_MAX);
-
-	for (;;) {
-		memmove(buf + 1U, buf, strsize);
-
-		linted_ko digit = fd % 10;
-
-		*buf = '0' + digit;
-
-		fd /= 10;
-		++strsize;
-
-		if (0 == fd)
-			break;
-	}
-
-	buf[strsize] = '\0';
 }
