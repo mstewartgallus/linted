@@ -62,6 +62,16 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
+		struct sigaction action = { 0 };
+		action.sa_handler = SIG_IGN;
+		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
+			syslog(LOG_ERR, "sigaction: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (;;) {
 		int signo;
 		{
