@@ -376,22 +376,16 @@ do_fork(sigset_t const *sigset,
 			continue;
 
 		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
+		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U))
+			return errno;
 
 		if (SIG_IGN == action.sa_handler)
 			continue;
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U))
+			return errno;
 	}
 
 	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);

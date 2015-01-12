@@ -1088,8 +1088,11 @@ spawn_service:
 	char *chrootdir;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/chroot", name))
-			return errno;
+		if (-1 == asprintf(&xx, "%s/chroot", name)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
 		chrootdir = xx;
 	}
 
@@ -2568,8 +2571,11 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 	}
 
 close_file:
-	if (EOF == fclose(file))
-		return errno;
+	if (EOF == fclose(file)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
 
 	return errnum;
 }
