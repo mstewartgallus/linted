@@ -2688,7 +2688,7 @@ finish:
 	*lenp = ii;
 	*childrenp = children;
 
-	return 0;
+	return errnum;
 }
 
 static linted_error ptrace_detach(pid_t pid, int signo)

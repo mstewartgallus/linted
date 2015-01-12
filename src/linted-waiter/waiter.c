@@ -36,9 +36,9 @@
 #include <syslog.h>
 #include <unistd.h>
 
-static linted_error kill_pid_children(pid_t pid, int signo);
+static linted_error kill_children(int signo);
 
-static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
+static linted_error pid_children(pid_t **childrenp, size_t *lenp);
 
 static linted_error set_name(char const *name);
 
@@ -68,54 +68,68 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 	if (errnum != 0) {
 		syslog(LOG_ERR, "pthread_sigmask: %s",
-		       linted_error_string(errno));
+		       linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
-	siginfo_t info;
 	for (;;) {
-		int signo = sigwaitinfo(&sigset, &info);
+		int signo;
+		{
+			siginfo_t info;
+			signo = sigwaitinfo(&sigset, &info);
+		}
 		switch (signo) {
 		case -1:
-			if (EINTR == errno)
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			if (EINTR == errnum)
 				continue;
+
 			syslog(LOG_ERR, "sigwaitinfo: %s",
-			       linted_error_string(errno));
+			       linted_error_string(errnum));
 			return EXIT_FAILURE;
 
 		case SIGCHLD:
 			for (;;) {
-				int xx;
-				pid_t pid = waitpid(-1, &xx, WNOHANG);
-				switch (pid) {
-				case -1:
-					switch (errno) {
-					case ECHILD:
-						goto exit_application;
-					case EINTR:
-						continue;
-					default:
-						syslog(
-						    LOG_ERR, "waitpid: %s",
-						    linted_error_string(errno));
-						return EXIT_FAILURE;
-					}
-
-				case 0:
-					goto continue_waiting_on_signals;
-
-				default:
-					continue;
+				pid_t pid;
+				int wait_status;
+				{
+					siginfo_t info;
+					info.si_pid = 0;
+					wait_status = waitid(P_ALL, -1, &info,
+					                     WEXITED | WNOHANG);
+					pid = info.si_pid;
 				}
+				if (-1 == wait_status) {
+					errnum = errno;
+					LINTED_ASSUME(errnum != 0);
+
+					if (ECHILD == errnum)
+						goto exit_application;
+					if (EINTR == errnum)
+						continue;
+
+					syslog(LOG_ERR, "waitid: %s",
+					       linted_error_string(errnum));
+					return EXIT_FAILURE;
+				}
+
+				if (0 == pid)
+					break;
 			}
-		continue_waiting_on_signals:
 			break;
 
 		case SIGHUP:
 		case SIGINT:
 		case SIGQUIT:
 		case SIGTERM:
-			kill_pid_children(getpid(), signo);
+			errnum = kill_children(signo);
+			if (errnum != 0) {
+				syslog(LOG_ERR, "kill_children: %s",
+				       linted_error_string(errnum));
+				return EXIT_FAILURE;
+			}
 			break;
 		}
 	}
@@ -123,7 +137,7 @@ exit_application:
 	return EXIT_SUCCESS;
 }
 
-static linted_error kill_pid_children(pid_t pid, int signo)
+static linted_error kill_children(int signo)
 {
 	linted_error errnum = 0;
 
@@ -132,7 +146,7 @@ static linted_error kill_pid_children(pid_t pid, int signo)
 	{
 		pid_t *xx;
 		size_t yy;
-		errnum = pid_children(pid, &xx, &yy);
+		errnum = pid_children(&xx, &yy);
 		if (errnum != 0)
 			return errnum;
 		children = xx;
@@ -153,25 +167,16 @@ free_children:
 	return errnum;
 }
 
-static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
+static linted_error pid_children(pid_t **childrenp, size_t *lenp)
 {
 	linted_error errnum;
-
-	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
-	          sizeof "/task/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
-	          sizeof "/children" - 1U + 1U];
-	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX "/children",
-	                  (uintmax_t)pid, (uintmax_t)pid)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
 
 	linted_ko children_ko;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+		                        "/proc/thread-self/children",
+		                        LINTED_KO_RDONLY);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -268,7 +273,7 @@ finish:
 	*lenp = ii;
 	*childrenp = children;
 
-	return 0;
+	return errnum;
 }
 
 static linted_error set_name(char const *name)
