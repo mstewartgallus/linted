@@ -92,6 +92,18 @@
  * - Seccomp
  * - Process namespaces
  *
+ * We could use:
+ * - setxattr or setfacl to set values under the "security" and
+ *   "security.posix_acl_access" namespace.  It's only attributes
+ *   other than security ones that don't work.  However, this seems
+ *   like it requires multi-UID user accounts to work.
+ *
+ * Approaches that won't work:
+ * - We cannot use FS_IOC_SETFLAGS to set flags such as the append
+ *   only and immutable flags because `tmpfs` does not support such
+ *   flags.  Also even in sandbox land we'll probably lack the
+ *   appropriate permissions.
+ *
  * See also:
  * - http://www.chromium.org/developers/design-documents/sandbox
  * - http://www.cl.cam.ac.uk/research/security/capsicum/

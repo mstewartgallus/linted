@@ -13,32 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
 #include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <syslog.h>
 #include <unistd.h>
-
-static linted_error kill_children(int signo);
-
-static linted_error pid_children(pid_t **childrenp, size_t *lenp);
 
 static linted_error set_name(char const *name);
 
@@ -123,157 +113,41 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		case SIGHUP:
 		case SIGINT:
 		case SIGQUIT:
-		case SIGTERM:
-			errnum = kill_children(signo);
+		case SIGTERM: {
+			sigset_t exitset;
+			sigemptyset(&exitset);
+			for (size_t ii = 0U;
+			     ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
+				sigaddset(&exitset, exit_signals[ii]);
+
+			/* Prevent looping */
+			errnum =
+			    pthread_sigmask(SIG_UNBLOCK, &exitset, &exitset);
 			if (errnum != 0) {
-				syslog(LOG_ERR, "kill_children: %s",
+				syslog(LOG_ERR, "pthread_sigmask: %s",
+				       linted_error_string(errnum));
+				return EXIT_FAILURE;
+			}
+
+			if (-1 == kill(-getpgrp(), signo)) {
+				errnum = errno;
+				syslog(LOG_ERR, "kill: %s",
+				       linted_error_string(errnum));
+				return EXIT_FAILURE;
+			}
+
+			errnum = pthread_sigmask(SIG_SETMASK, &exitset, NULL);
+			if (errnum != 0) {
+				syslog(LOG_ERR, "pthread_sigmask: %s",
 				       linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 			break;
 		}
+		}
 	}
 exit_application:
 	return EXIT_SUCCESS;
-}
-
-static linted_error kill_children(int signo)
-{
-	linted_error errnum = 0;
-
-	pid_t *children;
-	size_t len;
-	{
-		pid_t *xx;
-		size_t yy;
-		errnum = pid_children(&xx, &yy);
-		if (errnum != 0)
-			return errnum;
-		children = xx;
-		len = yy;
-	}
-
-	for (size_t ii = 0U; ii < len; ++ii) {
-		if (-1 == kill(children[ii], signo)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto free_children;
-		}
-	}
-
-free_children:
-	linted_mem_free(children);
-
-	return errnum;
-}
-
-static linted_error pid_children(pid_t **childrenp, size_t *lenp)
-{
-	linted_error errnum;
-
-	linted_ko children_ko;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/thread-self/children",
-		                        LINTED_KO_RDONLY);
-		if (ENOENT == errnum)
-			return ESRCH;
-		if (errnum != 0)
-			return errnum;
-		children_ko = xx;
-	}
-
-	FILE *file = fdopen(children_ko, "r");
-	if (0 == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		linted_ko_close(children_ko);
-
-		return errnum;
-	}
-
-	/* Get the child all at once to avoid raciness. */
-	char *buf = 0;
-
-	{
-		char *xx = buf;
-		size_t yy = 0U;
-
-		errno = 0;
-		ssize_t zz = getline(&xx, &yy, file);
-		if (-1 == zz) {
-			errnum = errno;
-			/* May be zero */
-			goto set_childrenp;
-		}
-		buf = xx;
-	}
-
-set_childrenp:
-	if (EOF == fclose(file)) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
-	}
-
-	if (errnum != 0) {
-		linted_mem_free(buf);
-		return errnum;
-	}
-
-	size_t ii = 0U;
-	char const *start = buf;
-	pid_t *children = 0;
-
-	if (0 == buf)
-		goto finish;
-
-	for (;;) {
-		errno = 0;
-		pid_t child = strtol(start, 0, 10);
-		errnum = errno;
-		if (errnum != 0)
-			goto free_buf;
-
-		{
-			void *xx;
-			errnum = linted_mem_realloc_array(
-			    &xx, children, ii + 1U, sizeof children[0U]);
-			if (errnum != 0) {
-				linted_mem_free(children);
-				linted_mem_free(buf);
-				return errnum;
-			}
-			children = xx;
-		}
-		children[ii] = child;
-		++ii;
-
-		start = strchr(start, ' ');
-		if (0 == start)
-			break;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
-		++start;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
-	}
-
-free_buf:
-	linted_mem_free(buf);
-
-finish:
-	*lenp = ii;
-	*childrenp = children;
-
-	return errnum;
 }
 
 static linted_error set_name(char const *name)
