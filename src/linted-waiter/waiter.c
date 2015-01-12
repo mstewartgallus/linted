@@ -25,18 +25,20 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <syslog.h>
 #include <unistd.h>
 
-static volatile sig_atomic_t waitable_process_pending = false;
+static linted_error kill_pid_children(pid_t pid, int signo);
 
-static void do_nothing(int signo);
-static void sigchld_handler(int signo);
+static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
 
 static linted_error set_name(char const *name);
 
@@ -55,89 +57,219 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		assert(errnum != EINVAL);
 	}
 
-	/* We do not use SA_RESTART here so that we get an EINTR on
-	 * ppoll and can check if a waitable process is pending */
-	{
-		struct sigaction action = { 0 };
-		action.sa_flags = SA_NOCLDSTOP;
-		action.sa_handler = sigchld_handler;
-		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(SIGCHLD, &action, 0)) {
-			syslog(LOG_ERR, "sigaction: %s",
-			       linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
+	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 
-	sigset_t sigchld_unblocked;
-	sigemptyset(&sigchld_unblocked);
-	sigaddset(&sigchld_unblocked, SIGCHLD);
-	errnum =
-	    pthread_sigmask(SIG_BLOCK, &sigchld_unblocked, &sigchld_unblocked);
+	sigset_t sigset;
+	sigemptyset(&sigset);
+	sigaddset(&sigset, SIGCHLD);
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
+		sigaddset(&sigset, exit_signals[ii]);
+
+	errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 	if (errnum != 0) {
 		syslog(LOG_ERR, "pthread_sigmask: %s",
 		       linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
-	sigdelset(&sigchld_unblocked, SIGCHLD);
 
-	/* Catch signals
-	 *
-	 * The only signals that can be sent to process ID 1, the init
-	 * process, are those for which init has explicitly installed
-	 * signal handlers.  This is done to assure the system is not
-	 * brought down accidentally.
-	 *
-	 * - KILL(2) http://www.kernel.org/doc/man-pages/.
-	 *
-	 * This applies to sandboxes to if they use CLONE_NEWPID.
-	 */
-	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
-
-	/* Delegate the exit signals to children and then exit after
-	 * they have all exited. */
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
-		struct sigaction action = { 0 };
-		action.sa_handler = do_nothing;
-		action.sa_flags = 0;
-		sigfillset(&action.sa_mask);
-		if (-1 == sigaction(exit_signals[ii], &action, 0)) {
-			assert(errno != EINVAL);
-			assert(0);
-		}
-	}
-
+	siginfo_t info;
 	for (;;) {
-		int xx;
-		switch (waitpid(-1, &xx, 0)) {
+		int signo = sigwaitinfo(&sigset, &info);
+		switch (signo) {
 		case -1:
-			switch (errno) {
-			case ECHILD:
-				goto exit_application;
-			case EINTR:
+			if (EINTR == errno)
 				continue;
-			default:
-				syslog(LOG_ERR, "waitpid: %s",
-				       linted_error_string(errno));
-				return EXIT_FAILURE;
-			}
+			syslog(LOG_ERR, "sigwaitinfo: %s",
+			       linted_error_string(errno));
+			return EXIT_FAILURE;
 
-		default:
-			continue;
+		case SIGCHLD:
+			for (;;) {
+				int xx;
+				pid_t pid = waitpid(-1, &xx, WNOHANG);
+				switch (pid) {
+				case -1:
+					switch (errno) {
+					case ECHILD:
+						goto exit_application;
+					case EINTR:
+						continue;
+					default:
+						syslog(
+						    LOG_ERR, "waitpid: %s",
+						    linted_error_string(errno));
+						return EXIT_FAILURE;
+					}
+
+				case 0:
+					goto continue_waiting_on_signals;
+
+				default:
+					syslog(LOG_ERR, "reaped: %i", pid);
+					continue;
+				}
+			}
+		continue_waiting_on_signals:
+			break;
+
+		case SIGHUP:
+		case SIGINT:
+		case SIGQUIT:
+		case SIGTERM:
+			kill_pid_children(getpid(), signo);
+			break;
 		}
 	}
 exit_application:
 	return EXIT_SUCCESS;
 }
 
-static void do_nothing(int signo)
+static linted_error kill_pid_children(pid_t pid, int signo)
 {
-	/* Let the monitor handle the signal */
+	linted_error errnum = 0;
+
+	pid_t *children;
+	size_t len;
+	{
+		pid_t *xx;
+		size_t yy;
+		errnum = pid_children(pid, &xx, &yy);
+		if (errnum != 0)
+			return errnum;
+		children = xx;
+		len = yy;
+	}
+
+	for (size_t ii = 0U; ii < len; ++ii) {
+		if (-1 == kill(children[ii], signo)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_children;
+		}
+	}
+
+free_children:
+	linted_mem_free(children);
+
+	return errnum;
 }
 
-static void sigchld_handler(int signo)
+static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 {
-	waitable_process_pending = true;
+	linted_error errnum;
+
+	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/task/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/children" - 1U + 1U];
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX "/children",
+	                  (uintmax_t)pid, (uintmax_t)pid)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	linted_ko children_ko;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		if (ENOENT == errnum)
+			return ESRCH;
+		if (errnum != 0)
+			return errnum;
+		children_ko = xx;
+	}
+
+	FILE *file = fdopen(children_ko, "r");
+	if (0 == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(children_ko);
+
+		return errnum;
+	}
+
+	/* Get the child all at once to avoid raciness. */
+	char *buf = 0;
+
+	{
+		char *xx = buf;
+		size_t yy = 0U;
+
+		errno = 0;
+		ssize_t zz = getline(&xx, &yy, file);
+		if (-1 == zz) {
+			errnum = errno;
+			/* May be zero */
+			goto set_childrenp;
+		}
+		buf = xx;
+	}
+
+set_childrenp:
+	if (EOF == fclose(file)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
+	if (errnum != 0) {
+		linted_mem_free(buf);
+		return errnum;
+	}
+
+	size_t ii = 0U;
+	char const *start = buf;
+	pid_t *children = 0;
+
+	if (0 == buf)
+		goto finish;
+
+	for (;;) {
+		errno = 0;
+		pid_t child = strtol(start, 0, 10);
+		errnum = errno;
+		if (errnum != 0)
+			goto free_buf;
+
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(
+			    &xx, children, ii + 1U, sizeof children[0U]);
+			if (errnum != 0) {
+				linted_mem_free(children);
+				linted_mem_free(buf);
+				return errnum;
+			}
+			children = xx;
+		}
+		children[ii] = child;
+		++ii;
+
+		start = strchr(start, ' ');
+		if (0 == start)
+			break;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
+		++start;
+		if ('\n' == *start)
+			break;
+		if ('\0' == *start)
+			break;
+	}
+
+free_buf:
+	linted_mem_free(buf);
+
+finish:
+	*lenp = ii;
+	*childrenp = children;
+
+	return 0;
 }
 
 static linted_error set_name(char const *name)

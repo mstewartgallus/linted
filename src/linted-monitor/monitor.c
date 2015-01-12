@@ -1623,13 +1623,6 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 	default:
 		break;
 
-	case SIGHUP:
-	case SIGINT:
-	case SIGQUIT:
-	case SIGTERM:
-		errnum = kill_pid_children(pid, signo);
-		break;
-
 	case SIGSTOP: {
 		signo = 0;
 
