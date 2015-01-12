@@ -105,7 +105,6 @@ unsigned char linted_start(char const *process_name, size_t argc,
 					goto continue_waiting_on_signals;
 
 				default:
-					syslog(LOG_ERR, "reaped: %i", pid);
 					continue;
 				}
 			}
