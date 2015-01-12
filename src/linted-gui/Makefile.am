@@ -37,5 +37,5 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   $(XCB_FLAGS) $(XCB_XKB_FLAGS) $(XKB_FLAGS) $(XKB_X11_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/gui-fstab
+dist_pkgdefaultconf_DATA+=%D%/gui.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/gui.service

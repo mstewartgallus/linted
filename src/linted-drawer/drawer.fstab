@@ -21,8 +21,6 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/null	dev/null	none	touch,bind
 /dev/urandom	dev/urandom	none	touch,bind
 
-proc	proc	proc	mkdir,nosuid,nodev,noexec,ro,hidepid=2
-
 /etc	etc	none	mkdir,shared,bind
 
 /lib	lib	none	mkdir,shared,bind

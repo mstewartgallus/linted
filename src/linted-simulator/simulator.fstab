@@ -4,22 +4,17 @@
 # <file system>	<mount point>	<type>	<options>
 /home	home	none	mkdir,shared,bind
 
-none	../../var/gui	none	mkdir,nomount
-../../var/gui	var	none	mkdir,shared,bind
+none	../../var/simulator	none	mkdir,nomount
+../../var/simulator	var	none	mkdir,shared,bind
 
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
-../../controller	run/controller	none	touch,bind
-../../window-notifier-gui	run/window-notifier	none	touch,bind
-
-tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
-/tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind
+../../controller	run/controller	none	touch,nosuid,nodev,noexec,bind,comment=500
+../../updater	run/updater	none	touch,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/log	dev/log	none	touch,bind
-/dev/null	dev/null	none	touch,bind
+/dev/null	dev/null	none	touch,ro,bind
 /dev/urandom	dev/urandom	none	touch,bind
-
-proc	proc	proc	mkdir,nosuid,nodev,noexec,ro,hidepid=2
 
 /etc	etc	none	mkdir,shared,bind
 
@@ -27,5 +22,7 @@ proc	proc	proc	mkdir,nosuid,nodev,noexec,ro,hidepid=2
 /lib64	lib64	none	mkdir,shared,bind 
 
 /usr	usr	none	mkdir,shared,bind 
+
+tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 
 /bin	bin	none	mkdir,shared,bind
