@@ -158,8 +158,6 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		updater = xx;
 	}
 
-	syslog(LOG_INFO, "starting simulator");
-
 	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
 
 	struct simulator_state simulator_state = {
