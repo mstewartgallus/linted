@@ -55,8 +55,6 @@
  * use but the command was never implemented.
  */
 
-#define ASYNCH_SIGNO SIGUSR1
-
 /**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
@@ -1197,11 +1195,6 @@ static void canceller_cancel(struct canceller *canceller)
 	bool cancel_reply = false;
 	bool in_flight;
 
-	/* This can't be a POSIX real-time signal as those queue up so
-	 * we can end up queuing a barrage of signals that trap the
-	 * thread were waiting in signal handling.
-	 */
-
 	{
 		errnum = pthread_spin_lock(&canceller->lock);
 		if (errnum != 0) {
@@ -1218,7 +1211,7 @@ static void canceller_cancel(struct canceller *canceller)
 			bool owned = canceller->owned;
 			if (owned) {
 				errnum = pthread_kill(canceller->owner,
-				                      ASYNCH_SIGNO);
+				                      LINTED_ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);
@@ -1254,7 +1247,7 @@ static void canceller_cancel(struct canceller *canceller)
 			bool owned = canceller->owned;
 			if (owned) {
 				errnum = pthread_kill(canceller->owner,
-				                      ASYNCH_SIGNO);
+				                      LINTED_ASYNCH_SIGNO);
 				if (errnum != 0 && errnum != EAGAIN) {
 					assert(errnum != ESRCH);
 					assert(errnum != EINVAL);

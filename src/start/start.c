@@ -19,6 +19,7 @@
 
 #include "linted/start.h"
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -107,7 +108,8 @@ int main(int argc, char *argv[])
 		struct sigaction act = { 0 };
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
-		if (-1 == sigaction(SIGUSR1, &act, 0)) {
+		act.sa_flags = 0;
+		if (-1 == sigaction(LINTED_ASYNCH_SIGNO, &act, 0)) {
 			syslog(LOG_ERR, "sigaction: %s",
 			       linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -119,6 +121,7 @@ int main(int argc, char *argv[])
 
 static void do_nothing(int signo)
 {
+	/* Do nothing */
 }
 
 static bool is_privileged(void)

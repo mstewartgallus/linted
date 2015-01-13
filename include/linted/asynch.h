@@ -25,6 +25,12 @@
  * Schedule tasks on kernel objects to be completed asynchronously.
  */
 
+/* This can't be a POSIX real-time signal as those queue up so we can
+ * end up queuing a barrage of signals that trap the thread were
+ * waiting in signal handling.
+ */
+#define LINTED_ASYNCH_SIGNO SIGUSR1
+
 struct linted_asynch_pool;
 
 enum {
