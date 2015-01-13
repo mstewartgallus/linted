@@ -27,118 +27,6 @@
 #include <string.h>
 #include <wordexp.h>
 
-struct conf_setting;
-
-struct conf_section_bucket
-{
-	size_t sections_size;
-	struct linted_conf_section *sections;
-};
-
-#define SECTION_BUCKETS_SIZE 1024U
-
-struct linted_conf
-{
-	char *name;
-	unsigned long refcount;
-	struct conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
-};
-
-#define SETTING_BUCKETS_SIZE 1024U
-
-struct conf_setting_bucket
-{
-	size_t settings_size;
-	struct conf_setting *settings;
-};
-
-struct linted_conf_section
-{
-	unsigned long refcount;
-	char *name;
-	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
-};
-
-struct conf_setting
-{
-	char *field;
-	char **value;
-};
-
-struct linted_conf_db
-{
-	struct linted_conf **confs;
-	size_t size;
-};
-
-static size_t string_hash(char const *str);
-
-linted_error linted_conf_db_add_conf(struct linted_conf_db *db,
-                                     struct linted_conf *conf)
-{
-	struct linted_conf **units = db->confs;
-	size_t units_size = db->size;
-
-	size_t new_units_size = units_size + 1U;
-	struct linted_conf **new_units;
-	{
-		void *xx;
-		linted_error errnum = linted_mem_realloc_array(
-		    &xx, units, new_units_size, sizeof units[0U]);
-		if (errnum != 0)
-			return errnum;
-		new_units = xx;
-	}
-	new_units[units_size] = conf;
-
-	units = new_units;
-	units_size = new_units_size;
-
-	db->confs = units;
-	db->size = units_size;
-
-	return 0;
-}
-
-linted_error linted_conf_db_create(struct linted_conf_db **dbp)
-{
-	struct linted_conf_db *db;
-	{
-		void *xx;
-		linted_error errnum = linted_mem_alloc(&xx, sizeof *db);
-		if (errnum != 0)
-			return errnum;
-		db = xx;
-	}
-
-	db->size = 0U;
-	db->confs = 0;
-
-	*dbp = db;
-
-	return 0;
-}
-
-void linted_conf_db_destroy(struct linted_conf_db *db)
-{
-	for (size_t ii = 0U; ii < db->size; ++ii)
-		linted_conf_put(db->confs[ii]);
-	linted_mem_free(db->confs);
-
-	linted_mem_free(db);
-}
-
-size_t linted_conf_db_size(struct linted_conf_db *db)
-{
-	return db->size;
-}
-
-struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
-                                            size_t ii)
-{
-	return db->confs[ii];
-}
-
 linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 {
 	linted_error errnum = 0;
@@ -349,6 +237,103 @@ free_line_buffer:
 	return errnum;
 }
 
+struct linted_conf_db
+{
+	struct linted_conf **confs;
+	size_t size;
+};
+
+static size_t string_hash(char const *str);
+
+linted_error linted_conf_db_add_conf(struct linted_conf_db *db,
+                                     struct linted_conf *conf)
+{
+	struct linted_conf **units = db->confs;
+	size_t units_size = db->size;
+
+	size_t new_units_size = units_size + 1U;
+	struct linted_conf **new_units;
+	{
+		void *xx;
+		linted_error errnum = linted_mem_realloc_array(
+		    &xx, units, new_units_size, sizeof units[0U]);
+		if (errnum != 0)
+			return errnum;
+		new_units = xx;
+	}
+	new_units[units_size] = conf;
+
+	units = new_units;
+	units_size = new_units_size;
+
+	db->confs = units;
+	db->size = units_size;
+
+	return 0;
+}
+
+linted_error linted_conf_db_create(struct linted_conf_db **dbp)
+{
+	struct linted_conf_db *db;
+	{
+		void *xx;
+		linted_error errnum = linted_mem_alloc(&xx, sizeof *db);
+		if (errnum != 0)
+			return errnum;
+		db = xx;
+	}
+
+	db->size = 0U;
+	db->confs = 0;
+
+	*dbp = db;
+
+	return 0;
+}
+
+void linted_conf_db_destroy(struct linted_conf_db *db)
+{
+	for (size_t ii = 0U; ii < db->size; ++ii)
+		linted_conf_put(db->confs[ii]);
+	linted_mem_free(db->confs);
+
+	linted_mem_free(db);
+}
+
+size_t linted_conf_db_size(struct linted_conf_db *db)
+{
+	return db->size;
+}
+
+struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
+                                            size_t ii)
+{
+	return db->confs[ii];
+}
+
+struct conf_setting;
+
+struct conf_section_bucket
+{
+	size_t sections_size;
+	struct linted_conf_section *sections;
+};
+
+#define SECTION_BUCKETS_SIZE 1024U
+
+struct linted_conf
+{
+	char *name;
+	unsigned long refcount;
+	struct conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
+};
+
+struct conf_setting_bucket
+{
+	size_t settings_size;
+	struct conf_setting *settings;
+};
+
 linted_error linted_conf_create(struct linted_conf **confp, char const *name)
 {
 	linted_error errnum = 0;
@@ -390,6 +375,8 @@ free_name_copy:
 	return 0;
 }
 
+static void free_sections(struct linted_conf_section *sections, size_t size);
+
 void linted_conf_put(struct linted_conf *conf)
 {
 	if (0 == conf)
@@ -404,36 +391,11 @@ void linted_conf_put(struct linted_conf *conf)
 		size_t sections_size = bucket->sections_size;
 		struct linted_conf_section *sections = bucket->sections;
 
-		for (size_t jj = 0U; jj < sections_size; ++jj) {
-			struct linted_conf_section const *section =
-			    &sections[jj];
-
-			for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-				struct conf_setting_bucket const *
-				setting_bucket = &section->buckets[kk];
-				size_t settings_size =
-				    setting_bucket->settings_size;
-				struct conf_setting *settings =
-				    setting_bucket->settings;
-
-				for (size_t ww = 0U; ww < settings_size; ++ww) {
-					struct conf_setting *setting =
-					    &settings[ww];
-					linted_mem_free(setting->field);
-
-					for (char **value = setting->value;
-					     *value != 0; ++value)
-						linted_mem_free(*value);
-					linted_mem_free(setting->value);
-				}
-
-				linted_mem_free(settings);
-			}
-			linted_mem_free(section->name);
-		}
+		free_sections(sections, sections_size);
 
 		linted_mem_free(sections);
 	}
+
 	linted_mem_free(conf->name);
 	linted_mem_free(conf);
 }
@@ -441,6 +403,50 @@ void linted_conf_put(struct linted_conf *conf)
 char const *linted_conf_peek_name(struct linted_conf *conf)
 {
 	return conf->name;
+}
+
+#define SETTING_BUCKETS_SIZE 1024U
+
+struct linted_conf_section
+{
+	unsigned long refcount;
+	char *name;
+	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
+};
+
+struct conf_setting
+{
+	char *field;
+	char **value;
+};
+
+static void free_sections(struct linted_conf_section *sections,
+                          size_t sections_size)
+{
+	for (size_t jj = 0U; jj < sections_size; ++jj) {
+		struct linted_conf_section const *section = &sections[jj];
+
+		for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
+			struct conf_setting_bucket const *setting_bucket =
+			    &section->buckets[kk];
+			size_t settings_size = setting_bucket->settings_size;
+			struct conf_setting *settings =
+			    setting_bucket->settings;
+
+			for (size_t ww = 0U; ww < settings_size; ++ww) {
+				struct conf_setting *setting = &settings[ww];
+				linted_mem_free(setting->field);
+
+				for (char **value = setting->value; *value != 0;
+				     ++value)
+					linted_mem_free(*value);
+				linted_mem_free(setting->value);
+			}
+
+			linted_mem_free(settings);
+		}
+		linted_mem_free(section->name);
+	}
 }
 
 linted_error linted_conf_add_section(struct linted_conf *conf,
