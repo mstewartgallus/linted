@@ -73,12 +73,12 @@ struct wait_service_data
 {
 	char const *process_name;
 	struct linted_asynch_pool *pool;
-	linted_ko cwd;
 	char const *sandbox;
 	char const *waiter;
 	sigset_t const *orig_mask;
 	struct linted_unit_db *unit_db;
 	bool *time_to_exit;
+	linted_ko cwd;
 };
 
 struct sigwait_data
@@ -672,7 +672,7 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 
 		char const *suffix = dot + 1U;
 
-		enum linted_unit_type unit_type;
+		linted_unit_type unit_type;
 		if (0 == strcmp(suffix, "socket")) {
 			unit_type = LINTED_UNIT_TYPE_SOCKET;
 		} else if (0 == strcmp(suffix, "service")) {
@@ -889,7 +889,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		listen_fifo = xx;
 	}
 
-	enum linted_unit_socket_type socket_type;
+	linted_unit_socket_type socket_type;
 	char const *path = 0;
 
 	if (listen_dir != 0) {
@@ -995,9 +995,9 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 
 struct option
 {
-	bool flag;
 	char const *name;
 	char const *value;
+	bool flag : 1U;
 };
 
 static linted_error service_activate(char const *process_name,
@@ -1176,20 +1176,20 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const * const *)exec_start);
 
-	struct option options[] = { { true, "--traceme", 0 },
-		                    { waiter != 0, "--waiter", waiter },
-		                    { fstab != 0, "--chrootdir", chrootdir },
-		                    { fstab != 0, "--fstab", fstab },
-		                    { no_new_privs, "--nonewprivs", 0 },
-		                    { drop_caps, "--dropcaps", 0 },
-		                    { chdir_path != 0, "--chdir", chdir_path },
-		                    { prio_str != 0, "--priority", prio_str },
-		                    { clone_newuser, "--clone-newuser", 0 },
-		                    { clone_newpid, "--clone-newpid", 0 },
-		                    { clone_newipc, "--clone-newipc", 0 },
-		                    { clone_newnet, "--clone-newnet", 0 },
-		                    { clone_newns, "--clone-newns", 0 },
-		                    { clone_newuts, "--clone-newuts", 0 } };
+	struct option options[] = { { "--traceme", 0, true },
+		                    { "--waiter", waiter, waiter != 0 },
+		                    { "--chrootdir", chrootdir, fstab != 0 },
+		                    { "--fstab", fstab, fstab != 0 },
+		                    { "--nonewprivs", 0, no_new_privs },
+		                    { "--dropcaps", 0, drop_caps },
+		                    { "--chdir", chdir_path, chdir_path != 0 },
+		                    { "--priority", prio_str, prio_str != 0 },
+		                    { "--clone-newuser", 0, clone_newuser },
+		                    { "--clone-newpid", 0, clone_newpid },
+		                    { "--clone-newipc", 0, clone_newipc },
+		                    { "--clone-newnet", 0, clone_newnet },
+		                    { "--clone-newns", 0, clone_newns },
+		                    { "--clone-newuts", 0, clone_newuts } };
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {

@@ -32,12 +32,15 @@
 enum { LINTED_UNIT_NAME_MAX = 255 };
 #define LINTED_UNIT_NAME_MAX ((unsigned)LINTED_UNIT_NAME_MAX)
 
-enum linted_unit_type { LINTED_UNIT_TYPE_SOCKET, LINTED_UNIT_TYPE_SERVICE };
-enum linted_unit_socket_type {
+enum { LINTED_UNIT_TYPE_SOCKET, LINTED_UNIT_TYPE_SERVICE };
+typedef unsigned char linted_unit_type;
+
+enum {
 	LINTED_UNIT_SOCKET_TYPE_DIR,
 	LINTED_UNIT_SOCKET_TYPE_FILE,
 	LINTED_UNIT_SOCKET_TYPE_FIFO
 };
+typedef unsigned char linted_unit_socket_type;
 
 struct linted_unit_db;
 
@@ -59,16 +62,14 @@ struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
 struct linted_unit
 {
 	char *name;
-	enum linted_unit_type type;
+	linted_unit_type type;
 };
 
 struct linted_unit_socket
 {
 	struct linted_unit common;
-	enum linted_unit_socket_type type;
 	char const *path;
-	long maxmsgs;
-	long msgsize;
+	linted_unit_socket_type type;
 	_Bool is_open : 1U;
 };
 

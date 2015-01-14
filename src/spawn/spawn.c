@@ -65,10 +65,10 @@ struct fork_args
 {
 	sigset_t const *sigset;
 	struct linted_spawn_file_actions const *file_actions;
-	linted_ko err_writer;
 	char const *const *argv;
 	char const *const *envp;
 	char const *binary;
+	linted_ko err_writer;
 };
 
 static int fork_routine(void *args);
@@ -270,9 +270,12 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		if (errnum != 0)
 			goto free_relative_binary_path;
 
-		struct fork_args fork_args = { child_mask, file_actions,
-			                       err_writer, argv,
-			                       envp,       real_binary_path };
+		struct fork_args fork_args = { .sigset = child_mask,
+			                       .file_actions = file_actions,
+			                       .err_writer = err_writer,
+			                       .argv = argv,
+			                       .envp = envp,
+			                       .binary = real_binary_path };
 		child = safe_vfork(fork_routine, &fork_args);
 		if (-1 == child) {
 			errnum = errno;

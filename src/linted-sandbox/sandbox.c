@@ -120,29 +120,29 @@ static char const *const argstrs[] = {
 
 struct first_fork_args
 {
-	linted_ko err_writer;
 	char const *uid_map;
 	char const *gid_map;
 	unsigned long clone_flags;
-	linted_ko cwd;
 	char const *chrootdir;
 	char const *chdir_path;
 	cap_t caps;
 	struct mount_args *mount_args;
 	size_t mount_args_size;
-	bool use_seccomp;
 	char const *waiter;
 	char const *waiter_base;
 	char const *const *command;
 	char const *binary;
+	linted_ko err_writer;
+	linted_ko cwd;
+	bool use_seccomp : 1U;
 };
 
 struct second_fork_args
 {
-	linted_ko err_writer;
 	char const *const *argv;
 	char const *binary;
-	bool use_seccomp;
+	linted_ko err_writer;
+	bool use_seccomp : 1U;
 };
 
 static int first_fork_routine(void *arg);
