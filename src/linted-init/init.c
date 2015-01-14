@@ -145,7 +145,7 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 			assert(errnum != EINVAL);
 			assert(errnum != ECHILD);
-			assert(false);
+			assert(0 == errnum);
 
 		waitid_succeeded:
 			if (child == pid)
@@ -218,7 +218,7 @@ static void delegate_signal(int signo)
 			if (errnum != 0) {
 				assert(errnum != EINTR);
 				assert(errnum != EINVAL);
-				assert(false);
+				assert(0 == errnum);
 			}
 
 			/* The process was killed and is waitable */

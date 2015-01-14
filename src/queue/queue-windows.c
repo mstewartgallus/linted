@@ -47,7 +47,7 @@ void linted_queue_node(struct linted_queue_node *node)
 	node->next = 0;
 }
 
-linted_error linted_queue_create(struct linted_queue ** queuep)
+linted_error linted_queue_create(struct linted_queue **queuep)
 {
 	linted_error errnum;
 	struct linted_queue *queue;

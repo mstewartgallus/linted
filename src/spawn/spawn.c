@@ -39,18 +39,14 @@
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
-enum file_action_type { FILE_ACTION_ADDDUP2 };
-
 struct adddup2
 {
-	enum file_action_type type;
 	int oldfildes;
 	int newfildes;
 };
 
 union file_action
 {
-	enum file_action_type type;
 	struct adddup2 adddup2;
 };
 
@@ -163,7 +159,6 @@ linted_error linted_spawn_file_actions_adddup2(
 
 	new_action = &new_file_actions->actions[old_count];
 
-	new_action->type = FILE_ACTION_ADDDUP2;
 	new_action->adddup2.oldfildes = oldfildes;
 	new_action->adddup2.newfildes = newfildes;
 
@@ -213,15 +208,11 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		size_t action_count = file_actions->action_count;
 		for (size_t ii = 0U; ii < action_count; ++ii) {
 			union file_action const *action = &actions[ii];
-			switch (action->type) {
-			case FILE_ACTION_ADDDUP2: {
-				int newfildes = action->adddup2.newfildes;
 
-				if (newfildes > greatest)
-					greatest = newfildes;
-				break;
-			}
-			}
+			int newfildes = action->adddup2.newfildes;
+
+			if (newfildes > greatest)
+				greatest = newfildes;
 		}
 	}
 
@@ -397,27 +388,19 @@ do_fork(sigset_t const *sigset,
 		size_t action_count = file_actions->action_count;
 		for (size_t ii = 0U; ii < action_count; ++ii) {
 			union file_action const *action = &actions[ii];
-			switch (action->type) {
-			case FILE_ACTION_ADDDUP2: {
-				linted_ko oldfd = action->adddup2.oldfildes;
-				linted_ko newfd = action->adddup2.newfildes;
 
-				int flags = fcntl(oldfd, F_GETFD);
-				if (-1 == flags)
-					return errno;
+			linted_ko oldfd = action->adddup2.oldfildes;
+			linted_ko newfd = action->adddup2.newfildes;
 
-				if (-1 == dup2(oldfd, newfd))
-					return errno;
+			int flags = fcntl(oldfd, F_GETFD);
+			if (-1 == flags)
+				return errno;
 
-				if (-1 ==
-				    fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
-					return errno;
-				break;
-			}
+			if (-1 == dup2(oldfd, newfd))
+				return errno;
 
-			default:
-				return EINVAL;
-			}
+			if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
+				return errno;
 		}
 	}
 

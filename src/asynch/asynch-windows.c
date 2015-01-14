@@ -859,19 +859,16 @@ static DWORD WINAPI poller_routine(void *arg)
 			goto complete_task;
 		}
 
-		short revents = 0;
+		short revents;
 		{
 			short xx;
 			errnum = poll_one(ko, flags, &xx);
-			if (0 == errnum)
-				revents = xx;
+			if (EINTR == errnum)
+				goto wait_on_poll;
+			if (errnum != 0)
+				goto complete_task;
+			revents = xx;
 		}
-
-		if (EINTR == errnum)
-			goto wait_on_poll;
-
-		if (errnum != 0)
-			goto complete_task;
 
 		if ((revents & POLLNVAL) != 0) {
 			errnum = EBADF;

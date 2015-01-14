@@ -26,6 +26,11 @@
  * Various utility macroes and functions.
  */
 
+#undef abort
+
+extern void abort(void);
+
+
 #define LINTED_FIELD_SIZEOF(type, member) (sizeof((type *)0)->member)
 
 #define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
@@ -37,7 +42,7 @@
 
 #ifndef NDEBUG
 
-#define LINTED_ASSUME_UNREACHABLE() assert(0)
+#define LINTED_ASSUME_UNREACHABLE() abort()
 #define LINTED_ASSUME(X) assert(X)
 
 #else

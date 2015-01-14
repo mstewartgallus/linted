@@ -65,13 +65,17 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 		if (errnum != 0)
 			goto free_queue;
 
-#if !defined NDEBUG
-		errnum =
-		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
-		assert(errnum != EINVAL);
-		if (errnum != 0)
-			goto destroy_attr;
+		bool ndebug = false;
+#if defined NDEBUG
+		ndebug = true;
 #endif
+		if (!ndebug) {
+			errnum = pthread_mutexattr_settype(
+			    &attr, PTHREAD_MUTEX_ERRORCHECK);
+			assert(errnum != EINVAL);
+			if (errnum != 0)
+				goto destroy_attr;
+		}
 
 		errnum = pthread_mutex_init(&queue->lock, &attr);
 		assert(errnum != EINVAL);

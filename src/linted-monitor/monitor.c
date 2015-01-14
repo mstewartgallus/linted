@@ -1440,7 +1440,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 			if (kill_errnum != ESRCH) {
 				assert(kill_errnum != EINVAL);
 				assert(kill_errnum != EPERM);
-				assert(false);
+				assert(0 == errnum);
 			}
 		}
 	}
