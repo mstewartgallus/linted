@@ -727,7 +727,7 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 	GLfloat b_inverted[4U][4U];
 
 	{
-		size_t ii = 4U;
+		uint_fast8_t ii = 4U;
 		do {
 			--ii;
 
@@ -755,7 +755,7 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 
 	struct matrix result;
 
-	size_t ii = 4U;
+	uint_fast8_t ii = 4U;
 	do {
 		--ii;
 
