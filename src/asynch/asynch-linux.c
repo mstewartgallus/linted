@@ -108,11 +108,11 @@ static void wait_manager_destroy(struct wait_manager *manager);
 
 struct canceller
 {
+	pthread_t owner;
+	bool *cancel_replier;
 	pthread_spinlock_t lock;
 	bool owned : 1U;
 	bool in_flight : 1U;
-	pthread_t owner;
-	bool *cancel_replier;
 };
 
 static void canceller_init(struct canceller *canceller);

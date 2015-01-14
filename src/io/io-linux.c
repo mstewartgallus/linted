@@ -95,15 +95,15 @@ struct linted_io_task_recv
 
 struct linted_io_task_sendto
 {
+	struct sockaddr_storage dest_addr;
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;
 	char const *buf;
 	size_t size;
 	size_t bytes_wrote;
-	linted_ko ko;
-	struct sockaddr_storage dest_addr;
 	size_t dest_addr_size;
+	linted_ko ko;
 };
 
 static void pipe_set_init(void);

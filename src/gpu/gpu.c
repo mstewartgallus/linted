@@ -23,7 +23,6 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -32,13 +31,12 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-enum renderer_state { BUFFER_COMMANDS, SWAP_BUFFERS };
-
 struct linted_gpu_context
 {
 	EGLDisplay display;
 	EGLSurface surface;
 	EGLConfig config;
+	EGLContext context;
 
 	struct linted_gpu_update update;
 
@@ -46,14 +44,14 @@ struct linted_gpu_context
 	unsigned height;
 
 	GLuint program;
+
 	GLuint vertex_buffer;
 	GLuint normal_buffer;
 	GLuint index_buffer;
 
-	EGLContext context;
-	GLint model_view_projection_matrix;
-	enum renderer_state state;
+	GLuint model_view_projection_matrix;
 
+	bool buffer_commands : 1U;
 	bool has_gl_context : 1U;
 	bool resize_pending : 1U;
 	bool update_pending : 1U;
@@ -155,7 +153,7 @@ choose_config_succeeded:
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = EGL_NO_SURFACE;
-	gpu_context->state = BUFFER_COMMANDS;
+	gpu_context->buffer_commands = true;
 	gpu_context->has_gl_context = false;
 
 	*gpu_contextp = gpu_context;
@@ -240,7 +238,7 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 
 	/* Abort swapping buffers if the current processed or being
 	 * processed buffer is stale */
-	gpu_context->state = BUFFER_COMMANDS;
+	gpu_context->buffer_commands = true;
 }
 
 void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
@@ -263,19 +261,15 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 	if (errnum != 0)
 		return;
 
-	switch (gpu_context->state) {
-	case BUFFER_COMMANDS:
+	if (gpu_context->buffer_commands) {
 		real_draw(gpu_context);
-		gpu_context->state = SWAP_BUFFERS;
-		break;
-
-	case SWAP_BUFFERS:
+		gpu_context->buffer_commands = false;
+	} else {
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			errnum = get_egl_error();
-			break;
+		} else {
+			gpu_context->buffer_commands = true;
 		}
-		gpu_context->state = BUFFER_COMMANDS;
-		break;
 	}
 
 	if (errnum != 0) {
@@ -486,12 +480,13 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		index_buffer = xx[2U];
 	}
 
-	GLint mvp_matrix =
+	GLint maybe_mvp_matrix =
 	    glGetUniformLocation(program, "model_view_projection_matrix");
-	if (-1 == mvp_matrix) {
+	if (-1 == maybe_mvp_matrix) {
 		errnum = EINVAL;
 		goto cleanup_buffers;
 	}
+	GLuint mvp_matrix = maybe_mvp_matrix;
 
 	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
@@ -547,7 +542,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
-	gpu_context->state = BUFFER_COMMANDS;
+	gpu_context->buffer_commands = true;
 	gpu_context->has_gl_context = true;
 
 	gpu_context->update_pending = true;
