@@ -13,6 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define UNICODE
+#define _UNICODE
+
+#define WIN32_LEAN_AND_MEAN
+
 #include "config.h"
 
 #include "linted/start.h"
@@ -22,9 +27,13 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <windows.h>
 
 int main(int argc, char *argv[])
 {
+	if (!SetErrorMode(SEM_FAILCRITICALERRORS))
+		return EXIT_FAILURE;
+
 	/**
 	 * I do not remember if Windows processes might need sometimes
 	 * to open up standard IO handles at startup if the program
