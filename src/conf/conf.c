@@ -414,11 +414,7 @@ struct linted_conf_section
 	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
 };
 
-struct conf_setting
-{
-	char *field;
-	char **value;
-};
+static void free_settings(struct conf_setting *settings, size_t settings_size);
 
 static void free_sections(struct linted_conf_section *sections,
                           size_t sections_size)
@@ -433,15 +429,7 @@ static void free_sections(struct linted_conf_section *sections,
 			struct conf_setting *settings =
 			    setting_bucket->settings;
 
-			for (size_t ww = 0U; ww < settings_size; ++ww) {
-				struct conf_setting *setting = &settings[ww];
-				linted_mem_free(setting->field);
-
-				for (char **value = setting->value; *value != 0;
-				     ++value)
-					linted_mem_free(*value);
-				linted_mem_free(setting->value);
-			}
+			free_settings(settings, settings_size);
 
 			linted_mem_free(settings);
 		}
@@ -506,6 +494,24 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 	}
 
 	return 0;
+}
+
+struct conf_setting
+{
+	char *field;
+	char **value;
+};
+
+static void free_settings(struct conf_setting *settings, size_t settings_size)
+{
+	for (size_t ww = 0U; ww < settings_size; ++ww) {
+		struct conf_setting *setting = &settings[ww];
+		linted_mem_free(setting->field);
+
+		for (char **value = setting->value; *value != 0; ++value)
+			linted_mem_free(*value);
+		linted_mem_free(setting->value);
+	}
 }
 
 char const *const *linted_conf_find(struct linted_conf *conf,
