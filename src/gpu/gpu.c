@@ -765,7 +765,7 @@ static union matrix matrix_multiply(union matrix a, union matrix b)
 
 		GLfloat result_ii[4U];
 
-		size_t jj = 4U;
+		uint_fast8_t jj = 4U;
 		do {
 			--jj;
 
