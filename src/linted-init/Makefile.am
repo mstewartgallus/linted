@@ -20,8 +20,6 @@ pkglibexec_PROGRAMS+=%D%/linted-init
 %C%_linted_init_LDADD=\
   src/start/libstart.la\
   \
-  src/asynch/libasynch.la\
   src/error/liberror.la\
-  src/io/libio.la\
   src/log/liblog.la\
   src/spawn/libspawn.la

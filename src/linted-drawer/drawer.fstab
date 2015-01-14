@@ -19,7 +19,6 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 /dev/dri	dev/dri	none	mkdir,shared,bind
 /dev/log	dev/log	none	touch,bind
 /dev/null	dev/null	none	touch,bind
-/dev/urandom	dev/urandom	none	touch,bind
 
 /etc	etc	none	mkdir,shared,bind
 

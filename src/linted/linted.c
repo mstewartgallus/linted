@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/auxv.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -53,6 +54,7 @@ extern char **environ;
 
 static char const *const argstrs[] = {[HELP] = "--help",
 	                              [VERSION_OPTION] = "--version" };
+
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-linted"
 };
@@ -75,7 +77,10 @@ static struct envvar const default_envvars[] = {
 
 static linted_error exec_init(char const *init);
 
-static linted_error linted_help(linted_ko ko, char const *process_name,
+static bool is_privileged(void);
+static bool was_privileged(void);
+
+static linted_error do_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport);
@@ -83,6 +88,13 @@ static linted_error linted_help(linted_ko ko, char const *process_name,
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
 {
+	if (is_privileged()) {
+		linted_log(LINTED_LOG_ERR,
+		           "%s should not be run with high privileges",
+		           PACKAGE_NAME);
+		return EPERM;
+	}
+
 	if (0 == setlocale(LC_ALL, "")) {
 		linted_log(LINTED_LOG_ERR, "linted_spawn_attr_init: %s",
 		           linted_error_string(errno));
@@ -132,7 +144,7 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	if (need_help) {
-		linted_help(STDOUT_FILENO, process_name,
+		do_help(STDOUT_FILENO, process_name,
 		            LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
 		            LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
@@ -185,7 +197,29 @@ static linted_error exec_init(char const *init)
 	return errnum;
 }
 
-static linted_error linted_help(linted_ko ko, char const *process_name,
+static bool is_privileged(void)
+{
+	uid_t uid = getuid();
+	if (0 == uid)
+		return true;
+
+	gid_t gid = getgid();
+	if (0 == gid)
+		return true;
+
+	return was_privileged();
+}
+
+#ifdef __linux__
+static bool was_privileged(void)
+{
+	return getauxval(AT_SECURE);
+}
+#else
+#error "was privileged" check has not been implemented for this system yet
+#endif
+
+static linted_error do_help(linted_ko ko, char const *process_name,
                                 struct linted_str package_name,
                                 struct linted_str package_url,
                                 struct linted_str package_bugreport)
