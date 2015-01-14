@@ -59,10 +59,15 @@ struct linted_gpu_context
 	bool update_pending : 1U;
 };
 
-union matrix
+union chunk
 {
-	GLfloat x[4U][4U];
+	GLfloat x[4U];
 	long double __force_alignment;
+};
+
+struct matrix
+{
+	union chunk x[4U];
 };
 
 static EGLint const attr_list[] = {
@@ -85,7 +90,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context);
 static void real_draw(struct linted_gpu_context *gpu_context);
 
 static void flush_gl_errors(void);
-static union matrix matrix_multiply(union matrix a, union matrix b);
+static struct matrix matrix_multiply(struct matrix a, struct matrix b);
 
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
@@ -601,7 +606,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
 
-		union matrix const y_rotation_matrix = {
+		struct matrix const y_rotation_matrix = {
 			{ { 1, 0, 0, 0 },
 			  { 0, cos_y, -sin_y, 0 },
 			  { 0, sin_y, cos_y, 0 },
@@ -610,7 +615,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		union matrix const x_rotation_matrix = {
+		struct matrix const x_rotation_matrix = {
 			{ { cos_x, 0, sin_x, 0 },
 			  { 0, 1, 0, 0 },
 			  { -sin_x, 0, cos_x, 0 },
@@ -618,11 +623,11 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		};
 
 		/* Translate the camera */
-		union matrix const camera = { { { 1, 0, 0, 0 },
-				                { 0, 1, 0, 0 },
-				                { 0, 0, 1, 0 },
-				                { x_position, y_position,
-					          z_position, 1 } } };
+		struct matrix const camera = { { { 1, 0, 0, 0 },
+				                 { 0, 1, 0, 0 },
+				                 { 0, 0, 1, 0 },
+				                 { x_position, y_position,
+					           z_position, 1 } } };
 
 		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
@@ -631,7 +636,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		union matrix const projection = {
+		struct matrix const projection = {
 			{ { d / aspect, 0, 0, 0 },
 			  { 0, d, 0, 0 },
 			  { 0, 0, (far + near) / (near - far),
@@ -639,14 +644,15 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 			  { 0, 0, -1, 0 } }
 		};
 
-		union matrix rotations =
+		struct matrix rotations =
 		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);
-		union matrix model_view = matrix_multiply(camera, rotations);
-		union matrix model_view_projection =
+		struct matrix model_view = matrix_multiply(camera, rotations);
+		struct matrix model_view_projection =
 		    matrix_multiply(model_view, projection);
 
 		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
-		                   1U, false, model_view_projection.x[0U]);
+		                   1U, false,
+		                   (void const *)&model_view_projection);
 
 		gpu_context->update_pending = false;
 	}
@@ -723,12 +729,13 @@ static linted_error get_egl_error(void)
 	}
 }
 
-static union matrix matrix_multiply(union matrix a, union matrix b)
+static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 {
-	union matrix b_inverted;
+	struct matrix b_inverted;
 
 	{
 		uint_fast8_t ii = 4U;
+
 		do {
 			--ii;
 
@@ -738,46 +745,44 @@ static union matrix matrix_multiply(union matrix a, union matrix b)
 			GLfloat b_ii_3;
 
 			{
-				GLfloat b_ii[4U];
-				memcpy(b_ii, b.x[ii], sizeof b_ii);
+				union chunk b_ii = b.x[ii];
 
-				b_ii_0 = b_ii[0U];
-				b_ii_1 = b_ii[1U];
-				b_ii_2 = b_ii[2U];
-				b_ii_3 = b_ii[3U];
+				b_ii_0 = b_ii.x[0U];
+				b_ii_1 = b_ii.x[1U];
+				b_ii_2 = b_ii.x[2U];
+				b_ii_3 = b_ii.x[3U];
 			}
 
-			b_inverted.x[0U][ii] = b_ii_0;
-			b_inverted.x[1U][ii] = b_ii_1;
-			b_inverted.x[2U][ii] = b_ii_2;
-			b_inverted.x[3U][ii] = b_ii_3;
+			b_inverted.x[0U].x[ii] = b_ii_0;
+			b_inverted.x[1U].x[ii] = b_ii_1;
+			b_inverted.x[2U].x[ii] = b_ii_2;
+			b_inverted.x[3U].x[ii] = b_ii_3;
 		} while (ii != 0U);
 	}
 
-	union matrix result;
+	struct matrix result;
 
 	uint_fast8_t ii = 4U;
 	do {
 		--ii;
 
-		GLfloat a_ii[4U];
-		memcpy(a_ii, a.x[ii], sizeof a_ii);
+		union chunk a_ii = a.x[ii];
 
-		GLfloat result_ii[4U];
+		union chunk result_ii;
 
 		uint_fast8_t jj = 4U;
 		do {
 			--jj;
 
-			GLfloat b_XX_jj[4U];
-			memcpy(b_XX_jj, b_inverted.x[jj], sizeof b_XX_jj);
+			union chunk b_XX_jj = b_inverted.x[jj];
 
-			result_ii[jj] =
-			    (a_ii[0U] * b_XX_jj[0U] + a_ii[1U] * b_XX_jj[1U]) +
-			    (a_ii[2U] * b_XX_jj[2U] + a_ii[3U] * b_XX_jj[3U]);
+			result_ii.x[jj] = (a_ii.x[0U] * b_XX_jj.x[0U] +
+			                   a_ii.x[1U] * b_XX_jj.x[1U]) +
+			                  (a_ii.x[2U] * b_XX_jj.x[2U] +
+			                   a_ii.x[3U] * b_XX_jj.x[3U]);
 		} while (jj != 0U);
 
-		memcpy(result.x[ii], result_ii, sizeof result_ii);
+		result.x[ii] = result_ii;
 	} while (ii != 0U);
 
 	return result;
