@@ -24,7 +24,6 @@ dnl if it doesn't work.
         [-D_FORTIFY_SOURCE=2]dnl
         [-fstack-protector-all -Wstack-protector]dnl
         [-pie -fPIE]dnl
-        [-Wa,--noexecstack]dnl
 ])
 AC_SUBST([linted_CFLAGS_HARDEN])
 dnl
@@ -32,7 +31,6 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[dnl
         [-pie -fPIE]dnl
         [-Wl,-z,relro]dnl
         [-Wl,-z,now]dnl
-        [-Wl,-z,noexecstack]dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl

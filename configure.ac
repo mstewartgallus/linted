@@ -160,8 +160,8 @@ dnl
 [CC="${CC} ${linted_CFLAGS_LANGUAGE}"
 CC="${CC} ${linted_CFLAGS_OPTIMIZE}"
 CC="${CC} ${linted_CFLAGS_HARDEN}"
-CC="${CC} ${linted_CFLAGS_MINOR_DEBUG}"
 CC="${CC} ${linted_CFLAGS_DEBUG}"
+CC="${CC} ${linted_CFLAGS_DEBUG_INFO}"
 CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
 AC_CONFIG_MACRO_DIR([m4])

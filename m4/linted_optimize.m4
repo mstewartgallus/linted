@@ -30,6 +30,7 @@ dnl
 dnl
         [-fvisibility=hidden]dnl This gets around a few redirections
                              dnl and prevents symbol conflicts
+        [-Bsymbolic]dnl Also gets around some more redirections
 ])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl

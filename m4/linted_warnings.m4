@@ -40,4 +40,13 @@ dnl     Make the = { 0 } idiom not cause warnings
         [-Wno-missing-braces]dnl
 ])
 AC_SUBST([linted_CFLAGS_WARNINGS])
+dnl
+LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
+        [-Wl,--warn-common]dnl
+        [-Wl,--warn-execstack]dnl
+        [-Wl,--warn-search-mismatch]dnl
+        [-Wl,--warn-shared-textrel]dnl
+        [-Wl,--warn-unresolved-symbols]dnl
+])
+AC_SUBST([linted_LDFLAGS_WARNINGS])
 ])
