@@ -59,9 +59,10 @@ struct linted_gpu_context
 	bool update_pending : 1U;
 };
 
-struct matrix
+union matrix
 {
 	GLfloat x[4U][4U];
+	long double __force_alignment;
 };
 
 static EGLint const attr_list[] = {
@@ -84,7 +85,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context);
 static void real_draw(struct linted_gpu_context *gpu_context);
 
 static void flush_gl_errors(void);
-static struct matrix matrix_multiply(struct matrix a, struct matrix b);
+static union matrix matrix_multiply(union matrix a, union matrix b);
 
 /**
  * @todo get_gl_error's use of glGetError is incorrect. Multiple error
@@ -600,7 +601,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
 
-		struct matrix const y_rotation_matrix = {
+		union matrix const y_rotation_matrix = {
 			{ { 1, 0, 0, 0 },
 			  { 0, cos_y, -sin_y, 0 },
 			  { 0, sin_y, cos_y, 0 },
@@ -609,7 +610,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		struct matrix const x_rotation_matrix = {
+		union matrix const x_rotation_matrix = {
 			{ { cos_x, 0, sin_x, 0 },
 			  { 0, 1, 0, 0 },
 			  { -sin_x, 0, cos_x, 0 },
@@ -617,11 +618,11 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		};
 
 		/* Translate the camera */
-		struct matrix const camera = { { { 1, 0, 0, 0 },
-				                 { 0, 1, 0, 0 },
-				                 { 0, 0, 1, 0 },
-				                 { x_position, y_position,
-					           z_position, 1 } } };
+		union matrix const camera = { { { 1, 0, 0, 0 },
+				                { 0, 1, 0, 0 },
+				                { 0, 0, 1, 0 },
+				                { x_position, y_position,
+					          z_position, 1 } } };
 
 		GLfloat aspect = width / (GLfloat)height;
 		double fov = acos(-1.0) / 4;
@@ -630,7 +631,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		struct matrix const projection = {
+		union matrix const projection = {
 			{ { d / aspect, 0, 0, 0 },
 			  { 0, d, 0, 0 },
 			  { 0, 0, (far + near) / (near - far),
@@ -638,10 +639,10 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 			  { 0, 0, -1, 0 } }
 		};
 
-		struct matrix rotations =
+		union matrix rotations =
 		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);
-		struct matrix model_view = matrix_multiply(camera, rotations);
-		struct matrix model_view_projection =
+		union matrix model_view = matrix_multiply(camera, rotations);
+		union matrix model_view_projection =
 		    matrix_multiply(model_view, projection);
 
 		glUniformMatrix4fv(gpu_context->model_view_projection_matrix,
@@ -722,9 +723,9 @@ static linted_error get_egl_error(void)
 	}
 }
 
-static struct matrix matrix_multiply(struct matrix a, struct matrix b)
+static union matrix matrix_multiply(union matrix a, union matrix b)
 {
-	GLfloat b_inverted[4U][4U];
+	union matrix b_inverted;
 
 	{
 		uint_fast8_t ii = 4U;
@@ -746,14 +747,14 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 				b_ii_3 = b_ii[3U];
 			}
 
-			b_inverted[0U][ii] = b_ii_0;
-			b_inverted[1U][ii] = b_ii_1;
-			b_inverted[2U][ii] = b_ii_2;
-			b_inverted[3U][ii] = b_ii_3;
+			b_inverted.x[0U][ii] = b_ii_0;
+			b_inverted.x[1U][ii] = b_ii_1;
+			b_inverted.x[2U][ii] = b_ii_2;
+			b_inverted.x[3U][ii] = b_ii_3;
 		} while (ii != 0U);
 	}
 
-	struct matrix result;
+	union matrix result;
 
 	uint_fast8_t ii = 4U;
 	do {
@@ -769,7 +770,7 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 			--jj;
 
 			GLfloat b_XX_jj[4U];
-			memcpy(b_XX_jj, b_inverted[jj], sizeof b_XX_jj);
+			memcpy(b_XX_jj, b_inverted.x[jj], sizeof b_XX_jj);
 
 			result_ii[jj] =
 			    (a_ii[0U] * b_XX_jj[0U] + a_ii[1U] * b_XX_jj[1U]) +
