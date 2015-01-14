@@ -17,6 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libstart.la
 %C%_libstart_la_SOURCES=%D%/start.c include/linted/start.h
+EXTRA_%C%_libstart_la_SOURCES=%D%/start-linux.c %D%/start-windows.c
 %C%_libstart_la_LIBADD=\
   src/error/liberror.la\
   src/ko/libko.la\
