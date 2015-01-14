@@ -81,9 +81,9 @@ static bool is_privileged(void);
 static bool was_privileged(void);
 
 static linted_error do_help(linted_ko ko, char const *process_name,
-                                struct linted_str package_name,
-                                struct linted_str package_url,
-                                struct linted_str package_bugreport);
+                            struct linted_str package_name,
+                            struct linted_str package_url,
+                            struct linted_str package_bugreport);
 
 unsigned char linted_start(char const *const process_name, size_t argc,
                            char const *const argv[const])
@@ -144,9 +144,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 	}
 
 	if (need_help) {
-		do_help(STDOUT_FILENO, process_name,
-		            LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
-		            LINTED_STR(PACKAGE_BUGREPORT));
+		do_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
+		        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
 	}
 
@@ -220,9 +219,9 @@ static bool was_privileged(void)
 #endif
 
 static linted_error do_help(linted_ko ko, char const *process_name,
-                                struct linted_str package_name,
-                                struct linted_str package_url,
-                                struct linted_str package_bugreport)
+                            struct linted_str package_name,
+                            struct linted_str package_url,
+                            struct linted_str package_bugreport)
 {
 	linted_error errnum;
 

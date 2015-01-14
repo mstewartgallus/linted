@@ -18,6 +18,8 @@ noinst_LTLIBRARIES+=%D%/liberror.la
 
 %C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h
 EXTRA_%C%_liberror_la_SOURCES=\
+  %D%/error-linux.c\
+  %D%/error-windows.c\
   include/linted/error-linux.h\
   include/linted/error-windows.h
 

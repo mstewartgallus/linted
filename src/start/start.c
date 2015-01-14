@@ -31,12 +31,24 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#if defined _WIN32 || defined _WIN64
+/* Do nothing */
+#elif defined __linux__
 static void do_nothing(int signo);
+#else
+#error no IO cancellation implementation for this platform
+#endif
 
 int main(int argc, char *argv[])
 {
 	linted_error errnum = 0;
 
+#if defined _WIN32 || defined _WIN64
+/**
+ * I do not remember if Windows applications might need sometimes to
+ * open up standard IO handles
+ */
+#elif defined __linux__
 	for (;;) {
 		linted_ko ko;
 		{
@@ -53,6 +65,9 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
+#else
+#error no missing standard IO handle fallback implementation for this platform
+#endif
 
 	char const *process_name;
 	if (argc < 1) {
@@ -68,6 +83,9 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+#if defined _WIN32 || defined _WIN64
+/* Do nothing */
+#elif defined __linux__
 	{
 		struct sigaction act = { 0 };
 		sigemptyset(&act.sa_mask);
@@ -79,11 +97,20 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 	}
+#else
+#error no IO cancellation implementation for this platform
+#endif
 
 	return linted_start(process_name, argc, (char const * const *)argv);
 }
 
+#if defined _WIN32 || defined _WIN64
+/* Do nothing */
+#elif defined __linux__
 static void do_nothing(int signo)
 {
 	/* Do nothing */
 }
+#else
+#error no IO cancellation implementation for this platform
+#endif
