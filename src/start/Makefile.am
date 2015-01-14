@@ -22,4 +22,5 @@ noinst_LTLIBRARIES+=%D%/libstart.la
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
+  src/log/liblog.la\
   src/random/librandom.la

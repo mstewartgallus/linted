@@ -18,6 +18,7 @@
 #include "linted/assets.h"
 #include "linted/error.h"
 #include "linted/gpu.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/str.h"
 #include "linted/util.h"
@@ -27,7 +28,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
-#include <syslog.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
@@ -385,7 +385,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		}
 		glGetShaderInfoLog(fragment_shader, info_log_length, 0,
 		                   info_log);
-		syslog(LOG_ERR, "invalid shader: %s", info_log);
+		linted_log(LINTED_LOG_ERR, "invalid shader: %s", info_log);
 		linted_mem_free(info_log);
 	}
 
@@ -429,7 +429,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		}
 
 		glGetShaderInfoLog(vertex_shader, info_log_length, 0, info_log);
-		syslog(LOG_ERR, "invalid shader: %s", info_log);
+		linted_log(LINTED_LOG_ERR, "invalid shader: %s", info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
@@ -464,7 +464,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		}
 
 		glGetProgramInfoLog(program, info_log_length, 0, info_log);
-		syslog(LOG_ERR, "invalid program: %s", info_log);
+		linted_log(LINTED_LOG_ERR, "invalid program: %s", info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}

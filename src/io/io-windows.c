@@ -24,6 +24,7 @@
 
 #include "linted/io.h"
 
+#include "linted/asynch.h"
 #include "linted/mem.h"
 #include "linted/error.h"
 #include "linted/ko.h"

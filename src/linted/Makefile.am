@@ -23,6 +23,7 @@ bin_PROGRAMS+=%D%/linted
   src/dir/libdir.la\
   src/io/libio.la\
   src/locale/liblocale.la\
+  src/log/liblog.la\
   src/start/libstart.la
 
 BUILT_SOURCES+=%D%/settings.h

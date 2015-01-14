@@ -21,6 +21,7 @@
 #include "linted/error.h"
 #include "linted/controller.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/sched.h"
 #include "linted/sim.h"
@@ -28,7 +29,6 @@
 #include "linted/updater.h"
 #include "linted/util.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -38,7 +38,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <syslog.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -138,8 +137,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		controller = xx;
@@ -151,8 +150,8 @@ unsigned char linted_start(char const *const process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		updater = xx;

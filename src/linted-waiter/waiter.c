@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/log.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -27,7 +28,6 @@
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
-#include <syslog.h>
 #include <unistd.h>
 
 static linted_error set_name(char const *name);
@@ -57,8 +57,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 
 	errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 	if (errnum != 0) {
-		syslog(LOG_ERR, "pthread_sigmask: %s",
-		       linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERR, "pthread_sigmask: %s",
+		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
@@ -66,8 +66,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		struct sigaction action = { 0 };
 		action.sa_handler = SIG_IGN;
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
-			syslog(LOG_ERR, "sigaction: %s",
-			       linted_error_string(errno));
+			linted_log(LINTED_LOG_ERR, "sigaction: %s",
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -86,8 +86,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			if (EINTR == errnum)
 				continue;
 
-			syslog(LOG_ERR, "sigwaitinfo: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "sigwaitinfo: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 
 		case SIGCHLD:
@@ -110,8 +110,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 					if (EINTR == errnum)
 						continue;
 
-					syslog(LOG_ERR, "waitid: %s",
-					       linted_error_string(errnum));
+					linted_log(LINTED_LOG_ERR, "waitid: %s",
+					           linted_error_string(errnum));
 					return EXIT_FAILURE;
 				}
 
@@ -134,22 +134,24 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			errnum =
 			    pthread_sigmask(SIG_UNBLOCK, &exitset, &exitset);
 			if (errnum != 0) {
-				syslog(LOG_ERR, "pthread_sigmask: %s",
-				       linted_error_string(errnum));
+				linted_log(LINTED_LOG_ERR,
+				           "pthread_sigmask: %s",
+				           linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 
 			if (-1 == kill(-getpgrp(), signo)) {
 				errnum = errno;
-				syslog(LOG_ERR, "kill: %s",
-				       linted_error_string(errnum));
+				linted_log(LINTED_LOG_ERR, "kill: %s",
+				           linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 
 			errnum = pthread_sigmask(SIG_SETMASK, &exitset, NULL);
 			if (errnum != 0) {
-				syslog(LOG_ERR, "pthread_sigmask: %s",
-				       linted_error_string(errnum));
+				linted_log(LINTED_LOG_ERR,
+				           "pthread_sigmask: %s",
+				           linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
 			break;

@@ -19,6 +19,7 @@ noinst_LTLIBRARIES+=%D%/libgpu.la
 %C%_libgpu_la_SOURCES=%D%/gpu.c include/linted/gpu.h include/linted/gpu-x11.h
 %C%_libgpu_la_LIBADD=\
   src/assets/libassets.la\
+  src/log/liblog.la\
   \
   -lm\
   $(EGL_LIBS) $(GLES_LIBS)

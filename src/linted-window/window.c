@@ -21,6 +21,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
@@ -35,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -76,8 +76,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-gui",
 		                   LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		gui_notifier = xx;
@@ -90,8 +90,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-drawer",
 		                   LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		drawer_notifier = xx;
@@ -115,7 +115,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		}
 	}
 	if (errnum != 0) {
-		syslog(LOG_ERR, "strtol: %s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERR, "strtol: %s",
+		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
@@ -483,7 +484,8 @@ destroy_pool:
 	/* Tell the manager to exit everything */
 	if (0 == errnum) {
 		if (-1 == kill(root_pid, SIGTERM)) {
-			syslog(LOG_ERR, "kill: %s", linted_error_string(errno));
+			linted_log(LINTED_LOG_ERR, "kill: %s",
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
@@ -493,7 +495,7 @@ destroy_pool:
 	}
 
 	if (errnum != 0) {
-		syslog(LOG_ERR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

@@ -23,6 +23,7 @@ pkglibexec_PROGRAMS+=%D%/linted-window
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/ko/libko.la\
+  src/log/liblog.la\
   src/xcb/libxcb.la\
   \
   src/window-notifier/libwindow-notifier.la\

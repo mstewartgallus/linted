@@ -23,27 +23,17 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/mem.h"
+#include "linted/log.h"
 #include "linted/random.h"
 #include "linted/util.h"
 
 #include <assert.h>
-#include <dirent.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <link.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/auxv.h>
 #include <sys/ioctl.h>
-#include <syslog.h>
-#include <sys/prctl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <linux/random.h>
@@ -60,12 +50,18 @@ int main(int argc, char *argv[])
 	linted_error errnum = 0;
 
 	for (;;) {
-		int fd = open("/dev/null", 0);
-		if (-1 == fd)
-			return EINVAL;
+		linted_ko ko;
+		{
+			linted_ko xx;
+			errnum =
+			    linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null", 0);
+			if (errnum != 0)
+				return EXIT_FAILURE;
+			ko = xx;
+		}
 
-		if ((size_t)fd > 3U) {
-			linted_ko_close(fd);
+		if (ko > 3U) {
+			linted_ko_close(ko);
 			break;
 		}
 	}
@@ -77,19 +73,17 @@ int main(int argc, char *argv[])
 		process_name = argv[0U];
 	}
 
-	/* For now, don't use LOG_PID because syslog is confused by
-	 * CLONE_NEWPID.
-	 */
-	openlog(process_name, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
+	linted_log_open(process_name);
 
 	if (argc < 1) {
-		syslog(LOG_ERR, "missing process name");
+		linted_log(LINTED_LOG_ERR, "missing process name");
 		return EXIT_FAILURE;
 	}
 
 	if (is_privileged()) {
-		syslog(LOG_ERR, "%s should not be run with high privileges",
-		       PACKAGE_NAME);
+		linted_log(LINTED_LOG_ERR,
+		           "%s should not be run with high privileges",
+		           PACKAGE_NAME);
 		return EPERM;
 	}
 
@@ -97,8 +91,8 @@ int main(int argc, char *argv[])
 		unsigned entropy;
 		errnum = get_system_entropy(&entropy);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "get_system_entropy: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "get_system_entropy: %s",
+			           linted_error_string(errnum));
 			return errnum;
 		}
 		linted_random_seed_generator(entropy);
@@ -110,8 +104,8 @@ int main(int argc, char *argv[])
 		act.sa_handler = do_nothing;
 		act.sa_flags = 0;
 		if (-1 == sigaction(LINTED_ASYNCH_SIGNO, &act, 0)) {
-			syslog(LOG_ERR, "sigaction: %s",
-			       linted_error_string(errno));
+			linted_log(LINTED_LOG_ERR, "sigaction: %s",
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}

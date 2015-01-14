@@ -23,6 +23,7 @@ pkglibexec_PROGRAMS+=%D%/linted-simulator
   src/asynch/libasynch.la\
   src/error/liberror.la\
   src/ko/libko.la\
+  src/log/liblog.la\
   \
   src/controller/libcontroller.la\
   src/updater/libupdater.la

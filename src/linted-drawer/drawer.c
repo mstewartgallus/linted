@@ -20,6 +20,7 @@
 #include "linted/gpu.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/sched.h"
 #include "linted/start.h"
@@ -37,7 +38,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -104,7 +104,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	if (0 == setlocale(LC_ALL, "")) {
-		syslog(LOG_ERR, "setlocale: %s", linted_error_string(errno));
+		linted_log(LINTED_LOG_ERR, "setlocale: %s",
+		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -115,8 +116,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
 		                   LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		notifier = xx;
@@ -128,8 +129,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		updater = xx;

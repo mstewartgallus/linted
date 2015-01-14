@@ -22,6 +22,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
@@ -33,7 +34,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
@@ -140,8 +140,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
 		                   LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		notifier = xx;
@@ -153,8 +153,8 @@ unsigned char linted_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			syslog(LOG_ERR, "linted_ko_open: %s",
-			       linted_error_string(errnum));
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		controller = xx;
@@ -366,7 +366,7 @@ destroy_pool:
 	(void)poll_conn_task;
 
 	if (errnum != 0) {
-		syslog(LOG_ERR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
