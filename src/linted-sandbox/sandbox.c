@@ -187,7 +187,6 @@ static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
-static int my_setgroups(size_t size, gid_t const *list);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 struct linted_start_config const linted_start_config = {
@@ -742,9 +741,6 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 		errnum = set_id_maps(uid_map, gid_map);
 		if (errnum != 0)
 			return errnum;
-
-		if (-1 == my_setgroups(0U, 0))
-			return errno;
 	}
 
 	if (mount_args_size > 0U) {
@@ -870,7 +866,6 @@ static linted_error do_second_fork(char const *binary, char const *const *argv,
 		if (errnum != 0)
 			return errnum;
 	}
-
 	execve(binary, (char * const *)argv, environ);
 	return errno;
 }
@@ -878,6 +873,25 @@ static linted_error do_second_fork(char const *binary, char const *const *argv,
 static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 {
 	linted_error errnum;
+
+	linted_ko set_groups;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "/proc/self/setgroups",
+		                   LINTED_KO_WRONLY);
+		if (errnum != 0)
+			return errnum;
+		set_groups = xx;
+	}
+
+	errnum = linted_io_write_string(set_groups, 0, "deny");
+	if (errnum != 0)
+		return errnum;
+
+	errnum = linted_ko_close(set_groups);
+	if (errnum != 0)
+		return errnum;
 
 	/* Note that writing to uid_map and gid_map will fail if the
 	 * binary is not dumpable.  DON'T set the process dumpable and
@@ -1315,12 +1329,6 @@ on_err:
 	munmap(child_stack, stack_and_guard_size);
 	errno = errnum;
 	return -1;
-}
-
-/* Avoid setXid synchronization after vfork */
-static int my_setgroups(size_t size, gid_t const *list)
-{
-	return syscall(__NR_setgroups, size, list);
 }
 
 static int my_pivot_root(char const *new_root, char const *put_old)
