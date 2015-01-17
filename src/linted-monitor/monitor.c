@@ -85,6 +85,7 @@ struct sigwait_data
 {
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
+	struct linted_asynch_pool *pool;
 };
 
 struct conn;
@@ -543,6 +544,7 @@ retry_bind:
 	                                       &exit_signals);
 	sigwait_data.time_to_exit = &time_to_exit;
 	sigwait_data.unit_db = unit_db;
+	sigwait_data.pool = pool;
 
 	linted_asynch_pool_submit(
 	    pool, linted_signal_task_sigwaitinfo_to_asynch(sigwait_task));
@@ -1410,6 +1412,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	    linted_signal_task_sigwaitinfo_data(sigwait_task);
 	bool *time_to_exit = sigwait_data->time_to_exit;
 	struct linted_unit_db *unit_db = sigwait_data->unit_db;
+	struct linted_asynch_pool *pool = sigwait_data->pool;
 
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
@@ -1443,6 +1446,8 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	}
 
 	*time_to_exit = true;
+
+	linted_asynch_pool_submit(pool, task);
 
 	return 0;
 }
