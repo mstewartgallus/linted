@@ -49,16 +49,40 @@
  *   until they have been reparented to `init` before using
  *   `PR_SET_PDEATHSIG`.
  *
- * `monitor` manually kill any children of dying
+ * `monitor` manually kills any children of dying
  * `PR_SET_CHILD_SUBREAPER` type sandboxes and children of dying
  * `CLONE_NEWPID` type sandboxes are killed by the kernel
  * automatically.
  *
  * @section ipc IPC
  *
- * Files that may exist in user visible filesystems and that can be
- * used for IPC:
+ * So far we have chosen to use file FIFOs as they can be easily bound
+ * in and outside of sandboxes.
  *
+ * @subsection requirements Requirements
+ * - Presents a security boundary.
+ * - Allows access control between sandboxes.
+ * - Does not allow a reader to interfere with the writer.
+ * - Does not allow a writer to interfere with the reader.
+ *
+ * @subsection previous Previous Work
+ * - The Xen hypervisor's shared memory I/O.
+ *
+ * @subsection rejected Rejected Approaches
+ * - We cannot use shared memory because file sealing only works on
+ *   `shmfs` (files created using `memfd_create`) and those files
+ *   cannot be mounted.
+ * - UNIX domain sockets are really messy.
+ *
+ * @subsection overview Overview
+ *
+ * @subsubsection files Files
+ * File types:
+ * - Eventfds
+ * - Sockets
+ *    - UNIX Domain Sockets
+ *    - Netlink Sockets
+ *    - Network Sockets
  * - Regular files
  * - Directory files
  * - Symlink
@@ -66,22 +90,35 @@
  * - Unix domain sockets
  * - POSIX Message Queues
  * - Character devices
+ *   - Pseudo-terminal handles
  * - Block devices
+ * - Custom FUSE files
  *
- * So far we have chosen to use FIFOs as they can be put on many
- * places.
+ * Filesystem visible files:
+ * - Regular files
+ * - Directory files
+ * - Symlink
+ * - FIFOs
+ * - Unix domain sockets
+ * - POSIX Message Queues
+ * - Character devices
+ *   - Pseudo-terminal handles
+ * - Block devices
+ * - Custom FUSE files
  *
- * Requirements
- * - Presents a security boundary
+ * Inotify mechanisms
  *
- * Similar past attempts:
- * - The Xen hypervisor's shared memory I/O.
- *
- * Approaches that won't work:
- * - We cannot use shared memory because file sealing only works on
- *   `shmfs` (files created using `memfd_create`) and those files
- *   cannot be mounted.
- * - UNIX domain sockets are really messy.
+ * @subsubsection dbus DBus
+ * @subsubsection signals Signals
+ * - Regular signals
+ * - Realtime signals
+ * @subsubsection sharedmemory Shared Memory
+ * Futex locks + `mmap`.
+ * @subsubsection sysvipc System V IPC
+ * System V IPC types:
+ * - message queues
+ * - semaphore sets
+ * - shared  memory  segments
  *
  * @section sandboxing Sandboxing
  *
