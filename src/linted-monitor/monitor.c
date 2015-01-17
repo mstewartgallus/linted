@@ -509,7 +509,7 @@ retry_bind:
 		struct conn_pool *xx;
 		errnum = conn_pool_create(&xx);
 		if (errnum != 0)
-			goto drain_asynch_pool;
+			goto destroy_pool;
 		conn_pool = xx;
 	}
 
@@ -532,6 +532,13 @@ retry_bind:
 		unit_db = xx;
 	}
 
+	/**
+	 * @todo Warn about unactivated unit_db.
+	 */
+	errnum = activate_unit_db(process_name, unit_db, cwd);
+	if (errnum != 0)
+		goto kill_procs;
+
 	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
 	                                       &exit_signals);
 	sigwait_data.time_to_exit = &time_to_exit;
@@ -547,13 +554,6 @@ retry_bind:
 
 	linted_asynch_pool_submit(
 	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
-
-	/**
-	 * @todo Warn about unactivated unit_db.
-	 */
-	errnum = activate_unit_db(process_name, unit_db, cwd);
-	if (errnum != 0)
-		goto kill_procs;
 
 	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
 	                               WEXITED);
@@ -591,17 +591,6 @@ cancel_tasks:
 	linted_asynch_task_cancel(
 	    linted_admin_task_accept_to_asynch(accepted_conn_task));
 
-kill_procs:
-	linted_unit_db_destroy(unit_db);
-
-destroy_confs:
-	linted_conf_db_destroy(conf_db);
-
-destroy_conn_pool:
-	conn_pool_destroy(conn_pool);
-
-drain_asynch_pool:
-	linted_asynch_pool_stop(pool);
 	for (;;) {
 		struct linted_asynch_task *completed_task;
 		{
@@ -616,21 +605,29 @@ drain_asynch_pool:
 			errnum = dispatch_error;
 	}
 
+kill_procs:
+	linted_unit_db_destroy(unit_db);
+
+destroy_confs:
+	linted_conf_db_destroy(conf_db);
+
+destroy_conn_pool:
+	conn_pool_destroy(conn_pool);
+
 destroy_pool : {
 	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
 	if (0 == errnum)
 		errnum = destroy_errnum;
+}
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)sandbox_task;
 	(void)accepted_conn_task;
-}
 
 exit_monitor:
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "could not run the game: %s",
-		           linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

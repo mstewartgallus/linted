@@ -247,23 +247,23 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			struct linted_asynch_task *xx;
 			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
-				goto cleanup_gpu;
+				goto stop_pool;
 			completed_task = xx;
 		}
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto cleanup_gpu;
+			goto stop_pool;
 	}
 
-cleanup_gpu:
-	linted_gpu_context_destroy(gpu_context);
-
-close_display:
-	xcb_disconnect(connection);
-
-destroy_pool:
-	linted_asynch_pool_stop(pool);
+stop_pool:
+	linted_asynch_task_cancel(linted_sched_task_idle_to_asynch(idle_task));
+	linted_asynch_task_cancel(
+	    linted_updater_task_receive_to_asynch(updater_task));
+	linted_asynch_task_cancel(
+	    linted_window_notifier_task_receive_to_asynch(notice_task));
+	linted_asynch_task_cancel(
+	    linted_io_task_poll_to_asynch(poll_conn_task));
 
 	for (;;) {
 		struct linted_asynch_task *completed_task;
@@ -278,15 +278,20 @@ destroy_pool:
 
 		linted_error dispatch_errnum =
 		    linted_asynch_task_errnum(completed_task);
-		if (0 == errnum)
+		if (0 == errnum && dispatch_errnum != ECANCELED)
 			errnum = dispatch_errnum;
 	}
 
-	{
-		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum)
-			errnum = destroy_errnum;
-	}
+	linted_gpu_context_destroy(gpu_context);
+
+close_display:
+	xcb_disconnect(connection);
+
+destroy_pool : {
+	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+	if (0 == errnum)
+		errnum = destroy_errnum;
+}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)idle_task;
@@ -294,7 +299,12 @@ destroy_pool:
 	(void)notice_task;
 	(void)poll_conn_task;
 
-	return errnum;
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task)

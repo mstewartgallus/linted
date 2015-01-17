@@ -421,15 +421,40 @@ get_hostname_succeeded:
 			struct linted_asynch_task *xx;
 			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
-				goto destroy_window;
+				goto stop_pool;
 			completed_task = xx;
 		}
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto destroy_window;
+			goto stop_pool;
 
 		if (time_to_quit)
-			goto destroy_window;
+			goto stop_pool;
+	}
+
+stop_pool:
+	linted_asynch_task_cancel(
+	    linted_window_notifier_task_send_to_asynch(gui_notice_task));
+	linted_asynch_task_cancel(
+	    linted_window_notifier_task_send_to_asynch(drawer_notice_task));
+	linted_asynch_task_cancel(
+	    linted_io_task_poll_to_asynch(poll_conn_task));
+
+	for (;;) {
+		struct linted_asynch_task *completed_task;
+		linted_error poll_errnum;
+		{
+			struct linted_asynch_task *xx;
+			poll_errnum = linted_asynch_pool_poll(pool, &xx);
+			if (EAGAIN == poll_errnum)
+				break;
+			completed_task = xx;
+		}
+
+		linted_error dispatch_errnum =
+		    linted_asynch_task_errnum(completed_task);
+		if (0 == errnum && dispatch_errnum != ECANCELED)
+			errnum = dispatch_errnum;
 	}
 
 destroy_window : {
@@ -450,31 +475,11 @@ destroy_window : {
 close_display:
 	xcb_disconnect(connection);
 
-destroy_pool:
-	linted_asynch_pool_stop(pool);
-
-	for (;;) {
-		struct linted_asynch_task *completed_task;
-		linted_error poll_errnum;
-		{
-			struct linted_asynch_task *xx;
-			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
-				break;
-			completed_task = xx;
-		}
-
-		linted_error dispatch_errnum =
-		    linted_asynch_task_errnum(completed_task);
-		if (0 == errnum)
-			errnum = dispatch_errnum;
-	}
-
-	{
-		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum)
-			errnum = destroy_errnum;
-	}
+destroy_pool : {
+	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+	if (0 == errnum)
+		errnum = destroy_errnum;
+}
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)gui_notice_task;

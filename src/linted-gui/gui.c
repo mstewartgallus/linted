@@ -313,29 +313,22 @@ unsigned char linted_start(char const *process_name, size_t argc,
 			struct linted_asynch_task *xx;
 			errnum = linted_asynch_pool_wait(pool, &xx);
 			if (errnum != 0)
-				goto destroy_keystate;
+				goto stop_pool;
 			completed_task = xx;
 		}
 
 		errnum = dispatch(completed_task);
 		if (errnum != 0)
-			goto destroy_keystate;
+			goto stop_pool;
 	}
 
-destroy_keystate:
-	xkb_state_unref(keyboard_state);
-
-destroy_keymap:
-	xkb_keymap_unref(keymap);
-
-destroy_keyboard_ctx:
-	xkb_context_unref(keyboard_ctx);
-
-close_connection:
-	xcb_disconnect(connection);
-
-destroy_pool:
-	linted_asynch_pool_stop(pool);
+stop_pool:
+	linted_asynch_task_cancel(
+	    linted_window_notifier_task_receive_to_asynch(notice_task));
+	linted_asynch_task_cancel(
+	    linted_controller_task_send_to_asynch(controller_task));
+	linted_asynch_task_cancel(
+	    linted_io_task_poll_to_asynch(poll_conn_task));
 
 	for (;;) {
 		struct linted_asynch_task *task;
@@ -349,15 +342,26 @@ destroy_pool:
 		}
 
 		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
-		if (0 == errnum)
+		if (0 == errnum && dispatch_errnum != ECANCELED)
 			errnum = dispatch_errnum;
 	}
 
-	{
-		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-		if (0 == errnum)
-			errnum = destroy_errnum;
-	}
+	xkb_state_unref(keyboard_state);
+
+destroy_keymap:
+	xkb_keymap_unref(keymap);
+
+destroy_keyboard_ctx:
+	xkb_context_unref(keyboard_ctx);
+
+close_connection:
+	xcb_disconnect(connection);
+
+destroy_pool : {
+	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+	if (0 == errnum)
+		errnum = destroy_errnum;
+}
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
@@ -370,7 +374,7 @@ destroy_pool:
 		return EXIT_FAILURE;
 	}
 
-	return errnum;
+	return EXIT_SUCCESS;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task)

@@ -51,7 +51,6 @@ struct linted_asynch_waiter;
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks);
-linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool);
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
 
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,

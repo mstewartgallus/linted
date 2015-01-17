@@ -240,16 +240,11 @@ free_pool:
 	return errnum;
 }
 
-linted_error linted_asynch_pool_stop(struct linted_asynch_pool *pool)
-{
-	worker_pool_stop(pool->worker_pool);
-	wait_manager_stop(pool->wait_manager);
-
-	return 0;
-}
-
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
+
+	worker_pool_stop(pool->worker_pool);
+	wait_manager_stop(pool->wait_manager);
 
 	worker_pool_destroy(pool->worker_pool);
 	wait_manager_destroy(pool->wait_manager);
