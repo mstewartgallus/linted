@@ -159,18 +159,6 @@ static int second_fork_routine(void *arg);
 static linted_error do_second_fork(char const *binary, char const *const *argv,
                                    bool no_new_privs);
 
-/* Clang fucks up generating code for this for some reason when using
- * an inline function and address sanitizer. It might also just be
- * that address sanitizer doesn't work together well with the
- * weirdness of forking.
- */
-#define exit_with_error(writer, errnum)                                        \
-	do {                                                                   \
-		linted_error xx = errnum;                                      \
-		linted_io_write_all(writer, 0, &xx, sizeof xx);                \
-		_Exit(EXIT_FAILURE);                                           \
-	} while (0)
-
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
                                      unsigned long *mountflagsp,
@@ -706,9 +694,10 @@ static int first_fork_routine(void *arg)
 	    do_first_fork(uid_map, gid_map, clone_flags, cwd, chrootdir,
 	                  chdir_path, caps, mount_args, mount_args_size,
 	                  use_seccomp, waiter, waiter_base, command, binary);
-	exit_with_error(err_writer, errnum);
-	/* Never reached */
-	return 0;
+
+	linted_error xx = errnum;
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+	_Exit(EXIT_FAILURE);
 }
 
 static linted_error do_first_fork(char const *uid_map, char const *gid_map,
@@ -853,8 +842,10 @@ static int second_fork_routine(void *arg)
 	bool use_seccomp = args->use_seccomp;
 
 	linted_error errnum = do_second_fork(binary, argv, use_seccomp);
-	exit_with_error(err_writer, errnum);
-	return 0;
+
+	linted_error xx = errnum;
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+	_Exit(EXIT_FAILURE);
 }
 
 static linted_error do_second_fork(char const *binary, char const *const *argv,

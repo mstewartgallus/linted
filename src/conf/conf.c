@@ -79,16 +79,13 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 				goto free_line_buffer;
 			}
 
-			char *section_name;
-			{
-				void *xx;
-				errnum = linted_mem_alloc(&xx, line_size - 1U);
-				if (errnum != 0)
-					goto free_line_buffer;
-				section_name = xx;
+			char *section_name =
+			    strndup(line_buffer + 1U, line_size - 2U);
+			if (0 == section_name) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto free_line_buffer;
 			}
-			section_name[line_size - 2U] = '\0';
-			memcpy(section_name, line_buffer + 1U, line_size - 2U);
 
 			{
 				struct linted_conf_section *xx;
@@ -585,18 +582,6 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 	}
 
 	{
-		size_t new_settings_size = settings_size + 1U;
-		struct conf_setting *new_settings;
-		{
-			void *xx;
-			errnum = linted_mem_realloc_array(&xx, settings,
-			                                  new_settings_size,
-			                                  sizeof settings[0U]);
-			if (errnum != 0)
-				return errnum;
-			new_settings = xx;
-		}
-
 		size_t value_len;
 		for (size_t ii = 0U;; ++ii) {
 			if (0 == value[ii]) {
@@ -614,10 +599,34 @@ linted_error linted_conf_add_setting(struct linted_conf_section *section,
 				return errnum;
 			value_copy = xx;
 		}
-		for (size_t ii = 0U; ii < value_len; ++ii)
-			value_copy[ii] = strdup(value[ii]);
+		for (size_t ii = 0U; ii < value_len; ++ii) {
+			if (0 == (value_copy[ii] = strdup(value[ii]))) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				for (size_t jj = 0U; jj < ii; ++jj)
+					linted_mem_free(value_copy[ii]);
+				linted_mem_free(value_copy);
+				return errnum;
+			}
+		}
 		value_copy[value_len] = 0;
 
+		size_t new_settings_size = settings_size + 1U;
+		struct conf_setting *new_settings;
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(&xx, settings,
+			                                  new_settings_size,
+			                                  sizeof settings[0U]);
+			if (errnum != 0) {
+				for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
+					linted_mem_free(value_copy[ii]);
+				linted_mem_free(value_copy);
+
+				return errnum;
+			}
+			new_settings = xx;
+		}
 		new_settings[settings_size].field = field;
 		new_settings[settings_size].value = value_copy;
 

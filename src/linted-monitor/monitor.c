@@ -2240,7 +2240,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, allowed_envvars_size,
+		errnum = linted_mem_alloc_array(&xx, allowed_envvars_size + 1U,
 		                                sizeof result_envvars[0U]);
 		if (errnum != 0)
 			return errnum;
@@ -2257,38 +2257,12 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 		++result_envvars_size;
 
-		size_t envvar_name_length = strlen(envvar_name);
-		size_t envvar_value_length = strlen(envvar_value);
-
-		size_t assign_string_length =
-		    envvar_name_length + 1U + envvar_value_length;
-
-		char *assign_string;
-		{
-			void *xx;
-			errnum =
-			    linted_mem_alloc(&xx, assign_string_length + 1U);
-			if (errnum != 0)
-				goto free_result_envvars;
-			assign_string = xx;
-		}
-		memcpy(assign_string, envvar_name, envvar_name_length);
-		assign_string[envvar_name_length] = '=';
-		memcpy(assign_string + envvar_name_length + 1U, envvar_value,
-		       envvar_value_length);
-		assign_string[assign_string_length] = '\0';
-
-		result_envvars[result_envvars_size - 1U] = assign_string;
-	}
-
-	{
-		void *xx;
-		errnum = linted_mem_realloc_array(&xx, result_envvars,
-		                                  result_envvars_size + 1U,
-		                                  sizeof result_envvars[0U]);
-		if (errnum != 0)
+		if (-1 == asprintf(&result_envvars[result_envvars_size - 1U],
+		                   "%s=%s", envvar_name, envvar_value)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
 			goto free_result_envvars;
-		result_envvars = xx;
+		}
 	}
 	result_envvars[result_envvars_size] = 0;
 
@@ -2666,11 +2640,8 @@ set_childrenp:
 			void *xx;
 			errnum = linted_mem_realloc_array(
 			    &xx, children, ii + 1U, sizeof children[0U]);
-			if (errnum != 0) {
-				linted_mem_free(children);
-				linted_mem_free(buf);
-				return errnum;
-			}
+			if (errnum != 0)
+				goto free_buf;
 			children = xx;
 		}
 		children[ii] = child;
@@ -2692,6 +2663,11 @@ set_childrenp:
 
 free_buf:
 	linted_mem_free(buf);
+
+	if (errnum != 0) {
+		linted_mem_free(children);
+		return errnum;
+	}
 
 finish:
 	*lenp = ii;
