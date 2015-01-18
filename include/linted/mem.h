@@ -92,7 +92,6 @@ static inline linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 static inline linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nmemb,
                                            size_t size)
 {
-	extern void *malloc(size_t size);
 	extern void *calloc(size_t nmemb, size_t size);
 
 	void *memory = calloc(nmemb, size);

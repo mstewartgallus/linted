@@ -17,7 +17,6 @@
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
- * <li> [BLAST](http://mtc.epfl.ch/software-tools/blast/index-epfl.php) </li>
  * <li> [CPAchecker](http://cpachecker.sosy-lab.org/) </li>
  * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
@@ -27,6 +26,8 @@
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
  * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
  * <li> [Why3](http://why3.lri.fr/) </li>
+ * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
+ * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
  *
  * </li>
  *
@@ -193,20 +194,21 @@
  * <li> [SPLINT](http://www.splint.org/)
  * As of version 3.12:
  * - Does not know about standard defines such as `UINT32_MAX`.
- * - Can't seem to parse reasonable code like:
- *   <code> uint_fast16_t low = ((uintmax_t) pos_bytes[0U]) | (((uintmax_t) pos_bytes[1U]) << 8U); </code>
+ * - Only seems to be able parse traditional style C code which
+ *   declares all variables up front.
  * </li>
  *
  * <li> Flawfinder or RATS
  * - Seems to be defunct right now.
  * - Gives many false positives.
  * - Did give a nice tip about how `InitializeCriticalSection` can
- *   throw an exception however. Note that this only applies to Window
- *   XP and lower.
+ *   throw an exception however. Note that this only applies to
+ *   Windows XP and lower.
  *
  * </li>
  *
  * @section also See Also
+ * - http://gulliver.eu.org/program_dev_check_environments
  * - https://www.gnu.org/software/hurd/open_issues/code_analysis.html
  * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project.
  * - The Open Source Quality Project at Berkeley.

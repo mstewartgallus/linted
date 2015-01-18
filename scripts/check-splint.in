@@ -24,5 +24,7 @@ source_files() {
     -shadow\
     -nestedextern\
     -globs\
+    -mustfreefresh\
+    -compdef\
     $(source_cflags)\
     $(source_files)
