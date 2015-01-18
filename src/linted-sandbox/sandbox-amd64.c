@@ -32,6 +32,7 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(clone),
 	/**/ ALLOW(close),
 	/**/ ALLOW(connect),
+	/**/ ALLOW(dup2),
 	/**/ ALLOW(dup3),
 	/**/ ALLOW(execve),
 	/**/ ALLOW(exit),
@@ -74,6 +75,7 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(stat),
 	/**/ ALLOW(tgkill),
 	/**/ ALLOW(uname),
+	/**/ ALLOW(wait4),
 	/**/ ALLOW(write),
 	/**/ ALLOW(writev),
 

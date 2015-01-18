@@ -16,7 +16,7 @@ Description=Linted-Window Window Creator
 Documentation='man:linted-window(6)'
 
 [Service]
-ExecStart="${LINTED_WINDOW}"
+ExecStart=/bin/sh -c "'${LINTED_WINDOW}' 2>&1 | /usr/bin/logger --tag linted-window"
 
 NoNewPrivileges=true
 X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWIPC CLONE_NEWNET

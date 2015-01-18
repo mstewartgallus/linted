@@ -17,13 +17,18 @@
 
 #include "config.h"
 
+#include "linted/ko.h"
 #include "linted/log.h"
 
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <syslog.h>
 #include <unistd.h>
+
+static linted_ko tty;
+static bool tty_init;
 
 void linted_log_open(char const *ident)
 {
@@ -31,7 +36,11 @@ void linted_log_open(char const *ident)
 	 * CLONE_NEWPID.
 	 */
 
-	openlog(ident, LOG_CONS | LOG_NDELAY | LOG_PERROR, LOG_USER);
+	openlog(ident, LOG_CONS | LOG_NDELAY, LOG_USER);
+
+	if (0 ==
+	    linted_ko_open(&tty, LINTED_KO_CWD, "/dev/tty", LINTED_KO_WRONLY))
+		tty_init = true;
 }
 
 void linted_log(unsigned log_level, char const *format, ...)
@@ -49,6 +58,18 @@ void linted_log(unsigned log_level, char const *format, ...)
 
 	va_list ap;
 	va_start(ap, format);
-	vsyslog(priority, format, ap);
+
+	{
+		va_list cp;
+		va_copy(cp, ap);
+
+		vsyslog(priority, format, cp);
+
+		va_end(cp);
+	}
+
+	if (tty_init)
+		vdprintf(tty, format, ap);
+
 	va_end(ap);
 }
