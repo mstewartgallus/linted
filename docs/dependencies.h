@@ -13,7 +13,7 @@
  *
  * @section runtime Runtime Dependencies
  *
- * - libcap
+ * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/
  *   - Binaries
  *     - /lib/x86_64-linux-gnu/libcap.so.2.24
