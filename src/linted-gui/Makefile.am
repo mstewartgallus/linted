@@ -39,4 +39,4 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/gui.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/gui.service
+dist_pkgdefaultunits_DATA+=%D%/units/linted-gui.service

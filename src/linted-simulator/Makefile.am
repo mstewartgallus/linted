@@ -29,4 +29,4 @@ pkglibexec_PROGRAMS+=%D%/linted-simulator
   src/updater/libupdater.la
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/simulator.service
+dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service

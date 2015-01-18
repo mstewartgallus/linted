@@ -36,4 +36,4 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
   $(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/drawer.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/drawer.service
+dist_pkgdefaultunits_DATA+=%D%/units/linted-drawer.service

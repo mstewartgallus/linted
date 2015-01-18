@@ -34,4 +34,4 @@ pkglibexec_PROGRAMS+=%D%/linted-window
   $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultunits_DATA+=%D%/units/window.service
+dist_pkgdefaultunits_DATA+=%D%/units/linted-window.service
