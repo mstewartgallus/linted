@@ -235,10 +235,6 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 {
 	gpu_context->update = *glupdate;
 	gpu_context->update_pending = true;
-
-	/* Abort swapping buffers if the current processed or being
-	 * processed buffer is stale */
-	gpu_context->buffer_commands = true;
 }
 
 void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
