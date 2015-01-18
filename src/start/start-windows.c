@@ -26,7 +26,9 @@
 #include "linted/log.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <windows.h>
 
 int main(int argc, char *argv[])
@@ -39,17 +41,24 @@ int main(int argc, char *argv[])
 	 * to open up standard IO handles at startup if the program
 	 * that spawns doesn't pass them in.
 	 */
+	char const *process_name = 0;
 
-	char const *process_name;
-	if (argc < 1) {
-		process_name = linted_start_config.canonical_process_name;
-	} else {
+	bool missing_name = false;
+
+	char const *service = getenv("LINTED_SERVICE");
+	if (service != 0) {
+		if (0 == (process_name = strdup(service)))
+			return EXIT_FAILURE;
+	} else if (argc > 0) {
 		process_name = argv[0U];
+	} else {
+		process_name = linted_start_config.canonical_process_name;
+		missing_name = true;
 	}
 
 	linted_log_open(process_name);
 
-	if (argc < 1) {
+	if (missing_name) {
 		linted_log(LINTED_LOG_ERR, "missing process name");
 		return EXIT_FAILURE;
 	}
