@@ -37,9 +37,6 @@ static inline linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, s
 	return 0;
 }
 
-/*@
-  requires \valid(memp);
- */
 static inline linted_error linted_mem_alloc(void **memp, size_t size)
 {
 	extern void *malloc(size_t size);
@@ -55,9 +52,6 @@ static inline linted_error linted_mem_alloc(void **memp, size_t size)
 	return 0;
 }
 
-/*@
-  requires \valid(memp);
- */
 static inline linted_error linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 {
 	extern void *malloc(size_t size);
@@ -116,9 +110,6 @@ static inline linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nme
 static inline linted_error linted_mem_realloc(void **memp, void *memory, size_t new_size)
 {
 	extern void *realloc(void *ptr, size_t size);
-
-	/* if (0U == new_size) */
-	/* 	new_size = 1U; */
 
 	void *new_memory = realloc(memory, new_size);
 	if (new_size > 0U && 0 == new_memory) {

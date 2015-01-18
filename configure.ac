@@ -169,7 +169,8 @@ AC_CONFIG_FILES([scripts/test
                  scripts/check-cbmc
                  scripts/check-clang-analysis
                  scripts/check-cppcheck
-                 scripts/check-frama-c],[
+                 scripts/check-frama-c
+                 scripts/check-splint],[
                  chmod u+x "${ac_file}"
 ])
 dnl
