@@ -94,19 +94,54 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 	return angle;
 }
 
+static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_angle x)
+{
+	return sin(linted_sim_angle_to_double(x)) * INT32_MAX;
+}
+
 /**
  * @bug Key points such as 3/4 aren't quite correct
  */
 static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 {
-	/* Hack it in using the math library for now */
-	return sin(linted_sim_angle_to_double(angle)) * INT32_MAX;
+	linted_sim_uint value = angle._value;
+
+	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
+	case 0U:
+		return linted_sim_sin_first_quarter(angle);
+	case 1U:
+		return linted_sim_sin_first_quarter((linted_sim_angle) {
+			LINTED_SIM_UINT_MAX / 2U - value - 1U
+		});
+	case 2U:
+		return -linted_sim_sin_first_quarter((
+		    linted_sim_angle) { value - LINTED_SIM_UINT_MAX / 2U });
+	case 3U:
+		return -linted_sim_sin_first_quarter(
+		           (linted_sim_angle) { LINTED_SIM_UINT_MAX - value });
+	}
 }
 
 static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 {
-	/* Hack it in using the math library for now */
-	return cos(linted_sim_angle_to_double(angle)) * INT32_MAX;
+	linted_sim_uint value = angle._value;
+
+	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
+	case 0U:
+		return linted_sim_sin_first_quarter(
+		    (linted_sim_angle) { LINTED_SIM_UINT_MAX / 4U - value });
+	case 1U:
+		return -linted_sim_sin_first_quarter((
+		    linted_sim_angle) { value - LINTED_SIM_UINT_MAX / 4U });
+	case 2U:
+		return -linted_sim_sin_first_quarter((linted_sim_angle) {
+			3U * (LINTED_SIM_UINT_MAX / 4U) - value
+		});
+	case 3U:
+		return linted_sim_sin_first_quarter((linted_sim_angle) {
+			value - 3U * (LINTED_SIM_UINT_MAX / 4U)
+		});
+	}
 }
 
 static inline linted_sim_int linted_sim_isatadd(linted_sim_int x,

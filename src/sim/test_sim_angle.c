@@ -62,7 +62,7 @@ int main(void)
 		/* TODO This isn't totally correct */
 		linted_sim_angle half = LINTED_SIM_ANGLE(1U, 2U);
 		linted_sim_int sin_half = linted_sim_sin(half);
-		if (sin_half != 1) {
+		if (sin_half != 0) {
 			LINTED_TEST_FAILURE(
 			    "linted_sim_sin(half) == %" LINTED_SIM_Id "\n",
 			    sin_half);
@@ -98,7 +98,7 @@ int main(void)
 		/* TODO This isn't totally correct */
 		linted_sim_angle quarter = LINTED_SIM_ANGLE(1U, 4U);
 		linted_sim_int cos_quarter = linted_sim_cos(quarter);
-		if (cos_quarter != 2) {
+		if (cos_quarter != 0) {
 			LINTED_TEST_FAILURE(
 			    "linted_sim_cos(quarter) == %" LINTED_SIM_Id "\n",
 			    cos_quarter);
@@ -116,7 +116,7 @@ int main(void)
 		linted_sim_angle three_quarters = LINTED_SIM_ANGLE(3U, 4U);
 		linted_sim_int cos_three_quarters =
 		    linted_sim_cos(three_quarters);
-		if (cos_three_quarters != -7) {
+		if (cos_three_quarters != 0) {
 			LINTED_TEST_FAILURE("linted_sim_cos(three_"
 			                    "quarters) == %" LINTED_SIM_Id "\n",
 			                    cos_three_quarters);
