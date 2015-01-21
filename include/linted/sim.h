@@ -94,9 +94,10 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 	return angle;
 }
 
-static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_angle x)
+static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_uint theta)
 {
-	return sin(linted_sim_angle_to_double(x)) * INT32_MAX;
+	double dval = theta * (6.2831853071795864769252867665590 / UINT32_MAX);
+	return sin(dval) * INT32_MAX;
 }
 
 /**
@@ -108,17 +109,16 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 
 	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
 	case 0U:
-		return linted_sim_sin_first_quarter(angle);
+		return linted_sim_sin_first_quarter(value);
 	case 1U:
-		return linted_sim_sin_first_quarter((linted_sim_angle) {
-			LINTED_SIM_UINT_MAX / 2U - value - 1U
-		});
+		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 2U -
+		                                    value - 1U);
 	case 2U:
-		return -linted_sim_sin_first_quarter((
-		    linted_sim_angle) { value - LINTED_SIM_UINT_MAX / 2U });
+		return -linted_sim_sin_first_quarter(value -
+		                                     LINTED_SIM_UINT_MAX / 2U);
 	case 3U:
-		return -linted_sim_sin_first_quarter(
-		           (linted_sim_angle) { LINTED_SIM_UINT_MAX - value });
+		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX -
+		                                     value);
 	}
 }
 
@@ -128,19 +128,17 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 
 	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
 	case 0U:
-		return linted_sim_sin_first_quarter(
-		    (linted_sim_angle) { LINTED_SIM_UINT_MAX / 4U - value });
+		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
+		                                    value);
 	case 1U:
-		return -linted_sim_sin_first_quarter((
-		    linted_sim_angle) { value - LINTED_SIM_UINT_MAX / 4U });
+		return -linted_sim_sin_first_quarter(value -
+		                                     LINTED_SIM_UINT_MAX / 4U);
 	case 2U:
-		return -linted_sim_sin_first_quarter((linted_sim_angle) {
-			3U * (LINTED_SIM_UINT_MAX / 4U) - value
-		});
+		return -linted_sim_sin_first_quarter(
+		           3U * (LINTED_SIM_UINT_MAX / 4U) - value);
 	case 3U:
-		return linted_sim_sin_first_quarter((linted_sim_angle) {
-			value - 3U * (LINTED_SIM_UINT_MAX / 4U)
-		});
+		return linted_sim_sin_first_quarter(
+		    value - 3U * (LINTED_SIM_UINT_MAX / 4U));
 	}
 }
 
