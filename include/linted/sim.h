@@ -52,7 +52,8 @@ static linted_sim_int linted_sim__saturate(int_fast64_t x);
 
 static inline double linted_sim_angle_to_double(linted_sim_angle theta)
 {
-	return theta._value * (6.2831853071795864769252867665590 / UINT32_MAX);
+	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
+	return theta._value * (6.2831853071795864769252867665590 / above_max);
 }
 
 static inline linted_sim_angle
@@ -98,8 +99,7 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_uint theta)
 {
 	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
-	if (theta > above_max / 4U)
-		return -20;
+
 	double dval = theta * (6.2831853071795864769252867665590 / above_max);
 	return sin(dval) * LINTED_SIM_INT_MAX;
 }
@@ -115,18 +115,29 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 
 	uintmax_t rem = value % (above_max / 4U);
 
-	switch (value / (above_max / 4U)) {
-	case 0U:
-		return linted_sim_sin_first_quarter(rem);
-	case 1U:
-		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
-		                                    rem);
-	case 2U:
-		return -linted_sim_sin_first_quarter(rem);
-	case 3U:
-		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
-		                                     rem);
+	struct quadrant
+	{
+		signed char rfactor;
+		signed char ifactor;
+		_Bool offset;
+	};
+
+	struct quadrant c = (struct quadrant const[])
+	{
+		{
+			.rfactor = 1, .ifactor = 1, .offset = 0
+		}
+		, { .rfactor = 1, .ifactor = -1, .offset = 1 },
+		    { .rfactor = -1, .ifactor = 1, .offset = 0 },
+		{
+			.rfactor = -1, .ifactor = -1, .offset = 1
+		}
 	}
+	[value / (above_max / 4U)];
+
+	return c.rfactor * linted_sim_sin_first_quarter(
+	                       c.offset * LINTED_SIM_UINT_MAX / 4U +
+	                       (intmax_t)c.ifactor * rem);
 }
 
 static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
@@ -137,18 +148,29 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 
 	uintmax_t rem = value % (above_max / 4U);
 
-	switch (value / (above_max / 4U)) {
-	case 0U:
-		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
-		                                    rem);
-	case 1U:
-		return -linted_sim_sin_first_quarter(rem);
-	case 2U:
-		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
-		                                     rem);
-	case 3U:
-		return linted_sim_sin_first_quarter(rem);
+	struct quadrant
+	{
+		signed char rfactor;
+		signed char ifactor;
+		_Bool offset;
+	};
+
+	struct quadrant c = (struct quadrant const[])
+	{
+		{
+			.rfactor = 1, .ifactor = -1, .offset = 1
+		}
+		, { .rfactor = -1, .ifactor = 1, .offset = 0 },
+		    { .rfactor = -1, .ifactor = -1, .offset = 1 },
+		{
+			.rfactor = 1, .ifactor = 1, .offset = 0
+		}
 	}
+	[value / (above_max / 4U)];
+
+	return c.rfactor * linted_sim_sin_first_quarter(
+	                       c.offset * LINTED_SIM_UINT_MAX / 4U +
+	                       (intmax_t)c.ifactor * rem);
 }
 
 static inline linted_sim_int linted_sim_isatadd(linted_sim_int x,
