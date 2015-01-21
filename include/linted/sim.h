@@ -115,29 +115,15 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 
 	uintmax_t rem = value % (above_max / 4U);
 
-	struct quadrant
-	{
-		signed char rfactor;
-		signed char ifactor;
-		_Bool offset;
-	};
+	unsigned char ii = value / (above_max / 4U);
 
-	struct quadrant c = (struct quadrant const[])
-	{
-		{
-			.rfactor = 1, .ifactor = 1, .offset = 0
-		}
-		, { .rfactor = 1, .ifactor = -1, .offset = 1 },
-		    { .rfactor = -1, .ifactor = 1, .offset = 0 },
-		{
-			.rfactor = -1, .ifactor = -1, .offset = 1
-		}
-	}
-	[value / (above_max / 4U)];
+	signed char rfactor = 2 * (1U - (ii / 2U)) - 1;
+	signed char ifactor = 2 * (1U - ii % 2U) - 1;
+	unsigned offset = ii % 2U;
 
-	return c.rfactor * linted_sim_sin_first_quarter(
-	                       c.offset * LINTED_SIM_UINT_MAX / 4U +
-	                       (intmax_t)c.ifactor * rem);
+	return rfactor *
+	       linted_sim_sin_first_quarter(offset * LINTED_SIM_UINT_MAX / 4U +
+	                                    (intmax_t)ifactor * rem);
 }
 
 static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
@@ -148,29 +134,15 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 
 	uintmax_t rem = value % (above_max / 4U);
 
-	struct quadrant
-	{
-		signed char rfactor;
-		signed char ifactor;
-		_Bool offset;
-	};
+	unsigned char ii = (value / (above_max / 4U) + 1U) % 4U;
 
-	struct quadrant c = (struct quadrant const[])
-	{
-		{
-			.rfactor = 1, .ifactor = -1, .offset = 1
-		}
-		, { .rfactor = -1, .ifactor = 1, .offset = 0 },
-		    { .rfactor = -1, .ifactor = -1, .offset = 1 },
-		{
-			.rfactor = 1, .ifactor = 1, .offset = 0
-		}
-	}
-	[value / (above_max / 4U)];
+	signed char rfactor = 2 * (1U - (ii / 2U)) - 1;
+	signed char ifactor = 2 * (1U - ii % 2U) - 1;
+	unsigned offset = ii % 2U;
 
-	return c.rfactor * linted_sim_sin_first_quarter(
-	                       c.offset * LINTED_SIM_UINT_MAX / 4U +
-	                       (intmax_t)c.ifactor * rem);
+	return rfactor *
+	       linted_sim_sin_first_quarter(offset * LINTED_SIM_UINT_MAX / 4U +
+	                                    (intmax_t)ifactor * rem);
 }
 
 static inline linted_sim_int linted_sim_isatadd(linted_sim_int x,

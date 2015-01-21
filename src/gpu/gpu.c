@@ -620,7 +620,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 				                 { x_position, y_position,
 					           z_position, 1 } } };
 
-		GLfloat aspect = width / (GLfloat)height;
+		double aspect = width / (double)height;
 		double fov = acos(-1.0) / 4;
 
 		double d = 1 / tan(fov / 2);
