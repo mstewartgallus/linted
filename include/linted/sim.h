@@ -44,7 +44,8 @@ typedef struct linted_sim__angle
 
 #define LINTED_SIM_ANGLE(X, Y)                                                 \
 	{                                                                      \
-		._value = (((uintmax_t)LINTED_SIM_UINT_MAX) / (Y)) * (X)       \
+		._value =                                                      \
+		    ((((uintmax_t)LINTED_SIM_UINT_MAX) + 1U) / (Y)) * (X)      \
 	}
 
 static linted_sim_int linted_sim__saturate(int_fast64_t x);
@@ -96,8 +97,11 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 
 static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_uint theta)
 {
-	double dval = theta * (6.2831853071795864769252867665590 / UINT32_MAX);
-	return sin(dval) * INT32_MAX;
+	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
+	if (theta > above_max / 4U)
+		return -20;
+	double dval = theta * (6.2831853071795864769252867665590 / above_max);
+	return sin(dval) * LINTED_SIM_INT_MAX;
 }
 
 /**
@@ -107,18 +111,21 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 {
 	linted_sim_uint value = angle._value;
 
-	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
+	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
+
+	uintmax_t rem = value % (above_max / 4U);
+
+	switch (value / (above_max / 4U)) {
 	case 0U:
-		return linted_sim_sin_first_quarter(value);
+		return linted_sim_sin_first_quarter(rem);
 	case 1U:
-		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 2U -
-		                                    value - 1U);
+		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
+		                                    rem);
 	case 2U:
-		return -linted_sim_sin_first_quarter(value -
-		                                     LINTED_SIM_UINT_MAX / 2U);
+		return -linted_sim_sin_first_quarter(rem);
 	case 3U:
-		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX -
-		                                     value);
+		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
+		                                     rem);
 	}
 }
 
@@ -126,19 +133,21 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 {
 	linted_sim_uint value = angle._value;
 
-	switch (value / (LINTED_SIM_UINT_MAX / 4U + 1U)) {
+	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
+
+	uintmax_t rem = value % (above_max / 4U);
+
+	switch (value / (above_max / 4U)) {
 	case 0U:
 		return linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
-		                                    value);
+		                                    rem);
 	case 1U:
-		return -linted_sim_sin_first_quarter(value -
-		                                     LINTED_SIM_UINT_MAX / 4U);
+		return -linted_sim_sin_first_quarter(rem);
 	case 2U:
-		return -linted_sim_sin_first_quarter(
-		           3U * (LINTED_SIM_UINT_MAX / 4U) - value);
+		return -linted_sim_sin_first_quarter(LINTED_SIM_UINT_MAX / 4U -
+		                                     rem);
 	case 3U:
-		return linted_sim_sin_first_quarter(
-		    value - 3U * (LINTED_SIM_UINT_MAX / 4U));
+		return linted_sim_sin_first_quarter(rem);
 	}
 }
 
