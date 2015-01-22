@@ -329,6 +329,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		goto destroy_context;
 	}
 
+	glDisable(GL_DITHER);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
