@@ -96,17 +96,21 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 	return angle;
 }
 
-static inline linted_sim_int linted_sim_sin_first_quarter(linted_sim_uint theta)
+/**
+ * @todo Use a proper fixed point implementation of sin.
+ *
+ * [0, 2³²) → (-(2³¹ - 1), 2³¹ - 1)
+ */
+static inline linted_sim_int linted_sim__sin_quarter(linted_sim_uint theta)
 {
 	uintmax_t above_max = ((uintmax_t)LINTED_SIM_UINT_MAX) + 1U;
 
-	double dval = theta * (6.2831853071795864769252867665590 / above_max);
+	double dval =
+	    theta * ((6.2831853071795864769252867665590 / 4.0) / above_max);
+
 	return sin(dval) * LINTED_SIM_INT_MAX;
 }
 
-/**
- * @bug Key points such as 3/4 aren't quite correct
- */
 static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 {
 	linted_sim_uint value = angle._value;
@@ -121,9 +125,11 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 	signed char ifactor = 2 * (1U - ii % 2U) - 1;
 	unsigned offset = ii % 2U;
 
-	return rfactor *
-	       linted_sim_sin_first_quarter(offset * LINTED_SIM_UINT_MAX / 4U +
-	                                    (intmax_t)ifactor * rem);
+	linted_sim_uint theta =
+	    offset * (LINTED_SIM_UINT_MAX / 4U) + ((intmax_t)ifactor) * rem;
+	return rfactor * linted_sim__sin_quarter(
+	                     (LINTED_SIM_UINT_MAX * (uintmax_t)theta) /
+	                     (LINTED_SIM_UINT_MAX / 4U));
 }
 
 static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
@@ -140,9 +146,11 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 	signed char ifactor = 2 * (1U - ii % 2U) - 1;
 	unsigned offset = ii % 2U;
 
-	return rfactor *
-	       linted_sim_sin_first_quarter(offset * LINTED_SIM_UINT_MAX / 4U +
-	                                    (intmax_t)ifactor * rem);
+	linted_sim_uint theta =
+	    offset * (LINTED_SIM_UINT_MAX / 4U) + ((intmax_t)ifactor) * rem;
+	return rfactor * linted_sim__sin_quarter(
+	                     (LINTED_SIM_UINT_MAX * (uintmax_t)theta) /
+	                     (LINTED_SIM_UINT_MAX / 4U));
 }
 
 static inline linted_sim_int linted_sim_isatadd(linted_sim_int x,
