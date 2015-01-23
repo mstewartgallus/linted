@@ -73,7 +73,7 @@ struct fork_args
 
 static int fork_routine(void *args);
 
-__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
+static pid_t safe_vfork(int (*f)(void *), void *args);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
