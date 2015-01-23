@@ -39,7 +39,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/capability.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -133,7 +132,6 @@ struct first_fork_args
 	char const *const *command;
 	char const *binary;
 	linted_ko err_writer;
-	linted_ko cwd;
 	bool use_seccomp : 1U;
 };
 
@@ -146,18 +144,7 @@ struct second_fork_args
 };
 
 static int first_fork_routine(void *arg);
-static linted_error do_first_fork(char const *uid_map, char const *gid_map,
-                                  unsigned long clone_flags, linted_ko cwd,
-                                  char const *chrootdir, char const *chdir_path,
-                                  cap_t caps, struct mount_args *mount_args,
-                                  size_t mount_args_size, bool use_seccomp,
-                                  char const *waiter, char const *waiter_base,
-                                  char const *const *command,
-                                  char const *binary);
-
 static int second_fork_routine(void *arg);
-static linted_error do_second_fork(char const *binary, char const *const *argv,
-                                   bool no_new_privs);
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
@@ -332,19 +319,6 @@ exit_loop:
 		linted_log(LINTED_LOG_ERR,
 		           "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
-	}
-
-	linted_ko cwd;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
-			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		cwd = xx;
 	}
 
 	if (traceme) {
@@ -604,28 +578,29 @@ exit_loop:
 		err_writer = xx[1U];
 	}
 
-	struct first_fork_args args = { .err_writer = err_writer,
-		                        .uid_map = uid_map,
-		                        .gid_map = gid_map,
-		                        .clone_flags = clone_flags,
-		                        .cwd = cwd,
-		                        .chrootdir = chrootdir,
-		                        .chdir_path = chdir_path,
-		                        .caps = caps,
-		                        .mount_args = mount_args,
-		                        .mount_args_size = mount_args_size,
-		                        .use_seccomp = no_new_privs,
-		                        .waiter_base = waiter_base,
-		                        .waiter = waiter,
-		                        .command = command,
-		                        .binary = binary };
-
 	pid_t child;
-	if (0 == clone_flags) {
-		child = safe_vfork(first_fork_routine, &args);
-	} else {
-		child = safe_vclone(SIGCHLD | clone_flags, first_fork_routine,
-		                    &args);
+	{
+		struct first_fork_args args = { .err_writer = err_writer,
+			                        .uid_map = uid_map,
+			                        .gid_map = gid_map,
+			                        .clone_flags = clone_flags,
+			                        .chrootdir = chrootdir,
+			                        .chdir_path = chdir_path,
+			                        .caps = caps,
+			                        .mount_args = mount_args,
+			                        .mount_args_size =
+			                            mount_args_size,
+			                        .use_seccomp = no_new_privs,
+			                        .waiter_base = waiter_base,
+			                        .waiter = waiter,
+			                        .command = command,
+			                        .binary = binary };
+		if (0 == clone_flags) {
+			child = safe_vfork(first_fork_routine, &args);
+		} else {
+			child = safe_vclone(SIGCHLD | clone_flags,
+			                    first_fork_routine, &args);
+		}
 	}
 	if (-1 == child) {
 		linted_log(LINTED_LOG_ERR, "clone: %s",
@@ -680,46 +655,26 @@ close_err_reader:
 	}
 }
 
-static int first_fork_routine(void *arg)
-{
-	struct first_fork_args const *args = arg;
-
-	linted_ko err_writer = args->err_writer;
-	char const *uid_map = args->uid_map;
-	char const *gid_map = args->gid_map;
-	unsigned long clone_flags = args->clone_flags;
-	linted_ko cwd = args->cwd;
-	char const *chrootdir = args->chrootdir;
-	char const *chdir_path = args->chdir_path;
-	cap_t caps = args->caps;
-	struct mount_args *mount_args = args->mount_args;
-	size_t mount_args_size = args->mount_args_size;
-	bool use_seccomp = args->use_seccomp;
-	char const *waiter = args->waiter;
-	char const *waiter_base = args->waiter_base;
-	char const *const *command = args->command;
-	char const *binary = args->binary;
-
-	linted_error errnum =
-	    do_first_fork(uid_map, gid_map, clone_flags, cwd, chrootdir,
-	                  chdir_path, caps, mount_args, mount_args_size,
-	                  use_seccomp, waiter, waiter_base, command, binary);
-
-	linted_error xx = errnum;
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
-	_Exit(EXIT_FAILURE);
-}
-
-static linted_error do_first_fork(char const *uid_map, char const *gid_map,
-                                  unsigned long clone_flags, linted_ko cwd,
-                                  char const *chrootdir, char const *chdir_path,
-                                  cap_t caps, struct mount_args *mount_args,
-                                  size_t mount_args_size, bool use_seccomp,
-                                  char const *waiter, char const *waiter_base,
-                                  char const *const *command,
-                                  char const *binary)
+static int first_fork_routine(void *void_args)
 {
 	linted_error errnum = 0;
+
+	struct first_fork_args const *first_fork_args = void_args;
+
+	linted_ko err_writer = first_fork_args->err_writer;
+	char const *uid_map = first_fork_args->uid_map;
+	char const *gid_map = first_fork_args->gid_map;
+	unsigned long clone_flags = first_fork_args->clone_flags;
+	char const *chrootdir = first_fork_args->chrootdir;
+	char const *chdir_path = first_fork_args->chdir_path;
+	cap_t caps = first_fork_args->caps;
+	struct mount_args *mount_args = first_fork_args->mount_args;
+	size_t mount_args_size = first_fork_args->mount_args_size;
+	bool use_seccomp = first_fork_args->use_seccomp;
+	char const *waiter = first_fork_args->waiter;
+	char const *waiter_base = first_fork_args->waiter_base;
+	char const *const *command = first_fork_args->command;
+	char const *binary = first_fork_args->binary;
 
 	/* The setsid() function creates a new session, if the calling
 	 * process is not a process group leader. Upon return the
@@ -731,25 +686,29 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 	 */
 	/* So we don't need to explicitly set that there is no
 	 * controlling terminal. */
-	if (-1 == setsid())
-		return errno;
+	if (-1 == setsid()) {
+		errnum = errno;
+		goto fail;
+	}
 
 	/* First things first set the id mapping */
 	if ((clone_flags & CLONE_NEWUSER) != 0) {
 		errnum = set_id_maps(uid_map, gid_map);
 		if (errnum != 0)
-			return errnum;
+			goto fail;
 	}
 
 	if (mount_args_size > 0U) {
 		errnum = chroot_process(chrootdir, mount_args, mount_args_size);
 		if (errnum != 0)
-			return errnum;
+			goto fail;
 	}
 
 	if (chdir_path != 0) {
-		if (-1 == chdir(chdir_path))
-			return errno;
+		if (-1 == chdir(chdir_path)) {
+			errnum = errno;
+			goto fail;
+		}
 	}
 
 	/*
@@ -758,7 +717,7 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 	 */
 	errnum = set_child_subreaper(true);
 	if (errnum != 0)
-		return errnum;
+		goto fail;
 
 	/* Drop all capabilities I might possibly have. Note that
 	 * currently we do not use PR_SET_KEEPCAPS and do not map our
@@ -767,27 +726,36 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 	 */
 
 	if (caps != 0) {
-		if (-1 == cap_set_proc(caps))
-			return errno;
+		if (-1 == cap_set_proc(caps)) {
+			errnum = errno;
+			goto fail;
+		}
 	}
 
 	linted_ko vfork_err_reader;
 	linted_ko vfork_err_writer;
 	{
 		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK))
-			return errno;
+		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+			errnum = errno;
+			goto fail;
+		}
 		vfork_err_reader = xx[0U];
 		vfork_err_writer = xx[1U];
 	}
 
-	struct second_fork_args args = { .err_writer = vfork_err_writer,
-		                         .binary = binary,
-		                         .argv = command,
-		                         .use_seccomp = use_seccomp };
-	pid_t grand_child = safe_vfork(second_fork_routine, &args);
-	if (-1 == grand_child)
-		return errno;
+	pid_t grand_child;
+	{
+		struct second_fork_args args = { .err_writer = vfork_err_writer,
+			                         .binary = binary,
+			                         .argv = command,
+			                         .use_seccomp = use_seccomp };
+		grand_child = safe_vfork(second_fork_routine, &args);
+	}
+	if (-1 == grand_child) {
+		errnum = errno;
+		goto fail;
+	}
 
 	linted_ko_close(vfork_err_writer);
 
@@ -797,7 +765,7 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 		errnum =
 		    linted_io_read_all(vfork_err_reader, &xx, &yy, sizeof yy);
 		if (errnum != 0)
-			return errnum;
+			goto fail;
 
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
@@ -805,17 +773,25 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 			errnum = yy;
 	}
 	if (errnum != 0)
-		return errnum;
+		goto fail;
 
-	linted_ko_close(cwd);
+	{
+		char const *arguments[] = { waiter_base, 0 };
+		execve(waiter, (char * const *)arguments, environ);
+	}
+	errnum = errno;
 
-	char const *arguments[] = { waiter_base, 0 };
-	execve(waiter, (char * const *)arguments, environ);
-	return errno;
+fail : {
+	linted_error xx = errnum;
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+}
+	return EXIT_FAILURE;
 }
 
 static int second_fork_routine(void *arg)
 {
+	linted_error errnum;
+
 	struct second_fork_args const *args = arg;
 
 	linted_ko err_writer = args->err_writer;
@@ -823,24 +799,21 @@ static int second_fork_routine(void *arg)
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
 
-	linted_error errnum = do_second_fork(binary, argv, use_seccomp);
-
-	linted_error xx = errnum;
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
-	_Exit(EXIT_FAILURE);
-}
-
-static linted_error do_second_fork(char const *binary, char const *const *argv,
-                                   bool use_seccomp)
-{
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {
-		linted_error errnum = set_seccomp(&default_filter);
+		errnum = set_seccomp(&default_filter);
 		if (errnum != 0)
-			return errnum;
+			goto fail;
 	}
+
 	execve(binary, (char * const *)argv, environ);
-	return errno;
+	errnum = errno;
+
+fail : {
+	linted_error xx = errnum;
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+}
+	return EXIT_FAILURE;
 }
 
 static linted_error set_id_maps(char const *uid_map, char const *gid_map)

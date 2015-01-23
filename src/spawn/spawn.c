@@ -72,10 +72,6 @@ struct fork_args
 };
 
 static int fork_routine(void *args);
-static linted_error
-do_fork(sigset_t const *sigset,
-        struct linted_spawn_file_actions const *file_actions,
-        char const *const *argv, char const *const *envp, char const *binary);
 
 __attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *args);
 
@@ -345,16 +341,6 @@ static int fork_routine(void *arg)
 	char const *const *envp = args->envp;
 	char const *binary = args->binary;
 
-	linted_error xx = do_fork(sigset, file_actions, argv, envp, binary);
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
-	return EXIT_FAILURE;
-}
-
-static linted_error
-do_fork(sigset_t const *sigset,
-        struct linted_spawn_file_actions const *file_actions,
-        char const *const *argv, char const *const *envp, char const *binary)
-{
 	linted_error errnum = 0;
 
 	/*
@@ -370,21 +356,25 @@ do_fork(sigset_t const *sigset,
 			continue;
 
 		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U))
-			return errno;
+		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
+			errnum = errno;
+			goto fail;
+		}
 
 		if (SIG_IGN == action.sa_handler)
 			continue;
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U))
-			return errno;
+		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
+			errnum = errno;
+			goto fail;
+		}
 	}
 
 	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);
 	if (errnum != 0)
-		return errnum;
+		goto fail;
 
 	if (file_actions != 0) {
 		union file_action const *actions = file_actions->actions;
@@ -396,19 +386,32 @@ do_fork(sigset_t const *sigset,
 			linted_ko newfd = action->adddup2.newfildes;
 
 			int flags = fcntl(oldfd, F_GETFD);
-			if (-1 == flags)
-				return errno;
+			if (-1 == flags) {
+				errnum = errno;
+				goto fail;
+			}
 
-			if (-1 == dup2(oldfd, newfd))
-				return errno;
+			if (-1 == dup2(oldfd, newfd)) {
+				errnum = errno;
+				goto fail;
+			}
 
-			if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC))
-				return errno;
+			if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC)) {
+				errnum = errno;
+				goto fail;
+			}
 		}
 	}
 
 	execve(binary, (char * const *)argv, (char * const *)envp);
-	return errno;
+	errnum = errno;
+
+fail : {
+	linted_error xx = errnum;
+	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+}
+
+	return EXIT_FAILURE;
 }
 
 /* Most compilers can't handle the weirdness of vfork so contain it in
