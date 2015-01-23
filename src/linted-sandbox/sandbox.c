@@ -581,6 +581,16 @@ exit_loop:
 		gid_map = xx;
 	}
 
+	if (no_new_privs) {
+		/* Must appear before the seccomp filter */
+		errnum = set_no_new_privs(true);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERR, "prctl: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+	}
+
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -790,13 +800,6 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 			return errno;
 		vfork_err_reader = xx[0U];
 		vfork_err_writer = xx[1U];
-	}
-
-	if (use_seccomp) {
-		/* Must appear before the seccomp filter */
-		errnum = set_no_new_privs(true);
-		if (errnum != 0)
-			return errnum;
 	}
 
 	struct second_fork_args args = { .err_writer = vfork_err_writer,
