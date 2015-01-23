@@ -56,8 +56,6 @@
  *
  * @todo Harden bind mounts with extra flags
  *
- * @todo Eventually reduce `-Wstack-usage` to 500.
- *
  * @todo Check child processes for hangups
  *
  * @todo Use the monitor to report crashes such as from seccomp rule
@@ -67,6 +65,4 @@
  *
  * @todo Sandbox leaked file descriptors before spawning new processes
  *       in sandbox.c
- *
- * @todo Don't reopen files using `/proc/self/fd` with `linted_ko_reopen`
  */
