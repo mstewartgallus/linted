@@ -721,17 +721,16 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 {
 	linted_error errnum = 0;
 
-	/* Terminals are really ugly and horrible, avoid them. */
-	int tty = open("/dev/tty", O_CLOEXEC);
-	if (-1 == tty) {
-		if (errno != ENXIO)
-			return errno;
-	} else {
-		if (-1 == ioctl(tty, TIOCNOTTY))
-			return errno;
-	}
-	linted_ko_close(tty);
-
+	/* The setsid() function creates a new session, if the calling
+	 * process is not a process group leader. Upon return the
+	 * calling process will be the session leader of this new
+	 * session, will be the process group leader of a new process
+	 * group, and will have no controlling terminal.
+	 *
+	 * - setsid(2) The Single UNIX ® Specification, Version 2
+	 */
+	/* So we don't need to explicitly set that there is no
+	 * controlling terminal. */
 	if (-1 == setsid())
 		return errno;
 
@@ -770,26 +769,6 @@ static linted_error do_first_fork(char const *uid_map, char const *gid_map,
 	if (caps != 0) {
 		if (-1 == cap_set_proc(caps))
 			return errno;
-	}
-
-	{
-		sigset_t sigset;
-		sigemptyset(&sigset);
-		sigaddset(&sigset, SIGCHLD);
-		errnum = pthread_sigmask(SIG_UNBLOCK, &sigset, 0);
-		if (errnum != 0)
-			return errnum;
-	}
-
-	sigset_t sigchld_unblocked;
-	{
-		sigset_t sigset;
-		sigemptyset(&sigset);
-		sigaddset(&sigset, SIGCHLD);
-		errnum =
-		    pthread_sigmask(SIG_BLOCK, &sigset, &sigchld_unblocked);
-		if (errnum != 0)
-			return errnum;
 	}
 
 	linted_ko vfork_err_reader;
