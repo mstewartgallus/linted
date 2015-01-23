@@ -414,16 +414,15 @@ do_fork(sigset_t const *sigset,
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
+__attribute__((noinline)) __attribute__((noclone))
+__attribute__((no_sanitize_address)) static pid_t safe_vfork(
+    int (*volatile f)(void *), void *volatile arg)
 {
-	void *volatile arg_copy = arg;
-	int (*volatile f_copy)(void *) = f;
-
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
-	pid_t child = fork();
+	pid_t child = vfork();
 	if (0 == child)
-		_Exit(f_copy(arg_copy));
+		_Exit(f(arg));
 
 	return child;
 }

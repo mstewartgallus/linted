@@ -1260,20 +1260,26 @@ static linted_error set_seccomp(struct sock_fprog const *program)
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-__attribute__((noinline)) static pid_t safe_vfork(int (*f)(void *), void *arg)
+__attribute__((noinline)) __attribute__((noclone))
+__attribute__((no_sanitize_address)) static pid_t safe_vfork(
+    int (*volatile f)(void *), void *volatile arg)
 {
-	void *volatile arg_copy = arg;
-	int (*volatile f_copy)(void *) = f;
-
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
-	pid_t child = fork();
+	pid_t child = vfork();
 	if (0 == child)
-		_Exit(f_copy(arg_copy));
+		_Exit(f(arg));
 	return child;
 }
 
-static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *arg)
+/* Most compilers can't handle the weirdness of vfork so contain it in
+ * a safe abstraction.  Note that currently we just create a new stack
+ * and jump to that because Valgrind and address sanitizer and most
+ * things have trouble with this.
+ */
+__attribute__((noinline)) __attribute__((noclone))
+__attribute__((no_sanitize_address)) static pid_t safe_vclone(
+    int volatile clone_flags, int (*volatile f)(void *), void *volatile arg)
 {
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);
@@ -1306,7 +1312,8 @@ static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *arg)
 
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
-	pid_t child = clone(f, stack_start, clone_flags | CLONE_VFORK, arg);
+	pid_t child =
+	    clone(f, stack_start, clone_flags | CLONE_VM | CLONE_VFORK, arg);
 	if (-1 == child)
 		goto on_err;
 
