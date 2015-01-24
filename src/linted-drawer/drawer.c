@@ -59,6 +59,8 @@ struct idle_data
 {
 	struct linted_gpu_context *gpu_context;
 	struct linted_asynch_pool *pool;
+	struct window_model *window_model;
+	bool idle_in_progress : 1U;
 };
 
 struct poll_conn_data
@@ -69,6 +71,7 @@ struct poll_conn_data
 
 	struct window_model *window_model;
 	struct linted_window_notifier_task_receive *notice_task;
+	struct linted_sched_task_idle *idle_task;
 };
 
 struct updater_data
@@ -84,6 +87,7 @@ struct notice_data
 	struct window_model *window_model;
 	struct linted_gpu_context *gpu_context;
 	xcb_window_t *window;
+	struct linted_sched_task_idle *idle_task;
 };
 
 static unsigned char drawer_start(char const *process_name, size_t argc,
@@ -94,6 +98,8 @@ static linted_error on_idle(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
+
+static void maybe_idle(struct linted_sched_task_idle *task);
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-drawer", .start = drawer_start
@@ -210,11 +216,10 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		gpu_context = xx;
 	}
 
-	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
 	idle_data.pool = pool;
 	idle_data.gpu_context = gpu_context;
-	linted_asynch_pool_submit(pool,
-	                          linted_sched_task_idle_to_asynch(idle_task));
+	idle_data.window_model = &window_model;
+	idle_data.idle_in_progress = false;
 
 	linted_window_notifier_task_receive_prepare(
 	    notice_task, ON_RECEIVE_NOTICE, notifier);
@@ -222,6 +227,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	notice_data.window_model = &window_model;
 	notice_data.gpu_context = gpu_context;
 	notice_data.window = &window;
+	notice_data.idle_task = idle_task;
 	linted_asynch_pool_submit(
 	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
 
@@ -233,6 +239,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	poll_conn_data.pool = pool;
 	poll_conn_data.connection = connection;
 	poll_conn_data.notice_task = notice_task;
+	poll_conn_data.idle_task = idle_task;
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
@@ -343,13 +350,13 @@ static linted_error on_idle(struct linted_asynch_task *task)
 	struct idle_data *idle_data = linted_sched_task_idle_data(idle_task);
 
 	struct linted_gpu_context *gpu_context = idle_data->gpu_context;
-	struct linted_asynch_pool *pool = idle_data->pool;
+
+	idle_data->idle_in_progress = false;
 
 	/* Draw or resize if we have time to waste */
 	linted_gpu_draw(gpu_context);
 
-	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
-	linted_asynch_pool_submit(pool, task);
+	maybe_idle(idle_task);
 
 	return 0;
 }
@@ -373,6 +380,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	struct linted_asynch_pool *pool = poll_conn_data->pool;
 	struct window_model *window_model = poll_conn_data->window_model;
 	struct linted_gpu_context *gpu_context = poll_conn_data->gpu_context;
+	struct linted_sched_task_idle *idle_task = poll_conn_data->idle_task;
 
 	bool window_destroyed = false;
 	for (;;) {
@@ -416,6 +424,9 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		    pool,
 		    linted_window_notifier_task_receive_to_asynch(notice_task));
 	}
+
+	if (window_model->viewable)
+		maybe_idle(idle_task);
 
 	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
@@ -483,6 +494,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	xcb_window_t *windowp = notice_data->window;
 	struct linted_gpu_context *gpu_context = notice_data->gpu_context;
 
+	struct linted_sched_task_idle *idle_task = notice_data->idle_task;
+
 	uint_fast32_t window;
 	{
 		uint_fast32_t xx;
@@ -538,5 +551,24 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	linted_gpu_setwindow(gpu_context, window);
 	linted_gpu_resize(gpu_context, width, height);
 
+	maybe_idle(idle_task);
+
 	return 0;
+}
+
+static void maybe_idle(struct linted_sched_task_idle *task)
+{
+	struct idle_data *task_data = linted_sched_task_idle_data(task);
+
+	if (task_data->idle_in_progress)
+		return;
+
+	if (!task_data->window_model->viewable)
+		return;
+
+	task_data->idle_in_progress = true;
+
+	linted_sched_task_idle_prepare(task, ON_IDLE);
+	linted_asynch_pool_submit(task_data->pool,
+	                          linted_sched_task_idle_to_asynch(task));
 }
