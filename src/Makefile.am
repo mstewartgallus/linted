@@ -60,4 +60,4 @@ include %C%/xcb/Makefile.am
 include %C%/admin/Makefile.am
 include %C%/controller/Makefile.am
 include %C%/updater/Makefile.am
-include %C%/window-notifier/Makefile.am
+include %C%/window/Makefile.am

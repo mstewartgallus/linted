@@ -27,7 +27,7 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   src/xcb/libxcb.la\
   \
   src/controller/libcontroller.la\
-  src/window-notifier/libwindow-notifier.la\
+  src/window/libwindow.la\
   \
   $(XCB_LIBS)\
   $(XCB_XKB_LIBS)\

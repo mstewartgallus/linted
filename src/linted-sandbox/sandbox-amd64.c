@@ -66,6 +66,8 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(rt_sigaction),
 	/**/ ALLOW(rt_sigprocmask),
 	/**/ ALLOW(rt_sigtimedwait),
+	/**/ ALLOW(pread64),
+	/**/ ALLOW(pwrite64),
 	/**/ ALLOW(sendto),
 	/**/ ALLOW(setsockopt),
 	/**/ ALLOW(set_robust_list),

@@ -26,7 +26,7 @@ pkglibexec_PROGRAMS+=%D%/linted-window
   src/log/liblog.la\
   src/xcb/libxcb.la\
   \
-  src/window-notifier/libwindow-notifier.la\
+  src/window/libwindow.la\
   \
   $(XCB_LIBS)
 

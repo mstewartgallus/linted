@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 : ${LINTED_UNIT_PATH:="\
 ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/updater/units\
-:${SRCDIR}/src/window-notifier/units\
+:${SRCDIR}/src/window/units\
 :${SRCDIR}/src/linted-simulator/units\
 :${SRCDIR}/src/linted-window/units\
 :${SRCDIR}/src/linted-gui/units\

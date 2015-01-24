@@ -27,7 +27,7 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
   src/xcb/libxcb.la\
   \
   src/updater/libupdater.la\
-  src/window-notifier/libwindow-notifier.la\
+  src/window/libwindow.la\
   \
   $(XCB_LIBS)
 

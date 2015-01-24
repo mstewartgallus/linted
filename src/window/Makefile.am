@@ -14,11 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/libwindow-notifier.la
+noinst_LTLIBRARIES+=%D%/libwindow.la
 
-%C%_libwindow_notifier_la_SOURCES=\
-  %D%/window-notifier.c\
-  include/linted/window-notifier.h
-%C%_libwindow_notifier_la_LIBADD=\
+%C%_libwindow_la_SOURCES=\
+  %D%/window.c\
+  include/linted/window.h
+%C%_libwindow_la_LIBADD=\
   src/io/libio.la
-dist_pkgdefaultunits_DATA+=%D%/units/window-notifier-gui.socket %D%/units/window-notifier-drawer.socket
+dist_pkgdefaultunits_DATA+=\
+  %D%/units/window.socket\
+  %D%/units/window-notifier-gui.socket\
+  %D%/units/window-notifier-drawer.socket

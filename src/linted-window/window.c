@@ -25,7 +25,7 @@
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
-#include "linted/window-notifier.h"
+#include "linted/window.h"
 #include "linted/xcb.h"
 
 #include <errno.h>
@@ -71,6 +71,19 @@ static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
 	linted_error errnum = 0;
+
+	linted_ko window_ko;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "window",
+		                        LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		window_ko = xx;
+	}
 
 	linted_ko gui_notifier;
 	{
@@ -137,22 +150,22 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	struct poll_conn_data poll_conn_data;
 
 	struct linted_io_task_poll *poll_conn_task;
-	struct linted_window_notifier_task_send *gui_notice_task;
-	struct linted_window_notifier_task_send *drawer_notice_task;
+	struct linted_window_task_notify *gui_notice_task;
+	struct linted_window_task_notify *drawer_notice_task;
 
 	{
-		struct linted_window_notifier_task_send *xx;
-		errnum = linted_window_notifier_task_send_create(
-		    &xx, &gui_notice_data);
+		struct linted_window_task_notify *xx;
+		errnum =
+		    linted_window_task_notify_create(&xx, &gui_notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		gui_notice_task = xx;
 	}
 
 	{
-		struct linted_window_notifier_task_send *xx;
-		errnum = linted_window_notifier_task_send_create(
-		    &xx, &drawer_notice_data);
+		struct linted_window_task_notify *xx;
+		errnum =
+		    linted_window_task_notify_create(&xx, &drawer_notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		drawer_notice_task = xx;
@@ -399,16 +412,19 @@ get_hostname_succeeded:
 	poll_conn_data.pool = pool;
 	poll_conn_data.connection = connection;
 
-	linted_window_notifier_task_send_prepare(
-	    gui_notice_task, ON_SENT_NOTICE, gui_notifier, window);
-	linted_asynch_pool_submit(
-	    pool, linted_window_notifier_task_send_to_asynch(gui_notice_task));
+	errnum = linted_window_write(window_ko, window);
+	if (errnum != 0)
+		goto destroy_window;
 
-	linted_window_notifier_task_send_prepare(
-	    drawer_notice_task, ON_SENT_NOTICE, drawer_notifier, window);
+	linted_window_task_notify_prepare(gui_notice_task, ON_SENT_NOTICE,
+	                                  gui_notifier);
 	linted_asynch_pool_submit(
-	    pool,
-	    linted_window_notifier_task_send_to_asynch(drawer_notice_task));
+	    pool, linted_window_task_notify_to_asynch(gui_notice_task));
+
+	linted_window_task_notify_prepare(drawer_notice_task, ON_SENT_NOTICE,
+	                                  drawer_notifier);
+	linted_asynch_pool_submit(
+	    pool, linted_window_task_notify_to_asynch(drawer_notice_task));
 
 	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
@@ -438,9 +454,9 @@ get_hostname_succeeded:
 
 stop_pool:
 	linted_asynch_task_cancel(
-	    linted_window_notifier_task_send_to_asynch(gui_notice_task));
+	    linted_window_task_notify_to_asynch(gui_notice_task));
 	linted_asynch_task_cancel(
-	    linted_window_notifier_task_send_to_asynch(drawer_notice_task));
+	    linted_window_task_notify_to_asynch(drawer_notice_task));
 	linted_asynch_task_cancel(
 	    linted_io_task_poll_to_asynch(poll_conn_task));
 
