@@ -214,6 +214,15 @@ static unsigned char simulator_start(char const *const process_name,
 		updater_task = xx;
 	}
 
+	timer_data.pool = pool;
+	timer_data.updater_task = updater_task;
+	timer_data.action_state = &action_state;
+	timer_data.simulator_state = &simulator_state;
+	timer_data.updater = updater;
+
+	controller_data.pool = pool;
+	controller_data.action_state = &action_state;
+
 	{
 		struct timespec now;
 		errnum = linted_sched_time(&now);
@@ -223,19 +232,11 @@ static unsigned char simulator_start(char const *const process_name,
 		linted_sched_task_sleep_until_prepare(tick_task, ON_READ_TIMER,
 		                                      &now);
 	}
-	timer_data.pool = pool;
-	timer_data.updater_task = updater_task;
-	timer_data.action_state = &action_state;
-	timer_data.simulator_state = &simulator_state;
-	timer_data.updater = updater;
+	linted_asynch_pool_submit(
+	    pool, linted_sched_task_sleep_until_to_asynch(tick_task));
 
 	linted_controller_task_receive_prepare(
 	    controller_task, ON_RECEIVE_CONTROLLER_EVENT, controller);
-	controller_data.pool = pool;
-	controller_data.action_state = &action_state;
-
-	linted_asynch_pool_submit(
-	    pool, linted_sched_task_sleep_until_to_asynch(tick_task));
 	linted_asynch_pool_submit(
 	    pool, linted_controller_task_receive_to_asynch(controller_task));
 
@@ -443,6 +444,12 @@ static void maybe_update(linted_updater updater,
 	if (simulator_state->write_in_progress)
 		return;
 
+	struct updater_data *updater_data =
+	    linted_updater_task_send_data(updater_task);
+	updater_data->simulator_state = simulator_state;
+	updater_data->pool = pool;
+	updater_data->updater = updater;
+
 	{
 		struct linted_updater_update update = {
 			.x_position = simulator_state->position[0U].value,
@@ -455,13 +462,6 @@ static void maybe_update(linted_updater updater,
 		linted_updater_task_send_prepare(
 		    updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
 	}
-
-	struct updater_data *updater_data =
-	    linted_updater_task_send_data(updater_task);
-	updater_data->simulator_state = simulator_state;
-	updater_data->pool = pool;
-	updater_data->updater = updater;
-
 	linted_asynch_pool_submit(
 	    pool, linted_updater_task_send_to_asynch(updater_task));
 

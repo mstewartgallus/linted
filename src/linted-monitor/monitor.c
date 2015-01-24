@@ -544,25 +544,10 @@ retry_bind:
 	if (errnum != 0)
 		goto kill_procs;
 
-	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
-	                                       &exit_signals);
 	sigwait_data.time_to_exit = &time_to_exit;
 	sigwait_data.unit_db = unit_db;
 	sigwait_data.pool = pool;
 
-	linted_asynch_pool_submit(
-	    pool, linted_signal_task_sigwaitinfo_to_asynch(sigwait_task));
-
-	linted_admin_task_accept_prepare(accepted_conn_task,
-	                                 ADMIN_ACCEPTED_CONNECTION, admin);
-	accepted_conn_data.pool = pool;
-	accepted_conn_data.conn_pool = conn_pool;
-
-	linted_asynch_pool_submit(
-	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
-
-	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
-	                               WEXITED);
 	sandbox_data.process_name = process_name;
 	sandbox_data.pool = pool;
 	sandbox_data.cwd = cwd;
@@ -572,6 +557,21 @@ retry_bind:
 	sandbox_data.orig_mask = &orig_mask;
 	sandbox_data.time_to_exit = &time_to_exit;
 
+	accepted_conn_data.pool = pool;
+	accepted_conn_data.conn_pool = conn_pool;
+
+	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
+	                                       &exit_signals);
+	linted_asynch_pool_submit(
+	    pool, linted_signal_task_sigwaitinfo_to_asynch(sigwait_task));
+
+	linted_admin_task_accept_prepare(accepted_conn_task,
+	                                 ADMIN_ACCEPTED_CONNECTION, admin);
+	linted_asynch_pool_submit(
+	    pool, linted_admin_task_accept_to_asynch(accepted_conn_task));
+
+	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
+	                               WEXITED);
 	linted_asynch_pool_submit(
 	    pool, linted_pid_task_waitid_to_asynch(sandbox_task));
 
@@ -1574,11 +1574,11 @@ conn_remove:
 		return 0;
 	}
 
-	linted_admin_task_send_reply_prepare(
-	    conn->write_task, ADMIN_WROTE_CONNECTION, ko, &reply);
 	conn->write_data.pool = pool;
 	conn->write_data.conn = conn;
 
+	linted_admin_task_send_reply_prepare(
+	    conn->write_task, ADMIN_WROTE_CONNECTION, ko, &reply);
 	linted_asynch_pool_submit(
 	    pool, linted_admin_task_send_reply_to_asynch(conn->write_task));
 	return 0;

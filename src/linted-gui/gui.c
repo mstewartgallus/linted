@@ -286,14 +286,6 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	notice_data.controller_data = &controller_data;
 	notice_data.controller_task = controller_task;
 
-	linted_window_notifier_task_receive_prepare(
-	    notice_task, ON_RECEIVE_NOTICE, notifier);
-	linted_asynch_pool_submit(
-	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
-
-	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
 	poll_conn_data.window = &window;
 	poll_conn_data.pool = pool;
 	poll_conn_data.window_model = &window_model;
@@ -306,6 +298,14 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	poll_conn_data.keyboard_state = &keyboard_state;
 	poll_conn_data.keymap = keymap;
 
+	linted_window_notifier_task_receive_prepare(
+	    notice_task, ON_RECEIVE_NOTICE, notifier);
+	linted_asynch_pool_submit(
+	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
+
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	                            xcb_get_file_descriptor(connection),
+	                            POLLIN);
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 

@@ -221,32 +221,35 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	idle_data.window_model = &window_model;
 	idle_data.idle_in_progress = false;
 
-	linted_window_notifier_task_receive_prepare(
-	    notice_task, ON_RECEIVE_NOTICE, notifier);
 	notice_data.connection = connection;
 	notice_data.window_model = &window_model;
 	notice_data.gpu_context = gpu_context;
 	notice_data.window = &window;
 	notice_data.idle_task = idle_task;
-	linted_asynch_pool_submit(
-	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
 
-	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
 	poll_conn_data.window_model = &window_model;
 	poll_conn_data.gpu_context = gpu_context;
 	poll_conn_data.pool = pool;
 	poll_conn_data.connection = connection;
 	poll_conn_data.notice_task = notice_task;
 	poll_conn_data.idle_task = idle_task;
+
+	updater_data.gpu_context = gpu_context;
+	updater_data.pool = pool;
+
+	linted_window_notifier_task_receive_prepare(
+	    notice_task, ON_RECEIVE_NOTICE, notifier);
+	linted_asynch_pool_submit(
+	    pool, linted_window_notifier_task_receive_to_asynch(notice_task));
+
+	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
+	                            xcb_get_file_descriptor(connection),
+	                            POLLIN);
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
 	linted_updater_task_receive_prepare(updater_task, ON_RECEIVE_UPDATE,
 	                                    updater);
-	updater_data.gpu_context = gpu_context;
-	updater_data.pool = pool;
 	linted_asynch_pool_submit(
 	    pool, linted_updater_task_receive_to_asynch(updater_task));
 
