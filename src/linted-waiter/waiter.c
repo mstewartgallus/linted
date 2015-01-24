@@ -30,14 +30,17 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+static unsigned char waiter_start(char const *process_name, size_t argc,
+                                  char const *const argv[]);
+
 static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-waiter"
+	.canonical_process_name = PACKAGE_NAME "-waiter", .start = waiter_start
 };
 
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[])
+static unsigned char waiter_start(char const *process_name, size_t argc,
+                                  char const *const argv[])
 {
 	linted_error errnum = 0;
 

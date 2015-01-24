@@ -171,6 +171,9 @@ struct pid_stat
 	long cguest_time;
 };
 
+static unsigned char monitor_start(char const *process_name, size_t argc,
+                                   char const *const argv[]);
+
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       char const *path);
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
@@ -251,11 +254,12 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
 static linted_error set_death_sig(int signum);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-monitor"
+	.canonical_process_name = PACKAGE_NAME "-monitor",
+	.start = monitor_start
 };
 
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[])
+static unsigned char monitor_start(char const *process_name, size_t argc,
+                                   char const *const argv[])
 {
 	linted_error errnum;
 

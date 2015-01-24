@@ -86,11 +86,8 @@ struct notice_data
 	xcb_window_t *window;
 };
 
-struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-drawer"
-};
-
-static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
+static unsigned char drawer_start(char const *process_name, size_t argc,
+                                  char const *const argv[]);
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_idle(struct linted_asynch_task *task);
@@ -98,8 +95,14 @@ static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_receive_update(struct linted_asynch_task *task);
 static linted_error on_receive_notice(struct linted_asynch_task *task);
 
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-drawer", .start = drawer_start
+};
+
+static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
+
+static unsigned char drawer_start(char const *process_name, size_t argc,
+                                  char const *const argv[])
 {
 	linted_error errnum = 0;
 

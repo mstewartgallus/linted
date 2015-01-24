@@ -106,9 +106,8 @@ struct notice_data
 	linted_ko controller;
 };
 
-struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-gui"
-};
+static unsigned char gui_start(char const *process_name, size_t argc,
+                               char const *const argv[]);
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
@@ -128,8 +127,12 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
                     struct controller_data *controller_data);
 
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-gui", .start = gui_start
+};
+
+static unsigned char gui_start(char const *process_name, size_t argc,
+                               char const *const argv[])
 {
 	linted_error errnum = 0;
 

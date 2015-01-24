@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	return linted_start(process_name, argc, (char const * const *)argv);
+	return linted_start_config.start(process_name, argc,
+	                                 (char const * const *)argv);
 }
 
 static void do_nothing(int signo)

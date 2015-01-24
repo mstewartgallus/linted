@@ -36,15 +36,18 @@
 #include <string.h>
 #include <unistd.h>
 
+static uint_fast8_t enter_start(char const *const process_name, size_t argc,
+                                char const *const argv[]);
+
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-enter"
+	.canonical_process_name = PACKAGE_NAME "-enter", .start = enter_start
 };
 
 /* Order of entering matters */
 static char const *namespaces[] = { "user", "pid", "ipc", "mnt", "net" };
 
-uint_fast8_t linted_start(char const *const process_name, size_t argc,
-                          char const *const argv[])
+static uint_fast8_t enter_start(char const *const process_name, size_t argc,
+                                char const *const argv[])
 {
 	linted_error errnum = 0;
 

@@ -101,10 +101,8 @@ struct updater_data
 	linted_ko updater;
 };
 
-struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-simulator"
-};
-
+static unsigned char simulator_start(char const *const process_name,
+                                     size_t argc, char const *const argv[]);
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error on_read_timer(struct linted_asynch_task *completed_task);
@@ -126,8 +124,13 @@ static linted_sim_uint absolute(linted_sim_int x);
 static linted_sim_int min_int(linted_sim_int x, linted_sim_int y);
 static linted_sim_int sign(linted_sim_int x);
 
-unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-simulator",
+	.start = simulator_start
+};
+
+static unsigned char simulator_start(char const *const process_name,
+                                     size_t argc, char const *const argv[])
 {
 	linted_error errnum;
 

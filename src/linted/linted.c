@@ -52,11 +52,21 @@ enum { HELP, VERSION_OPTION };
 
 extern char **environ;
 
-static char const *const argstrs[] = {[HELP] = "--help",
-	                              [VERSION_OPTION] = "--version" };
+static unsigned char main_start(char const *const process_name, size_t argc,
+                                char const *const argv[const]);
+
+static linted_error exec_init(char const *init);
+
+static bool is_privileged(void);
+static bool was_privileged(void);
+
+static linted_error do_help(linted_ko ko, char const *process_name,
+                            struct linted_str package_name,
+                            struct linted_str package_url,
+                            struct linted_str package_bugreport);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-linted"
+	.canonical_process_name = PACKAGE_NAME "-linted", .start = main_start
 };
 
 static struct envvar const default_envvars[] = {
@@ -75,18 +85,11 @@ static struct envvar const default_envvars[] = {
 	{ "LINTED_WINDOW", PKGLIBEXECDIR "/linted-window" EXEEXT }
 };
 
-static linted_error exec_init(char const *init);
+static char const *const argstrs[] = {[HELP] = "--help",
+	                              [VERSION_OPTION] = "--version" };
 
-static bool is_privileged(void);
-static bool was_privileged(void);
-
-static linted_error do_help(linted_ko ko, char const *process_name,
-                            struct linted_str package_name,
-                            struct linted_str package_url,
-                            struct linted_str package_bugreport);
-
-unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[const])
+static unsigned char main_start(char const *const process_name, size_t argc,
+                                char const *const argv[const])
 {
 	if (is_privileged()) {
 		linted_log(LINTED_LOG_ERR,

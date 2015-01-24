@@ -143,6 +143,9 @@ struct second_fork_args
 	bool use_seccomp : 1U;
 };
 
+static unsigned char sandbox_start(char const *const process_name, size_t argc,
+                                   char const *const argv[const]);
+
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
 
@@ -165,11 +168,12 @@ static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-sandbox"
+	.canonical_process_name = PACKAGE_NAME "-sandbox",
+	.start = sandbox_start
 };
 
-unsigned char linted_start(char const *const process_name, size_t argc,
-                           char const *const argv[const])
+static unsigned char sandbox_start(char const *const process_name, size_t argc,
+                                   char const *const argv[const])
 {
 	linted_error errnum;
 

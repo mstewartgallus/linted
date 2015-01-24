@@ -54,18 +54,21 @@ struct notice_data
 	struct linted_asynch_pool *pool;
 };
 
-struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-window"
-};
-
-static uint32_t const window_opts[] = { 0 };
+static unsigned char window_start(char const *process_name, size_t argc,
+                                  char const *const argv[]);
 
 static linted_error dispatch(struct linted_asynch_task *task);
 static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_sent_notice(struct linted_asynch_task *task);
 
-unsigned char linted_start(char const *process_name, size_t argc,
-                           char const *const argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-window", .start = window_start
+};
+
+static uint32_t const window_opts[] = { 0 };
+
+static unsigned char window_start(char const *process_name, size_t argc,
+                                  char const *const argv[])
 {
 	linted_error errnum = 0;
 

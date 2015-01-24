@@ -32,9 +32,8 @@
 #include <string.h>
 #include <unistd.h>
 
-struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-control"
-};
+static uint_fast8_t control_start(char const *const process_name, size_t argc,
+                                  char const *const argv[]);
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,
                                char const *const argv[]);
@@ -56,8 +55,13 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 
-uint_fast8_t linted_start(char const *const process_name, size_t argc,
-                          char const *const argv[])
+struct linted_start_config const linted_start_config = {
+	.canonical_process_name = PACKAGE_NAME "-control",
+	.start = control_start
+};
+
+static uint_fast8_t control_start(char const *const process_name, size_t argc,
+                                  char const *const argv[])
 {
 	bool need_help = false;
 	bool need_version = false;
