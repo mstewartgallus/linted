@@ -22,7 +22,7 @@
  * Abstracts over the system logger.
  */
 
-enum { LINTED_LOG_ERR = 3 };
+enum { LINTED_LOG_ERROR = 3 };
 
 void linted_log_open(char const *ident);
 void linted_log(unsigned log_level, char const *format, ...);

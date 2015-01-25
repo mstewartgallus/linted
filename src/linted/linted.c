@@ -92,14 +92,14 @@ static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const argv[const])
 {
 	if (is_privileged()) {
-		linted_log(LINTED_LOG_ERR,
+		linted_log(LINTED_LOG_ERROR,
 		           "%s should not be run with high privileges",
 		           PACKAGE_NAME);
 		return EPERM;
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERR, "linted_spawn_attr_init: %s",
+		linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -107,7 +107,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 		if (-1 == setenv(envvar->key, envvar->value, false)) {
-			linted_log(LINTED_LOG_ERR, "linted_spawn_attr_init: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -172,7 +172,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 
 	errnum = exec_init(init);
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "exec_init: %s",
+		linted_log(LINTED_LOG_ERROR, "exec_init: %s",
 		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}

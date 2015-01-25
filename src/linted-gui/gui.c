@@ -142,7 +142,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/window",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -156,7 +156,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
 		                   LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -169,7 +169,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -481,7 +481,7 @@ destroy_pool : {
 	(void)poll_conn_task;
 
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERROR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

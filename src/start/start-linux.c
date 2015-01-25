@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	linted_log_open(process_name);
 
 	if (missing_name) {
-		linted_log(LINTED_LOG_ERR, "missing process name");
+		linted_log(LINTED_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
 	}
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 		act.sa_handler = do_nothing;
 		act.sa_flags = 0;
 		if (-1 == sigaction(LINTED_ASYNCH_SIGNO, &act, 0)) {
-			linted_log(LINTED_LOG_ERR, "sigaction: %s",
+			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}

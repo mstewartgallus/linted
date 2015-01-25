@@ -56,7 +56,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	linted_error errnum;
 
 	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERR, "setlocale: %s",
+		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -70,7 +70,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		action.sa_flags = SA_RESTART;
 		sigfillset(&action.sa_mask);
 		if (-1 == sigaction(exit_signals[ii], &action, 0)) {
-			linted_log(LINTED_LOG_ERR, "sigaction: %s",
+			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -80,7 +80,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 
 	char *monitor_dup = strdup(monitor);
 	if (0 == monitor_dup) {
-		linted_log(LINTED_LOG_ERR, "strdup: %s",
+		linted_log(LINTED_LOG_ERROR, "strdup: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -89,7 +89,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 
 	errnum = set_child_subreaper(true);
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "set_child_subreaper: %s",
+		linted_log(LINTED_LOG_ERROR, "set_child_subreaper: %s",
 		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
@@ -100,7 +100,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		struct linted_spawn_attr *xx;
 		errnum = linted_spawn_attr_init(&xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_spawn_attr_init: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -119,7 +119,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			    (char const * const[]) { monitor_base, 0 },
 			    (char const * const *)environ);
 			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERR, "linted_spawn: %s",
+				linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",
 				           linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}

@@ -114,7 +114,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERR, "setlocale: %s",
+		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -125,7 +125,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/window",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -139,7 +139,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
 		                   LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -152,7 +152,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -386,7 +386,7 @@ destroy_pool : {
 	(void)poll_conn_task;
 
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERROR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

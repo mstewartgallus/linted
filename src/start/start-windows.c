@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	linted_log_open(process_name);
 
 	if (missing_name) {
-		linted_log(LINTED_LOG_ERR, "missing process name");
+		linted_log(LINTED_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
 	}
 

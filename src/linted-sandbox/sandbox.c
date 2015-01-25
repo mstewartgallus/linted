@@ -305,22 +305,22 @@ static unsigned char sandbox_start(char const *const process_name, size_t argc,
 	}
 exit_loop:
 	if (!have_command) {
-		linted_log(LINTED_LOG_ERR, "need command");
+		linted_log(LINTED_LOG_ERROR, "need command");
 		return EXIT_FAILURE;
 	}
 
 	if (bad_option != 0) {
-		linted_log(LINTED_LOG_ERR, "bad option: %s", bad_option);
+		linted_log(LINTED_LOG_ERROR, "bad option: %s", bad_option);
 		return EXIT_FAILURE;
 	}
 
 	if (0 == waiter) {
-		linted_log(LINTED_LOG_ERR, "need waiter");
+		linted_log(LINTED_LOG_ERROR, "need waiter");
 		return EXIT_FAILURE;
 	}
 
 	if ((fstab != 0 && 0 == chrootdir) || (0 == fstab && chrootdir != 0)) {
-		linted_log(LINTED_LOG_ERR,
+		linted_log(LINTED_LOG_ERROR,
 		           "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
 	}
@@ -328,14 +328,14 @@ exit_loop:
 	if (traceme) {
 		if (-1 ==
 		    ptrace(PTRACE_TRACEME, (pid_t)0, (void *)0, (void *)0)) {
-			linted_log(LINTED_LOG_ERR, "ptrace: %s",
+			linted_log(LINTED_LOG_ERROR, "ptrace: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		/* Register with the parent */
 		if (-1 == raise(SIGSTOP)) {
-			linted_log(LINTED_LOG_ERR, "raise: %s",
+			linted_log(LINTED_LOG_ERROR, "raise: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -345,14 +345,14 @@ exit_loop:
 
 	char *command_dup = strdup(command[0U]);
 	if (0 == command_dup) {
-		linted_log(LINTED_LOG_ERR, "strdup: %s",
+		linted_log(LINTED_LOG_ERROR, "strdup: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
 	char *waiter_dup = strdup(waiter);
 	if (0 == waiter_dup) {
-		linted_log(LINTED_LOG_ERR, "strdup: %s",
+		linted_log(LINTED_LOG_ERROR, "strdup: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -368,7 +368,7 @@ exit_loop:
 	if (fstab != 0) {
 		FILE *fstab_file = setmntent(fstab, "re");
 		if (0 == fstab_file) {
-			linted_log(LINTED_LOG_ERR, "setmntent: %s",
+			linted_log(LINTED_LOG_ERROR, "setmntent: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -379,7 +379,7 @@ exit_loop:
 			if (0 == entry) {
 				errnum = errno;
 				if (errnum != 0) {
-					linted_log(LINTED_LOG_ERR,
+					linted_log(LINTED_LOG_ERROR,
 					           "getmntent: %s",
 					           linted_error_string(errnum));
 					return EXIT_FAILURE;
@@ -412,7 +412,7 @@ exit_loop:
 				errnum = parse_mount_opts(opts, &xx, &yy, &zz,
 				                          &ww, &uu);
 				if (errnum != 0) {
-					linted_log(LINTED_LOG_ERR,
+					linted_log(LINTED_LOG_ERROR,
 					           "parse_mount_opts: %s",
 					           linted_error_string(errnum));
 					return EXIT_FAILURE;
@@ -432,7 +432,7 @@ exit_loop:
 				    sizeof mount_args[0U]);
 				if (errnum != 0) {
 					linted_log(
-					    LINTED_LOG_ERR,
+					    LINTED_LOG_ERROR,
 					    "linted_mem_realloc_array: %s",
 					    linted_error_string(errnum));
 					return EXIT_FAILURE;
@@ -443,7 +443,7 @@ exit_loop:
 			if (fsname != 0) {
 				fsname = strdup(fsname);
 				if (0 == fsname) {
-					linted_log(LINTED_LOG_ERR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR, "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -452,7 +452,7 @@ exit_loop:
 			if (dir != 0) {
 				dir = strdup(dir);
 				if (0 == dir) {
-					linted_log(LINTED_LOG_ERR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR, "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -461,7 +461,7 @@ exit_loop:
 			if (type != 0) {
 				type = strdup(type);
 				if (0 == type) {
-					linted_log(LINTED_LOG_ERR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR, "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -470,7 +470,7 @@ exit_loop:
 			if (data != 0) {
 				data = strdup(data);
 				if (0 == data) {
-					linted_log(LINTED_LOG_ERR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR, "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -488,7 +488,7 @@ exit_loop:
 		}
 
 		if (endmntent(fstab_file) != 1) {
-			linted_log(LINTED_LOG_ERR, "endmntent: %s",
+			linted_log(LINTED_LOG_ERROR, "endmntent: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -498,25 +498,25 @@ exit_loop:
 	if (drop_caps) {
 		caps = cap_get_proc();
 		if (0 == caps) {
-			linted_log(LINTED_LOG_ERR, "cap_get_proc: %s",
+			linted_log(LINTED_LOG_ERROR, "cap_get_proc: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
-			linted_log(LINTED_LOG_ERR, "cap_clear_flag: %s",
+			linted_log(LINTED_LOG_ERROR, "cap_clear_flag: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-			linted_log(LINTED_LOG_ERR, "cap_clear_flag: %s",
+			linted_log(LINTED_LOG_ERROR, "cap_clear_flag: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
-			linted_log(LINTED_LOG_ERR, "cap_clear_flag: %s",
+			linted_log(LINTED_LOG_ERROR, "cap_clear_flag: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -524,7 +524,7 @@ exit_loop:
 
 	if (priority != 0) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, atoi(priority))) {
-			linted_log(LINTED_LOG_ERR, "setpriority: %s",
+			linted_log(LINTED_LOG_ERROR, "setpriority: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -542,7 +542,7 @@ exit_loop:
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_uid, uid)) {
-			linted_log(LINTED_LOG_ERR, "asprintf: %s",
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -552,7 +552,7 @@ exit_loop:
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_gid, gid)) {
-			linted_log(LINTED_LOG_ERR, "asprintf: %s",
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -563,7 +563,7 @@ exit_loop:
 		/* Must appear before the seccomp filter */
 		errnum = set_no_new_privs(true);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "prctl: %s",
+			linted_log(LINTED_LOG_ERROR, "prctl: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -574,7 +574,7 @@ exit_loop:
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			linted_log(LINTED_LOG_ERR, "pipe2: %s",
+			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -607,7 +607,7 @@ exit_loop:
 		}
 	}
 	if (-1 == child) {
-		linted_log(LINTED_LOG_ERR, "clone: %s",
+		linted_log(LINTED_LOG_ERROR, "clone: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -629,7 +629,7 @@ close_err_reader:
 	linted_ko_close(err_reader);
 
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "spawning: %s",
+		linted_log(LINTED_LOG_ERROR, "spawning: %s",
 		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
@@ -648,7 +648,7 @@ close_err_reader:
 			case EINTR:
 				continue;
 			default:
-				linted_log(LINTED_LOG_ERR, "waitpid: %s",
+				linted_log(LINTED_LOG_ERROR, "waitpid: %s",
 				           linted_error_string(errno));
 				return EXIT_FAILURE;
 			}

@@ -47,7 +47,7 @@ void linted_log(unsigned log_level, char const *format, ...)
 {
 	int priority;
 	switch (log_level) {
-	case LINTED_LOG_ERR:
+	case LINTED_LOG_ERROR:
 		priority = LOG_ERR;
 		break;
 

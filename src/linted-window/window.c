@@ -78,7 +78,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "window",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -92,7 +92,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-gui",
 		                   LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -106,7 +106,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		    linted_ko_open(&xx, LINTED_KO_CWD, "window-notifier-drawer",
 		                   LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -131,7 +131,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		}
 	}
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "strtol: %s",
+		linted_log(LINTED_LOG_ERROR, "strtol: %s",
 		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
@@ -509,7 +509,7 @@ destroy_pool : {
 	/* Tell the manager to exit everything */
 	if (0 == errnum) {
 		if (-1 == kill(root_pid, SIGTERM)) {
-			linted_log(LINTED_LOG_ERR, "kill: %s",
+			linted_log(LINTED_LOG_ERROR, "kill: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -520,7 +520,7 @@ destroy_pool : {
 	}
 
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERROR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
