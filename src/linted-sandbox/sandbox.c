@@ -132,6 +132,8 @@ struct first_fork_args
 	char const *const *command;
 	char const *binary;
 	linted_ko err_writer;
+	linted_ko logger_reader;
+	linted_ko logger_writer;
 	bool use_seccomp : 1U;
 };
 
@@ -140,6 +142,7 @@ struct second_fork_args
 	char const *const *argv;
 	char const *binary;
 	linted_ko err_writer;
+	linted_ko logger_writer;
 	bool use_seccomp : 1U;
 };
 
@@ -573,6 +576,19 @@ exit_loop:
 		}
 	}
 
+	linted_ko logger_reader;
+	linted_ko logger_writer;
+	{
+		int xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC)) {
+			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		logger_reader = xx[0U];
+		logger_writer = xx[1U];
+	}
+
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -589,6 +605,8 @@ exit_loop:
 	pid_t child;
 	{
 		struct first_fork_args args = { .err_writer = err_writer,
+			                        .logger_reader = logger_reader,
+			                        .logger_writer = logger_writer,
 			                        .uid_map = uid_map,
 			                        .gid_map = gid_map,
 			                        .clone_flags = clone_flags,
@@ -670,6 +688,8 @@ static int first_fork_routine(void *void_args)
 	struct first_fork_args const *first_fork_args = void_args;
 
 	linted_ko err_writer = first_fork_args->err_writer;
+	linted_ko logger_reader = first_fork_args->logger_reader;
+	linted_ko logger_writer = first_fork_args->logger_writer;
 	char const *uid_map = first_fork_args->uid_map;
 	char const *gid_map = first_fork_args->gid_map;
 	unsigned long clone_flags = first_fork_args->clone_flags;
@@ -755,6 +775,7 @@ static int first_fork_routine(void *void_args)
 	pid_t grand_child;
 	{
 		struct second_fork_args args = { .err_writer = vfork_err_writer,
+			                         .logger_writer = logger_writer,
 			                         .binary = binary,
 			                         .argv = command,
 			                         .use_seccomp = use_seccomp };
@@ -783,6 +804,11 @@ static int first_fork_routine(void *void_args)
 	if (errnum != 0)
 		goto fail;
 
+	if (-1 == dup2(logger_reader, STDIN_FILENO)) {
+		errnum = errno;
+		goto fail;
+	}
+
 	{
 		char const *arguments[] = { waiter_base, 0 };
 		execve(waiter, (char * const *)arguments, environ);
@@ -803,9 +829,20 @@ static int second_fork_routine(void *arg)
 	struct second_fork_args const *args = arg;
 
 	linted_ko err_writer = args->err_writer;
+	linted_ko logger_writer = args->logger_writer;
 	char const *binary = args->binary;
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
+
+	if (-1 == dup2(logger_writer, STDOUT_FILENO)) {
+		errnum = errno;
+		goto fail;
+	}
+
+	if (-1 == dup2(logger_writer, STDERR_FILENO)) {
+		errnum = errno;
+		goto fail;
+	}
 
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {

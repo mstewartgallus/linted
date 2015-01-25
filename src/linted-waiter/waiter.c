@@ -24,6 +24,8 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
@@ -33,11 +35,16 @@
 static unsigned char waiter_start(char const *process_name, size_t argc,
                                   char const *const argv[]);
 
+static void on_term(int signo);
+static void on_sigchld(int signo);
+
 static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
 	.canonical_process_name = PACKAGE_NAME "-waiter", .start = waiter_start
 };
+
+static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 
 static unsigned char waiter_start(char const *process_name, size_t argc,
                                   char const *const argv[])
@@ -50,24 +57,9 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		assert(errnum != EINVAL);
 	}
 
-	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
-
-	sigset_t sigset;
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGCHLD);
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
-		sigaddset(&sigset, exit_signals[ii]);
-
-	errnum = pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERROR, "pthread_sigmask: %s",
-		           linted_error_string(errnum));
-		return EXIT_FAILURE;
-	}
-
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
 		struct sigaction action = { 0 };
-		action.sa_handler = SIG_IGN;
+		action.sa_handler = on_term;
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
@@ -75,95 +67,91 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		}
 	}
 
-	for (;;) {
-		int signo;
-		{
-			siginfo_t info;
-			signo = sigwaitinfo(&sigset, &info);
-		}
-		switch (signo) {
-		case -1:
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-
-			if (EINTR == errnum)
-				continue;
-
-			linted_log(LINTED_LOG_ERROR, "sigwaitinfo: %s",
-			           linted_error_string(errnum));
+	{
+		struct sigaction action = { 0 };
+		action.sa_handler = on_sigchld;
+		action.sa_flags = SA_NOCLDSTOP;
+		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
+			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
+		}
+	}
 
-		case SIGCHLD:
-			for (;;) {
-				pid_t pid;
-				int wait_status;
-				{
-					siginfo_t info;
-					info.si_pid = 0;
-					wait_status = waitid(P_ALL, -1, &info,
-					                     WEXITED | WNOHANG);
-					pid = info.si_pid;
-				}
-				if (-1 == wait_status) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-
-					if (ECHILD == errnum)
-						goto exit_application;
-					if (EINTR == errnum)
-						continue;
-
+	{
+		char *buf = 0;
+		size_t n = 0U;
+		for (;;) {
+			errno = 0;
+			if (-1 == getline(&buf, &n, stdin)) {
+				errnum = errno;
+				if (0 == errnum)
+					break;
+				if (EINTR == errnum)
+					continue;
+				if (errnum != 0) {
 					linted_log(LINTED_LOG_ERROR,
-					           "waitid: %s",
+					           "getline: %s",
 					           linted_error_string(errnum));
 					return EXIT_FAILURE;
 				}
-
-				if (0 == pid)
-					break;
 			}
-			break;
-
-		case SIGHUP:
-		case SIGINT:
-		case SIGQUIT:
-		case SIGTERM: {
-			sigset_t exitset;
-			sigemptyset(&exitset);
-			for (size_t ii = 0U;
-			     ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
-				sigaddset(&exitset, exit_signals[ii]);
-
-			/* Prevent looping */
-			errnum =
-			    pthread_sigmask(SIG_UNBLOCK, &exitset, &exitset);
-			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "pthread_sigmask: %s",
-				           linted_error_string(errnum));
-				return EXIT_FAILURE;
-			}
-
-			if (-1 == kill(-getpgrp(), signo)) {
-				errnum = errno;
-				linted_log(LINTED_LOG_ERROR, "kill: %s",
-				           linted_error_string(errnum));
-				return EXIT_FAILURE;
-			}
-
-			errnum = pthread_sigmask(SIG_SETMASK, &exitset, NULL);
-			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "pthread_sigmask: %s",
-				           linted_error_string(errnum));
-				return EXIT_FAILURE;
-			}
-			break;
-		}
+			linted_log(LINTED_LOG_ERROR, buf);
 		}
 	}
-exit_application:
-	return EXIT_SUCCESS;
+
+	for (;;)
+		pause();
+}
+
+static void on_term(int signo)
+{
+	if (-1 == kill(-getpgrp(), signo)) {
+		linted_error errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		assert(false);
+	}
+
+	/* Prevent looping */
+	for (;;) {
+		sigset_t exitset;
+		sigemptyset(&exitset);
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
+			sigaddset(&exitset, exit_signals[ii]);
+
+		siginfo_t info;
+		if (-1 == sigwaitinfo(&exitset, &info))
+			break;
+	}
+}
+
+static void on_sigchld(int signo)
+{
+	for (;;) {
+		pid_t pid;
+		int wait_status;
+		{
+			siginfo_t info;
+			info.si_pid = 0;
+			wait_status =
+			    waitid(P_ALL, -1, &info, WEXITED | WNOHANG);
+			pid = info.si_pid;
+		}
+		if (-1 == wait_status) {
+			linted_error errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			if (ECHILD == errnum)
+				_Exit(EXIT_SUCCESS);
+			if (EINTR == errnum)
+				continue;
+
+			assert(false);
+		}
+
+		if (0 == pid)
+			break;
+	}
 }
 
 static linted_error set_name(char const *name)

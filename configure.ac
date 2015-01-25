@@ -38,7 +38,9 @@ dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
 dnl
-AC_CHECK_HEADERS([[fcntl.h]dnl
+AC_CHECK_HEADERS([[arpa/inet.h]dnl
+                  [fcntl.h]dnl
+                  [locale.h]dnl
                   [limits.h]dnl
                   [stddef.h]dnl
                   [stdint.h]dnl
@@ -58,7 +60,8 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
 dnl
 AC_CHECK_HEADERS([[mntent.h]dnl
                   [sys/mount.h]dnl
-                  [sys/socket.h]], [], [
+                  [sys/socket.h]dnl
+                  [syslog.h]], [], [
   AC_MSG_WARN([Unable to find header ${ac_header}])
 ], [])
 dnl
@@ -75,8 +78,11 @@ AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
 dnl
 AC_CHECK_FUNCS([[dup2]dnl
                 [memmove]dnl
+                [memset]dnl
                 [mkdir]dnl
                 [strdup]dnl
+                [strndup]dnl
+                [strrchr]dnl
                 [strstr]dnl
                 [strtol]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
@@ -97,11 +103,16 @@ AC_FUNC_FORK
 AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
  AC_MSG_WARN([Unable to find good fork function])
 ])
+AC_FUNC_MMAP
+AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
+ AC_MSG_WARN([Unable to find good mmap function])
+])
 dnl
 AC_CHECK_FUNCS([[fchdir]dnl
-                [getdelim]dnl
-                [getmntent]dnl
+                [gethostname]dnl
+                [munmap]dnl
                 [setenv]dnl
+                [setlocale]dnl
                 [socket]dnl
                 [strndup]], [], [
  AC_MSG_WARN([Unable to find function ${ac_func}])
