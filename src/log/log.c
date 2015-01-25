@@ -68,8 +68,10 @@ void linted_log(unsigned log_level, char const *format, ...)
 		va_end(cp);
 	}
 
-	if (tty_init)
+	if (tty_init) {
 		vdprintf(tty, format, ap);
+		dprintf(tty, "\n");
+	}
 
 	va_end(ap);
 }
