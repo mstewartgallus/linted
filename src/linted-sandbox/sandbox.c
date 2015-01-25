@@ -443,7 +443,8 @@ exit_loop:
 			if (fsname != 0) {
 				fsname = strdup(fsname);
 				if (0 == fsname) {
-					linted_log(LINTED_LOG_ERROR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR,
+					           "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -452,7 +453,8 @@ exit_loop:
 			if (dir != 0) {
 				dir = strdup(dir);
 				if (0 == dir) {
-					linted_log(LINTED_LOG_ERROR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR,
+					           "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -461,7 +463,8 @@ exit_loop:
 			if (type != 0) {
 				type = strdup(type);
 				if (0 == type) {
-					linted_log(LINTED_LOG_ERROR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR,
+					           "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}
@@ -470,7 +473,8 @@ exit_loop:
 			if (data != 0) {
 				data = strdup(data);
 				if (0 == data) {
-					linted_log(LINTED_LOG_ERROR, "strdup: %s",
+					linted_log(LINTED_LOG_ERROR,
+					           "strdup: %s",
 					           linted_error_string(errno));
 					return EXIT_FAILURE;
 				}

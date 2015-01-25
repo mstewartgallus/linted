@@ -177,7 +177,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	struct poll_conn_data poll_conn_data;
 
 	struct linted_sched_task_idle *idle_task;
-	struct linted_window_task_ack *notice_task;
+	struct linted_window_task_watch *notice_task;
 	struct linted_updater_task_receive *updater_task;
 	struct linted_io_task_poll *poll_conn_task;
 
@@ -190,8 +190,8 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	}
 
 	{
-		struct linted_window_task_ack *xx;
-		errnum = linted_window_task_ack_create(&xx, &notice_data);
+		struct linted_window_task_watch *xx;
+		errnum = linted_window_task_watch_create(&xx, &notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		notice_task = xx;
@@ -310,10 +310,10 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 			return errnum;
 	}
 
-	linted_window_task_ack_prepare(notice_task, ON_RECEIVE_NOTICE,
-	                               notifier);
+	linted_window_task_watch_prepare(notice_task, ON_RECEIVE_NOTICE,
+	                                 notifier);
 	linted_asynch_pool_submit(
-	    pool, linted_window_task_ack_to_asynch(notice_task));
+	    pool, linted_window_task_watch_to_asynch(notice_task));
 
 	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
@@ -347,7 +347,7 @@ stop_pool:
 	linted_asynch_task_cancel(
 	    linted_updater_task_receive_to_asynch(updater_task));
 	linted_asynch_task_cancel(
-	    linted_window_task_ack_to_asynch(notice_task));
+	    linted_window_task_watch_to_asynch(notice_task));
 	linted_asynch_task_cancel(
 	    linted_io_task_poll_to_asynch(poll_conn_task));
 
@@ -553,10 +553,10 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_window_task_ack *notice_task =
-	    linted_window_task_ack_from_asynch(task);
+	struct linted_window_task_watch *notice_task =
+	    linted_window_task_watch_from_asynch(task);
 	struct notice_data *notice_data =
-	    linted_window_task_ack_data(notice_task);
+	    linted_window_task_watch_data(notice_task);
 
 	xcb_connection_t *connection = notice_data->connection;
 	struct window_model *window_model = notice_data->window_model;

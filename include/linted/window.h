@@ -33,23 +33,23 @@ typedef linted_ko linted_window;
 typedef linted_ko linted_window_notifier;
 
 struct linted_window_task_notify;
-struct linted_window_task_ack;
+struct linted_window_task_watch;
 
 linted_error linted_window_read(linted_window window, uint_fast32_t *outp);
 linted_error linted_window_write(linted_window window, uint_fast32_t in);
 
 linted_error
-linted_window_task_ack_create(struct linted_window_task_ack **taskp,
-                              void *data);
-void linted_window_task_ack_destroy(struct linted_window_task_ack *task);
+linted_window_task_watch_create(struct linted_window_task_watch **taskp,
+                                void *data);
+void linted_window_task_watch_destroy(struct linted_window_task_watch *task);
 
-void linted_window_task_ack_prepare(struct linted_window_task_ack *task,
-                                    unsigned task_action, linted_ko notifier);
-struct linted_window_task_ack *
-linted_window_task_ack_from_asynch(struct linted_asynch_task *task);
+void linted_window_task_watch_prepare(struct linted_window_task_watch *task,
+                                      unsigned task_action, linted_ko notifier);
+struct linted_window_task_watch *
+linted_window_task_watch_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *
-linted_window_task_ack_to_asynch(struct linted_window_task_ack *task);
-void *linted_window_task_ack_data(struct linted_window_task_ack *task);
+linted_window_task_watch_to_asynch(struct linted_window_task_watch *task);
+void *linted_window_task_watch_data(struct linted_window_task_watch *task);
 
 linted_error
 linted_window_task_notify_create(struct linted_window_task_notify **taskp,

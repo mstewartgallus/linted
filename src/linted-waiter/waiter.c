@@ -113,7 +113,8 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 					if (EINTR == errnum)
 						continue;
 
-					linted_log(LINTED_LOG_ERROR, "waitid: %s",
+					linted_log(LINTED_LOG_ERROR,
+					           "waitid: %s",
 					           linted_error_string(errnum));
 					return EXIT_FAILURE;
 				}

@@ -107,7 +107,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 		if (-1 == setenv(envvar->key, envvar->value, false)) {
-			linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_spawn_attr_init: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}

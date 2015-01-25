@@ -194,13 +194,13 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	struct controller_task_data controller_task_data;
 	struct poll_conn_data poll_conn_data;
 
-	struct linted_window_task_ack *notice_task;
+	struct linted_window_task_watch *notice_task;
 	struct linted_controller_task_send *controller_task;
 	struct linted_io_task_poll *poll_conn_task;
 
 	{
-		struct linted_window_task_ack *xx;
-		errnum = linted_window_task_ack_create(&xx, &notice_data);
+		struct linted_window_task_watch *xx;
+		errnum = linted_window_task_watch_create(&xx, &notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		notice_task = xx;
@@ -406,10 +406,10 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 			return errnum;
 	}
 
-	linted_window_task_ack_prepare(notice_task, ON_RECEIVE_NOTICE,
-	                               notifier);
+	linted_window_task_watch_prepare(notice_task, ON_RECEIVE_NOTICE,
+	                                 notifier);
 	linted_asynch_pool_submit(
-	    pool, linted_window_task_ack_to_asynch(notice_task));
+	    pool, linted_window_task_watch_to_asynch(notice_task));
 
 	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
@@ -435,7 +435,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 
 stop_pool:
 	linted_asynch_task_cancel(
-	    linted_window_task_ack_to_asynch(notice_task));
+	    linted_window_task_watch_to_asynch(notice_task));
 	linted_asynch_task_cancel(
 	    linted_controller_task_send_to_asynch(controller_task));
 	linted_asynch_task_cancel(
@@ -713,10 +713,10 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	if (errnum != 0)
 		return errnum;
 
-	struct linted_window_task_ack *notice_task =
-	    linted_window_task_ack_from_asynch(task);
+	struct linted_window_task_watch *notice_task =
+	    linted_window_task_watch_from_asynch(task);
 	struct notice_data *notice_data =
-	    linted_window_task_ack_data(notice_task);
+	    linted_window_task_watch_data(notice_task);
 	struct linted_asynch_pool *pool = notice_data->pool;
 	xcb_connection_t *connection = notice_data->connection;
 	struct window_model *window_model = notice_data->window_model;

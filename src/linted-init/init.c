@@ -100,7 +100,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		struct linted_spawn_attr *xx;
 		errnum = linted_spawn_attr_init(&xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_spawn_attr_init: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}

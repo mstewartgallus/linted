@@ -66,7 +66,7 @@ struct linted_window_task_notify
 	void *data;
 };
 
-struct linted_window_task_ack
+struct linted_window_task_watch
 {
 	struct linted_io_task_read *parent;
 	void *data;
@@ -74,10 +74,11 @@ struct linted_window_task_ack
 };
 
 linted_error
-linted_window_task_ack_create(struct linted_window_task_ack **taskp, void *data)
+linted_window_task_watch_create(struct linted_window_task_watch **taskp,
+                                void *data)
 {
 	linted_error errnum;
-	struct linted_window_task_ack *task;
+	struct linted_window_task_watch *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -102,32 +103,32 @@ free_task:
 	return errnum;
 }
 
-void linted_window_task_ack_destroy(struct linted_window_task_ack *task)
+void linted_window_task_watch_destroy(struct linted_window_task_watch *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void linted_window_task_ack_prepare(struct linted_window_task_ack *task,
-                                    unsigned task_action, linted_ko notifier)
+void linted_window_task_watch_prepare(struct linted_window_task_watch *task,
+                                      unsigned task_action, linted_ko notifier)
 {
 	linted_io_task_read_prepare(task->parent, task_action, notifier,
 	                            task->dummy, sizeof task->dummy);
 }
 
-struct linted_window_task_ack *
-linted_window_task_ack_from_asynch(struct linted_asynch_task *task)
+struct linted_window_task_watch *
+linted_window_task_watch_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
 }
 
 struct linted_asynch_task *
-linted_window_task_ack_to_asynch(struct linted_window_task_ack *task)
+linted_window_task_watch_to_asynch(struct linted_window_task_watch *task)
 {
 	return linted_io_task_read_to_asynch(task->parent);
 }
 
-void *linted_window_task_ack_data(struct linted_window_task_ack *task)
+void *linted_window_task_watch_data(struct linted_window_task_watch *task)
 {
 	return task->data;
 }
