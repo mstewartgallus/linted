@@ -164,7 +164,6 @@ static linted_error chroot_process(char const *chrootdir,
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
-static linted_error set_seccomp(struct sock_fprog const *program);
 
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
@@ -681,7 +680,8 @@ close_err_reader:
 	}
 }
 
-static int first_fork_routine(void *void_args)
+__attribute__((no_sanitize_address)) static int first_fork_routine(
+    void *void_args)
 {
 	linted_error errnum = 0;
 
@@ -822,7 +822,7 @@ fail : {
 	return EXIT_FAILURE;
 }
 
-static int second_fork_routine(void *arg)
+__attribute__((no_sanitize_address)) static int second_fork_routine(void *arg)
 {
 	linted_error errnum;
 
@@ -846,9 +846,15 @@ static int second_fork_routine(void *arg)
 
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {
-		errnum = set_seccomp(&default_filter);
-		if (errnum != 0)
+		if (-1 == prctl(PR_SET_SECCOMP,
+		                (unsigned long)SECCOMP_MODE_FILTER,
+		                &default_filter, 0UL, 0UL)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			assert(errnum != EINVAL);
 			goto fail;
+		}
 	}
 
 	execve(binary, (char * const *)argv, environ);
@@ -861,7 +867,8 @@ fail : {
 	return EXIT_FAILURE;
 }
 
-static linted_error set_id_maps(char const *uid_map, char const *gid_map)
+__attribute__((no_sanitize_address)) static linted_error set_id_maps(
+    char const *uid_map, char const *gid_map)
 {
 	linted_error errnum;
 
@@ -929,9 +936,8 @@ static linted_error set_id_maps(char const *uid_map, char const *gid_map)
 	return 0;
 }
 
-static linted_error chroot_process(char const *chrootdir,
-                                   struct mount_args const *mount_args,
-                                   size_t size)
+__attribute__((no_sanitize_address)) static linted_error chroot_process(
+    char const *chrootdir, struct mount_args const *mount_args, size_t size)
 {
 	linted_error errnum;
 
@@ -1238,22 +1244,6 @@ static linted_error set_no_new_privs(bool b)
 		return errnum;
 	}
 
-	return 0;
-}
-
-static linted_error set_seccomp(struct sock_fprog const *program)
-{
-	linted_error errnum;
-
-	if (-1 == prctl(PR_SET_SECCOMP, (unsigned long)SECCOMP_MODE_FILTER,
-	                program, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-
-		assert(errnum != EINVAL);
-
-		return errnum;
-	}
 	return 0;
 }
 

@@ -330,7 +330,7 @@ close_err_reader : {
 	return 0;
 }
 
-static int fork_routine(void *arg)
+__attribute__((no_sanitize_address)) static int fork_routine(void *arg)
 {
 	struct fork_args *args = arg;
 	sigset_t const *sigset = args->sigset;
