@@ -544,7 +544,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	unsigned resize_height;
 
 	bool mapping_notify = false;
-
 	bool window_destroyed = false;
 	for (;;) {
 		xcb_generic_event_t *event = xcb_poll_for_event(connection);
@@ -658,12 +657,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 		linted_mem_free(event);
 	}
 
-	if (mapping_notify) {
-		struct xkb_state *new_state = xkb_x11_state_new_from_device(
-		    keymap, connection, device_id);
-		xkb_state_unref(*keyboard_state);
-		*keyboard_state = new_state;
-	}
+	bool clear_controls = false;
 
 	if (had_resize) {
 		window_model->width = resize_width;
@@ -672,6 +666,18 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 	if (had_motion)
 		on_tilt(motion_x, motion_y, window_model, controller_data);
+
+	if (window_destroyed) {
+		clear_controls = true;
+		goto clear;
+	}
+
+	if (mapping_notify) {
+		struct xkb_state *new_state = xkb_x11_state_new_from_device(
+		    keymap, connection, device_id);
+		xkb_state_unref(*keyboard_state);
+		*keyboard_state = new_state;
+	}
 
 	if (had_focus_change) {
 		if (focused) {
@@ -683,18 +689,23 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 			on_tilt(x, y, window_model, controller_data);
 		} else {
-			controller_data->update.x_tilt = 0;
-			controller_data->update.y_tilt = 0;
-
-			controller_data->update.left = 0;
-			controller_data->update.right = 0;
-			controller_data->update.forward = 0;
-			controller_data->update.back = 0;
-
-			controller_data->update.jumping = 0;
-
-			controller_data->update_pending = true;
+			clear_controls = true;
 		}
+	}
+
+clear:
+	if (clear_controls) {
+		controller_data->update.x_tilt = 0;
+		controller_data->update.y_tilt = 0;
+
+		controller_data->update.left = 0;
+		controller_data->update.right = 0;
+		controller_data->update.forward = 0;
+		controller_data->update.back = 0;
+
+		controller_data->update.jumping = 0;
+
+		controller_data->update_pending = true;
 	}
 
 	maybe_update_controller(pool, controller_data, controller_task,
