@@ -42,10 +42,12 @@ typedef struct linted_sim__angle
 
 #define LINTED_SIM_Id PRIdLEAST32
 
+/* Deliberately overflow in cases such as 1/1 */
 #define LINTED_SIM_ANGLE(X, Y)                                                 \
 	{                                                                      \
-		._value =                                                      \
-		    ((((uintmax_t)LINTED_SIM_UINT_MAX) + 1U) / (Y)) * (X)      \
+		._value = (linted_sim_uint)(                                   \
+		              (((uintmax_t)LINTED_SIM_UINT_MAX) + 1U) / (Y)) * \
+		          (X)                                                  \
 	}
 
 static linted_sim_int linted_sim__saturate(int_fast64_t x);

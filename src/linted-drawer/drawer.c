@@ -253,61 +253,62 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	{
 		uint_fast32_t xx;
 		errnum = linted_window_read(window_ko, &xx);
-		if (0 == errnum) {
-			window = xx;
-
-			xcb_change_window_attributes(
-			    connection, window, XCB_CW_EVENT_MASK, window_opts);
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				return errnum;
-
-			xcb_get_geometry_cookie_t geom_ck =
-			    xcb_get_geometry(connection, window);
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				return errnum;
-
-			unsigned width, height;
-			{
-				xcb_generic_error_t *error;
-				xcb_get_geometry_reply_t *reply;
-				{
-					xcb_generic_error_t *xx;
-					reply = xcb_get_geometry_reply(
-					    connection, geom_ck, &xx);
-
-					errnum =
-					    linted_xcb_conn_error(connection);
-					if (errnum != 0)
-						return errnum;
-
-					error = xx;
-				}
-
-				if (error != 0) {
-					errnum = linted_xcb_error(error);
-					linted_mem_free(error);
-					return errnum;
-				}
-
-				width = reply->width;
-				height = reply->height;
-
-				linted_mem_free(reply);
-			}
-
-			window_model.viewable = true;
-
-			linted_gpu_setwindow(gpu_context, window);
-			linted_gpu_resize(gpu_context, width, height);
-
-			maybe_idle(idle_task);
-		}
-		if (EPROTO == errnum)
-			errnum = 0;
+		if (errnum != 0)
+			goto on_window_read_err;
+		window = xx;
+	}
+on_window_read_err:
+	if (EPROTO == errnum) {
+		errnum = 0;
+	} else if (errnum != 0) {
+		return errnum;
+	} else {
+		xcb_change_window_attributes(connection, window,
+		                             XCB_CW_EVENT_MASK, window_opts);
+		errnum = linted_xcb_conn_error(connection);
 		if (errnum != 0)
 			return errnum;
+
+		xcb_get_geometry_cookie_t geom_ck =
+		    xcb_get_geometry(connection, window);
+		errnum = linted_xcb_conn_error(connection);
+		if (errnum != 0)
+			return errnum;
+
+		unsigned width, height;
+		{
+			xcb_generic_error_t *error;
+			xcb_get_geometry_reply_t *reply;
+			{
+				xcb_generic_error_t *xx;
+				reply = xcb_get_geometry_reply(connection,
+				                               geom_ck, &xx);
+
+				errnum = linted_xcb_conn_error(connection);
+				if (errnum != 0)
+					return errnum;
+
+				error = xx;
+			}
+
+			if (error != 0) {
+				errnum = linted_xcb_error(error);
+				linted_mem_free(error);
+				return errnum;
+			}
+
+			width = reply->width;
+			height = reply->height;
+
+			linted_mem_free(reply);
+		}
+
+		window_model.viewable = true;
+
+		linted_gpu_setwindow(gpu_context, window);
+		linted_gpu_resize(gpu_context, width, height);
+
+		maybe_idle(idle_task);
 	}
 
 	linted_window_task_watch_prepare(notice_task, ON_RECEIVE_NOTICE,
