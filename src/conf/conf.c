@@ -691,7 +691,7 @@ linted_error linted_conf_add_setting(struct linted_conf *conf,
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
 				for (size_t jj = 0U; jj < ii; ++jj)
-					linted_mem_free(value_copy[ii]);
+					linted_mem_free(value_copy[jj]);
 				linted_mem_free(value_copy);
 				return errnum;
 			}
