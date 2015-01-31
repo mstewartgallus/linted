@@ -1988,9 +1988,9 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 					goto close_unit_file;
 				}
 
-				struct linted_conf_section *service;
+				linted_conf_section service;
 				{
-					struct linted_conf_section *xx;
+					linted_conf_section xx;
 					errnum = linted_conf_add_section(
 					    conf, &xx, section_name);
 					if (errnum != 0) {
@@ -2002,7 +2002,8 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 				}
 
 				errnum = linted_conf_add_setting(
-				    service, env_whitelist, default_envvars);
+				    conf, service, env_whitelist,
+				    default_envvars);
 				if (errnum != 0)
 					goto close_unit_file;
 

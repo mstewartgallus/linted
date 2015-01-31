@@ -19,16 +19,21 @@
 #include "linted/error.h"
 
 #include <stdio.h>
+#include <stdint.h>
 
 /**
  * @file
  *
  * Parses configuration data.
+ *
+ * @todo Abstract out configurations as abstract ids that a conf DB
+ *       hands out.
  */
 
 struct linted_conf_db;
 struct linted_conf;
-struct linted_conf_section;
+
+typedef uint_fast64_t linted_conf_section;
 
 struct linted_conf_db;
 
@@ -55,10 +60,11 @@ char const *const *linted_conf_find(struct linted_conf *unit,
                                     char const *section, char const *field);
 
 linted_error linted_conf_add_section(struct linted_conf *unit,
-                                     struct linted_conf_section **sectionp,
+                                     linted_conf_section *sectionp,
                                      char *section_name);
 
-linted_error linted_conf_add_setting(struct linted_conf_section *section,
-                                     char *field, char const *const *value);
+linted_error linted_conf_add_setting(struct linted_conf *unit,
+                                     linted_conf_section section, char *field,
+                                     char const *const *value);
 
 #endif /* LINTED_CONF_H */
