@@ -79,7 +79,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 		case '[': {
 			if (line_buffer[line_size - 1U] != ']') {
 				errnum = EINVAL;
-				goto free_line_buffer;
+				break;
 			}
 
 			char *section_name =
@@ -87,7 +87,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 			if (0 == section_name) {
 				errnum = errno;
 				LINTED_ASSUME(errnum != 0);
-				goto free_line_buffer;
+				break;
 			}
 
 			{
@@ -99,79 +99,79 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 				current_section = xx;
 			}
 			has_current_section = true;
+			break;
 
 		free_section_name:
-			if (errnum != 0) {
-				linted_mem_free(section_name);
-				goto free_line_buffer;
-			}
+			linted_mem_free(section_name);
 			break;
 		}
 
 		default: {
 			if (!has_current_section) {
 				errnum = EINVAL;
-				goto free_line_buffer;
+				break;
 			}
 
-			bool has_equals_sign = false;
-			bool has_whitespace = false;
 			size_t equals_position;
 			size_t whitespace_position;
 			size_t field_len;
 			for (size_t ii = 0U; ii < line_size; ++ii) {
 				switch (line_buffer[ii]) {
 				case '=':
-					has_equals_sign = true;
 					equals_position = ii;
 					field_len = ii;
-					goto exit_whitespace_or_equals_search;
+					goto found_equal;
 
 				case ' ':
 				case '\t':
 					if (0U == ii) {
 						errnum = EINVAL;
-						goto free_line_buffer;
+						break;
 					}
 
-					has_whitespace = true;
 					whitespace_position = ii;
 					field_len = ii;
-					goto exit_whitespace_or_equals_search;
+					goto found_whitespace;
 
 				case '\n':
 					errnum = EINVAL;
-					goto free_line_buffer;
+					break;
+
+				default:
+					break;
 				}
+				if (errnum != 0)
+					break;
 			}
-		exit_whitespace_or_equals_search:
+			break;
 
-			if (has_whitespace) {
-				for (size_t ii = whitespace_position + 1U;
-				     ii < line_size; ++ii) {
-					switch (line_buffer[ii]) {
-					case '=':
-						has_equals_sign = true;
-						equals_position = ii;
-						goto exit_equals_search;
+		found_whitespace:
+			for (size_t ii = whitespace_position + 1U;
+			     ii < line_size; ++ii) {
+				switch (line_buffer[ii]) {
+				case '=':
+					equals_position = ii;
+					goto found_equal;
 
-					case ' ':
-					case '\t':
-						break;
+				case ' ':
+				case '\t':
+					break;
 
-					default:
-						errnum = EINVAL;
-						goto free_line_buffer;
-					}
+				default:
+					errnum = EINVAL;
+					break;
 				}
+				if (errnum != 0)
+					break;
 			}
-		exit_equals_search:
+			if (errnum != 0)
+				break;
 
-			if (!has_equals_sign) {
-				errnum = EINVAL;
-				goto free_line_buffer;
-			}
+			errnum = EINVAL;
+			break;
 
+		found_equal:
+			;
 			size_t value_offset = equals_position + 1U;
 			size_t value_len = line_size - value_offset;
 
@@ -180,7 +180,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 				void *xx;
 				errnum = linted_mem_alloc(&xx, field_len + 1U);
 				if (errnum != 0)
-					goto free_line_buffer;
+					break;
 				field = xx;
 			}
 			memcpy(field, line_buffer, field_len);
@@ -226,12 +226,11 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 				linted_mem_free(field);
 
 			if (errnum != 0)
-				goto free_line_buffer;
+				break;
 		}
 		}
 	}
 
-free_line_buffer:
 	linted_mem_free(line_buffer);
 
 	if (errnum != 0)
@@ -470,19 +469,22 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 	struct conf_section *sections = bucket->sections;
 
 	bool have_found_field = false;
-	size_t found_field;
-	for (size_t ii = 0U; ii < sections_size; ++ii) {
-		if (0 == strcmp(sections[ii].name, section_name)) {
-			have_found_field = true;
-			found_field = ii;
-			break;
+	{
+		size_t found_field;
+		for (size_t ii = 0U; ii < sections_size; ++ii) {
+			if (0 == strcmp(sections[ii].name, section_name)) {
+				have_found_field = true;
+				found_field = ii;
+				break;
+			}
 		}
-	}
 
-	if (have_found_field) {
-		linted_mem_free(section_name);
-		*sectionp = section_id_create(section_hash, found_field);
-		return 0;
+		if (have_found_field) {
+			linted_mem_free(section_name);
+			*sectionp =
+			    section_id_create(section_hash, found_field);
+			return 0;
+		}
 	}
 
 	size_t new_sections_size = sections_size + 1U;
@@ -508,7 +510,7 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 	bucket->sections_size = new_sections_size;
 	bucket->sections = new_sections;
 
-	*sectionp = section_id_create(section_hash, found_field);
+	*sectionp = section_id_create(section_hash, sections_size);
 	return 0;
 }
 
@@ -598,19 +600,22 @@ linted_error linted_conf_add_setting(struct linted_conf *conf,
 	size_t settings_size = bucket->settings_size;
 	struct conf_setting *settings = bucket->settings;
 
-	size_t found_field;
-	bool have_found_field = false;
-	for (size_t ii = 0U; ii < settings_size; ++ii) {
-		if (0 == strcmp(settings[ii].field, field)) {
-			found_field = ii;
-			have_found_field = true;
-			break;
-		}
-	}
-
 	size_t additional_values_len = string_list_size(additional_values);
 
-	if (have_found_field) {
+	{
+		size_t found_field;
+		bool have_found_field = false;
+		for (size_t ii = 0U; ii < settings_size; ++ii) {
+			if (0 == strcmp(settings[ii].field, field)) {
+				found_field = ii;
+				have_found_field = true;
+				break;
+			}
+		}
+
+		if (!have_found_field)
+			goto have_not_found_field;
+
 		struct conf_setting *setting = &settings[found_field];
 		char *setting_field = setting->field;
 		char **setting_values = setting->value;
@@ -674,53 +679,53 @@ linted_error linted_conf_add_setting(struct linted_conf *conf,
 			setting->field = field;
 			setting->value = new_value;
 		}
-	} else {
-		char **value_copy;
-		{
-			void *xx;
-			errnum = linted_mem_alloc_array(
-			    &xx, additional_values_len + 1U,
-			    sizeof additional_values[0U]);
-			if (errnum != 0)
-				return errnum;
-			value_copy = xx;
-		}
-		for (size_t ii = 0U; ii < additional_values_len; ++ii) {
-			char *copy = strdup(additional_values[ii]);
-			if (0 == copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				for (size_t jj = 0U; jj < ii; ++jj)
-					linted_mem_free(value_copy[jj]);
-				linted_mem_free(value_copy);
-				return errnum;
-			}
-			value_copy[ii] = copy;
-		}
-		value_copy[additional_values_len] = 0;
-
-		size_t new_settings_size = settings_size + 1U;
-		struct conf_setting *new_settings;
-		{
-			void *xx;
-			errnum = linted_mem_realloc_array(&xx, settings,
-			                                  new_settings_size,
-			                                  sizeof settings[0U]);
-			if (errnum != 0) {
-				for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
-					linted_mem_free(value_copy[ii]);
-				linted_mem_free(value_copy);
-
-				return errnum;
-			}
-			new_settings = xx;
-		}
-		new_settings[settings_size].field = field;
-		new_settings[settings_size].value = value_copy;
-
-		bucket->settings_size = new_settings_size;
-		bucket->settings = new_settings;
+		return 0;
 	}
+have_not_found_field:
+	;
+	char **value_copy;
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, additional_values_len + 1U,
+		                                sizeof additional_values[0U]);
+		if (errnum != 0)
+			return errnum;
+		value_copy = xx;
+	}
+	for (size_t ii = 0U; ii < additional_values_len; ++ii) {
+		char *copy = strdup(additional_values[ii]);
+		if (0 == copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			for (size_t jj = 0U; jj < ii; ++jj)
+				linted_mem_free(value_copy[jj]);
+			linted_mem_free(value_copy);
+			return errnum;
+		}
+		value_copy[ii] = copy;
+	}
+	value_copy[additional_values_len] = 0;
+
+	size_t new_settings_size = settings_size + 1U;
+	struct conf_setting *new_settings;
+	{
+		void *xx;
+		errnum = linted_mem_realloc_array(
+		    &xx, settings, new_settings_size, sizeof settings[0U]);
+		if (errnum != 0) {
+			for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
+				linted_mem_free(value_copy[ii]);
+			linted_mem_free(value_copy);
+
+			return errnum;
+		}
+		new_settings = xx;
+	}
+	new_settings[settings_size].field = field;
+	new_settings[settings_size].value = value_copy;
+
+	bucket->settings_size = new_settings_size;
+	bucket->settings = new_settings;
 
 	return 0;
 }
