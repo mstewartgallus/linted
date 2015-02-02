@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
-#include "log-windows.c"
-#elif defined __linux__
-#include "log-linux.c"
-#else
-#error no logging library implementation for this platform
-#endif
+#include "config.h"
+
+#include "linted/log.h"
+
+/**
+ * @todo Implement logging on Microsoft Windows
+ */
+void linted_log_open(char const *ident)
+{
+}
+
+/**
+ * @todo Implement logging on Microsoft Windows
+ */
+void linted_log(unsigned log_level, char const *format, ...)
+{
+}

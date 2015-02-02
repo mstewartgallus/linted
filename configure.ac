@@ -13,7 +13,7 @@ AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca],,
 dnl
 dnl Other software uses a shell command to get the date but that
 dnl prevents deterministic builds.
-AC_DEFINE([COPYRIGHT_YEAR], ["2014"], [year in copyright message])
+AC_DEFINE([COPYRIGHT_YEAR], ["2015"], [year in copyright message])
 dnl
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects -Wall])
@@ -38,8 +38,7 @@ dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
 dnl
-AC_CHECK_HEADERS([[arpa/inet.h]dnl
-                  [fcntl.h]dnl
+AC_CHECK_HEADERS([[fcntl.h]dnl
                   [locale.h]dnl
                   [limits.h]dnl
                   [stddef.h]dnl
@@ -58,7 +57,8 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_CHECK_HEADERS([[mntent.h]dnl
+AC_CHECK_HEADERS([[arpa/inet.h]dnl
+                  [mntent.h]dnl
                   [sys/mount.h]dnl
                   [sys/socket.h]dnl
                   [syslog.h]], [], [
@@ -81,7 +81,6 @@ AC_CHECK_FUNCS([[dup2]dnl
                 [memset]dnl
                 [mkdir]dnl
                 [strdup]dnl
-                [strndup]dnl
                 [strrchr]dnl
                 [strstr]dnl
                 [strtol]], [], [
