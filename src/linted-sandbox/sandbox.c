@@ -45,8 +45,8 @@
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/wait.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #include <linux/audit.h>

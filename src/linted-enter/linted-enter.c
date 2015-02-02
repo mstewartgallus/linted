@@ -18,22 +18,18 @@
 #include "config.h"
 
 #include "linted/error.h"
-#include "linted/io.h"
 #include "linted/ko.h"
-#include "linted/locale.h"
-#include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 static uint_fast8_t enter_start(char const *const process_name, size_t argc,

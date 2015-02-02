@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
                                 char const *pathname, unsigned long flags,

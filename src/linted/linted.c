@@ -20,15 +20,14 @@
 #include "settings.h"
 
 #include "linted/error.h"
-#include "linted/dir.h"
 #include "linted/io.h"
 #include "linted/locale.h"
 #include "linted/log.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <inttypes.h>
 #include <libgen.h>
 #include <locale.h>
@@ -37,7 +36,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/auxv.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"

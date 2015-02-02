@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 #include "config.h"
 
 #include "linted/error.h"
-#include "linted/io.h"
 #include "linted/log.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -28,6 +27,7 @@
 #include <errno.h>
 #include <locale.h>
 #include <libgen.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

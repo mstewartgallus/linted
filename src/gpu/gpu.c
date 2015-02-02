@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,12 @@
 #include "linted/gpu.h"
 #include "linted/log.h"
 #include "linted/mem.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
-#include <string.h>
+#include <stdint.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>

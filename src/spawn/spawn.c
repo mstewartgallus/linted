@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,13 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/syscall.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #define INT_STRING_PADDING "XXXXXXXXXXXXXX"

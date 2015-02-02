@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 struct linted_pid_task_waitid
 {

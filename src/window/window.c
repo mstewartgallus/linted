@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <string.h>
 #include <unistd.h>
 
 linted_error linted_window_write(linted_window window, uint_fast32_t in)

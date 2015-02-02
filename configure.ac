@@ -180,6 +180,7 @@ AC_CONFIG_FILES([scripts/test
                  scripts/check-clang-analysis
                  scripts/check-cppcheck
                  scripts/check-frama-c
+                 scripts/check-iwyu
                  scripts/check-splint],[
                  chmod u+x "${ac_file}"
 ])

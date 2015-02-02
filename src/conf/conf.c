@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,15 @@
 #include "config.h"
 
 #include "linted/conf.h"
-#include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <wordexp.h>
 
 static size_t string_list_size(char const *const *list);

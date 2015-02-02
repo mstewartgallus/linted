@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 #include "config.h"
 
 #include "linted/asynch.h"
-#include "linted/error.h"
 #include "linted/controller.h"
+#include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
@@ -30,16 +30,11 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <inttypes.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_SIM_INT_MAX / 8)

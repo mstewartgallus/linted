@@ -24,13 +24,12 @@
 #include "linted/start.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 static uint_fast8_t control_start(char const *const process_name, size_t argc,
                                   char const *const argv[]);

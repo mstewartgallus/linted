@@ -1,0 +1,25 @@
+#! /usr/bin/env sh
+
+set -e
+set -C
+set -u
+
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+}
+
+source_files() {
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
+}
+
+SCRIPTS="@srcdir@"
+BINARY="$1"
+
+: ${LINTED_IWYU:=iwyu}
+
+for II in $(source_files)
+do
+    "${LINTED_IWYU}" $(source_cflags) "${II}" & :
+done
+
+wait

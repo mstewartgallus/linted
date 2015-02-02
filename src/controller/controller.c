@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 
 #include "linted/controller.h"
 
-#include "linted/ko.h"
 #include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/rpc.h"
-#include "linted/util.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>
 
 struct linted_controller_task_send
