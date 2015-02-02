@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,3 +20,7 @@
 typedef unsigned linted_ko;
 
 #define LINTED_KO_CWD ((linted_ko) - 1)
+
+#define LINTED_KO_STDIN 0U
+#define LINTED_KO_STDOUT 1U
+#define LINTED_KO_STDERR 2U

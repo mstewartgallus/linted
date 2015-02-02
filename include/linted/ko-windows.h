@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,3 +23,11 @@ struct linted_ko_;
 typedef struct linted_ko_ *linted_ko;
 
 #define LINTED_KO_CWD ((linted_ko) - 1)
+
+#define LINTED_KO_STDIN linted_ko__get_stdin()
+#define LINTED_KO_STDOUT linted_ko__get_stdout()
+#define LINTED_KO_STDERR linted_ko__get_stderr()
+
+linted_ko linted_ko__get_stdin(void);
+linted_ko linted_ko__get_stdout(void);
+linted_ko linted_ko__get_stderr(void);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/un.h>
+
+#define ADMIN_PATH_MAX (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
 struct linted_admin_task_accept
 {
@@ -266,7 +269,7 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 	if (0 == path && path_len != 0U)
 		return EINVAL;
 
-	if (path_len > LINTED_ADMIN_PATH_MAX)
+	if (path_len > ADMIN_PATH_MAX)
 		return ENAMETOOLONG;
 
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
@@ -338,7 +341,7 @@ linted_error linted_admin_connect(linted_admin *admin, char const *path,
 {
 	linted_error errnum = 0;
 
-	if (path_len > LINTED_ADMIN_PATH_MAX)
+	if (path_len > ADMIN_PATH_MAX)
 		return ENAMETOOLONG;
 
 	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
@@ -372,37 +375,6 @@ linted_error linted_admin_connect(linted_admin *admin, char const *path,
 
 close_sock:
 	linted_ko_close(sock);
-	return errnum;
-}
-
-linted_error linted_admin_path(linted_admin admin,
-                               char buf[static LINTED_ADMIN_PATH_MAX],
-                               size_t *len)
-{
-	{
-		struct sockaddr_un address = { 0 };
-
-		socklen_t addr_len;
-		{
-			socklen_t xx = sizeof address;
-			if (-1 == getsockname(admin, (void *)&address, &xx))
-				goto getsockname_failed;
-			addr_len = xx;
-		}
-
-		*len = addr_len - sizeof(sa_family_t);
-		memcpy(buf, address.sun_path, *len);
-	}
-
-	if ('\0' == buf[0U])
-		buf[0U] = '@';
-
-	return 0;
-
-getsockname_failed:
-	;
-	linted_error errnum = errno;
-	LINTED_ASSUME(errnum != 0);
 	return errnum;
 }
 

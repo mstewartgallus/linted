@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,30 +88,31 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 	++last_index;
 
 	if (need_help) {
-		ctl_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-		         LINTED_STR(PACKAGE_URL),
+		ctl_help(LINTED_KO_STDOUT, process_name,
+		         LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
 		         LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(STDERR_FILENO, process_name,
+		linted_locale_on_bad_option(LINTED_KO_STDERR, process_name,
 		                            bad_option);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+		linted_locale_version(LINTED_KO_STDOUT,
+		                      LINTED_STR(PACKAGE_STRING),
 		                      LINTED_STR(COPYRIGHT_YEAR));
 		return EXIT_SUCCESS;
 	}
 
 	if (0 == command) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: missing COMMAND\n", process_name);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
@@ -139,10 +140,10 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		return run_stop(process_name, new_argc, new_argv);
 	}
 
-	linted_io_write_format(STDERR_FILENO, 0,
+	linted_io_write_format(LINTED_KO_STDERR, 0,
 	                       "%s: unrecognized command '%s'\n", process_name,
 	                       command);
-	linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+	linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 	                                LINTED_STR("--help"));
 	return EXIT_FAILURE;
 }
@@ -179,58 +180,59 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	if (need_add_help) {
-		status_help(STDOUT_FILENO, process_name,
+		status_help(LINTED_KO_STDOUT, process_name,
 		            LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
 		            LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(STDERR_FILENO, process_name,
+		linted_locale_on_bad_option(LINTED_KO_STDERR, process_name,
 		                            bad_option);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (bad_argument != 0) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: too many arguments: '%s'\n",
 		                       process_name, bad_argument);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+		linted_locale_version(LINTED_KO_STDOUT,
+		                      LINTED_STR(PACKAGE_STRING),
 		                      LINTED_STR(COPYRIGHT_YEAR));
 		return EXIT_SUCCESS;
 	}
 
 	char const *path = getenv("LINTED_ADMIN_SOCKET");
 	if (0 == path) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (0 == name) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: missing SERVICE\n", process_name);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	size_t name_len = strlen(name);
 	if (name_len > LINTED_UNIT_NAME_MAX) {
-		failure(STDERR_FILENO, process_name, LINTED_STR("SERVICE"),
+		failure(LINTED_KO_STDERR, process_name, LINTED_STR("SERVICE"),
 		        EINVAL);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
@@ -241,14 +243,14 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		linted_admin xx;
 		errnum = linted_admin_connect(&xx, path, path_len);
 		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
+			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
 		admin = xx;
 	}
 
-	linted_io_write_format(STDOUT_FILENO, 0,
+	linted_io_write_format(LINTED_KO_STDOUT, 0,
 	                       "%s: sending the status request for %s\n",
 	                       process_name, name);
 
@@ -261,7 +263,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 
 		errnum = linted_admin_send_request(admin, &request);
 		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
+			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not send request"), errnum);
 			return EXIT_FAILURE;
 		}
@@ -273,7 +275,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		size_t xx;
 		errnum = linted_admin_recv_reply(admin, &reply, &xx);
 		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
+			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
@@ -281,24 +283,25 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	if (0U == bytes_read) {
-		linted_io_write_format(STDERR_FILENO, 0, "%s: socket hung up\n",
-		                       process_name);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: socket hung up\n", process_name);
 		return EXIT_FAILURE;
 	}
 
 	/* Sent malformed input */
 	if (bytes_read != sizeof reply) {
-		linted_io_write_format(
-		    STDERR_FILENO, 0, "%s: reply was too small: %" PRIuMAX "\n",
-		    process_name, (uintmax_t)bytes_read);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: reply was too small: %" PRIuMAX
+		                       "\n",
+		                       process_name, (uintmax_t)bytes_read);
 		return EXIT_FAILURE;
 	}
 
 	if (reply.status.is_up) {
-		linted_io_write_format(STDOUT_FILENO, 0, "%s: %s is up\n",
+		linted_io_write_format(LINTED_KO_STDOUT, 0, "%s: %s is up\n",
 		                       process_name, name);
 	} else {
-		linted_io_write_format(STDOUT_FILENO, 0, "%s: %s is down\n",
+		linted_io_write_format(LINTED_KO_STDOUT, 0, "%s: %s is down\n",
 		                       process_name, name);
 	}
 
@@ -332,41 +335,42 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	if (need_add_help) {
-		stop_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-		          LINTED_STR(PACKAGE_URL),
+		stop_help(LINTED_KO_STDOUT, process_name,
+		          LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
 		          LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(STDERR_FILENO, process_name,
+		linted_locale_on_bad_option(LINTED_KO_STDERR, process_name,
 		                            bad_option);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (bad_argument != 0) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: too many arguments: '%s'\n",
 		                       process_name, bad_argument);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+		linted_locale_version(LINTED_KO_STDOUT,
+		                      LINTED_STR(PACKAGE_STRING),
 		                      LINTED_STR(COPYRIGHT_YEAR));
 		return EXIT_SUCCESS;
 	}
 
 	char const *path = getenv("LINTED_ADMIN_SOCKET");
 	if (0 == path) {
-		linted_io_write_format(STDERR_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: missing LINTED_ADMIN_SOCKET\n",
 		                       process_name);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
@@ -377,14 +381,14 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		linted_admin xx;
 		errnum = linted_admin_connect(&xx, path, path_len);
 		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
+			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
 		admin = xx;
 	}
 
-	linted_io_write_format(STDOUT_FILENO, 0,
+	linted_io_write_format(LINTED_KO_STDOUT, 0,
 	                       "%s: sending the stop request for the gui\n",
 	                       process_name);
 
@@ -398,7 +402,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		errnum = linted_admin_send_request(admin, &request);
 	}
 	if (errnum != 0) {
-		failure(STDERR_FILENO, process_name,
+		failure(LINTED_KO_STDERR, process_name,
 		        LINTED_STR("can send request"), errnum);
 		return EXIT_FAILURE;
 	}
@@ -410,14 +414,14 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		size_t yy;
 		errnum = linted_admin_recv_reply(admin, &xx, &yy);
 		if (errnum != 0) {
-			failure(STDERR_FILENO, process_name,
+			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
 		bytes_read = yy;
 
 		if (0U == bytes_read) {
-			linted_io_write_format(STDERR_FILENO, 0,
+			linted_io_write_format(LINTED_KO_STDERR, 0,
 			                       "%s: socket hung up\n",
 			                       process_name);
 			return EXIT_FAILURE;
@@ -427,10 +431,10 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	if (was_up) {
-		linted_io_write_format(STDOUT_FILENO, 0, "%s: gui was killed\n",
-		                       process_name);
+		linted_io_write_format(LINTED_KO_STDOUT, 0,
+		                       "%s: gui was killed\n", process_name);
 	} else {
-		linted_io_write_format(STDOUT_FILENO, 0,
+		linted_io_write_format(LINTED_KO_STDOUT, 0,
 		                       "%s: the gui was not killed\n",
 		                       process_name);
 	}

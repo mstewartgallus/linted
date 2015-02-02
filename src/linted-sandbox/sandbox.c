@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -655,8 +655,8 @@ close_err_reader:
 		return EXIT_FAILURE;
 	}
 
-	linted_ko_close(STDIN_FILENO);
-	linted_ko_close(STDOUT_FILENO);
+	linted_ko_close(LINTED_KO_STDIN);
+	linted_ko_close(LINTED_KO_STDOUT);
 
 	if (!wait)
 		return EXIT_SUCCESS;
@@ -804,7 +804,7 @@ __attribute__((no_sanitize_address)) static int first_fork_routine(
 	if (errnum != 0)
 		goto fail;
 
-	if (-1 == dup2(logger_reader, STDIN_FILENO)) {
+	if (-1 == dup2(logger_reader, LINTED_KO_STDIN)) {
 		errnum = errno;
 		goto fail;
 	}
@@ -834,12 +834,12 @@ __attribute__((no_sanitize_address)) static int second_fork_routine(void *arg)
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
 
-	if (-1 == dup2(logger_writer, STDOUT_FILENO)) {
+	if (-1 == dup2(logger_writer, LINTED_KO_STDOUT)) {
 		errnum = errno;
 		goto fail;
 	}
 
-	if (-1 == dup2(logger_writer, STDERR_FILENO)) {
+	if (-1 == dup2(logger_writer, LINTED_KO_STDERR)) {
 		errnum = errno;
 		goto fail;
 	}

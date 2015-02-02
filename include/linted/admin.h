@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,11 @@
 #include "linted/ko.h"
 #include "linted/unit.h"
 
-#include <sys/un.h>
-
 /**
  * @file
  *
  * Monitor, probe and control an init process.
  */
-
-#define LINTED_ADMIN_PATH_MAX (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
 
 struct linted_asynch_pool;
 struct linted_asynch_task;
@@ -83,10 +79,6 @@ linted_error linted_admin_bind(linted_admin *admin, int backlog,
 
 linted_error linted_admin_connect(linted_admin *admin, char const *path,
                                   size_t path_len);
-
-linted_error linted_admin_path(linted_admin admin,
-                               char buf[static LINTED_ADMIN_PATH_MAX],
-                               size_t *len);
 
 void linted_admin_accept(struct linted_admin_task_accept *task,
                          unsigned task_action, linted_admin admin);

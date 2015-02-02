@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,21 +148,23 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	}
 
 	if (need_help) {
-		do_help(STDOUT_FILENO, process_name, LINTED_STR(PACKAGE_NAME),
-		        LINTED_STR(PACKAGE_URL), LINTED_STR(PACKAGE_BUGREPORT));
+		do_help(LINTED_KO_STDOUT, process_name,
+		        LINTED_STR(PACKAGE_NAME), LINTED_STR(PACKAGE_URL),
+		        LINTED_STR(PACKAGE_BUGREPORT));
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(STDERR_FILENO, process_name,
+		linted_locale_on_bad_option(LINTED_KO_STDERR, process_name,
 		                            bad_option);
-		linted_locale_try_for_more_help(STDERR_FILENO, process_name,
+		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(STDOUT_FILENO, LINTED_STR(PACKAGE_STRING),
+		linted_locale_version(LINTED_KO_STDOUT,
+		                      LINTED_STR(PACKAGE_STRING),
 		                      LINTED_STR(COPYRIGHT_YEAR));
 		return EXIT_SUCCESS;
 	}

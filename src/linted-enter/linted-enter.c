@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,7 +99,8 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 		linted_ko_close(fds[ii]);
 	}
 
-	linted_ko stdfiles[] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO };
+	linted_ko stdfiles[] = { LINTED_KO_STDIN, LINTED_KO_STDOUT,
+		                 LINTED_KO_STDERR };
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
 		linted_ko ko = stdfiles[ii];
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,4 +150,19 @@ linted_error linted_ko_close(linted_ko ko)
 	}
 
 	return 0;
+}
+
+linted_ko linted_ko__get_stdin(void)
+{
+	return (linted_ko)GetStdHandle(STD_INPUT_HANDLE);
+}
+
+linted_ko linted_ko__get_stdout(void)
+{
+	return (linted_ko)GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+linted_ko linted_ko__get_stderr(void)
+{
+	return (linted_ko)GetStdHandle(STD_ERROR_HANDLE);
 }
