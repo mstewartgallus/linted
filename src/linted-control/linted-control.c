@@ -22,11 +22,14 @@
 #include "linted/locale.h"
 #include "linted/mem.h"
 #include "linted/start.h"
+#include "linted/str.h"
+#include "linted/unit.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>

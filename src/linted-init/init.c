@@ -29,12 +29,12 @@
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 extern char **environ;
 

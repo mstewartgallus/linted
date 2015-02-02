@@ -27,14 +27,13 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
-#include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <syscall.h>
 #include <unistd.h>
-
-#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
 
 struct adddup2
 {

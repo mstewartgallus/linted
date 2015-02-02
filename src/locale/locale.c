@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+
+#include <stddef.h>
 
 linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
                                          char const *bad_option)

@@ -25,6 +25,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <unistd.h>
 
 linted_error linted_window_write(linted_window window, uint_fast32_t in)

@@ -20,7 +20,7 @@
 #include "linted/mem.h"
 #include "linted/unit.h"
 
-#include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 
 union unit_union

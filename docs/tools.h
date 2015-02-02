@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Steven Stewart-Gallus
+/* Copyright (C) 2014, 2015 Steven Stewart-Gallus
  *
  * Copying and distribution of this file, with or without
  * modification, are permitted in any medium without royalty provided
@@ -143,6 +143,11 @@
  *
  * <li> [Git](http://git-scm.com//)
  * A version control system
+ * </li>
+ *
+ * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
+ * Is a bit buggy.
+ * Use like: `make CC='iwyu -I/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include-fixed' -k | tee iwyu.log`
  * </li>
  *
  * @section rejected Rejected Tools
