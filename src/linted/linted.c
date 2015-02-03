@@ -53,7 +53,7 @@ enum { HELP, VERSION_OPTION };
 extern char **environ;
 
 static unsigned char main_start(char const *const process_name, size_t argc,
-                                char const *const argv[const]);
+                                char const *const *argv);
 
 static linted_error exec_init(char const *init);
 
@@ -89,7 +89,7 @@ static char const *const argstrs[] = {[HELP] = "--help",
 	                              [VERSION_OPTION] = "--version" };
 
 static unsigned char main_start(char const *const process_name, size_t argc,
-                                char const *const argv[const])
+                                char const *const *const argv)
 {
 	if (is_privileged()) {
 		linted_log(LINTED_LOG_ERROR,

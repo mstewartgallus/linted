@@ -1,0 +1,38 @@
+#! /usr/bin/env sh
+# Copyright (C) 2015 Steven Stewart-Gallus
+#
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.
+
+set -e
+set -C
+set -u
+
+SCRIPTS="@srcdir@"
+BINARY="$1"
+
+: ${LINTED_SPARSE:=sparse}
+
+source_cflags() {
+    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+}
+
+source_files() {
+    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
+}
+
+"${LINTED_SPARSE}"\
+    -D__linux__\
+    -D__unix__\
+    -D__amd64__\
+    -Wsparse-all\
+    -Wno-declaration-after-statement\
+    -Wno-non-pointer-null\
+    -Wno-transparent-union\
+    -Wno-undef\
+    -Wno-cast-truncate\
+    -Wno-missing-braces\
+    -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
+    $(source_cflags)\
+    $(source_files)

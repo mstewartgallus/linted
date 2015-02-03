@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -403,12 +403,6 @@ unsigned linted_asynch_task_action(struct linted_asynch_task *task)
 linted_error linted_asynch_task_errnum(struct linted_asynch_task *task)
 {
 	return task->errnum;
-}
-
-void linted_asynch_task_seterrnum(struct linted_asynch_task *task,
-                                  linted_error errnum)
-{
-	task->errnum = errnum;
 }
 
 void *linted_asynch_task_data(struct linted_asynch_task *task)

@@ -52,8 +52,8 @@ struct action_state
 	linted_sim_int x_tilt;
 	linted_sim_int y_tilt;
 
-	int x : 2U;
-	int z : 2U;
+	signed int x : 2U;
+	signed int z : 2U;
 
 	bool jumping : 1U;
 };

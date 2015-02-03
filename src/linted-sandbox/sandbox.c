@@ -148,7 +148,7 @@ struct second_fork_args
 };
 
 static unsigned char sandbox_start(char const *const process_name, size_t argc,
-                                   char const *const argv[const]);
+                                   char const *const argv[]);
 
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
@@ -176,7 +176,7 @@ struct linted_start_config const linted_start_config = {
 };
 
 static unsigned char sandbox_start(char const *const process_name, size_t argc,
-                                   char const *const argv[const])
+                                   char const *const argv[])
 {
 	linted_error errnum;
 

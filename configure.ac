@@ -181,7 +181,8 @@ AC_CONFIG_FILES([scripts/test
                  scripts/check-cppcheck
                  scripts/check-frama-c
                  scripts/check-iwyu
-                 scripts/check-splint],[
+                 scripts/check-splint
+                 scripts/check-sparse],[
                  chmod u+x "${ac_file}"
 ])
 dnl
