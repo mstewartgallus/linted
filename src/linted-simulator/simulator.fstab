@@ -10,7 +10,7 @@ none	../../var/simulator	none	mkdir,nomount
 proc	proc	proc	mkdir,nosuid,noexec,hidepid=2
 
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
-../../controller	run/controller	none	touch,nosuid,nodev,noexec,bind,comment=500
+../../controller	run/controller	none	touch,bind
 ../../updater	run/updater	none	touch,bind
 
 tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
