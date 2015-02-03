@@ -16,7 +16,7 @@ Description=Linted-Window Window Creator
 Documentation='man:linted-window(6)'
 
 [Service]
-ExecStart="${LINTED_WINDOW}"
+ExecStart="${LINTED_WINDOW}" "window" "window-notifier-gui" "window-notifier-drawer"
 
 NoNewPrivileges=true
 X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWIPC CLONE_NEWNET

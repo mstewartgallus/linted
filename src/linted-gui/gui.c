@@ -136,10 +136,19 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
+	if (argc < 3) {
+		linted_log(LINTED_LOG_ERROR, "missing some of 3 file operands");
+		return EXIT_FAILURE;
+	}
+
+	char const *window_path = argv[1U];
+	char const *window_notifier_path = argv[2U];
+	char const *controller_path = argv[3U];
+
 	linted_window window_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/window",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
@@ -152,9 +161,8 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	linted_window_notifier notifier;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, "/run/window-notifier",
-		                   LINTED_KO_RDONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+		                        window_notifier_path, LINTED_KO_RDONLY);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
@@ -166,7 +174,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	linted_controller controller;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, controller_path,
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",

@@ -130,10 +130,18 @@ static unsigned char simulator_start(char const *const process_name,
 {
 	linted_error errnum;
 
+	if (argc < 2) {
+		linted_log(LINTED_LOG_ERROR, "missing some of 2 file operands");
+		return EXIT_FAILURE;
+	}
+
+	char const *controller_path = argv[1U];
+	char const *updater_path = argv[2U];
+
 	linted_controller controller;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/controller",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, controller_path,
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
@@ -146,7 +154,7 @@ static unsigned char simulator_start(char const *const process_name,
 	linted_ko updater;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/run/updater",
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
