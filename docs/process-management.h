@@ -57,11 +57,16 @@
  * @section ipc IPC
  *
  * So far we have chosen to use file FIFOs as they can be easily bound
- * in and outside of sandboxes.  However, they are not the best as
- * they report ready to read zero bytes when there are no more writers
- * and they give EPIPE errors when there are no more readers.  As
- * well, they cannot be opened nonblockingly (they give ENXIO errors)
- * when there are not partner openers.
+ * in and outside of sandboxes.
+ *
+ * Note that when there are no more open writers nonblocking fifos
+ * read zero bytes but don't return from poll with POLLIN so one has
+ * to poll first for reading and then read to avoid falsely returning
+ * a read with zero bytes.
+ *
+ * As well, fifos cannot be opened with write only permission
+ * nonblockingly (they give ENXIO errors) when there are not open
+ * readers.
  *
  * @subsection requirements Requirements
  * - Presents a security boundary.
