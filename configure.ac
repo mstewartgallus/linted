@@ -65,14 +65,15 @@ AC_CHECK_HEADERS([[arpa/inet.h]dnl
   AC_MSG_WARN([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_SEARCH_LIBS([sin], [m], [], [
+LINTED_CHECK_LIB([MATH_LIBS], [m], [sin], [], [
    AC_MSG_ERROR([Unable to find a math library])
 ])
-AC_SEARCH_LIBS([clock_gettime], [rt], [], [
+dnl
+LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
    AC_MSG_ERROR([Unable to find a realtime functions library])
 ])
 dnl
-AC_SEARCH_LIBS([cap_set_proc], [cap], [], [
+LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
    AC_MSG_WARN([Unable to find a POSIX capabilities library])
 ])
 dnl

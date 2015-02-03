@@ -27,4 +27,4 @@ EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
   src/ko/libko.la\
   src/log/liblog.la\
   src/start/libstart.la\
-  -lcap
+  $(CAP_LIBS)

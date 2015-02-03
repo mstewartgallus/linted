@@ -20,5 +20,4 @@ noinst_LTLIBRARIES+=%D%/libpid.la
 %C%_libpid_la_LIBADD=\
   src/ko/libko.la\
   src/io/libio.la\
-  src/queue/libqueue.la\
-  -lrt
+  src/queue/libqueue.la

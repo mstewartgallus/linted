@@ -19,5 +19,4 @@ noinst_LTLIBRARIES+=%D%/libsignal.la
 %C%_libsignal_la_SOURCES=%D%/signal.c include/linted/signal.h
 %C%_libsignal_la_LIBADD=\
   src/ko/libko.la\
-  src/queue/libqueue.la\
-  -lrt
+  src/queue/libqueue.la

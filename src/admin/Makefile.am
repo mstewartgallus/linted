@@ -21,6 +21,4 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
   include/linted/admin.h
 %C%_libadmin_la_LIBADD=\
   src/io/libio.la\
-  src/ko/libko.la\
-  \
-  -lrt
+  src/ko/libko.la

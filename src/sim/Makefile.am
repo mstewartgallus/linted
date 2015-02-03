@@ -17,7 +17,7 @@
 noinst_LTLIBRARIES+=%D%/libsim.la
 
 %C%_libsim_la_SOURCES=include/linted/sim.h
-%C%_libsim_la_LIBADD=-lm
+%C%_libsim_la_LIBADD=$(MATH_LIB)
 
 TESTS+=%D%/test_sim_angle
 

@@ -24,5 +24,4 @@ EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-linux.c %D%/asynch-windows.c
   src/pid/libpid.la\
   src/queue/libqueue.la\
   src/sched/libsched.la\
-  src/signal/libsignal.la\
-  -lrt
+  src/signal/libsignal.la

@@ -21,7 +21,7 @@ noinst_LTLIBRARIES+=%D%/libgpu.la
   src/assets/libassets.la\
   src/log/liblog.la\
   \
-  -lm\
+  $(MATH_LIBS)\
   $(EGL_LIBS) $(GLES_LIBS)
 
 %C%_libgpu_la_CPPFLAGS=\

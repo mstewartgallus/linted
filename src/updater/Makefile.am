@@ -22,5 +22,5 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 %C%_libupdater_la_LIBADD=\
   src/ko/libko.la\
   \
-  -lm
+  $(MATH_LIBS)
 dist_pkgdefaultunits_DATA+=%D%/units/updater.socket

@@ -20,4 +20,4 @@ noinst_LTLIBRARIES+=%D%/libsched.la
 %C%_libsched_la_LIBADD=\
   src/ko/libko.la\
   src/queue/libqueue.la\
-  -lrt
+  $(REALTIME_LIBS)

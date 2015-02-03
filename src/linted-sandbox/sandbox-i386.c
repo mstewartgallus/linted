@@ -62,8 +62,6 @@ static struct sock_filter const real_filter[] = {
 	/**/ ALLOW(mmap),
 	/**/ ALLOW(mmap2),
 	/**/ ALLOW(mprotect),
-	/**/ ALLOW(mq_timedreceive),
-	/**/ ALLOW(mq_timedsend),
 	/**/ ALLOW(munmap),
 	/**/ ALLOW(open),
 	/**/ ALLOW(openat),
