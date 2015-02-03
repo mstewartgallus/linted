@@ -107,6 +107,8 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 
 static void on_term(int signo)
 {
+	linted_error old_errnum = errno;
+
 	if (-1 == kill(-getpgrp(), signo)) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -114,20 +116,31 @@ static void on_term(int signo)
 	}
 
 	/* Prevent looping */
-	for (;;) {
-		sigset_t exitset;
-		sigemptyset(&exitset);
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
-			sigaddset(&exitset, exit_signals[ii]);
+	sigset_t exitset;
+	sigemptyset(&exitset);
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
+		sigaddset(&exitset, exit_signals[ii]);
 
+	struct timespec timeout = { 0 };
+
+	for (;;) {
 		siginfo_t info;
-		if (-1 == sigwaitinfo(&exitset, &info))
+		if (-1 == sigtimedwait(&exitset, &info, &timeout)) {
+			linted_error errnum = errno;
+			if (EINTR == errnum)
+				continue;
+			assert(EAGAIN == errnum);
 			break;
+		}
 	}
+
+	errno = old_errnum;
 }
 
 static void on_sigchld(int signo)
 {
+	linted_error old_errnum = errno;
+
 	for (;;) {
 		pid_t pid;
 		int wait_status;
@@ -153,6 +166,8 @@ static void on_sigchld(int signo)
 		if (0 == pid)
 			break;
 	}
+
+	errno = old_errnum;
 }
 
 static linted_error set_name(char const *name)
