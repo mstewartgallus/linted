@@ -114,6 +114,15 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	if (errnum != 0)
 		return errnum;
 
+	if (!file_wronly) {
+		if (-1 == fcntl(fildes, F_SETFL, O_NONBLOCK | oflags)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			linted_ko_close(fildes);
+			return errnum;
+		}
+	}
+
 	*kop = fildes;
 
 	return 0;
