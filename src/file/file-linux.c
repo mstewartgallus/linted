@@ -82,6 +82,10 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	 */
 	int oflags = O_CLOEXEC | O_NONBLOCK | O_CREAT;
 
+	/* FIFO writers give ENXIO for nonblocking opens without partners */
+	if (!file_wronly)
+		oflags |= O_NONBLOCK;
+
 	if (file_rdonly)
 		oflags |= O_RDONLY;
 

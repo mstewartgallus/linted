@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -84,6 +84,10 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	 * functions handle that anyways and open may block otherwise.
 	 */
 	int oflags = O_CLOEXEC | O_NOCTTY;
+
+	/* FIFO writers give ENXIO for nonblocking opens without partners */
+	if (!ko_wronly)
+		oflags |= O_NONBLOCK;
 
 	if (ko_rdonly)
 		oflags |= O_RDONLY;

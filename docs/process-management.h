@@ -57,7 +57,11 @@
  * @section ipc IPC
  *
  * So far we have chosen to use file FIFOs as they can be easily bound
- * in and outside of sandboxes.
+ * in and outside of sandboxes.  However, they are not the best as
+ * they report ready to read zero bytes when there are no more writers
+ * and they give EPIPE errors when there are no more readers.  As
+ * well, they cannot be opened nonblockingly (they give ENXIO errors)
+ * when there are not partner openers.
  *
  * @subsection requirements Requirements
  * - Presents a security boundary.
