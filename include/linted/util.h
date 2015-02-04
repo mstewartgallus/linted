@@ -63,17 +63,25 @@
 #if LINTED_UTIL_HAS_BUILTIN(__builtin_unreachable) || LINTED__IS_GCC
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
 #else
-#define LINTED_ASSUME_UNREACHABLE(X, Y)
-    do {                                                                       \
-    } while (0)
+#define LINTED_ASSUME_UNREACHABLE()		\
+	do {					\
+	} while (0)
 #endif
 
-#define LINTED_ASSUME(X)                                                       \
-    do {                                                                       \
-        if (!(X)) {                                                            \
-            LINTED_ASSUME_UNREACHABLE();                                       \
-        }                                                                      \
-    } while (0)
+#if LINTED_UTIL_HAS_BUILTIN(__builtin_assume)
+#define LINTED_ASSUME(X) __builtin_assume(X)
+#elif LINTED__IS_GCC
+#define LINTED_ASSUME(X)				\
+	do {						\
+		if (!(X))				\
+			LINTED_ASSUME_UNREACHABLE();	\
+	} while(0)
+#else
+#define LINTED_ASSUME(X)			\
+	do {					\
+	} while (0)
+#endif
+
 #endif
 
 #if LINTED_UTIL_HAS_ATTRIBUTE(__format__) || LINTED__IS_GCC
