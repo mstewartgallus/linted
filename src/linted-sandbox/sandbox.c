@@ -681,8 +681,7 @@ close_err_reader:
 	}
 }
 
-__attribute__((no_sanitize_address)) static int first_fork_routine(
-    void *void_args)
+LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 {
 	linted_error errnum = 0;
 
@@ -823,7 +822,7 @@ fail : {
 	return EXIT_FAILURE;
 }
 
-__attribute__((no_sanitize_address)) static int second_fork_routine(void *arg)
+LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 {
 	linted_error errnum;
 
@@ -868,8 +867,8 @@ fail : {
 	return EXIT_FAILURE;
 }
 
-__attribute__((no_sanitize_address)) static linted_error set_id_maps(
-    char const *uid_map, char const *gid_map)
+LINTED_NO_SANITIZE_ADDRESS static linted_error set_id_maps(char const *uid_map,
+                                                           char const *gid_map)
 {
 	linted_error errnum;
 
@@ -937,8 +936,9 @@ __attribute__((no_sanitize_address)) static linted_error set_id_maps(
 	return 0;
 }
 
-__attribute__((no_sanitize_address)) static linted_error chroot_process(
-    char const *chrootdir, struct mount_args const *mount_args, size_t size)
+LINTED_NO_SANITIZE_ADDRESS static linted_error
+chroot_process(char const *chrootdir, struct mount_args const *mount_args,
+               size_t size)
 {
 	linted_error errnum;
 
@@ -1251,9 +1251,8 @@ static linted_error set_no_new_privs(bool b)
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-__attribute__((noinline)) __attribute__((noclone))
-__attribute__((no_sanitize_address)) static pid_t safe_vfork(
-    int (*volatile f)(void *), void *volatile arg)
+LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
@@ -1268,9 +1267,9 @@ __attribute__((no_sanitize_address)) static pid_t safe_vfork(
  * and jump to that because Valgrind and address sanitizer and most
  * things have trouble with this.
  */
-__attribute__((noinline)) __attribute__((noclone))
-__attribute__((no_sanitize_address)) static pid_t safe_vclone(
-    int volatile clone_flags, int (*volatile f)(void *), void *volatile arg)
+LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+safe_vclone(int volatile clone_flags, int (*volatile f)(void *),
+            void *volatile arg)
 {
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);

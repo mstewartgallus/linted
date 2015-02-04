@@ -51,6 +51,6 @@ linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
 
 linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
                                       char const *formatstr, ...)
-    LINTED_FORMAT_ANNOT(4, 5);
+    LINTED_FORMAT(__printf__, 4, 5);
 
 #endif /* LINTED_STR_H */

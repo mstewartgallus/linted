@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,19 @@
  * Various utility macroes and functions.
  */
 
-#undef abort
+#define LINTED__IS_GCC (defined __GNUC__ && !defined __clang__)
 
-extern void abort(void);
+#if defined __has_attribute
+#define LINTED_UTIL_HAS_ATTRIBUTE(X) __has_attribute(X)
+#else
+#define LINTED_UTIL_HAS_ATTRIBUTE(X) 0
+#endif
 
+#if defined __has_builtin
+#define LINTED_UTIL_HAS_BUILTIN(X) __has_builtin(X)
+#else
+#define LINTED_UTIL_HAS_BUILTIN(X) 0
+#endif
 
 #define LINTED_FIELD_SIZEOF(type, member) (sizeof((type *)0)->member)
 
@@ -42,15 +51,19 @@ extern void abort(void);
 
 #ifndef NDEBUG
 
-#define LINTED_ASSUME_UNREACHABLE() abort()
+#define LINTED_ASSUME_UNREACHABLE()		\
+	do {					\
+		extern void abort(void);	\
+		abort();			\
+	} while (0)
 #define LINTED_ASSUME(X) assert(X)
 
 #else
 
-#if !defined __frama_c__ && defined __GNUC__
+#if LINTED_UTIL_HAS_BUILTIN(__builtin_unreachable) || LINTED__IS_GCC
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
 #else
-#define LINTED_ASSUME_UNREACHABLE()                                            \
+#define LINTED_ASSUME_UNREACHABLE(X, Y)
     do {                                                                       \
     } while (0)
 #endif
@@ -63,10 +76,28 @@ extern void abort(void);
     } while (0)
 #endif
 
-#if defined __GNUC__
-#define LINTED_FORMAT_ANNOT(X, Y) __attribute__ ((format (printf, X, Y)))
+#if LINTED_UTIL_HAS_ATTRIBUTE(__format__) || LINTED__IS_GCC
+#define LINTED_FORMAT(X, Y, Z) __attribute__ ((__format__ (X, Y, Z)))
 #else
-#define LINTED_FORMAT_ANNOT(X, Y)
+#define LINTED_FORMAT(X, Y, Z)
+#endif
+
+#if LINTED_UTIL_HAS_ATTRIBUTE(__noclone__) || LINTED__IS_GCC
+#define LINTED_NOCLONE __attribute__ ((__noclone__))
+#else
+#define LINTED_NOCLONE
+#endif
+
+#if LINTED_UTIL_HAS_ATTRIBUTE(__noinline__) || LINTED__IS_GCC
+#define LINTED_NOINLINE __attribute__ ((__noinline__))
+#else
+#define LINTED_NOINLINE
+#endif
+
+#if LINTED_UTIL_HAS_ATTRIBUTE(__no_sanitize_address__) || LINTED__IS_GCC
+#define LINTED_NO_SANITIZE_ADDRESS __attribute__ ((__no_sanitize_address__))
+#else
+#define LINTED_NO_SANITIZE_ADDRESS
 #endif
 
 #endif /* LINTED_UTIL_H */

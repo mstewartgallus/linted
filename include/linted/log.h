@@ -16,6 +16,8 @@
 #ifndef LINTED_LOG_H
 #define LINTED_LOG_H
 
+#include "linted/util.h"
+
 /**
  * @file
  *
@@ -25,6 +27,7 @@
 enum { LINTED_LOG_ERROR = 3 };
 
 void linted_log_open(char const *ident);
-void linted_log(unsigned log_level, char const *format, ...);
+void linted_log(unsigned log_level, char const *format, ...)
+    LINTED_FORMAT(__printf__, 2, 3);
 
 #endif /* LINTED_LOG_H */

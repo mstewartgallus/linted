@@ -97,7 +97,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 					return EXIT_FAILURE;
 				}
 			}
-			linted_log(LINTED_LOG_ERROR, buf);
+			linted_log(LINTED_LOG_ERROR, "%s", buf);
 		}
 	}
 

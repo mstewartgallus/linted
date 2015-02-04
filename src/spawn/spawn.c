@@ -326,7 +326,7 @@ close_err_reader : {
 	return 0;
 }
 
-__attribute__((no_sanitize_address)) static int fork_routine(void *arg)
+LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 {
 	struct fork_args *args = arg;
 	sigset_t const *sigset = args->sigset;
@@ -413,9 +413,8 @@ fail : {
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-__attribute__((noinline)) __attribute__((noclone))
-__attribute__((no_sanitize_address)) static pid_t safe_vfork(
-    int (*volatile f)(void *), void *volatile arg)
+LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
 	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 

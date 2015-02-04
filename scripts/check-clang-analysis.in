@@ -82,7 +82,9 @@ ENABLED=$(
     echo 'alpha.cplusplus.VirtualCall'
 
     # Check unreachable code
-    echo 'alpha.deadcode.UnreachableCode'
+    # Unfortunately this is too buggy currently
+    # echo 'alpha.deadcode.UnreachableCode'
+
     # Warn about Objective-C classes that lack a correct implementation of
     # -dealloc
     echo 'alpha.osx.cocoa.Dealloc'
