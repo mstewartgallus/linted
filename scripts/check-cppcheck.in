@@ -23,12 +23,19 @@ source_files() {
 }
 
 "${LINTED_CPPCHECK}"\
+    -D__linux__\
+    -D__unix__\
+    -D__amd64__\
+    -I'/usr/include'\
+    -I'/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include'\
+    -I'/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include-fixed'\
     --quiet\
-    --enable=all\
-    --suppress=resourceLeak\
-    --suppress=variableScope\
-    --suppress=sizeofwithsilentarraypointer\
-    --suppress=uninitvar\
+    --enable=warning\
+    --enable=style\
+    --enable=performance\
+    --enable=portability\
+    --enable=information\
+    --enable=missingInclude\
     --template='{file}:{line}: ({id}) {message}'\
     $(source_cflags)\
     $(source_files)

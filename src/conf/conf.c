@@ -471,8 +471,9 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 	size_t sections_size = bucket->sections_size;
 	struct conf_section *sections = bucket->sections;
 
-	bool have_found_field = false;
 	{
+		bool have_found_field = false;
+
 		size_t found_field;
 		for (size_t ii = 0U; ii < sections_size; ++ii) {
 			if (0 == strcmp(sections[ii].name, section_name)) {
@@ -735,14 +736,12 @@ have_not_found_field:
 
 static size_t string_list_size(char const *const *list)
 {
-	size_t len;
-	for (size_t ii = 0U;; ++ii) {
-		if (0 == list[ii]) {
-			len = ii;
+	size_t ii = 0U;
+	for (;; ++ii) {
+		if (0 == list[ii])
 			break;
-		}
 	}
-	return len;
+	return ii;
 }
 
 static size_t string_hash(char const *str)

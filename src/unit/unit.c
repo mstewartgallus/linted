@@ -75,7 +75,7 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 	}
 
 	list[size].common.name = 0;
-	*unitp = &list[size].common;
+	*unitp = &(list[size].common);
 
 	++size;
 

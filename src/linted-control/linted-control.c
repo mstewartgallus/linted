@@ -410,17 +410,20 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	}
 
 	bool was_up;
-	size_t bytes_read;
 	{
+		size_t bytes_read;
 		union linted_admin_reply xx;
-		size_t yy;
-		errnum = linted_admin_recv_reply(admin, &xx, &yy);
-		if (errnum != 0) {
-			failure(LINTED_KO_STDERR, process_name,
-			        LINTED_STR("can not read reply"), errnum);
-			return EXIT_FAILURE;
+		{
+			size_t yy;
+			errnum = linted_admin_recv_reply(admin, &xx, &yy);
+			if (errnum != 0) {
+				failure(LINTED_KO_STDERR, process_name,
+				        LINTED_STR("can not read reply"),
+				        errnum);
+				return EXIT_FAILURE;
+			}
+			bytes_read = yy;
 		}
-		bytes_read = yy;
 
 		if (0U == bytes_read) {
 			linted_io_write_format(LINTED_KO_STDERR, 0,

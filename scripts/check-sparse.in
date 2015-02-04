@@ -26,6 +26,7 @@ source_files() {
     -D__linux__\
     -D__unix__\
     -D__amd64__\
+    -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
     -Wsparse-all\
     -Wno-declaration-after-statement\
     -Wno-non-pointer-null\
@@ -33,6 +34,5 @@ source_files() {
     -Wno-undef\
     -Wno-cast-truncate\
     -Wno-missing-braces\
-    -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
     $(source_cflags)\
     $(source_files)
