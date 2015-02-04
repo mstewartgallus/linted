@@ -416,8 +416,6 @@ fail : {
 LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
 safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
-	__atomic_signal_fence(__ATOMIC_SEQ_CST);
-
 	pid_t child = vfork();
 	if (0 == child)
 		_Exit(f(arg));

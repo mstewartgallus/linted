@@ -1254,8 +1254,6 @@ static linted_error set_no_new_privs(bool b)
 LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
 safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
-	__atomic_signal_fence(__ATOMIC_SEQ_CST);
-
 	pid_t child = vfork();
 	if (0 == child)
 		_Exit(f(arg));
@@ -1299,8 +1297,6 @@ safe_vclone(int volatile clone_flags, int (*volatile f)(void *),
 		goto on_err;
 
 	void *stack_start = (char *)child_stack + page_size + stack_size;
-
-	__atomic_signal_fence(__ATOMIC_SEQ_CST);
 
 	pid_t child =
 	    clone(f, stack_start, clone_flags | CLONE_VM | CLONE_VFORK, arg);
