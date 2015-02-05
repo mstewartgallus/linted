@@ -23,6 +23,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/log.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -123,13 +124,6 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
 	char *buf_offset = buf;
 
 	linted_error errnum = 0;
-
-	/*
-	 * Nonblocking fifos can read zero bytes when there are no
-	 * open writers but not have poll return with POLLIN.  You
-	 * have to POLLIN first and then read input.
-	 */
-	goto poll_for_readability;
 
 restart_reading:
 	;
@@ -883,15 +877,6 @@ void linted_io_do_read(struct linted_asynch_pool *pool,
 	struct linted_asynch_waiter *waiter = task_read->waiter;
 
 	linted_error errnum = 0;
-
-	/*
-	 * Nonblocking fifos can read zero bytes when there are no
-	 * open writers but not have poll return with POLLIN.  You
-	 * have to POLLIN first and then read input.
-	 */
-	short revents = linted_asynch_waiter_revents(waiter);
-	if (0 == revents)
-		goto wait_on_poll;
 
 	ssize_t result = read(ko, buf + bytes_read, bytes_left);
 	if (result < 0) {

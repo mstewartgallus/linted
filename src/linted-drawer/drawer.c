@@ -129,7 +129,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
-		                        LINTED_KO_RDONLY);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
@@ -142,7 +142,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        window_notifier_path, LINTED_KO_RDONLY);
+		                        window_notifier_path, LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));
@@ -155,7 +155,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
-		                        LINTED_KO_RDONLY);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));

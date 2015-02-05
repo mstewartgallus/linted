@@ -142,7 +142,7 @@ static unsigned char simulator_start(char const *const process_name,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, controller_path,
-		                        LINTED_KO_RDONLY);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
 			           linted_error_string(errnum));

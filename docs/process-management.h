@@ -59,13 +59,13 @@
  * So far we have chosen to use file FIFOs as they can be easily bound
  * in and outside of sandboxes.
  *
- * Note that when there are no more open writers nonblocking fifos
- * read zero bytes but don't return from poll with POLLIN so one has
- * to poll first for reading and then read to avoid falsely returning
- * a read with zero bytes.
+ * Fifos give `POLLHUP` to poll and read zero bytes once a process has
+ * written to the pipe once and there are no more open
+ * writers. Therefore pipe readers that don't want this `POLLHUP` must
+ * open in read and write mode.
  *
  * As well, fifos cannot be opened with write only permission
- * nonblockingly (they give ENXIO errors) when there are not open
+ * nonblockingly (they give `ENXIO` errors) when there are not open
  * readers.
  *
  * @subsection requirements Requirements
