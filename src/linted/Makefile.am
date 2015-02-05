@@ -32,15 +32,15 @@ MOSTLYCLEANFILES+=%D%/settings.h
 %D%/settings.h: Makefile %D%/settings.h.in
 	sed \
 	  -e 's|[@]LINTED_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\
-	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(exeext)|g'\
-	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(exeext)|g'\
-	  -e 's|[@]LINTED_SANDBOX[@]|$(pkglibexecdir)/linted-sandbox$(exeext)|g'\
-	  -e 's|[@]LINTED_WAITER[@]|$(pkglibexecdir)/linted-waiter$(exeext)|g'\
-	  -e 's|[@]LINTED_GUI[@]|$(pkglibexecdir)/linted-gui$(exeext)|g'\
+	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_SANDBOX[@]|$(pkglibexecdir)/linted-sandbox$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_WAITER[@]|$(pkglibexecdir)/linted-waiter$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_GUI[@]|$(pkglibexecdir)/linted-gui$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_GUI_FSTAB[@]|$(pkgdefaultconfdir)/gui.fstab|g'\
-	  -e 's|[@]LINTED_SIMULATOR[@]|$(pkglibexecdir)/linted-simulator$(exeext)|g'\
+	  -e 's|[@]LINTED_SIMULATOR[@]|$(pkglibexecdir)/linted-simulator$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_SIMULATOR_FSTAB[@]|$(pkgdefaultconfdir)/simulator.fstab|g'\
-	  -e 's|[@]LINTED_DRAWER[@]|$(pkglibexecdir)/linted-drawer$(exeext)|g'\
+	  -e 's|[@]LINTED_DRAWER[@]|$(pkglibexecdir)/linted-drawer$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_DRAWER_FSTAB[@]|$(pkgdefaultconfdir)/drawer.fstab|g'\
-	  -e 's|[@]LINTED_WINDOW[@]|$(pkglibexecdir)/linted-window$(exeext)|g'\
+	  -e 's|[@]LINTED_WINDOW[@]|$(pkglibexecdir)/linted-window$(EXEEXT)|g'\
 	  $(srcdir)/%D%/settings.h.in > $@
