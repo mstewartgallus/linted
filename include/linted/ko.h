@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@
 
 #include "linted/error.h"
 
-#if defined _WIN32 || defined _WIN64
+#if defined HAVE_WINDOWS_API
 #include "ko-windows.h"
-#elif defined __linux__
-#include "ko-linux.h"
+#elif defined HAVE_POSIX_API
+#include "ko-posix.h"
 #else
 #error kernel object support has not beeen implemented for this platform
 #endif

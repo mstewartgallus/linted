@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,11 +17,14 @@
 noinst_LTLIBRARIES+=%D%/libasynch.la
 
 %C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
-EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-linux.c %D%/asynch-windows.c
+EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-posix.c %D%/asynch-windows.c
 %C%_libasynch_la_LIBADD=\
   src/io/libio.la\
   src/ko/libko.la\
   src/pid/libpid.la\
   src/queue/libqueue.la\
   src/sched/libsched.la\
-  src/signal/libsignal.la
+  src/signal/libsignal.la\
+  \
+  $(WSOCK32_LIBS)\
+  $(MSWSOCK_LIBS)

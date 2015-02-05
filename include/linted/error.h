@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 #ifndef LINTED_ERROR_H
 #define LINTED_ERROR_H
 
-#if defined __WIN32 || defined _WIN64
+#if defined HAVE_WINDOWS_API
 #include "error-windows.h"
-#elif defined __linux__
-#include "error-linux.h"
+#elif defined HAVE_POSIX_API
+#include "error-posix.h"
 #else
 #error no error code method for this platform has been implemented
 #endif

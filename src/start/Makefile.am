@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libstart.la
 %C%_libstart_la_SOURCES=%D%/start.c include/linted/start.h
-EXTRA_%C%_libstart_la_SOURCES=%D%/start-linux.c %D%/start-windows.c
+EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
 %C%_libstart_la_LIBADD=\
   src/error/liberror.la\
   src/ko/libko.la\

@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ noinst_LTLIBRARIES+=%D%/liberror.la
 
 %C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h
 EXTRA_%C%_liberror_la_SOURCES=\
-  %D%/error-linux.c\
+  %D%/error-posix.c\
   %D%/error-windows.c\
-  include/linted/error-linux.h\
+  include/linted/error-posix.h\
   include/linted/error-windows.h
 
 TESTS+=%D%/test_unknown_error

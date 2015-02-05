@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,4 +17,4 @@
 
 noinst_LTLIBRARIES+=%D%/libfile.la
 %C%_libfile_la_SOURCES=%D%/file.c include/linted/file.h
-EXTRA_%C%_libfile_la_SOURCES=%D%/file-linux.c %D%/file-windows.c
+EXTRA_%C%_libfile_la_SOURCES=%D%/file-posix.c %D%/file-windows.c

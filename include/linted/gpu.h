@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
  * Draws graphics using the GPU.
  */
 
-#if defined __linux__
+#if defined HAVE_POSIX_API
 #include "gpu-x11.h"
 #else
 #error no GPU acceleration for this platform has been implemented

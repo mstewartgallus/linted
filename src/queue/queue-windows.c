@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@
 #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN
-
-#include "config.h"
 
 #include "linted/queue.h"
 
@@ -81,7 +79,7 @@ void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
 	/* Guard against double insertions */
-	assert(0 == node->prev);
+	assert(0 == node->next);
 
 	EnterCriticalSection(&queue->lock);
 

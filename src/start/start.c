@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined _WIN32 || defined _WIN64
+#include "config.h"
+
+#if defined HAVE_WINDOWS_API
 #include "start-windows.c"
-#elif defined __linux__
-#include "start-linux.c"
+#elif defined HAVE_POSIX_API
+#include "start-posix.c"
 #else
 #error no startup implementation for this platform
 #endif

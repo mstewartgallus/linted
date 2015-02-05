@@ -57,24 +57,8 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-AC_CHECK_HEADERS([[arpa/inet.h]dnl
-                  [mntent.h]dnl
-                  [sys/mount.h]dnl
-                  [sys/socket.h]dnl
-                  [syslog.h]], [], [
-  AC_MSG_WARN([Unable to find header ${ac_header}])
-], [])
-dnl
 LINTED_CHECK_LIB([MATH_LIBS], [m], [sin], [], [
    AC_MSG_ERROR([Unable to find a math library])
-])
-dnl
-LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
-   AC_MSG_ERROR([Unable to find a realtime functions library])
-])
-dnl
-LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
-   AC_MSG_WARN([Unable to find a POSIX capabilities library])
 ])
 dnl
 AC_CHECK_FUNCS([[dup2]dnl
@@ -90,46 +74,6 @@ AC_CHECK_FUNCS([[dup2]dnl
 AC_CHECK_FUNCS([[clock_gettime]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
-dnl
-AC_FUNC_GETMNTENT
-AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
- AC_MSG_WARN([Unable to find getmntent function])
-])
-AC_FUNC_STRERROR_R
-AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
- AC_MSG_WARN([Unable to find strerror_r function])
-])
-AC_FUNC_FORK
-AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
- AC_MSG_WARN([Unable to find good fork function])
-])
-AC_FUNC_MMAP
-AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
- AC_MSG_WARN([Unable to find good mmap function])
-])
-dnl
-AC_CHECK_FUNCS([[fchdir]dnl
-                [gethostname]dnl
-                [munmap]dnl
-                [setenv]dnl
-                [setlocale]dnl
-                [socket]dnl
-                [strndup]], [], [
- AC_MSG_WARN([Unable to find function ${ac_func}])
-])
-dnl
-AC_TYPE_MODE_T
-dnl
-AC_TYPE_INT32_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-dnl
-AC_TYPE_OFF_T
-dnl
-AC_TYPE_SSIZE_T
-AC_TYPE_SIZE_T
-AC_TYPE_PID_T
-AC_TYPE_UID_T
 dnl
 PKG_CHECK_MODULES(XCB, xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB library])
@@ -150,6 +94,103 @@ PKG_CHECK_MODULES(EGL, egl, [], [
 ])
 PKG_CHECK_MODULES(GLES, glesv2, [], [
  AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
+])
+dnl
+AC_TYPE_MODE_T
+dnl
+AC_TYPE_INT32_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+dnl
+AC_TYPE_OFF_T
+dnl
+AC_TYPE_SSIZE_T
+AC_TYPE_SIZE_T
+AC_TYPE_PID_T
+AC_TYPE_UID_T
+dnl
+AS_IF([test "x${host_os}" = "xlinux-gnu"], [
+        [linted_posix_api_default=yes]
+], [
+        [linted_posix_api_default=no]
+])
+AS_IF([test "x${host_os}" = "xmingw32"], [
+        [linted_windows_api_default=yes]
+], [
+        [linted_windows_api_default=no]
+])
+dnl
+AC_ARG_ENABLE(
+        [posix-api],
+        AS_HELP_STRING(
+                [--enable-posix-api],
+                [enable use of the POSIX API]))
+AC_ARG_ENABLE(
+        [windows-api],
+        AS_HELP_STRING(
+                [--enable-windows-api],
+                [enable use of the Microsoft Windows API]))
+dnl
+AS_IF([test "x${enable_windows_api}" = "xyes"], [
+dnl
+AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
+dnl
+LINTED_CHECK_LIB([WSOCK32_LIBS], [wsock32], [closesocket], [], [
+   AC_MSG_WARN([Unable to find a Winsock library])
+])
+LINTED_CHECK_LIB([MSWSOCK_LIBS], [mswsock], [AcceptEx], [], [
+   AC_MSG_WARN([Unable to find a Winsock library])
+])
+dnl
+])
+dnl
+AS_IF([test "x${enable_posix_api}" = "xyes"], [
+dnl
+AC_DEFINE([HAVE_POSIX_API], [1], [Define if the POSIX API is being used.])
+dnl
+AC_CHECK_HEADERS([[arpa/inet.h]dnl
+                  [mntent.h]dnl
+                  [sys/mount.h]dnl
+                  [sys/socket.h]dnl
+                  [syslog.h]], [], [
+  AC_MSG_ERROR([Unable to find header ${ac_header}])
+], [])
+dnl
+LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
+   AC_MSG_ERROR([Unable to find a realtime functions library])
+])
+dnl
+LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
+   AC_MSG_ERROR([Unable to find a POSIX capabilities library])
+])
+dnl
+AC_FUNC_GETMNTENT
+AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
+ AC_MSG_ERROR([Unable to find getmntent function])
+])
+AC_FUNC_STRERROR_R
+AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+ AC_MSG_ERROR([Unable to find strerror_r function])
+])
+AC_FUNC_FORK
+AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+ AC_MSG_ERROR([Unable to find good fork function])
+])
+AC_FUNC_MMAP
+AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
+ AC_MSG_ERROR([Unable to find good mmap function])
+])
+dnl
+AC_CHECK_FUNCS([[fchdir]dnl
+                [gethostname]dnl
+                [munmap]dnl
+                [setenv]dnl
+                [setlocale]dnl
+                [socket]dnl
+                [strndup]], [], [
+ AC_MSG_ERROR([Unable to find function ${ac_func}])
+])
+dnl
 ])
 dnl
 LINTED_PROG_BLENDER
