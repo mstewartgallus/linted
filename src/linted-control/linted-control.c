@@ -286,30 +286,30 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	linted_admin_input admin_input;
+	linted_admin_in admin_in;
 	{
-		linted_admin_input xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-input",
+		linted_admin_in xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-in",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin_input = xx;
+		admin_in = xx;
 	}
 
-	linted_admin_output admin_output;
+	linted_admin_out admin_out;
 	{
-		linted_admin_output xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-output",
+		linted_admin_out xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-out",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin_output = xx;
+		admin_out = xx;
 	}
 
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
@@ -323,7 +323,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		request.status.size = name_len;
 		memcpy(request.status.name, name, name_len);
 
-		errnum = linted_admin_input_write(admin_input, &request);
+		errnum = linted_admin_in_write(admin_in, &request);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -332,30 +332,10 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	union linted_admin_reply reply;
-	size_t bytes_read;
-	{
-		size_t xx;
-		errnum = linted_admin_output_read(admin_output, &reply, &xx);
-		if (errnum != 0) {
-			failure(LINTED_KO_STDERR, process_name,
-			        LINTED_STR("can not read reply"), errnum);
-			return EXIT_FAILURE;
-		}
-		bytes_read = xx;
-	}
-
-	if (0U == bytes_read) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: socket hung up\n", process_name);
-		return EXIT_FAILURE;
-	}
-
-	/* Sent malformed input */
-	if (bytes_read != sizeof reply) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: reply was too small: %" PRIuMAX
-		                       "\n",
-		                       process_name, (uintmax_t)bytes_read);
+	errnum = linted_admin_out_read(admin_out, &reply);
+	if (errnum != 0) {
+		failure(LINTED_KO_STDERR, process_name,
+		        LINTED_STR("can not read reply"), errnum);
 		return EXIT_FAILURE;
 	}
 
@@ -427,30 +407,30 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	linted_admin_input admin_input;
+	linted_admin_in admin_in;
 	{
-		linted_admin_input xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-input",
+		linted_admin_in xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-in",
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin_input = xx;
+		admin_in = xx;
 	}
 
-	linted_admin_output admin_output;
+	linted_admin_out admin_out;
 	{
-		linted_admin_output xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-output",
+		linted_admin_out xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-out",
 		                        LINTED_KO_RDONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin_output = xx;
+		admin_out = xx;
 	}
 
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
@@ -464,7 +444,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		request.stop.size = sizeof "gui" - 1U;
 		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
-		errnum = linted_admin_input_write(admin_input, &request);
+		errnum = linted_admin_in_write(admin_in, &request);
 	}
 	if (errnum != 0) {
 		failure(LINTED_KO_STDERR, process_name,
@@ -474,28 +454,13 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 
 	bool was_up;
 	{
-		size_t bytes_read;
 		union linted_admin_reply xx;
-		{
-			size_t yy;
-			errnum =
-			    linted_admin_output_read(admin_output, &xx, &yy);
-			if (errnum != 0) {
-				failure(LINTED_KO_STDERR, process_name,
-				        LINTED_STR("can not read reply"),
-				        errnum);
-				return EXIT_FAILURE;
-			}
-			bytes_read = yy;
-		}
-
-		if (0U == bytes_read) {
-			linted_io_write_format(LINTED_KO_STDERR, 0,
-			                       "%s: socket hung up\n",
-			                       process_name);
+		errnum = linted_admin_out_read(admin_out, &xx);
+		if (errnum != 0) {
+			failure(LINTED_KO_STDERR, process_name,
+			        LINTED_STR("can not read reply"), errnum);
 			return EXIT_FAILURE;
 		}
-
 		was_up = xx.stop.was_up;
 	}
 

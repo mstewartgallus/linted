@@ -28,14 +28,14 @@
 #include <fcntl.h>
 #include <string.h>
 
-struct linted_admin_task_input_read
+struct linted_admin_in_task_read
 {
 	struct linted_io_task_read *parent;
 	void *data;
 	union linted_admin_request request;
 };
 
-struct linted_admin_task_output_write
+struct linted_admin_out_task_write
 {
 	struct linted_io_task_write *data;
 	void *parent;
@@ -43,11 +43,11 @@ struct linted_admin_task_output_write
 };
 
 linted_error
-linted_admin_task_input_read_create(struct linted_admin_task_input_read **taskp,
-                                    void *data)
+linted_admin_in_task_read_create(struct linted_admin_in_task_read **taskp,
+                                 void *data)
 {
 	linted_error errnum;
-	struct linted_admin_task_input_read *task;
+	struct linted_admin_in_task_read *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -72,57 +72,55 @@ free_task:
 	return errnum;
 }
 
-void
-linted_admin_task_input_read_destroy(struct linted_admin_task_input_read *task)
+void linted_admin_in_task_read_destroy(struct linted_admin_in_task_read *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *
-linted_admin_task_input_read_data(struct linted_admin_task_input_read *task)
+void *linted_admin_in_task_read_data(struct linted_admin_in_task_read *task)
 {
 	return task->data;
 }
 
-linted_admin_input
-linted_admin_task_input_read_ko(struct linted_admin_task_input_read *task)
+linted_admin_in
+linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task)
 {
 	return linted_io_task_read_ko(task->parent);
 }
 
 union linted_admin_request const *
-linted_admin_task_input_read_request(struct linted_admin_task_input_read *task)
+linted_admin_in_task_read_request(struct linted_admin_in_task_read *task)
 {
 	return &task->request;
 }
 
-void
-linted_admin_task_input_read_prepare(struct linted_admin_task_input_read *task,
-                                     unsigned task_action, linted_ko ko)
+void linted_admin_in_task_read_prepare(struct linted_admin_in_task_read *task,
+                                       unsigned task_action, linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_action, ko,
 	                            (char *)&task->request,
 	                            sizeof task->request);
 }
 
-struct linted_asynch_task *linted_admin_task_input_read_to_asynch(
-    struct linted_admin_task_input_read *task)
+struct linted_asynch_task *
+linted_admin_in_task_read_to_asynch(struct linted_admin_in_task_read *task)
 {
 	return linted_io_task_read_to_asynch(task->parent);
 }
 
-struct linted_admin_task_input_read *
-linted_admin_task_input_read_from_asynch(struct linted_asynch_task *task)
+struct linted_admin_in_task_read *
+linted_admin_in_task_read_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
 }
 
-linted_error linted_admin_task_output_write_create(
-    struct linted_admin_task_output_write **taskp, void *data)
+linted_error
+linted_admin_out_task_write_create(struct linted_admin_out_task_write **taskp,
+                                   void *data)
 {
 	linted_error errnum;
-	struct linted_admin_task_output_write *task;
+	struct linted_admin_out_task_write *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -147,22 +145,22 @@ free_task:
 	return errnum;
 }
 
-void linted_admin_task_output_write_destroy(
-    struct linted_admin_task_output_write *task)
+void
+linted_admin_out_task_write_destroy(struct linted_admin_out_task_write *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *
-linted_admin_task_output_write_data(struct linted_admin_task_output_write *task)
+void *linted_admin_out_task_write_data(struct linted_admin_out_task_write *task)
 {
 	return task->data;
 }
 
-void linted_admin_task_output_write_prepare(
-    struct linted_admin_task_output_write *task, unsigned task_action,
-    linted_ko ko, union linted_admin_reply const *reply)
+void
+linted_admin_out_task_write_prepare(struct linted_admin_out_task_write *task,
+                                    unsigned task_action, linted_ko ko,
+                                    union linted_admin_reply const *reply)
 {
 	linted_io_task_write_prepare(task->parent, task_action, ko,
 	                             (char const *)&task->reply,
@@ -170,38 +168,41 @@ void linted_admin_task_output_write_prepare(
 	task->reply = *reply;
 }
 
-struct linted_asynch_task *linted_admin_task_output_write_to_asynch(
-    struct linted_admin_task_output_write *task)
+struct linted_asynch_task *
+linted_admin_out_task_write_to_asynch(struct linted_admin_out_task_write *task)
 {
 	return linted_io_task_write_to_asynch(task->parent);
 }
 
-struct linted_admin_task_output_write *
-linted_admin_task_output_write_from_asynch(struct linted_asynch_task *task)
+struct linted_admin_out_task_write *
+linted_admin_out_task_write_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_write_data(
 	    linted_io_task_write_from_asynch(task));
 }
 
-linted_error linted_admin_input_write(linted_admin_input admin,
-                                      union linted_admin_request const *request)
+linted_error linted_admin_in_write(linted_admin_in admin,
+                                   union linted_admin_request const *request)
 {
 	return linted_io_write_all(admin, 0, request, sizeof *request);
 }
 
-linted_error linted_admin_output_read(linted_admin_output admin,
-                                      union linted_admin_reply *reply,
-                                      size_t *size)
+linted_error linted_admin_out_read(linted_admin_out admin,
+                                   union linted_admin_reply *reply)
 {
 	linted_error errnum;
 
-	errnum = linted_io_read_all(admin, size, reply, sizeof *reply);
-
-	if (errnum != 0)
-		return errnum;
+	size_t size;
+	{
+		size_t xx;
+		errnum = linted_io_read_all(admin, &xx, reply, sizeof *reply);
+		if (errnum != 0)
+			return errnum;
+		size = xx;
+	}
 
 	/* Sent malformed input */
-	if (*size != sizeof *reply)
+	if (size != sizeof *reply)
 		return EPROTO;
 
 	return 0;
