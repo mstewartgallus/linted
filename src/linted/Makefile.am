@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,11 +31,16 @@ EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
 %D%/settings.h: Makefile %D%/settings.h.in
 	sed \
-	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
-	  -e 's|[@]chrootdir[@]|$(chrootdir)|g'\
-	  -e 's|[@]pkgconfdir[@]|$(pkgconfdir)|g'\
-	  -e 's|[@]pkgdefaultconfdir[@]|$(pkgdefaultconfdir)|g'\
-	  -e 's|[@]pkgunitsdir[@]|$(pkgunitsdir)|g'\
-	  -e 's|[@]pkgdefaultunitsdir[@]|$(pkgdefaultunitsdir)|g'\
-	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\
+	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(exeext)|g'\
+	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(exeext)|g'\
+	  -e 's|[@]LINTED_SANDBOX[@]|$(pkglibexecdir)/linted-sandbox$(exeext)|g'\
+	  -e 's|[@]LINTED_WAITER[@]|$(pkglibexecdir)/linted-waiter$(exeext)|g'\
+	  -e 's|[@]LINTED_GUI[@]|$(pkglibexecdir)/linted-gui$(exeext)|g'\
+	  -e 's|[@]LINTED_GUI_FSTAB[@]|$(pkgdefaultconfdir)/gui.fstab|g'\
+	  -e 's|[@]LINTED_SIMULATOR[@]|$(pkglibexecdir)/linted-simulator$(exeext)|g'\
+	  -e 's|[@]LINTED_SIMULATOR_FSTAB[@]|$(pkgdefaultconfdir)/simulator.fstab|g'\
+	  -e 's|[@]LINTED_DRAWER[@]|$(pkglibexecdir)/linted-drawer$(exeext)|g'\
+	  -e 's|[@]LINTED_DRAWER_FSTAB[@]|$(pkgdefaultconfdir)/drawer.fstab|g'\
+	  -e 's|[@]LINTED_WINDOW[@]|$(pkglibexecdir)/linted-window$(exeext)|g'\
 	  $(srcdir)/%D%/settings.h.in > $@

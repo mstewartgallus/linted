@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,17 @@
 #ifndef LINTED_LINTED_SETTINGS_H
 #define LINTED_LINTED_SETTINGS_H
 
-#define PKGLIBEXECDIR "@pkglibexecdir@"
-#define PKGCONFDIR "@pkgconfdir@"
-#define PKGDEFAULTCONFDIR "@pkgdefaultconfdir@"
-#define PKGUNITSDIR "@pkgunitsdir@"
-#define PKGDEFAULTUNITSDIR "@pkgdefaultunitsdir@"
-#define EXEEXT "@EXEEXT@"
+#define LINTED_UNIT_PATH "@LINTED_UNIT_PATH@"
+#define LINTED_INIT "@LINTED_INIT@"
+#define LINTED_MONITOR "@LINTED_MONITOR@"
+#define LINTED_SANDBOX "@LINTED_SANDBOX@"
+#define LINTED_WAITER "@LINTED_WAITER@"
+#define LINTED_GUI "@LINTED_GUI@"
+#define LINTED_GUI_FSTAB "@LINTED_GUI_FSTAB@"
+#define LINTED_SIMULATOR "@LINTED_SIMULATOR@"
+#define LINTED_SIMULATOR_FSTAB "@LINTED_SIMULATOR_FSTAB@"
+#define LINTED_DRAWER "@LINTED_DRAWER@"
+#define LINTED_DRAWER_FSTAB "@LINTED_DRAWER_FSTAB@"
+#define LINTED_WINDOW "@LINTED_WINDOW@"
 
 #endif /* LINTED_LINTED_SETTINGS_H */
