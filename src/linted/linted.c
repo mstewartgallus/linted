@@ -55,8 +55,6 @@ extern char **environ;
 static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const *argv);
 
-static linted_error exec_init(char const *init);
-
 static bool is_privileged(void);
 static bool was_privileged(void);
 
@@ -169,37 +167,20 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	linted_error errnum;
-
 	fprintf(stdout, "LINTED_PID=%" PRIuMAX "\n", (uintmax_t)getpid());
-
-	errnum = exec_init(init);
-	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERROR, "exec_init: %s",
-		           linted_error_string(errnum));
-		return EXIT_FAILURE;
-	}
-	return EXIT_SUCCESS;
-}
-
-static linted_error exec_init(char const *init)
-{
-	linted_error errnum;
 
 	char *init_dup = strdup(init);
 	if (0 == init_dup) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		linted_log(LINTED_LOG_ERROR, "strdup: %s",
+		           linted_error_string(errno));
+		return EXIT_FAILURE;
 	}
 	char *init_base = basename(init_dup);
 
 	char const *const init_argv[] = { init_base, 0 };
 	execve(init, (char * const *)init_argv, environ);
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-
-	return errnum;
+	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
+	return EXIT_FAILURE;
 }
 
 static bool is_privileged(void)
