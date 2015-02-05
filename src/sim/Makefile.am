@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 noinst_LTLIBRARIES+=%D%/libsim.la
 
 %C%_libsim_la_SOURCES=include/linted/sim.h
-%C%_libsim_la_LIBADD=$(MATH_LIB)
+%C%_libsim_la_LIBADD=$(MATH_LIBS)
 
 TESTS+=%D%/test_sim_angle
 
