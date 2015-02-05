@@ -29,7 +29,8 @@
 struct linted_asynch_pool;
 struct linted_asynch_task;
 
-typedef linted_ko linted_admin;
+typedef linted_ko linted_admin_input;
+typedef linted_ko linted_admin_output;
 
 enum { LINTED_ADMIN_STATUS, LINTED_ADMIN_STOP };
 typedef unsigned char linted_admin_type;
@@ -70,76 +71,50 @@ union linted_admin_reply
 	struct linted_admin_stop_reply stop;
 };
 
-struct linted_admin_task_accept;
-struct linted_admin_task_recv_request;
-struct linted_admin_task_send_reply;
-
-linted_error linted_admin_bind(linted_admin *admin, int backlog,
-                               char const *path, size_t path_len);
-
-linted_error linted_admin_connect(linted_admin *admin, char const *path,
-                                  size_t path_len);
-
-void linted_admin_accept(struct linted_admin_task_accept *task,
-                         unsigned task_action, linted_admin admin);
+struct linted_admin_task_input_read;
+struct linted_admin_task_output_write;
 
 linted_error
-linted_admin_task_accept_create(struct linted_admin_task_accept **taskp,
-                                void *data);
-void linted_admin_task_accept_destroy(struct linted_admin_task_accept *task);
-
-linted_admin
-linted_admin_task_accept_returned_ko(struct linted_admin_task_accept *task);
-void linted_admin_task_accept_prepare(struct linted_admin_task_accept *task,
-                                      unsigned task_action, linted_ko ko);
-void *linted_admin_task_accept_data(struct linted_admin_task_accept *task);
-struct linted_asynch_task *
-linted_admin_task_accept_to_asynch(struct linted_admin_task_accept *task);
-struct linted_admin_task_accept *
-linted_admin_task_accept_from_asynch(struct linted_asynch_task *task);
-
-linted_error linted_admin_task_recv_request_create(
-    struct linted_admin_task_recv_request **taskp, void *data);
-void linted_admin_task_recv_request_destroy(
-    struct linted_admin_task_recv_request *task);
-
-linted_admin
-linted_admin_task_recv_request_ko(struct linted_admin_task_recv_request *task);
-union linted_admin_request const *linted_admin_task_recv_request_request(
-    struct linted_admin_task_recv_request *task);
-void *linted_admin_task_recv_request_data(
-    struct linted_admin_task_recv_request *task);
-void linted_admin_task_recv_request_prepare(
-    struct linted_admin_task_recv_request *task, unsigned task_action,
-    linted_ko ko);
-struct linted_asynch_task *linted_admin_task_recv_request_to_asynch(
-    struct linted_admin_task_recv_request *task);
-struct linted_admin_task_recv_request *
-linted_admin_task_recv_request_from_asynch(struct linted_asynch_task *task);
-
-linted_error
-linted_admin_task_send_reply_create(struct linted_admin_task_send_reply **taskp,
+linted_admin_task_input_read_create(struct linted_admin_task_input_read **taskp,
                                     void *data);
 void
-linted_admin_task_send_reply_destroy(struct linted_admin_task_send_reply *task);
+linted_admin_task_input_read_destroy(struct linted_admin_task_input_read *task);
 
-void
-linted_admin_task_send_reply_prepare(struct linted_admin_task_send_reply *task,
-                                     unsigned task_action, linted_ko ko,
-                                     union linted_admin_reply const *reply);
+linted_admin_input
+linted_admin_task_input_read_ko(struct linted_admin_task_input_read *task);
+union linted_admin_request const *
+linted_admin_task_input_read_request(struct linted_admin_task_input_read *task);
 void *
-linted_admin_task_send_reply_data(struct linted_admin_task_send_reply *task);
-struct linted_asynch_task *linted_admin_task_send_reply_to_asynch(
-    struct linted_admin_task_send_reply *task);
-struct linted_admin_task_send_reply *
-linted_admin_task_send_reply_from_asynch(struct linted_asynch_task *task);
+linted_admin_task_input_read_data(struct linted_admin_task_input_read *task);
+void
+linted_admin_task_input_read_prepare(struct linted_admin_task_input_read *task,
+                                     unsigned task_action, linted_ko ko);
+struct linted_asynch_task *linted_admin_task_input_read_to_asynch(
+    struct linted_admin_task_input_read *task);
+struct linted_admin_task_input_read *
+linted_admin_task_input_read_from_asynch(struct linted_asynch_task *task);
+
+linted_error linted_admin_task_output_write_create(
+    struct linted_admin_task_output_write **taskp, void *data);
+void linted_admin_task_output_write_destroy(
+    struct linted_admin_task_output_write *task);
+
+void linted_admin_task_output_write_prepare(
+    struct linted_admin_task_output_write *task, unsigned task_action,
+    linted_ko ko, union linted_admin_reply const *reply);
+void *linted_admin_task_output_write_data(
+    struct linted_admin_task_output_write *task);
+struct linted_asynch_task *linted_admin_task_output_write_to_asynch(
+    struct linted_admin_task_output_write *task);
+struct linted_admin_task_output_write *
+linted_admin_task_output_write_from_asynch(struct linted_asynch_task *task);
 
 linted_error
-linted_admin_send_request(linted_admin admin,
-                          union linted_admin_request const *request);
+linted_admin_input_write(linted_admin_input admin,
+                         union linted_admin_request const *request);
 
-linted_error linted_admin_recv_reply(linted_admin admin,
-                                     union linted_admin_reply *reply,
-                                     size_t *size);
+linted_error linted_admin_output_read(linted_admin_output admin,
+                                      union linted_admin_reply *reply,
+                                      size_t *size);
 
 #endif /* LINTED_ADMIN_H */

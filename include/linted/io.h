@@ -155,6 +155,8 @@ void linted_io_task_recv_prepare(struct linted_io_task_recv *task,
 void *linted_io_task_recv_data(struct linted_io_task_recv *task);
 linted_ko linted_io_task_recv_ko(struct linted_io_task_recv *task);
 size_t linted_io_task_recv_bytes_read(struct linted_io_task_recv *task);
+void linted_io_task_recv_src_addr(struct linted_io_task_recv *task,
+                                  struct sockaddr *addr, size_t *addr_len);
 
 linted_error linted_io_task_sendto_create(struct linted_io_task_sendto **taskp,
                                           void *data);

@@ -25,5 +25,6 @@ bin_PROGRAMS+=%D%/linted-control
   src/io/libio.la\
   src/ko/libko.la\
   src/locale/liblocale.la\
+  src/log/liblog.la\
   \
   src/admin/libadmin.la

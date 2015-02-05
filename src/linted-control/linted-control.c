@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/admin.h"
@@ -20,6 +22,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/locale.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/str.h"
@@ -32,7 +35,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 static uint_fast8_t control_start(char const *const process_name, size_t argc,
                                   char const *const argv[]);
@@ -116,6 +121,58 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		                       "%s: missing COMMAND\n", process_name);
 		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
+		return EXIT_FAILURE;
+	}
+
+	char const *pid = getenv("LINTED_PID");
+	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
+
+	if (0 == pid) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "LINTED_PID");
+		return EXIT_FAILURE;
+	}
+
+	/**
+	 * @todo Use fallbacks for missing XDG environment variables.
+	 */
+	if (0 == runtime_dir_path) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "XDG_RUNTIME_HOME");
+		return EXIT_FAILURE;
+	}
+
+	char *package_runtime_dir_path;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%s", runtime_dir_path, PACKAGE_TARNAME)) {
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		package_runtime_dir_path = xx;
+	}
+
+	char *process_runtime_dir_path;
+	{
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%s/%s", package_runtime_dir_path, pid)) {
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		process_runtime_dir_path = xx;
+	}
+
+	linted_error errnum = 0;
+
+	if (-1 == chdir(process_runtime_dir_path)) {
+		linted_log(LINTED_LOG_ERROR, "chdir: %s",
+		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -212,16 +269,6 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	char const *path = getenv("LINTED_ADMIN_SOCKET");
-	if (0 == path) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: missing LINTED_ADMIN_SOCKET\n",
-		                       process_name);
-		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
-		                                LINTED_STR("--help"));
-		return EXIT_FAILURE;
-	}
-
 	if (0 == name) {
 		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: missing SERVICE\n", process_name);
@@ -239,17 +286,30 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	size_t path_len = strlen(path);
-	linted_admin admin;
+	linted_admin_input admin_input;
 	{
-		linted_admin xx;
-		errnum = linted_admin_connect(&xx, path, path_len);
+		linted_admin_input xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-input",
+		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin = xx;
+		admin_input = xx;
+	}
+
+	linted_admin_output admin_output;
+	{
+		linted_admin_output xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-output",
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			failure(LINTED_KO_STDERR, process_name,
+			        LINTED_STR("can not create socket"), errnum);
+			return EXIT_FAILURE;
+		}
+		admin_output = xx;
 	}
 
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
@@ -263,7 +323,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		request.status.size = name_len;
 		memcpy(request.status.name, name, name_len);
 
-		errnum = linted_admin_send_request(admin, &request);
+		errnum = linted_admin_input_write(admin_input, &request);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not send request"), errnum);
@@ -275,7 +335,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	size_t bytes_read;
 	{
 		size_t xx;
-		errnum = linted_admin_recv_reply(admin, &reply, &xx);
+		errnum = linted_admin_output_read(admin_output, &reply, &xx);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not read reply"), errnum);
@@ -367,27 +427,30 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	char const *path = getenv("LINTED_ADMIN_SOCKET");
-	if (0 == path) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: missing LINTED_ADMIN_SOCKET\n",
-		                       process_name);
-		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
-		                                LINTED_STR("--help"));
-		return EXIT_FAILURE;
-	}
-
-	size_t path_len = strlen(path);
-	linted_admin admin;
+	linted_admin_input admin_input;
 	{
-		linted_admin xx;
-		errnum = linted_admin_connect(&xx, path, path_len);
+		linted_admin_input xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-input",
+		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        LINTED_STR("can not create socket"), errnum);
 			return EXIT_FAILURE;
 		}
-		admin = xx;
+		admin_input = xx;
+	}
+
+	linted_admin_output admin_output;
+	{
+		linted_admin_output xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "admin-output",
+		                        LINTED_KO_RDONLY);
+		if (errnum != 0) {
+			failure(LINTED_KO_STDERR, process_name,
+			        LINTED_STR("can not create socket"), errnum);
+			return EXIT_FAILURE;
+		}
+		admin_output = xx;
 	}
 
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
@@ -401,7 +464,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		request.stop.size = sizeof "gui" - 1U;
 		memcpy(request.stop.name, "gui", sizeof "gui" - 1U);
 
-		errnum = linted_admin_send_request(admin, &request);
+		errnum = linted_admin_input_write(admin_input, &request);
 	}
 	if (errnum != 0) {
 		failure(LINTED_KO_STDERR, process_name,
@@ -415,7 +478,8 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		union linted_admin_reply xx;
 		{
 			size_t yy;
-			errnum = linted_admin_recv_reply(admin, &xx, &yy);
+			errnum =
+			    linted_admin_output_read(admin_output, &xx, &yy);
 			if (errnum != 0) {
 				failure(LINTED_KO_STDERR, process_name,
 				        LINTED_STR("can not read reply"),

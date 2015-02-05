@@ -84,12 +84,14 @@ struct linted_io_task_write
 
 struct linted_io_task_recv
 {
+	struct sockaddr_storage src_addr;
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;
 	char *buf;
 	size_t size;
 	size_t bytes_read;
+	size_t src_addr_len;
 	linted_ko ko;
 };
 
@@ -680,6 +682,13 @@ size_t linted_io_task_recv_bytes_read(struct linted_io_task_recv *task)
 	return task->bytes_read;
 }
 
+void linted_io_task_recv_src_addr(struct linted_io_task_recv *task,
+                                  struct sockaddr *addr, size_t *addr_len)
+{
+	memcpy(addr, &task->src_addr, *addr_len);
+	*addr_len = task->src_addr_len;
+}
+
 linted_error linted_io_task_sendto_create(struct linted_io_task_sendto **taskp,
                                           void *data)
 {
@@ -880,7 +889,6 @@ void linted_io_do_read(struct linted_asynch_pool *pool,
 	 * open writers but not have poll return with POLLIN.  You
 	 * have to POLLIN first and then read input.
 	 */
-
 	short revents = linted_asynch_waiter_revents(waiter);
 	if (0 == revents)
 		goto wait_on_poll;
@@ -1040,15 +1048,24 @@ void linted_io_do_recv(struct linted_asynch_pool *pool,
 
 	linted_ko ko = task_recv->ko;
 	char *buf = task_recv->buf;
+	struct sockaddr_storage *src_addr = &task_recv->src_addr;
+	memset(src_addr, 0, sizeof *src_addr);
 
 	struct linted_asynch_waiter *waiter = task_recv->waiter;
 
 	linted_error errnum = 0;
 
-	ssize_t result = recv(ko, buf, size, MSG_DONTWAIT);
-	if (-1 == result) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+	size_t src_addr_len = 0U;
+	ssize_t result;
+	{
+		socklen_t xx = sizeof *src_addr;
+		result = recvfrom(ko, buf, size, MSG_DONTWAIT, (void *)src_addr,
+		                  &xx);
+		if (-1 == result) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+		src_addr_len = xx;
 	}
 
 	if (EINTR == errnum)
@@ -1064,6 +1081,7 @@ void linted_io_do_recv(struct linted_asynch_pool *pool,
 
 complete_task:
 	task_recv->bytes_read = bytes_read;
+	task_recv->src_addr_len = src_addr_len;
 
 	linted_asynch_pool_complete(pool, task, errnum);
 	return;

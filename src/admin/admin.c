@@ -27,25 +27,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 
-#define ADMIN_PATH_MAX (sizeof(struct sockaddr_un) - sizeof(sa_family_t))
-
-struct linted_admin_task_accept
-{
-	struct linted_io_task_accept *parent;
-	void *data;
-};
-
-struct linted_admin_task_recv_request
+struct linted_admin_task_input_read
 {
 	struct linted_io_task_read *parent;
 	void *data;
 	union linted_admin_request request;
 };
 
-struct linted_admin_task_send_reply
+struct linted_admin_task_output_write
 {
 	struct linted_io_task_write *data;
 	void *parent;
@@ -53,76 +43,11 @@ struct linted_admin_task_send_reply
 };
 
 linted_error
-linted_admin_task_accept_create(struct linted_admin_task_accept **taskp,
-                                void *data)
+linted_admin_task_input_read_create(struct linted_admin_task_input_read **taskp,
+                                    void *data)
 {
 	linted_error errnum;
-	struct linted_admin_task_accept *task;
-	{
-		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
-		task = xx;
-	}
-	struct linted_io_task_accept *parent;
-	{
-		struct linted_io_task_accept *xx;
-		errnum = linted_io_task_accept_create(&xx, task);
-		if (errnum != 0)
-			goto free_task;
-		parent = xx;
-	}
-	task->parent = parent;
-	task->data = data;
-	*taskp = task;
-	return 0;
-free_task:
-	linted_mem_free(task);
-	return errnum;
-}
-
-void linted_admin_task_accept_destroy(struct linted_admin_task_accept *task)
-{
-	linted_io_task_accept_destroy(task->parent);
-	linted_mem_free(task);
-}
-
-void linted_admin_task_accept_prepare(struct linted_admin_task_accept *task,
-                                      unsigned task_action, linted_ko ko)
-{
-	linted_io_task_accept_prepare(task->parent, task_action, ko);
-}
-
-void *linted_admin_task_accept_data(struct linted_admin_task_accept *task)
-{
-	return task->data;
-}
-
-linted_admin
-linted_admin_task_accept_returned_ko(struct linted_admin_task_accept *task)
-{
-	return linted_io_task_accept_returned_ko(task->parent);
-}
-
-struct linted_asynch_task *
-linted_admin_task_accept_to_asynch(struct linted_admin_task_accept *task)
-{
-	return linted_io_task_accept_to_asynch(task->parent);
-}
-
-struct linted_admin_task_accept *
-linted_admin_task_accept_from_asynch(struct linted_asynch_task *task)
-{
-	return linted_io_task_accept_data(
-	    linted_io_task_accept_from_asynch(task));
-}
-
-linted_error linted_admin_task_recv_request_create(
-    struct linted_admin_task_recv_request **taskp, void *data)
-{
-	linted_error errnum;
-	struct linted_admin_task_recv_request *task;
+	struct linted_admin_task_input_read *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -147,58 +72,57 @@ free_task:
 	return errnum;
 }
 
-void linted_admin_task_recv_request_destroy(
-    struct linted_admin_task_recv_request *task)
+void
+linted_admin_task_input_read_destroy(struct linted_admin_task_input_read *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 void *
-linted_admin_task_recv_request_data(struct linted_admin_task_recv_request *task)
+linted_admin_task_input_read_data(struct linted_admin_task_input_read *task)
 {
 	return task->data;
 }
 
-linted_admin
-linted_admin_task_recv_request_ko(struct linted_admin_task_recv_request *task)
+linted_admin_input
+linted_admin_task_input_read_ko(struct linted_admin_task_input_read *task)
 {
 	return linted_io_task_read_ko(task->parent);
 }
 
-union linted_admin_request const *linted_admin_task_recv_request_request(
-    struct linted_admin_task_recv_request *task)
+union linted_admin_request const *
+linted_admin_task_input_read_request(struct linted_admin_task_input_read *task)
 {
 	return &task->request;
 }
 
-void linted_admin_task_recv_request_prepare(
-    struct linted_admin_task_recv_request *task, unsigned task_action,
-    linted_ko ko)
+void
+linted_admin_task_input_read_prepare(struct linted_admin_task_input_read *task,
+                                     unsigned task_action, linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_action, ko,
 	                            (char *)&task->request,
 	                            sizeof task->request);
 }
 
-struct linted_asynch_task *linted_admin_task_recv_request_to_asynch(
-    struct linted_admin_task_recv_request *task)
+struct linted_asynch_task *linted_admin_task_input_read_to_asynch(
+    struct linted_admin_task_input_read *task)
 {
 	return linted_io_task_read_to_asynch(task->parent);
 }
 
-struct linted_admin_task_recv_request *
-linted_admin_task_recv_request_from_asynch(struct linted_asynch_task *task)
+struct linted_admin_task_input_read *
+linted_admin_task_input_read_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
 }
 
-linted_error
-linted_admin_task_send_reply_create(struct linted_admin_task_send_reply **taskp,
-                                    void *data)
+linted_error linted_admin_task_output_write_create(
+    struct linted_admin_task_output_write **taskp, void *data)
 {
 	linted_error errnum;
-	struct linted_admin_task_send_reply *task;
+	struct linted_admin_task_output_write *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -223,23 +147,22 @@ free_task:
 	return errnum;
 }
 
-void
-linted_admin_task_send_reply_destroy(struct linted_admin_task_send_reply *task)
+void linted_admin_task_output_write_destroy(
+    struct linted_admin_task_output_write *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 void *
-linted_admin_task_send_reply_data(struct linted_admin_task_send_reply *task)
+linted_admin_task_output_write_data(struct linted_admin_task_output_write *task)
 {
 	return task->data;
 }
 
-void
-linted_admin_task_send_reply_prepare(struct linted_admin_task_send_reply *task,
-                                     unsigned task_action, linted_ko ko,
-                                     union linted_admin_reply const *reply)
+void linted_admin_task_output_write_prepare(
+    struct linted_admin_task_output_write *task, unsigned task_action,
+    linted_ko ko, union linted_admin_reply const *reply)
 {
 	linted_io_task_write_prepare(task->parent, task_action, ko,
 	                             (char const *)&task->reply,
@@ -247,146 +170,28 @@ linted_admin_task_send_reply_prepare(struct linted_admin_task_send_reply *task,
 	task->reply = *reply;
 }
 
-struct linted_asynch_task *linted_admin_task_send_reply_to_asynch(
-    struct linted_admin_task_send_reply *task)
+struct linted_asynch_task *linted_admin_task_output_write_to_asynch(
+    struct linted_admin_task_output_write *task)
 {
 	return linted_io_task_write_to_asynch(task->parent);
 }
 
-struct linted_admin_task_send_reply *
-linted_admin_task_send_reply_from_asynch(struct linted_asynch_task *task)
+struct linted_admin_task_output_write *
+linted_admin_task_output_write_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_write_data(
 	    linted_io_task_write_from_asynch(task));
 }
 
-linted_error linted_admin_bind(linted_admin *admin, int backlog,
-                               char const *path, size_t path_len)
-{
-	linted_error errnum = 0;
-
-	if (0 == path && path_len != 0U)
-		return EINVAL;
-
-	if (path_len > ADMIN_PATH_MAX)
-		return ENAMETOOLONG;
-
-	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-	if (-1 == sock) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	int bind_status;
-	{
-		struct sockaddr_un address = { 0 };
-
-		address.sun_family = AF_UNIX;
-
-		if (path != 0) {
-			memcpy(address.sun_path, path, path_len);
-			if ('@' == address.sun_path[0U])
-				address.sun_path[0U] = '\0';
-		}
-
-		bind_status = bind(sock, (void *)&address,
-		                   sizeof(sa_family_t) + path_len);
-	}
-	if (-1 == bind_status) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	/* Set the nonblock status after binding because asynchronous
-	 * binding is a pain to deal with.
-	 */
-	int flags = fcntl(sock, F_GETFL);
-	if (-1 == flags) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	if (-1 == fcntl(sock, F_SETFL, (long)flags | O_NONBLOCK)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	if (-1 == listen(sock, backlog)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	if (-1 == shutdown(sock, SHUT_WR)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	*admin = sock;
-	return 0;
-
-close_sock:
-	linted_ko_close(sock);
-	return errnum;
-}
-
-linted_error linted_admin_connect(linted_admin *admin, char const *path,
-                                  size_t path_len)
-{
-	linted_error errnum = 0;
-
-	if (path_len > ADMIN_PATH_MAX)
-		return ENAMETOOLONG;
-
-	int sock = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-	if (-1 == sock) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	int connect_status;
-	{
-		struct sockaddr_un address = { 0 };
-
-		address.sun_family = AF_UNIX;
-		memcpy(address.sun_path, path, path_len);
-
-		if ('@' == address.sun_path[0U])
-			address.sun_path[0U] = '\0';
-
-		connect_status = connect(sock, (void *)&address,
-		                         sizeof(sa_family_t) + path_len);
-	}
-	if (-1 == connect_status) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		goto close_sock;
-	}
-
-	*admin = sock;
-	return 0;
-
-close_sock:
-	linted_ko_close(sock);
-	return errnum;
-}
-
-linted_error
-linted_admin_send_request(linted_admin admin,
-                          union linted_admin_request const *request)
+linted_error linted_admin_input_write(linted_admin_input admin,
+                                      union linted_admin_request const *request)
 {
 	return linted_io_write_all(admin, 0, request, sizeof *request);
 }
 
-linted_error linted_admin_recv_reply(linted_admin admin,
-                                     union linted_admin_reply *reply,
-                                     size_t *size)
+linted_error linted_admin_output_read(linted_admin_output admin,
+                                      union linted_admin_reply *reply,
+                                      size_t *size)
 {
 	linted_error errnum;
 
