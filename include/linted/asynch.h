@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ enum {
 	LINTED_ASYNCH_TASK_SENDTO,
 	LINTED_ASYNCH_TASK_ACCEPT
 };
+typedef unsigned char linted_asynch_type;
 
 struct linted_asynch_task;
 struct linted_asynch_waiter;
@@ -77,7 +78,7 @@ void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter);
 short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter);
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
-                                       void *data, unsigned type);
+                                       void *data, linted_asynch_type type);
 void linted_asynch_task_destroy(struct linted_asynch_task *task);
 
 void linted_asynch_task_cancel(struct linted_asynch_task *task);

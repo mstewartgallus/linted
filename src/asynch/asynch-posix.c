@@ -137,8 +137,8 @@ struct linted_asynch_task
 	struct canceller canceller;
 	void *data;
 	linted_error errnum;
-	unsigned type;
 	unsigned task_action;
+	linted_asynch_type type;
 };
 
 struct linted_asynch_waiter
@@ -354,7 +354,7 @@ short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter)
 }
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
-                                       void *data, unsigned type)
+                                       void *data, linted_asynch_type type)
 {
 	linted_error errnum;
 	struct linted_asynch_task *task;

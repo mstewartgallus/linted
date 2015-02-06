@@ -120,7 +120,7 @@ struct linted_asynch_task
 	bool *cancel_replier;
 	void *data;
 
-	unsigned type;
+	linted_asynch_type type;
 	unsigned task_action;
 
 	bool owned : 1U;
@@ -405,7 +405,7 @@ short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter)
 }
 
 linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
-                                       void *data, unsigned type)
+                                       void *data, linted_asynch_type type)
 {
 	linted_error errnum;
 	struct linted_asynch_task *task;
