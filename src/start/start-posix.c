@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "linted/start.h"
 
@@ -58,7 +58,8 @@ int main(int argc, char *argv[])
 
 	char const *service = getenv("LINTED_SERVICE");
 	if (service != 0) {
-		if (0 == (process_name = strdup(service)))
+		process_name = strdup(service);
+		if (0 == process_name)
 			return EXIT_FAILURE;
 	} else if (argc > 0) {
 		process_name = argv[0U];
