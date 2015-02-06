@@ -136,10 +136,10 @@ dnl
 AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
 dnl
 LINTED_CHECK_LIB([WSOCK32_LIBS], [wsock32], [closesocket], [], [
-   AC_MSG_WARN([Unable to find a Winsock library])
+   AC_MSG_ERROR([Unable to find a Winsock library])
 ])
 LINTED_CHECK_LIB([MSWSOCK_LIBS], [mswsock], [AcceptEx], [], [
-   AC_MSG_WARN([Unable to find a Winsock library])
+   AC_MSG_ERROR([Unable to find a Winsock library])
 ])
 dnl
 ])

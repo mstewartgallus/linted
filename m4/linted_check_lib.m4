@@ -12,12 +12,12 @@ dnl invoked like LINTED_CHECK_LIB([myvar_lib], [m], [sin])
 dnl
 AC_DEFUN([LINTED_CHECK_LIB],[
 dnl
-[linted_old_LDFLAGS="${LDFLAGS}"]
+[linted_old_LIBS="${LIBS}"]
 dnl
 AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for library containing ]$3)
-[LDFLAGS='-l]$2[']
+[LIBS='-l]$2[']
 AC_LINK_IFELSE([AC_LANG_SOURCE([[void ]$3[(void);][int main() { ]$3[(); return 0; }]])], [
          AC_MSG_RESULT([-l]$2)
          $1[='-l]$2[']
@@ -27,8 +27,9 @@ AC_LINK_IFELSE([AC_LANG_SOURCE([[void ]$3[(void);][int main() { ]$3[(); return 0
          $5
 ])
 dnl
-[LDFLAGS="${linted_old_LDFLAGS}"]
+AC_LANG_POP([C])
+dnl
+[LIBS="${linted_old_LIBS}"]
 dnl
 AC_SUBST($1)
-AC_LANG_POP([C])
 ])
