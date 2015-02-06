@@ -101,8 +101,39 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		}
 	}
 
-	for (;;)
-		pause();
+	/* Make sure to only exit after having fully drained the pipe
+	 * of errors to be logged. */
+	{
+		struct sigaction action = { 0 };
+		action.sa_handler = SIG_DFL;
+		action.sa_flags = SA_NOCLDSTOP;
+		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
+			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	for (;;) {
+		int wait_status;
+		{
+			siginfo_t info;
+			wait_status = waitid(P_ALL, -1, &info, WEXITED);
+		}
+		if (-1 == wait_status) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			if (ECHILD == errnum)
+				break;
+			if (EINTR == errnum)
+				continue;
+
+			assert(false);
+		}
+	}
+
+	return EXIT_SUCCESS;
 }
 
 static void on_term(int signo)
@@ -156,7 +187,7 @@ static void on_sigchld(int signo)
 			LINTED_ASSUME(errnum != 0);
 
 			if (ECHILD == errnum)
-				_Exit(EXIT_SUCCESS);
+				break;
 			if (EINTR == errnum)
 				continue;
 
