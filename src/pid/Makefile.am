@@ -19,6 +19,4 @@ noinst_LTLIBRARIES+=%D%/libpid.la
 %C%_libpid_la_SOURCES=%D%/pid.c include/linted/pid.h
 EXTRA_%C%_libpid_la_SOURCES=%D%/pid-posix.c %D%/pid-windows.c
 %C%_libpid_la_LIBADD=\
-  src/ko/libko.la\
-  src/io/libio.la\
-  src/queue/libqueue.la
+  src/asynch/libasynch.la

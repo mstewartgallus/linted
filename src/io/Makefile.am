@@ -21,5 +21,4 @@ EXTRA_%C%_libio_la_SOURCES=\
   %D%/io-posix.c\
   %D%/io-windows.c
 %C%_libio_la_LIBADD=\
-  src/ko/libko.la
-# Circular depedence with libasynch
+  src/asynch/libasynch.la

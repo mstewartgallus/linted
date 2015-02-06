@@ -636,6 +636,17 @@ static void *worker_routine(void *arg)
 	LINTED_ASSUME_UNREACHABLE();
 }
 
+#pragma weak linted_sched_do_idle
+#pragma weak linted_io_do_poll
+#pragma weak linted_io_do_read
+#pragma weak linted_io_do_write
+#pragma weak linted_pid_do_waitid
+#pragma weak linted_signal_do_sigwaitinfo
+#pragma weak linted_sched_do_sleep_until
+#pragma weak linted_io_do_accept
+#pragma weak linted_io_do_recv
+#pragma weak linted_io_do_sendto
+
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
 {

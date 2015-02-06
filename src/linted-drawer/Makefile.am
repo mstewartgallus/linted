@@ -24,6 +24,7 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
   src/error/liberror.la\
   src/gpu/libgpu.la\
   src/ko/libko.la\
+  src/sched/libsched.la\
   src/xcb/libxcb.la\
   \
   src/updater/libupdater.la\

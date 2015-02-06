@@ -19,12 +19,5 @@ noinst_LTLIBRARIES+=%D%/libasynch.la
 %C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
 EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-posix.c %D%/asynch-windows.c
 %C%_libasynch_la_LIBADD=\
-  src/io/libio.la\
   src/ko/libko.la\
-  src/pid/libpid.la\
-  src/queue/libqueue.la\
-  src/sched/libsched.la\
-  src/signal/libsignal.la\
-  \
-  $(WSOCK32_LIBS)\
-  $(MSWSOCK_LIBS)
+  src/queue/libqueue.la

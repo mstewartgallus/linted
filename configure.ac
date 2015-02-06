@@ -30,10 +30,21 @@ LT_INIT
 AC_PROG_CC
 AM_PROG_CC_C_O
 dnl
+AC_CANONICAL_HOST
+dnl
+[linted_posix_api_default=no]
+[linted_windows_api_default=no]
+dnl
+AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
+AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
+dnl
+AS_IF([test "x${CC}" = "xwinegcc"], [
+        [linted_windows_api_default=yes]
+        [linted_posix_api_default=no]
+])
+dnl
 LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
-dnl
-AC_CANONICAL_HOST
 dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
@@ -71,9 +82,6 @@ AC_CHECK_FUNCS([[dup2]dnl
                 [strtol]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
-AC_CHECK_FUNCS([[clock_gettime]], [], [
- AC_MSG_ERROR([Unable to find function ${ac_func}])
-])
 dnl
 PKG_CHECK_MODULES(XCB, xcb, [], [
  AC_MSG_ERROR([Unable to find an XCB library])
@@ -108,13 +116,6 @@ AC_TYPE_SSIZE_T
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
-dnl
-AS_IF([test "x${host_os}" = "xlinux-gnu"],
-        [[linted_posix_api_default=yes]],
-        [[linted_posix_api_default=no]])
-AS_IF([test "x${host_os}" = "xmingw32"],
-        [[linted_windows_api_default=yes]],
-        [[linted_windows_api_default=no]])
 dnl
 AC_ARG_ENABLE(
         [posix-api],
@@ -164,6 +165,9 @@ LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
    AC_MSG_ERROR([Unable to find a POSIX capabilities library])
 ])
 dnl
+AC_CHECK_FUNCS([[clock_gettime]], [], [
+ AC_MSG_ERROR([Unable to find function ${ac_func}])
+])
 AC_FUNC_GETMNTENT
 AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
  AC_MSG_ERROR([Unable to find getmntent function])

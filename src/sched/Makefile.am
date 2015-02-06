@@ -18,6 +18,5 @@ noinst_LTLIBRARIES+=%D%/libsched.la
 
 %C%_libsched_la_SOURCES=%D%/sched.c include/linted/sched.h
 %C%_libsched_la_LIBADD=\
-  src/ko/libko.la\
-  src/queue/libqueue.la\
+  src/asynch/libasynch.la\
   $(REALTIME_LIBS)

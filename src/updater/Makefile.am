@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
   %D%/updater.c\
   include/linted/updater.h
 %C%_libupdater_la_LIBADD=\
+  src/io/libio.la\
   src/ko/libko.la\
   \
   $(MATH_LIBS)
