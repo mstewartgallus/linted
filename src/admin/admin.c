@@ -17,16 +17,13 @@
 
 #include "linted/admin.h"
 
-#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <string.h>
+#include <stddef.h>
 
 struct linted_admin_in_task_read
 {

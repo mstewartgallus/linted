@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 static unsigned char waiter_start(char const *process_name, size_t argc,

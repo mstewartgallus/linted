@@ -46,7 +46,6 @@ include %C%/locale/Makefile.am
 include %C%/log/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/pid/Makefile.am
-include %C%/pool/Makefile.am
 include %C%/queue/Makefile.am
 include %C%/sched/Makefile.am
 include %C%/signal/Makefile.am

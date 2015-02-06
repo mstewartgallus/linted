@@ -22,7 +22,6 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
-#include "linted/mem.h"
 #include "linted/sched.h"
 #include "linted/sim.h"
 #include "linted/start.h"

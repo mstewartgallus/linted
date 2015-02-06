@@ -20,6 +20,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 
 #include <stddef.h>
 

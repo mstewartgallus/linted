@@ -28,7 +28,6 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
-#include "linted/pool.h"
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -52,8 +51,6 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -1471,7 +1468,8 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 	                                    admin_out, &reply);
 	linted_asynch_pool_submit(
 	    pool, linted_admin_out_task_write_to_asynch(write_task));
-	return 0;
+
+	return errnum;
 }
 
 static linted_error on_admin_out_write(struct linted_asynch_task *task)

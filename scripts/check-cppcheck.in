@@ -27,8 +27,7 @@ source_files() {
     -D__unix__\
     -D__amd64__\
     -I'/usr/include'\
-    -I'/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include'\
-    -I'/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include-fixed'\
+    -I'/usr/lib/clang/3.5/include'\
     --quiet\
     --enable=warning\
     --enable=style\

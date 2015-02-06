@@ -147,7 +147,7 @@
  *
  * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
  * Is a bit buggy.
- * Use like: `make CC='iwyu -I/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include-fixed' -k | tee iwyu.log`
+ * Use like: `make CC='iwyu -I/usr/lib/clang/3.5/include' -k | tee iwyu.log' -k | tee iwyu.log`
  * </li>
  *
  * @section rejected Rejected Tools
