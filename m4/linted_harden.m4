@@ -14,7 +14,9 @@ AC_ARG_ENABLE(
         [harden],
         AS_HELP_STRING(
                 [--disable-harden],
-                [disable hardening flags (not advised)]))
+                [disable hardening flags (not advised)]),
+        [[enable_harden='no']],
+        [[enable_harden='yes']])
 dnl
 AS_IF([test "x${enable_harden}" != "xno"], [
 dnl

@@ -109,60 +109,27 @@ AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
 dnl
-AS_IF([test "x${host_os}" = "xlinux-gnu"], [
-        [linted_posix_api_default=yes]
-], [
-        [linted_posix_api_default=no]
-])
-AS_IF([test "x${host_os}" = "xmingw32"], [
-        [linted_windows_api_default=yes]
-], [
-        [linted_windows_api_default=no]
-])
+AS_IF([test "x${host_os}" = "xlinux-gnu"],
+        [[linted_posix_api_default=yes]],
+        [[linted_posix_api_default=no]])
+AS_IF([test "x${host_os}" = "xmingw32"],
+        [[linted_windows_api_default=yes]],
+        [[linted_windows_api_default=no]])
 dnl
-AS_IF([test "x${linted_posix_api_default}" = "xyes"], [
-AC_ARG_ENABLE(
-        [posix-api],
-        AS_HELP_STRING(
-                [--disable-posix-api],
-                [disable use of the POSIX API]), [
-        [enable_posix_api='no']
-        ], [
-        [enable_posix_api='yes']
-        ])
-], [
 AC_ARG_ENABLE(
         [posix-api],
         AS_HELP_STRING(
                 [--enable-posix-api],
-                [enable use of the POSIX API]), [
-        [enable_posix_api='yes']
-        ], [
-        [enable_posix_api='no']
-        ])
-])
-dnl
-AS_IF([test "x${linted_windows_api_default}" = "xyes"], [
-AC_ARG_ENABLE(
-        [windows-api],
-        AS_HELP_STRING(
-                [--disable-windows-api],
-                [disable use of the Microsoft Windows API]), [
-        [enable_windows_api='no']
-        ], [
-        [enable_windows_api='yes']
-        ])
-], [
+                [enable use of the POSIX API]),
+        [[enable_posix_api='yes']],
+        [[enable_posix_api="$linted_posix_api_default"]])
 AC_ARG_ENABLE(
         [windows-api],
         AS_HELP_STRING(
                 [--enable-windows-api],
-                [enable use of the Microsoft Windows API]), [
-        [enable_windows_api='yes']
-        ], [
-        [enable_windows_api='no']
-        ])
-])
+                [enable use of the Microsoft Windows API]),
+                [[enable_windows_api='yes']],
+                [[enable_windows_api="$linted_windows_api_default"]])
 dnl
 AS_IF([test "x${enable_windows_api}" = "xyes"], [
 dnl

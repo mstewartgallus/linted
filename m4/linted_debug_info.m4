@@ -14,7 +14,9 @@ AC_ARG_ENABLE(
         [debug],
         AS_HELP_STRING(
                 [--disable-debug-info],
-                [disable debug info]))
+                [disable debug info]),
+        [[enable_debug_info='no']],
+        [[enable_debug_info='yes']])
 dnl
 AS_IF([test "x${enable_debug_info}" != "xno"], [
 dnl

@@ -14,7 +14,10 @@ AC_ARG_ENABLE(
         [debug],
         AS_HELP_STRING(
                 [--enable-debug],
-                [enable debug mode (possibly insecure!)]))
+                [enable debug mode (possibly insecure!)]),
+        [[enable_debug='yes']],
+        [[enable_debug='no']])
+
 dnl
 AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl

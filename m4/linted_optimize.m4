@@ -14,7 +14,9 @@ AC_ARG_ENABLE(
         [optimize],
         AS_HELP_STRING(
                 [--disable-optimize],
-                [disable optimization flags (useful for debugging, portability)]))
+                [disable optimization flags (useful for debugging, portability)]),
+        [[enable_optimize='no']],
+        [[enable_optimize='yes']])
 dnl
 AS_IF([test "x${enable_optimize}" != "xno"], [
 dnl

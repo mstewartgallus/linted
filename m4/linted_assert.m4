@@ -14,7 +14,9 @@ AC_ARG_ENABLE(
         [assert],
         AS_HELP_STRING(
                 [--disable-assert],
-                [disable assertions (still secure)]))
+                [disable assertions (still secure)]),
+        [[enable_assert='no']],
+        [[enable_assert='yes']])
 dnl
 AS_IF([test "x${enable_assert}" != "xno"], [],[
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl

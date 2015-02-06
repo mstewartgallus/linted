@@ -14,7 +14,9 @@ AC_ARG_ENABLE(
         [fast-build],
         AS_HELP_STRING(
                 [--disable-fast-build],
-                [disable adjustments for speeding up the build]))
+                [disable adjustments for speeding up the build]),
+        [[enable_fast_build='no']],
+        [[enable_fast_build='yes']])
 dnl
 AS_IF([test "x${enable_fast_build}" != "xno"], [
 dnl
