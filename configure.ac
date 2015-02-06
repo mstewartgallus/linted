@@ -37,6 +37,7 @@ dnl
 dnl
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
 AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
+AS_IF([test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
 dnl
 AS_IF([test "x${CC}" = "xwinegcc"], [
         [linted_windows_api_default=yes]
