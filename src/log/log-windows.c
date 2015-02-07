@@ -15,6 +15,9 @@
  */
 #include "linted/log.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+
 /**
  * @todo Implement logging on Microsoft Windows
  */
@@ -27,4 +30,14 @@ void linted_log_open(char const *ident)
  */
 void linted_log(unsigned log_level, char const *format, ...)
 {
+
+	va_list ap;
+	va_start(ap, format);
+
+	FILE *err = stderr;
+	vfprintf(err, format, ap);
+	fputc('\n', err);
+	fflush(err);
+
+	va_end(ap);
 }

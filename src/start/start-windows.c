@@ -27,17 +27,19 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <windows.h>
+#include <winsock2.h>
 
 int main(int argc, char *argv[])
 {
-	if (!SetErrorMode(SEM_FAILCRITICALERRORS))
-		return EXIT_FAILURE;
+	/* Cannot fail, return value is only the previous state */
+	SetErrorMode(SEM_FAILCRITICALERRORS);
 
 	/**
-	 * I do not remember if Windows processes might need sometimes
-	 * to open up standard IO handles at startup if the program
-	 * that spawns doesn't pass them in.
+	 * @todo Open up standard handles if GetStdHandle returns a
+	 *       null pointer for any of them (they weren't set by the
+	 *       spawner).
 	 */
 	char const *process_name = 0;
 
@@ -58,6 +60,17 @@ int main(int argc, char *argv[])
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
+		return EXIT_FAILURE;
+	}
+
+	int error_code;
+	{
+		WSADATA xx;
+		error_code = WSAStartup(MAKEWORD(2, 2), &xx);
+	}
+	if (error_code != 0) {
+		linted_log(LINTED_LOG_ERROR, "WSAStartup: %s",
+		           linted_error_string(error_code));
 		return EXIT_FAILURE;
 	}
 

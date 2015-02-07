@@ -33,11 +33,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <process.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
+
 #include <windows.h>
 #include <winsock2.h>
 

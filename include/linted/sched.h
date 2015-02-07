@@ -18,8 +18,6 @@
 
 #include "linted/error.h"
 
-#include <sys/types.h>
-
 /**
  * @file
  *

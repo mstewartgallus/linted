@@ -21,4 +21,6 @@ EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
 %C%_libstart_la_LIBADD=\
   src/error/liberror.la\
   src/ko/libko.la\
-  src/log/liblog.la
+  src/log/liblog.la\
+  \
+  $(WS2_32_LIBS)

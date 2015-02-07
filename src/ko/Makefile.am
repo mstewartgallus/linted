@@ -22,4 +22,4 @@ EXTRA_%C%_libko_la_SOURCES=\
   %D%/ko-windows.c\
   include/linted/ko-posix.h\
   include/linted/ko-windows.h
-%C%_libko_la_LIBADD=$(WSOCK32_LIBS)
+%C%_libko_la_LIBADD=$(WS2_32_LIBS)

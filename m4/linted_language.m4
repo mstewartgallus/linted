@@ -16,13 +16,9 @@ dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
         [-std=c99]dnl
         [-pedantic-errors]dnl
-        [-pthread]dnl
 ])
 AC_SUBST([linted_CFLAGS_LANGUAGE])
 dnl
-LINTED_CHECK_LDFLAGS([linted_LDFLAGS_LANGUAGE],[
-        [-pthread]dnl
-        [-Wl,--no-undefined]dnl
-])
+LINTED_CHECK_LDFLAGS([linted_LDFLAGS_LANGUAGE],[[-Wl,--no-undefined]])
 AC_SUBST([linted_LDFLAGS_LANGUAGE])
 ])

@@ -28,9 +28,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <windows.h>
 #include <stdbool.h>
 #include <string.h>
+
+#include <windows.h>
 
 struct linted_queue
 {

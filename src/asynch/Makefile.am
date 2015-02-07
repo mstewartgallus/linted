@@ -21,4 +21,4 @@ EXTRA_%C%_libasynch_la_SOURCES=%D%/asynch-posix.c %D%/asynch-windows.c
 %C%_libasynch_la_LIBADD=\
   src/ko/libko.la\
   src/queue/libqueue.la\
-  $(WSOCK32_LIBS) $(MSWSOCK_LIBS)
+  $(WS2_32_LIBS)
