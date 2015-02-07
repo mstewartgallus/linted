@@ -40,8 +40,6 @@
 #include <sys/auxv.h>
 #include <unistd.h>
 
-#define INT_STRING_PADDING "XXXXXXXXXXXXXX"
-
 struct envvar
 {
 	char const *key;
