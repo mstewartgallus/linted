@@ -136,7 +136,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		}
 	}
 
-	if (!ko_wronly) {
+	if (ko_wronly) {
 		if (-1 == fcntl(fildes, F_SETFL, (long)oflags | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
