@@ -21,4 +21,5 @@ EXTRA_%C%_libio_la_SOURCES=\
   %D%/io-posix.c\
   %D%/io-windows.c
 %C%_libio_la_LIBADD=\
-  src/asynch/libasynch.la
+  src/asynch/libasynch.la\
+  $(WSOCK32_LIBS) $(MSWSOCK_LIBS)

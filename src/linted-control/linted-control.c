@@ -116,8 +116,7 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 	}
 
 	if (0 == command) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: missing COMMAND\n", process_name);
+		linted_log(LINTED_LOG_ERROR, "missing COMMAND");
 		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 		                                LINTED_STR("--help"));
 		return EXIT_FAILURE;
@@ -198,9 +197,7 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		return run_stop(process_name, new_argc, new_argv);
 	}
 
-	linted_io_write_format(LINTED_KO_STDERR, 0,
-	                       "%s: unrecognized command '%s'\n", process_name,
-	                       command);
+	linted_log(LINTED_LOG_ERROR, "urecognized command '%s'", command);
 	linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
 	                                LINTED_STR("--help"));
 	return EXIT_FAILURE;

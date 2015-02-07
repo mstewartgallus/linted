@@ -107,6 +107,162 @@ struct linted_io_task_sendto
 	size_t dest_addr_size;
 };
 
+static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error check_for_poll_error(short revents);
+
+linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
+                                size_t size)
+{
+	size_t bytes_read = 0U;
+	size_t bytes_left = size;
+
+	linted_error errnum = 0;
+
+restart_reading:
+	;
+	size_t bytes_read_delta;
+	{
+		DWORD xx;
+		if (!ReadFile(ko, (char *)buf + bytes_read, bytes_left, &xx,
+		              0)) {
+			errnum = GetLastError();
+			LINTED_ASSUME(errnum != 0);
+
+			if (ERROR_HANDLE_EOF == errnum) {
+				errnum = 0;
+				goto finish_reading;
+			}
+
+			if (WSAEINTR == errnum)
+				goto restart_reading;
+
+			if (WSAEWOULDBLOCK == errnum)
+				goto poll_for_readability;
+
+			goto finish_reading;
+		}
+		bytes_read_delta = xx;
+	}
+
+	bytes_read += bytes_read_delta;
+	bytes_left -= bytes_read_delta;
+
+	if (bytes_read_delta != 0U && bytes_left != 0U)
+		goto restart_reading;
+
+finish_reading:
+	if (bytes_read_out != 0)
+		*bytes_read_out = bytes_read;
+	return errnum;
+
+poll_for_readability:
+	;
+	short revents;
+	{
+		short xx;
+		errnum = poll_one(ko, POLLIN, &xx);
+		if (EINTR == errnum)
+			goto poll_for_readability;
+		if (errnum != 0)
+			goto finish_reading;
+		revents = xx;
+	}
+
+	errnum = check_for_poll_error(revents);
+	if (errnum != 0)
+		goto finish_reading;
+
+	if ((revents & POLLIN) != 0)
+		goto restart_reading;
+
+	if ((revents & POLLHUP) != 0)
+		goto finish_reading;
+
+	LINTED_ASSUME_UNREACHABLE();
+}
+
+linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
+                                 void const *buf, size_t size)
+{
+	linted_error errnum = 0;
+	size_t bytes_wrote = 0U;
+	size_t bytes_left = size;
+
+restart_writing:
+	;
+	size_t bytes_wrote_delta;
+	{
+		DWORD xx;
+		if (!WriteFile(ko, (char const *)buf + bytes_wrote, bytes_left,
+		               &xx, 0)) {
+			errnum = GetLastError();
+			LINTED_ASSUME(errnum != 0);
+
+			if (WSAEINTR == errnum)
+				goto restart_writing;
+
+			if (WSAEWOULDBLOCK == errnum)
+				goto poll_for_writeability;
+
+			if (errnum != 0)
+				goto write_bytes_wrote;
+
+			goto write_bytes_wrote;
+		}
+		bytes_wrote_delta = xx;
+	}
+
+	bytes_wrote += bytes_wrote_delta;
+	bytes_left -= bytes_wrote_delta;
+	if (bytes_left != 0)
+		goto restart_writing;
+
+write_bytes_wrote:
+	if (bytes_wrote_out != 0)
+		*bytes_wrote_out = bytes_wrote;
+	return errnum;
+
+poll_for_writeability:
+	;
+	short revents;
+	{
+		short xx;
+		errnum = poll_one(ko, POLLIN, &xx);
+		if (EINTR == errnum)
+			goto poll_for_writeability;
+		if (errnum != 0)
+			goto write_bytes_wrote;
+		revents = xx;
+	}
+
+	errnum = check_for_poll_error(revents);
+	if (errnum != 0)
+		goto write_bytes_wrote;
+
+	if ((revents & POLLOUT) != 0)
+		goto restart_writing;
+
+	LINTED_ASSUME_UNREACHABLE();
+}
+
+linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
+                                 struct linted_str str)
+{
+	return linted_io_write_all(ko, bytes_wrote, str.bytes, str.size);
+}
+
+linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
+                                    char const *s)
+{
+	return linted_io_write_all(ko, bytes_wrote_out, s, strlen(s));
+}
+
+linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
+                                    char const *format_str, ...)
+{
+	return ENOSYS;
+}
+
 linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
                                         void *data)
 {
@@ -829,4 +985,39 @@ void linted_ko_do_accept(struct linted_asynch_pool *pool,
                          struct linted_asynch_task *task)
 {
 	linted_asynch_pool_complete(pool, task, ENOSYS);
+}
+
+static linted_error poll_one(linted_ko ko, short events, short *reventsp)
+{
+	linted_error errnum;
+
+	short revents;
+	{
+		struct pollfd pollfd = { .fd = (SOCKET)ko, .events = events };
+		int poll_status = WSAPoll(&pollfd, 1U, -1);
+		if (-1 == poll_status)
+			goto poll_failed;
+
+		revents = pollfd.revents;
+		goto poll_succeeded;
+	}
+
+poll_failed:
+	errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
+
+poll_succeeded:
+	*reventsp = revents;
+	return 0;
+}
+
+static linted_error check_for_poll_error(short revents)
+{
+	linted_error errnum = 0;
+
+	if ((revents & POLLNVAL) != 0)
+		errnum = EBADF;
+
+	return errnum;
 }
