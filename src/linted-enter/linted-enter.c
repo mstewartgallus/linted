@@ -19,6 +19,7 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -40,7 +41,7 @@ struct linted_start_config const linted_start_config = {
 };
 
 /* Order of entering matters */
-static char const *namespaces[] = { "user", "pid", "ipc", "mnt", "net" };
+static char const *const namespaces[] = { "user", "pid", "ipc", "mnt", "net" };
 
 static uint_fast8_t enter_start(char const *const process_name, size_t argc,
                                 char const *const argv[])
@@ -52,20 +53,25 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 
 	pid_t pid = atoi(argv[1U]);
 
+	{
+		char proc_path[sizeof "/proc/" - 1U +
+		               LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+		sprintf(proc_path, "/proc/%" PRIuMAX "", (uintmax_t)pid);
+		if (-1 == chdir(proc_path)) {
+			linted_log(LINTED_LOG_ERROR, "chdir: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	linted_ko ns;
 	{
-		char namespace_path[sizeof "/proc/" - 1U +
-		                    LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
-		                    sizeof "/ns" - 1U + 1U];
-		sprintf(namespace_path, "/proc/%" PRIuMAX "/ns",
-		        (uintmax_t)pid);
-
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, namespace_path,
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "ns",
 		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_ko_open");
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 		ns = xx;
@@ -76,12 +82,18 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, ns, namespaces[ii], 0);
 		if (errnum != 0) {
-			errno = errnum;
-			perror("linted_ko_open");
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 
 		fds[ii] = xx;
+	}
+
+	if (-1 == chdir("root")) {
+		linted_log(LINTED_LOG_ERROR, "chdir: %s",
+		           linted_error_string(errno));
+		return EXIT_FAILURE;
 	}
 
 	/* Open all the fds at once so that one can enter spaces that
@@ -89,41 +101,21 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 	 */
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(namespaces); ++ii) {
 		if (-1 == setns(fds[ii], 0)) {
-			perror("setns");
+			linted_log(LINTED_LOG_ERROR, "setns: %s",
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
-		linted_ko_close(fds[ii]);
 	}
 
-	linted_ko stdfiles[] = { LINTED_KO_STDIN, LINTED_KO_STDOUT,
-		                 LINTED_KO_STDERR };
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(stdfiles); ++ii) {
-		linted_ko ko = stdfiles[ii];
-
-		if (-1 == dup2(ko, ii)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		int flags = fcntl(ii, F_GETFD);
-		if (-1 == flags) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-
-		if (-1 == fcntl(ii, F_SETFD, (long)flags & !FD_CLOEXEC)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
+	if (-1 == chdir("/")) {
+		linted_log(LINTED_LOG_ERROR, "chdir: %s",
+		           linted_error_string(errno));
+		return EXIT_FAILURE;
 	}
 
 	static const char *args[] = { "/bin/sh", 0 };
 	execve(args[0U], (char * const *)args, environ);
 
-	perror("execve");
-
+	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
 	return EXIT_FAILURE;
 }

@@ -20,6 +20,6 @@ bin_PROGRAMS+=%D%/linted-enter
 %C%_linted_enter_LDADD=\
   src/start/libstart.la\
   \
-  src/asynch/libasynch.la\
   src/error/liberror.la\
+  src/log/liblog.la\
   src/ko/libko.la
