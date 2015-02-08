@@ -25,13 +25,25 @@
 
 #include "linted/start.h"
 
+#include "linted/error.h"
+#include "linted/log.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include <windows.h>
 
-#define instance_handle 0
+/* This obtains the base address of the current DLL or executable with
+ * linker magic.  This base address just so happens to also be the
+ * value of the current module and instance's handle.  These are the
+ * same because of complicated DOS backwards compatibility reasons.
+ */
+static HINSTANCE get_current_module(void)
+{
+	extern IMAGE_DOS_HEADER __ImageBase;
+	return (HINSTANCE) & __ImageBase;
+}
 
 LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
@@ -49,15 +61,15 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	linted_error errnum = 0;
 
-	HGDIOBJ arrow_cursor = LoadCursor(NULL, IDC_ARROW);
-	if (NULL == arrow_cursor) {
+	HGDIOBJ arrow_cursor = LoadCursor(0, IDC_ARROW);
+	if (0 == arrow_cursor) {
 		errnum = GetLastError();
 		assert(errnum != 0);
 		goto report_exit_status;
 	}
 
 	HGDIOBJ white_brush = GetStockObject(WHITE_BRUSH);
-	if (NULL == white_brush) {
+	if (0 == white_brush) {
 		errnum = GetLastError();
 		assert(errnum != 0);
 		goto report_exit_status;
@@ -69,7 +81,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 		window_class.lpfnWndProc = window_procedure;
 		window_class.style = CS_HREDRAW | CS_VREDRAW;
-		window_class.hInstance = instance_handle;
+		window_class.hInstance = get_current_module();
 		window_class.hCursor = arrow_cursor;
 		window_class.hbrBackground = white_brush;
 		window_class.lpszClassName =
@@ -86,14 +98,14 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	HWND main_window = CreateWindowEx(
 	    WS_EX_LAYERED, (LPCTSTR)(uintptr_t)class_atom, L"foo",
 	    WS_VISIBLE | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT,
-	    CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, instance_handle, NULL);
-	if (NULL == main_window) {
+	    CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, get_current_module(), 0);
+	if (0 == main_window) {
 		errnum = GetLastError();
 		assert(errnum != 0);
 		goto destroy_window;
 	}
 
-	switch (ShowWindow(main_window, SW_SHOWNORMAL)) {
+	switch (ShowWindow(main_window, linted_start_show_command())) {
 	case -1: {
 		errnum = GetLastError();
 		assert(errnum != 0);
@@ -114,7 +126,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	for (;;) {
 		{
 			MSG message;
-			switch (GetMessage(&message, NULL, 0, 0)) {
+			switch (GetMessage(&message, 0, 0, 0)) {
 			case -1:
 				errnum = GetLastError();
 				assert(errnum != 0);
@@ -138,7 +150,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 		for (;;) {
 			MSG message;
-			switch (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+			switch (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
 			case -1:
 				return -1;
 
@@ -172,7 +184,7 @@ destroy_window:
 
 		for (;;) {
 			MSG message;
-			switch (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+			switch (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
 			case -1:
 			case 0:
 				goto window_destroyed;
@@ -228,7 +240,7 @@ static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
 
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(main_window, &ps);
-	if (NULL == hdc) {
+	if (0 == hdc) {
 		errnum = GetLastError();
 		assert(errnum != 0);
 		PostQuitMessage(errnum);

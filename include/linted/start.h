@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 #ifndef LINTED_START_H
 #define LINTED_START_H
-
-#include "linted/ko.h"
 
 #include <stddef.h>
 
@@ -36,5 +34,9 @@ struct linted_start_config
 extern struct linted_start_config const linted_start_config;
 
 void linted_start_useme(void);
+
+#if defined HAVE_WINDOWS_API
+int linted_start_show_command(void);
+#endif
 
 #endif /* LINTED_START_H */

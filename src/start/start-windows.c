@@ -40,17 +40,26 @@
 #include <shellapi.h>
 #include <winsock2.h>
 
+static int show_command;
+
 void linted_start_useme(void)
 {
 	/* This is an awful hack to force the library to be linked in to users.
 	 */
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine, int nShowCmd)
+int linted_start_show_command(void)
+{
+	return show_command;
+}
+
+int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
+                    wchar_t *command_line_unused, int show_command_arg)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
+
+	show_command = show_command_arg;
 
 	linted_error errnum;
 

@@ -30,6 +30,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+void linted_start_useme(void)
+{
+	/* This is an awful hack to force the library to be linked in to users.
+	 */
+}
+
 static void do_nothing(int signo);
 
 int main(int argc, char *argv[])
