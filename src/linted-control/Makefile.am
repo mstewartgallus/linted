@@ -20,6 +20,7 @@ bin_PROGRAMS+=%D%/linted-control
 %C%_linted_control_LDADD=\
   src/start/libstart.la\
   \
+  src/environment/libenvironment.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\

@@ -21,6 +21,7 @@
 #include "linted/start.h"
 
 #include "linted/asynch.h"
+#include "linted/environment.h"
 #include "linted/log.h"
 
 #include <errno.h>
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
 
 	bool missing_name = false;
 
-	char const *service = getenv("LINTED_SERVICE");
+	char const *service = linted_environment_get("LINTED_SERVICE");
 	if (service != 0) {
 		if (0 == (process_name = strdup(service)))
 			return EXIT_FAILURE;

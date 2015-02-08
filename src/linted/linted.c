@@ -17,8 +17,10 @@
 
 #include "config.h"
 
+#include "privilege.h"
 #include "settings.h"
 
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/locale.h"
@@ -37,7 +39,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/auxv.h>
 #include <unistd.h>
 
 struct envvar
@@ -52,9 +53,6 @@ extern char **environ;
 
 static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const *argv);
-
-static bool is_privileged(void);
-static bool was_privileged(void);
 
 static linted_error do_help(linted_ko ko, char const *process_name,
                             struct linted_str package_name,
@@ -87,11 +85,12 @@ static char const *const argstrs[] = {[HELP] = "--help",
 static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const *const argv)
 {
-	if (is_privileged()) {
+	linted_error errnum = linted_linted_privilege_check();
+	if (errnum != 0) {
 		linted_log(LINTED_LOG_ERROR,
-		           "%s should not be run with high privileges",
-		           PACKAGE_NAME);
-		return EPERM;
+		           "%s should not be run with high privileges: %s",
+		           PACKAGE_NAME, linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
@@ -102,15 +101,18 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
-		if (-1 == setenv(envvar->key, envvar->value, false)) {
+
+		errnum =
+		    linted_environment_set(envvar->key, envvar->value, false);
+		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_spawn_attr_init: %s",
-			           linted_error_string(errno));
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 	}
 
-	char const *init = getenv("LINTED_INIT");
+	char const *init = linted_environment_get("LINTED_INIT");
 
 	bool need_help = false;
 	bool need_version = false;
@@ -180,28 +182,6 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
 	return EXIT_FAILURE;
 }
-
-static bool is_privileged(void)
-{
-	uid_t uid = getuid();
-	if (0 == uid)
-		return true;
-
-	gid_t gid = getgid();
-	if (0 == gid)
-		return true;
-
-	return was_privileged();
-}
-
-#ifdef __linux__
-static bool was_privileged(void)
-{
-	return getauxval(AT_SECURE);
-}
-#else
-#error "was privileged" check has not been implemented for this system yet
-#endif
 
 static linted_error do_help(linted_ko ko, char const *process_name,
                             struct linted_str package_name,

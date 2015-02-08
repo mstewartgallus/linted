@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/start.h"
@@ -53,7 +54,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	char const *service = getenv("LINTED_SERVICE");
+	char const *service = linted_environment_get("LINTED_SERVICE");
 	if (service != 0) {
 		errnum = set_name(service);
 		assert(errnum != EINVAL);

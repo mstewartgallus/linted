@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/asynch.h"
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -122,7 +123,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		drawer_notifier = xx;
 	}
 
-	char const *root = getenv("MANAGERPID");
+	char const *root = linted_environment_get("MANAGERPID");
 	if (0 == root) {
 		fprintf(stderr, "%s: need MANAGERPID\n", process_name);
 		return EXIT_FAILURE;

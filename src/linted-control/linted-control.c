@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/admin.h"
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -122,8 +123,9 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	char const *pid = getenv("LINTED_PID");
-	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
+	char const *pid = linted_environment_get("LINTED_PID");
+	char const *runtime_dir_path =
+	    linted_environment_get("XDG_RUNTIME_DIR");
 
 	if (0 == pid) {
 		linted_log(LINTED_LOG_ERROR,

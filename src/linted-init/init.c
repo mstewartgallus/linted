@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/spawn.h"
@@ -76,7 +77,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		}
 	}
 
-	char const *monitor = getenv("LINTED_MONITOR");
+	char const *monitor = linted_environment_get("LINTED_MONITOR");
 
 	char *monitor_dup = strdup(monitor);
 	if (0 == monitor_dup) {

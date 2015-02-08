@@ -18,6 +18,7 @@
 #include "linted/start.h"
 
 #include "linted/asynch.h"
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
 
 	bool missing_name = false;
 
-	char const *service = getenv("LINTED_SERVICE");
+	char const *service = linted_environment_get("LINTED_SERVICE");
 	if (service != 0) {
 		process_name = strdup(service);
 		if (0 == process_name)

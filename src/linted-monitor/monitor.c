@@ -21,6 +21,7 @@
 #include "linted/asynch.h"
 #include "linted/conf.h"
 #include "linted/dir.h"
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/file.h"
 #include "linted/fifo.h"
@@ -250,11 +251,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto exit_monitor;
 
-	char const *unit_path = getenv("LINTED_UNIT_PATH");
-	char const *sandbox = getenv("LINTED_SANDBOX");
-	char const *waiter = getenv("LINTED_WAITER");
-	char const *data_dir_path = getenv("XDG_DATA_HOME");
-	char const *runtime_dir_path = getenv("XDG_RUNTIME_DIR");
+	char const *unit_path = linted_environment_get("LINTED_UNIT_PATH");
+	char const *sandbox = linted_environment_get("LINTED_SANDBOX");
+	char const *waiter = linted_environment_get("LINTED_WAITER");
+	char const *data_dir_path = linted_environment_get("XDG_DATA_HOME");
+	char const *runtime_dir_path =
+	    linted_environment_get("XDG_RUNTIME_DIR");
 
 	if (0 == unit_path) {
 		linted_log(LINTED_LOG_ERROR,
@@ -2148,7 +2150,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 	for (size_t ii = 0U; ii < allowed_envvars_size; ++ii) {
 		char const *envvar_name = allowed_envvars[ii];
 
-		char const *envvar_value = getenv(envvar_name);
+		char const *envvar_value = linted_environment_get(envvar_name);
 		if (0 == envvar_value)
 			continue;
 

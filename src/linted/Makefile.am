@@ -16,11 +16,16 @@
 # limitations under the License.
 bin_PROGRAMS+=%D%/linted
 
-%C%_linted_SOURCES=%D%/linted.c
+%C%_linted_SOURCES=\
+  %D%/linted.c\
+  %D%/privilege.c %D%/privilege.h
+EXTRA_%C%_linted_SOURCES=\
+  %D%/privilege-posix.c %D%/privilege-windows.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/asynch/libasynch.la\
   src/dir/libdir.la\
+  src/environment/libenvironment.la\
   src/io/libio.la\
   src/locale/liblocale.la\
   src/log/liblog.la\
