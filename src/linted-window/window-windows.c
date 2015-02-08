@@ -30,6 +30,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <windows.h>
@@ -85,7 +86,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		window_class.hCursor = arrow_cursor;
 		window_class.hbrBackground = white_brush;
 		window_class.lpszClassName =
-		    L"org.gitorious.sstewartgallus.MainWindowClass";
+		    L"org.gitorious.sstewartgallus.linted.MainWindowClass";
 
 		class_atom = RegisterClass(&window_class);
 	}
@@ -96,9 +97,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	HWND main_window = CreateWindowEx(
-	    WS_EX_LAYERED, (LPCTSTR)(uintptr_t)class_atom, L"foo",
-	    WS_VISIBLE | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT,
-	    CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, get_current_module(), 0);
+	    WS_EX_APPWINDOW | WS_EX_COMPOSITED, (LPCTSTR)(uintptr_t)class_atom,
+	    L"foo", WS_VISIBLE | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT,
+	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
+	    get_current_module(), 0);
 	if (0 == main_window) {
 		errnum = GetLastError();
 		assert(errnum != 0);
@@ -124,30 +126,6 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		{
-			MSG message;
-			switch (GetMessage(&message, 0, 0, 0)) {
-			case -1:
-				errnum = GetLastError();
-				assert(errnum != 0);
-				goto destroy_window;
-
-			case 0:
-				errnum = message.wParam;
-				goto destroy_window;
-
-			default:
-				if (-1 == TranslateMessage(&message)) {
-					errnum = GetLastError();
-					assert(errnum != 0);
-					goto destroy_window;
-				}
-
-				DispatchMessage(&message);
-				break;
-			}
-		}
-
 		for (;;) {
 			MSG message;
 			switch (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
@@ -175,6 +153,27 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
+		MSG message;
+		switch (GetMessage(&message, 0, 0, 0)) {
+		case -1:
+			errnum = GetLastError();
+			assert(errnum != 0);
+			goto destroy_window;
+
+		case 0:
+			errnum = message.wParam;
+			goto destroy_window;
+
+		default:
+			if (-1 == TranslateMessage(&message)) {
+				errnum = GetLastError();
+				assert(errnum != 0);
+				goto destroy_window;
+			}
+
+			DispatchMessage(&message);
+			break;
+		}
 	}
 
 destroy_window:
