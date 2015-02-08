@@ -15,7 +15,10 @@
  */
 #define WINVER 0x0600
 
+#ifndef UNICODE
 #define UNICODE
+#endif
+
 #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN

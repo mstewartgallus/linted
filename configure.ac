@@ -62,12 +62,12 @@ AC_ARG_ENABLE(
                 [[enable_windows_api='yes']],
                 [[enable_windows_api="$linted_windows_api_default"]])
 dnl
+AM_CONDITIONAL([WINDOWS_API], [test "x${enable_windows_api}" = xyes])
 AS_IF([test "x${enable_windows_api}" = "xyes"], [
 dnl
 AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
-   [-mnocygwin]dnl
    [-mwindows]dnl
 ])
 [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
@@ -78,6 +78,7 @@ LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [], [
 dnl
 ])
 dnl
+AM_CONDITIONAL([POSIX_API], [test "x${enable_posix_api}" = xyes])
 AS_IF([test "x${enable_posix_api}" = "xyes"], [
 dnl
 AC_DEFINE([HAVE_POSIX_API], [1], [Define if the POSIX API is being used.])
@@ -225,6 +226,10 @@ CC="${CC} ${linted_CFLAGS_HARDEN}"
 CC="${CC} ${linted_CFLAGS_DEBUG}"
 CC="${CC} ${linted_CFLAGS_DEBUG_INFO}"
 CC="${CC} ${linted_CFLAGS_WARNINGS}"]
+dnl
+dnl AS_IF([test "x${enable_windows_api}" = "xyes"], [
+dnl         [CC="${CC} -municode"]
+dnl ])
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])

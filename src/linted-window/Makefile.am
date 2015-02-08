@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/linted-window
 
 %C%_linted_window_SOURCES=%D%/window.c
+EXTRA_%C%_linted_window_SOURCES=%D%/window-posix.c %D%/window-windows.c
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
@@ -24,14 +25,18 @@ pkglibexec_PROGRAMS+=%D%/linted-window
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\
+  \
+  src/window/libwindow.la
+if POSIX_API
+%C%_linted_window_LDADD+=\
   src/xcb/libxcb.la\
-  \
-  src/window/libwindow.la\
-  \
   $(XCB_LIBS)
+endif
 
-%C%_linted_window_CPPFLAGS=\
-  $(XCB_FLAGS)\
-  $(AM_CPPFLAGS)
+%C%_linted_window_CPPFLAGS=
+if POSIX_API
+%C%_linted_window_CPPFLAGS+=$(XCB_FLAGS)
+endif
+%C%_linted_window_CPPFLAGS+=$(AM_CPPFLAGS)
 
 dist_pkgdefaultunits_DATA+=%D%/units/linted-window.service

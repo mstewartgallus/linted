@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef UNICODE
 #define UNICODE
+#endif
+
 #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN

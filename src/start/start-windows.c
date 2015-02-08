@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef UNICODE
 #define UNICODE
+#endif
+
 #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN
@@ -32,7 +35,7 @@
 #include <windows.h>
 #include <winsock2.h>
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
