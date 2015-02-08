@@ -54,6 +54,8 @@ static volatile sig_atomic_t monitor_pid = 0;
 static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[])
 {
+	linted_start_useme();
+
 	linted_error errnum;
 
 	if (0 == setlocale(LC_ALL, "")) {

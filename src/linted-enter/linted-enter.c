@@ -46,6 +46,8 @@ static char const *const namespaces[] = { "user", "pid", "ipc", "mnt", "net" };
 static uint_fast8_t enter_start(char const *const process_name, size_t argc,
                                 char const *const argv[])
 {
+	linted_start_useme();
+
 	linted_error errnum = 0;
 
 	if (argc < 2U)

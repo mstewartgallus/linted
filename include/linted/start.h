@@ -35,4 +35,6 @@ struct linted_start_config
 
 extern struct linted_start_config const linted_start_config;
 
+void linted_start_useme(void);
+
 #endif /* LINTED_START_H */

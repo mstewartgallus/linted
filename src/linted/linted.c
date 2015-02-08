@@ -85,6 +85,8 @@ static char const *const argstrs[] = {[HELP] = "--help",
 static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const *const argv)
 {
+	linted_start_useme();
+
 	linted_error errnum = linted_linted_privilege_check();
 	if (errnum != 0) {
 		linted_log(LINTED_LOG_ERROR,

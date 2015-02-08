@@ -71,6 +71,8 @@ static uint32_t const window_opts[] = { 0 };
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
+	linted_start_useme();
+
 	linted_error errnum = 0;
 
 	if (argc < 3) {

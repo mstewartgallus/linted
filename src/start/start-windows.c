@@ -40,7 +40,14 @@
 #include <shellapi.h>
 #include <winsock2.h>
 
-int main(int argc_unused, char **argv_unused)
+void linted_start_useme(void)
+{
+	/* This is an awful hack to force the library to be linked in to users.
+	 */
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+                   LPSTR lpCmdLine, int nShowCmd)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);

@@ -52,6 +52,8 @@ static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
 static unsigned char waiter_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
+	linted_start_useme();
+
 	linted_error errnum = 0;
 
 	char const *service = linted_environment_get("LINTED_SERVICE");
