@@ -34,15 +34,15 @@
 
 #include <windows.h>
 
-/* This obtains the base address of the current DLL or executable with
- * linker magic.  This base address just so happens to also be the
- * value of the current module and instance's handle.  These are the
- * same because of complicated DOS backwards compatibility reasons.
- */
 static HINSTANCE get_current_module(void)
 {
-	extern IMAGE_DOS_HEADER __ImageBase;
-	return (HINSTANCE) & __ImageBase;
+	static char const dummy;
+
+	HINSTANCE xx;
+	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+	                      GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	                  (void *)&dummy, &xx);
+	return xx;
 }
 
 LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
