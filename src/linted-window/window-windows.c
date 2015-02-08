@@ -70,7 +70,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		window_class.hInstance = instance_handle;
 		window_class.hCursor = arrow_cursor;
 		window_class.hbrBackground = white_brush;
-		window_class.lpszClassName = L"org.gitorious.sstewartgallus.MainWindowClass";
+		window_class.lpszClassName =
+		    L"org.gitorious.sstewartgallus.MainWindowClass";
 
 		class_atom = RegisterClass(&window_class);
 	}
@@ -80,18 +81,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		goto report_exit_status;
 	}
 
-	HWND main_window = CreateWindowEx(WS_EX_LAYERED,
-	                                  (LPCTSTR)(uintptr_t)class_atom,
-	                                  L"foo",
-	                                  WS_VISIBLE | WS_CAPTION | WS_SYSMENU,
-	                                  CW_USEDEFAULT,
-	                                  CW_USEDEFAULT,
-	                                  CW_USEDEFAULT,
-	                                  CW_USEDEFAULT,
-	                                  NULL,
-	                                  NULL,
-	                                  instance_handle,
-	                                  NULL);
+	HWND main_window = CreateWindowEx(
+	    WS_EX_LAYERED, (LPCTSTR)(uintptr_t)class_atom, L"foo",
+	    WS_VISIBLE | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT,
+	    CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, instance_handle, NULL);
 	if (NULL == main_window) {
 		errnum = GetLastError();
 		assert(errnum != 0);
@@ -166,7 +159,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			}
 		}
 
-	exit_peek_loop:;
+	exit_peek_loop:
+		;
 	}
 
 destroy_window:
@@ -195,23 +189,21 @@ report_exit_status:
 	return errnum;
 }
 
-static LRESULT on_paint(HWND main_window, UINT message_type,
-                        WPARAM w_param, LPARAM l_param);
+static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
+                        LPARAM l_param);
 
-static LRESULT on_destroy(HWND main_window, UINT message_type,
-                          WPARAM w_param, LPARAM l_param);
+static LRESULT on_destroy(HWND main_window, UINT message_type, WPARAM w_param,
+                          LPARAM l_param);
 
 LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
                                   WPARAM w_param, LPARAM l_param)
 {
 	switch (message_type) {
 	case WM_PAINT:
-		return on_paint(main_window, message_type, w_param,
-		                l_param);
+		return on_paint(main_window, message_type, w_param, l_param);
 
 	case WM_DESTROY:
-		return on_destroy(main_window, message_type, w_param,
-		                l_param);
+		return on_destroy(main_window, message_type, w_param, l_param);
 
 	default:
 		return DefWindowProc(main_window, message_type, w_param,
@@ -219,8 +211,8 @@ LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
 	}
 }
 
-static LRESULT on_paint(HWND main_window, UINT message_type,
-                        WPARAM w_param, LPARAM l_param)
+static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
+                        LPARAM l_param)
 {
 	DWORD errnum = 0;
 
@@ -233,7 +225,7 @@ static LRESULT on_paint(HWND main_window, UINT message_type,
 	}
 
 	PAINTSTRUCT ps;
-	HDC hdc = BeginPaint (main_window, &ps);
+	HDC hdc = BeginPaint(main_window, &ps);
 	if (NULL == hdc) {
 		errnum = GetLastError();
 		assert(errnum != 0);
@@ -261,8 +253,8 @@ post_quit_message:
 	return 0;
 }
 
-static LRESULT on_destroy(HWND main_window, UINT message_type,
-                          WPARAM w_param, LPARAM l_param)
+static LRESULT on_destroy(HWND main_window, UINT message_type, WPARAM w_param,
+                          LPARAM l_param)
 {
 	PostQuitMessage(0);
 

@@ -227,10 +227,6 @@ CC="${CC} ${linted_CFLAGS_DEBUG}"
 CC="${CC} ${linted_CFLAGS_DEBUG_INFO}"
 CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
-dnl AS_IF([test "x${enable_windows_api}" = "xyes"], [
-dnl         [CC="${CC} -municode"]
-dnl ])
-dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([scripts/test
