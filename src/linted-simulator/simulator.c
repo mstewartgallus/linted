@@ -127,8 +127,6 @@ struct linted_start_config const linted_start_config = {
 static unsigned char simulator_start(char const *const process_name,
                                      size_t argc, char const *const argv[])
 {
-	linted_start_useme();
-
 	linted_error errnum;
 
 	if (argc < 2) {

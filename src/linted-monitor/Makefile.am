@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/linted-monitor
 
 %C%_linted_monitor_SOURCES=%D%/monitor.c
+%C%_linted_monitor_LDFLAGS=-u linted_start__useme
 %C%_linted_monitor_LDADD=\
   src/start/libstart.la\
   \

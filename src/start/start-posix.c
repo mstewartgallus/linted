@@ -30,11 +30,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-void linted_start_useme(void)
-{
-	/* This is an awful hack to force the library to be linked in to users.
-	 */
-}
+/* This is an awful hack to force the library to be linked in to users.
+ */
+char const linted_start__useme;
 
 static void do_nothing(int signo);
 

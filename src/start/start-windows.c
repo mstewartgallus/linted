@@ -42,11 +42,9 @@
 
 static int show_command;
 
-void linted_start_useme(void)
-{
-	/* This is an awful hack to force the library to be linked in to users.
-	 */
-}
+/* This is an awful hack to force the library to be linked in to users.
+ */
+char const linted_start__useme;
 
 int linted_start_show_command(void)
 {

@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
 %C%_linted_sandbox_SOURCES=%D%/sandbox.c
 EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
+%C%_linted_sandbox_LDFLAGS=-u linted_start__useme
 %C%_linted_sandbox_LDADD=\
   src/asynch/libasynch.la\
   src/dir/libdir.la\

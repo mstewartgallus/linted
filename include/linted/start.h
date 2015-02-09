@@ -33,8 +33,6 @@ struct linted_start_config
 
 extern struct linted_start_config const linted_start_config;
 
-void linted_start_useme(void);
-
 #if defined HAVE_WINDOWS_API
 int linted_start_show_command(void);
 #endif

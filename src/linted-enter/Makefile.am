@@ -17,6 +17,7 @@
 bin_PROGRAMS+=%D%/linted-enter
 
 %C%_linted_enter_SOURCES=%D%/linted-enter.c
+%C%_linted_enter_LDFLAGS=-u linted_start__useme
 %C%_linted_enter_LDADD=\
   src/start/libstart.la\
   \
