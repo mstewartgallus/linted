@@ -86,7 +86,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		window_class.hCursor = arrow_cursor;
 		window_class.hbrBackground = white_brush;
 		window_class.lpszClassName =
-		    L"org.gitorious.sstewartgallus.linted.MainWindowClass";
+		    L"" PACKAGE_NAME_SPACE ".MainWindowClass";
 
 		class_atom = RegisterClass(&window_class);
 	}
@@ -98,8 +98,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	HWND main_window = CreateWindowEx(
 	    WS_EX_APPWINDOW | WS_EX_COMPOSITED, (LPCTSTR)(uintptr_t)class_atom,
-	    L"foo", WS_VISIBLE | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT,
-	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
+	    L"" PACKAGE_NAME, WS_OVERLAPPED | WS_CAPTION | WS_THICKFRAME |
+	                          WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
+	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
 	    get_current_module(), 0);
 	if (0 == main_window) {
 		errnum = GetLastError();

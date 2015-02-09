@@ -14,6 +14,8 @@ dnl
 dnl Other software uses a shell command to get the date but that
 dnl prevents deterministic builds.
 AC_DEFINE([COPYRIGHT_YEAR], ["2015"], [year in copyright message])
+AC_DEFINE([PACKAGE_NAME_SPACE], ["org.gitorious.sstewartgallus.linted"],
+                               [package hierarchical name space])
 dnl
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects -Wall])
