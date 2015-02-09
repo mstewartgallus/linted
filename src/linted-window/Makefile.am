@@ -17,7 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/linted-window
 
 %C%_linted_window_SOURCES=%D%/window.c
-EXTRA_%C%_linted_window_SOURCES=%D%/window-posix.c %D%/window-windows.c
+EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c %D%/window-windows.c
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
@@ -27,14 +27,15 @@ EXTRA_%C%_linted_window_SOURCES=%D%/window-posix.c %D%/window-windows.c
   src/log/liblog.la\
   \
   src/window/libwindow.la
-if POSIX_API
+
+if X11_API
 %C%_linted_window_LDADD+=\
   src/xcb/libxcb.la\
   $(XCB_LIBS)
 endif
 
 %C%_linted_window_CPPFLAGS=
-if POSIX_API
+if X11_API
 %C%_linted_window_CPPFLAGS+=$(XCB_FLAGS)
 endif
 %C%_linted_window_CPPFLAGS+=$(AM_CPPFLAGS)

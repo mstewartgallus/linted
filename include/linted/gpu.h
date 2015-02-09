@@ -22,7 +22,7 @@
  * Draws graphics using the GPU.
  */
 
-#if defined HAVE_POSIX_API
+#if defined HAVE_X11_API
 #include "gpu-x11.h"
 #else
 #error no GPU acceleration for this platform has been implemented

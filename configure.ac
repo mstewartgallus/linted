@@ -35,9 +35,11 @@ dnl
 AC_CANONICAL_HOST
 dnl
 [linted_posix_api_default=no]
+[linted_x11_api_default=no]
 [linted_windows_api_default=no]
 dnl
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
+dnl
 AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
 AS_IF([test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
 dnl
@@ -45,6 +47,8 @@ AS_IF([test "x${CC}" = "xwinegcc"], [
         [linted_windows_api_default=yes]
         [linted_posix_api_default=no]
 ])
+dnl
+AS_IF([test "x${linted_posix_api_default}" = "xyes"], [[linted_x11_api_default=yes]])
 dnl
 LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
@@ -57,6 +61,13 @@ AC_ARG_ENABLE(
         [[enable_posix_api='yes']],
         [[enable_posix_api="$linted_posix_api_default"]])
 AC_ARG_ENABLE(
+        [x11-api],
+        AS_HELP_STRING(
+                [--enable-x11-api],
+                [enable use of the X11 API]),
+        [[enable_x11_api='yes']],
+        [[enable_x11_api="$linted_x11_api_default"]])
+AC_ARG_ENABLE(
         [windows-api],
         AS_HELP_STRING(
                 [--enable-windows-api],
@@ -67,72 +78,100 @@ dnl
 AM_CONDITIONAL([WINDOWS_API], [test "x${enable_windows_api}" = xyes])
 AS_IF([test "x${enable_windows_api}" = "xyes"], [
 dnl
-AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
+        AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
-   [-mwindows]dnl
-])
-[CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
+        LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
+                [-mwindows]dnl
+        ])
+        [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
-LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [], [
-   AC_MSG_ERROR([Unable to find a Winsock library])
-])
+        LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [], [
+                AC_MSG_ERROR([Unable to find a Winsock library])
+        ])
 dnl
 ])
 dnl
 AM_CONDITIONAL([POSIX_API], [test "x${enable_posix_api}" = xyes])
 AS_IF([test "x${enable_posix_api}" = "xyes"], [
 dnl
-AC_DEFINE([HAVE_POSIX_API], [1], [Define if the POSIX API is being used.])
+        AC_DEFINE([HAVE_POSIX_API], [1], [Define if the POSIX API is being used.])
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [[-pthread]])
-[CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
+        LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [[-pthread]])
+        [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
-AC_CHECK_HEADERS([[arpa/inet.h]dnl
-                  [mntent.h]dnl
-                  [sys/mount.h]dnl
-                  [sys/socket.h]dnl
-                  [syslog.h]], [], [
-  AC_MSG_ERROR([Unable to find header ${ac_header}])
-], [])
+        AC_CHECK_HEADERS([[arpa/inet.h]dnl
+                          [mntent.h]dnl
+                          [sys/mount.h]dnl
+                          [sys/socket.h]dnl
+                          [syslog.h]], [], [
+          AC_MSG_ERROR([Unable to find header ${ac_header}])
+        ], [])
 dnl
-LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
-   AC_MSG_ERROR([Unable to find a realtime functions library])
+        LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
+                AC_MSG_ERROR([Unable to find a realtime functions library])
+        ])
+dnl
+        LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
+                AC_MSG_ERROR([Unable to find a POSIX capabilities library])
+        ])
+dnl
+        AC_CHECK_FUNCS([[clock_gettime]], [], [
+                AC_MSG_ERROR([Unable to find function ${ac_func}])
+        ])
+        AC_FUNC_GETMNTENT
+        AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
+                AC_MSG_ERROR([Unable to find getmntent function])
+        ])
+        AC_FUNC_STRERROR_R
+        AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
+                AC_MSG_ERROR([Unable to find strerror_r function])
+        ])
+        AC_FUNC_FORK
+        AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
+                AC_MSG_ERROR([Unable to find good fork function])
+        ])
+        AC_FUNC_MMAP
+        AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
+                AC_MSG_ERROR([Unable to find good mmap function])
+        ])
+dnl
+        AC_CHECK_FUNCS([[fchdir]dnl
+                        [gethostname]dnl
+                        [munmap]dnl
+                        [setenv]dnl
+                        [setlocale]dnl
+                        [socket]dnl
+                        [strndup]], [], [
+                AC_MSG_ERROR([Unable to find function ${ac_func}])
+        ])
+dnl
 ])
 dnl
-LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
-   AC_MSG_ERROR([Unable to find a POSIX capabilities library])
-])
+AM_CONDITIONAL([X11_API], [test "x${enable_x11_api}" = xyes])
+AS_IF([test "x${enable_x11_api}" = "xyes"], [
 dnl
-AC_CHECK_FUNCS([[clock_gettime]], [], [
- AC_MSG_ERROR([Unable to find function ${ac_func}])
-])
-AC_FUNC_GETMNTENT
-AS_IF([test "x${ac_cv_func_getmntent}" = "xno"],[
- AC_MSG_ERROR([Unable to find getmntent function])
-])
-AC_FUNC_STRERROR_R
-AS_IF([test "x${ac_cv_func_strerror_r}" = "xno"],[
- AC_MSG_ERROR([Unable to find strerror_r function])
-])
-AC_FUNC_FORK
-AS_IF([test "x${ac_cv_func_fork}" = "xno"],[
- AC_MSG_ERROR([Unable to find good fork function])
-])
-AC_FUNC_MMAP
-AS_IF([test "x${ac_cv_func_mmap}" = "xno"],[
- AC_MSG_ERROR([Unable to find good mmap function])
-])
+        AC_DEFINE([HAVE_X11_API], [1], [Define if the X11 API is being used.])
 dnl
-AC_CHECK_FUNCS([[fchdir]dnl
-                [gethostname]dnl
-                [munmap]dnl
-                [setenv]dnl
-                [setlocale]dnl
-                [socket]dnl
-                [strndup]], [], [
- AC_MSG_ERROR([Unable to find function ${ac_func}])
-])
+        PKG_CHECK_MODULES(XCB, xcb, [], [
+                AC_MSG_ERROR([Unable to find an XCB library])
+        ])
+        PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
+                AC_MSG_ERROR([Unable to find an xcb-xkb library])
+        ])
+dnl
+        PKG_CHECK_MODULES(XKB, xkbcommon, [], [
+                AC_MSG_ERROR([Unable to find an xkbcommon library])
+        ])
+        PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
+                AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
+        ])
+dnl
+        PKG_CHECK_MODULES(EGL, egl, [], [
+                AC_MSG_ERROR([Unable to find an EGL library])
+        ])
+        PKG_CHECK_MODULES(GLES, glesv2, [], [
+                AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
+        ])
 dnl
 ])
 dnl
@@ -171,27 +210,6 @@ AC_CHECK_FUNCS([[dup2]dnl
                 [strstr]dnl
                 [strtol]], [], [
  AC_MSG_ERROR([Unable to find function ${ac_func}])
-])
-dnl
-PKG_CHECK_MODULES(XCB, xcb, [], [
- AC_MSG_ERROR([Unable to find an XCB library])
-])
-PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
- AC_MSG_ERROR([Unable to find an xcb-xkb library])
-])
-dnl
-PKG_CHECK_MODULES(XKB, xkbcommon, [], [
- AC_MSG_ERROR([Unable to find an xkbcommon library])
-])
-PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
- AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
-])
-dnl
-PKG_CHECK_MODULES(EGL, egl, [], [
- AC_MSG_ERROR([Unable to find an EGL library])
-])
-PKG_CHECK_MODULES(GLES, glesv2, [], [
- AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
 ])
 dnl
 AC_TYPE_MODE_T
