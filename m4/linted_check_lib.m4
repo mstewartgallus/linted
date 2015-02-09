@@ -18,7 +18,7 @@ AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for library containing ]$3)
 [LIBS='-l]$2[']
-AC_LINK_IFELSE([AC_LANG_SOURCE([[void ]$3[(void);][int main() { ]$3[(); return 0; }]])], [
+AC_LINK_IFELSE([AC_LANG_SOURCE([[extern char ]$3[(void);][int main() { ]$3[(); return 0; }]])], [
          AC_MSG_RESULT([-l]$2)
          $1[='-l]$2[']
          $4
