@@ -566,7 +566,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	}
 
 cancel_tasks:
-	if (ECANCELED == errnum)
+	if (LINTED_ERROR_CANCELLED == errnum)
 		errnum = 0;
 
 	linted_asynch_task_cancel(
@@ -578,7 +578,8 @@ cancel_tasks:
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-			if (EAGAIN == linted_asynch_pool_poll(pool, &xx))
+			if (LINTED_ERROR_AGAIN ==
+			    linted_asynch_pool_poll(pool, &xx))
 				break;
 			completed_task = xx;
 		}
@@ -1321,10 +1322,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	linted_error errnum = 0;
 
 	errnum = linted_asynch_task_errnum(task);
-	if (ECANCELED == errnum)
+	if (LINTED_ERROR_CANCELLED == errnum)
 		return 0;
 	if (ECHILD == errnum)
-		return ECANCELED;
+		return LINTED_ERROR_CANCELLED;
 	if (errnum != 0)
 		return errnum;
 
@@ -1376,7 +1377,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	linted_error errnum = 0;
 
 	errnum = linted_asynch_task_errnum(task);
-	if (ECANCELED == errnum)
+	if (LINTED_ERROR_CANCELLED == errnum)
 		return 0;
 	if (errnum != 0)
 		return errnum;

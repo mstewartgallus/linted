@@ -19,7 +19,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <signal.h>
 #include <sys/types.h>
 
@@ -86,5 +85,5 @@ linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task)
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-	linted_asynch_pool_complete(pool, task, ENOSYS);
+	linted_asynch_pool_complete(pool, task, LINTED_ERROR_UNIMPLEMENTED);
 }

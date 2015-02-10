@@ -94,7 +94,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "linted_spawn_attr_init: %s",
+		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
@@ -106,13 +106,14 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		    linted_environment_set(envvar->key, envvar->value, false);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_spawn_attr_init: %s",
+			           "linted_environment_set: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 	}
 
 	char const *init = linted_environment_get("LINTED_INIT");
+	assert(init != 0);
 
 	bool need_help = false;
 	bool need_version = false;

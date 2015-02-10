@@ -29,7 +29,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -51,7 +50,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY & ~LINTED_KO_RDWR &
 	     ~LINTED_KO_APPEND & ~LINTED_KO_SYNC & ~LINTED_KO_DIRECTORY) != 0U)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
 	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
@@ -63,20 +62,20 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
 
 	if (ko_rdonly && ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_rdonly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_append && !ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if ((ko_directory && ko_rdonly) || (ko_directory && ko_wronly) ||
 	    (ko_directory && ko_rdwr) || (ko_directory && ko_sync))
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	DWORD desired_access = 0;
 

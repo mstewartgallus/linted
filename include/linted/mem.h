@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "linted/error.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <stddef.h>
 
 /**
@@ -31,7 +30,7 @@
 static inline linted_error linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
 	if (size > 0U && ((size_t)-1) / size < nmemb)
-		return ENOMEM;
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*resultp = nmemb * size;
 	return 0;
@@ -64,11 +63,8 @@ static inline linted_error linted_mem_alloc_array(void **memp, size_t nmemb, siz
 		return errnum;
 
 	void *memory = malloc(total);
-	if (total > 0U && 0 == memory) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (total > 0U && 0 == memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = memory;
 	return 0;
@@ -79,11 +75,8 @@ static inline linted_error linted_mem_alloc_zeroed(void **memp, size_t size)
 	extern void *calloc(size_t nmemb, size_t size);
 
 	void *memory = calloc(1U, size);
-	if (size > 0U && 0 == memory) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (size > 0U && 0 == memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = memory;
 	return 0;
@@ -95,11 +88,8 @@ static inline linted_error linted_mem_alloc_array_zeroed(void **memp, size_t nme
 	extern void *calloc(size_t nmemb, size_t size);
 
 	void *memory = calloc(nmemb, size);
-	if (nmemb > 0U && size > 0U && 0 == memory) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (nmemb > 0U && size > 0U && 0 == memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = memory;
 
@@ -111,11 +101,8 @@ static inline linted_error linted_mem_realloc(void **memp, void *memory, size_t 
 	extern void *realloc(void *ptr, size_t size);
 
 	void *new_memory = realloc(memory, new_size);
-	if (new_size > 0U && 0 == new_memory) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (new_size > 0U && 0 == new_memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = new_memory;
 	return 0;
@@ -134,11 +121,8 @@ static inline linted_error linted_mem_realloc_array(void **memp, void *memory, s
 		return errnum;
 
 	void *new_memory = realloc(memory, total);
-	if (total > 0U && 0 == new_memory) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (total > 0U && 0 == new_memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = new_memory;
 	return 0;

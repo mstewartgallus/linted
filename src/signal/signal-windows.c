@@ -19,7 +19,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <signal.h>
 
 struct linted_signal_task_sigwaitinfo
@@ -93,5 +92,5 @@ linted_signal_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task)
 void linted_signal_do_sigwaitinfo(struct linted_asynch_pool *pool,
                                   struct linted_asynch_task *task)
 {
-	linted_asynch_pool_complete(pool, task, ENOSYS);
+	linted_asynch_pool_complete(pool, task, LINTED_ERROR_UNIMPLEMENTED);
 }

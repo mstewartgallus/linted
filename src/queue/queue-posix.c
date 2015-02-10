@@ -22,7 +22,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -219,7 +218,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	/* The nodes next to the tip are the head */
 	struct linted_queue_node *removed = queue->head;
 	if (0 == removed) {
-		errnum = EAGAIN;
+		errnum = LINTED_ERROR_AGAIN;
 		goto pop_cleanup;
 	}
 

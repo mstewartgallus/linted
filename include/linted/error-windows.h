@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,4 +19,13 @@
 
 #include <stdint.h>
 
+#include <winerror.h>
+
 typedef uint_fast32_t linted_error;
+
+#define LINTED_ERROR_AGAIN WSAEWOULDBLOCK
+#define LINTED_ERROR_CANCELLED ERROR_OPERATION_ABORTED
+#define LINTED_ERROR_INVALID_KO ERROR_INVALID_HANDLE
+#define LINTED_ERROR_INVALID_PARAMETER ERROR_INVALID_PARAMETER
+#define LINTED_ERROR_UNIMPLEMENTED ERROR_INVALID_PARAMETER
+#define LINTED_ERROR_OUT_OF_MEMORY ERROR_NOT_ENOUGH_MEMORY

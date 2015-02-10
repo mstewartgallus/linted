@@ -17,4 +17,13 @@
 #error this header should never be included directly
 #endif
 
+#include <errno.h>
+
 typedef unsigned linted_error;
+
+#define LINTED_ERROR_AGAIN EAGAIN
+#define LINTED_ERROR_CANCELLED ECANCELED
+#define LINTED_ERROR_INVALID_KO EBADF
+#define LINTED_ERROR_INVALID_PARAMETER EINVAL
+#define LINTED_ERROR_UNIMPLEMENTED ENOSYS
+#define LINTED_ERROR_OUT_OF_MEMORY ENOMEM

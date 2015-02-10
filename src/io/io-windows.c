@@ -32,7 +32,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -165,7 +164,7 @@ poll_for_readability:
 	{
 		short xx;
 		errnum = poll_one(ko, POLLIN, &xx);
-		if (EINTR == errnum)
+		if (WSAEINTR == errnum)
 			goto poll_for_readability;
 		if (errnum != 0)
 			goto finish_reading;
@@ -232,7 +231,7 @@ poll_for_writeability:
 	{
 		short xx;
 		errnum = poll_one(ko, POLLIN, &xx);
-		if (EINTR == errnum)
+		if (WSAEINTR == errnum)
 			goto poll_for_writeability;
 		if (errnum != 0)
 			goto write_bytes_wrote;
@@ -264,7 +263,7 @@ linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
 linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
-	return ENOSYS;
+	return LINTED_ERROR_UNIMPLEMENTED;
 }
 
 linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
@@ -988,7 +987,7 @@ wait_on_poll:
 void linted_ko_do_accept(struct linted_asynch_pool *pool,
                          struct linted_asynch_task *task)
 {
-	linted_asynch_pool_complete(pool, task, ENOSYS);
+	linted_asynch_pool_complete(pool, task, LINTED_ERROR_UNIMPLEMENTED);
 }
 
 static linted_error poll_one(linted_ko ko, short events, short *reventsp)
@@ -1021,7 +1020,7 @@ static linted_error check_for_poll_error(short revents)
 	linted_error errnum = 0;
 
 	if ((revents & POLLNVAL) != 0)
-		errnum = EBADF;
+		errnum = LINTED_ERROR_INVALID_KO;
 
 	return errnum;
 }

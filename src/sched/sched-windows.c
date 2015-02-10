@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200112L
-
 #include "config.h"
 
 #include "linted/sched.h"
@@ -23,7 +21,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -36,7 +33,7 @@ struct linted_sched_task_sleep_until
 
 linted_error linted_sched_time(struct timespec *now)
 {
-	return ENOSYS;
+	return LINTED_ERROR_UNIMPLEMENTED;
 }
 
 /* task_idle is just a fake */
@@ -159,5 +156,5 @@ void linted_sched_do_idle(struct linted_asynch_pool *pool,
 void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
-	linted_asynch_pool_complete(pool, task, ENOSYS);
+	linted_asynch_pool_complete(pool, task, LINTED_ERROR_UNIMPLEMENTED);
 }

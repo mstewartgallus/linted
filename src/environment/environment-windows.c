@@ -19,13 +19,14 @@
 
 #include "linted/error.h"
 
-#include <errno.h>
 #include <stdlib.h>
+
+#include <winerror.h>
 
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
-	return ENOSYS;
+	return LINTED_ERROR_UNIMPLEMENTED;
 }
 
 /**

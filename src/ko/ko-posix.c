@@ -36,7 +36,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (LINTED_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
 	} else if (dirko > INT_MAX) {
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 	}
 
 	unsigned long perm_flags =
@@ -46,7 +46,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	unsigned long all_flags = perm_flags | type_flags | misc_flags;
 
 	if ((flags & ~all_flags) != 0U)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
 	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
@@ -59,23 +59,23 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	bool ko_fifo = (flags & LINTED_KO_FIFO) != 0U;
 
 	if (ko_rdonly && ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_rdonly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_append && !ko_wronly)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_directory &&
 	    (ko_rdonly || ko_wronly || ko_rdwr || ko_append || ko_sync))
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (ko_fifo && ko_sync)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	/*
 	 * Always, be safe for execs and use O_NONBLOCK because asynch
@@ -131,7 +131,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		}
 
 		if (!S_ISFIFO(mode)) {
-			errnum = EINVAL;
+			errnum = LINTED_ERROR_INVALID_PARAMETER;
 			goto close_file;
 		}
 	}

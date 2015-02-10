@@ -29,7 +29,6 @@
 #include "linted/log.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -128,7 +127,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		IDirect3D9Ex *xx;
 		HRESULT result = Direct3DCreate9Ex(D3D_SDK_VERSION, &xx);
 		if (FAILED(result)) {
-			errnum = ENOSYS;
+			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
 		}
 		context = xx;
@@ -146,7 +145,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		    context, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, main_window, 0,
 		    &presentation_parameters, &xx);
 		if (FAILED(result)) {
-			errnum = ENOSYS;
+			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_context;
 		}
 		device = xx;
@@ -196,7 +195,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		HRESULT result =
 		    IDirect3DSwapChain9_Present(swap_chain, 0, 0, 0, 0, 0);
 		if (FAILED(result)) {
-			errnum = ENOSYS;
+			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
 		}
 	}

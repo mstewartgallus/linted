@@ -23,11 +23,11 @@
 
 #include "linted/dir.h"
 
-#include <errno.h>
+#include <winerror.h>
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                char const *pathname, unsigned long flags,
                                mode_t mode)
 {
-	return ENOSYS;
+	return ERROR_NOT_ENOUGH_MEMORY;
 }

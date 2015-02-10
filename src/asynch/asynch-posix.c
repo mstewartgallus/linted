@@ -272,7 +272,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
 	assert(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
-		task->errnum = ECANCELED;
+		task->errnum = LINTED_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 		return;
 	}
@@ -298,7 +298,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 	assert(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
-		task->errnum = ECANCELED;
+		task->errnum = LINTED_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 		return;
 	}
@@ -371,7 +371,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 
 	task->data = data;
 	task->type = type;
-	task->errnum = EINVAL;
+	task->errnum = LINTED_ERROR_INVALID_PARAMETER;
 
 	*taskp = task;
 	return 0;
@@ -626,7 +626,7 @@ static void *worker_routine(void *arg)
 
 		if (canceller_check_or_register(&task->canceller, self)) {
 			linted_asynch_pool_complete(asynch_pool, task,
-			                            ECANCELED);
+			                            LINTED_ERROR_CANCELLED);
 			continue;
 		}
 
@@ -924,7 +924,7 @@ static void *poller_routine(void *arg)
 		unsigned short flags = waiter->flags;
 
 		if (canceller_check_or_register(&task->canceller, self)) {
-			errnum = ECANCELED;
+			errnum = LINTED_ERROR_CANCELLED;
 			goto complete_task;
 		}
 
@@ -940,7 +940,7 @@ static void *poller_routine(void *arg)
 		}
 
 		if ((revents & POLLNVAL) != 0) {
-			errnum = EBADF;
+			errnum = LINTED_ERROR_INVALID_KO;
 			goto complete_task;
 		}
 

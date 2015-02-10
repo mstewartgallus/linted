@@ -676,13 +676,13 @@ static linted_error get_gl_error(void)
 	case GL_INVALID_VALUE:
 	case GL_INVALID_OPERATION:
 	case GL_INVALID_FRAMEBUFFER_OPERATION:
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	case GL_OUT_OF_MEMORY:
 		return ENOMEM;
 
 	default:
-		return ENOSYS;
+		return LINTED_ERROR_UNIMPLEMENTED;
 	}
 }
 
@@ -696,7 +696,7 @@ static linted_error get_egl_error(void)
 		return EINVAL;
 
 	case EGL_BAD_ACCESS:
-		return EAGAIN;
+		return LINTED_ERROR_AGAIN;
 
 	case EGL_BAD_ALLOC:
 		return ENOMEM;
@@ -711,10 +711,10 @@ static linted_error get_egl_error(void)
 	case EGL_BAD_PARAMETER:
 	case EGL_BAD_NATIVE_PIXMAP:
 	case EGL_BAD_NATIVE_WINDOW:
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	case EGL_CONTEXT_LOST:
-		return ENOSYS;
+		return LINTED_ERROR_UNIMPLEMENTED;
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();

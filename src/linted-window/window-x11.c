@@ -194,7 +194,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		int xx;
 		connection = xcb_connect(0, &xx);
 		if (0 == connection) {
-			errnum = ENOSYS;
+			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_pool;
 		}
 		screen_number = (unsigned)xx;
@@ -474,14 +474,14 @@ stop_pool:
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
+			if (LINTED_ERROR_AGAIN == poll_errnum)
 				break;
 			completed_task = xx;
 		}
 
 		linted_error dispatch_errnum =
 		    linted_asynch_task_errnum(completed_task);
-		if (0 == errnum && dispatch_errnum != ECANCELED)
+		if (0 == errnum && dispatch_errnum != LINTED_ERROR_CANCELLED)
 			errnum = dispatch_errnum;
 	}
 

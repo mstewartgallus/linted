@@ -271,13 +271,13 @@ stop_pool:
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
+			if (LINTED_ERROR_AGAIN == poll_errnum)
 				break;
 			task = xx;
 		}
 
 		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
-		if (0 == errnum && dispatch_errnum != ECANCELED)
+		if (0 == errnum && dispatch_errnum != LINTED_ERROR_CANCELLED)
 			errnum = dispatch_errnum;
 	}
 

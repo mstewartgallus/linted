@@ -35,7 +35,6 @@
 #include "linted/util.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -291,7 +290,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
 	LeaveCriticalSection(&task->owner_lock);
 
 	if (cancelled) {
-		task->errnum = ECANCELED;
+		task->errnum = LINTED_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 	} else {
 		job_submit(pool->worker_queue, task);
@@ -351,7 +350,7 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 	LeaveCriticalSection(&task->owner_lock);
 
 	if (cancelled) {
-		task->errnum = ECANCELED;
+		task->errnum = LINTED_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 		return;
 	}
@@ -428,7 +427,7 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 
 	task->data = data;
 	task->type = type;
-	task->errnum = EINVAL;
+	task->errnum = LINTED_ERROR_INVALID_PARAMETER;
 
 	*taskp = task;
 	return 0;
@@ -654,7 +653,7 @@ static DWORD WINAPI worker_routine(void *arg)
 
 		if (cancelled) {
 			linted_asynch_pool_complete(asynch_pool, task,
-			                            ECANCELED);
+			                            LINTED_ERROR_CANCELLED);
 		} else {
 			run_task(asynch_pool, task);
 		}
@@ -866,7 +865,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		LeaveCriticalSection(&task->owner_lock);
 
 		if (cancelled) {
-			errnum = ECANCELED;
+			errnum = LINTED_ERROR_CANCELLED;
 			goto complete_task;
 		}
 
@@ -874,7 +873,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		{
 			short xx;
 			errnum = poll_one(ko, flags, &xx);
-			if (EINTR == errnum)
+			if (WSAEINTR == errnum)
 				goto wait_on_poll;
 			if (errnum != 0)
 				goto complete_task;
@@ -882,7 +881,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		}
 
 		if ((revents & POLLNVAL) != 0) {
-			errnum = EBADF;
+			errnum = LINTED_ERROR_INVALID_KO;
 			goto complete_task;
 		}
 

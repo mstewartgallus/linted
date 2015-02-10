@@ -233,21 +233,21 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 
 	xcb_connection_t *connection = xcb_connect(0, 0);
 	if (0 == connection) {
-		errnum = ENOSYS;
+		errnum = LINTED_ERROR_UNIMPLEMENTED;
 		goto destroy_pool;
 	}
 
 	if (!xkb_x11_setup_xkb_extension(
 	        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,
 	        XKB_X11_MIN_MINOR_XKB_VERSION, 0, 0, 0, 0, 0)) {
-		errnum = ENOSYS;
+		errnum = LINTED_ERROR_UNIMPLEMENTED;
 		goto close_connection;
 	}
 
 	struct xkb_context *keyboard_ctx =
 	    xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (0 == keyboard_ctx) {
-		errnum = ENOSYS;
+		errnum = LINTED_ERROR_UNIMPLEMENTED;
 		goto close_connection;
 	}
 
@@ -287,14 +287,14 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	struct xkb_keymap *keymap = xkb_x11_keymap_new_from_device(
 	    keyboard_ctx, connection, device_id, XKB_KEYMAP_COMPILE_NO_FLAGS);
 	if (0 == keymap) {
-		errnum = ENOSYS;
+		errnum = LINTED_ERROR_UNIMPLEMENTED;
 		goto destroy_keyboard_ctx;
 	}
 
 	struct xkb_state *keyboard_state =
 	    xkb_x11_state_new_from_device(keymap, connection, device_id);
 	if (0 == keyboard_state) {
-		errnum = ENOSYS;
+		errnum = LINTED_ERROR_UNIMPLEMENTED;
 		goto destroy_keymap;
 	}
 
@@ -455,13 +455,13 @@ stop_pool:
 		{
 			struct linted_asynch_task *xx;
 			poll_errnum = linted_asynch_pool_poll(pool, &xx);
-			if (EAGAIN == poll_errnum)
+			if (LINTED_ERROR_AGAIN == poll_errnum)
 				break;
 			task = xx;
 		}
 
 		linted_error dispatch_errnum = linted_asynch_task_errnum(task);
-		if (0 == errnum && dispatch_errnum != ECANCELED)
+		if (0 == errnum && dispatch_errnum != LINTED_ERROR_CANCELLED)
 			errnum = dispatch_errnum;
 	}
 
