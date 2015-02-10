@@ -35,6 +35,10 @@ if X11_API
   $(XCB_LIBS)
 endif
 
+if WINDOWS_API
+%C%_linted_window_LDADD+=$(D3DX9_LIBS)
+endif
+
 %C%_linted_window_CPPFLAGS=
 if X11_API
 %C%_linted_window_CPPFLAGS+=$(XCB_FLAGS)

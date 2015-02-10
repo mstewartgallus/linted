@@ -29,11 +29,16 @@
 #include "linted/log.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <windows.h>
+#include <d3d9.h>
+
+HRESULT WINAPI Direct3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex **);
 
 static HINSTANCE get_current_module(void)
 {
@@ -118,10 +123,46 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		break;
 	}
 
+	IDirect3D9Ex *context;
+	{
+		IDirect3D9Ex *xx;
+		HRESULT result = Direct3DCreate9Ex(D3D_SDK_VERSION, &xx);
+		if (FAILED(result)) {
+			errnum = ENOSYS;
+			goto destroy_window;
+		}
+		context = xx;
+	}
+
+	IDirect3DDevice9 *device;
+	{
+		D3DPRESENT_PARAMETERS presentation_parameters = { 0 };
+		presentation_parameters.BackBufferFormat = D3DFMT_UNKNOWN;
+		presentation_parameters.hDeviceWindow = main_window;
+		presentation_parameters.Windowed = true;
+
+		IDirect3DDevice9 *xx;
+		HRESULT result = IDirect3D9Ex_CreateDevice(
+		    context, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, main_window, 0,
+		    &presentation_parameters, &xx);
+		if (FAILED(result)) {
+			errnum = ENOSYS;
+			goto release_context;
+		}
+		device = xx;
+	}
+
+	IDirect3DSwapChain9 *swap_chain;
+	{
+		IDirect3DSwapChain9 *xx;
+		IDirect3DDevice9Ex_GetSwapChain(device, 0U, &xx);
+		swap_chain = xx;
+	}
+
 	if (0 == UpdateWindow(main_window)) {
 		errnum = GetLastError();
 		assert(errnum != 0);
-		goto report_exit_status;
+		goto release_swap_chain;
 	}
 
 	for (;;) {
@@ -137,12 +178,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			default:
 				if (WM_QUIT == message.message) {
 					errnum = message.wParam;
-					goto destroy_window;
+					goto release_swap_chain;
 				}
 
 				if (-1 == TranslateMessage(&message)) {
 					errnum = GetLastError();
-					goto destroy_window;
+					goto release_swap_chain;
 				}
 
 				DispatchMessage(&message);
@@ -152,28 +193,19 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
-		MSG message;
-		switch (GetMessage(&message, 0, 0, 0)) {
-		case -1:
-			errnum = GetLastError();
-			assert(errnum != 0);
-			goto destroy_window;
-
-		case 0:
-			errnum = message.wParam;
-			goto destroy_window;
-
-		default:
-			if (-1 == TranslateMessage(&message)) {
-				errnum = GetLastError();
-				assert(errnum != 0);
-				goto destroy_window;
-			}
-
-			DispatchMessage(&message);
-			break;
+		HRESULT result =
+		    IDirect3DSwapChain9_Present(swap_chain, 0, 0, 0, 0, 0);
+		if (FAILED(result)) {
+			errnum = ENOSYS;
+			goto release_swap_chain;
 		}
 	}
+
+release_swap_chain:
+	IDirect3DSwapChain9_Release(swap_chain);
+	IDirect3DDevice9Ex_Release(device);
+release_context:
+	IDirect3D9Ex_Release(context);
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
@@ -245,14 +277,6 @@ static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
 		goto post_quit_message;
 	}
 
-	if (0 == DrawText(hdc, L"Hello windows", -1, &rect,
-	                  DT_CENTER | DT_VCENTER | DT_SINGLELINE)) {
-		errnum = GetLastError();
-		assert(errnum != 0);
-		goto end_paint;
-	}
-
-end_paint:
 	if (0 == EndPaint(main_window, &ps)) {
 		errnum = GetLastError();
 		assert(errnum != 0);

@@ -88,6 +88,9 @@ dnl
         LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])
+        LINTED_CHECK_LIB([D3DX9_LIBS], [d3d9], [Direct3DCreate9], [#include <d3d9.h>], [], [
+                AC_MSG_ERROR([Unable to find a DirectX 8 library])
+        ])
 dnl
 ])
 dnl

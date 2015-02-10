@@ -73,8 +73,8 @@ linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 {
 	linted_error errnum;
 
-	size_t buffer_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-	                                         input, -1, 0, 0);
+	size_t buffer_size =
+	    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input, -1, 0, 0);
 	if (0 == buffer_size) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
@@ -91,8 +91,8 @@ linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 		buffer = xx;
 	}
 
-	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input,
-	                             -1, buffer, buffer_size)) {
+	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input, -1,
+	                             buffer, buffer_size)) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
 
