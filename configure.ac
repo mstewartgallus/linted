@@ -85,7 +85,7 @@ dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
-        LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [], [
+        LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])
 dnl
@@ -107,11 +107,11 @@ dnl
           AC_MSG_ERROR([Unable to find header ${ac_header}])
         ], [])
 dnl
-        LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [], [
+        LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [#include <time.h>], [], [
                 AC_MSG_ERROR([Unable to find a realtime functions library])
         ])
 dnl
-        LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [], [
+        LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [#include <sys/capability.h>], [], [
                 AC_MSG_ERROR([Unable to find a POSIX capabilities library])
         ])
 dnl
@@ -197,7 +197,7 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-LINTED_CHECK_LIB([MATH_LIBS], [m], [sin], [], [
+LINTED_CHECK_LIB([MATH_LIBS], [m], [sin], [#include <math.h>], [], [
    AC_MSG_ERROR([Unable to find a math library])
 ])
 dnl
