@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define WINVER 0x0600
-
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -25,6 +23,7 @@
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/utf.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -48,25 +47,13 @@ char const *linted_error_string(linted_error errnum_to_print)
 	                       0, errnum_to_print, 0, (void *)&message, 0, 0))
 		return out_of_memory_string;
 
-	size_t buffer_size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-	                                         message, -1, 0, 0, 0, 0);
-	if (0 == buffer_size)
-		goto free_message;
-
 	char *buffer;
 	{
-		void *xx;
-		errnum =
-		    linted_mem_alloc_array(&xx, buffer_size, sizeof buffer[0U]);
+		char *xx;
+		errnum = linted_utf_2_to_1(message, &xx);
 		if (errnum != 0)
 			goto free_message;
 		buffer = xx;
-	}
-
-	if (0 == WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, message, -1,
-	                             buffer, buffer_size, 0, 0)) {
-		linted_mem_free(buffer);
-		goto free_message;
 	}
 
 	return buffer;

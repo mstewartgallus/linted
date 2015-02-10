@@ -25,3 +25,7 @@ EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
   src/log/liblog.la\
   \
   $(WS2_32_LIBS)
+
+if WINDOWS_API
+%C%_libstart_la_LIBADD+=src/utf/libutf.la
+endif

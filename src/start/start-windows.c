@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define WINVER 0x0600
-
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -28,6 +26,7 @@
 #include "linted/asynch.h"
 #include "linted/environment.h"
 #include "linted/mem.h"
+#include "linted/utf.h"
 #include "linted/log.h"
 
 #include <errno.h>
@@ -84,30 +83,9 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 	}
 
 	for (size_t ii = 0U; ii < argc; ++ii) {
-		size_t buffer_size =
-		    WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-		                        wide_argv[ii], -1, 0, 0, 0, 0);
-		if (0 == buffer_size)
+		errnum = linted_utf_2_to_1(wide_argv[ii], &argv[ii]);
+		if (errnum != 0)
 			return EXIT_FAILURE;
-
-		char *buffer;
-		{
-			void *xx;
-			errnum = linted_mem_alloc_array(&xx, buffer_size,
-			                                sizeof buffer[0U]);
-			if (errnum != 0)
-				return EXIT_FAILURE;
-			buffer = xx;
-		}
-
-		if (0 == WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-		                             wide_argv[ii], -1, buffer,
-		                             buffer_size, 0, 0)) {
-			linted_mem_free(buffer);
-			return EXIT_FAILURE;
-		}
-
-		argv[ii] = buffer;
 	}
 
 	LocalFree(wide_argv);

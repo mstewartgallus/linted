@@ -55,7 +55,14 @@ include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
 include %C%/unit/Makefile.am
+
+if WINDOWS_API
+include %C%/utf/Makefile.am
+endif
+
+if X11_API
 include %C%/xcb/Makefile.am
+endif
 
 include %C%/admin/Makefile.am
 include %C%/controller/Makefile.am
