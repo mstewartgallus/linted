@@ -472,7 +472,7 @@ static void maybe_update(linted_updater updater,
 	simulator_state->write_in_progress = true;
 }
 
-static linted_sim_int resolve(linted_sim_int x)
+static linted_sim_int downscale(linted_sim_int x)
 {
 	return (INTMAX_C(16) * x) / LINTED_SIM_INT_MAX;
 }
@@ -483,28 +483,24 @@ static void simulate_tick(struct simulator_state *simulator_state,
 
 	linted_sim_angle x_rotation = simulator_state->x_rotation;
 	struct differentiable *positions = simulator_state->position;
-	size_t positions_size = LINTED_ARRAY_SIZE(simulator_state->position);
+	size_t dimensions = LINTED_ARRAY_SIZE(simulator_state->position);
 
 	linted_sim_int x = action_state->x;
 	linted_sim_int z = action_state->z;
+	linted_sim_int jumping = action_state->jumping;
 
-	linted_sim_int cos_x = linted_sim_cos(x_rotation);
-	linted_sim_int sin_x = linted_sim_sin(x_rotation);
+	linted_sim_int cos_x = downscale(linted_sim_cos(x_rotation));
+	linted_sim_int sin_x = downscale(linted_sim_sin(x_rotation));
 
-	linted_sim_int forward_thrusts[3U] = { -resolve(sin_x * z), 0,
-		                               -resolve(cos_x * z) };
-
-	linted_sim_int strafe_thrusts[3U] = { -resolve(cos_x * x), 0,
-		                              resolve(sin_x * x) };
-
-	linted_sim_int jump_thrusts[3U] = {
-		0, resolve(-LINTED_SIM_INT_MAX * action_state->jumping), 0
+	linted_sim_int x_thrust[3U] = { z * -sin_x, 0, z * -cos_x };
+	linted_sim_int y_thrust[3U] = { x * -cos_x, 0, x * sin_x };
+	linted_sim_int z_thrust[3U] = {
+		0, jumping * downscale(-LINTED_SIM_INT_MAX), 0
 	};
 
 	linted_sim_int thrusts[3U];
-	for (size_t ii = 0U; ii < positions_size; ++ii)
-		thrusts[ii] =
-		    strafe_thrusts[ii] + forward_thrusts[ii] + jump_thrusts[ii];
+	for (size_t ii = 0U; ii < dimensions; ++ii)
+		thrusts[ii] = x_thrust[ii] + y_thrust[ii] + z_thrust[ii];
 
 	linted_sim_int gravity[3U] = { 0, 10, 0 };
 
@@ -512,10 +508,10 @@ static void simulate_tick(struct simulator_state *simulator_state,
 		                            0 };
 
 	linted_sim_int forces[3U];
-	for (size_t ii = 0U; ii < positions_size; ++ii)
+	for (size_t ii = 0U; ii < dimensions; ++ii)
 		forces[ii] = gravity[ii] + normal_force[ii] + thrusts[ii];
 
-	for (size_t ii = 0U; ii < positions_size; ++ii) {
+	for (size_t ii = 0U; ii < dimensions; ++ii) {
 		struct differentiable *pos = &positions[ii];
 
 		linted_sim_int position = pos->value;
