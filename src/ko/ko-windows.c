@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _WIN32_WINNT 0x0600
-
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -27,6 +25,7 @@
 
 #include "linted/mem.h"
 #include "linted/error.h"
+#include "linted/utf.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -90,40 +89,23 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (ko_rdwr)
 		desired_access |= GENERIC_READ | GENERIC_WRITE;
 
-	size_t buffer_size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-	                                         pathname, -1, 0, 0);
-	if (0 == buffer_size) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	wchar_t *buffer;
+	wchar_t *pathname_utf2;
 	{
-		void *xx;
-		errnum =
-		    linted_mem_alloc_array(&xx, buffer_size, sizeof buffer[0U]);
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(pathname, &xx);
 		if (errnum != 0)
 			return errnum;
-		buffer = xx;
+		pathname_utf2 = xx;
 	}
 
-	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, pathname,
-	                             -1, buffer, buffer_size)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		goto free_buffer;
-	}
-
-	linted_ko ko =
-	    CreateFile(buffer, desired_access, 0, 0, OPEN_EXISTING, 0, 0);
+	linted_ko ko = CreateFile(pathname_utf2, desired_access, 0, 0,
+	                          OPEN_EXISTING, 0, 0);
 	if (INVALID_HANDLE_VALUE == ko) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
 	}
 
-free_buffer:
-	linted_mem_free(buffer);
+	linted_mem_free(pathname_utf2);
 
 	if (errnum != 0)
 		return errnum;

@@ -28,4 +28,6 @@
 
 linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp);
 
+linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp);
+
 #endif /* LINTED_UTF_H */
