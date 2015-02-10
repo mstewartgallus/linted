@@ -260,13 +260,6 @@ static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
 {
 	DWORD errnum = 0;
 
-	RECT rect;
-	if (0 == GetClientRect(main_window, &rect)) {
-		errnum = GetLastError();
-		assert(errnum != 0);
-		goto post_quit_message;
-	}
-
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(main_window, &ps);
 	if (0 == hdc) {
