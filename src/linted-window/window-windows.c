@@ -264,7 +264,6 @@ static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
 	if (0 == GetClientRect(main_window, &rect)) {
 		errnum = GetLastError();
 		assert(errnum != 0);
-		PostQuitMessage(errnum);
 		goto post_quit_message;
 	}
 
@@ -273,7 +272,6 @@ static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
 	if (0 == hdc) {
 		errnum = GetLastError();
 		assert(errnum != 0);
-		PostQuitMessage(errnum);
 		goto post_quit_message;
 	}
 
