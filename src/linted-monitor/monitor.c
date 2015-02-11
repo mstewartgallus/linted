@@ -231,11 +231,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	sigset_t orig_mask;
-
 	errnum = set_death_sig(SIGKILL);
-	if (errnum != 0)
-		goto exit_monitor;
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERROR, "set_death_sig: %s",
+		           linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
 
 	sigset_t exit_signals;
 	sigemptyset(&exit_signals);
@@ -245,9 +246,13 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	sigaddset(&exit_signals, SIGTERM);
 
 	/* Block signals before spawning threads */
+	sigset_t orig_mask;
 	errnum = pthread_sigmask(SIG_BLOCK, &exit_signals, &orig_mask);
-	if (errnum != 0)
-		goto exit_monitor;
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERROR, "pthread_sigmask: %s",
+		           linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
 
 	char const *unit_path = linted_environment_get("LINTED_UNIT_PATH");
 	char const *sandbox = linted_environment_get("LINTED_SANDBOX");
@@ -436,8 +441,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	{
 		struct linted_asynch_pool *xx;
 		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
-			goto exit_monitor;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_asynch_pool_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		pool = xx;
 	}
 
@@ -455,8 +464,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	{
 		struct linted_pid_task_waitid *xx;
 		errnum = linted_pid_task_waitid_create(&xx, &sandbox_data);
-		if (errnum != 0)
-			goto destroy_pool;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_pid_task_waitid_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		sandbox_task = xx;
 	}
 
@@ -464,8 +477,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		struct linted_signal_task_sigwaitinfo *xx;
 		errnum =
 		    linted_signal_task_sigwaitinfo_create(&xx, &sigwait_data);
-		if (errnum != 0)
-			goto destroy_pool;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_signal_task_sigwaitinfo_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		sigwait_task = xx;
 	}
 
@@ -473,8 +490,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		struct linted_admin_in_task_read *xx;
 		errnum =
 		    linted_admin_in_task_read_create(&xx, &admin_in_read_data);
-		if (errnum != 0)
-			goto destroy_pool;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_admin_in_task_read_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		admin_in_read_task = xx;
 	}
 
@@ -483,8 +504,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		struct linted_admin_out_task_write *xx;
 		errnum = linted_admin_out_task_write_create(
 		    &xx, &admin_out_write_data);
-		if (errnum != 0)
-			goto destroy_pool;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_admin_out_task_write_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		write_task = xx;
 	}
 
@@ -492,8 +517,11 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	{
 		struct linted_conf_db *xx;
 		errnum = conf_db_from_path(&xx, unit_path);
-		if (errnum != 0)
-			goto destroy_pool;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "conf_db_from_path: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		conf_db = xx;
 	}
 
@@ -502,8 +530,11 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		struct linted_unit_db *xx;
 		errnum =
 		    create_unit_db(&xx, conf_db, &orig_mask, sandbox, waiter);
-		if (errnum != 0)
-			goto destroy_confs;
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "create_unit_db: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 		unit_db = xx;
 	}
 
@@ -590,21 +621,19 @@ cancel_tasks:
 kill_procs:
 	linted_unit_db_destroy(unit_db);
 
-destroy_confs:
 	linted_conf_db_destroy(conf_db);
 
-destroy_pool : {
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
-}
+	{
+		linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
+		if (0 == errnum)
+			errnum = destroy_errnum;
+	}
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)sandbox_task;
 	(void)admin_in_read_task;
 
-exit_monitor:
 	if (errnum != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s", linted_error_string(errnum));
 		return EXIT_FAILURE;
