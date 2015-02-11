@@ -86,6 +86,7 @@ static struct sock_filter const real_filter[] = {
     /**/ ALLOW(nanosleep),
     /**/ ALLOW(sched_getaffinity),
     /**/ ALLOW(setrlimit),
+    /**/ ALLOW(sigaltstack),
 
     /* Apitrace related system calls */
     /**/ ALLOW(dup),
