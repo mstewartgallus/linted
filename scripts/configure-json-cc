@@ -20,5 +20,7 @@ exec "${SRC}/configure"\
      --host=none-none-none\
      --disable-shared\
      --enable-debug\
+     --enable-posix-api\
+     --enable-x11-api\
      CC="${JSON_CC} ${CC}"\
      $@
