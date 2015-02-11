@@ -24,7 +24,6 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <inttypes.h>
 #include <sched.h>
 #include <stddef.h>

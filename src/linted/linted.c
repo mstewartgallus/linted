@@ -29,6 +29,7 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <libgen.h>

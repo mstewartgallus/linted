@@ -45,7 +45,8 @@ int main(int argc, char *argv[])
 		{
 			linted_ko xx;
 			errnum =
-			    linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null", 0);
+			    linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
+					   LINTED_KO_RDWR);
 			if (errnum != 0)
 				return EXIT_FAILURE;
 			ko = xx;
