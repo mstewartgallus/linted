@@ -46,8 +46,7 @@ static void delegate_signal(int signo);
 static linted_error set_child_subreaper(bool value);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-init", .start = init_start
-};
+    .canonical_process_name = PACKAGE_NAME "-init", .start = init_start};
 
 static volatile sig_atomic_t monitor_pid = 0;
 
@@ -62,11 +61,11 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
+	static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 
 	/* Delegate the exit signal to the monitor child */
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
-		struct sigaction action = { 0 };
+		struct sigaction action = {0};
 		action.sa_handler = delegate_signal;
 		action.sa_flags = SA_RESTART;
 		sigfillset(&action.sa_mask);
@@ -116,10 +115,10 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, 0, attr,
-			    (char const * const[]) { monitor_base, 0 },
-			    (char const * const *)environ);
+			errnum =
+			    linted_spawn(&xx, LINTED_KO_CWD, monitor, 0, attr,
+			                 (char const *const[]){monitor_base, 0},
+			                 (char const *const *)environ);
 			if (errnum != 0) {
 				linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",
 				           linted_error_string(errnum));
@@ -213,7 +212,7 @@ static void delegate_signal(int signo)
 		 * - WAIT(2) http://www.kernel.org/doc/man-pages/.
 		 */
 		{
-			siginfo_t info = { 0 };
+			siginfo_t info = {0};
 			if (-1 == waitid(P_PID, the_pid, &info,
 			                 WEXITED | WNOWAIT | WNOHANG))
 				errnum = errno;

@@ -60,27 +60,25 @@ static linted_error do_help(linted_ko ko, char const *process_name,
                             struct linted_str package_bugreport);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-linted", .start = main_start
-};
+    .canonical_process_name = PACKAGE_NAME "-linted", .start = main_start};
 
 static struct envvar const default_envvars[] = {
-	{ "LINTED_PROCESS_NAME", "linted" },
-	{ "LINTED_UNIT_PATH", LINTED_UNIT_PATH },
-	{ "LINTED_INIT", LINTED_INIT },
-	{ "LINTED_MONITOR", LINTED_MONITOR },
-	{ "LINTED_SANDBOX", LINTED_SANDBOX },
-	{ "LINTED_WAITER", LINTED_WAITER },
-	{ "LINTED_GUI", LINTED_GUI },
-	{ "LINTED_GUI_FSTAB", LINTED_GUI_FSTAB },
-	{ "LINTED_SIMULATOR", LINTED_SIMULATOR },
-	{ "LINTED_SIMULATOR_FSTAB", LINTED_SIMULATOR_FSTAB },
-	{ "LINTED_DRAWER", LINTED_DRAWER },
-	{ "LINTED_DRAWER_FSTAB", LINTED_DRAWER_FSTAB },
-	{ "LINTED_WINDOW", LINTED_WINDOW }
-};
+    {"LINTED_PROCESS_NAME", "linted"},
+    {"LINTED_UNIT_PATH", LINTED_UNIT_PATH},
+    {"LINTED_INIT", LINTED_INIT},
+    {"LINTED_MONITOR", LINTED_MONITOR},
+    {"LINTED_SANDBOX", LINTED_SANDBOX},
+    {"LINTED_WAITER", LINTED_WAITER},
+    {"LINTED_GUI", LINTED_GUI},
+    {"LINTED_GUI_FSTAB", LINTED_GUI_FSTAB},
+    {"LINTED_SIMULATOR", LINTED_SIMULATOR},
+    {"LINTED_SIMULATOR_FSTAB", LINTED_SIMULATOR_FSTAB},
+    {"LINTED_DRAWER", LINTED_DRAWER},
+    {"LINTED_DRAWER_FSTAB", LINTED_DRAWER_FSTAB},
+    {"LINTED_WINDOW", LINTED_WINDOW}};
 
 static char const *const argstrs[] = {[HELP] = "--help",
-	                              [VERSION_OPTION] = "--version" };
+                                      [VERSION_OPTION] = "--version"};
 
 static unsigned char main_start(char const *const process_name, size_t argc,
                                 char const *const *const argv)
@@ -178,8 +176,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	}
 	char *init_base = basename(init_dup);
 
-	char const *const init_argv[] = { init_base, 0 };
-	execve(init, (char * const *)init_argv, environ);
+	char const *const init_argv[] = {init_base, 0};
+	execve(init, (char *const *)init_argv, environ);
 	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
 	return EXIT_FAILURE;
 }

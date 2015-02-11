@@ -56,8 +56,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-window", .start = window_start
-};
+    .canonical_process_name = PACKAGE_NAME "-window", .start = window_start};
 
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
@@ -80,7 +79,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	ATOM class_atom;
 	{
-		WNDCLASS window_class = { 0 };
+		WNDCLASS window_class = {0};
 
 		window_class.lpfnWndProc = window_procedure;
 		window_class.style = CS_HREDRAW | CS_VREDRAW;
@@ -99,7 +98,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	HWND main_window = CreateWindowEx(
-	    WS_EX_APPWINDOW | WS_EX_COMPOSITED, (LPCTSTR)(uintptr_t)class_atom,
+	    WS_EX_APPWINDOW | WS_EX_COMPOSITED, (LPCTSTR)(uintptr_t) class_atom,
 	    L"" PACKAGE_NAME, WS_OVERLAPPED | WS_CAPTION | WS_THICKFRAME |
 	                          WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
 	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
@@ -135,7 +134,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	IDirect3DDevice9 *device;
 	{
-		D3DPRESENT_PARAMETERS presentation_parameters = { 0 };
+		D3DPRESENT_PARAMETERS presentation_parameters = {0};
 		presentation_parameters.BackBufferFormat = D3DFMT_UNKNOWN;
 		presentation_parameters.hDeviceWindow = main_window;
 		presentation_parameters.Windowed = true;

@@ -218,9 +218,7 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
 static linted_error set_death_sig(int signum);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-monitor",
-	.start = monitor_start
-};
+    .canonical_process_name = PACKAGE_NAME "-monitor", .start = monitor_start};
 
 static unsigned char monitor_start(char const *process_name, size_t argc,
                                    char const *const argv[])
@@ -1122,7 +1120,7 @@ service_asprintf_failed:
 
 service_asprintf_succeeded:
 	;
-	size_t envvars_size = null_list_size((char const * const *)envvars);
+	size_t envvars_size = null_list_size((char const *const *)envvars);
 	size_t new_size = envvars_size + 3U;
 	{
 		void *xx;
@@ -1152,22 +1150,22 @@ envvar_allocate_succeeded:
 	char *sandbox_base = basename(sandbox_dup);
 
 	size_t exec_start_size =
-	    null_list_size((char const * const *)exec_start);
+	    null_list_size((char const *const *)exec_start);
 
-	struct option options[] = { { "--traceme", 0, true },
-		                    { "--waiter", waiter, waiter != 0 },
-		                    { "--chrootdir", chrootdir, fstab != 0 },
-		                    { "--fstab", fstab, fstab != 0 },
-		                    { "--nonewprivs", 0, no_new_privs },
-		                    { "--dropcaps", 0, drop_caps },
-		                    { "--chdir", chdir_path, chdir_path != 0 },
-		                    { "--priority", prio_str, prio_str != 0 },
-		                    { "--clone-newuser", 0, clone_newuser },
-		                    { "--clone-newpid", 0, clone_newpid },
-		                    { "--clone-newipc", 0, clone_newipc },
-		                    { "--clone-newnet", 0, clone_newnet },
-		                    { "--clone-newns", 0, clone_newns },
-		                    { "--clone-newuts", 0, clone_newuts } };
+	struct option options[] = {{"--traceme", 0, true},
+	                           {"--waiter", waiter, waiter != 0},
+	                           {"--chrootdir", chrootdir, fstab != 0},
+	                           {"--fstab", fstab, fstab != 0},
+	                           {"--nonewprivs", 0, no_new_privs},
+	                           {"--dropcaps", 0, drop_caps},
+	                           {"--chdir", chdir_path, chdir_path != 0},
+	                           {"--priority", prio_str, prio_str != 0},
+	                           {"--clone-newuser", 0, clone_newuser},
+	                           {"--clone-newpid", 0, clone_newpid},
+	                           {"--clone-newipc", 0, clone_newipc},
+	                           {"--clone-newnet", 0, clone_newnet},
+	                           {"--clone-newns", 0, clone_newns},
+	                           {"--clone-newuts", 0, clone_newuts}};
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
@@ -1263,7 +1261,7 @@ envvar_allocate_succeeded:
 	}
 
 	errnum = linted_spawn(0, cwd, sandbox, file_actions, attr, args,
-	                      (char const * const *)envvars);
+	                      (char const *const *)envvars);
 	if (errnum != 0)
 		goto destroy_proc_kos;
 
@@ -1722,11 +1720,10 @@ reply:
 	return 0;
 }
 
-static char const *default_envvars[] = { "USER", "LOGNAME", "HOME", "SHELL",
-	                                 "XDG_RUNTIME_DIR"
-	                                 "XDG_SESSION_ID",
-	                                 "XDG_SEAT", "TERM", "LD_DEBUG",
-	                                 "LD_DEBUG_OUTPUT", 0 };
+static char const *default_envvars[] = {
+    "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
+                                        "XDG_SESSION_ID",
+    "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       char const *path)
@@ -2202,8 +2199,8 @@ static linted_error str_from_strs(char const *const *strs, char const **strp)
 
 static linted_error bool_from_cstring(char const *str, bool *boolp)
 {
-	static char const *const yes_strs[] = { "1", "yes", "true", "on" };
-	static char const *const no_strs[] = { "0", "no", "false", "off" };
+	static char const *const yes_strs[] = {"1", "yes", "true", "on"};
+	static char const *const no_strs[] = {"0", "no", "false", "off"};
 
 	bool result;
 
@@ -2515,7 +2512,7 @@ static linted_error ptrace_detach(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_DETACH, pid, (void *)0, (void *)(intptr_t)signo)) {
+	    ptrace(PTRACE_DETACH, pid, (void *)0, (void *)(intptr_t) signo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2529,7 +2526,7 @@ static linted_error ptrace_setoptions(pid_t pid, unsigned options)
 	linted_error errnum;
 
 	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)0,
-	                 (void *)(uintptr_t)options)) {
+	                 (void *)(uintptr_t) options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2569,7 +2566,7 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	linted_error errnum;
 
 	if (-1 ==
-	    ptrace(PTRACE_CONT, pid, (void *)0, (void *)(intptr_t)signo)) {
+	    ptrace(PTRACE_CONT, pid, (void *)0, (void *)(intptr_t) signo)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

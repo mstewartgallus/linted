@@ -19,7 +19,7 @@
 
 typedef unsigned linted_ko;
 
-#define LINTED_KO_CWD ((linted_ko) - 1)
+#define LINTED_KO_CWD ((linted_ko)-1)
 
 #define LINTED_KO_STDIN 0U
 #define LINTED_KO_STDOUT 1U

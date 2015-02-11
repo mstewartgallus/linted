@@ -100,10 +100,9 @@ static linted_error on_receive_notice(struct linted_asynch_task *task);
 static void maybe_idle(struct linted_sched_task_idle *task);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-drawer", .start = drawer_start
-};
+    .canonical_process_name = PACKAGE_NAME "-drawer", .start = drawer_start};
 
-static uint32_t const window_opts[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0 };
+static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0};
 
 static unsigned char drawer_start(char const *process_name, size_t argc,
                                   char const *const argv[])
@@ -164,7 +163,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		updater = xx;
 	}
 
-	struct window_model window_model = { .viewable = false };
+	struct window_model window_model = {.viewable = false};
 
 	struct linted_asynch_pool *pool;
 	{

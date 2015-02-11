@@ -37,11 +37,10 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
                                 char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-enter", .start = enter_start
-};
+    .canonical_process_name = PACKAGE_NAME "-enter", .start = enter_start};
 
 /* Order of entering matters */
-static char const *const namespaces[] = { "user", "pid", "ipc", "mnt", "net" };
+static char const *const namespaces[] = {"user", "pid", "ipc", "mnt", "net"};
 
 static uint_fast8_t enter_start(char const *const process_name, size_t argc,
                                 char const *const argv[])
@@ -113,8 +112,8 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	static const char *args[] = { "/bin/sh", 0 };
-	execve(args[0U], (char * const *)args, environ);
+	static const char *args[] = {"/bin/sh", 0};
+	execve(args[0U], (char *const *)args, environ);
 
 	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
 	return EXIT_FAILURE;

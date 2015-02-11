@@ -51,12 +51,11 @@
 
 enum { ON_RECEIVE_NOTICE, ON_POLL_CONN, ON_SENT_CONTROL, MAX_TASKS };
 
-static uint32_t const window_opts[] = { XCB_EVENT_MASK_FOCUS_CHANGE |
-	                                    XCB_EVENT_MASK_POINTER_MOTION |
-	                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY |
-	                                    XCB_EVENT_MASK_KEY_PRESS |
-	                                    XCB_EVENT_MASK_KEY_RELEASE,
-	                                0 };
+static uint32_t const window_opts[] = {
+    XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_POINTER_MOTION |
+        XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_KEY_PRESS |
+        XCB_EVENT_MASK_KEY_RELEASE,
+    0};
 
 struct controller_data;
 
@@ -128,8 +127,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct controller_data *controller_data);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-gui", .start = gui_start
-};
+    .canonical_process_name = PACKAGE_NAME "-gui", .start = gui_start};
 
 static unsigned char gui_start(char const *process_name, size_t argc,
                                char const *const argv[])
@@ -184,8 +182,8 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		controller = xx;
 	}
 
-	struct controller_data controller_data = { 0 };
-	struct window_model window_model = { .width = 1, .height = 1 };
+	struct controller_data controller_data = {0};
+	struct window_model window_model = {.width = 1, .height = 1};
 
 	struct linted_asynch_pool *pool;
 	{

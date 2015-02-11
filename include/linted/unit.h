@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,11 +35,9 @@ enum { LINTED_UNIT_NAME_MAX = 255 };
 enum { LINTED_UNIT_TYPE_SOCKET, LINTED_UNIT_TYPE_SERVICE };
 typedef unsigned char linted_unit_type;
 
-enum {
-	LINTED_UNIT_SOCKET_TYPE_DIR,
-	LINTED_UNIT_SOCKET_TYPE_FILE,
-	LINTED_UNIT_SOCKET_TYPE_FIFO
-};
+enum { LINTED_UNIT_SOCKET_TYPE_DIR,
+       LINTED_UNIT_SOCKET_TYPE_FILE,
+       LINTED_UNIT_SOCKET_TYPE_FIFO };
 typedef unsigned char linted_unit_socket_type;
 
 struct linted_unit_db;

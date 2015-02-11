@@ -39,12 +39,10 @@
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (LINTED_SIM_INT_MAX / 8)
 
-enum {
-	ON_READ_TIMER,
-	ON_RECEIVE_CONTROLLER_EVENT,
-	ON_SENT_UPDATER_EVENT,
-	MAX_TASKS
-};
+enum { ON_READ_TIMER,
+       ON_RECEIVE_CONTROLLER_EVENT,
+       ON_SENT_UPDATER_EVENT,
+       MAX_TASKS };
 
 struct action_state
 {
@@ -120,9 +118,8 @@ static linted_sim_int min_int(linted_sim_int x, linted_sim_int y);
 static linted_sim_int sign(linted_sim_int x);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-simulator",
-	.start = simulator_start
-};
+    .canonical_process_name = PACKAGE_NAME "-simulator",
+    .start = simulator_start};
 
 static unsigned char simulator_start(char const *const process_name,
                                      size_t argc, char const *const argv[])
@@ -163,17 +160,16 @@ static unsigned char simulator_start(char const *const process_name,
 		updater = xx;
 	}
 
-	struct action_state action_state = { .x = 0, .z = 0, .jumping = false };
+	struct action_state action_state = {.x = 0, .z = 0, .jumping = false};
 
 	struct simulator_state simulator_state = {
-		.update_pending = true, /* Initialize the gui at start */
-		.write_in_progress = false,
-		.position = { { .value = 0, .old = 0 },
-			      { .value = 0, .old = 0 },
-			      { .value = 3 * 1024, .old = 3 * 1024 } },
-		.x_rotation = LINTED_SIM_ANGLE(1U, 2U),
-		.y_rotation = LINTED_SIM_ANGLE(0U, 1U)
-	};
+	    .update_pending = true, /* Initialize the gui at start */
+	    .write_in_progress = false,
+	    .position = {{.value = 0, .old = 0},
+	                 {.value = 0, .old = 0},
+	                 {.value = 3 * 1024, .old = 3 * 1024}},
+	    .x_rotation = LINTED_SIM_ANGLE(1U, 2U),
+	    .y_rotation = LINTED_SIM_ANGLE(0U, 1U)};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -455,12 +451,11 @@ static void maybe_update(linted_updater updater,
 
 	{
 		struct linted_updater_update update = {
-			.x_position = simulator_state->position[0U].value,
-			.y_position = simulator_state->position[1U].value,
-			.z_position = simulator_state->position[2U].value,
-			.x_rotation = simulator_state->x_rotation,
-			.y_rotation = simulator_state->y_rotation
-		};
+		    .x_position = simulator_state->position[0U].value,
+		    .y_position = simulator_state->position[1U].value,
+		    .z_position = simulator_state->position[2U].value,
+		    .x_rotation = simulator_state->x_rotation,
+		    .y_rotation = simulator_state->y_rotation};
 
 		linted_updater_task_send_prepare(
 		    updater_task, ON_SENT_UPDATER_EVENT, updater, &update);
@@ -492,20 +487,19 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	linted_sim_int cos_x = downscale(linted_sim_cos(x_rotation));
 	linted_sim_int sin_x = downscale(linted_sim_sin(x_rotation));
 
-	linted_sim_int x_thrust[3U] = { z * -sin_x, 0, z * -cos_x };
-	linted_sim_int y_thrust[3U] = { x * -cos_x, 0, x * sin_x };
+	linted_sim_int x_thrust[3U] = {z * -sin_x, 0, z * -cos_x};
+	linted_sim_int y_thrust[3U] = {x * -cos_x, 0, x * sin_x};
 	linted_sim_int z_thrust[3U] = {
-		0, jumping * downscale(-LINTED_SIM_INT_MAX), 0
-	};
+	    0, jumping * downscale(-LINTED_SIM_INT_MAX), 0};
 
 	linted_sim_int thrusts[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
 		thrusts[ii] = x_thrust[ii] + y_thrust[ii] + z_thrust[ii];
 
-	linted_sim_int gravity[3U] = { 0, 10, 0 };
+	linted_sim_int gravity[3U] = {0, 10, 0};
 
-	linted_sim_int normal_force[3U] = { 0, (positions[1U].value >= 0) * -20,
-		                            0 };
+	linted_sim_int normal_force[3U] = {0, (positions[1U].value >= 0) * -20,
+	                                   0};
 
 	linted_sim_int forces[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)

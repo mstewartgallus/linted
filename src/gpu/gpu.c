@@ -69,18 +69,17 @@ struct matrix
 };
 
 static EGLint const attr_list[] = {
-	EGL_CONFORMANT,        EGL_OPENGL_ES2_BIT, /**/
-	EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT, /**/
-	EGL_DEPTH_SIZE,        16,                 /**/
-	EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,     /**/
-	EGL_RED_SIZE,          5,                  /**/
-	EGL_GREEN_SIZE,        5,                  /**/
-	EGL_BLUE_SIZE,         3,                  /**/
-	EGL_NONE
-};
+    EGL_CONFORMANT,        EGL_OPENGL_ES2_BIT, /**/
+    EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT, /**/
+    EGL_DEPTH_SIZE,        16,                 /**/
+    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,     /**/
+    EGL_RED_SIZE,          5,                  /**/
+    EGL_GREEN_SIZE,        5,                  /**/
+    EGL_BLUE_SIZE,         3,                  /**/
+    EGL_NONE};
 
-static EGLint const context_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, /**/
-	                               EGL_NONE };
+static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /**/
+                                      EGL_NONE};
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
 static linted_error assure_gl_context(struct linted_gpu_context *gpu_context);
@@ -284,9 +283,9 @@ static linted_error destroy_contexts(struct linted_gpu_context *gpu_context)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	{
-		GLuint xx[] = { gpu_context->vertex_buffer,
-			        gpu_context->normal_buffer,
-			        gpu_context->index_buffer };
+		GLuint xx[] = {gpu_context->vertex_buffer,
+		               gpu_context->normal_buffer,
+		               gpu_context->index_buffer};
 		glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 	}
 
@@ -548,7 +547,7 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	return 0;
 
 cleanup_buffers : {
-	GLuint xx[] = { vertex_buffer, normal_buffer, index_buffer };
+	GLuint xx[] = {vertex_buffer, normal_buffer, index_buffer};
 	glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 }
 
@@ -598,28 +597,24 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat cos_y = cosf(y_rotation);
 		GLfloat sin_y = sinf(y_rotation);
 
-		struct matrix const y_rotation_matrix = {
-			{ { 1, 0, 0, 0 },
-			  { 0, cos_y, -sin_y, 0 },
-			  { 0, sin_y, cos_y, 0 },
-			  { 0, 0, 0, 1 } }
-		};
+		struct matrix const y_rotation_matrix = {{{1, 0, 0, 0},
+		                                          {0, cos_y, -sin_y, 0},
+		                                          {0, sin_y, cos_y, 0},
+		                                          {0, 0, 0, 1}}};
 
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
-		struct matrix const x_rotation_matrix = {
-			{ { cos_x, 0, sin_x, 0 },
-			  { 0, 1, 0, 0 },
-			  { -sin_x, 0, cos_x, 0 },
-			  { 0, 0, 0, 1 } }
-		};
+		struct matrix const x_rotation_matrix = {{{cos_x, 0, sin_x, 0},
+		                                          {0, 1, 0, 0},
+		                                          {-sin_x, 0, cos_x, 0},
+		                                          {0, 0, 0, 1}}};
 
 		/* Translate the camera */
-		struct matrix const camera = { { { 1, 0, 0, 0 },
-				                 { 0, 1, 0, 0 },
-				                 { 0, 0, 1, 0 },
-				                 { x_position, y_position,
-					           z_position, 1 } } };
+		struct matrix const camera = {
+		    {{1, 0, 0, 0},
+		     {0, 1, 0, 0},
+		     {0, 0, 1, 0},
+		     {x_position, y_position, z_position, 1}}};
 
 		double aspect = width / (double)height;
 		double fov = acos(-1.0) / 4;
@@ -629,12 +624,11 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double near = 1;
 
 		struct matrix const projection = {
-			{ { d / aspect, 0, 0, 0 },
-			  { 0, d, 0, 0 },
-			  { 0, 0, (far + near) / (near - far),
-			    2 * far * near / (near - far) },
-			  { 0, 0, -1, 0 } }
-		};
+		    {{d / aspect, 0, 0, 0},
+		     {0, d, 0, 0},
+		     {0, 0, (far + near) / (near - far),
+		      2 * far * near / (near - far)},
+		     {0, 0, -1, 0}}};
 
 		struct matrix rotations =
 		    matrix_multiply(x_rotation_matrix, y_rotation_matrix);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,18 +79,18 @@ linted_sim_angle_add_clamped(int sign, linted_sim_angle min,
 	    (theta._value + sign * (int_fast64_t)phi._value) %
 	    LINTED_SIM_UINT_MAX;
 	switch ((sign > 0) | (theta._value > LINTED_SIM_UINT_MAX / 2U) << 1U) {
-	case 1U | (1U << 1U) :
+	case 1U | (1U << 1U):
 		break;
 
-	case 1U | (0U << 1U) :
+	case 1U | (0U << 1U):
 		result = result > max._value ? max._value : result;
 		break;
 
-	case 0U | (1U << 1U) :
+	case 0U | (1U << 1U):
 		result = result > min._value ? result : min._value;
 		break;
 
-	case 0U | (0U << 1U) :
+	case 0U | (0U << 1U):
 		break;
 	}
 	linted_sim_angle angle;

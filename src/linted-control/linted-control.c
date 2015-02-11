@@ -63,9 +63,7 @@ static linted_error failure(linted_ko ko, char const *process_name,
                             struct linted_str message, linted_error errnum);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-control",
-	.start = control_start
-};
+    .canonical_process_name = PACKAGE_NAME "-control", .start = control_start};
 
 static uint_fast8_t control_start(char const *const process_name, size_t argc,
                                   char const *const argv[])
@@ -179,7 +177,7 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 	enum { STATUS, STOP };
 
 	static char const *const commands[] = {[STATUS] = "status",
-		                               [STOP] = "stop" };
+	                                       [STOP] = "stop"};
 
 	int arg = -1;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(commands); ++ii) {
@@ -315,7 +313,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	                       process_name, name);
 
 	{
-		union linted_admin_request request = { 0 };
+		union linted_admin_request request = {0};
 
 		request.type = LINTED_ADMIN_STATUS;
 		request.status.size = name_len;
@@ -436,7 +434,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	                       process_name);
 
 	{
-		union linted_admin_request request = { 0 };
+		union linted_admin_request request = {0};
 
 		request.type = LINTED_ADMIN_STOP;
 		request.stop.size = sizeof "gui" - 1U;

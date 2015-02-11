@@ -60,26 +60,24 @@
  * Sandbox applications.
  */
 
-enum {
-	STOP_OPTIONS,
-	HELP,
-	VERSION_OPTION,
-	WAIT,
-	TRACEME,
-	DROP_CAPS,
-	NO_NEW_PRIVS,
-	CHDIR,
-	PRIORITY,
-	CHROOTDIR,
-	FSTAB,
-	WAITER,
-	NEWUSER_ARG,
-	NEWPID_ARG,
-	NEWIPC_ARG,
-	NEWNET_ARG,
-	NEWNS_ARG,
-	NEWUTS_ARG
-};
+enum { STOP_OPTIONS,
+       HELP,
+       VERSION_OPTION,
+       WAIT,
+       TRACEME,
+       DROP_CAPS,
+       NO_NEW_PRIVS,
+       CHDIR,
+       PRIORITY,
+       CHROOTDIR,
+       FSTAB,
+       WAITER,
+       NEWUSER_ARG,
+       NEWPID_ARG,
+       NEWIPC_ARG,
+       NEWNET_ARG,
+       NEWNS_ARG,
+       NEWUTS_ARG };
 
 struct mount_args
 {
@@ -98,25 +96,24 @@ struct mount_args
 static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
-	    /**/[STOP_OPTIONS] = "--",
-	    /**/ [HELP] = "--help",
-	    /**/ [VERSION_OPTION] = "--version",
-	    /**/ [WAIT] = "--wait",
-	    /**/ [TRACEME] = "--traceme",
-	    /**/ [DROP_CAPS] = "--dropcaps",
-	    /**/ [NO_NEW_PRIVS] = "--nonewprivs",
-	    /**/ [CHDIR] = "--chdir",
-	    /**/ [PRIORITY] = "--priority",
-	    /**/ [CHROOTDIR] = "--chrootdir",
-	    /**/ [FSTAB] = "--fstab",
-	    /**/ [WAITER] = "--waiter",
-	    /**/ [NEWUSER_ARG] = "--clone-newuser",
-	    /**/ [NEWPID_ARG] = "--clone-newpid",
-	    /**/ [NEWIPC_ARG] = "--clone-newipc",
-	    /**/ [NEWNET_ARG] = "--clone-newnet",
-	    /**/ [NEWNS_ARG] = "--clone-newns",
-	    /**/ [NEWUTS_ARG] = "--clone-newuts"
-};
+        /**/[STOP_OPTIONS] = "--",
+        /**/ [HELP] = "--help",
+        /**/ [VERSION_OPTION] = "--version",
+        /**/ [WAIT] = "--wait",
+        /**/ [TRACEME] = "--traceme",
+        /**/ [DROP_CAPS] = "--dropcaps",
+        /**/ [NO_NEW_PRIVS] = "--nonewprivs",
+        /**/ [CHDIR] = "--chdir",
+        /**/ [PRIORITY] = "--priority",
+        /**/ [CHROOTDIR] = "--chrootdir",
+        /**/ [FSTAB] = "--fstab",
+        /**/ [WAITER] = "--waiter",
+        /**/ [NEWUSER_ARG] = "--clone-newuser",
+        /**/ [NEWPID_ARG] = "--clone-newpid",
+        /**/ [NEWIPC_ARG] = "--clone-newipc",
+        /**/ [NEWNET_ARG] = "--clone-newnet",
+        /**/ [NEWNS_ARG] = "--clone-newns",
+        /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
 struct first_fork_args
 {
@@ -171,9 +168,7 @@ static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-sandbox",
-	.start = sandbox_start
-};
+    .canonical_process_name = PACKAGE_NAME "-sandbox", .start = sandbox_start};
 
 static unsigned char sandbox_start(char const *const process_name, size_t argc,
                                    char const *const argv[])
@@ -604,23 +599,23 @@ exit_loop:
 
 	pid_t child;
 	{
-		struct first_fork_args args = { .err_writer = err_writer,
-			                        .logger_reader = logger_reader,
-			                        .logger_writer = logger_writer,
-			                        .uid_map = uid_map,
-			                        .gid_map = gid_map,
-			                        .clone_flags = clone_flags,
-			                        .chrootdir = chrootdir,
-			                        .chdir_path = chdir_path,
-			                        .caps = caps,
-			                        .mount_args = mount_args,
-			                        .mount_args_size =
-			                            mount_args_size,
-			                        .use_seccomp = no_new_privs,
-			                        .waiter_base = waiter_base,
-			                        .waiter = waiter,
-			                        .command = command,
-			                        .binary = binary };
+		struct first_fork_args args = {.err_writer = err_writer,
+		                               .logger_reader = logger_reader,
+		                               .logger_writer = logger_writer,
+		                               .uid_map = uid_map,
+		                               .gid_map = gid_map,
+		                               .clone_flags = clone_flags,
+		                               .chrootdir = chrootdir,
+		                               .chdir_path = chdir_path,
+		                               .caps = caps,
+		                               .mount_args = mount_args,
+		                               .mount_args_size =
+		                                   mount_args_size,
+		                               .use_seccomp = no_new_privs,
+		                               .waiter_base = waiter_base,
+		                               .waiter = waiter,
+		                               .command = command,
+		                               .binary = binary};
 		if (0 == clone_flags) {
 			child = safe_vfork(first_fork_routine, &args);
 		} else {
@@ -774,11 +769,11 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 
 	pid_t grand_child;
 	{
-		struct second_fork_args args = { .err_writer = vfork_err_writer,
-			                         .logger_writer = logger_writer,
-			                         .binary = binary,
-			                         .argv = command,
-			                         .use_seccomp = use_seccomp };
+		struct second_fork_args args = {.err_writer = vfork_err_writer,
+		                                .logger_writer = logger_writer,
+		                                .binary = binary,
+		                                .argv = command,
+		                                .use_seccomp = use_seccomp};
 		grand_child = safe_vfork(second_fork_routine, &args);
 	}
 	if (-1 == grand_child) {
@@ -810,8 +805,8 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 	}
 
 	{
-		char const *arguments[] = { waiter_base, 0 };
-		execve(waiter, (char * const *)arguments, environ);
+		char const *arguments[] = {waiter_base, 0};
+		execve(waiter, (char *const *)arguments, environ);
 	}
 	errnum = errno;
 
@@ -857,7 +852,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 		}
 	}
 
-	execve(binary, (char * const *)argv, environ);
+	execve(binary, (char *const *)argv, environ);
 	errnum = errno;
 
 fail : {
@@ -1026,36 +1021,34 @@ chroot_process(char const *chrootdir, struct mount_args const *mount_args,
 	return 0;
 }
 
-enum {
-	MKDIR,
-	TOUCH,
-	NOMOUNT,
-	SHARED,
-	SLAVE,
-	BIND,
-	RBIND,
-	RO,
-	RW,
-	SUID,
-	NOSUID,
-	NODEV,
-	NOEXEC
-};
+enum { MKDIR,
+       TOUCH,
+       NOMOUNT,
+       SHARED,
+       SLAVE,
+       BIND,
+       RBIND,
+       RO,
+       RW,
+       SUID,
+       NOSUID,
+       NODEV,
+       NOEXEC };
 
 static char const *const mount_options[] = {[MKDIR] = "mkdir",        /**/
-	                                    [TOUCH] = "touch",        /**/
-	                                    [NOMOUNT] = "nomount",    /**/
-	                                    [SHARED] = "shared",      /**/
-	                                    [SLAVE] = "slave",        /**/
-	                                    [BIND] = "bind",          /**/
-	                                    [RBIND] = "rbind",        /**/
-	                                    [RO] = MNTOPT_RO,         /**/
-	                                    [RW] = MNTOPT_RW,         /**/
-	                                    [SUID] = MNTOPT_SUID,     /**/
-	                                    [NOSUID] = MNTOPT_NOSUID, /**/
-	                                    [NODEV] = "nodev",        /**/
-	                                    [NOEXEC] = "noexec",      /**/
-	                                    0 };
+                                            [TOUCH] = "touch",        /**/
+                                            [NOMOUNT] = "nomount",    /**/
+                                            [SHARED] = "shared",      /**/
+                                            [SLAVE] = "slave",        /**/
+                                            [BIND] = "bind",          /**/
+                                            [RBIND] = "rbind",        /**/
+                                            [RO] = MNTOPT_RO,         /**/
+                                            [RW] = MNTOPT_RW,         /**/
+                                            [SUID] = MNTOPT_SUID,     /**/
+                                            [NOSUID] = MNTOPT_NOSUID, /**/
+                                            [NODEV] = "nodev",        /**/
+                                            [NOEXEC] = "noexec",      /**/
+                                            0};
 
 static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      bool *touch_flagp, bool *nomount_flagp,
@@ -1094,7 +1087,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
 			char *xx = subopts;
 			char *yy = value;
 			token =
-			    getsubopt(&xx, (char * const *)mount_options, &yy);
+			    getsubopt(&xx, (char *const *)mount_options, &yy);
 			subopts = xx;
 			value = yy;
 		}

@@ -44,10 +44,9 @@ static void on_sigchld(int signo);
 static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
-	.canonical_process_name = PACKAGE_NAME "-waiter", .start = waiter_start
-};
+    .canonical_process_name = PACKAGE_NAME "-waiter", .start = waiter_start};
 
-static int const exit_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
+static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 
 static unsigned char waiter_start(char const *process_name, size_t argc,
                                   char const *const argv[])
@@ -61,7 +60,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 	}
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
-		struct sigaction action = { 0 };
+		struct sigaction action = {0};
 		action.sa_handler = on_term;
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
@@ -71,7 +70,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 	}
 
 	{
-		struct sigaction action = { 0 };
+		struct sigaction action = {0};
 		action.sa_handler = on_sigchld;
 		action.sa_flags = SA_NOCLDSTOP;
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
@@ -106,7 +105,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 	/* Make sure to only exit after having fully drained the pipe
 	 * of errors to be logged. */
 	{
-		struct sigaction action = { 0 };
+		struct sigaction action = {0};
 		action.sa_handler = SIG_DFL;
 		action.sa_flags = SA_NOCLDSTOP;
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
@@ -154,7 +153,7 @@ static void on_term(int signo)
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
 		sigaddset(&exitset, exit_signals[ii]);
 
-	struct timespec timeout = { 0 };
+	struct timespec timeout = {0};
 
 	for (;;) {
 		siginfo_t info;

@@ -984,7 +984,7 @@ static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 
 	short revents;
 	{
-		struct pollfd pollfd = { .fd = ko, .events = events };
+		struct pollfd pollfd = {.fd = ko, .events = events};
 		int poll_status = poll(&pollfd, 1U, -1);
 		if (-1 == poll_status)
 			goto poll_failed;

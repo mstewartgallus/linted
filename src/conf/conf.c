@@ -220,7 +220,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 
 			errnum = linted_conf_add_setting(
 			    conf, current_section, field,
-			    (char const * const *)expr.we_wordv);
+			    (char const *const *)expr.we_wordv);
 
 			wordfree(&expr);
 
@@ -584,7 +584,7 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 	if (!have_found_setting)
 		return 0;
 
-	return (char const * const *)settings[setting_index].value;
+	return (char const *const *)settings[setting_index].value;
 }
 
 linted_error linted_conf_add_setting(struct linted_conf *conf,
@@ -641,7 +641,7 @@ linted_error linted_conf_add_setting(struct linted_conf *conf,
 			           sizeof bucket->settings[0U]);
 		} else {
 			size_t setting_values_len = string_list_size(
-			    (char const * const *)setting_values);
+			    (char const *const *)setting_values);
 
 			size_t new_value_len =
 			    setting_values_len + additional_values_len;

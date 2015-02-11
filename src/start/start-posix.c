@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	}
 
 	{
-		struct sigaction act = { 0 };
+		struct sigaction act = {0};
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
 		act.sa_flags = 0;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 	}
 
 	return linted_start_config.start(process_name, argc,
-	                                 (char const * const *)argv);
+	                                 (char const *const *)argv);
 }
 
 static void do_nothing(int signo)

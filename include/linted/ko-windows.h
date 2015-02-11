@@ -22,7 +22,7 @@ struct linted_ko_;
 
 typedef struct linted_ko_ *linted_ko;
 
-#define LINTED_KO_CWD ((linted_ko) - 1)
+#define LINTED_KO_CWD ((linted_ko)-1)
 
 #define LINTED_KO_STDIN linted_ko__get_stdin()
 #define LINTED_KO_STDOUT linted_ko__get_stdout()

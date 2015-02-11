@@ -262,12 +262,12 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		if (errnum != 0)
 			goto free_relative_binary_path;
 
-		struct fork_args fork_args = { .sigset = child_mask,
-			                       .file_actions = file_actions,
-			                       .err_writer = err_writer,
-			                       .argv = argv,
-			                       .envp = envp,
-			                       .binary = real_binary_path };
+		struct fork_args fork_args = {.sigset = child_mask,
+		                              .file_actions = file_actions,
+		                              .err_writer = err_writer,
+		                              .argv = argv,
+		                              .envp = envp,
+		                              .binary = real_binary_path};
 		child = safe_vfork(fork_routine, &fork_args);
 		if (-1 == child) {
 			errnum = errno;
@@ -399,7 +399,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 		}
 	}
 
-	execve(binary, (char * const *)argv, (char * const *)envp);
+	execve(binary, (char *const *)argv, (char *const *)envp);
 	errnum = errno;
 
 fail : {

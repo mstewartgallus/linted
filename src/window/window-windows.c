@@ -40,7 +40,7 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 	char buf[LINTED_RPC_UINT32_SIZE];
 	linted_rpc_pack_uint32(in, buf);
 
-	OVERLAPPED overlapped = { 0 };
+	OVERLAPPED overlapped = {0};
 	overlapped.Offset = 0;
 	overlapped.OffsetHigh = 0;
 
@@ -60,7 +60,7 @@ linted_error linted_window_read(linted_window window, uint_fast32_t *outp)
 	size_t bytes_read;
 	{
 		DWORD xx;
-		OVERLAPPED overlapped = { 0 };
+		OVERLAPPED overlapped = {0};
 		overlapped.Offset = 0;
 		overlapped.OffsetHigh = 0;
 

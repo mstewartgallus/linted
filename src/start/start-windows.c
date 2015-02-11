@@ -129,5 +129,5 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 	}
 
 	return linted_start_config.start(process_name, argc,
-	                                 (char const * const *)argv);
+	                                 (char const *const *)argv);
 }

@@ -229,7 +229,7 @@ get_sigpipe : {
 
 	linted_error wait_errnum;
 	do {
-		struct timespec timeout = { 0 };
+		struct timespec timeout = {0};
 
 		if (-1 == sigtimedwait(&sigpipeset, 0, &timeout)) {
 			wait_errnum = errno;
@@ -321,7 +321,7 @@ static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 
 	short revents;
 	{
-		struct pollfd pollfd = { .fd = ko, .events = events };
+		struct pollfd pollfd = {.fd = ko, .events = events};
 		int poll_status = poll(&pollfd, 1U, -1);
 		if (-1 == poll_status)
 			goto poll_failed;
@@ -993,7 +993,7 @@ wait_on_poll:
 	                                POLLOUT);
 }
 
-static struct timespec const zero_timeout = { 0 };
+static struct timespec const zero_timeout = {0};
 
 static linted_error eat_sigpipes(void)
 {
