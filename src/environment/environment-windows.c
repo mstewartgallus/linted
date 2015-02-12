@@ -46,7 +46,50 @@ static void unlock(void);
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	linted_error errnum = 0;
+
+	wchar_t *key_utf2;
+	{
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(key, &xx);
+		if (errnum != 0)
+			return errnum;
+		key_utf2 = xx;
+	}
+
+	wchar_t *value_utf2;
+	{
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(value, &xx);
+		if (errnum != 0)
+			goto free_key;
+		value_utf2 = xx;
+	}
+
+	lock();
+
+	if (!overwrite) {
+		size_t size;
+		{
+			size_t xx;
+			_wgetenv_s(&xx, 0, 0U, key_utf2);
+			size = xx;
+		}
+		if (size != 0U)
+			goto unlock;
+	}
+
+	if (_wputenv_s(key_utf2, value_utf2) != 0)
+		errnum = LINTED_ERROR_OUT_OF_MEMORY;
+
+unlock:
+	unlock();
+
+	linted_mem_free(value_utf2);
+
+free_key:
+	linted_mem_free(key_utf2);
+	return errnum;
 }
 
 linted_error linted_environment_get(char const *key, char **valuep)
@@ -72,7 +115,7 @@ linted_error linted_environment_get(char const *key, char **valuep)
 		_wgetenv_s(&xx, 0, 0U, key_utf2);
 		size = xx;
 	}
-	if (0 == size)
+	if (0U == size)
 		goto unlock;
 
 	{
