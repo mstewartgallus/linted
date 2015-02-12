@@ -44,9 +44,8 @@ int main(int argc, char *argv[])
 		linted_ko ko;
 		{
 			linted_ko xx;
-			errnum =
-			    linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
-					   LINTED_KO_RDWR);
+			errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
+			                        LINTED_KO_RDWR);
 			if (errnum != 0)
 				return EXIT_FAILURE;
 			ko = xx;
@@ -62,11 +61,16 @@ int main(int argc, char *argv[])
 
 	bool missing_name = false;
 
-	char const *service = linted_environment_get("LINTED_SERVICE");
-	if (service != 0) {
-		process_name = strdup(service);
-		if (0 == process_name)
+	char const *service;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_SERVICE", &xx);
+		if (errnum != 0)
 			return EXIT_FAILURE;
+		service = xx;
+	}
+	if (service != 0) {
+		process_name = service;
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {

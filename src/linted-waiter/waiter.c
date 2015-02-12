@@ -20,6 +20,7 @@
 #include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/log.h"
+#include "linted/mem.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -53,10 +54,22 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	char const *service = linted_environment_get("LINTED_SERVICE");
+	char *service;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_SERVICE", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		service = xx;
+	}
 	if (service != 0) {
 		errnum = set_name(service);
 		assert(errnum != EINVAL);
+		linted_mem_free(service);
 	}
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {

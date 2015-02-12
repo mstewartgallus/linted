@@ -76,7 +76,18 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		}
 	}
 
-	char const *monitor = linted_environment_get("LINTED_MONITOR");
+	char const *monitor;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_MONITOR", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		monitor = xx;
+	}
 
 	char *monitor_dup = strdup(monitor);
 	if (0 == monitor_dup) {

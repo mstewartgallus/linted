@@ -120,7 +120,18 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		drawer_notifier = xx;
 	}
 
-	char const *root = linted_environment_get("MANAGERPID");
+	char const *root;
+	{
+		char *xx;
+		errnum = linted_environment_get("MANAGERPID", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		root = xx;
+	}
 	if (0 == root) {
 		fprintf(stderr, "%s: need MANAGERPID\n", process_name);
 		return EXIT_FAILURE;

@@ -254,12 +254,70 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	char const *unit_path = linted_environment_get("LINTED_UNIT_PATH");
-	char const *sandbox = linted_environment_get("LINTED_SANDBOX");
-	char const *waiter = linted_environment_get("LINTED_WAITER");
-	char const *data_dir_path = linted_environment_get("XDG_DATA_HOME");
-	char const *runtime_dir_path =
-	    linted_environment_get("XDG_RUNTIME_DIR");
+	char const *unit_path;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_UNIT_PATH", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		unit_path = xx;
+	}
+
+	char const *sandbox;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_SANDBOX", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		sandbox = xx;
+	}
+
+	char const *waiter;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_WAITER", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		waiter = xx;
+	}
+
+	char const *data_dir_path;
+	{
+		char *xx;
+		errnum = linted_environment_get("XDG_DATA_HOME", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		data_dir_path = xx;
+	}
+
+	char const *runtime_dir_path;
+	{
+		char *xx;
+		errnum = linted_environment_get("XDG_RUNTIME_DIR", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		runtime_dir_path = xx;
+	}
 
 	if (0 == unit_path) {
 		linted_log(LINTED_LOG_ERROR,
@@ -2177,7 +2235,18 @@ static linted_error filter_envvars(char ***result_envvarsp,
 	for (size_t ii = 0U; ii < allowed_envvars_size; ++ii) {
 		char const *envvar_name = allowed_envvars[ii];
 
-		char const *envvar_value = linted_environment_get(envvar_name);
+		char *envvar_value;
+		{
+			char *xx;
+			errnum = linted_environment_get(envvar_name, &xx);
+			if (errnum != 0) {
+				linted_log(LINTED_LOG_ERROR,
+				           "linted_environment_get: %s",
+				           linted_error_string(errnum));
+				return EXIT_FAILURE;
+			}
+			envvar_value = xx;
+		}
 		if (0 == envvar_value)
 			continue;
 
@@ -2187,8 +2256,12 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		                   "%s=%s", envvar_name, envvar_value)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
-			goto free_result_envvars;
 		}
+
+		linted_mem_free(envvar_value);
+
+		if (errnum != 0)
+			goto free_result_envvars;
 	}
 	result_envvars[result_envvars_size] = 0;
 

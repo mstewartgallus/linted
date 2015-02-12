@@ -99,10 +99,16 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 
 	bool missing_name = false;
 
-	char const *service = linted_environment_get("LINTED_SERVICE");
-	if (service != 0) {
-		if (0 == (process_name = strdup(service)))
+	char const *service;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_SERVICE", &xx);
+		if (errnum != 0)
 			return EXIT_FAILURE;
+		service = xx;
+	}
+	if (service != 0) {
+		process_name = service;
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {

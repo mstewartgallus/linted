@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200112L
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
@@ -23,21 +23,53 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
+	linted_error errnum = 0;
+
+	pthread_mutex_lock(&mutex);
+
 	if (-1 == setenv(key, value, overwrite)) {
-		linted_error errnum = errno;
+		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		return errnum;
 	}
 
-	return 0;
+	pthread_mutex_unlock(&mutex);
+
+	return errnum;
 }
 
-char const *linted_environment_get(char const *key)
+linted_error linted_environment_get(char const *key, char **valuep)
 {
-	return getenv(key);
+	linted_error errnum = 0;
+
+	pthread_mutex_lock(&mutex);
+
+	char *value_dup;
+	{
+		char const *value = getenv(key);
+		if (0 == value) {
+			value_dup = 0;
+			goto unlock_mutex;
+		}
+
+		value_dup = strdup(value);
+		if (0 == value_dup) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
+unlock_mutex:
+	pthread_mutex_unlock(&mutex);
+
+	*valuep = value_dup;
+	return errnum;
 }

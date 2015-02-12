@@ -20,6 +20,6 @@
 
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite);
-char const *linted_environment_get(char const *key);
+linted_error linted_environment_get(char const *key, char **valuep);
 
 #endif /* LINTED_LINTED_ENVIRONMENT_H */

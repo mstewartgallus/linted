@@ -121,9 +121,32 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	char const *pid = linted_environment_get("LINTED_PID");
-	char const *runtime_dir_path =
-	    linted_environment_get("XDG_RUNTIME_DIR");
+	linted_error errnum = 0;
+
+	char const *pid;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_PID", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		pid = xx;
+	}
+	char const *runtime_dir_path;
+	{
+		char *xx;
+		errnum = linted_environment_get("XDG_RUNTIME_DIR", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		runtime_dir_path = xx;
+	}
 
 	if (0 == pid) {
 		linted_log(LINTED_LOG_ERROR,
@@ -165,8 +188,6 @@ static uint_fast8_t control_start(char const *const process_name, size_t argc,
 		}
 		process_runtime_dir_path = xx;
 	}
-
-	linted_error errnum = 0;
 
 	if (-1 == chdir(process_runtime_dir_path)) {
 		linted_log(LINTED_LOG_ERROR, "chdir: %s",

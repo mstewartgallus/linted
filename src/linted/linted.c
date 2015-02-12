@@ -111,7 +111,18 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		}
 	}
 
-	char const *init = linted_environment_get("LINTED_INIT");
+	char const *init;
+	{
+		char *xx;
+		errnum = linted_environment_get("LINTED_INIT", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		init = xx;
+	}
 	assert(init != 0);
 
 	bool need_help = false;
