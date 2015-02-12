@@ -915,8 +915,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	int32_t y = (2 * mouse_y - (int)height) / 2;
 
 	/* Normalize and scale up to UINT32_MAX sized screen */
-	x *= INT32_MAX / width;
-	y *= INT32_MAX / height;
+	x *= INT32_MAX / (intmax_t)width;
+	y *= INT32_MAX / (intmax_t)height;
 
 	controller_data->update.x_tilt = x;
 	controller_data->update.y_tilt = y;

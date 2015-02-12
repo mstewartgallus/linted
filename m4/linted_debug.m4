@@ -25,6 +25,7 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
         [-ftrapv]dnl
         [-fsanitize=address]dnl
         [-fsanitize=undefined]dnl
+        [-fsanitize=unsigned-integer-overflow]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG])
@@ -36,6 +37,7 @@ dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
         [-fsanitize=address]dnl
         [-fsanitize=undefined]dnl
+        [-fsanitize=unsigned-integer-overflow]dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl

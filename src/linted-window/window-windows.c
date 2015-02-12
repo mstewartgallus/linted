@@ -39,8 +39,16 @@
 #include <windows.h>
 #include <d3d11.h>
 
-static GUID const uuidof_IDXGIDevice = {0x54ec77fa, 0x1377, 0x44e6, {0x8c,0x32, 0x88,0xfd,0x5f,0x44,0xc8,0x4c}};
-static GUID const uuidof_IDXGIFactory1 = {0x770aae78, 0xf26f, 0x4dba, {0xa8,0x29, 0x25,0x3c,0x83,0xd1,0xb3,0x87}};
+static GUID const uuidof_IDXGIDevice = {
+    0x54ec77fa,
+    0x1377,
+    0x44e6,
+    {0x8c, 0x32, 0x88, 0xfd, 0x5f, 0x44, 0xc8, 0x4c}};
+static GUID const uuidof_IDXGIFactory1 = {
+    0x770aae78,
+    0xf26f,
+    0x4dba,
+    {0xa8, 0x29, 0x25, 0x3c, 0x83, 0xd1, 0xb3, 0x87}};
 
 static HINSTANCE get_current_module(void)
 {
@@ -125,9 +133,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	static D3D_FEATURE_LEVEL const feature_levels[] = {
-		D3D_FEATURE_LEVEL_11_0,
-		D3D_FEATURE_LEVEL_10_1,
-		D3D_FEATURE_LEVEL_10_0,
+	    D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
+	    D3D_FEATURE_LEVEL_10_0,
 	};
 
 	unsigned device_flags = 0U;
@@ -137,12 +144,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		ID3D11Device *xx;
 		D3D_FEATURE_LEVEL yy;
 		ID3D11DeviceContext *zz;
-		HRESULT result = D3D11CreateDevice(0, D3D_DRIVER_TYPE_HARDWARE,
-						   0,
-						   device_flags,
-						   feature_levels, LINTED_ARRAY_SIZE(feature_levels),
-						   D3D11_SDK_VERSION,
-						   &xx, &yy, &zz);
+		HRESULT result = D3D11CreateDevice(
+		    0, D3D_DRIVER_TYPE_HARDWARE, 0, device_flags,
+		    feature_levels, LINTED_ARRAY_SIZE(feature_levels),
+		    D3D11_SDK_VERSION, &xx, &yy, &zz);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
@@ -151,12 +156,13 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		device_context = zz;
 	}
 
-	IDXGIFactory1* dxgi_factory;
+	IDXGIFactory1 *dxgi_factory;
 	{
-		IDXGIDevice* dxgi_device;
+		IDXGIDevice *dxgi_device;
 		{
 			void *xx;
-			HRESULT result = ID3D11Device_QueryInterface(device, &uuidof_IDXGIDevice, &xx);
+			HRESULT result = ID3D11Device_QueryInterface(
+			    device, &uuidof_IDXGIDevice, &xx);
 			if (FAILED(result)) {
 				errnum = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
@@ -164,10 +170,11 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			dxgi_device = xx;
 		}
 
-		IDXGIAdapter* adapter;
+		IDXGIAdapter *adapter;
 		{
-			IDXGIAdapter* xx;
-			HRESULT result = IDXGIDevice_GetAdapter(dxgi_device, &xx);
+			IDXGIAdapter *xx;
+			HRESULT result =
+			    IDXGIDevice_GetAdapter(dxgi_device, &xx);
 			if (FAILED(result)) {
 				errnum = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
@@ -177,7 +184,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 		{
 			void *xx;
-			HRESULT result = IDXGIAdapter_GetParent(adapter, &uuidof_IDXGIFactory1, &xx);
+			HRESULT result = IDXGIAdapter_GetParent(
+			    adapter, &uuidof_IDXGIFactory1, &xx);
 			if (FAILED(result)) {
 				errnum = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
@@ -204,7 +212,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		desc.Windowed = TRUE;
 
 		IDXGISwapChain *xx;
-		HRESULT result = IDXGIFactory1_CreateSwapChain(dxgi_factory, (IUnknown*)device, &desc, &xx);
+		HRESULT result = IDXGIFactory1_CreateSwapChain(
+		    dxgi_factory, (IUnknown *)device, &desc, &xx);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_device;
@@ -212,7 +221,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		swap_chain = xx;
 	}
 
-	IDXGIFactory1_MakeWindowAssociation(dxgi_factory, main_window, DXGI_MWA_NO_ALT_ENTER);
+	IDXGIFactory1_MakeWindowAssociation(dxgi_factory, main_window,
+	                                    DXGI_MWA_NO_ALT_ENTER);
 
 	IDXGIFactory1_Release(dxgi_factory);
 
@@ -250,8 +260,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
-		HRESULT result =
-		    IDXGISwapChain_Present(swap_chain, 0, 0);
+		HRESULT result = IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;

@@ -37,7 +37,7 @@ static inline int_fast32_t linted_rpc_uint32_to_int32(uint_fast32_t positive)
    * and the value can't be represented in it so we do this.
    */
     if (positive > (int_fast64_t)INT32_MAX) {
-        return -(uint_fast32_t)((UINT32_MAX - (int_fast64_t)positive) + 1U);
+        return -(int_fast32_t)((UINT32_MAX - (int_fast64_t)positive) + 1U);
     }
 
     return positive;

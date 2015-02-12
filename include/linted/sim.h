@@ -123,12 +123,12 @@ static inline linted_sim_int linted_sim_sin(linted_sim_angle angle)
 
 	unsigned char ii = value / (above_max / 4U);
 
-	signed char rfactor = 2 * (1U - (ii / 2U)) - 1;
-	signed char ifactor = 2 * (1U - ii % 2U) - 1;
+	signed char rfactor = 2 * (int)(1U - (ii / 2U)) - 1;
+	signed char ifactor = 2 * (int)(1U - ii % 2U) - 1;
 	unsigned offset = ii % 2U;
 
 	linted_sim_uint theta =
-	    offset * (LINTED_SIM_UINT_MAX / 4U) + ((intmax_t)ifactor) * rem;
+	    offset * (LINTED_SIM_UINT_MAX / 4U) + ifactor * (intmax_t)rem;
 	return rfactor * linted_sim__sin_quarter(
 	                     (LINTED_SIM_UINT_MAX * (uintmax_t)theta) /
 	                     (LINTED_SIM_UINT_MAX / 4U));
@@ -144,12 +144,12 @@ static inline linted_sim_int linted_sim_cos(linted_sim_angle angle)
 
 	unsigned char ii = (value / (above_max / 4U) + 1U) % 4U;
 
-	signed char rfactor = 2 * (1U - (ii / 2U)) - 1;
-	signed char ifactor = 2 * (1U - ii % 2U) - 1;
+	signed char rfactor = 2 * (int)(1U - (ii / 2U)) - 1;
+	signed char ifactor = 2 * (int)(1U - ii % 2U) - 1;
 	unsigned offset = ii % 2U;
 
 	linted_sim_uint theta =
-	    offset * (LINTED_SIM_UINT_MAX / 4U) + ((intmax_t)ifactor) * rem;
+	    offset * (LINTED_SIM_UINT_MAX / 4U) + ifactor * (intmax_t)rem;
 	return rfactor * linted_sim__sin_quarter(
 	                     (LINTED_SIM_UINT_MAX * (uintmax_t)theta) /
 	                     (LINTED_SIM_UINT_MAX / 4U));
