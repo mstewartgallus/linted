@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Steven Stewart-Gallus
+/* Copyright (C) 2014, 2015 Steven Stewart-Gallus
  *
  * Copying and distribution of this file, with or without
  * modification, are permitted in any medium without royalty provided
@@ -9,9 +9,19 @@
  *
  * @file
  *
- * Linted -- Dependencies
+ * Linted -- Platforms
  *
- * @section runtime Runtime Dependencies
+ * A list of platforms that final build products may or may not run
+ * on. This is different from build types because some platforms can
+ * run or emulate each others' build products.
+ *
+ * @section x86_64-linux-gnu x86_64 GNU/Linux
+ *
+ * This is the only supported platform.  Other platforms may work but
+ * are only worked on for the purpose of making the code more modular
+ * and better.
+ *
+ * @subsection runtime Runtime Dependencies
  *
  * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/
@@ -119,22 +129,17 @@
  *     - /lib/x86_64-linux-gnu/librt-2.19.so
  * - Unknown user machine that implements the amd64 hardware architecture
  *
- * @section buildtime Build Time Dependencies
+ * @section x86_64-linux-gnu-wine x86_64 GNU/Linux Wine
  *
- * - The GNU Compiler Collection
- *   - Main Site - https://www.gnu.org/software/gcc/
- *   - Bug Mailing List - http://gcc.gnu.org/ml/gcc-bugs/
- *   - Bug Database - http://gcc.gnu.org/bugzilla/
- * - The GNU Binary Utilities
- *   - Main Site - https://www.gnu.org/software/binutils/
- *   - Bug Mailing List - <a href="mailto://bug-binutils@gnu.org">&lt;bug-binutils@gnu.org&gt;</a>
- * - Autoconf
- *   - Main Site - https://www.gnu.org/software/autoconf
- *   - Bug Mailing List - <a href="mailto://bug-autoconf@gnu.org">&lt;bug-autoconf@gnu.org&gt;</a>
- * - Automake
- *   - Main Site - https://www.gnu.org/software/automake
- *   - Bug Mailing List - <a href="mailto://bug-automake@gnu.org">&lt;bug-automake@gnu.org&gt;</a>
- * - GNU Make
- *   - Main Site - https://www.gnu.org/software/make
- *   - Bug Mailing List - <a href="mailto://bug-make@gnu.org">&lt;bug-make@gnu.org&gt;</a>
+ * This is not a supported platform.  It may work but is only worked
+ * on for a challenge and for making the code more modular and better.
+ * In the future it may be supported.  This is more likely to be
+ * supported in the future than x86_64 Microsoft Windows because I
+ * have easier access to it.
+ *
+ * @section x86_64-windows x86_64 Microsoft Windows Vista
+ *
+ * This is not a supported platform.  It may work but is only worked
+ * on for a challenge and for making the code more modular and better.
+ * In the future it may be supported.
  */

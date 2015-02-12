@@ -36,7 +36,7 @@ if X11_API
 endif
 
 if WINDOWS_API
-%C%_linted_window_LDADD+=$(D3DX9_LIBS)
+%C%_linted_window_LDADD+=$(D3D11_LIBS)
 endif
 
 %C%_linted_window_CPPFLAGS=

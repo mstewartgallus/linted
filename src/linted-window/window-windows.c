@@ -23,6 +23,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#define COBJMACROS
+
 #include "linted/start.h"
 
 #include "linted/error.h"
@@ -35,9 +37,10 @@
 #include <stdlib.h>
 
 #include <windows.h>
-#include <d3d9.h>
+#include <d3d11.h>
 
-HRESULT WINAPI Direct3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex **);
+static GUID const uuidof_IDXGIDevice = {0x54ec77fa, 0x1377, 0x44e6, {0x8c,0x32, 0x88,0xfd,0x5f,0x44,0xc8,0x4c}};
+static GUID const uuidof_IDXGIFactory1 = {0x770aae78, 0xf26f, 0x4dba, {0xa8,0x29, 0x25,0x3c,0x83,0xd1,0xb3,0x87}};
 
 static HINSTANCE get_current_module(void)
 {
@@ -121,41 +124,97 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		break;
 	}
 
-	IDirect3D9Ex *context;
+	static D3D_FEATURE_LEVEL const feature_levels[] = {
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+	};
+
+	unsigned device_flags = 0U;
+	ID3D11Device *device;
+	ID3D11DeviceContext *device_context;
 	{
-		IDirect3D9Ex *xx;
-		HRESULT result = Direct3DCreate9Ex(D3D_SDK_VERSION, &xx);
+		ID3D11Device *xx;
+		D3D_FEATURE_LEVEL yy;
+		ID3D11DeviceContext *zz;
+		HRESULT result = D3D11CreateDevice(0, D3D_DRIVER_TYPE_HARDWARE,
+						   0,
+						   device_flags,
+						   feature_levels, LINTED_ARRAY_SIZE(feature_levels),
+						   D3D11_SDK_VERSION,
+						   &xx, &yy, &zz);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
 		}
-		context = xx;
+		device = xx;
+		device_context = zz;
 	}
 
-	IDirect3DDevice9 *device;
+	IDXGIFactory1* dxgi_factory;
 	{
-		D3DPRESENT_PARAMETERS presentation_parameters = {0};
-		presentation_parameters.BackBufferFormat = D3DFMT_UNKNOWN;
-		presentation_parameters.hDeviceWindow = main_window;
-		presentation_parameters.Windowed = true;
+		IDXGIDevice* dxgi_device;
+		{
+			void *xx;
+			HRESULT result = ID3D11Device_QueryInterface(device, &uuidof_IDXGIDevice, &xx);
+			if (FAILED(result)) {
+				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				goto destroy_device;
+			}
+			dxgi_device = xx;
+		}
 
-		IDirect3DDevice9 *xx;
-		HRESULT result = IDirect3D9Ex_CreateDevice(
-		    context, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, main_window, 0,
-		    &presentation_parameters, &xx);
+		IDXGIAdapter* adapter;
+		{
+			IDXGIAdapter* xx;
+			HRESULT result = IDXGIDevice_GetAdapter(dxgi_device, &xx);
+			if (FAILED(result)) {
+				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				goto destroy_device;
+			}
+			adapter = xx;
+		}
+
+		{
+			void *xx;
+			HRESULT result = IDXGIAdapter_GetParent(adapter, &uuidof_IDXGIFactory1, &xx);
+			if (FAILED(result)) {
+				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				goto destroy_device;
+			}
+			dxgi_factory = xx;
+		}
+		IDXGIAdapter_Release(adapter);
+		IDXGIDevice_Release(dxgi_device);
+	}
+
+	IDXGISwapChain *swap_chain;
+	{
+		DXGI_SWAP_CHAIN_DESC desc = {0};
+		desc.BufferCount = 1;
+		desc.BufferDesc.Width = 2048U;
+		desc.BufferDesc.Height = 2048U;
+		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.BufferDesc.RefreshRate.Numerator = 60;
+		desc.BufferDesc.RefreshRate.Denominator = 1;
+		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		desc.OutputWindow = main_window;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Windowed = TRUE;
+
+		IDXGISwapChain *xx;
+		HRESULT result = IDXGIFactory1_CreateSwapChain(dxgi_factory, (IUnknown*)device, &desc, &xx);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
-			goto release_context;
+			goto destroy_device;
 		}
-		device = xx;
-	}
-
-	IDirect3DSwapChain9 *swap_chain;
-	{
-		IDirect3DSwapChain9 *xx;
-		IDirect3DDevice9Ex_GetSwapChain(device, 0U, &xx);
 		swap_chain = xx;
 	}
+
+	IDXGIFactory1_MakeWindowAssociation(dxgi_factory, main_window, DXGI_MWA_NO_ALT_ENTER);
+
+	IDXGIFactory1_Release(dxgi_factory);
 
 	if (0 == UpdateWindow(main_window)) {
 		errnum = GetLastError();
@@ -192,7 +251,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	exit_peek_loop:
 		;
 		HRESULT result =
-		    IDirect3DSwapChain9_Present(swap_chain, 0, 0, 0, 0, 0);
+		    IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
@@ -200,10 +259,11 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 release_swap_chain:
-	IDirect3DSwapChain9_Release(swap_chain);
-	IDirect3DDevice9Ex_Release(device);
-release_context:
-	IDirect3D9Ex_Release(context);
+	IDXGISwapChain_Release(swap_chain);
+
+destroy_device:
+	ID3D11Device_Release(device);
+	ID3D11DeviceContext_Release(device_context);
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
