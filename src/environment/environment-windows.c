@@ -28,6 +28,8 @@
 #include "linted/environment.h"
 
 #include "linted/error.h"
+#include "linted/mem.h"
+#include "linted/utf.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -47,35 +49,69 @@ linted_error linted_environment_set(char const *key, char const *value,
 	return LINTED_ERROR_UNIMPLEMENTED;
 }
 
-/**
- * @todo Convert the key (which should be UTF-1) to UTF-2 and lookup
- *       the unicode environment variable version.
- */
 linted_error linted_environment_get(char const *key, char **valuep)
 {
 	linted_error errnum = 0;
 
-	lock();
-
-	char *value_dup;
+	wchar_t *key_utf2;
 	{
-		char const *value = getenv(key);
-		if (0 == value) {
-			value_dup = 0;
-			goto unlock_mutex;
-		}
-
-		value_dup = strdup(value);
-		if (0 == value_dup) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-		}
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(key, &xx);
+		if (errnum != 0)
+			return errnum;
+		key_utf2 = xx;
 	}
 
-unlock_mutex:
+	lock();
+
+	wchar_t *buffer = 0;
+
+	size_t size;
+	{
+		size_t xx;
+		_wgetenv_s(&xx, 0, 0U, key_utf2);
+		size = xx;
+	}
+	if (0 == size)
+		goto unlock;
+
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, size, sizeof buffer[0U]);
+		if (errnum != 0)
+			goto unlock;
+		buffer = xx;
+	}
+
+	{
+		size_t xx;
+		_wgetenv_s(&xx, buffer, size, key_utf2);
+	}
+
+unlock:
 	unlock();
 
-	*valuep = value_dup;
+	linted_mem_free(key_utf2);
+
+	if (errnum != 0)
+		goto free_buffer;
+
+	char *value;
+	if (0 == buffer) {
+		value = 0;
+	} else {
+		char *xx;
+		errnum = linted_utf_2_to_1(buffer, &xx);
+		if (errnum != 0)
+			goto free_buffer;
+		value = xx;
+	}
+
+	*valuep = value;
+
+free_buffer:
+	linted_mem_free(buffer);
+
 	return errnum;
 }
 

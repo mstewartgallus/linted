@@ -20,3 +20,8 @@ noinst_LTLIBRARIES+=%D%/libenvironment.la
 EXTRA_%C%_libenvironment_la_SOURCES=\
   %D%/environment-posix.c\
   %D%/environment-windows.c
+
+%C%_libenvironment_la_LIBADD=
+if WINDOWS_API
+%C%_libenvironment_la_LIBADD+=src/utf/libutf.la
+endif
