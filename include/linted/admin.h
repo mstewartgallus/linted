@@ -20,6 +20,8 @@
 #include "linted/ko.h"
 #include "linted/unit.h"
 
+#include <stddef.h>
+
 /**
  * @file
  *

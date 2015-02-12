@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@
 #include "linted/error.h"
 
 #if _POSIX_C_SOURCE >= 200809L
+#include <signal.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 #endif
 
 /**

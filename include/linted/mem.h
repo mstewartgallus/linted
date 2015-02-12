@@ -17,7 +17,6 @@
 #define LINTED_MEM_H
 
 #include "linted/error.h"
-#include "linted/util.h"
 
 #include <stddef.h>
 
@@ -41,11 +40,8 @@ static inline linted_error linted_mem_alloc(void **memp, size_t size)
 	extern void *malloc(size_t size);
 
 	void *memory = malloc(size);
-	if (size > 0U && 0 == memory) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
+	if (size > 0U && 0 == memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	*memp = memory;
 	return 0;

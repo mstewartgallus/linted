@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,7 @@
 #define LINTED_TEST_H
 
 #include "linted/io.h"
-
-#include <unistd.h>
+#include "linted/ko.h"
 
 /**
  * @file
@@ -29,7 +28,8 @@
 
 #define LINTED_TEST_FAILURE(format_string, ...)                               \
     do {                                                                       \
-        linted_io_write_format(STDERR_FILENO, 0, "\
+	extern void abort(void);					\
+        linted_io_write_format(LINTED_KO_STDERR, 0, "\
 impossible error in file %s, function %s, and line %i: " format_string,        \
                                __FILE__, __func__, __LINE__, __VA_ARGS__);     \
         abort();                                                               \

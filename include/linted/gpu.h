@@ -16,6 +16,8 @@
 #ifndef LINTED_GPU_H
 #define LINTED_GPU_H
 
+#include "linted/error.h"
+
 /**
  * @file
  *

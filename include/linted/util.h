@@ -16,7 +16,10 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
+#ifndef NDEBUG
 #include <assert.h>
+#endif
+
 #include <stddef.h>
 #include <limits.h>
 

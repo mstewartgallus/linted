@@ -18,6 +18,12 @@
 
 #include "linted/error.h"
 
+/**
+ * @file
+ *
+ * Manipulate a process environment.
+ */
+
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite);
 linted_error linted_environment_get(char const *key, char **valuep);
