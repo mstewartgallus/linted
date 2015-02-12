@@ -85,6 +85,9 @@ dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
+        LINTED_CHECK_LIB([CRT_LIBS], [msvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
+                AC_MSG_ERROR([Unable to find a CRT library])
+        ])
         LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])

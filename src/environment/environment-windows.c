@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <windows.h>
@@ -109,26 +110,23 @@ linted_error linted_environment_get(char const *key, char **valuep)
 
 	wchar_t *buffer = 0;
 
-	size_t size;
 	{
-		size_t xx;
-		_wgetenv_s(&xx, 0, 0U, key_utf2);
-		size = xx;
-	}
-	if (0U == size)
-		goto unlock;
+		wchar_t *xx = 0;
+		size_t yy = 0U;
+		errno_t result = _wdupenv_s(&xx, &yy, key_utf2);
+		switch (result) {
+		case 0:
+			break;
 
-	{
-		void *xx;
-		errnum = linted_mem_alloc_array(&xx, size, sizeof buffer[0U]);
-		if (errnum != 0)
+		case EINVAL:
+			/* Work around a bug in Wine or Windows */
+			break;
+
+		default:
+			errnum = LINTED_ERROR_OUT_OF_MEMORY;
 			goto unlock;
+		}
 		buffer = xx;
-	}
-
-	{
-		size_t xx;
-		_wgetenv_s(&xx, buffer, size, key_utf2);
 	}
 
 unlock:

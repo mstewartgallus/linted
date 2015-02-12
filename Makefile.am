@@ -46,6 +46,7 @@ AM_LDFLAGS=-Xcompiler '\
 AM_CPPFLAGS=-I$(srcdir)/include
 
 AM_CFLAGS=
+
 if WINDOWS_API
 AM_CFLAGS+=-municode
 endif

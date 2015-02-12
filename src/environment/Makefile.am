@@ -23,5 +23,5 @@ EXTRA_%C%_libenvironment_la_SOURCES=\
 
 %C%_libenvironment_la_LIBADD=
 if WINDOWS_API
-%C%_libenvironment_la_LIBADD+=src/utf/libutf.la
+%C%_libenvironment_la_LIBADD+=src/utf/libutf.la $(CRT_LIBS)
 endif
