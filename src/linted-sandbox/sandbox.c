@@ -599,23 +599,23 @@ exit_loop:
 
 	pid_t child;
 	{
-		struct first_fork_args args = {.err_writer = err_writer,
-		                               .logger_reader = logger_reader,
-		                               .logger_writer = logger_writer,
-		                               .uid_map = uid_map,
-		                               .gid_map = gid_map,
-		                               .clone_flags = clone_flags,
-		                               .chrootdir = chrootdir,
-		                               .chdir_path = chdir_path,
-		                               .caps = caps,
-		                               .mount_args = mount_args,
-		                               .mount_args_size =
-		                                   mount_args_size,
-		                               .use_seccomp = no_new_privs,
-		                               .waiter_base = waiter_base,
-		                               .waiter = waiter,
-		                               .command = command,
-		                               .binary = binary};
+		struct first_fork_args args = {
+		    .err_writer = err_writer,
+		    .logger_reader = logger_reader,
+		    .logger_writer = logger_writer,
+		    .uid_map = uid_map,
+		    .gid_map = gid_map,
+		    .clone_flags = clone_flags,
+		    .chrootdir = chrootdir,
+		    .chdir_path = chdir_path,
+		    .caps = caps,
+		    .mount_args = mount_args,
+		    .mount_args_size = mount_args_size,
+		    .use_seccomp = false, // no_new_privs,
+		    .waiter_base = waiter_base,
+		    .waiter = waiter,
+		    .command = command,
+		    .binary = binary};
 		if (0 == clone_flags) {
 			child = safe_vfork(first_fork_routine, &args);
 		} else {

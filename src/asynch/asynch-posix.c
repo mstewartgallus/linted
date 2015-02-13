@@ -505,13 +505,16 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			errnum = pthread_attr_setstack(
-			    &attr, (char *)worker_stacks + page_size +
-			               created_threads * stack_and_guard_size,
-			    stack_size);
-			if (errnum != 0) {
-				assert(errnum != EINVAL);
-				assert(false);
+			if (0) {
+				errnum = pthread_attr_setstack(
+				    &attr,
+				    (char *)worker_stacks + page_size +
+				        created_threads * stack_and_guard_size,
+				    stack_size);
+				if (errnum != 0) {
+					assert(errnum != EINVAL);
+					assert(false);
+				}
 			}
 
 			errnum = pthread_create(&pool->workers[created_threads],
@@ -794,13 +797,16 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_pollers; ++created_threads) {
-			errnum = pthread_attr_setstack(
-			    &attr, (char *)pollers_stacks + page_size +
-			               created_threads * stack_and_guard_size,
-			    stack_size);
-			if (errnum != 0) {
-				assert(errnum != EINVAL);
-				assert(false);
+			if (0) {
+				errnum = pthread_attr_setstack(
+				    &attr,
+				    (char *)pollers_stacks + page_size +
+				        created_threads * stack_and_guard_size,
+				    stack_size);
+				if (errnum != 0) {
+					assert(errnum != EINVAL);
+					assert(false);
+				}
 			}
 
 			errnum =

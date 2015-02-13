@@ -45,4 +45,5 @@ if X11_API
 endif
 %C%_linted_window_CPPFLAGS+=$(AM_CPPFLAGS)
 
+dist_pkgdefaultconf_DATA+=%D%/window.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-window.service

@@ -77,9 +77,23 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	char const *window_path = argv[1U];
-	char const *gui_notifier_path = argv[2U];
-	char const *drawer_notifier_path = argv[3U];
+	char const *kill_ko_path = argv[1U];
+	char const *window_path = argv[2U];
+	char const *gui_notifier_path = argv[3U];
+	char const *drawer_notifier_path = argv[4U];
+
+	linted_ko kill_ko;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, kill_ko_path,
+		                        LINTED_KO_WRONLY);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		kill_ko = xx;
+	}
 
 	linted_ko window_ko;
 	{
@@ -526,9 +540,12 @@ destroy_pool : {
 
 	/* Tell the manager to exit everything */
 	if (0 == errnum) {
-		if (-1 == kill(root_pid, SIGTERM)) {
-			linted_log(LINTED_LOG_ERROR, "kill: %s",
-			           linted_error_string(errno));
+		char const dummy = 0U;
+		errnum = linted_io_write_all(kill_ko, 0, &dummy, sizeof dummy);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_io_task_write_all: %s",
+			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
 

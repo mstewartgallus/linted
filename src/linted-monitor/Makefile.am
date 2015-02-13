@@ -27,6 +27,7 @@ pkglibexec_PROGRAMS+=%D%/linted-monitor
   src/error/liberror.la\
   src/file/libfile.la\
   src/fifo/libfifo.la\
+  src/io/libio.la\
   src/ko/libko.la\
   src/log/liblog.la\
   src/pid/libpid.la\

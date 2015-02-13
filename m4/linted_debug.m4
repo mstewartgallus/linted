@@ -23,7 +23,7 @@ AS_IF([test "x${enable_debug}" = "xyes"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
         [-ftrapv]dnl
-        [-fsanitize=address]dnl
+        [-fsanitize=thread]dnl
         [-fsanitize=undefined]dnl
         [-fsanitize=unsigned-integer-overflow]dnl
 ])
@@ -35,7 +35,7 @@ dnl compiler options to link against the appropriate runtime
 dnl libraries.
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG],[dnl
-        [-fsanitize=address]dnl
+        [-fsanitize=thread]dnl
         [-fsanitize=undefined]dnl
         [-fsanitize=unsigned-integer-overflow]dnl
 ])

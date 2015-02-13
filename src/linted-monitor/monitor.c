@@ -25,6 +25,7 @@
 #include "linted/error.h"
 #include "linted/file.h"
 #include "linted/fifo.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
@@ -57,7 +58,12 @@
 
 #include <linux/ptrace.h>
 
-enum { WAITID, SIGWAITINFO, ADMIN_IN_READ, ADMIN_OUT_WRITE, MAX_TASKS };
+enum { WAITID,
+       SIGWAITINFO,
+       ADMIN_IN_READ,
+       ADMIN_OUT_WRITE,
+       KILL_READ,
+       MAX_TASKS };
 
 struct wait_service_data
 {
@@ -90,6 +96,13 @@ struct admin_out_write_data
 	struct linted_asynch_pool *pool;
 	struct linted_admin_in_task_read *read_task;
 	linted_admin_in admin_in;
+};
+
+struct kill_read_data
+{
+	bool *time_to_exit;
+	struct linted_unit_db *unit_db;
+	struct linted_asynch_pool *pool;
 };
 
 #define SERVICE_NAME_MAX 32U
@@ -170,6 +183,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task);
 static linted_error on_sigwaitinfo(struct linted_asynch_task *task);
 static linted_error on_admin_in_read(struct linted_asynch_task *task);
 static linted_error on_admin_out_write(struct linted_asynch_task *task);
+static linted_error on_kill_read(struct linted_asynch_task *task);
 
 static linted_error on_status_request(union linted_admin_request const *request,
                                       union linted_admin_reply *reply);
@@ -495,6 +509,20 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		admin_out = xx;
 	}
 
+	linted_fifo kill_fifo;
+	{
+		linted_admin_out xx;
+		errnum =
+		    linted_fifo_create(&xx, LINTED_KO_CWD, "kill",
+		                       LINTED_FIFO_RDWR, S_IRUSR | S_IWUSR);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_fifo_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		kill_fifo = xx;
+	}
+
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
@@ -514,10 +542,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	struct wait_service_data sandbox_data;
 	struct admin_in_read_data admin_in_read_data;
 	struct admin_out_write_data admin_out_write_data;
+	struct kill_read_data kill_read_data;
 
 	struct linted_pid_task_waitid *sandbox_task;
 	struct linted_signal_task_sigwaitinfo *sigwait_task;
 	struct linted_admin_in_task_read *admin_in_read_task;
+	struct linted_io_task_read *kill_read_task;
 
 	{
 		struct linted_pid_task_waitid *xx;
@@ -569,6 +599,18 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 			return EXIT_FAILURE;
 		}
 		write_task = xx;
+	}
+
+	{
+		struct linted_io_task_read *xx;
+		errnum = linted_io_task_read_create(&xx, &kill_read_data);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_io_task_read_create: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		kill_read_task = xx;
 	}
 
 	struct linted_conf_db *conf_db;
@@ -624,6 +666,10 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	admin_out_write_data.read_task = admin_in_read_task;
 	admin_out_write_data.admin_in = admin_in;
 
+	kill_read_data.time_to_exit = &time_to_exit;
+	kill_read_data.unit_db = unit_db;
+	kill_read_data.pool = pool;
+
 	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
 	                                       &exit_signals);
 	linted_asynch_pool_submit(
@@ -638,6 +684,12 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	                               WEXITED);
 	linted_asynch_pool_submit(
 	    pool, linted_pid_task_waitid_to_asynch(sandbox_task));
+
+	static char dummy;
+	linted_io_task_read_prepare(kill_read_task, KILL_READ, kill_fifo,
+	                            &dummy, sizeof dummy);
+	linted_asynch_pool_submit(
+	    pool, linted_io_task_read_to_asynch(kill_read_task));
 
 	for (;;) {
 		struct linted_asynch_task *completed_task;
@@ -1397,6 +1449,9 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	case ADMIN_OUT_WRITE:
 		return on_admin_out_write(task);
 
+	case KILL_READ:
+		return on_kill_read(task);
+
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
@@ -1579,6 +1634,62 @@ static linted_error on_admin_out_write(struct linted_asynch_task *task)
 	linted_admin_in_task_read_prepare(read_task, ADMIN_IN_READ, admin_in);
 	linted_asynch_pool_submit(
 	    pool, linted_admin_in_task_read_to_asynch(read_task));
+
+	return 0;
+}
+
+static linted_error on_kill_read(struct linted_asynch_task *task)
+{
+	linted_error errnum = 0;
+
+	errnum = linted_asynch_task_errnum(task);
+	if (LINTED_ERROR_CANCELLED == errnum)
+		return 0;
+	if (errnum != 0)
+		return errnum;
+
+	struct linted_io_task_read *kill_read_task =
+	    linted_io_task_read_from_asynch(task);
+	struct kill_read_data *kill_read_data =
+	    linted_io_task_read_data(kill_read_task);
+	bool *time_to_exit = kill_read_data->time_to_exit;
+	struct linted_unit_db *unit_db = kill_read_data->unit_db;
+	struct linted_asynch_pool *pool = kill_read_data->pool;
+
+	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
+	     ++ii) {
+		struct linted_unit *unit = linted_unit_db_get_unit(unit_db, ii);
+
+		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
+			continue;
+
+		pid_t pid;
+		{
+			pid_t xx;
+			linted_error pid_errnum = service_pid(&xx, unit->name);
+			if (ESRCH == pid_errnum)
+				continue;
+			if (pid_errnum != 0) {
+				if (0 == errnum)
+					errnum = pid_errnum;
+				continue;
+			}
+			pid = xx;
+		}
+		if (-1 == kill(pid, SIGTERM)) {
+			linted_error kill_errnum = errno;
+			LINTED_ASSUME(kill_errnum != 0);
+			if (kill_errnum != ESRCH) {
+				assert(kill_errnum != EINVAL);
+				assert(kill_errnum != EPERM);
+				assert(0 == errnum);
+			}
+		}
+	}
+
+	*time_to_exit = true;
+
+	linted_asynch_pool_submit(pool, task);
 
 	return 0;
 }

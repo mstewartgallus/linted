@@ -35,6 +35,7 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/linted-drawer/drawer.fstab"}
 : ${LINTED_DRAWER:="${ROOT}/../src/linted-drawer/linted-drawer"}
 
+: ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/linted-window/window.fstab"}
 : ${LINTED_WINDOW:="${ROOT}/../src/linted-window/linted-window"}
 
 export LINTED_UNIT_PATH
@@ -48,6 +49,7 @@ export LINTED_GUI_FSTAB
 export LINTED_GUI
 export LINTED_DRAWER_FSTAB
 export LINTED_DRAWER
+export LINTED_WINDOW_FSTAB
 export LINTED_WINDOW
 
 exec "${ROOT}/../src/linted/linted" "$@"

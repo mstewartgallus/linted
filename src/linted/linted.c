@@ -76,7 +76,8 @@ static struct envvar const default_envvars[] = {
     {"LINTED_SIMULATOR_FSTAB", LINTED_SIMULATOR_FSTAB},
     {"LINTED_DRAWER", LINTED_DRAWER},
     {"LINTED_DRAWER_FSTAB", LINTED_DRAWER_FSTAB},
-    {"LINTED_WINDOW", LINTED_WINDOW}};
+    {"LINTED_WINDOW", LINTED_WINDOW},
+    {"LINTED_WINDOW_FSTAB", LINTED_WINDOW_FSTAB}};
 
 static char const *const argstrs[] = {[HELP] = "--help",
                                       [VERSION_OPTION] = "--version"};
