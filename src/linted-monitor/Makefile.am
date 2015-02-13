@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-monitor
 
 %C%_linted_monitor_SOURCES=%D%/monitor.c
-%C%_linted_monitor_LDFLAGS=-u linted_start__useme
 %C%_linted_monitor_LDADD=\
   src/start/libstart.la\
   \

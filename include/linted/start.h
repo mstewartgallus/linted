@@ -37,4 +37,10 @@ extern struct linted_start_config const linted_start_config;
 int linted_start_show_command(void);
 #endif
 
+extern char const linted_start__useme;
+
+#ifndef LINTED_START_OBJECT
+void const *const linted_start__user = &linted_start__useme;
+#endif
+
 #endif /* LINTED_START_H */

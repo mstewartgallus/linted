@@ -37,6 +37,7 @@ dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
 [linted_windows_api_default=no]
+[linted_emscripten_api_default=no]
 dnl
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
 dnl
@@ -74,6 +75,13 @@ AC_ARG_ENABLE(
                 [enable use of the Microsoft Windows API]),
                 [[enable_windows_api='yes']],
                 [[enable_windows_api="$linted_windows_api_default"]])
+AC_ARG_ENABLE(
+        [emscripten-api],
+        AS_HELP_STRING(
+                [--enable-emscripten-api],
+                [enable use of Emscripten API]),
+                [[enable_emscripten_api='yes']],
+                [[enable_emscripten_ap="$linted_emscripten_api_default"]])
 dnl
 AM_CONDITIONAL([WINDOWS_API], [test "x${enable_windows_api}" = xyes])
 AS_IF([test "x${enable_windows_api}" = "xyes"], [
@@ -97,6 +105,12 @@ dnl
 dnl
 ])
 dnl
+AM_CONDITIONAL([EMSCRIPTEN_API], [test "x${enable_emscripten_api}" = xyes])
+AS_IF([test "x${enable_emscripten_api}" = "xyes"], [
+dnl
+        AC_DEFINE([HAVE_EMSCRIPTEN_API], [1], [Define if the Emscripten API is being used.])
+])
+dnl
 AM_CONDITIONAL([POSIX_API], [test "x${enable_posix_api}" = xyes])
 AS_IF([test "x${enable_posix_api}" = "xyes"], [
 dnl
@@ -118,7 +132,7 @@ dnl
         ])
 dnl
         LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [#include <sys/capability.h>], [], [
-                AC_MSG_ERROR([Unable to find a POSIX capabilities library])
+                AC_MSG_WARN([Unable to find a POSIX capabilities library])
         ])
 dnl
         AC_CHECK_FUNCS([[clock_gettime]], [], [

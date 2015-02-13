@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-init
 
 %C%_linted_init_SOURCES=%D%/init.c
-%C%_linted_init_LDFLAGS=-u linted_start__useme
 %C%_linted_init_LDADD=\
   src/start/libstart.la\
   \

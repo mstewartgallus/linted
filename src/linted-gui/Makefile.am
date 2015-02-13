@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-gui
 
 %C%_linted_gui_SOURCES=%D%/gui.c
-%C%_linted_gui_LDFLAGS=-u linted_start__useme
 %C%_linted_gui_LDADD=\
   src/start/libstart.la\
   \

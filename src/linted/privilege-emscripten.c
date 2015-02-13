@@ -13,14 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "config.h"
+#include "privilege.h"
 
-#if defined HAVE_WINDOWS_API
-#include "log-windows.c"
-#elif defined HAVE_EMSCRIPTEN_API
-#include "log-emscripten.c"
-#elif defined HAVE_POSIX_API
-#include "log-posix.c"
-#else
-#error no logging library implementation for this platform
-#endif
+#include "linted/error.h"
+
+linted_error linted_linted_privilege_check(void)
+{
+	return 0;
+}

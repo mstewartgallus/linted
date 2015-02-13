@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
 %C%_linted_simulator_SOURCES=%D%/simulator.c
-%C%_linted_simulator_LDFLAGS=-u linted_start__useme
 %C%_linted_simulator_LDADD=\
   src/start/libstart.la\
   \

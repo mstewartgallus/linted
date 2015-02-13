@@ -17,7 +17,6 @@
 bin_PROGRAMS+=%D%/linted-control
 
 %C%_linted_control_SOURCES=%D%/linted-control.c
-%C%_linted_control_LDFLAGS=-u linted_start__useme
 %C%_linted_control_LDADD=\
   src/start/libstart.la\
   \

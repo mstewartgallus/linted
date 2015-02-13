@@ -17,6 +17,8 @@
 
 #if defined HAVE_WINDOWS_API
 #include "io-windows.c"
+#elif defined HAVE_EMSCRIPTEN_API
+#include "io-emscripten.c"
 #elif defined HAVE_POSIX_API
 #include "io-posix.c"
 #else

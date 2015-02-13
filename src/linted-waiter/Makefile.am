@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-waiter
 
 %C%_linted_waiter_SOURCES=%D%/waiter.c
-%C%_linted_waiter_LDFLAGS=-u linted_start__useme
 %C%_linted_waiter_LDADD=\
   src/error/liberror.la\
   src/log/liblog.la\

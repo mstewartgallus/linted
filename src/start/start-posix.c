@@ -15,6 +15,8 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#define LINTED_START_OBJECT
+
 #include "linted/start.h"
 
 #include "linted/asynch.h"

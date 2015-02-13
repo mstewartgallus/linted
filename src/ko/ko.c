@@ -17,6 +17,8 @@
 
 #if defined HAVE_WINDOWS_API
 #include "ko-windows.c"
+#elif defined HAVE_EMSCRIPTEN_API
+#include "ko-emscripten.c"
 #elif defined HAVE_POSIX_API
 #include "ko-posix.c"
 #else

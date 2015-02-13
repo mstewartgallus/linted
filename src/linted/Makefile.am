@@ -20,11 +20,11 @@ bin_PROGRAMS+=%D%/linted
   %D%/linted.c\
   %D%/privilege.c %D%/privilege.h
 EXTRA_%C%_linted_SOURCES=\
-  %D%/privilege-posix.c %D%/privilege-windows.c
+  %D%/privilege-emscripten.c\
+  %D%/privilege-posix.c\
+  %D%/privilege-windows.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
-%C%_linted_LDFLAGS=-u linted_start__useme
 %C%_linted_LDADD=\
-  src/asynch/libasynch.la\
   src/dir/libdir.la\
   src/environment/libenvironment.la\
   src/io/libio.la\

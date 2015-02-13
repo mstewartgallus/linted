@@ -17,7 +17,6 @@
 pkglibexec_PROGRAMS+=%D%/linted-drawer
 
 %C%_linted_drawer_SOURCES=%D%/drawer.c
-%C%_linted_drawer_LDFLAGS=-u linted_start__useme
 %C%_linted_drawer_LDADD=\
   src/start/libstart.la\
   \

@@ -17,6 +17,8 @@
 
 #if defined HAVE_WINDOWS_API
 #include "asynch-windows.c"
+#elif defined HAVE_EMSCRIPTEN_API
+#include "asynch-emscripten.c"
 #elif defined HAVE_POSIX_API
 #include "asynch-posix.c"
 #else

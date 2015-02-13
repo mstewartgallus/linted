@@ -18,7 +18,6 @@ pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
 %C%_linted_sandbox_SOURCES=%D%/sandbox.c
 EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
-%C%_linted_sandbox_LDFLAGS=-u linted_start__useme
 %C%_linted_sandbox_LDADD=\
   src/asynch/libasynch.la\
   src/dir/libdir.la\

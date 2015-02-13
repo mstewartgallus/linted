@@ -18,7 +18,6 @@ pkglibexec_PROGRAMS+=%D%/linted-window
 
 %C%_linted_window_SOURCES=%D%/window.c
 EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c %D%/window-windows.c
-%C%_linted_window_LDFLAGS=-u linted_start__useme
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
