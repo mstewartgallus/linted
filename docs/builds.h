@@ -45,4 +45,14 @@
  *
  * This build is temporarily out of service until I obtain a newer
  * toolchain.
+ *
+ * @section asmjs-unknown-emscripten Emscripten
+ *
+ * This is not a supported final build product.  This is only worked
+ * on for a challenge and for making the code more modular and better.
+ * In the future it may be supported.
+ *
+ * This build is temporarily out of service until I figure out why
+ * Emscripten generates broken code (it seems to generate null
+ * pointers out of nowhere) or the Emscripten compiler improves.
  */
