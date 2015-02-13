@@ -41,7 +41,7 @@ void linted_log_open(char const *ident)
 		tty_init = true;
 }
 
-void linted_log(unsigned log_level, char const *format, ...)
+void linted_log(linted_log_level log_level, char const *format, ...)
 {
 	int priority;
 	switch (log_level) {

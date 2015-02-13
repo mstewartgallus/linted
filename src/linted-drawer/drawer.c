@@ -115,7 +115,7 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (argc < 3) {
+	if (argc < 4U) {
 		linted_log(LINTED_LOG_ERROR, "missing some of 3 file operands");
 		return EXIT_FAILURE;
 	}

@@ -134,7 +134,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 {
 	linted_error errnum = 0;
 
-	if (argc < 3) {
+	if (argc < 4U) {
 		linted_log(LINTED_LOG_ERROR, "missing some of 3 file operands");
 		return EXIT_FAILURE;
 	}

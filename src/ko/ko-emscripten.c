@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
-
 #include "linted/ko.h"
 #include "linted/util.h"
 
@@ -22,7 +20,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>

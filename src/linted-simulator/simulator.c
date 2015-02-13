@@ -126,7 +126,7 @@ static unsigned char simulator_start(char const *const process_name,
 {
 	linted_error errnum;
 
-	if (argc < 2) {
+	if (argc < 3U) {
 		linted_log(LINTED_LOG_ERROR, "missing some of 2 file operands");
 		return EXIT_FAILURE;
 	}
