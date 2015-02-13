@@ -17,6 +17,8 @@
 
 #if defined HAVE_WINDOWS_API
 #include "queue-windows.c"
+#elif defined HAVE_EMSCRIPTEN_API
+#include "queue-emscripten.c"
 #elif defined HAVE_POSIX_API
 #include "queue-posix.c"
 #else

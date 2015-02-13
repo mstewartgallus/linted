@@ -189,6 +189,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task)
 {
 	assert(pool != 0);
+	assert(task != 0);
 
 	if (canceller_check(&task->canceller)) {
 		task->errnum = LINTED_ERROR_CANCELLED;
@@ -203,6 +204,9 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task,
                                  linted_error task_errnum)
 {
+	assert(pool != 0);
+	assert(task != 0);
+
 	canceller_stop(&task->canceller);
 
 	task->errnum = task_errnum;
@@ -619,6 +623,7 @@ static linted_error completion_queue_create(struct completion_queue **queuep)
 static void complete_task(struct completion_queue *queue,
                           struct linted_asynch_task *task)
 {
+	assert(queue != 0);
 	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(task));
 }
 
@@ -655,6 +660,8 @@ static linted_error job_queue_create(struct job_queue **queuep)
 
 static void job_submit(struct job_queue *queue, struct linted_asynch_task *task)
 {
+	assert(queue != 0);
+	assert(task != 0);
 	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(task));
 }
 
