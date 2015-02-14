@@ -147,7 +147,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		root = xx;
 	}
 	if (0 == root) {
-		fprintf(stderr, "%s: need MANAGERPID\n", process_name);
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "MANAGERPID");
 		return EXIT_FAILURE;
 	}
 

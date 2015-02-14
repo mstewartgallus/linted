@@ -41,7 +41,6 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <libgen.h>
-#include <locale.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -72,6 +71,7 @@ struct wait_service_data
 	sigset_t const *orig_mask;
 	struct linted_unit_db *unit_db;
 	bool *time_to_exit;
+	pid_t manager_pid;
 	linted_ko cwd;
 };
 
@@ -80,6 +80,7 @@ struct sigwait_data
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
 	struct linted_asynch_pool *pool;
+	pid_t manager_pid;
 };
 
 struct admin_in_read_data
@@ -87,6 +88,7 @@ struct admin_in_read_data
 	struct linted_asynch_pool *pool;
 	struct linted_admin_out_task_write *write_task;
 	linted_admin_out admin_out;
+	pid_t manager_pid;
 };
 
 struct admin_out_write_data
@@ -101,9 +103,8 @@ struct kill_read_data
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
 	struct linted_asynch_pool *pool;
+	pid_t manager_pid;
 };
-
-#define SERVICE_NAME_MAX 32U
 
 static unsigned char monitor_start(char const *process_name, size_t argc,
                                    char const *const argv[]);
@@ -124,7 +125,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
-                                     linted_ko cwd);
+                                     pid_t manager_pid, linted_ko cwd);
 
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
@@ -134,25 +135,29 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task);
 static linted_error on_admin_out_write(struct linted_asynch_task *task);
 static linted_error on_kill_read(struct linted_asynch_task *task);
 
-static linted_error on_status_request(union linted_admin_request const *request,
+static linted_error on_status_request(pid_t manager_pid,
+                                      union linted_admin_request const *request,
                                       union linted_admin_reply *reply);
-static linted_error on_stop_request(union linted_admin_request const *request,
+static linted_error on_stop_request(pid_t manager_pid,
+                                    union linted_admin_request const *request,
                                     union linted_admin_reply *reply);
 
 static linted_error on_child_trapped(char const *process_name,
                                      bool time_to_exit, pid_t pid,
-                                     int exit_status, linted_ko cwd,
+                                     int exit_status, pid_t manager_pid,
+                                     linted_ko cwd,
                                      struct linted_unit_db *unit_db);
 static linted_error on_child_signaled(char const *process_name, pid_t pid,
                                       int signo);
 static linted_error on_child_about_to_clone(pid_t pid);
 static linted_error on_child_about_to_exit(char const *process_name,
                                            bool time_to_exit, pid_t pid,
-                                           linted_ko cwd,
+                                           pid_t manager_pid, linted_ko cwd,
                                            struct linted_unit_db *unit_db);
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(char const *process_name,
-                                     struct linted_unit *unit, linted_ko cwd,
+                                     struct linted_unit *unit,
+                                     pid_t manager_pid, linted_ko cwd,
                                      bool check);
 
 static linted_error filter_envvars(char ***resultsp,
@@ -162,21 +167,21 @@ static size_t null_list_size(char const *const *list);
 static linted_error str_from_strs(char const *const *strs, char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 
-static linted_error kill_pid_children(pid_t pid, int signo);
-
 static linted_error service_name(pid_t pid,
-                                 char name[static SERVICE_NAME_MAX + 1U]);
-static linted_error service_pid(pid_t *pidp, char const *name);
+                                 char name[static LINTED_UNIT_NAME_MAX + 1U]);
+static linted_error service_pid(pid_t *pidp, pid_t manager_pid,
+                                char const *name);
+static linted_error service_children_kill(pid_t pid, int signo);
 
 static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp);
+
+static linted_error set_death_sig(int signum);
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options);
 static linted_error ptrace_cont(pid_t pid, int signo);
 static linted_error ptrace_detach(pid_t pid, int signo);
 static linted_error ptrace_setoptions(pid_t pid, unsigned options);
 static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
-
-static linted_error set_death_sig(int signum);
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor", .start = monitor_start};
@@ -207,6 +212,19 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		linted_log(LINTED_LOG_ERROR, "pthread_sigmask: %s",
 		           linted_error_string(errnum));
 		return EXIT_FAILURE;
+	}
+
+	char const *manager_pid_str;
+	{
+		char *xx;
+		errnum = linted_environment_get("MANAGERPID", &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		manager_pid_str = xx;
 	}
 
 	char const *unit_path;
@@ -274,6 +292,13 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		runtime_dir_path = xx;
 	}
 
+	if (0 == manager_pid_str) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "MANAGERPID");
+		return EXIT_FAILURE;
+	}
+
 	if (0 == unit_path) {
 		linted_log(LINTED_LOG_ERROR,
 		           "%s is a required environment variable",
@@ -312,7 +337,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	pid_t parent = getppid();
+	pid_t manager_pid = strtol(manager_pid_str, 0, 10);
 
 	char *package_runtime_dir_path;
 	{
@@ -343,7 +368,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		char *xx;
 		if (-1 == asprintf(&xx, "%s/%" PRIuMAX,
 		                   package_runtime_dir_path,
-		                   (uintmax_t)parent)) {
+		                   (uintmax_t)manager_pid)) {
 			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -355,7 +380,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%s/%" PRIuMAX, package_data_dir_path,
-		                   (uintmax_t)parent)) {
+		                   (uintmax_t)manager_pid)) {
 			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -582,16 +607,18 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	/**
 	 * @todo Warn about unactivated unit_db.
 	 */
-	errnum = activate_unit_db(process_name, unit_db, cwd);
+	errnum = activate_unit_db(process_name, unit_db, manager_pid, cwd);
 	if (errnum != 0)
 		goto kill_procs;
 
 	sigwait_data.time_to_exit = &time_to_exit;
 	sigwait_data.unit_db = unit_db;
 	sigwait_data.pool = pool;
+	sigwait_data.manager_pid = manager_pid;
 
 	sandbox_data.process_name = process_name;
 	sandbox_data.pool = pool;
+	sandbox_data.manager_pid = manager_pid;
 	sandbox_data.cwd = cwd;
 	sandbox_data.sandbox = sandbox;
 	sandbox_data.waiter = waiter;
@@ -600,6 +627,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	sandbox_data.time_to_exit = &time_to_exit;
 
 	admin_in_read_data.pool = pool;
+	admin_in_read_data.manager_pid = manager_pid;
 	admin_in_read_data.write_task = write_task;
 	admin_in_read_data.admin_out = admin_out;
 
@@ -610,6 +638,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	kill_read_data.time_to_exit = &time_to_exit;
 	kill_read_data.unit_db = unit_db;
 	kill_read_data.pool = pool;
+	kill_read_data.manager_pid = manager_pid;
 
 	linted_signal_task_sigwaitinfo_prepare(sigwait_task, SIGWAITINFO,
 	                                       &exit_signals);
@@ -985,7 +1014,7 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 
 static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
-                                     linted_ko cwd)
+                                     pid_t manager_pid, linted_ko cwd)
 {
 	linted_error errnum;
 
@@ -1008,7 +1037,8 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate(process_name, unit, cwd, true);
+		errnum = service_activate(process_name, unit, manager_pid, cwd,
+		                          true);
 		if (errnum != 0)
 			return errnum;
 	}
@@ -1057,7 +1087,8 @@ struct option
 };
 
 static linted_error service_activate(char const *process_name,
-                                     struct linted_unit *unit, linted_ko cwd,
+                                     struct linted_unit *unit,
+                                     pid_t manager_pid, linted_ko cwd,
                                      bool check)
 {
 	linted_error errnum = 0;
@@ -1072,7 +1103,7 @@ static linted_error service_activate(char const *process_name,
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = service_pid(&xx, name);
+		errnum = service_pid(&xx, manager_pid, name);
 		if (errnum != 0)
 			goto service_not_found;
 		child = xx;
@@ -1146,8 +1177,6 @@ spawn_service:
 	char prio_str[LINTED_NUMBER_TYPE_STRING_SIZE(int)+1U];
 	sprintf(prio_str, "%i", priority);
 
-	pid_t ppid = getppid();
-
 	char *chrootdir;
 	{
 		char *xx;
@@ -1168,22 +1197,6 @@ spawn_service:
 		envvars = xx;
 	}
 
-	char *root_setting;
-	{
-		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "MANAGERPID=%" PRIuMAX "", (uintmax_t)ppid))
-			goto manager_asprintf_failed;
-		root_setting = xx;
-		goto manager_asprintf_succeeded;
-	}
-manager_asprintf_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	goto free_envvars;
-
-manager_asprintf_succeeded:
-	;
 	char *service_name_setting;
 	{
 		char *xx;
@@ -1195,13 +1208,12 @@ manager_asprintf_succeeded:
 service_asprintf_failed:
 	errnum = errno;
 	LINTED_ASSUME(errnum != 0);
-	linted_mem_free(root_setting);
 	goto free_envvars;
 
 service_asprintf_succeeded:
 	;
 	size_t envvars_size = null_list_size((char const *const *)envvars);
-	size_t new_size = envvars_size + 3U;
+	size_t new_size = envvars_size + 2U;
 	{
 		void *xx;
 		errnum = linted_mem_realloc_array(&xx, envvars, new_size,
@@ -1213,13 +1225,11 @@ service_asprintf_succeeded:
 	}
 envvar_allocate_failed:
 	linted_mem_free(service_name_setting);
-	linted_mem_free(root_setting);
 	goto free_envvars;
 
 envvar_allocate_succeeded:
-	envvars[envvars_size] = root_setting;
-	envvars[envvars_size + 1U] = service_name_setting;
-	envvars[envvars_size + 2U] = 0;
+	envvars[envvars_size] = service_name_setting;
+	envvars[envvars_size + 1U] = 0;
 
 	char *sandbox_dup = strdup(sandbox);
 	if (0 == sandbox_dup) {
@@ -1417,6 +1427,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	struct linted_asynch_pool *pool = wait_service_data->pool;
 
 	char const *process_name = wait_service_data->process_name;
+	pid_t manager_pid = wait_service_data->manager_pid;
 	linted_ko cwd = wait_service_data->cwd;
 	struct linted_unit_db *unit_db = wait_service_data->unit_db;
 	bool time_to_exit = *wait_service_data->time_to_exit;
@@ -1440,8 +1451,9 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		break;
 
 	case CLD_TRAPPED:
-		errnum = on_child_trapped(process_name, time_to_exit, pid,
-		                          exit_status, cwd, unit_db);
+		errnum =
+		    on_child_trapped(process_name, time_to_exit, pid,
+		                     exit_status, manager_pid, cwd, unit_db);
 		break;
 
 	default:
@@ -1470,6 +1482,7 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 	bool *time_to_exit = sigwait_data->time_to_exit;
 	struct linted_unit_db *unit_db = sigwait_data->unit_db;
 	struct linted_asynch_pool *pool = sigwait_data->pool;
+	pid_t manager_pid = sigwait_data->manager_pid;
 
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
@@ -1481,7 +1494,8 @@ static linted_error on_sigwaitinfo(struct linted_asynch_task *task)
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum = service_pid(&xx, unit->name);
+			linted_error pid_errnum =
+			    service_pid(&xx, manager_pid, unit->name);
 			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
@@ -1528,6 +1542,7 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 	struct linted_asynch_pool *pool = admin_in_read_data->pool;
 	struct linted_admin_out_task_write *write_task =
 	    admin_in_read_data->write_task;
+	pid_t manager_pid = admin_in_read_data->manager_pid;
 
 	linted_ko admin_out = admin_in_read_data->admin_out;
 
@@ -1537,11 +1552,11 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 
 	switch (request->type) {
 	case LINTED_ADMIN_STATUS:
-		errnum = on_status_request(request, &reply);
+		errnum = on_status_request(manager_pid, request, &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(request, &reply);
+		errnum = on_stop_request(manager_pid, request, &reply);
 		break;
 
 	default:
@@ -1596,6 +1611,7 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 	bool *time_to_exit = kill_read_data->time_to_exit;
 	struct linted_unit_db *unit_db = kill_read_data->unit_db;
 	struct linted_asynch_pool *pool = kill_read_data->pool;
+	pid_t manager_pid = kill_read_data->manager_pid;
 
 	for (size_t ii = 0U, size = linted_unit_db_size(unit_db); ii < size;
 	     ++ii) {
@@ -1607,7 +1623,8 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum = service_pid(&xx, unit->name);
+			linted_error pid_errnum =
+			    service_pid(&xx, manager_pid, unit->name);
 			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
@@ -1637,7 +1654,8 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 
 static linted_error on_child_trapped(char const *process_name,
                                      bool time_to_exit, pid_t pid,
-                                     int exit_status, linted_ko cwd,
+                                     int exit_status, pid_t manager_pid,
+                                     linted_ko cwd,
                                      struct linted_unit_db *unit_db)
 {
 	int event = exit_status >> 8U;
@@ -1647,7 +1665,7 @@ static linted_error on_child_trapped(char const *process_name,
 
 	case PTRACE_EVENT_EXIT:
 		return on_child_about_to_exit(process_name, time_to_exit, pid,
-		                              cwd, unit_db);
+		                              manager_pid, cwd, unit_db);
 
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
@@ -1687,7 +1705,7 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 			break;
 		}
 
-		char name[SERVICE_NAME_MAX + 1U];
+		char name[LINTED_UNIT_NAME_MAX + 1U];
 		errnum = service_name(pid, name);
 		if (errnum != 0)
 			return errnum;
@@ -1713,14 +1731,14 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 
 static linted_error on_child_about_to_exit(char const *process_name,
                                            bool time_to_exit, pid_t pid,
-                                           linted_ko cwd,
+                                           pid_t manager_pid, linted_ko cwd,
                                            struct linted_unit_db *unit_db)
 {
 
 	linted_error errnum = 0;
 	struct linted_unit *unit = 0;
 
-	errnum = kill_pid_children(pid, SIGKILL);
+	errnum = service_children_kill(pid, SIGKILL);
 	if (errnum != 0)
 		goto detach_from_process;
 
@@ -1733,7 +1751,7 @@ static linted_error on_child_about_to_exit(char const *process_name,
 		status = xx;
 	}
 
-	char name[SERVICE_NAME_MAX + 1U];
+	char name[LINTED_UNIT_NAME_MAX + 1U];
 	errnum = service_name(pid, name);
 	if (errnum != 0)
 		goto detach_from_process;
@@ -1766,7 +1784,7 @@ detach_from_process:
 	if (0 == unit)
 		return errnum;
 
-	errnum = service_activate(process_name, unit, cwd, false);
+	errnum = service_activate(process_name, unit, manager_pid, cwd, false);
 
 	return errnum;
 }
@@ -1777,7 +1795,8 @@ static linted_error on_child_about_to_clone(pid_t pid)
 	return ptrace_detach(pid, 0);
 }
 
-static linted_error on_status_request(union linted_admin_request const *request,
+static linted_error on_status_request(pid_t manager_pid,
+                                      union linted_admin_request const *request,
                                       union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
@@ -1786,7 +1805,7 @@ static linted_error on_status_request(union linted_admin_request const *request,
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = service_pid(&xx, request->status.name);
+		errnum = service_pid(&xx, manager_pid, request->status.name);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -1818,7 +1837,8 @@ reply:
 	return 0;
 }
 
-static linted_error on_stop_request(union linted_admin_request const *request,
+static linted_error on_stop_request(pid_t manager_pid,
+                                    union linted_admin_request const *request,
                                     union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
@@ -1827,7 +1847,7 @@ static linted_error on_stop_request(union linted_admin_request const *request,
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = service_pid(&xx, request->status.name);
+		errnum = service_pid(&xx, manager_pid, request->status.name);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -1860,8 +1880,8 @@ reply:
 }
 
 static char const *default_envvars[] = {
-    "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
-                                        "XDG_SESSION_ID",
+    "MANAGERPID", "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
+                                                      "XDG_SESSION_ID",
     "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
@@ -2097,11 +2117,11 @@ free_units:
 }
 
 static linted_error service_name(pid_t pid,
-                                 char name[static SERVICE_NAME_MAX + 1U])
+                                 char name[static LINTED_UNIT_NAME_MAX + 1U])
 {
 	linted_error errnum;
 
-	memset(name, 0, SERVICE_NAME_MAX + 1U);
+	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
 
 	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
 	          sizeof "/environ" - 1U + 1U];
@@ -2162,7 +2182,7 @@ static linted_error service_name(pid_t pid,
 	if (errnum != 0)
 		goto free_buf;
 
-	memset(name, 0, SERVICE_NAME_MAX + 1U);
+	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
 
 	if (eof)
 		goto free_buf;
@@ -2172,7 +2192,7 @@ static linted_error service_name(pid_t pid,
 		if (0 == strncmp("LINTED_SERVICE=", iter,
 		                 strlen("LINTED_SERVICE="))) {
 			strncpy(name, iter + strlen("LINTED_SERVICE="),
-			        SERVICE_NAME_MAX);
+			        LINTED_UNIT_NAME_MAX);
 			break;
 		}
 		iter = strchr(iter, '\0');
@@ -2193,18 +2213,17 @@ free_buf:
 	return errnum;
 }
 
-static linted_error service_pid(pid_t *pidp, char const *name)
+static linted_error service_pid(pid_t *pidp, pid_t manager_pid,
+                                char const *name)
 {
 	linted_error errnum = 0;
-
-	pid_t ppid = getppid();
 
 	pid_t *children;
 	size_t len;
 	{
 		pid_t *xx;
 		size_t yy;
-		errnum = linted_pid_children(ppid, &xx, &yy);
+		errnum = linted_pid_children(manager_pid, &xx, &yy);
 		if (errnum != 0)
 			return errnum;
 		children = xx;
@@ -2217,7 +2236,7 @@ static linted_error service_pid(pid_t *pidp, char const *name)
 	for (size_t ii = 0U; ii < len; ++ii) {
 		pid_t child = children[ii];
 
-		char other_name[SERVICE_NAME_MAX + 1U];
+		char other_name[LINTED_UNIT_NAME_MAX + 1U];
 		errnum = service_name(child, other_name);
 		if (errnum != 0)
 			goto free_buf;
@@ -2242,7 +2261,7 @@ free_buf:
 	return 0;
 }
 
-static linted_error kill_pid_children(pid_t pid, int signo)
+static linted_error service_children_kill(pid_t pid, int signo)
 {
 	linted_error errnum = 0;
 
@@ -2408,6 +2427,20 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child, bool *isp)
 	return errnum;
 }
 
+static linted_error set_death_sig(int signum)
+{
+	linted_error errnum;
+
+	if (-1 ==
+	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	return 0;
+}
+
 static linted_error ptrace_detach(pid_t pid, int signo)
 {
 	linted_error errnum;
@@ -2468,20 +2501,6 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 
 	if (-1 ==
 	    ptrace(PTRACE_CONT, pid, (void *)0, (void *)(intptr_t) signo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
-	return 0;
-}
-
-static linted_error set_death_sig(int signum)
-{
-	linted_error errnum;
-
-	if (-1 ==
-	    prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

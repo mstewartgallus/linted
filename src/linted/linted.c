@@ -105,6 +105,19 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		}
 	}
 
+	{
+		char pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)getpid());
+
+		errnum = linted_environment_set("MANAGERPID", pid_str, true);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_set: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+	}
+
 	char const *init;
 	{
 		char *xx;
