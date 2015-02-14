@@ -56,4 +56,56 @@ linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task);
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
 
+#define LINTED_PID_COMM_MAX 16U
+struct linted_pid_stat
+{
+	pid_t pid;
+	char comm[LINTED_PID_COMM_MAX + 1U];
+	char state;
+	int ppid;
+	int pgrp;
+	int session;
+	int tty_nr;
+	int tpgid;
+	unsigned flags;
+	unsigned long minflt;
+	unsigned long cminflt;
+	unsigned long majflt;
+	unsigned long cmajflt;
+	unsigned long utime;
+	unsigned long stime;
+	long cutime;
+	long cstime;
+	long priority;
+	long nice;
+	long num_threads;
+	long itrealvalue;
+	unsigned long long starttime;
+	unsigned long vsize;
+	long rss;
+	unsigned long rsslim;
+	unsigned long startcode;
+	unsigned long endcode;
+	unsigned long startstack;
+	unsigned long kstkesp;
+	unsigned long kstkeip;
+	unsigned long signal;
+	unsigned long blocked;
+	unsigned long sigignore;
+	unsigned long sigcatch;
+	unsigned long wchan;
+	unsigned long nswap;
+	unsigned long cnswap;
+	int exit_signal;
+	int processor;
+	unsigned rt_priority;
+	unsigned policy;
+	unsigned long long delayacct_blkio_ticks;
+	unsigned long guest_time;
+	long cguest_time;
+};
+
+linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf);
+linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
+
 #endif /* LINTED_PID_H */
