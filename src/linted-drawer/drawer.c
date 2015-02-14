@@ -30,7 +30,6 @@
 #include "linted/xcb.h"
 
 #include <errno.h>
-#include <locale.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -108,12 +107,6 @@ static unsigned char drawer_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
 	linted_error errnum = 0;
-
-	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
-	}
 
 	if (argc < 4U) {
 		linted_log(LINTED_LOG_ERROR, "missing some of 3 file operands");

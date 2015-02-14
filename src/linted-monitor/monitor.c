@@ -186,12 +186,6 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
-	}
-
 	errnum = set_death_sig(SIGKILL);
 	if (errnum != 0) {
 		linted_log(LINTED_LOG_ERROR, "set_death_sig: %s",

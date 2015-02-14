@@ -26,7 +26,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <locale.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -54,12 +53,6 @@ static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[])
 {
 	linted_error errnum;
-
-	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
-	}
 
 	static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 

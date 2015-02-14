@@ -33,7 +33,6 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <libgen.h>
-#include <locale.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -90,12 +89,6 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		linted_log(LINTED_LOG_ERROR,
 		           "%s should not be run with high privileges: %s",
 		           PACKAGE_NAME, linted_error_string(errnum));
-		return EXIT_FAILURE;
-	}
-
-	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
-		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
 

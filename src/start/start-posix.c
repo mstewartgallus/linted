@@ -27,6 +27,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <locale.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -97,6 +98,12 @@ int main(int argc, char *argv[])
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
+	}
+
+	if (0 == setlocale(LC_ALL, "")) {
+		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
+		           linted_error_string(errno));
+		return EXIT_FAILURE;
 	}
 
 	return linted_start_config.start(process_name, argc,
