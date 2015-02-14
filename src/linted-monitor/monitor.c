@@ -2194,23 +2194,23 @@ static linted_error service_name(pid_t pid,
 
 	/* Get the buffer all at once to avoid raciness. */
 	char *buf = 0;
-	size_t buf_size = 0U;
-
+	bool eof = false;
+	ssize_t zz;
 	{
 		char *xx = buf;
-		size_t yy = buf_size;
+		size_t yy = 0U;
 
 		errno = 0;
-		ssize_t zz = getline(&xx, &yy, file);
-		if (-1 == zz) {
-			errnum = errno;
-			/* May be zero */
-			goto close_file;
-		}
+		zz = getline(&xx, &yy, file);
 		buf = xx;
 	}
 
-close_file:
+	if (-1 == zz) {
+		errnum = errno;
+		/* May be zero */
+		eof = true;
+	}
+
 	if (EOF == fclose(file)) {
 		if (0 == errnum) {
 			errnum = errno;
@@ -2218,8 +2218,13 @@ close_file:
 		}
 	}
 
-	if (0 == buf)
-		return errnum;
+	if (errnum != 0)
+		goto free_buf;
+
+	memset(name, 0, SERVICE_NAME_MAX + 1U);
+
+	if (eof)
+		goto free_buf;
 
 	char *iter = buf;
 	for (;;) {
@@ -2241,6 +2246,7 @@ close_file:
 			break;
 	}
 
+free_buf:
 	linted_mem_free(buf);
 
 	return errnum;
@@ -2498,15 +2504,19 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 	memset(buf, 0, sizeof *buf);
 
 	char *line;
+	ssize_t zz;
 	{
 		char *xx = 0;
 		size_t yy = 0U;
-		if (-1 == getline(&xx, &yy, file)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			goto close_file;
-		}
+		errno = 0;
+		zz = getline(&xx, &yy, file);
 		line = xx;
+	}
+
+	if (-1 == zz) {
+		errnum = errno;
+		/* errnum may be zero */
+		goto free_line;
 	}
 
 	/* If some fields are missing just leave them to be zero */
@@ -2515,7 +2525,7 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 	                  &buf->pid)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		goto close_file;
+		goto free_line;
 	}
 
 	/* Avoid troubles with processes that have names like ':-) 0 1
@@ -2525,7 +2535,7 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 
 	char *start = strchr(line, '(') + 1U;
 	char *end = strrchr(line, ')');
-	memset(buf->comm, 0, sizeof buf->comm);
+
 	memcpy(buf->comm, start, end - start);
 
 	if (EOF ==
@@ -2587,10 +2597,12 @@ static linted_error pid_stat(pid_t pid, struct pid_stat *buf)
 	           &buf->guest_time, &buf->cguest_time)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		goto close_file;
+		goto free_line;
 	}
 
-close_file:
+free_line:
+	linted_mem_free(line);
+
 	if (EOF == fclose(file)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -2638,22 +2650,23 @@ static linted_error pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 
 	/* Get the child all at once to avoid raciness. */
 	char *buf = 0;
-
+	bool eof = false;
+	ssize_t zz;
 	{
 		char *xx = buf;
 		size_t yy = 0U;
 
 		errno = 0;
-		ssize_t zz = getline(&xx, &yy, file);
-		if (-1 == zz) {
-			errnum = errno;
-			/* May be zero */
-			goto set_childrenp;
-		}
+		zz = getline(&xx, &yy, file);
 		buf = xx;
 	}
 
-set_childrenp:
+	if (-1 == zz) {
+		errnum = errno;
+		/* May be zero */
+		eof = true;
+	}
+
 	if (EOF == fclose(file)) {
 		if (0 == errnum) {
 			errnum = errno;
@@ -2664,6 +2677,11 @@ set_childrenp:
 	if (errnum != 0) {
 		linted_mem_free(buf);
 		return errnum;
+	}
+
+	if (eof) {
+		linted_mem_free(buf);
+		buf = 0;
 	}
 
 	size_t ii = 0U;

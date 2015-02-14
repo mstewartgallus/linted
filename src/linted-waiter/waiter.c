@@ -97,8 +97,17 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		char *buf = 0;
 		size_t n = 0U;
 		for (;;) {
-			errno = 0;
-			if (-1 == getline(&buf, &n, stdin)) {
+			ssize_t zz;
+			{
+				char *xx = buf;
+				size_t yy = n;
+
+				errno = 0;
+				zz = getline(&xx, &yy, stdin);
+				buf = xx;
+				n = yy;
+			}
+			if (-1 == zz) {
 				errnum = errno;
 				if (0 == errnum)
 					break;
@@ -113,6 +122,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 			}
 			linted_log(LINTED_LOG_ERROR, "%s", buf);
 		}
+		linted_mem_free(buf);
 	}
 
 	/* Make sure to only exit after having fully drained the pipe

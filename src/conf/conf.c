@@ -44,24 +44,22 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 
 	for (;;) {
 		size_t line_size;
+		ssize_t zz;
 		{
 			char *xx = line_buffer;
 			size_t yy = line_capacity;
 			errno = 0;
-			ssize_t zz = getline(&xx, &yy, conf_file);
-			if (zz < 0)
-				goto getline_failed;
+			zz = getline(&xx, &yy, conf_file);
 			line_buffer = xx;
 			line_capacity = yy;
 			line_size = zz;
-			goto getline_succeeded;
 		}
-	getline_failed:
-		errnum = errno;
-		/* May be 0 to indicate end of line */
-		break;
+		if (zz < 0) {
+			errnum = errno;
+			/* May be 0 to indicate end of line */
+			break;
+		}
 
-	getline_succeeded:
 		if (0U == line_size)
 			break;
 

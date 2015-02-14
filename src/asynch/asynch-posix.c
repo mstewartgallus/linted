@@ -610,6 +610,8 @@ static void worker_pool_destroy(struct worker_pool *pool)
 	}
 
 	munmap(pool->worker_stacks, pool->worker_stacks_size);
+
+	linted_mem_free(pool);
 }
 
 static void *worker_routine(void *arg)

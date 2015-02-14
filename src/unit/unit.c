@@ -63,24 +63,23 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 	linted_error errnum = 0;
 
 	union unit_union *list = units->list;
-	size_t size = units->size;
+	size_t old_size = units->size;
 
+	size_t new_size = old_size + 1U;
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, list, size + 1U,
+		errnum = linted_mem_realloc_array(&xx, list, new_size,
 		                                  sizeof list[0U]);
 		if (errnum != 0)
 			return errnum;
 		list = xx;
 	}
 
-	list[size].common.name = 0;
-	*unitp = &(list[size].common);
-
-	++size;
+	list[old_size].common.name = 0;
+	*unitp = &(list[old_size].common);
 
 	units->list = list;
-	units->size = size;
+	units->size = new_size;
 
 	return errnum;
 }
@@ -92,6 +91,8 @@ void linted_unit_db_destroy(struct linted_unit_db *units)
 
 	for (size_t ii = 0U; ii < size; ++ii)
 		linted_mem_free(list[ii].common.name);
+	linted_mem_free(list);
+
 	linted_mem_free(units);
 }
 

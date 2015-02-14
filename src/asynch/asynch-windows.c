@@ -611,6 +611,8 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 	for (size_t ii = 0U; ii < worker_count; ++ii)
 		CloseHandle(pool->workers[ii]);
+
+	linted_mem_free(pool);
 }
 
 static DWORD WINAPI worker_routine(void *arg)
