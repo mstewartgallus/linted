@@ -36,6 +36,10 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#ifndef __NR_execveat
+#define __NR_execveat 322
+#endif
+
 struct adddup2
 {
 	int oldfildes;
@@ -69,6 +73,7 @@ struct fork_args
 	char const *const *argv;
 	char const *const *envp;
 	char const *binary;
+	linted_ko dirko;
 	linted_ko err_writer;
 };
 
@@ -123,21 +128,21 @@ linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 }
 
 void linted_spawn_file_actions_set_stdin(
-	struct linted_spawn_file_actions *file_actions, linted_ko newko)
+    struct linted_spawn_file_actions *file_actions, linted_ko newko)
 {
 	file_actions->new_stdin = newko;
 	file_actions->set_stdin = true;
 }
 
 void linted_spawn_file_actions_set_stdout(
-	struct linted_spawn_file_actions *file_actions, linted_ko newko)
+    struct linted_spawn_file_actions *file_actions, linted_ko newko)
 {
 	file_actions->new_stdout = newko;
 	file_actions->set_stdout = true;
 }
 
 void linted_spawn_file_actions_set_stderr(
-	struct linted_spawn_file_actions *file_actions, linted_ko newko)
+    struct linted_spawn_file_actions *file_actions, linted_ko newko)
 {
 	file_actions->new_stderr = newko;
 	file_actions->set_stderr = true;
@@ -192,31 +197,17 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		err_writer = err_writer_copy;
 	}
 
-	char *relative_binary_path = 0;
-	char const *real_binary_path = binary;
-	linted_ko dirko_copy = LINTED_KO_CWD;
-	if (binary[0U] != '/' && dirko != LINTED_KO_CWD) {
-		if (file_actions != NULL) {
-			int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
-			if (-1 == fd) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_err_pipes;
-			}
-			dirko_copy = fd;
+	linted_ko dirko_copy;
+	if (LINTED_KO_CWD == dirko) {
+		dirko_copy = LINTED_KO_CWD;
+	} else {
+		int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
+		if (-1 == fd) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto close_err_pipes;
 		}
-
-		{
-			char *xx;
-			if (asprintf(&xx, "/proc/self/fd/%i/%s", dirko_copy,
-			             binary) < 0) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_dirko_copy;
-			}
-			relative_binary_path = xx;
-		}
-		real_binary_path = relative_binary_path;
+		dirko_copy = fd;
 	}
 
 	pid_t child;
@@ -229,14 +220,15 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 
 		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
 		if (errnum != 0)
-			goto free_relative_binary_path;
+			goto close_dirko_copy;
 
 		struct fork_args fork_args = {.sigset = child_mask,
 		                              .file_actions = file_actions,
 		                              .err_writer = err_writer,
 		                              .argv = argv,
 		                              .envp = envp,
-		                              .binary = real_binary_path};
+		                              .dirko = dirko_copy,
+		                              .binary = binary};
 		child = safe_vfork(fork_routine, &fork_args);
 		if (-1 == child) {
 			errnum = errno;
@@ -248,9 +240,6 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		if (0 == errnum)
 			errnum = mask_errnum;
 	}
-
-free_relative_binary_path:
-	linted_mem_free(relative_binary_path);
 
 close_dirko_copy:
 	if (dirko_copy != LINTED_KO_CWD)
@@ -304,6 +293,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	linted_ko err_writer = args->err_writer;
 	char const *const *argv = args->argv;
 	char const *const *envp = args->envp;
+	linted_ko dirko = args->dirko;
 	char const *binary = args->binary;
 
 	linted_error errnum = 0;
@@ -340,7 +330,6 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);
 	if (errnum != 0)
 		goto fail;
-
 
 	linted_ko new_stdin;
 	linted_ko new_stdout;
@@ -382,7 +371,8 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 			goto fail;
 	}
 
-	execve(binary, (char *const *)argv, (char *const *)envp);
+	syscall(__NR_execveat, LINTED_KO_CWD == dirko ? AT_FDCWD : (int)dirko,
+	        binary, (char *const *)argv, (char *const *)envp, 0);
 	errnum = errno;
 
 fail : {
@@ -410,7 +400,6 @@ static linted_error duplicate_to(linted_ko new, linted_ko old)
 
 	return 0;
 }
-
 
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.

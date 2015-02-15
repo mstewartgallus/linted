@@ -1303,7 +1303,7 @@ envvar_allocate_succeeded:
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
-					LINTED_KO_RDWR);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0)
 			goto destroy_file_actions;
 		null = xx;
@@ -1316,7 +1316,7 @@ envvar_allocate_succeeded:
 	errnum = linted_spawn(0, cwd, sandbox, file_actions, 0, args,
 	                      (char const *const *)envvars);
 
-/* Let the child be leaked, we'll get the wait later */
+	/* Let the child be leaked, we'll get the wait later */
 
 	linted_ko_close(null);
 
