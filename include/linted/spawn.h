@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 
-#include <signal.h>
+#include <sys/types.h>
 
 /**
  * @file
@@ -33,8 +33,6 @@ struct linted_spawn_attr;
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp);
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
-                               sigset_t const *set);
 void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr, _Bool v);
 
 linted_error linted_spawn_file_actions_init(

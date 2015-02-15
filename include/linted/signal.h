@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,7 @@
 
 #include "linted/error.h"
 
-#if _POSIX_C_SOURCE >= 199309L
-#include <signal.h>
-#endif
+#include <stddef.h>
 
 /**
  * @file
@@ -31,28 +29,31 @@
 struct linted_asynch_pool;
 struct linted_asynch_task;
 
-struct linted_signal_task_sigwaitinfo;
+struct linted_signal_task_wait;
 
-linted_error linted_signal_task_sigwaitinfo_create(
-    struct linted_signal_task_sigwaitinfo **taskp, void *data);
-void linted_signal_task_sigwaitinfo_destroy(
-    struct linted_signal_task_sigwaitinfo *task);
+linted_error
+linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
+                               void *data);
+void linted_signal_task_wait_destroy(struct linted_signal_task_wait *task);
 
-#if _POSIX_C_SOURCE >= 199309L
-void linted_signal_task_sigwaitinfo_prepare(
-    struct linted_signal_task_sigwaitinfo *task, unsigned task_action,
-    sigset_t const *set);
-#endif
-void *linted_signal_task_sigwaitinfo_data(
-    struct linted_signal_task_sigwaitinfo *task);
-int linted_signal_task_sigwaitinfo_signo(
-    struct linted_signal_task_sigwaitinfo *task);
-struct linted_asynch_task *linted_signal_task_sigwaitinfo_to_asynch(
-    struct linted_signal_task_sigwaitinfo *task);
-struct linted_signal_task_sigwaitinfo *
-linted_signal_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task);
+void linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
+                                     unsigned task_action);
 
-void linted_signal_do_sigwaitinfo(struct linted_asynch_pool *pool,
-                                  struct linted_asynch_task *task);
+void *linted_signal_task_wait_data(struct linted_signal_task_wait *task);
+int linted_signal_task_wait_signo(struct linted_signal_task_wait *task);
+struct linted_asynch_task *
+linted_signal_task_wait_to_asynch(struct linted_signal_task_wait *task);
+struct linted_signal_task_wait *
+linted_signal_task_wait_from_asynch(struct linted_asynch_task *task);
+
+void linted_signal_do_wait(struct linted_asynch_pool *pool,
+                           struct linted_asynch_task *task);
+
+linted_error linted_signal_listen_to_sighup(void);
+linted_error linted_signal_listen_to_sigint(void);
+linted_error linted_signal_listen_to_sigquit(void);
+linted_error linted_signal_listen_to_sigterm(void);
+
+char const *linted_signal_string(int signo);
 
 #endif /* LINTED_SIGNAL_H */

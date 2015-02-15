@@ -13,31 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _POSIX_C_SOURCE 199309L
+#define _GNU_SOURCE
 
 #include "linted/signal.h"
 
 #include "linted/asynch.h"
+#include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdbool.h>
 #include <signal.h>
+#include <sys/poll.h>
+#include <unistd.h>
 
-struct linted_signal_task_sigwaitinfo
+static linted_ko sighup_pipe_reader = (linted_ko)-1;
+static linted_ko sighup_pipe_writer = (linted_ko)-1;
+
+static linted_ko sigint_pipe_reader = (linted_ko)-1;
+static linted_ko sigint_pipe_writer = (linted_ko)-1;
+
+static linted_ko sigterm_pipe_reader = (linted_ko)-1;
+static linted_ko sigterm_pipe_writer = (linted_ko)-1;
+
+static linted_ko sigquit_pipe_reader = (linted_ko)-1;
+static linted_ko sigquit_pipe_writer = (linted_ko)-1;
+
+struct linted_signal_task_wait
 {
 	struct linted_asynch_task *parent;
 	void *data;
-	siginfo_t info;
-	sigset_t set;
 	int signo;
 };
 
-linted_error linted_signal_task_sigwaitinfo_create(
-    struct linted_signal_task_sigwaitinfo **taskp, void *data)
+static void report_signo(int signo);
+
+linted_error
+linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
+                               void *data)
 {
 	linted_error errnum;
-	struct linted_signal_task_sigwaitinfo *task;
+	struct linted_signal_task_wait *task;
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *task);
@@ -49,7 +68,7 @@ linted_error linted_signal_task_sigwaitinfo_create(
 	{
 		struct linted_asynch_task *xx;
 		errnum = linted_asynch_task_create(
-		    &xx, task, LINTED_ASYNCH_TASK_SIGWAITINFO);
+		    &xx, task, LINTED_ASYNCH_TASK_SIGNAL_WAIT);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -63,64 +82,204 @@ free_task:
 	return errnum;
 }
 
-void linted_signal_task_sigwaitinfo_destroy(
-    struct linted_signal_task_sigwaitinfo *task)
+void linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
 {
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *
-linted_signal_task_sigwaitinfo_data(struct linted_signal_task_sigwaitinfo *task)
+void *linted_signal_task_wait_data(struct linted_signal_task_wait *task)
 {
 	return task->data;
 }
 
-int linted_signal_task_sigwaitinfo_signo(
-    struct linted_signal_task_sigwaitinfo *task)
+int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 {
 	return task->signo;
 }
 
-void linted_signal_task_sigwaitinfo_prepare(
-    struct linted_signal_task_sigwaitinfo *task, unsigned task_action,
-    sigset_t const *set)
+void linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
+                                     unsigned task_action)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
-	task->set = *set;
 }
 
-struct linted_asynch_task *linted_signal_task_sigwaitinfo_to_asynch(
-    struct linted_signal_task_sigwaitinfo *task)
+struct linted_asynch_task *
+linted_signal_task_wait_to_asynch(struct linted_signal_task_wait *task)
 {
 	return task->parent;
 }
 
-struct linted_signal_task_sigwaitinfo *
-linted_signal_task_sigwaitinfo_from_asynch(struct linted_asynch_task *task)
+struct linted_signal_task_wait *
+linted_signal_task_wait_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_asynch_task_data(task);
 }
 
-void linted_signal_do_sigwaitinfo(struct linted_asynch_pool *pool,
-                                  struct linted_asynch_task *task)
+void linted_signal_do_wait(struct linted_asynch_pool *pool,
+                           struct linted_asynch_task *task)
 {
-	struct linted_signal_task_sigwaitinfo *task_wait =
+	struct linted_signal_task_wait *task_wait =
 	    linted_asynch_task_data(task);
 	linted_error errnum = 0;
 
-	int signo = sigwaitinfo(&task_wait->set, &task_wait->info);
-	if (-1 == signo) {
+	struct pollfd pollfds[] = {
+	    {.fd = sighup_pipe_reader, .events = POLLIN},
+	    {.fd = sigint_pipe_reader, .events = POLLIN},
+	    {.fd = sigquit_pipe_reader, .events = POLLIN},
+	    {.fd = sigterm_pipe_reader, .events = POLLIN}};
+
+	int results = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
+	if (-1 == results) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}
 
-	if (EINTR == errnum) {
-		linted_asynch_pool_resubmit(pool, task);
-		return;
+	if (EINTR == errnum)
+		goto resubmit;
+
+	if (errnum != 0)
+		goto complete;
+
+	int signo = -1;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pollfds); ++ii) {
+		static int const signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
+
+		int maybe_signo = signals[ii];
+
+		char dummy;
+		if ((pollfds[ii].revents & POLLIN) != 0) {
+			if (0 == linted_io_read_all(pollfds[ii].fd, 0, &dummy,
+			                            sizeof dummy)) {
+				signo = maybe_signo;
+				break;
+			}
+		}
 	}
+
+	if (-1 == signo)
+		goto resubmit;
 
 	task_wait->signo = signo;
 
+complete:
 	linted_asynch_pool_complete(pool, task, errnum);
+	return;
+
+resubmit:
+	linted_asynch_pool_resubmit(pool, task);
+}
+
+char const *linted_signal_string(int signo)
+{
+	extern const char *const sys_siglist[];
+
+	if (signo < 1)
+		return 0;
+
+	if (signo >= NSIG)
+		return 0;
+
+	return sys_siglist[signo];
+}
+
+static linted_error listen_to_signal(int signo);
+
+linted_error linted_signal_listen_to_sighup(void)
+{
+	return listen_to_signal(SIGHUP);
+}
+
+linted_error linted_signal_listen_to_sigint(void)
+{
+	return listen_to_signal(SIGINT);
+}
+
+linted_error linted_signal_listen_to_sigquit(void)
+{
+	return listen_to_signal(SIGQUIT);
+}
+
+linted_error linted_signal_listen_to_sigterm(void)
+{
+	return listen_to_signal(SIGTERM);
+}
+
+static linted_error listen_to_signal(int signo)
+{
+	linted_error errnum;
+
+	{
+		int xx[2U];
+		if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		switch (signo) {
+		case SIGHUP:
+			sighup_pipe_reader = xx[0U];
+			sighup_pipe_writer = xx[1U];
+			break;
+
+		case SIGINT:
+			sigint_pipe_reader = xx[0U];
+			sigint_pipe_writer = xx[1U];
+			break;
+
+		case SIGQUIT:
+			sigquit_pipe_reader = xx[0U];
+			sigquit_pipe_writer = xx[1U];
+			break;
+
+		case SIGTERM:
+			sigterm_pipe_reader = xx[0U];
+			sigterm_pipe_writer = xx[1U];
+			break;
+		}
+	}
+
+	struct sigaction act = {0};
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = report_signo;
+	act.sa_flags = SA_RESTART;
+	if (-1 == sigaction(signo, &act, 0)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		assert(false);
+	}
+
+	return 0;
+}
+
+static void report_signo(int signo)
+{
+	linted_error errnum = errno;
+
+	linted_ko pipe;
+	switch (signo) {
+	case SIGHUP:
+		pipe = sighup_pipe_writer;
+		break;
+
+	case SIGINT:
+		pipe = sigint_pipe_writer;
+		break;
+
+	case SIGQUIT:
+		pipe = sigquit_pipe_writer;
+		break;
+
+	case SIGTERM:
+		pipe = sigterm_pipe_writer;
+		break;
+
+	default:
+		assert(false);
+	}
+
+	static char const dummy;
+	(void)write(pipe, &dummy, sizeof dummy);
+
+	errno = errnum;
 }

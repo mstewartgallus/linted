@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 
-#include <signal.h>
 #include <stddef.h>
 
 /**
@@ -69,7 +68,6 @@ struct linted_unit_socket
 	_Bool is_open : 1U;
 };
 
-#if defined _POSIX_C_SOURCE && _POSIX_C_SOURCE >= 1
 struct linted_unit_service
 {
 	struct linted_unit common;
@@ -79,7 +77,6 @@ struct linted_unit_service
 	char const *chdir_path;
 	char const *const *env_whitelist;
 
-	sigset_t const *sigmask;
 	char const *sandbox;
 	char const *waiter;
 
@@ -92,6 +89,5 @@ struct linted_unit_service
 
 	_Bool no_new_privs : 1U;
 };
-#endif
 
 #endif /* LINTED_UNIT_H */

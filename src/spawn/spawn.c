@@ -54,7 +54,7 @@ struct linted_spawn_file_actions
 
 struct linted_spawn_attr
 {
-	sigset_t const *mask;
+	char dummy;
 };
 
 struct fork_args
@@ -84,8 +84,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 		attr = xx;
 	}
 
-	attr->mask = 0;
-
 	*attrp = attr;
 	return 0;
 }
@@ -93,12 +91,6 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
 	linted_mem_free(attr);
-}
-
-void linted_spawn_attr_setmask(struct linted_spawn_attr *attr,
-                               sigset_t const *set)
-{
-	attr->mask = set;
 }
 
 linted_error
@@ -176,10 +168,6 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		return EBADF;
 
 	sigset_t const *child_mask = 0;
-
-	if (attr != 0) {
-		child_mask = attr->mask;
-	}
 
 	linted_ko err_reader;
 	linted_ko err_writer;

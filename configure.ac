@@ -100,7 +100,7 @@ dnl
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])
         LINTED_CHECK_LIB([D3D11_LIBS], [d3dx11_43], [D3D11CreateDevice], [#include <d3d11.h>], [], [
-                AC_MSG_ERROR([Unable to find a DirectX 11 library])
+                AC_MSG_WARN([Unable to find a DirectX 11 library])
         ])
 dnl
 ])

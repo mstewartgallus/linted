@@ -669,7 +669,7 @@ static DWORD WINAPI worker_routine(void *arg)
 #pragma weak linted_io_do_read
 #pragma weak linted_io_do_write
 #pragma weak linted_pid_do_waitid
-#pragma weak linted_signal_do_sigwaitinfo
+#pragma weak linted_signal_do_wait
 #pragma weak linted_sched_do_sleep_until
 #pragma weak linted_io_do_accept
 #pragma weak linted_io_do_recv
@@ -699,8 +699,8 @@ static void run_task(struct linted_asynch_pool *pool,
 		linted_pid_do_waitid(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_SIGWAITINFO:
-		linted_signal_do_sigwaitinfo(pool, task);
+	case LINTED_ASYNCH_TASK_SIGNAL_WAIT:
+		linted_signal_do_wait(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
