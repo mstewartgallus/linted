@@ -49,7 +49,10 @@ struct linted_signal_task_wait
 	int signo;
 };
 
-static void report_signo(int signo);
+static void report_sighup(int signo);
+static void report_sigint(int signo);
+static void report_sigquit(int signo);
+static void report_sigterm(int signo);
 
 linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
@@ -209,6 +212,8 @@ static linted_error listen_to_signal(int signo)
 {
 	linted_error errnum;
 
+	linted_ko reader;
+	linted_ko writer;
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
@@ -216,32 +221,43 @@ static linted_error listen_to_signal(int signo)
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
 		}
-		switch (signo) {
-		case SIGHUP:
-			sighup_pipe_reader = xx[0U];
-			sighup_pipe_writer = xx[1U];
-			break;
+		reader = xx[0U];
+		writer = xx[1U];
+	}
 
-		case SIGINT:
-			sigint_pipe_reader = xx[0U];
-			sigint_pipe_writer = xx[1U];
-			break;
+	void (*handler)(int);
+	switch (signo) {
+	case SIGHUP:
+		sighup_pipe_reader = reader;
+		sighup_pipe_writer = writer;
+		handler = report_sighup;
+		break;
 
-		case SIGQUIT:
-			sigquit_pipe_reader = xx[0U];
-			sigquit_pipe_writer = xx[1U];
-			break;
+	case SIGINT:
+		sigint_pipe_reader = reader;
+		sigint_pipe_writer = writer;
+		handler = report_sigint;
+		break;
 
-		case SIGTERM:
-			sigterm_pipe_reader = xx[0U];
-			sigterm_pipe_writer = xx[1U];
-			break;
-		}
+	case SIGQUIT:
+		sigquit_pipe_reader = reader;
+		sigquit_pipe_writer = writer;
+		handler = report_sigquit;
+		break;
+
+	case SIGTERM:
+		sigterm_pipe_reader = reader;
+		sigterm_pipe_writer = writer;
+		handler = report_sigterm;
+		break;
+
+	default:
+		assert(false);
 	}
 
 	struct sigaction act = {0};
 	sigemptyset(&act.sa_mask);
-	act.sa_handler = report_signo;
+	act.sa_handler = handler;
 	act.sa_flags = SA_RESTART;
 	if (-1 == sigaction(signo, &act, 0)) {
 		errnum = errno;
@@ -252,34 +268,32 @@ static linted_error listen_to_signal(int signo)
 	return 0;
 }
 
-static void report_signo(int signo)
+static char const dummy;
+
+static void report_sighup(int signo)
 {
 	linted_error errnum = errno;
+	(void)write(sighup_pipe_writer, &dummy, sizeof dummy);
+	errno = errnum;
+}
 
-	linted_ko pipe;
-	switch (signo) {
-	case SIGHUP:
-		pipe = sighup_pipe_writer;
-		break;
+static void report_sigint(int signo)
+{
+	linted_error errnum = errno;
+	(void)write(sigint_pipe_writer, &dummy, sizeof dummy);
+	errno = errnum;
+}
 
-	case SIGINT:
-		pipe = sigint_pipe_writer;
-		break;
+static void report_sigquit(int signo)
+{
+	linted_error errnum = errno;
+	(void)write(sigquit_pipe_writer, &dummy, sizeof dummy);
+	errno = errnum;
+}
 
-	case SIGQUIT:
-		pipe = sigquit_pipe_writer;
-		break;
-
-	case SIGTERM:
-		pipe = sigterm_pipe_writer;
-		break;
-
-	default:
-		assert(false);
-	}
-
-	static char const dummy;
-	(void)write(pipe, &dummy, sizeof dummy);
-
+static void report_sigterm(int signo)
+{
+	linted_error errnum = errno;
+	(void)write(sigterm_pipe_writer, &dummy, sizeof dummy);
 	errno = errnum;
 }
