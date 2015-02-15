@@ -261,7 +261,7 @@ poll_for_writeability:
 	short revents;
 	{
 		short xx;
-		errnum = poll_one(ko, POLLIN, &xx);
+		errnum = poll_one(ko, POLLOUT, &xx);
 		if (EINTR == errnum)
 			goto poll_for_writeability;
 		if (errnum != 0)
