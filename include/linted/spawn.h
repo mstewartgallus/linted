@@ -33,8 +33,6 @@ struct linted_spawn_attr;
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp);
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr);
 
-void linted_spawn_attr_setptrace(struct linted_spawn_attr *attr, _Bool v);
-
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp);
 void linted_spawn_file_actions_destroy(
