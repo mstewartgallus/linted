@@ -19,6 +19,7 @@
 #include "linted/error.h"
 
 #include <stddef.h>
+#include <sys/types.h>
 
 /**
  * @file
@@ -53,6 +54,10 @@ struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
                                             size_t ii);
 struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
                                                     char const *name);
+
+linted_error linted_unit_name(pid_t pid,
+                              char name[static LINTED_UNIT_NAME_MAX + 1U]);
+linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid, char const *name);
 
 struct linted_unit
 {

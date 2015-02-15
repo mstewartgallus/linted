@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,3 +17,6 @@
 
 noinst_LTLIBRARIES+=%D%/libunit.la
 %C%_libunit_la_SOURCES=%D%/unit.c include/linted/unit.h
+%C%_libunit_la_LIBADD=\
+  src/ko/libko.la\
+  src/pid/libpid.la

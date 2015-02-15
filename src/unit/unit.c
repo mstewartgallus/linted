@@ -17,10 +17,16 @@
 
 #include "config.h"
 
+#include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/pid.h"
 #include "linted/unit.h"
+#include "linted/util.h"
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 union unit_union
@@ -116,6 +122,151 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *units, char const *name)
 		if (0 == strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
 			return unit;
 	}
+
+	return 0;
+}
+
+linted_error linted_unit_name(pid_t pid,
+                              char name[static LINTED_UNIT_NAME_MAX + 1U])
+{
+	linted_error errnum;
+
+	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
+
+	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/environ" - 1U + 1U];
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ", (uintmax_t)pid)) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+		return errnum;
+	}
+
+	linted_ko ko;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		if (ENOENT == errnum)
+			return ESRCH;
+		if (errnum != 0)
+			return errnum;
+		ko = xx;
+	}
+
+	FILE *file = fdopen(ko, "r");
+	if (0 == file) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(ko);
+
+		return errnum;
+	}
+
+	/* Get the buffer all at once to avoid raciness. */
+	char *buf = 0;
+	bool eof = false;
+	ssize_t zz;
+	{
+		char *xx = buf;
+		size_t yy = 0U;
+
+		errno = 0;
+		zz = getline(&xx, &yy, file);
+		buf = xx;
+	}
+
+	if (-1 == zz) {
+		errnum = errno;
+		/* May be zero */
+		eof = true;
+	}
+
+	if (EOF == fclose(file)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
+	if (errnum != 0)
+		goto free_buf;
+
+	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
+
+	if (eof)
+		goto free_buf;
+
+	char *iter = buf;
+	for (;;) {
+		if (0 == strncmp("LINTED_SERVICE=", iter,
+		                 strlen("LINTED_SERVICE="))) {
+			strncpy(name, iter + strlen("LINTED_SERVICE="),
+			        LINTED_UNIT_NAME_MAX);
+			break;
+		}
+		iter = strchr(iter, '\0');
+		if (0 == iter) {
+			errnum = EINVAL;
+			break;
+		}
+		++iter;
+		if ('\0' == *iter)
+			break;
+		if ('\n' == *iter)
+			break;
+	}
+
+free_buf:
+	linted_mem_free(buf);
+
+	return errnum;
+}
+
+linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid, char const *name)
+{
+	linted_error errnum = 0;
+
+	pid_t *children;
+	size_t len;
+	{
+		pid_t *xx;
+		size_t yy;
+		errnum = linted_pid_children(manager_pid, &xx, &yy);
+		if (errnum != 0)
+			return errnum;
+		children = xx;
+		len = yy;
+	}
+	if (0U == len)
+		return ESRCH;
+
+	pid_t pid = -1;
+	for (size_t ii = 0U; ii < len; ++ii) {
+		pid_t child = children[ii];
+
+		char other_name[LINTED_UNIT_NAME_MAX + 1U];
+		errnum = linted_unit_name(child, other_name);
+		if (errnum != 0)
+			goto free_buf;
+
+		if (0 == strcmp(name, other_name)) {
+			pid = child;
+			break;
+		}
+	}
+
+free_buf:
+	linted_mem_free(children);
+
+	if (errnum != 0)
+		return errnum;
+
+	if (-1 == pid)
+		return ESRCH;
+
+	if (pidp != 0)
+		*pidp = pid;
 
 	return 0;
 }
