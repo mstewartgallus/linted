@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,8 +49,12 @@ union file_action
 
 struct linted_spawn_file_actions
 {
-	size_t action_count;
-	union file_action actions[];
+	linted_ko new_stdin;
+	linted_ko new_stdout;
+	linted_ko new_stderr;
+	bool set_stdin : 1U;
+	bool set_stdout : 1U;
+	bool set_stderr : 1U;
 };
 
 struct linted_spawn_attr
@@ -70,6 +75,8 @@ struct fork_args
 static int fork_routine(void *args);
 
 static pid_t safe_vfork(int (*f)(void *), void *args);
+
+static linted_error duplicate_to(linted_ko new, linted_ko old);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
@@ -107,48 +114,33 @@ linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
 		file_actions = xx;
 	}
 
-	file_actions->action_count = 0U;
+	file_actions->set_stdin = false;
+	file_actions->set_stdout = false;
+	file_actions->set_stderr = false;
 
 	*file_actionsp = file_actions;
 	return 0;
 }
 
-linted_error linted_spawn_file_actions_adddup2(
-    struct linted_spawn_file_actions **file_actionsp, linted_ko oldfildes,
-    linted_ko newfildes)
+void linted_spawn_file_actions_set_stdin(
+	struct linted_spawn_file_actions *file_actions, linted_ko newko)
 {
-	linted_error errnum;
-	struct linted_spawn_file_actions *file_actions;
-	struct linted_spawn_file_actions *new_file_actions;
-	union file_action *new_action;
-	size_t old_count;
-	size_t new_count;
+	file_actions->new_stdin = newko;
+	file_actions->set_stdin = true;
+}
 
-	file_actions = *file_actionsp;
+void linted_spawn_file_actions_set_stdout(
+	struct linted_spawn_file_actions *file_actions, linted_ko newko)
+{
+	file_actions->new_stdout = newko;
+	file_actions->set_stdout = true;
+}
 
-	old_count = file_actions->action_count;
-	new_count = old_count + 1U;
-
-	size_t new_size =
-	    sizeof *file_actions + new_count * sizeof file_actions->actions[0U];
-	{
-		void *xx;
-		errnum = linted_mem_realloc(&xx, file_actions, new_size);
-		if (errnum != 0)
-			return errnum;
-		new_file_actions = xx;
-	}
-
-	new_file_actions->action_count = new_count;
-
-	new_action = &new_file_actions->actions[old_count];
-
-	new_action->adddup2.oldfildes = oldfildes;
-	new_action->adddup2.newfildes = newfildes;
-
-	*file_actionsp = new_file_actions;
-
-	return 0;
+void linted_spawn_file_actions_set_stderr(
+	struct linted_spawn_file_actions *file_actions, linted_ko newko)
+{
+	file_actions->new_stderr = newko;
+	file_actions->set_stderr = true;
 }
 
 void linted_spawn_file_actions_destroy(
@@ -182,19 +174,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		err_writer = xx[1U];
 	}
 
-	int greatest = -1;
-	if (file_actions != 0) {
-		union file_action const *actions = file_actions->actions;
-		size_t action_count = file_actions->action_count;
-		for (size_t ii = 0U; ii < action_count; ++ii) {
-			union file_action const *action = &actions[ii];
-
-			int newfildes = action->adddup2.newfildes;
-
-			if (newfildes > greatest)
-				greatest = newfildes;
-		}
-	}
+	/* Greater than standard input, standard output and standard error */
+	int greatest = 4;
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != 0) {
@@ -360,31 +341,45 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	if (errnum != 0)
 		goto fail;
 
+
+	linted_ko new_stdin;
+	linted_ko new_stdout;
+	linted_ko new_stderr;
+	bool set_stdin = false;
+	bool set_stdout = false;
+	bool set_stderr = false;
+
 	if (file_actions != 0) {
-		union file_action const *actions = file_actions->actions;
-		size_t action_count = file_actions->action_count;
-		for (size_t ii = 0U; ii < action_count; ++ii) {
-			union file_action const *action = &actions[ii];
+		set_stdin = file_actions->set_stdin;
+		set_stdout = file_actions->set_stderr;
+		set_stderr = file_actions->set_stdout;
 
-			linted_ko oldfd = action->adddup2.oldfildes;
-			linted_ko newfd = action->adddup2.newfildes;
+		if (set_stdin)
+			new_stdin = file_actions->new_stdin;
 
-			int flags = fcntl(oldfd, F_GETFD);
-			if (-1 == flags) {
-				errnum = errno;
-				goto fail;
-			}
+		if (set_stdout)
+			new_stdout = file_actions->new_stdout;
 
-			if (-1 == dup2(oldfd, newfd)) {
-				errnum = errno;
-				goto fail;
-			}
+		if (set_stderr)
+			new_stderr = file_actions->new_stderr;
+	}
 
-			if (-1 == fcntl(newfd, F_SETFD, flags & ~FD_CLOEXEC)) {
-				errnum = errno;
-				goto fail;
-			}
-		}
+	if (set_stdin) {
+		errnum = duplicate_to(new_stdin, STDIN_FILENO);
+		if (errnum != 0)
+			goto fail;
+	}
+
+	if (set_stdout) {
+		errnum = duplicate_to(new_stdout, STDOUT_FILENO);
+		if (errnum != 0)
+			goto fail;
+	}
+
+	if (set_stderr) {
+		errnum = duplicate_to(new_stderr, STDERR_FILENO);
+		if (errnum != 0)
+			goto fail;
 	}
 
 	execve(binary, (char *const *)argv, (char *const *)envp);
@@ -397,6 +392,25 @@ fail : {
 
 	return EXIT_FAILURE;
 }
+
+LINTED_NO_SANITIZE_ADDRESS
+static linted_error duplicate_to(linted_ko new, linted_ko old)
+{
+	if (new == old) {
+		int flags = fcntl(old, F_GETFD);
+		if (-1 == flags)
+			return errno;
+
+		if (-1 == fcntl(new, F_SETFD, flags & ~FD_CLOEXEC))
+			return errno;
+	} else {
+		if (-1 == dup2(new, old))
+			return errno;
+	}
+
+	return 0;
+}
+
 
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.

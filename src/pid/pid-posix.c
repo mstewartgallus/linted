@@ -135,12 +135,14 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 	linted_asynch_pool_complete(pool, task, errnum);
 }
 
-linted_error linted_pid_request_terminate(pid_t pid)
+linted_error linted_pid_kill(pid_t pid, int signo)
 {
 	if (pid < 1)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
+	if (signo < 1)
+		return LINTED_ERROR_INVALID_PARAMETER;
 
-	if (-1 == kill(pid, SIGTERM)) {
+	if (-1 == kill(pid, signo)) {
 		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -152,7 +154,7 @@ linted_error linted_pid_request_terminate(pid_t pid)
 linted_error linted_pid_terminate(pid_t pid)
 {
 	if (pid < 1)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (-1 == kill(pid, SIGKILL)) {
 		linted_error errnum = errno;

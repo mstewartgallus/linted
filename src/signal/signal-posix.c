@@ -273,27 +273,27 @@ static char const dummy;
 static void report_sighup(int signo)
 {
 	linted_error errnum = errno;
-	(void)write(sighup_pipe_writer, &dummy, sizeof dummy);
+	linted_io_write_all(sighup_pipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigint(int signo)
 {
 	linted_error errnum = errno;
-	(void)write(sigint_pipe_writer, &dummy, sizeof dummy);
+	linted_io_write_all(sigint_pipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigquit(int signo)
 {
 	linted_error errnum = errno;
-	(void)write(sigquit_pipe_writer, &dummy, sizeof dummy);
+	linted_io_write_all(sigquit_pipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigterm(int signo)
 {
 	linted_error errnum = errno;
-	(void)write(sigterm_pipe_writer, &dummy, sizeof dummy);
+	linted_io_write_all(sigterm_pipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }

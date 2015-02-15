@@ -107,7 +107,7 @@ linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task);
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
 
-linted_error linted_pid_request_terminate(pid_t pid);
+linted_error linted_pid_kill(pid_t pid, int signo);
 linted_error linted_pid_terminate(pid_t pid);
 linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf);
 linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);

@@ -1103,7 +1103,8 @@ static linted_error service_activate(char const *process_name,
 		child = xx;
 	}
 
-	fprintf(stderr, "%s: ptracing %i %s\n", process_name, child, name);
+	fprintf(stderr, "%s: ptracing %" PRIiMAX " %s\n", process_name,
+	        (intmax_t)child, name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1298,50 +1299,26 @@ envvar_allocate_succeeded:
 		file_actions = xx;
 	}
 
-	linted_ko *proc_kos = 0;
-	size_t kos_opened = 0U;
-
+	linted_ko null;
 	{
-		void *xx;
-		errnum = linted_mem_alloc_array(&xx, 3U, sizeof proc_kos[0U]);
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
+					LINTED_KO_RDWR);
 		if (errnum != 0)
 			goto destroy_file_actions;
-		proc_kos = xx;
+		null = xx;
 	}
 
-	for (size_t ii = 0U; ii < 3U; ++ii) {
-		linted_ko null;
-		{
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
-			                        LINTED_KO_RDWR);
-			if (errnum != 0)
-				goto destroy_proc_kos;
-			null = xx;
-		}
-
-		size_t old_kos_opened = kos_opened;
-		kos_opened = old_kos_opened + 1U;
-
-		proc_kos[old_kos_opened] = null;
-
-		errnum = linted_spawn_file_actions_adddup2(&file_actions, null,
-		                                           old_kos_opened);
-		if (errnum != 0)
-			goto destroy_proc_kos;
-	}
+	linted_spawn_file_actions_set_stdin(file_actions, null);
+	linted_spawn_file_actions_set_stdout(file_actions, null);
+	linted_spawn_file_actions_set_stderr(file_actions, null);
 
 	errnum = linted_spawn(0, cwd, sandbox, file_actions, 0, args,
 	                      (char const *const *)envvars);
-	if (errnum != 0)
-		goto destroy_proc_kos;
 
 /* Let the child be leaked, we'll get the wait later */
 
-destroy_proc_kos:
-	for (size_t jj = 0; jj < kos_opened; ++jj)
-		linted_ko_close(proc_kos[jj]);
-	linted_mem_free(proc_kos);
+	linted_ko_close(null);
 
 destroy_file_actions:
 	linted_spawn_file_actions_destroy(file_actions);
@@ -1483,14 +1460,11 @@ static linted_error on_signal(struct linted_asynch_task *task)
 			}
 			pid = xx;
 		}
-		if (-1 == kill(pid, signo)) {
-			linted_error kill_errnum = errno;
-			LINTED_ASSUME(kill_errnum != 0);
-			if (kill_errnum != ESRCH) {
-				assert(kill_errnum != EINVAL);
-				assert(kill_errnum != EPERM);
-				assert(0 == errnum);
-			}
+		linted_error kill_errnum = linted_pid_kill(pid, signo);
+		if (kill_errnum != ESRCH) {
+			assert(kill_errnum != EINVAL);
+			assert(kill_errnum != EPERM);
+			assert(0 == errnum);
 		}
 	}
 
@@ -1612,7 +1586,7 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 			}
 			pid = xx;
 		}
-		linted_error kill_errnum = linted_pid_request_terminate(pid);
+		linted_error kill_errnum = linted_pid_kill(pid, SIGTERM);
 		if (kill_errnum != ESRCH) {
 			assert(kill_errnum != EINVAL);
 			assert(kill_errnum != EPERM);
@@ -1685,8 +1659,8 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 		if (errnum != 0)
 			return errnum;
 
-		fprintf(stderr, "%s: ptracing %" PRIuMAX " %s\n", process_name,
-		        (uintmax_t)pid, name);
+		fprintf(stderr, "%s: ptracing %" PRIiMAX " %s\n", process_name,
+		        (intmax_t)pid, name);
 
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
