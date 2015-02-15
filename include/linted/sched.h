@@ -24,6 +24,8 @@
  * Task scheduling.
  */
 
+typedef int linted_sched_priority;
+
 struct linted_asynch_pool;
 struct linted_asynch_task;
 
@@ -31,6 +33,8 @@ struct linted_sched_task_idle;
 struct linted_sched_task_sleep_until;
 
 struct timespec;
+
+linted_error linted_sched_getpriority(linted_sched_priority *priorityp);
 
 linted_error linted_sched_time(struct timespec *data);
 

@@ -24,6 +24,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -33,6 +34,20 @@ struct linted_sched_task_sleep_until
 	void *data;
 	struct timespec request;
 };
+
+linted_error linted_sched_getpriority(linted_sched_priority *priorityp)
+{
+	errno = 0;
+	int priority = getpriority(PRIO_PROCESS, 0);
+	if (-1 == priority) {
+		linted_error errnum = errno;
+		if (errnum != 0)
+			return errnum;
+	}
+
+	*priorityp = priority;
+	return 0;
+}
 
 linted_error linted_sched_time(struct timespec *now)
 {

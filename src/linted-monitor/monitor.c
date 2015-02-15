@@ -30,6 +30,7 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
+#include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -53,7 +54,6 @@
 #if defined HAVE_POSIX_API
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
-#include <sys/resource.h>
 #include <sys/wait.h>
 #endif
 
@@ -1152,24 +1152,24 @@ spawn_service:
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	bool drop_caps = true;
-	int priority;
+
+	linted_sched_priority current_priority;
+	{
+		linted_sched_priority xx;
+		errnum = linted_sched_getpriority(&xx);
+		if (errnum != 0)
+			return errnum;
+		current_priority = xx;
+	}
 
 	/* Favor other processes over this process hierarchy.  Only
 	 * superuser may lower priorities so this is not
 	 * stoppable. This also makes the process hierarchy nicer for
 	 * the OOM killer.
 	 */
-	errno = 0;
-	int current_priority = getpriority(PRIO_PROCESS, 0);
-	if (-1 == current_priority) {
-		errnum = errno;
-		if (errnum != 0)
-			return errnum;
-	}
-	priority = current_priority + 1;
-
-	char prio_str[LINTED_NUMBER_TYPE_STRING_SIZE(int)+1U];
-	sprintf(prio_str, "%i", priority);
+	char prio_str[LINTED_NUMBER_TYPE_STRING_SIZE(linted_sched_priority) +
+	              1U];
+	sprintf(prio_str, "%" PRIiMAX, (intmax_t)current_priority + 1);
 
 	char *chrootdir;
 	{
