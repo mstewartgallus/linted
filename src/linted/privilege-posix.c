@@ -21,13 +21,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#ifdef __linux__
+#if defined HAVE_SYS_AUXV_H
 #include <sys/auxv.h>
 #endif
 
-/**
- * @todo Make `getauxval` an autotools check.
- */
 linted_error linted_linted_privilege_check(void)
 {
 	uid_t uid = getuid();
@@ -38,7 +35,7 @@ linted_error linted_linted_privilege_check(void)
 	if (0 == gid)
 		return EPERM;
 
-#ifdef __linux__
+#if defined HAVE_SYS_AUXV_H && defined HAVE_GETAUXVAL && defined AT_SECURE
 	if (getauxval(AT_SECURE))
 		return EPERM;
 #endif

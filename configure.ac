@@ -165,6 +165,9 @@ dnl
                 AC_MSG_ERROR([Unable to find function ${ac_func}])
         ])
 dnl
+        AC_CHECK_HEADERS([[sys/auxv.h]])
+        AC_CHECK_FUNCS([[getauxval]])
+dnl
 ])
 dnl
 AM_CONDITIONAL([X11_API], [test "x${enable_x11_api}" = xyes])
