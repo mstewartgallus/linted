@@ -30,17 +30,17 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
-static linted_ko sighup_pipe_reader = (linted_ko)-1;
-static linted_ko sighup_pipe_writer = (linted_ko)-1;
+struct pipeset
+{
+	linted_ko reader;
+	linted_ko writer;
+};
 
-static linted_ko sigint_pipe_reader = (linted_ko)-1;
-static linted_ko sigint_pipe_writer = (linted_ko)-1;
-
-static linted_ko sigterm_pipe_reader = (linted_ko)-1;
-static linted_ko sigterm_pipe_writer = (linted_ko)-1;
-
-static linted_ko sigquit_pipe_reader = (linted_ko)-1;
-static linted_ko sigquit_pipe_writer = (linted_ko)-1;
+enum { LINTED_SIGNAL_HUP,
+       LINTED_SIGNAL_INT,
+       LINTED_SIGNAL_TERM,
+       LINTED_SIGNAL_QUIT,
+       NUM_SIGS };
 
 struct linted_signal_task_wait
 {
@@ -53,6 +53,19 @@ static void report_sighup(int signo);
 static void report_sigint(int signo);
 static void report_sigquit(int signo);
 static void report_sigterm(int signo);
+
+static struct pipeset sigpipes[NUM_SIGS] = {
+    {.reader = (linted_ko)-1, .writer = (linted_ko)-1}};
+
+static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
+                                      [LINTED_SIGNAL_INT] = SIGINT,
+                                      [LINTED_SIGNAL_TERM] = SIGTERM,
+                                      [LINTED_SIGNAL_QUIT] = SIGQUIT};
+
+static void (*const sighandlers[NUM_SIGS])(int) =
+    {[LINTED_SIGNAL_HUP] = report_sighup, [LINTED_SIGNAL_INT] = report_sigint,
+     [LINTED_SIGNAL_TERM] = report_sigterm,
+     [LINTED_SIGNAL_QUIT] = report_sigquit};
 
 linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
@@ -126,11 +139,11 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	    linted_asynch_task_data(task);
 	linted_error errnum = 0;
 
-	struct pollfd pollfds[] = {
-	    {.fd = sighup_pipe_reader, .events = POLLIN},
-	    {.fd = sigint_pipe_reader, .events = POLLIN},
-	    {.fd = sigquit_pipe_reader, .events = POLLIN},
-	    {.fd = sigterm_pipe_reader, .events = POLLIN}};
+	struct pollfd pollfds[NUM_SIGS];
+	for (size_t ii = 0U; ii < NUM_SIGS; ++ii) {
+		pollfds[ii].fd = sigpipes[ii].reader;
+		pollfds[ii].events = POLLIN;
+	}
 
 	int results = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
 	if (-1 == results) {
@@ -146,8 +159,6 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 
 	int signo = -1;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pollfds); ++ii) {
-		static int const signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
-
 		int maybe_signo = signals[ii];
 
 		char dummy;
@@ -186,29 +197,29 @@ char const *linted_signal_string(int signo)
 	return sys_siglist[signo];
 }
 
-static linted_error listen_to_signal(int signo);
+static linted_error listen_to_signal(size_t ii);
 
 linted_error linted_signal_listen_to_sighup(void)
 {
-	return listen_to_signal(SIGHUP);
+	return listen_to_signal(LINTED_SIGNAL_HUP);
 }
 
 linted_error linted_signal_listen_to_sigint(void)
 {
-	return listen_to_signal(SIGINT);
+	return listen_to_signal(LINTED_SIGNAL_INT);
 }
 
 linted_error linted_signal_listen_to_sigquit(void)
 {
-	return listen_to_signal(SIGQUIT);
+	return listen_to_signal(LINTED_SIGNAL_QUIT);
 }
 
 linted_error linted_signal_listen_to_sigterm(void)
 {
-	return listen_to_signal(SIGTERM);
+	return listen_to_signal(LINTED_SIGNAL_TERM);
 }
 
-static linted_error listen_to_signal(int signo)
+static linted_error listen_to_signal(size_t ii)
 {
 	linted_error errnum;
 
@@ -225,35 +236,11 @@ static linted_error listen_to_signal(int signo)
 		writer = xx[1U];
 	}
 
-	void (*handler)(int);
-	switch (signo) {
-	case SIGHUP:
-		sighup_pipe_reader = reader;
-		sighup_pipe_writer = writer;
-		handler = report_sighup;
-		break;
+	sigpipes[ii].reader = reader;
+	sigpipes[ii].writer = writer;
 
-	case SIGINT:
-		sigint_pipe_reader = reader;
-		sigint_pipe_writer = writer;
-		handler = report_sigint;
-		break;
-
-	case SIGQUIT:
-		sigquit_pipe_reader = reader;
-		sigquit_pipe_writer = writer;
-		handler = report_sigquit;
-		break;
-
-	case SIGTERM:
-		sigterm_pipe_reader = reader;
-		sigterm_pipe_writer = writer;
-		handler = report_sigterm;
-		break;
-
-	default:
-		assert(false);
-	}
+	int signo = signals[ii];
+	void (*handler)(int) = sighandlers[ii];
 
 	struct sigaction act = {0};
 	sigemptyset(&act.sa_mask);
@@ -273,27 +260,31 @@ static char const dummy;
 static void report_sighup(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sighup_pipe_writer, 0, &dummy, sizeof dummy);
+	linted_io_write_all(sigpipes[LINTED_SIGNAL_HUP].writer, 0, &dummy,
+	                    sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigint(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigint_pipe_writer, 0, &dummy, sizeof dummy);
-	errno = errnum;
-}
-
-static void report_sigquit(int signo)
-{
-	linted_error errnum = errno;
-	linted_io_write_all(sigquit_pipe_writer, 0, &dummy, sizeof dummy);
+	linted_io_write_all(sigpipes[LINTED_SIGNAL_INT].writer, 0, &dummy,
+	                    sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigterm(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigterm_pipe_writer, 0, &dummy, sizeof dummy);
+	linted_io_write_all(sigpipes[LINTED_SIGNAL_TERM].writer, 0, &dummy,
+	                    sizeof dummy);
+	errno = errnum;
+}
+
+static void report_sigquit(int signo)
+{
+	linted_error errnum = errno;
+	linted_io_write_all(sigpipes[LINTED_SIGNAL_QUIT].writer, 0, &dummy,
+	                    sizeof dummy);
 	errno = errnum;
 }
