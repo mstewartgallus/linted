@@ -31,3 +31,7 @@ EXTRA_%C%_linted_init_SOURCES=\
 if POSIX_API
 %C%_linted_init_LDADD+=src/spawn/libspawn.la
 endif
+
+if WINDOWS_API
+%C%_linted_init_LDADD+=src/utf/libutf.la
+endif

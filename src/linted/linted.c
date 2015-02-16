@@ -39,6 +39,7 @@
 #include "linted/log.h"
 #include "linted/start.h"
 #include "linted/str.h"
+#include "linted/utf.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -212,11 +213,35 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	char *init_base = basename(init_dup);
 
 #ifdef HAVE_WINDOWS_API
+	wchar_t *init_utf2;
+	{
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(init, &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		init_utf2 = xx;
+	}
+
+	wchar_t *init_base_utf2;
+	{
+		wchar_t *xx;
+		errnum = linted_utf_1_to_2(init_base, &xx);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+		init_base_utf2 = xx;
+	}
+
 	linted_ko monitor_handle;
 	linted_ko thread_handle;
 	{
 		DWORD creation_flags = 0U;
-		STARTUPINFOA startup_info = {0};
+		STARTUPINFO startup_info = {0};
 
 		startup_info.cb = sizeof startup_info;
 		startup_info.dwFlags = STARTF_USESTDHANDLES;
@@ -225,9 +250,9 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		startup_info.hStdError = LINTED_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
-		if (!CreateProcessA(init, init_base, 0, 0, false,
-		                    creation_flags, 0, 0, &startup_info,
-		                    &process_information)) {
+		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0, false,
+		                   creation_flags, 0, 0, &startup_info,
+		                   &process_information)) {
 			linted_log(LINTED_LOG_ERROR, "CreateProcessA: %s",
 			           linted_error_string(GetLastError()));
 			return EXIT_FAILURE;
@@ -242,7 +267,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		break;
 
 	case WAIT_FAILED:
-		linted_log(LINTED_LOG_ERROR, "WaitObject: %s",
+		linted_log(LINTED_LOG_ERROR, "WaitForSingleObject: %s",
 		           linted_error_string(GetLastError()));
 		return EXIT_FAILURE;
 
@@ -259,6 +284,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	return xx;
 
 #else
+	char const *const init_argv[] = {init_base, 0};
 	execve(init, (char *const *)init_argv, environ);
 	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
 	return EXIT_FAILURE;

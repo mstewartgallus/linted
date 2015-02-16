@@ -32,6 +32,10 @@ EXTRA_%C%_linted_SOURCES=\
   src/log/liblog.la\
   src/start/libstart.la
 
+if WINDOWS_API
+%C%_linted_LDADD+=src/utf/libutf.la
+endif
+
 BUILT_SOURCES+=%D%/settings.h
 EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
