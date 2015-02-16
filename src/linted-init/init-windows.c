@@ -86,19 +86,21 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		linted_ko thread_handle;
 		{
 			DWORD creation_flags = 0U;
-			char const *current_directory = 0;
 			STARTUPINFOA startup_info = {0};
+
+			startup_info.cb = sizeof startup_info;
+			startup_info.dwFlags = STARTF_USESTDHANDLES;
 			startup_info.hStdInput = LINTED_KO_STDIN;
 			startup_info.hStdOutput = LINTED_KO_STDOUT;
 			startup_info.hStdError = LINTED_KO_STDERR;
+
 			PROCESS_INFORMATION process_information;
-			if (!CreateProcessA(monitor, "monitor.exe", 0, 0, false,
-					    creation_flags,
-					    0,
-					    current_directory,
-					    &startup_info, &process_information)) {
-				linted_log(LINTED_LOG_ERROR, "CreateProcessA: %s",
-					   linted_error_string(GetLastError()));
+			if (!CreateProcessA(monitor, 0, 0, 0, false,
+			                    creation_flags, 0, 0, &startup_info,
+			                    &process_information)) {
+				linted_log(LINTED_LOG_ERROR,
+				           "CreateProcessA: %s",
+				           linted_error_string(GetLastError()));
 				return EXIT_FAILURE;
 			}
 			monitor_handle = process_information.hProcess;
