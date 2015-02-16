@@ -40,6 +40,8 @@
 #define __NR_execveat 322
 #endif
 
+extern char **environ;
+
 struct adddup2
 {
 	int oldfildes;
@@ -371,6 +373,8 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 			goto fail;
 	}
 
+	if (0 == envp)
+		envp = (char const *const *)environ;
 	syscall(__NR_execveat, LINTED_KO_CWD == dirko ? AT_FDCWD : (int)dirko,
 	        binary, (char *const *)argv, (char *const *)envp, 0);
 	errnum = errno;
