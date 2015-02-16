@@ -22,9 +22,10 @@ BINARY="$1"
 
 : ${LINTED_IWYU:=iwyu}
 
-for II in $(source_files)
+source_files | (while IFS='' read -r II
 do
-    "${LINTED_IWYU}" $(source_cflags) "${II}" & :
+    source_cflags | xargs --delimiter='\n' -- "${LINTED_IWYU}" "${II}"  & :
 done
 
 wait
+)

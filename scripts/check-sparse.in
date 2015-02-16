@@ -22,6 +22,8 @@ source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
+(source_cflags && source_files) | \
+xargs --delimiter='\n' -- \
 "${LINTED_SPARSE}"\
     -D__linux__\
     -D__unix__\
@@ -33,6 +35,4 @@ source_files() {
     -Wno-transparent-union\
     -Wno-undef\
     -Wno-cast-truncate\
-    -Wno-missing-braces\
-    $(source_cflags)\
-    $(source_files)
+    -Wno-missing-braces

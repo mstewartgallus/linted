@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)

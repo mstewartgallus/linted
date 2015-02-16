@@ -22,17 +22,17 @@ source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
+(source_cflags && source_files) | \
+xargs --delimiter='\n' -- \
 "${LINTED_SPLINT}"\
     -D__linux__\
     -D__unix__\
     -D__amd64__\
-    -systemdirs '/usr/include:/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include:/usr/lib/gcc/x86_64-linux-gnu/4.8.2/include-fixed'\
+    -systemdirs '/usr/include:/usr/lib/clang/3.5/include'\
     +posixstrictlib\
     -type\
     -shadow\
     -nestedextern\
     -globs\
     -mustfreefresh\
-    -compdef\
-    $(source_cflags)\
-    $(source_files)
+    -compdef

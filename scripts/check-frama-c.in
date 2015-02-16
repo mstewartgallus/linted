@@ -16,19 +16,20 @@ BINARY="$1"
 
 source_cflags() {
     for II in $("${SCRIPTS}/json-cc-flags.py" "${BINARY}"); do
-        echo -cpp-extra-args="${II}"
+        printf '%s\n' -cpp-extra-args="${II}"
     done
 }
 
 frama_c_stdlib() {
-    echo -cpp-extra-args="-I$("${LINTED_FRAMA_C}" -print-share-path)/libc"
+    printf '%s\n' -cpp-extra-args="-I$("${LINTED_FRAMA_C}" -print-share-path)/libc"
 }
 
 source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
-
+(source_cflags && source_files) | \
+xargs --delimiter='\n' -- \
 "${LINTED_FRAMA_C}"\
     -quiet\
     -journal-disable\
@@ -38,7 +39,4 @@ source_files() {
     -warn-unsigned-downcast\
     -warn-unsigned-overflow\
     -warn-decimal-float none\
-    -cpp-extra-args='-C'\
-    $(source_cflags)\
-    $(frama_c_stdlib)\
-    $(source_files)
+    -cpp-extra-args='-C'

@@ -22,6 +22,8 @@ source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
+(source_cflags && source_files) | \
+xargs --delimiter='\n' -- \
 "${LINTED_CPPCHECK}"\
     -D__linux__\
     -D__unix__\
@@ -35,6 +37,4 @@ source_files() {
     --enable=portability\
     --enable=information\
     --enable=missingInclude\
-    --template='{file}:{line}: ({id}) {message}'\
-    $(source_cflags)\
-    $(source_files)
+    --template='{file}:{line}: ({id}) {message}'
