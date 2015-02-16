@@ -94,20 +94,6 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_spawn_attr *attr;
-
-	{
-		struct linted_spawn_attr *xx;
-		errnum = linted_spawn_attr_init(&xx);
-		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_spawn_attr_init: %s",
-			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		attr = xx;
-	}
-
 	for (;;) {
 		fprintf(stderr, "%s: spawning %s\n", process_name,
 		        monitor_base);
@@ -116,7 +102,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		{
 			pid_t xx;
 			errnum = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, 0, attr,
+			    &xx, LINTED_KO_CWD, monitor, 0, 0,
 			    (char const *const[]){monitor_base, 0}, 0);
 			if (errnum != 0) {
 				linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",

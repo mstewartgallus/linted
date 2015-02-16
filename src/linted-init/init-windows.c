@@ -23,8 +23,8 @@
 
 #include "linted/environment.h"
 #include "linted/error.h"
+#include "linted/ko.h"
 #include "linted/log.h"
-#include "linted/spawn.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -78,37 +78,33 @@ static unsigned char init_start(char const *process_name, size_t argc,
 
 	char *monitor_base = basename(monitor_dup);
 
-	struct linted_spawn_attr *attr;
-
-	{
-		struct linted_spawn_attr *xx;
-		errnum = linted_spawn_attr_init(&xx);
-		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_spawn_attr_init: %s",
-			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		attr = xx;
-	}
-
 	for (;;) {
 		fprintf(stderr, "%s: spawning %s\n", process_name,
 		        monitor_base);
 
 		linted_ko monitor_handle;
+		linted_ko thread_handle;
 		{
-			pid_t xx;
-			errnum = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, 0, attr,
-			    (char const *const[]){monitor_base, 0}, 0);
-			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",
-				           linted_error_string(errnum));
+			DWORD creation_flags = 0U;
+			char const *current_directory = 0;
+			STARTUPINFOA startup_info = {0};
+			startup_info.hStdInput = LINTED_KO_STDIN;
+			startup_info.hStdOutput = LINTED_KO_STDOUT;
+			startup_info.hStdError = LINTED_KO_STDERR;
+			PROCESS_INFORMATION process_information;
+			if (!CreateProcessA(monitor, "monitor.exe", 0, 0, false,
+					    creation_flags,
+					    0,
+					    current_directory,
+					    &startup_info, &process_information)) {
+				linted_log(LINTED_LOG_ERROR, "CreateProcessA: %s",
+					   linted_error_string(GetLastError()));
 				return EXIT_FAILURE;
 			}
-			monitor_handle = (linted_ko)xx;
+			monitor_handle = process_information.hProcess;
+			thread_handle = process_information.hThread;
 		}
+		linted_ko_close(thread_handle);
 
 		switch (WaitForSingleObject(monitor_handle, INFINITE)) {
 		case WAIT_OBJECT_0:
