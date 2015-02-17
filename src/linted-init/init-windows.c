@@ -70,6 +70,13 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		monitor = xx;
 	}
 
+	if (0 == monitor) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "LINTED_MONITOR");
+		return EXIT_FAILURE;
+	}
+
 	char *monitor_dup = strdup(monitor);
 	if (0 == monitor_dup) {
 		linted_log(LINTED_LOG_ERROR, "strdup: %s",
