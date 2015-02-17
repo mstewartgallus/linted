@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <stddef.h>
@@ -91,9 +90,6 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
  */
 linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote,
                                  void const *buf, size_t count);
-
-linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
-                                 struct linted_str str);
 
 linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *s);

@@ -38,8 +38,8 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-: unrecognized option '"));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\
+: unrecognized option '");
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -48,8 +48,7 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("'\n"));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "'\n");
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -64,7 +63,7 @@ free_buffer:
 
 linted_error linted_locale_try_for_more_help(linted_ko ko,
                                              char const *process_name,
-                                             struct linted_str help_option)
+                                             char const *help_option)
 {
 	linted_error errnum;
 
@@ -72,8 +71,7 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               LINTED_STR("Try `"));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "Try `");
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -82,17 +80,17 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 	if (errnum != 0)
 		goto free_buffer;
 
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, " ");
+	if (errnum != 0)
+		goto free_buffer;
+
 	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, LINTED_STR(" "));
+	    linted_str_append_cstring(&buffer, &capacity, &size, help_option);
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, help_option);
-	if (errnum != 0)
-		goto free_buffer;
-
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-' for more information.\n"));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\
+' for more information.\n");
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -105,9 +103,8 @@ free_buffer:
 	return errnum;
 }
 
-linted_error linted_locale_version(linted_ko ko,
-                                   struct linted_str package_string,
-                                   struct linted_str copyright_year)
+linted_error linted_locale_version(linted_ko ko, char const *package_string,
+                                   char const *copyright_year)
 {
 	linted_error errnum;
 
@@ -115,31 +112,30 @@ linted_error linted_locale_version(linted_ko ko,
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, package_string);
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   package_string);
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size,
-	                               LINTED_STR("\n\n"));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\n\n");
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
-Copyright (C) "));
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\
+Copyright (C) ");
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum =
-	    linted_str_append_str(&buffer, &capacity, &size, copyright_year);
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   copyright_year);
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_str(&buffer, &capacity, &size, LINTED_STR("\
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\
  Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.\n"));
+There is NO WARRANTY, to the extent permitted by law.\n");
 	if (errnum != 0)
 		goto free_buffer;
 

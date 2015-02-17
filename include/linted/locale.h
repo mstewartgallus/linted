@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
-#include "linted/str.h"
 
 /**
  * @file
@@ -31,10 +30,9 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 
 linted_error linted_locale_try_for_more_help(linted_ko ko,
                                              char const *process_name,
-                                             struct linted_str help_option);
+                                             char const *help_option);
 
-linted_error linted_locale_version(linted_ko ko,
-                                   struct linted_str package_string,
-                                   struct linted_str copyright_year);
+linted_error linted_locale_version(linted_ko ko, char const *package_string,
+                                   char const *copyright_year);
 
 #endif /* LINTED_LOCALE_H */

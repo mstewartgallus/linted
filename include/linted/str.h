@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,26 +25,10 @@
 /**
  * @file
  *
- * Not null terminated strings.
  */
-
-struct linted_str
-{
-	char const *bytes;
-	uint_least16_t size;
-};
-
-#define LINTED_STR(Str)                                                        \
-	(struct linted_str)                                                    \
-	{                                                                      \
-		.size = sizeof Str - 1U, .bytes = Str                          \
-	}
 
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize);
-
-linted_error linted_str_append_str(char **bufp, size_t *capp, size_t *sizep,
-                                   struct linted_str str);
 
 linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
                                        char const *str);

@@ -235,12 +235,6 @@ poll_for_writeability:
 	LINTED_ASSUME_UNREACHABLE();
 }
 
-linted_error linted_io_write_str(linted_ko ko, size_t *bytes_wrote,
-                                 struct linted_str str)
-{
-	return linted_io_write_all(ko, bytes_wrote, str.bytes, str.size);
-}
-
 linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *s)
 {

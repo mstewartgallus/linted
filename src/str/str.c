@@ -70,12 +70,6 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 	return 0;
 }
 
-linted_error linted_str_append_str(char **bufp, size_t *capp, size_t *sizep,
-                                   struct linted_str str)
-{
-	return linted_str_append(bufp, capp, sizep, str.bytes, str.size);
-}
-
 linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
                                        char const *str)
 {
