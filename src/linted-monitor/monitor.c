@@ -2104,12 +2104,8 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		{
 			char *xx;
 			errnum = linted_environment_get(envvar_name, &xx);
-			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "linted_environment_get: %s",
-				           linted_error_string(errnum));
-				return EXIT_FAILURE;
-			}
+			if (errnum != 0)
+				goto free_result_envvars;
 			envvar_value = xx;
 		}
 		if (0 == envvar_value)
