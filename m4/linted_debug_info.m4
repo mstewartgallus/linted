@@ -11,7 +11,7 @@ dnl Enables debug infromation
 AC_DEFUN([LINTED_DEBUG_INFO],[
 dnl
 AC_ARG_ENABLE(
-        [debug],
+        [debug-info],
         AS_HELP_STRING(
                 [--disable-debug-info],
                 [disable debug info]),
