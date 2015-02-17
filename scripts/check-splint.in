@@ -28,7 +28,7 @@ xargs --delimiter='\n' -- \
     -D__linux__\
     -D__unix__\
     -D__amd64__\
-    -systemdirs '/usr/include:/usr/lib/clang/3.5/include'\
+    -systemdirs '/usr/include:/usr/include/x86_64-linux-gnu:/usr/lib/clang/3.5/include'\
     +posixstrictlib\
     -type\
     -shadow\

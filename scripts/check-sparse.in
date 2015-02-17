@@ -29,6 +29,7 @@ xargs --delimiter='\n' -- \
     -D__unix__\
     -D__amd64__\
     -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
+    -I/usr/include/x86_64-linux-gnu\
     -Wsparse-all\
     -Wno-declaration-after-statement\
     -Wno-non-pointer-null\
