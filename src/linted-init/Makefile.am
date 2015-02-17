@@ -25,8 +25,10 @@ EXTRA_%C%_linted_init_SOURCES=\
   \
   src/environment/libenvironment.la\
   src/error/liberror.la\
+  src/io/libio.la\
   src/ko/libko.la\
-  src/log/liblog.la
+  src/log/liblog.la\
+  src/signal/libsignal.la
 
 if POSIX_API
 %C%_linted_init_LDADD+=src/spawn/libspawn.la

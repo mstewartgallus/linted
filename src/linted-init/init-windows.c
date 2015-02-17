@@ -23,6 +23,7 @@
 
 #include "linted/environment.h"
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/start.h"
@@ -111,8 +112,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		fprintf(stderr, "%s: spawning %s\n", process_name,
-		        monitor_base);
+		linted_io_write_format(LINTED_KO_STERR, 0, "%s: spawning %s\n",
+		                       process_name, monitor_base);
 
 		linted_ko monitor_handle;
 		linted_ko thread_handle;
@@ -168,7 +169,9 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		if (EXIT_SUCCESS == exit_status)
 			goto exit_loop;
 
-		fprintf(stderr, "monitor exited with %lu\n", exit_status);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "monitor exited with %lu\n",
+		                       exit_status);
 
 		linted_ko_close(monitor_handle);
 	}

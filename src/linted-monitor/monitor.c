@@ -1099,8 +1099,9 @@ static linted_error service_activate(char const *process_name,
 		child = xx;
 	}
 
-	fprintf(stderr, "%s: ptracing %" PRIiMAX " %s\n", process_name,
-	        (intmax_t)child, name);
+	linted_io_write_format(LINTED_KO_STDERR, 0,
+	                       "%s: ptracing %" PRIiMAX " %s\n", process_name,
+	                       (intmax_t)child, name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1655,8 +1656,9 @@ static linted_error on_child_signaled(char const *process_name, pid_t pid,
 		if (errnum != 0)
 			return errnum;
 
-		fprintf(stderr, "%s: ptracing %" PRIiMAX " %s\n", process_name,
-		        (intmax_t)pid, name);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: ptracing %" PRIiMAX " %s\n",
+		                       process_name, (intmax_t)pid, name);
 
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
@@ -1704,8 +1706,9 @@ static linted_error on_child_about_to_exit(char const *process_name,
 	if (WIFEXITED(status)) {
 		int exit_status = WEXITSTATUS(status);
 
-		fprintf(stderr, "%s: %s: exited with %i\n", process_name, name,
-		        exit_status);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: %s: exited with %i\n", process_name,
+		                       name, exit_status);
 
 	} else if (WIFSIGNALED(status)) {
 		int signo = WTERMSIG(status);
@@ -1714,8 +1717,9 @@ static linted_error on_child_about_to_exit(char const *process_name,
 		if (0 == str)
 			str = "unknown signal";
 
-		fprintf(stderr, "%s: %s: killed by %s\n", process_name, name,
-		        str);
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: %s: killed by %s\n", process_name,
+		                       name, str);
 	} else {
 		LINTED_ASSUME_UNREACHABLE();
 	}

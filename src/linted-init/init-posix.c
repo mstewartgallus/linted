@@ -17,7 +17,9 @@
 
 #include "linted/environment.h"
 #include "linted/error.h"
+#include "linted/io.h"
 #include "linted/log.h"
+#include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
 #include "linted/util.h"
@@ -102,8 +104,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		fprintf(stderr, "%s: spawning %s\n", process_name,
-		        monitor_base);
+		linted_io_write_format(LINTED_KO_STDERR, 0, "%s: spawning %s\n",
+		                       process_name, monitor_base);
 
 		pid_t child;
 		{
@@ -154,13 +156,16 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			if (EXIT_SUCCESS == status)
 				goto exit_loop;
 
-			fprintf(stderr, "monitor exited with %i\n", status);
+			linted_io_write_format(LINTED_KO_STDERR, 0,
+			                       "monitor exited with %i\n",
+			                       status);
 			break;
 
 		case CLD_DUMPED:
 		case CLD_KILLED:
-			fprintf(stderr, "monitor killed by %s\n",
-			        strsignal(status));
+			linted_io_write_format(LINTED_KO_STDERR, 0,
+			                       "monitor killed by %s\n",
+			                       linted_signal_string(status));
 			break;
 
 		default:

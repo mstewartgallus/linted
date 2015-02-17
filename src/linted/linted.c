@@ -199,7 +199,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	fprintf(stdout, "LINTED_PID=%" PRIuMAX "\n", (uintmax_t)getpid());
+	linted_io_write_format(LINTED_KO_STDOUT, 0, "LINTED_PID=%" PRIuMAX "\n",
+	                       (uintmax_t)getpid());
 
 	char *init_dup = strdup(init);
 	if (0 == init_dup) {
