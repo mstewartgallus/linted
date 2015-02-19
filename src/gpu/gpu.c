@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/assets.h"
@@ -23,6 +25,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <fenv.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -82,6 +85,7 @@ static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /**/
                                       EGL_NONE};
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
+
 static linted_error assure_gl_context(struct linted_gpu_context *gpu_context);
 
 static void real_draw(struct linted_gpu_context *gpu_context);

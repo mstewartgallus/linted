@@ -1287,40 +1287,11 @@ envvar_allocate_succeeded:
 		args[1U + num_options + 1U + ii] = exec_start[ii];
 	args[args_size] = 0;
 
-	struct linted_spawn_file_actions *file_actions;
-	{
-		struct linted_spawn_file_actions *xx;
-		errnum = linted_spawn_file_actions_init(&xx);
-		if (errnum != 0)
-			goto free_args;
-		file_actions = xx;
-	}
-
-	linted_ko null;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
-		                        LINTED_KO_RDWR);
-		if (errnum != 0)
-			goto destroy_file_actions;
-		null = xx;
-	}
-
-	linted_spawn_file_actions_set_stdin(file_actions, null);
-	linted_spawn_file_actions_set_stdout(file_actions, null);
-	linted_spawn_file_actions_set_stderr(file_actions, null);
-
-	errnum = linted_spawn(0, cwd, sandbox, file_actions, 0, args,
+	errnum = linted_spawn(0, cwd, sandbox, 0, 0, args,
 	                      (char const *const *)envvars);
 
 	/* Let the child be leaked, we'll get the wait later */
 
-	linted_ko_close(null);
-
-destroy_file_actions:
-	linted_spawn_file_actions_destroy(file_actions);
-
-free_args:
 	linted_mem_free(args);
 
 free_sandbox_dup:

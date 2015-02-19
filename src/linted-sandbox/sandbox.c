@@ -1262,6 +1262,9 @@ LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
 safe_vclone(int volatile clone_flags, int (*volatile f)(void *),
             void *volatile arg)
 {
+	if (SIGCHLD == clone_flags)
+		return safe_vfork(f, arg);
+
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);
 
