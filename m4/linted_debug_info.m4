@@ -26,9 +26,15 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
         [-g3]dnl
         [-ggdb]dnl
         [-fvar-tracking-assignments]dnl
+        [-rdynamic]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG_INFO])
 dnl
+LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG_INFO],[dnl
+        [-Wl,-export-dynamic]dnl
+])
+dnl
+AC_SUBST([linted_LDFLAGS_DEBUG_INFO])
 ])
 ])
