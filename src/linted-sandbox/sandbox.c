@@ -117,9 +117,6 @@ static char const *const argstrs[] = {
 
 struct first_fork_args
 {
-	char const *uid_map;
-	char const *gid_map;
-	unsigned long clone_flags;
 	char const *chrootdir;
 	char const *chdir_path;
 	cap_t caps;
@@ -164,7 +161,6 @@ static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 
 static pid_t safe_vfork(int (*f)(void *), void *args);
-static pid_t safe_vclone(int clone_flags, int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
 struct linted_start_config const linted_start_config = {
@@ -186,7 +182,12 @@ static unsigned char sandbox_start(char const *const process_name, size_t argc,
 	bool no_new_privs = false;
 	bool drop_caps = false;
 
-	unsigned long clone_flags = 0U;
+	bool clone_newuser = false;
+	bool clone_newpid = false;
+	bool clone_newipc = false;
+	bool clone_newnet = false;
+	bool clone_newns = false;
+	bool clone_newuts = false;
 
 	char const *chdir_path = 0;
 	char const *priority = 0;
@@ -277,27 +278,27 @@ static unsigned char sandbox_start(char const *const process_name, size_t argc,
 			break;
 
 		case NEWUSER_ARG:
-			clone_flags |= CLONE_NEWUSER;
+			clone_newuser = true;
 			break;
 
 		case NEWPID_ARG:
-			clone_flags |= CLONE_NEWPID;
+			clone_newpid = true;
 			break;
 
 		case NEWIPC_ARG:
-			clone_flags |= CLONE_NEWIPC;
+			clone_newipc = true;
 			break;
 
 		case NEWNET_ARG:
-			clone_flags |= CLONE_NEWNET;
+			clone_newnet = true;
 			break;
 
 		case NEWNS_ARG:
-			clone_flags |= CLONE_NEWNS;
+			clone_newns = true;
 			break;
 
 		case NEWUTS_ARG:
-			clone_flags |= CLONE_NEWUTS;
+			clone_newuts = true;
 			break;
 		}
 	}
@@ -571,6 +572,62 @@ exit_loop:
 		}
 	}
 
+	if (clone_newuser) {
+		if (-1 == unshare(CLONE_NEWUSER)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		/* First things first set the id mapping */
+		errnum = set_id_maps(uid_map, gid_map);
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "set_id_maps: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (clone_newipc) {
+		if (-1 == unshare(CLONE_NEWIPC)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (clone_newns) {
+		if (-1 == unshare(CLONE_NEWNS)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (clone_newuts) {
+		if (-1 == unshare(CLONE_NEWUTS)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (clone_newnet) {
+		if (-1 == unshare(CLONE_NEWNET)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (clone_newpid) {
+		if (-1 == unshare(CLONE_NEWPID)) {
+			linted_log(LINTED_LOG_ERROR, "unshare: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	linted_ko logger_reader;
 	linted_ko logger_writer;
 	{
@@ -603,9 +660,6 @@ exit_loop:
 		    .err_writer = err_writer,
 		    .logger_reader = logger_reader,
 		    .logger_writer = logger_writer,
-		    .uid_map = uid_map,
-		    .gid_map = gid_map,
-		    .clone_flags = clone_flags,
 		    .chrootdir = chrootdir,
 		    .chdir_path = chdir_path,
 		    .caps = caps,
@@ -616,12 +670,8 @@ exit_loop:
 		    .waiter = waiter,
 		    .command = command,
 		    .binary = binary};
-		if (0 == clone_flags) {
-			child = safe_vfork(first_fork_routine, &args);
-		} else {
-			child = safe_vclone(SIGCHLD | clone_flags,
-			                    first_fork_routine, &args);
-		}
+
+		child = safe_vfork(first_fork_routine, &args);
 	}
 	if (-1 == child) {
 		linted_log(LINTED_LOG_ERROR, "clone: %s",
@@ -685,9 +735,6 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 	linted_ko err_writer = first_fork_args->err_writer;
 	linted_ko logger_reader = first_fork_args->logger_reader;
 	linted_ko logger_writer = first_fork_args->logger_writer;
-	char const *uid_map = first_fork_args->uid_map;
-	char const *gid_map = first_fork_args->gid_map;
-	unsigned long clone_flags = first_fork_args->clone_flags;
 	char const *chrootdir = first_fork_args->chrootdir;
 	char const *chdir_path = first_fork_args->chdir_path;
 	cap_t caps = first_fork_args->caps;
@@ -714,13 +761,9 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 		goto fail;
 	}
 
-	/* First things first set the id mapping */
-	if ((clone_flags & CLONE_NEWUSER) != 0) {
-		errnum = set_id_maps(uid_map, gid_map);
-		if (errnum != 0)
-			goto fail;
-	}
-
+	/* For some reason this must happen after we actually become
+	 * PID 1 in the new pid namespace so that we can mount
+	 * procfs */
 	if (mount_args_size > 0U) {
 		errnum = chroot_process(chrootdir, mount_args, mount_args_size);
 		if (errnum != 0)
@@ -1251,64 +1294,6 @@ safe_vfork(int (*volatile f)(void *), void *volatile arg)
 	if (0 == child)
 		_Exit(f(arg));
 	return child;
-}
-
-/* Most compilers can't handle the weirdness of vfork so contain it in
- * a safe abstraction.  Note that currently we just create a new stack
- * and jump to that because Valgrind and address sanitizer and most
- * things have trouble with this.
- */
-LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
-safe_vclone(int volatile clone_flags, int (*volatile f)(void *),
-            void *volatile arg)
-{
-	if (SIGCHLD == clone_flags)
-		return safe_vfork(f, arg);
-
-	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
-	assert(maybe_page_size >= 0);
-
-	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(maybe_stack_min_size >= 0);
-
-	size_t page_size = maybe_page_size;
-	size_t stack_min_size = maybe_stack_min_size;
-
-	/* We need an extra page for signals */
-	size_t stack_size = stack_min_size + page_size;
-
-	size_t stack_and_guard_size = page_size + stack_size + page_size;
-	void *child_stack = mmap(
-	    0, stack_and_guard_size, PROT_READ | PROT_WRITE,
-	    MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
-	if (0 == child_stack)
-		return -1;
-
-	/* Guard pages are shared between the stacks */
-	if (-1 == mprotect((char *)child_stack, page_size, PROT_NONE))
-		goto on_err;
-
-	if (-1 == mprotect((char *)child_stack + page_size + stack_size,
-	                   page_size, PROT_NONE))
-		goto on_err;
-
-	void *stack_start = (char *)child_stack + page_size + stack_size;
-
-	pid_t child =
-	    clone(f, stack_start, clone_flags | CLONE_VM | CLONE_VFORK, arg);
-	if (-1 == child)
-		goto on_err;
-
-	munmap(child_stack, stack_and_guard_size);
-
-	return child;
-
-on_err:
-	;
-	int errnum = errno;
-	munmap(child_stack, stack_and_guard_size);
-	errno = errnum;
-	return -1;
 }
 
 static int my_pivot_root(char const *new_root, char const *put_old)
