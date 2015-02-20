@@ -2232,7 +2232,8 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)0, (void *)msg)) {
+	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)0,
+	                 (void *)(uintptr_t) msg)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -2245,7 +2246,8 @@ static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 {
 	linted_error errnum;
 
-	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)0, (void *)options)) {
+	if (-1 ==
+	    ptrace(PTRACE_SEIZE, pid, (void *)0, (void *)(uintptr_t) options)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

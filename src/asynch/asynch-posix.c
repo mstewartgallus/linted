@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <poll.h>
@@ -1237,7 +1238,7 @@ static void canceller_cancel(struct canceller *canceller)
 	 * conditions unfortunately */
 	bool cancel_replied;
 	do {
-		pthread_yield();
+		sched_yield();
 
 		errnum = pthread_spin_lock(&canceller->lock);
 		if (errnum != 0) {

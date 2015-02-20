@@ -20,7 +20,7 @@
 
 #include <sys/types.h>
 
-#if _POSIX_C_SOURCE >= 200809L
+#if defined HAVE_POSIX_API
 #include <signal.h>
 #include <sys/wait.h>
 #endif
@@ -29,6 +29,8 @@
  * @file
  *
  * System processes.
+ *
+ * @todo Get rid of conditional platform test
  */
 
 #define LINTED_PID_COMM_MAX 16U
@@ -91,7 +93,7 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
                               void *data);
 void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task);
 
-#if _POSIX_C_SOURCE >= 200809L
+#if defined HAVE_POSIX_API
 void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
                                     unsigned task_action, idtype_t type,
                                     id_t id, int options);
