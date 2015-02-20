@@ -25,7 +25,6 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fenv.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
