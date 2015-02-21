@@ -28,11 +28,6 @@ struct linted_asynch_task;
 struct linted_io_task_poll;
 struct linted_io_task_read;
 struct linted_io_task_write;
-struct linted_io_task_recv;
-struct linted_io_task_sendto;
-struct linted_io_task_accept;
-
-struct sockaddr;
 
 /**
  * @file
@@ -138,51 +133,6 @@ void linted_io_task_write_prepare(struct linted_io_task_write *task,
                                   char const *buf, size_t size);
 void *linted_io_task_write_data(struct linted_io_task_write *task);
 
-linted_error linted_io_task_recv_create(struct linted_io_task_recv **taskp,
-                                        void *data);
-void linted_io_task_recv_destroy(struct linted_io_task_recv *task);
-
-struct linted_io_task_recv *
-linted_io_task_recv_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *
-linted_io_task_recv_to_asynch(struct linted_io_task_recv *);
-void linted_io_task_recv_prepare(struct linted_io_task_recv *task,
-                                 unsigned task_action, linted_ko ko, char *buf,
-                                 size_t size);
-void *linted_io_task_recv_data(struct linted_io_task_recv *task);
-linted_ko linted_io_task_recv_ko(struct linted_io_task_recv *task);
-size_t linted_io_task_recv_bytes_read(struct linted_io_task_recv *task);
-void linted_io_task_recv_src_addr(struct linted_io_task_recv *task,
-                                  struct sockaddr *addr, size_t *addr_len);
-
-linted_error linted_io_task_sendto_create(struct linted_io_task_sendto **taskp,
-                                          void *data);
-void linted_io_task_sendto_destroy(struct linted_io_task_sendto *task);
-
-struct linted_io_task_sendto *
-linted_io_task_sendto_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *
-linted_io_task_sendto_to_asynch(struct linted_io_task_sendto *);
-void linted_io_task_sendto_prepare(struct linted_io_task_sendto *task,
-                                   unsigned task_action, linted_ko ko,
-                                   char const *buf, size_t size,
-                                   struct sockaddr const *addr,
-                                   size_t dest_addr_size);
-void *linted_io_task_sendto_data(struct linted_io_task_sendto *task);
-
-linted_error linted_io_task_accept_create(struct linted_io_task_accept **taskp,
-                                          void *data);
-void linted_io_task_accept_destroy(struct linted_io_task_accept *task);
-
-struct linted_io_task_accept *
-linted_io_task_accept_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *
-linted_io_task_accept_to_asynch(struct linted_io_task_accept *);
-void linted_io_task_accept_prepare(struct linted_io_task_accept *task,
-                                   unsigned task_action, linted_ko ko);
-void *linted_io_task_accept_data(struct linted_io_task_accept *task);
-linted_ko linted_io_task_accept_returned_ko(struct linted_io_task_accept *task);
-
 void linted_io_do_poll(struct linted_asynch_pool *pool,
                        struct linted_asynch_task *task);
 
@@ -194,14 +144,5 @@ void linted_io_do_read(struct linted_asynch_pool *pool,
  */
 void linted_io_do_write(struct linted_asynch_pool *pool,
                         struct linted_asynch_task *task);
-
-void linted_io_do_recv(struct linted_asynch_pool *pool,
-                       struct linted_asynch_task *task);
-
-void linted_io_do_sendto(struct linted_asynch_pool *pool,
-                         struct linted_asynch_task *task);
-
-void linted_io_do_accept(struct linted_asynch_pool *pool,
-                         struct linted_asynch_task *task);
 
 #endif /* LINTED_IO_H */

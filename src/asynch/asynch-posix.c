@@ -700,9 +700,6 @@ static void *worker_routine(void *arg)
 #pragma weak linted_pid_do_waitid
 #pragma weak linted_signal_do_wait
 #pragma weak linted_sched_do_sleep_until
-#pragma weak linted_io_do_accept
-#pragma weak linted_io_do_recv
-#pragma weak linted_io_do_sendto
 
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task)
@@ -734,18 +731,6 @@ static void run_task(struct linted_asynch_pool *pool,
 
 	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
 		linted_sched_do_sleep_until(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_ACCEPT:
-		linted_io_do_accept(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_RECV:
-		linted_io_do_recv(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_SENDTO:
-		linted_io_do_sendto(pool, task);
 		break;
 
 	default:
