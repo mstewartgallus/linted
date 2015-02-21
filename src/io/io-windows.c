@@ -32,6 +32,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <conio.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -257,7 +258,68 @@ linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
 linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	va_list ap;
+	va_start(ap, format_str);
+
+	linted_error errnum =
+	    linted_io_write_va_list(ko, bytes_wrote_out, format_str, ap);
+
+	va_end(ap);
+
+	return errnum;
+}
+
+/**
+ * @todo Use unicode characters for IO
+ */
+linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
+                                     char const *format_str, va_list list)
+{
+	linted_error errnum = 0;
+
+	linted_ko self = GetCurrentProcess();
+
+	linted_ko duplicate;
+	{
+		HANDLE xx;
+		if (!DuplicateHandle(self, ko, self, &xx, 0, false,
+		                     DUPLICATE_SAME_ACCESS)) {
+			errnum = GetLastError();
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
+		}
+		duplicate = xx;
+	}
+
+	int fd = _open_osfhandle((intptr_t)duplicate, _O_WTEXT);
+	if (-1 == fd) {
+		linted_ko_close(duplicate);
+		return LINTED_ERROR_INVALID_PARAMETER;
+	}
+
+	FILE *file = _fdopen(fd, "w");
+	if (0 == file) {
+		_close(fd);
+		return LINTED_ERROR_INVALID_PARAMETER;
+	}
+
+	setvbuf(file, 0, _IONBF, 0);
+
+	int bytes = vfprintf(file, format_str, list);
+	if (bytes < 0) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+	}
+
+	fclose(file);
+
+	if (errnum != 0)
+		return errnum;
+
+	if (bytes_wrote_out != 0)
+		*bytes_wrote_out = bytes;
+
+	return 0;
 }
 
 linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,

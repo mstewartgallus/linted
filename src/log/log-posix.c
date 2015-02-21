@@ -15,6 +15,7 @@
  */
 #define _GNU_SOURCE
 
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 
@@ -67,8 +68,8 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	}
 
 	if (tty_init) {
-		vdprintf(tty, format, ap);
-		dprintf(tty, "\n");
+		linted_io_write_va_list(tty, 0, format, ap);
+		linted_io_write_string(tty, 0, "\n");
 	}
 
 	va_end(ap);

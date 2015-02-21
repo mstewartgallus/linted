@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
 
@@ -47,8 +48,8 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	va_start(ap, format);
 
 	if (tty_init) {
-		vdprintf(tty, format, ap);
-		dprintf(tty, "\n");
+		linted_io_write_va_list(tty, 0, format, ap);
+		linted_io_write(tty, 0, "\n");
 	}
 
 	va_end(ap);

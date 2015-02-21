@@ -38,6 +38,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#if defined __BIONIC__
+#include <sys/syscall.h>
+#endif
+
 struct linted_io_task_poll
 {
 	struct linted_asynch_task *parent;
@@ -187,26 +191,9 @@ restart_writing:
 
 /* Consume SIGPIPEs */
 get_sigpipe : {
-	sigset_t sigpipeset;
-
-	sigemptyset(&sigpipeset);
-	sigaddset(&sigpipeset, SIGPIPE);
-
-	linted_error wait_errnum;
-	do {
-		struct timespec timeout = {0};
-
-		if (-1 == sigtimedwait(&sigpipeset, 0, &timeout)) {
-			wait_errnum = errno;
-			LINTED_ASSUME(wait_errnum != 0);
-		} else {
-			wait_errnum = 0;
-		}
-	} while (EINTR == wait_errnum);
-	if (wait_errnum != 0 && wait_errnum != EAGAIN) {
-		if (0 == errnum)
-			errnum = wait_errnum;
-	}
+	linted_error eat_errnum = eat_sigpipes();
+	if (0 == errnum)
+		errnum = eat_errnum;
 }
 
 	{
@@ -253,25 +240,38 @@ linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
 linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
-	linted_error errnum = 0;
-
 	va_list ap;
 	va_start(ap, format_str);
 
-	int bytes = vdprintf(ko, format_str, ap);
+	linted_error errnum =
+	    linted_io_write_va_list(ko, bytes_wrote_out, format_str, ap);
+
+	va_end(ap);
+
+	return errnum;
+}
+
+linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
+                                     char const *format_str, va_list list)
+{
+	int bytes;
+
+#if defined __BIONIC__
+	bytes = vfdprintf(ko, format_str, list);
+#else
+	bytes = vdprintf(ko, format_str, list);
+#endif
+
 	if (bytes < 0) {
-		errnum = errno;
+		linted_error errnum = errno;
 		LINTED_ASSUME(errnum != 0);
-		goto free_va_list;
+		return errnum;
 	}
 
 	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes;
 
-free_va_list:
-	va_end(ap);
-
-	return errnum;
+	return 0;
 }
 
 static linted_error poll_one(linted_ko ko, short events, short *reventsp)
@@ -706,8 +706,17 @@ static linted_error eat_sigpipes(void)
 	linted_error errnum = 0;
 
 	for (;;) {
-		int wait_status =
-		    sigtimedwait(get_pipe_set(), 0, &zero_timeout);
+		int wait_status;
+
+		sigset_t const *pipe_set = get_pipe_set();
+		struct timespec const *timeoutp = &zero_timeout;
+
+#if defined __BIONIC__
+		wait_status =
+		    syscall(__NR_rt_sigtimedwait, pipe_set, 0, timeoutp);
+#else
+		wait_status = sigtimedwait(pipe_set, 0, timeoutp);
+#endif
 		if (wait_status != -1)
 			continue;
 

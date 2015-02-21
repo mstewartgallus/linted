@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "linted/io.h"
 #include "linted/log.h"
 
 #include <stdarg.h>
-#include <stdio.h>
 
 /**
  * @todo Implement logging on Microsoft Windows
@@ -34,10 +34,8 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	va_list ap;
 	va_start(ap, format);
 
-	FILE *err = stderr;
-	vfprintf(err, format, ap);
-	fputc('\n', err);
-	fflush(err);
+	linted_io_write_va_list(LINTED_KO_STDERR, 0, format, ap);
+	linted_io_write_string(LINTED_KO_STDERR, 0, "\n");
 
 	va_end(ap);
 }

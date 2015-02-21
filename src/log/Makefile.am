@@ -21,3 +21,5 @@ EXTRA_%C%_liblog_la_SOURCES=\
   %D%/log-emscripten.c\
   %D%/log-posix.c\
   %D%/log-windows.c
+%C%_liblog_la_LIBADD=\
+  src/io/libio.la

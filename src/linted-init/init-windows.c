@@ -112,7 +112,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		linted_io_write_format(LINTED_KO_STERR, 0, "%s: spawning %s\n",
+		linted_io_write_format(LINTED_KO_STDERR, 0, "%s: spawning %s\n",
 		                       process_name, monitor_base);
 
 		linted_ko monitor_handle;

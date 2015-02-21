@@ -20,6 +20,7 @@
 #include "linted/ko.h"
 #include "linted/util.h"
 
+#include <stdarg.h>
 #include <stddef.h>
 
 struct linted_asynch_pool;
@@ -92,6 +93,10 @@ linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
 linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *s, ...)
     LINTED_FORMAT(__printf__, 3, 4);
+
+linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
+                                     char const *s, va_list list)
+    LINTED_FORMAT(__printf__, 3, 0);
 
 linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
                                         void *data);
