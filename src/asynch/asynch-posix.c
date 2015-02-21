@@ -52,6 +52,11 @@
  * `pwrite`, `fsync`, `fdatasync`, `preadv` and `pwritev`. libaio
  * defines a constant for running `poll` asynchronously that we could
  * use but the command was never implemented.
+ *
+ * @todo Remove use of pthread cancellation to kill threads.  Instead
+ * allow for a way to interrupt the command queue with EINTR.  Also,
+ * cancellation is non portable anyways, is broken on GLibc and
+ * doesn't work well with analysis tools.
  */
 
 /**
@@ -105,11 +110,57 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 static void wait_manager_stop(struct wait_manager *manager);
 static void wait_manager_destroy(struct wait_manager *manager);
 
+#if defined _POSIX_SPIN_LOCKS
+typedef pthread_spinlock_t spinlock;
+
+static inline void spinlock_init(spinlock *lock)
+{
+	pthread_spin_init(lock, false);
+}
+
+static inline void spinlock_destroy(spinlock *lock)
+{
+	pthread_spin_destroy(lock);
+}
+
+static inline linted_error spinlock_lock(spinlock *lock)
+{
+	return pthread_spin_lock(lock);
+}
+
+static inline linted_error spinlock_unlock(spinlock *lock)
+{
+	return pthread_spin_unlock(lock);
+}
+#else
+typedef pthread_mutex_t spinlock;
+
+static inline void spinlock_init(spinlock *lock)
+{
+	pthread_mutex_init(lock, 0);
+}
+
+static inline void spinlock_destroy(spinlock *lock)
+{
+	pthread_mutex_destroy(lock);
+}
+
+static inline linted_error spinlock_lock(spinlock *lock)
+{
+	return pthread_mutex_lock(lock);
+}
+
+static inline linted_error spinlock_unlock(spinlock *lock)
+{
+	return pthread_mutex_unlock(lock);
+}
+#endif
+
 struct canceller
 {
 	pthread_t owner;
 	bool *cancel_replier;
-	pthread_spinlock_t lock;
+	spinlock lock;
 	bool owned : 1U;
 	bool in_flight : 1U;
 };
@@ -1130,7 +1181,7 @@ static void waiter_queue_destroy(struct waiter_queue *queue)
 
 static void canceller_init(struct canceller *canceller)
 {
-	pthread_spin_init(&canceller->lock, false);
+	spinlock_init(&canceller->lock);
 
 	canceller->in_flight = false;
 
@@ -1142,7 +1193,7 @@ static void canceller_start(struct canceller *canceller)
 {
 	linted_error errnum;
 
-	errnum = pthread_spin_lock(&canceller->lock);
+	errnum = spinlock_lock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -1154,7 +1205,7 @@ static void canceller_start(struct canceller *canceller)
 	canceller->in_flight = true;
 	canceller->owned = false;
 
-	errnum = pthread_spin_unlock(&canceller->lock);
+	errnum = spinlock_unlock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -1165,7 +1216,7 @@ static void canceller_stop(struct canceller *canceller)
 {
 	linted_error errnum;
 
-	errnum = pthread_spin_lock(&canceller->lock);
+	errnum = spinlock_lock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -1185,7 +1236,7 @@ static void canceller_stop(struct canceller *canceller)
 	canceller->in_flight = false;
 	canceller->owned = false;
 
-	errnum = pthread_spin_unlock(&canceller->lock);
+	errnum = spinlock_unlock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -1200,7 +1251,7 @@ static void canceller_cancel(struct canceller *canceller)
 	bool in_flight;
 
 	{
-		errnum = pthread_spin_lock(&canceller->lock);
+		errnum = spinlock_lock(&canceller->lock);
 		if (errnum != 0) {
 			assert(errnum != EDEADLK);
 			assert(false);
@@ -1224,7 +1275,7 @@ static void canceller_cancel(struct canceller *canceller)
 			}
 		}
 
-		errnum = pthread_spin_unlock(&canceller->lock);
+		errnum = spinlock_unlock(&canceller->lock);
 		if (errnum != 0) {
 			assert(errnum != EPERM);
 			assert(false);
@@ -1240,7 +1291,7 @@ static void canceller_cancel(struct canceller *canceller)
 	do {
 		sched_yield();
 
-		errnum = pthread_spin_lock(&canceller->lock);
+		errnum = spinlock_lock(&canceller->lock);
 		if (errnum != 0) {
 			assert(errnum != EDEADLK);
 			assert(false);
@@ -1260,7 +1311,7 @@ static void canceller_cancel(struct canceller *canceller)
 			}
 		}
 
-		errnum = pthread_spin_unlock(&canceller->lock);
+		errnum = spinlock_unlock(&canceller->lock);
 		if (errnum != 0) {
 			assert(errnum != EPERM);
 			assert(false);
@@ -1275,7 +1326,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
 
 	bool cancelled;
 
-	errnum = pthread_spin_lock(&canceller->lock);
+	errnum = spinlock_lock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -1291,7 +1342,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
 		canceller->owned = true;
 	}
 
-	errnum = pthread_spin_unlock(&canceller->lock);
+	errnum = spinlock_unlock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);
@@ -1305,7 +1356,7 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 	linted_error errnum;
 	bool cancelled;
 
-	errnum = pthread_spin_lock(&canceller->lock);
+	errnum = spinlock_lock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EDEADLK);
 		assert(false);
@@ -1323,7 +1374,7 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 		canceller->cancel_replier = 0;
 	}
 
-	errnum = pthread_spin_unlock(&canceller->lock);
+	errnum = spinlock_unlock(&canceller->lock);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);

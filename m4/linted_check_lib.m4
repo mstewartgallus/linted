@@ -8,7 +8,7 @@ dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
 dnl Autodetects if a library is valid. This autoconf macro is
-dnl invoked like LINTED_CHECK_LIB([myvar_lib], [m], [sin], [#include <math.h>])
+dnl invoked like LINTED_CHECK_LIB([myvar_lib], [-lm], [sin], [#include <math.h>])
 dnl
 AC_DEFUN([LINTED_CHECK_LIB],[
 dnl
@@ -17,7 +17,7 @@ dnl
 AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for library containing ]$3)
-[LIBS='-l]$2[']
+[LIBS="${LIBS} "']$2[']
 AC_LINK_IFELSE([AC_LANG_SOURCE([dnl
 $4
 [int main() {]
@@ -26,8 +26,8 @@ $4
 [        return 0;]
 [}]dnl
 ])], [
-         AC_MSG_RESULT([-l]$2)
-         $1[='-l]$2[']
+         AC_MSG_RESULT($2)
+         $1[=']$2[']
          $5
 ], [
          AC_MSG_RESULT([no])

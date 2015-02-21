@@ -93,13 +93,13 @@ dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
-        LINTED_CHECK_LIB([CRT_LIBS], [msvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
+        LINTED_CHECK_LIB([CRT_LIBS], [-lmsvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
                 AC_MSG_ERROR([Unable to find a CRT library])
         ])
-        LINTED_CHECK_LIB([WS2_32_LIBS], [ws2_32], [WSAStartup], [#include <winsock.h>], [], [
+        LINTED_CHECK_LIB([WS2_32_LIBS], [-lws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])
-        LINTED_CHECK_LIB([D3D11_LIBS], [d3dx11_43], [D3D11CreateDevice], [#include <d3d11.h>], [], [
+        LINTED_CHECK_LIB([D3D11_LIBS], [-ld3dx11_43], [D3D11CreateDevice], [#include <d3d11.h>], [], [
                 AC_MSG_WARN([Unable to find a DirectX 11 library])
         ])
 dnl
@@ -127,11 +127,14 @@ dnl
           AC_MSG_ERROR([Unable to find header ${ac_header}])
         ], [])
 dnl
-        LINTED_CHECK_LIB([REALTIME_LIBS], [rt], [clock_gettime], [#include <time.h>], [], [
-                AC_MSG_ERROR([Unable to find a realtime functions library])
+dnl     First try to see if realtime functionality is included by default
+        LINTED_CHECK_LIB([REALTIME_LIBS], [], [clock_gettime], [#include <time.h>], [], [
+                LINTED_CHECK_LIB([REALTIME_LIBS], [-lrt], [clock_gettime], [#include <time.h>], [], [
+                        AC_MSG_ERROR([Unable to find a realtime functions library])
+                ])
         ])
 dnl
-        LINTED_CHECK_LIB([CAP_LIBS], [cap], [cap_set_proc], [#include <sys/capability.h>], [], [
+        LINTED_CHECK_LIB([CAP_LIBS], [-lcap], [cap_set_proc], [#include <sys/capability.h>], [], [
                 AC_MSG_WARN([Unable to find a POSIX capabilities library])
         ])
 dnl
@@ -220,7 +223,7 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
 dnl
-LINTED_CHECK_LIB([MATH_LIBS], [m], [sin], [#include <math.h>], [], [
+LINTED_CHECK_LIB([MATH_LIBS], [-lm], [sin], [#include <math.h>], [], [
    AC_MSG_ERROR([Unable to find a math library])
 ])
 dnl
