@@ -54,6 +54,9 @@ static void completion_queue_destroy(struct completion_queue *queue);
 
 /**
  * A one writer to many readers queue.
+ *
+ * Note that thread workers need to be able to resubmit jobs to the
+ * global queue.
  */
 struct job_queue;
 static linted_error job_queue_create(struct job_queue **queuep);
