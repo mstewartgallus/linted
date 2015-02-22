@@ -37,29 +37,6 @@
 #include <unistd.h>
 
 /**
- * @file
- *
- * Asynchronous IO implementation.
- *
- * You may think we could use GLibc's AIO implementation but GLibc's
- * is implemented in userspace and allocates memory dynamically.
- *
- * You may think we could use libaio and `io_setup` can statically
- * allocate a work queue that is `max_tasks` large for us but as of
- * yet there would be no point as we cannot take advantage of the
- * syscalls that libaio provides asynchronous implementations
- * of. libaio provides asynchronous implementations of `pread`,
- * `pwrite`, `fsync`, `fdatasync`, `preadv` and `pwritev`. libaio
- * defines a constant for running `poll` asynchronously that we could
- * use but the command was never implemented.
- *
- * @todo Remove use of pthread cancellation to kill threads.  Instead
- * allow for a way to interrupt the command queue with EINTR.  Also,
- * cancellation is non portable anyways, is broken on GLibc and
- * doesn't work well with analysis tools.
- */
-
-/**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
  * submitted commands there is no need to worry about it growing

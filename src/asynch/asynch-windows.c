@@ -43,12 +43,6 @@
 #include <winsock2.h>
 
 /**
- * @file
- *
- * Asynchronous IO implementation.
- */
-
-/**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
  * submitted commands there is no need to worry about it growing
