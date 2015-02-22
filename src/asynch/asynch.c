@@ -42,7 +42,7 @@
  * See http://openjdk.java.net
  *
  * OpenJDK's AIO implementation is implemented in the files in
- * `jdk/src/java.base/* /classes/sun/nio/ch` in the OpenJDK
+ * `jdk/src/java.base/ * /classes/sun/nio/ch` in the OpenJDK
  * repository.
  *
  * @subsection mono Mono CLR's AIO

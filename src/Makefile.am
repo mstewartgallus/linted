@@ -34,6 +34,7 @@ include %C%/linted/Makefile.am
 
 include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am
+include %C%/channel/Makefile.am
 include %C%/conf/Makefile.am
 include %C%/dir/Makefile.am
 include %C%/environment/Makefile.am

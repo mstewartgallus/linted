@@ -20,6 +20,7 @@
 #include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
+#include "linted/channel.h"
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
@@ -52,16 +53,18 @@ static linted_error completion_try_recv(struct completion_queue *queue,
                                         struct linted_asynch_task **taskp);
 static void completion_queue_destroy(struct completion_queue *queue);
 
-/**
- * A one writer to many readers queue.
- *
- * Note that thread workers need to be able to resubmit jobs to the
- * global queue.
- */
+struct master_queue;
+static linted_error master_queue_create(struct master_queue **queuep);
+static void master_submit(struct master_queue *queue,
+                          struct linted_asynch_task *task);
+static linted_error master_recv(struct master_queue *queue,
+                                struct linted_asynch_task **taskp);
+static void master_queue_destroy(struct master_queue *queue);
+
 struct job_queue;
 static linted_error job_queue_create(struct job_queue **queuep);
-static void job_submit(struct job_queue *queue,
-                       struct linted_asynch_task *task);
+static linted_error job_try_submit(struct job_queue *queue,
+                                   struct linted_asynch_task *task);
 static linted_error job_recv(struct job_queue *queue,
                              struct linted_asynch_task **taskp);
 static void job_queue_destroy(struct job_queue *queue);
@@ -76,10 +79,10 @@ static void waiter_queue_destroy(struct waiter_queue *queue);
 
 struct worker_pool;
 static linted_error worker_pool_create(struct worker_pool **poolp,
-                                       struct job_queue *worker_queue,
+                                       struct master_queue *master_queue,
+                                       struct job_queue **worker_queues,
                                        struct linted_asynch_pool *pool,
                                        unsigned max_tasks);
-static void worker_pool_stop(struct worker_pool *pool);
 static void worker_pool_destroy(struct worker_pool *pool);
 
 struct wait_manager;
@@ -157,10 +160,13 @@ struct linted_asynch_pool
 {
 	struct wait_manager *wait_manager;
 	struct worker_pool *worker_pool;
-	struct job_queue *worker_queue;
 
+	struct master_queue *master_queue;
+	struct job_queue **worker_queues;
 	struct waiter_queue *waiter_queue;
 	struct completion_queue *completion_queue;
+
+	size_t max_tasks;
 };
 
 struct linted_asynch_task
@@ -171,6 +177,7 @@ struct linted_asynch_task
 	linted_error errnum;
 	unsigned task_action;
 	linted_asynch_type type;
+	bool thread_canceller : 1U;
 };
 
 struct linted_asynch_waiter
@@ -205,13 +212,31 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		waiter_queue = xx;
 	}
 
-	struct job_queue *worker_queue;
+	struct master_queue *master_queue;
 	{
-		struct job_queue *xx;
-		errnum = job_queue_create(&xx);
+		struct master_queue *xx;
+		errnum = master_queue_create(&xx);
 		if (errnum != 0)
 			goto destroy_waiter_queue;
-		worker_queue = xx;
+		master_queue = xx;
+	}
+
+	struct job_queue **worker_queues;
+	{
+		void *xx;
+		errnum = linted_mem_alloc_array(&xx, max_tasks,
+		                                sizeof worker_queues[0U]);
+		if (errnum != 0)
+			goto destroy_master_queue;
+		worker_queues = xx;
+	}
+
+	size_t worker_queues_created = 0U;
+	for (; worker_queues_created < max_tasks; ++worker_queues_created) {
+		errnum =
+		    job_queue_create(&worker_queues[worker_queues_created]);
+		if (errnum != 0)
+			goto destroy_worker_queues;
 	}
 
 	struct completion_queue *completion_queue;
@@ -219,7 +244,7 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 		struct completion_queue *xx;
 		errnum = completion_queue_create(&xx);
 		if (errnum != 0)
-			goto destroy_worker_queue;
+			goto destroy_worker_queues;
 		completion_queue = xx;
 	}
 
@@ -236,7 +261,8 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	struct worker_pool *worker_pool;
 	{
 		struct worker_pool *xx;
-		errnum = worker_pool_create(&xx, worker_queue, pool, max_tasks);
+		errnum = worker_pool_create(&xx, master_queue, worker_queues,
+		                            pool, max_tasks);
 		if (errnum != 0)
 			goto destroy_wait_manager;
 		worker_pool = xx;
@@ -245,8 +271,10 @@ linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
 	pool->worker_pool = worker_pool;
 	pool->wait_manager = wait_manager;
 	pool->waiter_queue = waiter_queue;
-	pool->worker_queue = worker_queue;
+	pool->master_queue = master_queue;
+	pool->worker_queues = worker_queues;
 	pool->completion_queue = completion_queue;
+	pool->max_tasks = max_tasks;
 
 	*poolp = pool;
 
@@ -256,13 +284,18 @@ destroy_wait_manager:
 	wait_manager_destroy(wait_manager);
 
 destroy_completion_queue:
-	completion_queue_destroy(pool->completion_queue);
+	completion_queue_destroy(completion_queue);
 
-destroy_worker_queue:
-	job_queue_destroy(pool->worker_queue);
+destroy_worker_queues:
+	for (size_t ii = 0U; ii < worker_queues_created; ++ii)
+		job_queue_destroy(worker_queues[ii]);
+	linted_mem_free(worker_queues);
+
+destroy_master_queue:
+	master_queue_destroy(master_queue);
 
 destroy_waiter_queue:
-	waiter_queue_destroy(pool->waiter_queue);
+	waiter_queue_destroy(waiter_queue);
 
 free_pool:
 	linted_mem_free(pool);
@@ -272,16 +305,28 @@ free_pool:
 
 linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool)
 {
+	struct wait_manager *wait_manager = pool->wait_manager;
+	struct worker_pool *worker_pool = pool->worker_pool;
 
-	worker_pool_stop(pool->worker_pool);
-	wait_manager_stop(pool->wait_manager);
+	struct master_queue *master_queue = pool->master_queue;
+	struct job_queue **worker_queues = pool->worker_queues;
+	struct waiter_queue *waiter_queue = pool->waiter_queue;
+	struct completion_queue *completion_queue = pool->completion_queue;
 
-	worker_pool_destroy(pool->worker_pool);
-	wait_manager_destroy(pool->wait_manager);
+	size_t max_tasks = pool->max_tasks;
 
-	completion_queue_destroy(pool->completion_queue);
-	job_queue_destroy(pool->worker_queue);
-	waiter_queue_destroy(pool->waiter_queue);
+	wait_manager_stop(wait_manager);
+
+	worker_pool_destroy(worker_pool);
+	wait_manager_destroy(wait_manager);
+
+	for (size_t ii = 0U; ii < max_tasks; ++ii)
+		job_queue_destroy(worker_queues[ii]);
+	linted_mem_free(worker_queues);
+
+	master_queue_destroy(master_queue);
+	waiter_queue_destroy(waiter_queue);
+	completion_queue_destroy(completion_queue);
 
 	linted_mem_free(pool);
 
@@ -295,7 +340,7 @@ void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
 
 	canceller_start(&task->canceller);
 
-	job_submit(pool->worker_queue, task);
+	master_submit(pool->master_queue, task);
 }
 
 void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
@@ -309,7 +354,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
 		return;
 	}
 
-	job_submit(pool->worker_queue, task);
+	master_submit(pool->master_queue, task);
 }
 
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
@@ -405,6 +450,8 @@ linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
 	task->type = type;
 	task->errnum = LINTED_ERROR_INVALID_PARAMETER;
 
+	task->thread_canceller = false;
+
 	*taskp = task;
 	return 0;
 }
@@ -439,6 +486,8 @@ void *linted_asynch_task_data(struct linted_asynch_task *task)
 {
 	return task->data;
 }
+
+static void *master_routine(void *arg);
 static void *worker_routine(void *arg);
 
 static void run_task(struct linted_asynch_pool *pool,
@@ -447,19 +496,22 @@ static void run_task(struct linted_asynch_pool *pool,
 struct worker_pool
 {
 	struct linted_asynch_pool *asynch_pool;
-	struct job_queue *worker_queue;
+	struct master_queue *master_queue;
+	struct job_queue **worker_queues;
+
 	size_t worker_stacks_size;
 	void *worker_stacks;
 
 	size_t worker_count;
 
-	bool stopped : 1U;
+	pthread_t master_thread;
 
 	pthread_t workers[];
 };
 
 static linted_error worker_pool_create(struct worker_pool **poolp,
-                                       struct job_queue *worker_queue,
+                                       struct master_queue *master_queue,
+                                       struct job_queue **worker_queues,
                                        struct linted_asynch_pool *asynch_pool,
                                        unsigned max_tasks)
 {
@@ -521,11 +573,11 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 		}
 	}
 
-	pool->stopped = false;
 	pool->worker_count = workers_count;
 	pool->worker_stacks = worker_stacks;
 	pool->worker_stacks_size = worker_stacks_size;
-	pool->worker_queue = worker_queue;
+	pool->master_queue = master_queue;
+	pool->worker_queues = worker_queues;
 	pool->asynch_pool = asynch_pool;
 
 	size_t created_threads = 0U;
@@ -537,16 +589,13 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			if (0) {
-				errnum = pthread_attr_setstack(
-				    &attr,
-				    (char *)worker_stacks + page_size +
-				        created_threads * stack_and_guard_size,
-				    stack_size);
-				if (errnum != 0) {
-					assert(errnum != EINVAL);
-					assert(false);
-				}
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)worker_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
 			}
 
 			errnum = pthread_create(&pool->workers[created_threads],
@@ -563,26 +612,39 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 	if (errnum != 0)
 		goto destroy_threads;
 
+	errnum = pthread_create(&pool->master_thread, 0, master_routine, pool);
+	if (errnum != 0)
+		goto destroy_threads;
+
 	*poolp = pool;
 
 	return 0;
 
 destroy_threads:
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
-		linted_error cancel_errnum = pthread_cancel(pool->workers[ii]);
-		if (cancel_errnum != 0) {
-			assert(cancel_errnum != ESRCH);
-			assert(false);
-		}
-	}
+		for (;;) {
+			struct linted_asynch_task task;
+			linted_queue_node(&task.parent);
+			task.thread_canceller = true;
 
-	for (size_t ii = 0U; ii < created_threads; ++ii) {
-		linted_error join_errnum = pthread_join(pool->workers[ii], 0);
-		if (join_errnum != 0) {
-			assert(join_errnum != EDEADLK);
-			assert(join_errnum != EINVAL);
-			assert(join_errnum != ESRCH);
-			assert(false);
+			master_submit(master_queue, &task);
+
+			linted_error try_errnum =
+			    job_try_submit(worker_queues[ii], &task);
+			if (0 == try_errnum) {
+				pthread_join(pool->workers[ii], 0);
+				break;
+			}
+
+			linted_error kill_errnum = pthread_kill(
+			    pool->workers[ii], LINTED_ASYNCH_SIGNO);
+			if (kill_errnum != 0 && kill_errnum != EAGAIN) {
+				assert(kill_errnum != ESRCH);
+				assert(kill_errnum != EINVAL);
+				assert(false);
+			}
+
+			sched_yield();
 		}
 	}
 
@@ -595,50 +657,19 @@ free_pool:
 	return errnum;
 }
 
-static void worker_pool_stop(struct worker_pool *pool)
-{
-	linted_error errnum = 0;
-
-	assert(!pool->stopped);
-
-	pool->stopped = true;
-
-	size_t worker_count = pool->worker_count;
-
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
-		errnum = pthread_cancel(pool->workers[ii]);
-		if (errnum != 0) {
-			assert(errnum != ESRCH);
-			assert(false);
-		}
-	}
-
-	/* After this point a few workers can still be left hanging
-	 * waiting to return completed tasks and users should clean
-	 * those up by polling after here. */
-}
-
 static void worker_pool_destroy(struct worker_pool *pool)
 {
-	linted_error errnum = 0;
+	struct master_queue *master_queue = pool->master_queue;
+	pthread_t master_thread = pool->master_thread;
 
-	assert(pool->stopped);
+	{
+		struct linted_asynch_task task;
+		linted_queue_node(&task.parent);
+		task.thread_canceller = true;
 
-	/* All workers should have had their results retrieved by
-	 * now. */
-	size_t worker_count = pool->worker_count;
+		master_submit(master_queue, &task);
 
-	for (size_t ii = 0U; ii < worker_count; ++ii) {
-		pthread_t worker = pool->workers[ii];
-
-		void *retval;
-		errnum = pthread_join(worker, &retval);
-		if (errnum != 0) {
-			assert(errnum != EDEADLK);
-			assert(errnum != EINVAL);
-			assert(errnum != ESRCH);
-		}
-		assert(PTHREAD_CANCELED == retval);
+		pthread_join(master_thread, 0);
 	}
 
 	munmap(pool->worker_stacks, pool->worker_stacks_size);
@@ -646,20 +677,92 @@ static void worker_pool_destroy(struct worker_pool *pool)
 	linted_mem_free(pool);
 }
 
-static void *worker_routine(void *arg)
+static void *master_routine(void *arg)
 {
 	struct worker_pool *pool = arg;
-	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 
-	pthread_t self = pthread_self();
+	struct master_queue *master_queue = pool->master_queue;
+	struct job_queue **worker_queues = pool->worker_queues;
+	pthread_t *workers = pool->workers;
+	size_t max_tasks = pool->worker_count;
 
 	for (;;) {
 		struct linted_asynch_task *task;
 		{
 			struct linted_asynch_task *xx;
-			job_recv(pool->worker_queue, &xx);
+			master_recv(master_queue, &xx);
 			task = xx;
 		}
+
+		if (task->thread_canceller)
+			break;
+
+		for (size_t ii = 0U;; ii = (ii + 1U) % max_tasks) {
+			linted_error errnum =
+			    job_try_submit(worker_queues[ii], task);
+			if (LINTED_ERROR_AGAIN == errnum)
+				continue;
+			assert(0 == errnum);
+			break;
+		}
+	}
+
+	for (size_t ii = 0U; ii < max_tasks; ++ii) {
+		for (;;) {
+			struct linted_asynch_task task;
+			linted_queue_node(&task.parent);
+			task.thread_canceller = true;
+
+			master_submit(master_queue, &task);
+
+			linted_error errnum =
+			    job_try_submit(worker_queues[ii], &task);
+			if (0 == errnum) {
+				pthread_join(workers[ii], 0);
+				break;
+			}
+
+			errnum = pthread_kill(workers[ii], LINTED_ASYNCH_SIGNO);
+			if (errnum != 0 && errnum != EAGAIN) {
+				assert(errnum != ESRCH);
+				assert(errnum != EINVAL);
+				assert(false);
+			}
+
+			sched_yield();
+		}
+	}
+
+	return 0;
+}
+
+static void *worker_routine(void *arg)
+{
+	struct worker_pool *pool = arg;
+	pthread_t self = pthread_self();
+
+	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
+	struct job_queue **worker_queues = pool->worker_queues;
+	pthread_t *workers = pool->workers;
+
+	struct job_queue *worker_queue;
+	for (size_t ii = 0U;; ++ii) {
+		if (pthread_equal(workers[ii], self)) {
+			worker_queue = worker_queues[ii];
+			break;
+		}
+	}
+
+	for (;;) {
+		struct linted_asynch_task *task;
+		{
+			struct linted_asynch_task *xx;
+			job_recv(worker_queue, &xx);
+			task = xx;
+		}
+
+		if (task->thread_canceller)
+			break;
 
 		if (canceller_check_or_register(&task->canceller, self)) {
 			linted_asynch_pool_complete(asynch_pool, task,
@@ -670,7 +773,7 @@ static void *worker_routine(void *arg)
 		run_task(asynch_pool, task);
 	}
 
-	LINTED_ASSUME_UNREACHABLE();
+	return 0;
 }
 
 #pragma weak linted_sched_do_idle
@@ -816,16 +919,13 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_pollers; ++created_threads) {
-			if (0) {
-				errnum = pthread_attr_setstack(
-				    &attr,
-				    (char *)pollers_stacks + page_size +
-				        created_threads * stack_and_guard_size,
-				    stack_size);
-				if (errnum != 0) {
-					assert(errnum != EINVAL);
-					assert(false);
-				}
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)pollers_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
 			}
 
 			errnum =
@@ -1077,24 +1177,25 @@ static void completion_queue_destroy(struct completion_queue *queue)
 	linted_queue_destroy((struct linted_queue *)queue);
 }
 
-/* struct job_queue is just a fake */
-static linted_error job_queue_create(struct job_queue **queuep)
+/* struct master_queue is just a fake */
+static linted_error master_queue_create(struct master_queue **queuep)
 {
 	struct linted_queue *xx;
 	linted_error errnum = linted_queue_create(&xx);
 	if (errnum != 0)
 		return errnum;
-	*queuep = (struct job_queue *)xx;
+	*queuep = (struct master_queue *)xx;
 	return 0;
 }
 
-static void job_submit(struct job_queue *queue, struct linted_asynch_task *task)
+static void master_submit(struct master_queue *queue,
+                          struct linted_asynch_task *task)
 {
 	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(task));
 }
 
-static linted_error job_recv(struct job_queue *queue,
-                             struct linted_asynch_task **taskp)
+static linted_error master_recv(struct master_queue *queue,
+                                struct linted_asynch_task **taskp)
 {
 	struct linted_queue_node *node;
 
@@ -1105,9 +1206,46 @@ static linted_error job_recv(struct job_queue *queue,
 	return 0;
 }
 
-static void job_queue_destroy(struct job_queue *queue)
+static void master_queue_destroy(struct master_queue *queue)
 {
 	linted_queue_destroy((struct linted_queue *)queue);
+}
+
+/* struct job_queue is just a fake */
+static linted_error job_queue_create(struct job_queue **queuep)
+{
+	struct linted_channel *xx;
+	linted_error errnum = linted_channel_create(&xx);
+	if (errnum != 0)
+		return errnum;
+	*queuep = (struct job_queue *)xx;
+	return 0;
+}
+
+static linted_error job_try_submit(struct job_queue *queue,
+                                   struct linted_asynch_task *task)
+{
+	assert(queue != 0);
+	assert(task != 0);
+	return linted_channel_try_send((struct linted_channel *)queue, task);
+}
+
+static linted_error job_recv(struct job_queue *queue,
+                             struct linted_asynch_task **taskp)
+{
+	void *node;
+
+	linted_channel_recv((struct linted_channel *)queue, &node);
+
+	assert(node != 0);
+	*taskp = node;
+
+	return 0;
+}
+
+static void job_queue_destroy(struct job_queue *queue)
+{
+	linted_channel_destroy((struct linted_channel *)queue);
 }
 
 /* struct waiter_queue is just a fake */

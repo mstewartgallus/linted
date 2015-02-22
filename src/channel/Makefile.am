@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2014, 2015 Steven Stewart-Gallus
+# Copyright 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-noinst_LTLIBRARIES+=%D%/libasynch.la
 
-%C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
-EXTRA_%C%_libasynch_la_SOURCES=\
-  %D%/asynch-emscripten.c\
-  %D%/asynch-posix.c\
-  %D%/asynch-windows.c
-%C%_libasynch_la_LIBADD=\
-  src/ko/libko.la\
-  src/channel/libchannel.la\
-  src/queue/libqueue.la\
-  $(WS2_32_LIBS)
+noinst_LTLIBRARIES+=%D%/libchannel.la
+%C%_libchannel_la_SOURCES=%D%/channel.c include/linted/channel.h
+EXTRA_%C%_libchannel_la_SOURCES=\
+  %D%/channel-posix.c
