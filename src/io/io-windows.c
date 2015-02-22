@@ -252,7 +252,7 @@ poll_for_writeability:
 linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
                                     char const *s)
 {
-	return linted_io_write_all(ko, bytes_wrote_out, s, strlen(s));
+	return linted_io_write_format(ko, bytes_wrote_out, "%s", s);
 }
 
 linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
@@ -270,56 +270,40 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 }
 
 /**
- * @todo Use unicode characters for IO
+ * @todo Properly handle console I/O and unicode characters
  */
 linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
                                      char const *format_str, va_list list)
 {
 	linted_error errnum = 0;
 
-	linted_ko self = GetCurrentProcess();
+	int maybe_bytes = vsprintf_s(0, 0U, format_str, list);
+	if (maybe_bytes < 0)
+		return LINTED_ERROR_INVALID_PARAMETER;
 
-	linted_ko duplicate;
+	size_t bytes = (size_t)maybe_bytes;
+
+	char *str;
 	{
-		HANDLE xx;
-		if (!DuplicateHandle(self, ko, self, &xx, 0, false,
-		                     DUPLICATE_SAME_ACCESS)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+		void *xx;
+		errnum = linted_mem_alloc(&xx, bytes + 1U);
+		if (errnum != 0)
 			return errnum;
-		}
-		duplicate = xx;
+		str = xx;
+	}
+	str[bytes] = 0U;
+
+	if (vsprintf_s(str, bytes + 1U, format_str, list) < 0) {
+		errnum = LINTED_ERROR_INVALID_PARAMETER;
+		goto free_str;
 	}
 
-	int fd = _open_osfhandle((intptr_t)duplicate, _O_WTEXT);
-	if (-1 == fd) {
-		linted_ko_close(duplicate);
-		return LINTED_ERROR_INVALID_PARAMETER;
-	}
+	errnum = linted_io_write_all(ko, bytes_wrote_out, str, bytes);
 
-	FILE *file = _fdopen(fd, "w");
-	if (0 == file) {
-		_close(fd);
-		return LINTED_ERROR_INVALID_PARAMETER;
-	}
+free_str:
+	linted_mem_free(str);
 
-	setvbuf(file, 0, _IONBF, 0);
-
-	int bytes = vfprintf(file, format_str, list);
-	if (bytes < 0) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	fclose(file);
-
-	if (errnum != 0)
-		return errnum;
-
-	if (bytes_wrote_out != 0)
-		*bytes_wrote_out = bytes;
-
-	return 0;
+	return errnum;
 }
 
 linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
