@@ -9,7 +9,7 @@ set -e
 set -C
 set -u
 
-TARGET="$(echo "$0" | cut -d- -f 2-)"
+TARGET="$(printf -- '%s' "$0" | cut -d- -f 2-)"
 
 SRCDIR="$(cd "$(dirname "$0")" && pwd)/../.."
 

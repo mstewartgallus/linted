@@ -34,6 +34,13 @@ AM_PROG_CC_C_O
 dnl
 AC_CANONICAL_HOST
 dnl
+AS_IF([test "x${cross_compiling}" = "xno"], [
+        AC_MSG_ERROR([dnl
+[Native and cross builds do not result in the exact same binaries.]
+[Explicitly set the --host and --build options and do not use native builds.]dnl
+])
+])
+dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
 [linted_windows_api_default=no]
