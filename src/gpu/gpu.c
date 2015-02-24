@@ -265,6 +265,11 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 	} else {
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			errnum = get_egl_error();
+
+			char const *error = linted_error_string(errnum);
+			linted_log(LINTED_LOG_ERROR, "eglSwapBuffers: %s",
+			           error);
+			linted_error_string_free(error);
 		} else {
 			gpu_context->buffer_commands = true;
 		}

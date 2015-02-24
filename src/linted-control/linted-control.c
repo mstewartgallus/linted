@@ -361,7 +361,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 }
 
 static uint_fast8_t run_stop(char const *process_name, size_t argc,
-                             char const *const argv[const])
+                             char const *const *const argv)
 {
 	linted_error errnum;
 	bool need_version = false;
