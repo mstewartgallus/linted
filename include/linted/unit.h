@@ -70,6 +70,7 @@ struct linted_unit_socket
 	struct linted_unit common;
 	char const *path;
 	linted_unit_socket_type type;
+	int fifo_size;
 	_Bool is_open : 1U;
 };
 

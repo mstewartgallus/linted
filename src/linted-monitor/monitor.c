@@ -41,6 +41,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -935,7 +936,10 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	    linted_conf_find(conf, "Socket", "ListenFile");
 
 	char const *const *listen_fifos =
-	    linted_conf_find(conf, "Socket", "ListenFifo");
+	    linted_conf_find(conf, "Socket", "ListenFIFO");
+
+	char const *const *fifo_sizes =
+	    linted_conf_find(conf, "Socket", "PipeSize");
 
 	char const *listen_dir;
 	{
@@ -964,6 +968,15 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		listen_fifo = xx;
 	}
 
+	char const *fifo_size;
+	{
+		char const *xx;
+		errnum = str_from_strs(fifo_sizes, &xx);
+		if (errnum != 0)
+			return errnum;
+		fifo_size = xx;
+	}
+
 	linted_unit_socket_type socket_type;
 	char const *path = 0;
 
@@ -989,10 +1002,20 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	if (0 == path)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
+	int fifo_size_value = -1;
+	if (fifo_size != 0) {
+		if (0 == listen_fifo)
+			return LINTED_ERROR_INVALID_PARAMETER;
+		fifo_size_value = atoi(fifo_size);
+	}
+
 	switch (socket_type) {
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
+		break;
+
 	case LINTED_UNIT_SOCKET_TYPE_FIFO:
+		unit->fifo_size = fifo_size_value;
 		break;
 	}
 
@@ -1057,13 +1080,34 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 		unit->is_open = false;
 		break;
 
-	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		errnum = linted_fifo_create(0, LINTED_KO_CWD, unit->path, 0U,
-		                            S_IRWXU);
-		if (errnum != 0)
-			return errnum;
+	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
+		int fifo_size = unit->fifo_size;
+
+		if (fifo_size >= 0) {
+			linted_ko fifo;
+			{
+				linted_ko xx;
+				errnum = linted_fifo_create(
+				    &xx, LINTED_KO_CWD, unit->path,
+				    LINTED_FIFO_RDWR, S_IRWXU);
+				if (errnum != 0)
+					return errnum;
+				fifo = xx;
+			}
+
+			fcntl(fifo, F_SETPIPE_SZ, fifo_size);
+
+			linted_ko_close(fifo);
+		} else {
+			errnum = linted_fifo_create(0, LINTED_KO_CWD,
+			                            unit->path, 0U, S_IRWXU);
+			if (errnum != 0)
+				return errnum;
+		}
+
 		unit->is_open = false;
 		break;
+	}
 	}
 
 	return 0;

@@ -1,4 +1,4 @@
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,4 +16,5 @@ Description=Linted-Window-Notifier Window Notifier
 Documentation='man:linted.special(6)'
 
 [Socket]
-ListenFifo=window-notifier-drawer
+ListenFIFO=window-notifier-drawer
+PipeSize=4096
