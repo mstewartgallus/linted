@@ -31,7 +31,8 @@
 #include <stdint.h>
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <EGL/eglext.h>
+#include <GLES3/gl3.h>
 
 struct linted_gpu_context
 {
@@ -71,16 +72,16 @@ struct matrix
 };
 
 static EGLint const attr_list[] = {
-    EGL_CONFORMANT,        EGL_OPENGL_ES2_BIT, /**/
-    EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT, /**/
-    EGL_DEPTH_SIZE,        16,                 /**/
-    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,     /**/
-    EGL_RED_SIZE,          5,                  /**/
-    EGL_GREEN_SIZE,        5,                  /**/
-    EGL_BLUE_SIZE,         3,                  /**/
+    EGL_CONFORMANT,        EGL_OPENGL_ES3_BIT_KHR, /**/
+    EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES3_BIT_KHR, /**/
+    EGL_DEPTH_SIZE,        16,                     /**/
+    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,         /**/
+    EGL_RED_SIZE,          5,                      /**/
+    EGL_GREEN_SIZE,        5,                      /**/
+    EGL_BLUE_SIZE,         3,                      /**/
     EGL_NONE};
 
-static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 2, /**/
+static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION, 3, /**/
                                       EGL_NONE};
 
 static linted_error destroy_contexts(struct linted_gpu_context *gpu_context);
@@ -336,6 +337,9 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 		goto destroy_context;
 	}
 
+	glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
+	glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_FASTEST);
+
 	glDisable(GL_DITHER);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -532,6 +536,8 @@ static linted_error assure_gl_context(struct linted_gpu_context *gpu_context)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glUseProgram(program);
+
+	glReleaseShaderCompiler();
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER,

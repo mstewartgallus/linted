@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.  You may
@@ -13,17 +13,20 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 100
+#version 300 es
 
 precision lowp float;
-
-#pragma linted include("shaders/varying.glsl")
 
 const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);
 
 const vec3 dark_stone = vec3(0.1, 0.3, 0.5);
 const vec3 foggy_air = vec3(1.0, 0.4, 0.2);
+
+in vec3 linted_varying_vertex;
+in vec3 linted_varying_normal;
+
+out vec4 linted_fragment_color;
 
 void main()
 {
@@ -37,5 +40,5 @@ void main()
     float decay = dot(foggy_air,
                       vec3(1.0, delta, delta * delta));
 
-    gl_FragColor = vec4((intensity / decay) * colour, 1.0);
+    linted_fragment_color = vec4((intensity / decay) * colour, 1.0);
 }

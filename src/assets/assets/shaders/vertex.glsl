@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.  You may
@@ -13,14 +13,15 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 100
+#version 300 es
 
 precision lowp float;
 
-#pragma linted include("shaders/varying.glsl")
+in vec3 vertex;
+in vec3 normal;
 
-attribute vec3 vertex;
-attribute vec3 normal;
+out vec3 linted_varying_vertex;
+out vec3 linted_varying_normal;
 
 uniform mat4 model_view_projection_matrix;
 
