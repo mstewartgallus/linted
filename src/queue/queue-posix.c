@@ -33,8 +33,6 @@ struct linted_queue
 	pthread_cond_t gains_member;
 };
 
-static void unlock_routine(void *arg);
-
 void linted_queue_node(struct linted_queue_node *node)
 {
 	node->next = 0;
@@ -141,7 +139,6 @@ void linted_queue_send(struct linted_queue *queue,
 
 	queue->tailp = &node->next;
 
-	/* Not a cancellation point */
 	pthread_cond_signal(&queue->gains_member);
 
 	errnum = pthread_mutex_unlock(&queue->lock);
@@ -168,9 +165,6 @@ void linted_queue_recv(struct linted_queue *queue,
 	if (removed != 0)
 		goto got_node;
 
-	/* The slow path, only bother to push the cancellation point
-	 * handler if we ever start waiting.*/
-	pthread_cleanup_push(unlock_routine, &queue->lock);
 	do {
 		errnum = pthread_cond_wait(&queue->gains_member, &queue->lock);
 		if (errnum != 0) {
@@ -180,7 +174,6 @@ void linted_queue_recv(struct linted_queue *queue,
 
 		removed = queue->head;
 	} while (removed == 0);
-	pthread_cleanup_pop(false);
 
 got_node:
 	if (queue->tailp == &removed->next)
@@ -219,7 +212,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	struct linted_queue_node *removed = queue->head;
 	if (0 == removed) {
 		errnum = LINTED_ERROR_AGAIN;
-		goto pop_cleanup;
+		goto unlock_mutex;
 	}
 
 	if (queue->tailp == &removed->next)
@@ -227,7 +220,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
 	queue->head = removed->next;
 
-pop_cleanup : {
+unlock_mutex : {
 	linted_error unlock_errnum = pthread_mutex_unlock(&queue->lock);
 	if (unlock_errnum != 0) {
 		assert(unlock_errnum != EPERM);
@@ -243,15 +236,4 @@ pop_cleanup : {
 	}
 
 	return errnum;
-}
-
-static void unlock_routine(void *mutex)
-{
-	linted_error errnum;
-
-	errnum = pthread_mutex_unlock(mutex);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
 }

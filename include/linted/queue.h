@@ -23,7 +23,7 @@
  *
  * Mediates one-by-one communication between threads.
  *
- * Is cancellation safe (although not async-signal-cancel safe.)
+ * @warning Is not cancellation safe.
  */
 struct linted_queue;
 
@@ -42,21 +42,12 @@ linted_error linted_queue_create(struct linted_queue **queuep);
  */
 void linted_queue_destroy(struct linted_queue *queue);
 
-/**
- * Is not a cancellation point.
- */
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node);
 
-/**
- * Is a cancellation point.
- */
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **node);
 
-/**
- * cancellation safe
- */
 linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **node);
 
