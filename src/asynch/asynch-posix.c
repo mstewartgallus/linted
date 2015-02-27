@@ -721,6 +721,8 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 static void *master_worker_routine(void *arg)
 {
+	pthread_setname_np(pthread_self(), "asynch-worker-master");
+
 	struct worker_pool *pool = arg;
 
 	struct job_queue *job_queue = pool->job_queue;
@@ -783,6 +785,8 @@ static void *worker_routine(void *arg)
 	struct worker_pool *pool = arg;
 
 	pthread_t self = pthread_self();
+
+	pthread_setname_np(self, "asynch-worker");
 
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 	struct worker_queue **worker_queues = pool->worker_queues;
@@ -1063,6 +1067,8 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static void *master_poller_routine(void *arg)
 {
+	pthread_setname_np(pthread_self(), "asynch-poller-master");
+
 	struct wait_manager *pool = arg;
 
 	struct waiter_queue *waiter_queue = pool->waiter_queue;
@@ -1125,6 +1131,8 @@ static void *poller_routine(void *arg)
 	struct wait_manager *pool = arg;
 
 	pthread_t self = pthread_self();
+
+	pthread_setname_np(self, "asynch-poller");
 
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 	struct poller_queue **poller_queues = pool->poller_queues;

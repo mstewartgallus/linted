@@ -19,11 +19,8 @@
  * @file
  *
  * Asynchronous IO implementation.
- *
- * @todo Remove use of pthread cancellation to kill threads.  Instead
- * allow for a way to interrupt the command queue with EINTR.  Also,
- * cancellation is non portable anyways, is broken on GLibc and
- * doesn't work well with analysis tools.
+
+ * @todo Use a portable abstraction over `pthread_setname_np`.
  *
  * @section prior Prior Work
  *
