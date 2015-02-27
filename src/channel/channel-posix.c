@@ -32,8 +32,6 @@ struct linted_channel
 	void **waiter;
 };
 
-static void unlock_routine(void *arg);
-
 linted_error linted_channel_create(struct linted_channel **channelp)
 {
 	linted_error errnum;
@@ -170,7 +168,6 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	*nodep = 0;
 	channel->waiter = nodep;
 
-	pthread_cleanup_push(unlock_routine, &channel->lock);
 	do {
 		errnum = pthread_cond_wait(&channel->filled, &channel->lock);
 		if (errnum != 0) {
@@ -178,20 +175,8 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 			assert(false);
 		}
 	} while (0 == *nodep);
-	pthread_cleanup_pop(false);
 
 	errnum = pthread_mutex_unlock(&channel->lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
-		assert(false);
-	}
-}
-
-static void unlock_routine(void *mutex)
-{
-	linted_error errnum;
-
-	errnum = pthread_mutex_unlock(mutex);
 	if (errnum != 0) {
 		assert(errnum != EPERM);
 		assert(false);

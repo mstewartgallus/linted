@@ -23,7 +23,7 @@
  *
  * Mediates one-by-one communication between threads.
  *
- * Is cancellation safe (although not async-signal-cancel safe.)
+ * @warning Is not cancellation safe.
  */
 struct linted_channel;
 
@@ -31,15 +31,9 @@ linted_error linted_channel_create(struct linted_channel **channelp);
 
 void linted_channel_destroy(struct linted_channel *channel);
 
-/**
- * Is not a cancellation point.
- */
 linted_error linted_channel_try_send(struct linted_channel *channel,
                                      void *node);
 
-/**
- * Is a cancellation point.
- */
 void linted_channel_recv(struct linted_channel *channel, void **node);
 
 #endif /* LINTED_CHANNEL_H */
