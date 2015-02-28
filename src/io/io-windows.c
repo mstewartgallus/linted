@@ -269,9 +269,6 @@ linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
 	return errnum;
 }
 
-/**
- * @todo Properly handle console I/O and unicode characters
- */
 linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
                                      char const *format_str, va_list list)
 {
