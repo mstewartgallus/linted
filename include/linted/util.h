@@ -29,7 +29,11 @@
  * Various utility macroes and functions.
  */
 
-#define LINTED__IS_GCC (defined __GNUC__ && !defined __clang__)
+#if defined __GNUC__ && ! defined __clang__
+#define LINTED__IS_GCC 1
+#else
+#define LINTED__IS_GCC 0
+#endif
 
 #if defined __has_attribute
 #define LINTED_UTIL_HAS_ATTRIBUTE(X) __has_attribute(X)
