@@ -185,6 +185,8 @@
  * - This tool is okay but cannot handle thread cancellation which is
  *   needed to kill worker threads that are taking too long.  Luckily,
  *   we don't use thread cancellation anymore.
+ * - Also it doesn't work with C well. See the bug at
+ *   http://llvm.org/bugs/show_bug.cgi?id=20403.
  * </li>
  *
  * <li> [Smatch](http://smatch.sourceforge.net/)
