@@ -25,6 +25,12 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#if defined NDEBUG
+#define ENABLE_ERRORCHECK 0
+#else
+#define ENABLE_ERRORCHECK 1
+#endif
+
 struct linted_queue
 {
 	pthread_mutex_t lock;
@@ -53,24 +59,18 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 	queue->head = 0;
 	queue->tailp = &queue->head;
 
-	{
+	if (ENABLE_ERRORCHECK) {
 		pthread_mutexattr_t attr;
 
 		errnum = pthread_mutexattr_init(&attr);
 		if (errnum != 0)
 			goto free_queue;
 
-		bool ndebug = false;
-#if defined NDEBUG
-		ndebug = true;
-#endif
-		if (!ndebug) {
-			errnum = pthread_mutexattr_settype(
-			    &attr, PTHREAD_MUTEX_ERRORCHECK);
-			assert(errnum != EINVAL);
-			if (errnum != 0)
-				goto destroy_attr;
-		}
+		errnum =
+		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+		assert(errnum != EINVAL);
+		if (errnum != 0)
+			goto destroy_attr;
 
 		errnum = pthread_mutex_init(&queue->lock, &attr);
 		assert(errnum != EINVAL);
@@ -80,10 +80,12 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 		linted_error dest_errnum = pthread_mutexattr_destroy(&attr);
 		if (0 == errnum)
 			errnum = dest_errnum;
-
-		if (errnum != 0)
-			goto free_queue;
+	} else {
+		errnum = pthread_mutex_init(&queue->lock, 0);
+		assert(errnum != EINVAL);
 	}
+	if (errnum != 0)
+		goto free_queue;
 
 	errnum = pthread_cond_init(&queue->gains_member, 0);
 	if (errnum != 0) {

@@ -25,6 +25,12 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#if defined NDEBUG
+#define ENABLE_ERRORCHECK 0
+#else
+#define ENABLE_ERRORCHECK 1
+#endif
+
 struct linted_channel
 {
 	pthread_mutex_t lock;
@@ -46,24 +52,18 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 
 	channel->waiter = 0;
 
-	{
+	if (ENABLE_ERRORCHECK) {
 		pthread_mutexattr_t attr;
 
 		errnum = pthread_mutexattr_init(&attr);
 		if (errnum != 0)
 			goto free_channel;
 
-		bool ndebug = false;
-#if defined NDEBUG
-		ndebug = true;
-#endif
-		if (!ndebug) {
-			errnum = pthread_mutexattr_settype(
-			    &attr, PTHREAD_MUTEX_ERRORCHECK);
-			assert(errnum != EINVAL);
-			if (errnum != 0)
-				goto destroy_attr;
-		}
+		errnum =
+		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+		assert(errnum != EINVAL);
+		if (errnum != 0)
+			goto destroy_attr;
 
 		errnum = pthread_mutex_init(&channel->lock, &attr);
 		assert(errnum != EINVAL);
@@ -73,10 +73,12 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 		linted_error dest_errnum = pthread_mutexattr_destroy(&attr);
 		if (0 == errnum)
 			errnum = dest_errnum;
-
-		if (errnum != 0)
-			goto free_channel;
+	} else {
+		errnum = pthread_mutex_init(&channel->lock, 0);
+		assert(errnum != EINVAL);
 	}
+	if (errnum != 0)
+		goto free_channel;
 
 	errnum = pthread_cond_init(&channel->filled, 0);
 	if (errnum != 0) {
