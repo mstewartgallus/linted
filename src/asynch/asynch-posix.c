@@ -612,8 +612,6 @@ destroy_threads:
 			linted_queue_node(&task.parent);
 			task.thread_canceller = true;
 
-			job_submit(job_queue, &task);
-
 			linted_error try_errnum =
 			    worker_try_submit(worker_queue, &task);
 			if (0 == try_errnum) {
@@ -710,8 +708,6 @@ static void *master_worker_routine(void *arg)
 			linted_queue_node(&task.parent);
 			task.thread_canceller = true;
 
-			job_submit(job_queue, &task);
-
 			linted_error errnum =
 			    worker_try_submit(worker_queue, &task);
 			if (0 == errnum) {
@@ -740,7 +736,6 @@ static void *worker_routine(void *arg)
 	struct linted_asynch_pool *asynch_pool = worker->pool;
 	struct worker_queue *worker_queue = worker->queue;
 	pthread_t self = pthread_self();
-	;
 
 	pthread_setname_np(self, "asynch-worker");
 
@@ -985,8 +980,6 @@ destroy_threads:
 			linted_queue_node(&waiter.parent);
 			waiter.thread_canceller = true;
 
-			waiter_submit(waiter_queue, &waiter);
-
 			linted_error try_errnum =
 			    poller_try_submit(poller_queue, &waiter);
 			if (0 == try_errnum) {
@@ -1045,7 +1038,9 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static void *master_poller_routine(void *arg)
 {
-	pthread_setname_np(pthread_self(), "asynch-poller-master");
+	pthread_t self = pthread_self();
+
+	pthread_setname_np(self, "asynch-poller-master");
 
 	struct wait_manager *pool = arg;
 
@@ -1082,8 +1077,6 @@ static void *master_poller_routine(void *arg)
 			struct linted_asynch_waiter waiter;
 			linted_queue_node(&waiter.parent);
 			waiter.thread_canceller = true;
-
-			waiter_submit(waiter_queue, &waiter);
 
 			linted_error errnum =
 			    poller_try_submit(poller_queue, &waiter);
@@ -1216,11 +1209,18 @@ poll_succeeded:
 /* struct complete_queue is just a fake */
 static linted_error completion_queue_create(struct completion_queue **queuep)
 {
-	struct linted_queue *xx;
-	linted_error errnum = linted_queue_create(&xx);
-	if (errnum != 0)
-		return errnum;
-	*queuep = (struct completion_queue *)xx;
+	linted_error errnum;
+
+	struct linted_queue *queue;
+	{
+		struct linted_queue *xx;
+		errnum = linted_queue_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		queue = xx;
+	}
+
+	*queuep = (struct completion_queue *)queue;
 	return 0;
 }
 
@@ -1246,11 +1246,16 @@ static linted_error completion_try_recv(struct completion_queue *queue,
                                         struct linted_asynch_task **taskp)
 {
 	linted_error errnum;
-	struct linted_queue_node *node;
 
-	errnum = linted_queue_try_recv((struct linted_queue *)queue, &node);
-	if (errnum != 0)
-		return errnum;
+	struct linted_queue_node *node;
+	{
+		struct linted_queue_node *xx;
+		errnum =
+		    linted_queue_try_recv((struct linted_queue *)queue, &xx);
+		if (errnum != 0)
+			return errnum;
+		node = xx;
+	}
 
 	*taskp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
@@ -1265,11 +1270,18 @@ static void completion_queue_destroy(struct completion_queue *queue)
 /* struct job_queue is just a fake */
 static linted_error job_queue_create(struct job_queue **queuep)
 {
-	struct linted_queue *xx;
-	linted_error errnum = linted_queue_create(&xx);
-	if (errnum != 0)
-		return errnum;
-	*queuep = (struct job_queue *)xx;
+	linted_error errnum;
+
+	struct linted_queue *queue;
+	{
+		struct linted_queue *xx;
+		errnum = linted_queue_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		queue = xx;
+	}
+
+	*queuep = (struct job_queue *)queue;
 	return 0;
 }
 
@@ -1283,7 +1295,11 @@ static linted_error job_recv(struct job_queue *queue,
 {
 	struct linted_queue_node *node;
 
-	linted_queue_recv((struct linted_queue *)queue, &node);
+	{
+		struct linted_queue_node *xx;
+		linted_queue_recv((struct linted_queue *)queue, &xx);
+		node = xx;
+	}
 
 	*taskp = LINTED_DOWNCAST(struct linted_asynch_task, node);
 
@@ -1298,11 +1314,17 @@ static void job_queue_destroy(struct job_queue *queue)
 /* struct worker_queue is just a fake */
 static linted_error worker_queue_create(struct worker_queue **queuep)
 {
-	struct linted_channel *xx;
-	linted_error errnum = linted_channel_create(&xx);
-	if (errnum != 0)
-		return errnum;
-	*queuep = (struct worker_queue *)xx;
+	linted_error errnum;
+
+	struct linted_channel *channel;
+	{
+		struct linted_channel *xx;
+		errnum = linted_channel_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		channel = xx;
+	}
+	*queuep = (struct worker_queue *)channel;
 	return 0;
 }
 
@@ -1317,12 +1339,18 @@ static linted_error worker_try_submit(struct worker_queue *queue,
 static linted_error worker_recv(struct worker_queue *queue,
                                 struct linted_asynch_task **taskp)
 {
-	void *node;
+	assert(queue != 0);
+	assert(taskp != 0);
 
-	linted_channel_recv((struct linted_channel *)queue, &node);
+	struct linted_asynch_task *task;
+	{
+		void *xx;
+		linted_channel_recv((struct linted_channel *)queue, &xx);
+		task = xx;
+	}
 
-	assert(node != 0);
-	*taskp = node;
+	assert(task != 0);
+	*taskp = task;
 
 	return 0;
 }
@@ -1335,29 +1363,17 @@ static void worker_queue_destroy(struct worker_queue *queue)
 /* struct waiter_queue is just a fake */
 static linted_error waiter_queue_create(struct waiter_queue **queuep)
 {
-	struct linted_queue *xx;
-	linted_error errnum = linted_queue_create(&xx);
-	if (errnum != 0)
-		return errnum;
-	*queuep = (struct waiter_queue *)xx;
-	return 0;
-}
+	linted_error errnum;
 
-static void waiter_submit(struct waiter_queue *queue,
-                          struct linted_asynch_waiter *waiter)
-{
-	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(waiter));
-}
-
-static linted_error waiter_recv(struct waiter_queue *queue,
-                                struct linted_asynch_waiter **waiterp)
-{
-	struct linted_queue_node *node;
-
-	linted_queue_recv((struct linted_queue *)queue, &node);
-
-	*waiterp = LINTED_DOWNCAST(struct linted_asynch_waiter, node);
-
+	struct linted_queue *raw_queue;
+	{
+		struct linted_queue *xx;
+		errnum = linted_queue_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		raw_queue = xx;
+	}
+	*queuep = (struct waiter_queue *)raw_queue;
 	return 0;
 }
 
@@ -1366,14 +1382,48 @@ static void waiter_queue_destroy(struct waiter_queue *queue)
 	linted_queue_destroy((struct linted_queue *)queue);
 }
 
+static void waiter_submit(struct waiter_queue *queue,
+                          struct linted_asynch_waiter *waiter)
+{
+	assert(queue != 0);
+	assert(waiter != 0);
+
+	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(waiter));
+}
+
+static linted_error waiter_recv(struct waiter_queue *queue,
+                                struct linted_asynch_waiter **waiterp)
+{
+	assert(queue != 0);
+	assert(waiterp != 0);
+
+	struct linted_queue_node *node;
+	{
+		struct linted_queue_node *xx;
+		linted_queue_recv((struct linted_queue *)queue, &xx);
+		node = xx;
+	}
+
+	*waiterp = LINTED_DOWNCAST(struct linted_asynch_waiter, node);
+
+	return 0;
+}
+
 /* struct poller_queue is just a fake */
 static linted_error poller_queue_create(struct poller_queue **queuep)
 {
-	struct linted_channel *xx;
-	linted_error errnum = linted_channel_create(&xx);
-	if (errnum != 0)
-		return errnum;
-	*queuep = (struct poller_queue *)xx;
+	linted_error errnum;
+
+	struct linted_channel *channel;
+	{
+		struct linted_channel *xx;
+		errnum = linted_channel_create(&xx);
+		if (errnum != 0)
+			return errnum;
+		channel = xx;
+	}
+
+	*queuep = (struct poller_queue *)channel;
 	return 0;
 }
 
@@ -1388,12 +1438,15 @@ static linted_error poller_try_submit(struct poller_queue *queue,
 static linted_error poller_recv(struct poller_queue *queue,
                                 struct linted_asynch_waiter **waiterp)
 {
-	void *node;
+	struct linted_asynch_waiter *waiter;
+	{
+		void *xx;
+		linted_channel_recv((struct linted_channel *)queue, &xx);
+		waiter = xx;
+	}
 
-	linted_channel_recv((struct linted_channel *)queue, &node);
-
-	assert(node != 0);
-	*waiterp = node;
+	assert(waiter != 0);
+	*waiterp = waiter;
 
 	return 0;
 }
