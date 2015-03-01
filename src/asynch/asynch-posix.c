@@ -531,6 +531,14 @@ static void *worker_routine(void *arg);
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
 
+struct worker_pool;
+
+struct worker
+{
+	struct worker_pool *pool;
+	pthread_t thread;
+};
+
 struct worker_pool
 {
 	struct linted_asynch_pool *asynch_pool;
@@ -544,7 +552,7 @@ struct worker_pool
 
 	pthread_t master_thread;
 
-	pthread_t workers[];
+	struct worker workers[];
 };
 
 static linted_error worker_pool_create(struct worker_pool **poolp,
@@ -627,20 +635,20 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_tasks; ++created_threads) {
-			if (0) {
-				errnum = pthread_attr_setstack(
-				    &attr,
-				    (char *)worker_stacks + page_size +
-				        created_threads * stack_and_guard_size,
-				    stack_size);
-				if (errnum != 0) {
-					assert(errnum != EINVAL);
-					assert(false);
-				}
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)worker_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
 			}
 
-			errnum = pthread_create(&pool->workers[created_threads],
-			                        &attr, worker_routine, pool);
+			struct worker *worker = &pool->workers[created_threads];
+
+			worker->pool = pool;
+			errnum = pthread_create(&worker->thread, &attr,
+			                        worker_routine, worker);
 			if (errnum != 0)
 				break;
 		}
@@ -664,6 +672,9 @@ static linted_error worker_pool_create(struct worker_pool **poolp,
 
 destroy_threads:
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		struct worker_queue *worker_queue = worker_queues[ii];
+		pthread_t thread = pool->workers[ii].thread;
+
 		for (;;) {
 			struct linted_asynch_task task;
 			linted_queue_node(&task.parent);
@@ -672,14 +683,14 @@ destroy_threads:
 			job_submit(job_queue, &task);
 
 			linted_error try_errnum =
-			    worker_try_submit(worker_queues[ii], &task);
+			    worker_try_submit(worker_queue, &task);
 			if (0 == try_errnum) {
-				pthread_join(pool->workers[ii], 0);
+				pthread_join(thread, 0);
 				break;
 			}
 
-			linted_error kill_errnum = pthread_kill(
-			    pool->workers[ii], LINTED_ASYNCH_SIGNO);
+			linted_error kill_errnum =
+			    pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (kill_errnum != 0 && kill_errnum != EAGAIN) {
 				assert(kill_errnum != ESRCH);
 				assert(kill_errnum != EINVAL);
@@ -727,7 +738,7 @@ static void *master_worker_routine(void *arg)
 
 	struct job_queue *job_queue = pool->job_queue;
 	struct worker_queue **worker_queues = pool->worker_queues;
-	pthread_t *workers = pool->workers;
+	struct worker *workers = pool->workers;
 	size_t max_tasks = pool->worker_count;
 
 	for (;;) {
@@ -752,6 +763,8 @@ static void *master_worker_routine(void *arg)
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {
+		struct worker_queue *worker_queue = worker_queues[ii];
+		pthread_t thread = workers[ii].thread;
 		for (;;) {
 			struct linted_asynch_task task;
 			linted_queue_node(&task.parent);
@@ -760,13 +773,13 @@ static void *master_worker_routine(void *arg)
 			job_submit(job_queue, &task);
 
 			linted_error errnum =
-			    worker_try_submit(worker_queues[ii], &task);
+			    worker_try_submit(worker_queue, &task);
 			if (0 == errnum) {
-				pthread_join(workers[ii], 0);
+				pthread_join(thread, 0);
 				break;
 			}
 
-			errnum = pthread_kill(workers[ii], LINTED_ASYNCH_SIGNO);
+			errnum = pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (errnum != 0 && errnum != EAGAIN) {
 				assert(errnum != ESRCH);
 				assert(errnum != EINVAL);
@@ -782,23 +795,18 @@ static void *master_worker_routine(void *arg)
 
 static void *worker_routine(void *arg)
 {
-	struct worker_pool *pool = arg;
+	struct worker *worker = arg;
 
-	pthread_t self = pthread_self();
+	struct worker_pool *pool = worker->pool;
+	pthread_t self = worker->thread;
 
 	pthread_setname_np(self, "asynch-worker");
 
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 	struct worker_queue **worker_queues = pool->worker_queues;
-	pthread_t *workers = pool->workers;
+	struct worker *workers = pool->workers;
 
-	struct worker_queue *worker_queue;
-	for (size_t ii = 0U;; ++ii) {
-		if (pthread_equal(workers[ii], self)) {
-			worker_queue = worker_queues[ii];
-			break;
-		}
-	}
+	struct worker_queue *worker_queue = worker_queues[worker - workers];
 
 	for (;;) {
 		struct linted_asynch_task *task;
@@ -868,6 +876,14 @@ static void run_task(struct linted_asynch_pool *pool,
 	}
 }
 
+struct wait_manager;
+
+struct poller
+{
+	struct wait_manager *manager;
+	pthread_t thread;
+};
+
 struct wait_manager
 {
 	struct linted_asynch_pool *asynch_pool;
@@ -883,7 +899,7 @@ struct wait_manager
 
 	pthread_t master_thread;
 
-	pthread_t pollers[];
+	struct poller pollers[];
 };
 
 static void *master_poller_routine(void *arg);
@@ -972,21 +988,21 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 			goto destroy_stacks;
 
 		for (; created_threads < max_pollers; ++created_threads) {
-			if (0) {
-				errnum = pthread_attr_setstack(
-				    &attr,
-				    (char *)pollers_stacks + page_size +
-				        created_threads * stack_and_guard_size,
-				    stack_size);
-				if (errnum != 0) {
-					assert(errnum != EINVAL);
-					assert(false);
-				}
+			errnum = pthread_attr_setstack(
+			    &attr, (char *)pollers_stacks + page_size +
+			               created_threads * stack_and_guard_size,
+			    stack_size);
+			if (errnum != 0) {
+				assert(errnum != EINVAL);
+				assert(false);
 			}
 
-			errnum =
-			    pthread_create(&manager->pollers[created_threads],
-			                   &attr, poller_routine, manager);
+			struct poller *poller =
+			    &manager->pollers[created_threads];
+
+			poller->manager = manager;
+			errnum = pthread_create(&poller->thread, &attr,
+			                        poller_routine, poller);
 			if (errnum != 0)
 				break;
 		}
@@ -1010,6 +1026,9 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
 
 destroy_threads:
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
+		struct poller_queue *poller_queue = poller_queues[ii];
+		pthread_t thread = manager->pollers[ii].thread;
+
 		for (;;) {
 			struct linted_asynch_waiter waiter;
 			linted_queue_node(&waiter.parent);
@@ -1018,14 +1037,14 @@ destroy_threads:
 			waiter_submit(waiter_queue, &waiter);
 
 			linted_error try_errnum =
-			    poller_try_submit(poller_queues[ii], &waiter);
+			    poller_try_submit(poller_queue, &waiter);
 			if (0 == try_errnum) {
-				pthread_join(manager->pollers[ii], 0);
+				pthread_join(thread, 0);
 				break;
 			}
 
-			linted_error kill_errnum = pthread_kill(
-			    manager->pollers[ii], LINTED_ASYNCH_SIGNO);
+			linted_error kill_errnum =
+			    pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (kill_errnum != 0 && kill_errnum != EAGAIN) {
 				assert(kill_errnum != ESRCH);
 				assert(kill_errnum != EINVAL);
@@ -1073,7 +1092,7 @@ static void *master_poller_routine(void *arg)
 
 	struct waiter_queue *waiter_queue = pool->waiter_queue;
 	struct poller_queue **poller_queues = pool->poller_queues;
-	pthread_t *pollers = pool->pollers;
+	struct poller *pollers = pool->pollers;
 	size_t max_tasks = pool->poller_count;
 
 	for (;;) {
@@ -1098,6 +1117,9 @@ static void *master_poller_routine(void *arg)
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {
+		struct poller_queue *poller_queue = poller_queues[ii];
+		pthread_t thread = pollers[ii].thread;
+
 		for (;;) {
 			struct linted_asynch_waiter waiter;
 			linted_queue_node(&waiter.parent);
@@ -1106,13 +1128,13 @@ static void *master_poller_routine(void *arg)
 			waiter_submit(waiter_queue, &waiter);
 
 			linted_error errnum =
-			    poller_try_submit(poller_queues[ii], &waiter);
+			    poller_try_submit(poller_queue, &waiter);
 			if (0 == errnum) {
-				pthread_join(pollers[ii], 0);
+				pthread_join(thread, 0);
 				break;
 			}
 
-			errnum = pthread_kill(pollers[ii], LINTED_ASYNCH_SIGNO);
+			errnum = pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (errnum != 0 && errnum != EAGAIN) {
 				assert(errnum != ESRCH);
 				assert(errnum != EINVAL);
@@ -1128,23 +1150,18 @@ static void *master_poller_routine(void *arg)
 
 static void *poller_routine(void *arg)
 {
-	struct wait_manager *pool = arg;
+	struct poller *poller = arg;
 
-	pthread_t self = pthread_self();
+	struct wait_manager *manager = poller->manager;
+	pthread_t self = poller->thread;
 
 	pthread_setname_np(self, "asynch-poller");
 
-	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
-	struct poller_queue **poller_queues = pool->poller_queues;
-	pthread_t *pollers = pool->pollers;
+	struct linted_asynch_pool *asynch_pool = manager->asynch_pool;
+	struct poller_queue **poller_queues = manager->poller_queues;
+	struct poller *pollers = manager->pollers;
 
-	struct poller_queue *poller_queue;
-	for (size_t ii = 0U;; ++ii) {
-		if (pthread_equal(pollers[ii], self)) {
-			poller_queue = poller_queues[ii];
-			break;
-		}
-	}
+	struct poller_queue *poller_queue = poller_queues[poller - pollers];
 
 	linted_error errnum = 0;
 	for (;;) {
