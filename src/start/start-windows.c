@@ -32,6 +32,7 @@
 #include "linted/log.h"
 
 #include <errno.h>
+#include <libgen.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -119,7 +120,12 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 		missing_name = true;
 	}
 
-	linted_log_open(process_name);
+	char *process_basename = strdup(process_name);
+	if (0 == process_basename)
+		return EXIT_FAILURE;
+	process_basename = basename(process_basename);
+
+	linted_log_open(process_basename);
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
@@ -137,6 +143,6 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 		return EXIT_FAILURE;
 	}
 
-	return linted_start_config.start(process_name, argc,
+	return linted_start_config.start(process_basename, argc,
 	                                 (char const *const *)argv);
 }
