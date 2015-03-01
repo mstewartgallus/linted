@@ -140,8 +140,8 @@ static inline linted_error spinlock_unlock(spinlock *lock)
 struct canceller
 {
 	pthread_t owner;
-	bool *cancel_replier;
 	spinlock lock;
+	bool *cancel_replier;
 	bool owned : 1U;
 	bool in_flight : 1U;
 };

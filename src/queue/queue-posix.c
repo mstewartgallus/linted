@@ -27,10 +27,10 @@
 
 struct linted_queue
 {
-	struct linted_queue_node *head;
-	struct linted_queue_node **tailp;
 	pthread_mutex_t lock;
 	pthread_cond_t gains_member;
+	struct linted_queue_node *head;
+	struct linted_queue_node **tailp;
 };
 
 void linted_queue_node(struct linted_queue_node *node)

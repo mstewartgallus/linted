@@ -183,7 +183,8 @@
  * <li> [Clang's -Wthread-safety flag](http://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
  * As of version 3.5:
  * - This tool is okay but cannot handle thread cancellation which is
- *   needed to kill worker threads that are taking too long.
+ *   needed to kill worker threads that are taking too long.  Luckily,
+ *   we don't use thread cancellation anymore.
  * </li>
  *
  * <li> [Smatch](http://smatch.sourceforge.net/)

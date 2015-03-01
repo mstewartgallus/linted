@@ -37,10 +37,10 @@
 
 struct linted_queue
 {
-	struct linted_queue_node *head;
-	struct linted_queue_node **tailp;
 	CRITICAL_SECTION lock;
 	CONDITION_VARIABLE gains_member;
+	struct linted_queue_node *head;
+	struct linted_queue_node **tailp;
 };
 
 void linted_queue_node(struct linted_queue_node *node)
