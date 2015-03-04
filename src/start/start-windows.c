@@ -28,6 +28,7 @@
 #include "linted/asynch.h"
 #include "linted/environment.h"
 #include "linted/mem.h"
+#include "linted/signal.h"
 #include "linted/utf.h"
 #include "linted/log.h"
 
@@ -129,6 +130,13 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
+		return EXIT_FAILURE;
+	}
+
+	errnum = linted_signal_init();
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
+		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 

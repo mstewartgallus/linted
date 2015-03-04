@@ -619,22 +619,6 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	kill_read_data.pool = pool;
 	kill_read_data.manager_pid = manager_pid;
 
-	errnum = linted_signal_listen_to_sighup();
-	if (errnum != 0)
-		goto kill_procs;
-
-	errnum = linted_signal_listen_to_sigint();
-	if (errnum != 0)
-		goto kill_procs;
-
-	errnum = linted_signal_listen_to_sigquit();
-	if (errnum != 0)
-		goto kill_procs;
-
-	errnum = linted_signal_listen_to_sigterm();
-	if (errnum != 0)
-		goto kill_procs;
-
 	linted_signal_task_wait_prepare(signal_wait_task, SIGNAL_WAIT);
 	linted_asynch_pool_submit(
 	    pool, linted_signal_task_wait_to_asynch(signal_wait_task));
@@ -655,6 +639,11 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	                            &dummy, sizeof dummy);
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_read_to_asynch(kill_read_task));
+
+	linted_signal_listen_to_sighup();
+	linted_signal_listen_to_sigint();
+	linted_signal_listen_to_sigquit();
+	linted_signal_listen_to_sigterm();
 
 	for (;;) {
 		struct linted_asynch_task *completed_task;

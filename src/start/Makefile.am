@@ -23,6 +23,7 @@ EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\
+  src/signal/libsignal.la\
   \
   $(WS2_32_LIBS)
 

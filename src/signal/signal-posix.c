@@ -67,6 +67,39 @@ static void (*const sighandlers[NUM_SIGS])(int) =
      [LINTED_SIGNAL_TERM] = report_sigterm,
      [LINTED_SIGNAL_QUIT] = report_sigquit};
 
+linted_error linted_signal_init(void)
+{
+	linted_error errnum = 0;
+
+	size_t ii = 0U;
+	for (; ii < NUM_SIGS; ++ii) {
+		linted_ko reader;
+		linted_ko writer;
+		{
+			int xx[2U];
+			if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_pipes;
+			}
+			reader = xx[0U];
+			writer = xx[1U];
+		}
+
+		sigpipes[ii].reader = reader;
+		sigpipes[ii].writer = writer;
+	}
+
+	return 0;
+
+close_pipes:
+	for (size_t jj = 0U; jj < ii; ++jj) {
+		linted_ko_close(sigpipes[ii].reader);
+		linted_ko_close(sigpipes[ii].writer);
+	}
+	return errnum;
+}
+
 linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
                                void *data)
@@ -197,47 +230,31 @@ char const *linted_signal_string(int signo)
 	return sys_siglist[signo];
 }
 
-static linted_error listen_to_signal(size_t ii);
+static void listen_to_signal(size_t ii);
 
-linted_error linted_signal_listen_to_sighup(void)
+void linted_signal_listen_to_sighup(void)
 {
-	return listen_to_signal(LINTED_SIGNAL_HUP);
+	listen_to_signal(LINTED_SIGNAL_HUP);
 }
 
-linted_error linted_signal_listen_to_sigint(void)
+void linted_signal_listen_to_sigint(void)
 {
-	return listen_to_signal(LINTED_SIGNAL_INT);
+	listen_to_signal(LINTED_SIGNAL_INT);
 }
 
-linted_error linted_signal_listen_to_sigquit(void)
+void linted_signal_listen_to_sigquit(void)
 {
-	return listen_to_signal(LINTED_SIGNAL_QUIT);
+	listen_to_signal(LINTED_SIGNAL_QUIT);
 }
 
-linted_error linted_signal_listen_to_sigterm(void)
+void linted_signal_listen_to_sigterm(void)
 {
-	return listen_to_signal(LINTED_SIGNAL_TERM);
+	listen_to_signal(LINTED_SIGNAL_TERM);
 }
 
-static linted_error listen_to_signal(size_t ii)
+static void listen_to_signal(size_t ii)
 {
 	linted_error errnum;
-
-	linted_ko reader;
-	linted_ko writer;
-	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
-		}
-		reader = xx[0U];
-		writer = xx[1U];
-	}
-
-	sigpipes[ii].reader = reader;
-	sigpipes[ii].writer = writer;
 
 	int signo = signals[ii];
 	void (*handler)(int) = sighandlers[ii];
@@ -251,8 +268,6 @@ static linted_error listen_to_signal(size_t ii)
 		LINTED_ASSUME(errnum != 0);
 		assert(false);
 	}
-
-	return 0;
 }
 
 static char const dummy;

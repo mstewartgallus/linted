@@ -24,6 +24,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
+#include "linted/signal.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -104,6 +105,13 @@ int main(int argc, char *argv[])
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
+	}
+
+	errnum = linted_signal_init();
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
+		           linted_error_string(errnum));
+		return EXIT_FAILURE;
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
