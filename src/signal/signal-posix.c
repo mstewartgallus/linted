@@ -30,12 +30,6 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
-struct pipeset
-{
-	linted_ko reader;
-	linted_ko writer;
-};
-
 enum { LINTED_SIGNAL_HUP,
        LINTED_SIGNAL_INT,
        LINTED_SIGNAL_TERM,
@@ -45,6 +39,7 @@ enum { LINTED_SIGNAL_HUP,
 struct linted_signal_task_wait
 {
 	struct linted_asynch_task *parent;
+	struct linted_asynch_waiter *waiter;
 	void *data;
 	int signo;
 };
@@ -54,8 +49,13 @@ static void report_sigint(int signo);
 static void report_sigquit(int signo);
 static void report_sigterm(int signo);
 
-static struct pipeset sigpipes[NUM_SIGS] = {
-    {.reader = (linted_ko)-1, .writer = (linted_ko)-1}};
+static int sigpipe_reader;
+static int sigpipe_writer;
+
+static int volatile sighup_signalled;
+static int volatile sigint_signalled;
+static int volatile sigterm_signalled;
+static int volatile sigquit_signalled;
 
 static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
                                       [LINTED_SIGNAL_INT] = SIGINT,
@@ -71,33 +71,23 @@ linted_error linted_signal_init(void)
 {
 	linted_error errnum = 0;
 
-	size_t ii = 0U;
-	for (; ii < NUM_SIGS; ++ii) {
-		linted_ko reader;
-		linted_ko writer;
-		{
-			int xx[2U];
-			if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto close_pipes;
-			}
-			reader = xx[0U];
-			writer = xx[1U];
+	linted_ko reader;
+	linted_ko writer;
+	{
+		int xx[2U];
+		if (-1 == pipe2(xx, O_NONBLOCK | O_CLOEXEC)) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			return errnum;
 		}
-
-		sigpipes[ii].reader = reader;
-		sigpipes[ii].writer = writer;
+		reader = xx[0U];
+		writer = xx[1U];
 	}
+
+	sigpipe_reader = reader;
+	sigpipe_writer = writer;
 
 	return 0;
-
-close_pipes:
-	for (size_t jj = 0U; jj < ii; ++jj) {
-		linted_ko_close(sigpipes[ii].reader);
-		linted_ko_close(sigpipes[ii].writer);
-	}
-	return errnum;
 }
 
 linted_error
@@ -122,10 +112,21 @@ linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
 			goto free_task;
 		parent = xx;
 	}
+	struct linted_asynch_waiter *waiter;
+	{
+		struct linted_asynch_waiter *xx;
+		errnum = linted_asynch_waiter_create(&xx);
+		if (errnum != 0)
+			goto free_parent;
+		waiter = xx;
+	}
+	task->waiter = waiter;
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
+free_parent:
+	linted_asynch_task_destroy(parent);
 free_task:
 	linted_mem_free(task);
 	return errnum;
@@ -133,6 +134,7 @@ free_task:
 
 void linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
 {
+	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -171,50 +173,66 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	struct linted_signal_task_wait *task_wait =
 	    linted_asynch_task_data(task);
 	linted_error errnum = 0;
-
-	struct pollfd pollfds[NUM_SIGS];
-	for (size_t ii = 0U; ii < NUM_SIGS; ++ii) {
-		pollfds[ii].fd = sigpipes[ii].reader;
-		pollfds[ii].events = POLLIN;
-	}
-
-	int results = poll(pollfds, LINTED_ARRAY_SIZE(pollfds), -1);
-	if (-1 == results) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-	}
-
-	if (EINTR == errnum)
-		goto resubmit;
-
-	if (errnum != 0)
-		goto complete;
+	struct linted_asynch_waiter *waiter = task_wait->waiter;
 
 	int signo = -1;
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(pollfds); ++ii) {
-		int maybe_signo = signals[ii];
 
+	for (;;) {
 		char dummy;
-		if ((pollfds[ii].revents & POLLIN) != 0) {
-			if (0 == linted_io_read_all(pollfds[ii].fd, 0, &dummy,
-			                            sizeof dummy)) {
-				signo = maybe_signo;
+		if (read(sigpipe_reader, &dummy, sizeof dummy) < 0) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			if (EAGAIN == errnum)
 				break;
-			}
+			if (EWOULDBLOCK == errnum)
+				break;
+			if (EINTR == errnum)
+				goto resubmit;
+			goto complete;
 		}
 	}
+	errnum = 0;
 
-	if (-1 == signo)
-		goto resubmit;
+	if (__atomic_fetch_and(&sighup_signalled, 0, __ATOMIC_SEQ_CST)) {
+		signo = SIGHUP;
+		goto complete;
+	}
 
-	task_wait->signo = signo;
+	if (__atomic_fetch_and(&sigint_signalled, 0, __ATOMIC_SEQ_CST)) {
+		signo = SIGINT;
+		goto complete;
+	}
+
+	if (__atomic_fetch_and(&sigterm_signalled, 0, __ATOMIC_SEQ_CST)) {
+		signo = SIGTERM;
+		goto complete;
+	}
+
+	if (__atomic_fetch_and(&sigquit_signalled, 0, __ATOMIC_SEQ_CST)) {
+		signo = SIGQUIT;
+		goto complete;
+	}
+
+	goto wait_on_poll;
 
 complete:
+	task_wait->signo = signo;
+
+	if (0 == errnum) {
+		char dummy = 0;
+		linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	}
+
 	linted_asynch_pool_complete(pool, task, errnum);
 	return;
 
 resubmit:
 	linted_asynch_pool_resubmit(pool, task);
+	return;
+
+wait_on_poll:
+	linted_asynch_pool_wait_on_poll(pool, waiter, task, sigpipe_reader,
+	                                POLLIN);
 }
 
 char const *linted_signal_string(int signo)
@@ -275,31 +293,31 @@ static char const dummy;
 static void report_sighup(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigpipes[LINTED_SIGNAL_HUP].writer, 0, &dummy,
-	                    sizeof dummy);
+	__atomic_store_n(&sighup_signalled, 1, __ATOMIC_SEQ_CST);
+	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigint(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigpipes[LINTED_SIGNAL_INT].writer, 0, &dummy,
-	                    sizeof dummy);
+	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
+	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigterm(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigpipes[LINTED_SIGNAL_TERM].writer, 0, &dummy,
-	                    sizeof dummy);
+	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
+	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
 
 static void report_sigquit(int signo)
 {
 	linted_error errnum = errno;
-	linted_io_write_all(sigpipes[LINTED_SIGNAL_QUIT].writer, 0, &dummy,
-	                    sizeof dummy);
+	__atomic_store_n(&sigquit_signalled, 1, __ATOMIC_SEQ_CST);
+	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
