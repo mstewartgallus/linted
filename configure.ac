@@ -62,6 +62,9 @@ dnl
 LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
 dnl
+LINTED_CHECK_CFLAG([linted_CFLAGS_TARGET],["-target ${host}"])
+[CC="${CC} ${linted_CFLAGS_TARGET}"]
+dnl
 AC_ARG_ENABLE(
         [posix-api],
         AS_HELP_STRING(
