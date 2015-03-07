@@ -47,6 +47,7 @@ dnl
 [linted_emscripten_api_default=no]
 dnl
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
+AS_IF([test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])
 dnl
 AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
 AS_IF([test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
@@ -178,6 +179,10 @@ dnl
         AC_CHECK_HEADERS([[sys/auxv.h]])
         AC_CHECK_FUNCS([[getauxval]])
 dnl
+        AC_CHECK_FUNCS([[pthread_setname_np]])
+dnl
+        AC_CHECK_HEADERS([[sys/prctl.h]])
+        AC_CHECK_FUNCS([[prctl]])
 ])
 dnl
 AM_CONDITIONAL([X11_API], [test "x${enable_x11_api}" = xyes])

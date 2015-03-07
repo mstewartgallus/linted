@@ -37,6 +37,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 /**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
@@ -184,6 +188,8 @@ struct linted_asynch_waiter
 	short revents;
 	bool thread_canceller : 1U;
 };
+
+static void set_thread_name(char const *name);
 
 linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                                        unsigned max_tasks)
@@ -670,7 +676,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 static void *master_worker_routine(void *arg)
 {
-	pthread_setname_np(pthread_self(), "asynch-worker-master");
+	set_thread_name("asynch-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -731,13 +737,14 @@ static void *master_worker_routine(void *arg)
 
 static void *worker_routine(void *arg)
 {
+	set_thread_name("asynch-worker");
+
 	struct worker *worker = arg;
 
 	struct linted_asynch_pool *asynch_pool = worker->pool;
 	struct worker_queue *worker_queue = worker->queue;
-	pthread_t self = pthread_self();
 
-	pthread_setname_np(self, "asynch-worker");
+	pthread_t self = pthread_self();
 
 	for (;;) {
 		struct linted_asynch_task *task;
@@ -1038,9 +1045,7 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static void *master_poller_routine(void *arg)
 {
-	pthread_t self = pthread_self();
-
-	pthread_setname_np(self, "asynch-poller-master");
+	set_thread_name("asynch-poller-master");
 
 	struct wait_manager *pool = arg;
 
@@ -1101,14 +1106,14 @@ static void *master_poller_routine(void *arg)
 
 static void *poller_routine(void *arg)
 {
+	set_thread_name("asynch-poller");
+
 	struct poller *poller = arg;
 
 	struct linted_asynch_pool *asynch_pool = poller->pool;
 	struct poller_queue *poller_queue = poller->queue;
 
 	pthread_t self = pthread_self();
-
-	pthread_setname_np(self, "asynch-poller");
 
 	linted_error errnum = 0;
 	for (;;) {
@@ -1659,3 +1664,20 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	return cancelled;
 }
+
+#if defined HAVE_PTHREAD_SETNAME_NP
+static void set_thread_name(char const *name)
+{
+	pthread_setname_np(pthread_self(), name);
+}
+#elif defined HAVE_SYS_PRCTL_H
+static void set_thread_name(char const *name)
+{
+	prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL);
+}
+#else
+static void set_thread_name(char const *name)
+{
+/* Do nothing */
+}
+#endif

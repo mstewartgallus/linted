@@ -25,9 +25,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <signal.h>
-#include <sys/poll.h>
 #include <unistd.h>
 
 enum { LINTED_SIGNAL_HUP,
