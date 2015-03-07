@@ -1678,6 +1678,6 @@ static void set_thread_name(char const *name)
 #else
 static void set_thread_name(char const *name)
 {
-/* Do nothing */
+	/* Do nothing */
 }
 #endif
