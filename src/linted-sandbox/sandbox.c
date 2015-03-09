@@ -571,58 +571,33 @@ exit_loop:
 		}
 	}
 
-	if (clone_newuser) {
-		if (-1 == unshare(CLONE_NEWUSER)) {
+	int clone_flags = 0;
+	if (clone_newuser)
+		clone_flags |= CLONE_NEWUSER;
+	if (clone_newipc)
+		clone_flags |= CLONE_NEWIPC;
+	if (clone_newns)
+		clone_flags |= CLONE_NEWNS;
+	if (clone_newuts)
+		clone_flags |= CLONE_NEWUTS;
+	if (clone_newnet)
+		clone_flags |= CLONE_NEWNET;
+	if (clone_newpid)
+		clone_flags |= CLONE_NEWPID;
+
+	if (clone_flags != 0) {
+		if (-1 == unshare(clone_flags)) {
 			linted_log(LINTED_LOG_ERROR, "unshare: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
+	}
 
-		/* First things first set the id mapping */
+	if (clone_newuser) {
 		errnum = set_id_maps(uid_map, gid_map);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "set_id_maps: %s",
 			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (clone_newipc) {
-		if (-1 == unshare(CLONE_NEWIPC)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (clone_newns) {
-		if (-1 == unshare(CLONE_NEWNS)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (clone_newuts) {
-		if (-1 == unshare(CLONE_NEWUTS)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (clone_newnet) {
-		if (-1 == unshare(CLONE_NEWNET)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (clone_newpid) {
-		if (-1 == unshare(CLONE_NEWPID)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
