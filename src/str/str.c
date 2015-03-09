@@ -58,7 +58,8 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 		buf = new_buf;
 	}
 
-	memcpy(buf + size, str, strsize);
+	if (strsize > 0U)
+		memcpy(buf + size, str, strsize);
 
 	cap = new_cap;
 	size = new_size;
