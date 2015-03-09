@@ -15,12 +15,7 @@ JSON_CC="${ROOT}/json-cc.py"
 
 : ${CC:=gcc}
 
-exec "${SRC}/configure"\
-     --build="$("${SRC}/build-aux/config.guess")"\
-     --host=none-none-none\
-     --disable-shared\
+exec "${SRC}/scripts/archs/configure-x86_64-linux-gnu"\
      --enable-debug\
-     --enable-posix-api\
-     --enable-x11-api\
      CC="${JSON_CC} ${CC}"\
      $@

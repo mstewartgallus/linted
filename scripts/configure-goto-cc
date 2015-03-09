@@ -11,9 +11,7 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-exec "${ROOT}/../configure"\
-     --build="$("${ROOT}/../build-aux/config.guess")"\
-     --host=none-none-none\
+exec "${SRC}/scripts/archs/configure-x86_64-linux-gnu"\
      --disable-shared\
      --enable-debug\
      CC=goto-cc\
