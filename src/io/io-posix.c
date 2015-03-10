@@ -29,7 +29,6 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -37,6 +36,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+/* Android's libc does not have the pthread_sigmask declaration in
+ * signal.h as mandated by POSIX. */
+#if defined __BIONIC__
+#include <pthread.h>
+#endif
 
 #if defined __BIONIC__
 #include <sys/syscall.h>
@@ -76,8 +81,7 @@ struct linted_io_task_write
 	linted_ko ko;
 };
 
-static void pipe_set_init(void);
-static sigset_t const *get_pipe_set(void);
+static sigset_t get_pipe_set(void);
 static linted_error eat_sigpipes(void);
 
 static linted_error poll_one(linted_ko ko, short events, short *revents);
@@ -643,7 +647,10 @@ void linted_io_do_write(struct linted_asynch_pool *pool,
 		/* Get EPIPEs */
 		/* SIGPIPE may not be blocked already */
 		sigset_t oldset;
-		errnum = pthread_sigmask(SIG_BLOCK, get_pipe_set(), &oldset);
+		{
+			sigset_t pipe_set = get_pipe_set();
+			errnum = pthread_sigmask(SIG_BLOCK, &pipe_set, &oldset);
+		}
 		if (errnum != 0)
 			goto complete_task;
 
@@ -708,14 +715,14 @@ static linted_error eat_sigpipes(void)
 	for (;;) {
 		int wait_status;
 
-		sigset_t const *pipe_set = get_pipe_set();
+		sigset_t const pipe_set = get_pipe_set();
 		struct timespec const *timeoutp = &zero_timeout;
 
 #if defined __BIONIC__
 		wait_status =
-		    syscall(__NR_rt_sigtimedwait, pipe_set, 0, timeoutp);
+		    syscall(__NR_rt_sigtimedwait, &pipe_set, 0, timeoutp);
 #else
-		wait_status = sigtimedwait(pipe_set, 0, timeoutp);
+		wait_status = sigtimedwait(&pipe_set, 0, timeoutp);
 #endif
 		if (wait_status != -1)
 			continue;
@@ -736,21 +743,10 @@ static linted_error eat_sigpipes(void)
 	return errnum;
 }
 
-static sigset_t pipeset;
-static pthread_once_t pipe_set_once_control = PTHREAD_ONCE_INIT;
-
-static sigset_t const *get_pipe_set(void)
+static sigset_t get_pipe_set(void)
 {
-	linted_error errnum;
-
-	errnum = pthread_once(&pipe_set_once_control, pipe_set_init);
-	assert(0 == errnum);
-
-	return &pipeset;
-}
-
-static void pipe_set_init(void)
-{
+	sigset_t pipeset;
 	sigemptyset(&pipeset);
 	sigaddset(&pipeset, SIGPIPE);
+	return pipeset;
 }

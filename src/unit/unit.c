@@ -23,10 +23,13 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <sys/types.h>
 #include <string.h>
 
 union unit_union

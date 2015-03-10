@@ -42,17 +42,6 @@
 
 extern char **environ;
 
-struct adddup2
-{
-	int oldfildes;
-	int newfildes;
-};
-
-union file_action
-{
-	struct adddup2 adddup2;
-};
-
 struct linted_spawn_file_actions
 {
 	linted_ko new_stdin;

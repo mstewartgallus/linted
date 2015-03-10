@@ -1072,13 +1072,14 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
 		int fifo_size = unit->fifo_size;
 
+#if defined F_SETPIPE_SZ
 		if (fifo_size >= 0) {
 			linted_ko fifo;
 			{
 				linted_ko xx;
 				errnum = linted_fifo_create(
-				    &xx, LINTED_KO_CWD, unit->path,
-				    LINTED_FIFO_RDWR, S_IRWXU);
+					&xx, LINTED_KO_CWD, unit->path,
+					LINTED_FIFO_RDWR, S_IRWXU);
 				if (errnum != 0)
 					return errnum;
 				fifo = xx;
@@ -1087,7 +1088,9 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			fcntl(fifo, F_SETPIPE_SZ, fifo_size);
 
 			linted_ko_close(fifo);
-		} else {
+		} else
+#endif
+		{
 			errnum = linted_fifo_create(0, LINTED_KO_CWD,
 			                            unit->path, 0U, S_IRWXU);
 			if (errnum != 0)
@@ -1102,7 +1105,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	return 0;
 }
 
-struct option
+struct my_option
 {
 	char const *name;
 	char const *value;
@@ -1266,7 +1269,7 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const *const *)exec_start);
 
-	struct option options[] = {{"--traceme", 0, true},
+	struct my_option options[] = {{"--traceme", 0, true},
 	                           {"--waiter", waiter, waiter != 0},
 	                           {"--chrootdir", chrootdir, fstab != 0},
 	                           {"--fstab", fstab, fstab != 0},
@@ -1283,7 +1286,7 @@ envvar_allocate_succeeded:
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
-		struct option option = options[ii];
+		struct my_option option = options[ii];
 		if (!option.flag)
 			continue;
 
@@ -1306,7 +1309,7 @@ envvar_allocate_succeeded:
 
 	size_t ix = 1U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
-		struct option option = options[ii];
+		struct my_option option = options[ii];
 		if (!option.flag)
 			continue;
 

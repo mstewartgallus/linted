@@ -28,7 +28,7 @@ source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
-(source_cflags && source_files) | \
+(source_cflags && frama_c_stdlib && source_files) | \
 xargs --delimiter='\n' -- \
 "${LINTED_FRAMA_C}"\
     -quiet\

@@ -46,6 +46,7 @@ dnl
 [linted_windows_api_default=no]
 [linted_emscripten_api_default=no]
 dnl
+AS_IF([test "x${host_os}" = "xlinux-androideabi"], [[linted_posix_api_default=yes]])
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
 AS_IF([test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])
 dnl
@@ -139,8 +140,10 @@ dnl
         ], [])
 dnl
 dnl     First try to see if realtime functionality is included by default
-        LINTED_CHECK_LIB([REALTIME_LIBS], [], [clock_gettime], [#include <time.h>], [], [
-                LINTED_CHECK_LIB([REALTIME_LIBS], [-lrt], [clock_gettime], [#include <time.h>], [], [
+        LINTED_CHECK_LIB([REALTIME_LIBS], [], [clock_gettime], [#define _POSIX_C_SOURCE 199309L
+#include <time.h>], [], [
+                LINTED_CHECK_LIB([REALTIME_LIBS], [-lrt], [clock_gettime], [#define _POSIX_C_SOURCE 199309L
+#include <time.h>], [], [
                         AC_MSG_ERROR([Unable to find a realtime functions library])
                 ])
         ])

@@ -22,12 +22,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+/* Android's libc does not have the pthread_sigmask declaration in
+ * signal.h as mandated by POSIX. */
+#if defined __BIONIC__
+#include <pthread.h>
+#endif
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
