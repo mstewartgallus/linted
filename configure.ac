@@ -295,6 +295,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([scripts/test
                  scripts/check-cbmc
+                 scripts/check-cpa
                  scripts/check-clang-analysis
                  scripts/check-cppcheck
                  scripts/check-frama-c

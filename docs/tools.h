@@ -17,7 +17,6 @@
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
- * <li> [CPAchecker](http://cpachecker.sosy-lab.org/) </li>
  * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
  * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git) </li>
@@ -28,6 +27,7 @@
  * <li> [Why3](http://why3.lri.fr/) </li>
  * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
  * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
+ * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis)
  *
  * </li>
  *
@@ -112,6 +112,13 @@
  *   are valid C strings.
  * - Theoretically it should be able to handle nondeterminism and
  *   concurrency but only if I add a bunch of annotations manually.
+ * </li>
+ *
+ * <li> [CPAchecker](http://cpachecker.sosy-lab.org/)
+ * As of version 1.4:
+ *
+ * You can't pass flags into the builtin preprocessor such as include
+ * flags.
  * </li>
  *
  * <li> [Frama-C](http://frama-c.com/
