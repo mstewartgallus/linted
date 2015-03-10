@@ -1078,8 +1078,8 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			{
 				linted_ko xx;
 				errnum = linted_fifo_create(
-					&xx, LINTED_KO_CWD, unit->path,
-					LINTED_FIFO_RDWR, S_IRWXU);
+				    &xx, LINTED_KO_CWD, unit->path,
+				    LINTED_FIFO_RDWR, S_IRWXU);
 				if (errnum != 0)
 					return errnum;
 				fifo = xx;
@@ -1270,19 +1270,19 @@ envvar_allocate_succeeded:
 	    null_list_size((char const *const *)exec_start);
 
 	struct my_option options[] = {{"--traceme", 0, true},
-	                           {"--waiter", waiter, waiter != 0},
-	                           {"--chrootdir", chrootdir, fstab != 0},
-	                           {"--fstab", fstab, fstab != 0},
-	                           {"--nonewprivs", 0, no_new_privs},
-	                           {"--dropcaps", 0, drop_caps},
-	                           {"--chdir", chdir_path, chdir_path != 0},
-	                           {"--priority", prio_str, prio_str != 0},
-	                           {"--clone-newuser", 0, clone_newuser},
-	                           {"--clone-newpid", 0, clone_newpid},
-	                           {"--clone-newipc", 0, clone_newipc},
-	                           {"--clone-newnet", 0, clone_newnet},
-	                           {"--clone-newns", 0, clone_newns},
-	                           {"--clone-newuts", 0, clone_newuts}};
+	                              {"--waiter", waiter, waiter != 0},
+	                              {"--chrootdir", chrootdir, fstab != 0},
+	                              {"--fstab", fstab, fstab != 0},
+	                              {"--nonewprivs", 0, no_new_privs},
+	                              {"--dropcaps", 0, drop_caps},
+	                              {"--chdir", chdir_path, chdir_path != 0},
+	                              {"--priority", prio_str, prio_str != 0},
+	                              {"--clone-newuser", 0, clone_newuser},
+	                              {"--clone-newpid", 0, clone_newpid},
+	                              {"--clone-newipc", 0, clone_newipc},
+	                              {"--clone-newnet", 0, clone_newnet},
+	                              {"--clone-newns", 0, clone_newns},
+	                              {"--clone-newuts", 0, clone_newuts}};
 
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
