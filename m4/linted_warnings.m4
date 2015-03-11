@@ -46,7 +46,8 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
         [-Wl,--warn-execstack]dnl
         [-Wl,--warn-search-mismatch]dnl
         [-Wl,--warn-shared-textrel]dnl
-        [-Wl,--warn-unresolved-symbols]dnl
+        [-Wl,--no-undefined]dnl
+        [-Wl,--no-allow-shlib-undefined]dnl
 ])
 AC_SUBST([linted_LDFLAGS_WARNINGS])
 ])
