@@ -38,6 +38,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -114,7 +115,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
                                    char const *const argv[]);
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      char const *path);
+                                      linted_ko cwd, char const *path);
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
                                    struct linted_conf_db *conf_db,
                                    char const *sandbox, char const *waiter);
@@ -319,7 +320,52 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	pid_t manager_pid = strtol(manager_pid_str, 0, 10);
+	pid_t manager_pid;
+
+	char start = manager_pid_str[0U];
+	if ('\0' == start || '+' == start || '-' == start || isspace(start)) {
+		errnum = EINVAL;
+	} else {
+		char *endptr;
+
+		long yy;
+		errno = 0;
+		{
+			char *xx;
+			yy = strtol(manager_pid_str, &xx, 10);
+			errnum = errno;
+			if (errnum != 0)
+				goto on_error;
+			endptr = xx;
+		}
+		if (endptr[0U] != '\0') {
+			errnum = EINVAL;
+			goto on_error;
+		}
+
+		if (yy < 0) {
+			errnum = ERANGE;
+			goto on_error;
+		}
+
+		/* 2^(bits - 1) - 1 */
+		/* Sadly, this assumes a twos complement implementation */
+		pid_t pid_max =
+		    (1L << (long)(sizeof(pid_t) * CHAR_BIT - 1)) - 1;
+		if (yy > pid_max) {
+			errnum = ERANGE;
+			goto on_error;
+		}
+
+		manager_pid = yy;
+	}
+
+on_error:
+	if (errnum != 0) {
+		linted_log(LINTED_LOG_ERROR, "strtol: %s",
+		           linted_error_string(errnum));
+		return EXIT_FAILURE;
+	}
 
 	char *package_runtime_dir_path;
 	{
@@ -563,7 +609,7 @@ static unsigned char monitor_start(char const *process_name, size_t argc,
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
-		errnum = conf_db_from_path(&xx, unit_path);
+		errnum = conf_db_from_path(&xx, cwd, unit_path);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR, "conf_db_from_path: %s",
 			           linted_error_string(errnum));
@@ -1831,7 +1877,7 @@ static char const *default_envvars[] = {
     "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      char const *path)
+                                      linted_ko cwd, char const *path)
 {
 	linted_error errnum = 0;
 
@@ -1861,12 +1907,25 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			goto free_units;
 		}
 
-		DIR *units_dir = opendir(dir_name);
+		linted_ko units_ko;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(&xx, cwd, dir_name,
+			                        LINTED_KO_DIRECTORY);
+			if (errnum != 0)
+				goto free_dir_name;
+			units_ko = xx;
+		}
+
+		DIR *units_dir = fdopendir(units_ko);
 		if (0 == units_dir) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
+
+			linted_ko_close(units_ko);
 		}
 
+	free_dir_name:
 		linted_mem_free(dir_name);
 
 		if (ENOENT == errnum) {
@@ -1876,8 +1935,6 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 
 		if (errnum != 0)
 			goto free_units;
-
-		linted_ko dirko = dirfd(units_dir);
 
 		size_t files_count = 0U;
 		char **files = 0;
@@ -1936,8 +1993,8 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			linted_ko unit_fd;
 			{
 				linted_ko xx;
-				errnum = linted_ko_open(&xx, dirko, file_name,
-				                        LINTED_KO_RDONLY);
+				errnum = linted_ko_open(
+				    &xx, units_ko, file_name, LINTED_KO_RDONLY);
 				if (errnum != 0)
 					goto free_file_names;
 				unit_fd = xx;
