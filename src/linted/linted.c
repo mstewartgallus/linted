@@ -251,7 +251,7 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0, false,
 		                   creation_flags, 0, 0, &startup_info,
 		                   &process_information)) {
-			linted_log(LINTED_LOG_ERROR, "CreateProcessA: %s",
+			linted_log(LINTED_LOG_ERROR, "CreateProcessW: %s",
 			           linted_error_string(GetLastError()));
 			return EXIT_FAILURE;
 		}

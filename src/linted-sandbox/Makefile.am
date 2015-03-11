@@ -17,7 +17,9 @@
 pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
 %C%_linted_sandbox_SOURCES=%D%/sandbox.c
-EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
+EXTRA_%C%_linted_sandbox_SOURCES=\
+  %D%/sandbox-windows.c %D%/sandbox-posix.c\
+  %D%/sandbox-i386.c %D%/sandbox-amd64.c
 %C%_linted_sandbox_LDADD=\
   src/asynch/libasynch.la\
   src/dir/libdir.la\
@@ -26,5 +28,12 @@ EXTRA_%C%_linted_sandbox_SOURCES=%D%/sandbox-i386.c %D%/sandbox-amd64.c
   src/io/libio.la\
   src/ko/libko.la\
   src/log/liblog.la\
-  src/start/libstart.la\
-  $(CAP_LIBS)
+  src/start/libstart.la
+
+if POSIX_API
+%C%_linted_sandbox_LDADD+=$(CAP_LIBS)
+endif
+
+if WINDOWS_API
+%C%_linted_sandbox_LDADD+=src/utf/libutf.la
+endif
