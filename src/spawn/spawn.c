@@ -155,6 +155,9 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	if (LINTED_KO_CWD != dirko && dirko > INT_MAX)
 		return EBADF;
 
+	if ('/' == binary[0U])
+		dirko = LINTED_KO_CWD;
+
 	sigset_t const *child_mask = 0;
 
 	linted_ko err_reader;
@@ -171,10 +174,10 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	}
 
 	/* Greater than standard input, standard output and standard error */
-	int greatest = 4;
+	unsigned greatest = 4U;
 
 	/* Copy file descriptors in case they get overridden */
-	if (file_actions != 0) {
+	if (file_actions != 0 && err_writer < greatest) {
 		int err_writer_copy =
 		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == err_writer_copy) {
@@ -189,9 +192,10 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	}
 
 	linted_ko dirko_copy;
-	if (LINTED_KO_CWD == dirko || '/' == binary[0U]) {
+	bool dirko_copied = false;
+	if (LINTED_KO_CWD == dirko) {
 		dirko_copy = LINTED_KO_CWD;
-	} else {
+	} else if (file_actions != 0 && dirko < greatest) {
 		int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == fd) {
 			errnum = errno;
@@ -199,6 +203,9 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 			goto close_err_pipes;
 		}
 		dirko_copy = fd;
+		dirko_copied = true;
+	} else {
+		dirko_copy = dirko;
 	}
 
 	pid_t child;
@@ -233,7 +240,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	}
 
 close_dirko_copy:
-	if (dirko_copy != LINTED_KO_CWD)
+	if (dirko_copied)
 		linted_ko_close(dirko_copy);
 
 close_err_pipes : {
