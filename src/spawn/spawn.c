@@ -189,7 +189,7 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	}
 
 	linted_ko dirko_copy;
-	if (LINTED_KO_CWD == dirko) {
+	if (LINTED_KO_CWD == dirko || '/' == binary[0U]) {
 		dirko_copy = LINTED_KO_CWD;
 	} else {
 		int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
@@ -365,7 +365,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	if (0 == envp)
 		envp = (char const *const *)environ;
 
-	if (dirko == LINTED_KO_CWD || '/' == binary[0U]) {
+	if (LINTED_KO_CWD == dirko) {
 		execve(binary, (char *const *)argv, (char *const *)envp);
 	} else {
 		syscall(__NR_execveat, dirko, binary, (char *const *)argv,
