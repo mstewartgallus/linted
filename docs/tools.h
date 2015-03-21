@@ -27,9 +27,10 @@
  * <li> [Why3](http://why3.lri.fr/) </li>
  * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
  * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
- * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis)
+ * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis) </li>
+ * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
  *
- * </li>
+ * </ul>
  *
  * @section useful Useful tools
  * <ul>

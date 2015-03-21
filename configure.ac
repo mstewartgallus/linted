@@ -102,6 +102,7 @@ dnl
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mwindows]dnl
+                [-municode]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
 dnl
