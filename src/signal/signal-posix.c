@@ -52,10 +52,10 @@ static void report_sigterm(int signo);
 static int sigpipe_reader;
 static int sigpipe_writer;
 
-static int volatile sighup_signalled;
-static int volatile sigint_signalled;
-static int volatile sigterm_signalled;
-static int volatile sigquit_signalled;
+static bool volatile sighup_signalled;
+static bool volatile sigint_signalled;
+static bool volatile sigterm_signalled;
+static bool volatile sigquit_signalled;
 
 static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
                                       [LINTED_SIGNAL_INT] = SIGINT,
@@ -86,6 +86,11 @@ linted_error linted_signal_init(void)
 
 	sigpipe_reader = reader;
 	sigpipe_writer = writer;
+
+	__atomic_test_and_set(&sighup_signalled, __ATOMIC_SEQ_CST);
+	__atomic_test_and_set(&sigint_signalled, __ATOMIC_SEQ_CST);
+	__atomic_test_and_set(&sigterm_signalled, __ATOMIC_SEQ_CST);
+	__atomic_test_and_set(&sigquit_signalled, __ATOMIC_SEQ_CST);
 
 	return 0;
 }
@@ -193,22 +198,22 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	}
 	errnum = 0;
 
-	if (__atomic_fetch_and(&sighup_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (!__atomic_test_and_set(&sighup_signalled, __ATOMIC_SEQ_CST)) {
 		signo = SIGHUP;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigint_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (!__atomic_test_and_set(&sigint_signalled, __ATOMIC_SEQ_CST)) {
 		signo = SIGINT;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigterm_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (!__atomic_test_and_set(&sigterm_signalled, __ATOMIC_SEQ_CST)) {
 		signo = SIGTERM;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigquit_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (!__atomic_test_and_set(&sigquit_signalled, __ATOMIC_SEQ_CST)) {
 		signo = SIGQUIT;
 		goto complete;
 	}
@@ -291,7 +296,7 @@ static char const dummy;
 static void report_sighup(int signo)
 {
 	linted_error errnum = errno;
-	__atomic_store_n(&sighup_signalled, 1, __ATOMIC_SEQ_CST);
+	__atomic_clear(&sighup_signalled, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
@@ -299,7 +304,7 @@ static void report_sighup(int signo)
 static void report_sigint(int signo)
 {
 	linted_error errnum = errno;
-	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
+	__atomic_clear(&sigint_signalled, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
@@ -307,7 +312,7 @@ static void report_sigint(int signo)
 static void report_sigterm(int signo)
 {
 	linted_error errnum = errno;
-	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
+	__atomic_clear(&sigterm_signalled, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
@@ -315,7 +320,7 @@ static void report_sigterm(int signo)
 static void report_sigquit(int signo)
 {
 	linted_error errnum = errno;
-	__atomic_store_n(&sigquit_signalled, 1, __ATOMIC_SEQ_CST);
+	__atomic_clear(&sigquit_signalled, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
 	errno = errnum;
 }
