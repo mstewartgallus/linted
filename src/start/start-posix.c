@@ -107,11 +107,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	errnum = linted_signal_init();
-	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
-		           linted_error_string(errnum));
-		return EXIT_FAILURE;
+	if (!linted_start_config.dont_handle_signals) {
+		errnum = linted_signal_init();
+		if (errnum != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
+			           linted_error_string(errnum));
+			return EXIT_FAILURE;
+		}
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
