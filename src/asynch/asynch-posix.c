@@ -41,6 +41,17 @@
 #include <sys/prctl.h>
 #endif
 
+#if defined _POSIX_SPIN_LOCKS
+typedef pthread_spinlock_t spinlock;
+#else
+typedef pthread_mutex_t spinlock;
+#endif
+
+static inline void spinlock_init(spinlock *lock);
+static inline void spinlock_destroy(spinlock *lock);
+static inline linted_error spinlock_lock(spinlock *lock);
+static inline linted_error spinlock_unlock(spinlock *lock);
+
 /**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
@@ -95,51 +106,15 @@ static linted_error wait_manager_create(struct wait_manager **managerp,
                                         unsigned max_pollers);
 static void wait_manager_destroy(struct wait_manager *manager);
 
-#if defined _POSIX_SPIN_LOCKS
-typedef pthread_spinlock_t spinlock;
+struct canceller;
 
-static inline void spinlock_init(spinlock *lock)
-{
-	pthread_spin_init(lock, false);
-}
-
-static inline void spinlock_destroy(spinlock *lock)
-{
-	pthread_spin_destroy(lock);
-}
-
-static inline linted_error spinlock_lock(spinlock *lock)
-{
-	return pthread_spin_lock(lock);
-}
-
-static inline linted_error spinlock_unlock(spinlock *lock)
-{
-	return pthread_spin_unlock(lock);
-}
-#else
-typedef pthread_mutex_t spinlock;
-
-static inline void spinlock_init(spinlock *lock)
-{
-	pthread_mutex_init(lock, 0);
-}
-
-static inline void spinlock_destroy(spinlock *lock)
-{
-	pthread_mutex_destroy(lock);
-}
-
-static inline linted_error spinlock_lock(spinlock *lock)
-{
-	return pthread_mutex_lock(lock);
-}
-
-static inline linted_error spinlock_unlock(spinlock *lock)
-{
-	return pthread_mutex_unlock(lock);
-}
-#endif
+static void canceller_init(struct canceller *canceller);
+static void canceller_start(struct canceller *canceller);
+static void canceller_stop(struct canceller *canceller);
+static void canceller_cancel(struct canceller *canceller);
+static bool canceller_check_or_register(struct canceller *canceller,
+                                        pthread_t self);
+static bool canceller_check_and_unregister(struct canceller *canceller);
 
 struct canceller
 {
@@ -149,14 +124,6 @@ struct canceller
 	bool owned : 1U;
 	bool in_flight : 1U;
 };
-
-static void canceller_init(struct canceller *canceller);
-static void canceller_start(struct canceller *canceller);
-static void canceller_stop(struct canceller *canceller);
-static void canceller_cancel(struct canceller *canceller);
-static bool canceller_check_or_register(struct canceller *canceller,
-                                        pthread_t self);
-static bool canceller_check_and_unregister(struct canceller *canceller);
 
 struct linted_asynch_pool
 {
@@ -1188,27 +1155,22 @@ static void *poller_routine(void *arg)
 
 static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 {
-	linted_error errnum;
-
 	short revents;
 	{
 		struct pollfd pollfd = {.fd = ko, .events = events};
 		int poll_status = poll(&pollfd, 1U, -1);
 		if (-1 == poll_status)
 			goto poll_failed;
-
 		revents = pollfd.revents;
-		goto poll_succeeded;
 	}
-
-poll_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
-
-poll_succeeded:
 	*reventsp = revents;
 	return 0;
+
+poll_failed:
+	;
+	linted_error errnum = errno;
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
 }
 
 /* struct complete_queue is just a fake */
@@ -1664,6 +1626,48 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	return cancelled;
 }
+
+#if defined _POSIX_SPIN_LOCKS
+static inline void spinlock_init(spinlock *lock)
+{
+	pthread_spin_init(lock, false);
+}
+
+static inline void spinlock_destroy(spinlock *lock)
+{
+	pthread_spin_destroy(lock);
+}
+
+static inline linted_error spinlock_lock(spinlock *lock)
+{
+	return pthread_spin_lock(lock);
+}
+
+static inline linted_error spinlock_unlock(spinlock *lock)
+{
+	return pthread_spin_unlock(lock);
+}
+#else
+static inline void spinlock_init(spinlock *lock)
+{
+	pthread_mutex_init(lock, 0);
+}
+
+static inline void spinlock_destroy(spinlock *lock)
+{
+	pthread_mutex_destroy(lock);
+}
+
+static inline linted_error spinlock_lock(spinlock *lock)
+{
+	return pthread_mutex_lock(lock);
+}
+
+static inline linted_error spinlock_unlock(spinlock *lock)
+{
+	return pthread_mutex_unlock(lock);
+}
+#endif
 
 #if defined HAVE_PTHREAD_SETNAME_NP
 static void set_thread_name(char const *name)

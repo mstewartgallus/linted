@@ -1031,8 +1031,6 @@ static DWORD WINAPI poller_routine(void *arg)
 
 static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 {
-	linted_error errnum;
-
 	short revents;
 	{
 		struct pollfd pollfd = {.fd = (SOCKET)ko, .events = events};
@@ -1041,17 +1039,16 @@ static linted_error poll_one(linted_ko ko, short events, short *reventsp)
 			goto poll_failed;
 
 		revents = pollfd.revents;
-		goto poll_succeeded;
 	}
 
-poll_failed:
-	errnum = WSAGetLastError();
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
-
-poll_succeeded:
 	*reventsp = revents;
 	return 0;
+
+poll_failed:
+	;
+	linted_error errnum = WSAGetLastError();
+	LINTED_ASSUME(errnum != 0);
+	return errnum;
 }
 
 /* struct complete_queue is just a fake */
