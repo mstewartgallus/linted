@@ -184,7 +184,8 @@ linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file)
 					break;
 				field = xx;
 			}
-			memcpy(field, line_buffer, field_len);
+			if (field_len > 0U)
+				memcpy(field, line_buffer, field_len);
 			field[field_len] = '\0';
 
 			char *value;

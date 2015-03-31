@@ -29,7 +29,7 @@
  * Various utility macroes and functions.
  */
 
-#if defined __GNUC__ && ! defined __clang__
+#if defined __GNUC__ && ! defined __clang__ && !defined __CHECKER__
 #define LINTED__IS_GCC 1
 #else
 #define LINTED__IS_GCC 0

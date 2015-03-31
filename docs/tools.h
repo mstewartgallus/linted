@@ -19,7 +19,6 @@
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
  * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
- * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git) </li>
  * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
  * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
@@ -122,6 +121,17 @@
  * You can't pass flags into the builtin preprocessor such as include
  * flags.
  * </li>
+ *
+ * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
+ *
+ * Works moderately well but isn't particularly better than other
+ * static analyzers without custom annotations.
+ *
+ * Doesn't allow specifying system base dirs other than GCC's and
+ * doesn't properly recognize the `-isystem` flag.
+ *
+ * Segfaults on some code.
+ * </lib>
  *
  * <li> [Frama-C](http://frama-c.com/
  * As of version Neon-20140301:
