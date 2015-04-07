@@ -151,6 +151,7 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      char const **leftoversp);
 
 static linted_error set_id_maps(char const *uid_map, char const *gid_map);
+
 static linted_error mount_directories(struct mount_args const *mount_args,
                                       size_t size);
 
@@ -713,6 +714,74 @@ close_err_reader:
 	}
 }
 
+static linted_error set_id_maps(char const *uid_map, char const *gid_map)
+{
+	linted_error errnum;
+
+	linted_ko set_groups;
+	{
+		linted_ko xx;
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "/proc/self/setgroups",
+		                   LINTED_KO_WRONLY);
+		if (errnum != 0)
+			return errnum;
+		set_groups = xx;
+	}
+
+	errnum = linted_io_write_string(set_groups, 0, "deny");
+	if (errnum != 0)
+		return errnum;
+
+	errnum = linted_ko_close(set_groups);
+	if (errnum != 0)
+		return errnum;
+
+	/* Note that writing to uid_map and gid_map will fail if the
+	 * binary is not dumpable.  DON'T set the process dumpable and
+	 * fail if the process is nondumpable as presumably the
+	 * invoker of the process had good reasons to have the process
+	 * nondumpable.
+	 */
+	linted_ko uid_file;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+		                        "/proc/self/uid_map", LINTED_KO_WRONLY);
+		if (errnum != 0)
+			return errnum;
+		uid_file = xx;
+	}
+
+	errnum = linted_io_write_string(uid_file, 0, uid_map);
+	if (errnum != 0)
+		return errnum;
+
+	errnum = linted_ko_close(uid_file);
+	if (errnum != 0)
+		return errnum;
+
+	linted_ko gid_file;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+		                        "/proc/self/gid_map", LINTED_KO_WRONLY);
+		if (errnum != 0)
+			return errnum;
+		gid_file = xx;
+	}
+
+	errnum = linted_io_write_string(gid_file, 0, gid_map);
+	if (errnum != 0)
+		return errnum;
+
+	errnum = linted_ko_close(gid_file);
+	if (errnum != 0)
+		return errnum;
+
+	return 0;
+}
+
 LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 {
 	linted_error errnum = 0;
@@ -889,75 +958,6 @@ fail : {
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 	return EXIT_FAILURE;
-}
-
-LINTED_NO_SANITIZE_ADDRESS static linted_error set_id_maps(char const *uid_map,
-                                                           char const *gid_map)
-{
-	linted_error errnum;
-
-	linted_ko set_groups;
-	{
-		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, "/proc/self/setgroups",
-		                   LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
-		set_groups = xx;
-	}
-
-	errnum = linted_io_write_string(set_groups, 0, "deny");
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_ko_close(set_groups);
-	if (errnum != 0)
-		return errnum;
-
-	/* Note that writing to uid_map and gid_map will fail if the
-	 * binary is not dumpable.  DON'T set the process dumpable and
-	 * fail if the process is nondumpable as presumably the
-	 * invoker of the process had good reasons to have the process
-	 * nondumpable.
-	 */
-	linted_ko uid_file;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/self/uid_map", LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
-		uid_file = xx;
-	}
-
-	errnum = linted_io_write_string(uid_file, 0, uid_map);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_ko_close(uid_file);
-	if (errnum != 0)
-		return errnum;
-
-	linted_ko gid_file;
-	{
-		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/self/gid_map", LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
-		gid_file = xx;
-	}
-
-	errnum = linted_io_write_string(gid_file, 0, gid_map);
-	if (errnum != 0)
-		return errnum;
-
-	errnum = linted_ko_close(gid_file);
-	if (errnum != 0)
-		return errnum;
-
-	return 0;
 }
 
 LINTED_NO_SANITIZE_ADDRESS static linted_error
@@ -1235,7 +1235,7 @@ free_subopts_str:
 	return 0;
 }
 
-static linted_error set_child_subreaper(bool v)
+LINTED_NO_SANITIZE_ADDRESS static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
 
@@ -1275,7 +1275,7 @@ safe_vfork(int (*volatile f)(void *), void *volatile arg)
 	return child;
 }
 
-static int my_pivot_root(char const *new_root, char const *put_old)
+LINTED_NO_SANITIZE_ADDRESS static int my_pivot_root(char const *new_root, char const *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
 }
