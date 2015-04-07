@@ -116,7 +116,6 @@ static char const *const argstrs[] = {
 
 struct first_fork_args
 {
-	char const *chrootdir;
 	char const *chdir_path;
 	cap_t caps;
 	struct mount_args *mount_args;
@@ -152,9 +151,8 @@ static linted_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
                                      char const **leftoversp);
 
 static linted_error set_id_maps(char const *uid_map, char const *gid_map);
-static linted_error chroot_process(char const *chrootdir,
-                                   struct mount_args const *mount_args,
-                                   size_t size);
+static linted_error mount_directories(struct mount_args const *mount_args,
+                                      size_t size);
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
@@ -604,6 +602,20 @@ exit_loop:
 		}
 	}
 
+	if (chrootdir != 0) {
+		if (-1 == mount(chrootdir, chrootdir, 0, MS_BIND, 0)) {
+			linted_log(LINTED_LOG_ERROR, "mount: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		if (-1 == chdir(chrootdir)) {
+			linted_log(LINTED_LOG_ERROR, "chdir: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	linted_ko logger_reader;
 	linted_ko logger_writer;
 	{
@@ -635,7 +647,6 @@ exit_loop:
 		struct first_fork_args args = {.err_writer = err_writer,
 		                               .logger_reader = logger_reader,
 		                               .logger_writer = logger_writer,
-		                               .chrootdir = chrootdir,
 		                               .chdir_path = chdir_path,
 		                               .caps = caps,
 		                               .mount_args = mount_args,
@@ -711,7 +722,6 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 	linted_ko err_writer = first_fork_args->err_writer;
 	linted_ko logger_reader = first_fork_args->logger_reader;
 	linted_ko logger_writer = first_fork_args->logger_writer;
-	char const *chrootdir = first_fork_args->chrootdir;
 	char const *chdir_path = first_fork_args->chdir_path;
 	cap_t caps = first_fork_args->caps;
 	struct mount_args *mount_args = first_fork_args->mount_args;
@@ -737,11 +747,11 @@ LINTED_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 		goto fail;
 	}
 
-	/* For some reason this must happen after we actually become
-	 * PID 1 in the new pid namespace so that we can mount
+	/* For some reason we must mount directories after we actually
+	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
 	if (mount_args_size > 0U) {
-		errnum = chroot_process(chrootdir, mount_args, mount_args_size);
+		errnum = mount_directories(mount_args, mount_args_size);
 		if (errnum != 0)
 			goto fail;
 	}
@@ -951,16 +961,9 @@ LINTED_NO_SANITIZE_ADDRESS static linted_error set_id_maps(char const *uid_map,
 }
 
 LINTED_NO_SANITIZE_ADDRESS static linted_error
-chroot_process(char const *chrootdir, struct mount_args const *mount_args,
-               size_t size)
+mount_directories(struct mount_args const *mount_args, size_t size)
 {
 	linted_error errnum;
-
-	if (-1 == mount(chrootdir, chrootdir, 0, MS_BIND, 0))
-		return errno;
-
-	if (-1 == chdir(chrootdir))
-		return errno;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct mount_args const *arg = &mount_args[ii];
