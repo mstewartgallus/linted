@@ -672,26 +672,56 @@ static void flush_gl_errors(void)
 
 static linted_error get_gl_error(void)
 {
-	/* Get the first error. Note that a single OpenGL call may
-	 * return multiple errors so this only gives the first of many
-	 * possible errors.
+	/* Note that a single OpenGL call may return multiple errors
+	 * so we get them all and then return the most serious.
 	 */
-	switch (glGetError()) {
-	case GL_NO_ERROR:
-		return 0;
+	bool invalid_parameter = false;
+	bool out_of_memory = false;
+	bool unimplemented_error = false;
 
-	case GL_INVALID_ENUM:
-	case GL_INVALID_VALUE:
-	case GL_INVALID_OPERATION:
-	case GL_INVALID_FRAMEBUFFER_OPERATION:
+	for (;;) {
+		bool exit = false;
+
+		switch (glGetError()) {
+		case GL_NO_ERROR:
+			exit = true;
+			break;
+
+		case GL_INVALID_ENUM:
+		case GL_INVALID_VALUE:
+		case GL_INVALID_OPERATION:
+		case GL_INVALID_FRAMEBUFFER_OPERATION:
+			invalid_parameter = true;
+			break;
+
+		case GL_OUT_OF_MEMORY:
+			out_of_memory = true;
+			break;
+
+		default:
+			unimplemented_error = true;
+			break;
+		}
+
+		if (exit)
+			break;
+	}
+
+	/* Prioritize the errors by how serious they are */
+
+	/* An unknown type of error, could be anything */
+	if (unimplemented_error)
+		return LINTED_ERROR_UNIMPLEMENTED;
+
+	/* Fundamental logic error, very serious */
+	if (invalid_parameter)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
-	case GL_OUT_OF_MEMORY:
+	/* Runtime error */
+	if (out_of_memory)
 		return ENOMEM;
 
-	default:
-		return LINTED_ERROR_UNIMPLEMENTED;
-	}
+	return 0;
 }
 
 static linted_error get_egl_error(void)
