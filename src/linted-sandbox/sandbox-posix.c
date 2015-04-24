@@ -1275,7 +1275,8 @@ safe_vfork(int (*volatile f)(void *), void *volatile arg)
 	return child;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static int my_pivot_root(char const *new_root, char const *put_old)
+LINTED_NO_SANITIZE_ADDRESS static int my_pivot_root(char const *new_root,
+                                                    char const *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
 }
