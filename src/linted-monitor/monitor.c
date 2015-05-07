@@ -1894,13 +1894,9 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 	for (;;) {
 		char const *dirend = strchr(dirstart, ':');
 
-		char *dir_name;
-		if (0 == dirend) {
-			dir_name = strdup(dirstart);
-		} else {
-			dir_name = strndup(dirstart, dirend - dirstart);
-		}
+		size_t len = 0 == dirend ? strlen(dirstart) : dirend - dirstart;
 
+		char *dir_name = strndup(dirstart, len);
 		if (0 == dir_name) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
