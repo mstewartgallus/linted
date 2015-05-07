@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -91,7 +92,8 @@ struct linted_pid_stat
 linted_error
 linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
                               void *data);
-void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task);
+void
+linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task);
 
 #if defined HAVE_POSIX_API
 void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
@@ -112,6 +114,7 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 linted_error linted_pid_kill(pid_t pid, int signo);
 linted_error linted_pid_terminate(pid_t pid);
 linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf);
-linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp);
+linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
+                                 size_t *lenp);
 
 #endif /* LINTED_PID_H */

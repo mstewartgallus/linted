@@ -2,7 +2,7 @@
 BasedOnStyle: LLVM
 UseTab: ForIndentation
 IndentWidth: 8
-ColumnLimit: 80
+ColumnLimit: 72
 
 AllowShortFunctionsOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: false

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -45,9 +46,10 @@ void linted_spawn_file_actions_set_stdout(
 void linted_spawn_file_actions_set_stderr(
     struct linted_spawn_file_actions *file_actions, linted_ko newko);
 
-linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *path,
-                          struct linted_spawn_file_actions const *file_actions,
-                          struct linted_spawn_attr const *attr,
-                          char const *const argv[], char const *const envp[]);
+linted_error
+linted_spawn(pid_t *childp, linted_ko dirko, char const *path,
+             struct linted_spawn_file_actions const *file_actions,
+             struct linted_spawn_attr const *attr,
+             char const *const argv[], char const *const envp[]);
 
 #endif /* LINTED_SPAWN_H */

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -41,7 +42,8 @@ linted_error linted_sched_time(struct timespec *data);
 linted_error
 linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
                               void *data);
-void linted_sched_task_idle_destroy(struct linted_sched_task_idle *task);
+void
+linted_sched_task_idle_destroy(struct linted_sched_task_idle *task);
 
 void *linted_sched_task_idle_data(struct linted_sched_task_idle *task);
 struct linted_asynch_task *
@@ -62,12 +64,13 @@ void linted_sched_task_sleep_until_prepare(
 void linted_sched_task_sleep_until_request(
     struct linted_sched_task_sleep_until *task, struct timespec *req);
 
-void *
-linted_sched_task_sleep_until_data(struct linted_sched_task_sleep_until *task);
+void *linted_sched_task_sleep_until_data(
+    struct linted_sched_task_sleep_until *task);
 struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
     struct linted_sched_task_sleep_until *task);
 struct linted_sched_task_sleep_until *
-linted_sched_task_sleep_until_from_asynch(struct linted_asynch_task *task);
+linted_sched_task_sleep_until_from_asynch(
+    struct linted_asynch_task *task);
 
 void linted_sched_do_idle(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);

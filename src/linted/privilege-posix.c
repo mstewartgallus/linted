@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -35,7 +36,8 @@ linted_error linted_linted_privilege_check(void)
 	if (0 == gid)
 		return EPERM;
 
-#if defined HAVE_SYS_AUXV_H && defined HAVE_GETAUXVAL && defined AT_SECURE
+#if defined HAVE_SYS_AUXV_H && defined HAVE_GETAUXVAL &&               \
+    defined AT_SECURE
 	if (getauxval(AT_SECURE))
 		return EPERM;
 #endif

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -89,8 +90,8 @@ linted_error linted_signal_init(void)
 
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	errnum =
-	    pthread_create(&sigaction_thread, 0, sigaction_thread_routine, 0);
+	errnum = pthread_create(&sigaction_thread, 0,
+	                        sigaction_thread_routine, 0);
 
 destroy_attr:
 	pthread_attr_destroy(&attr);
@@ -130,7 +131,8 @@ free_task:
 	return errnum;
 }
 
-void linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
+void
+linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
 {
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
@@ -146,8 +148,9 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 	return task->signo;
 }
 
-void linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                     unsigned task_action)
+void
+linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
+                                unsigned task_action)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 }
@@ -269,5 +272,6 @@ static void *sigaction_thread_routine(void *arg)
 
 static void listen_to_signal(int signo)
 {
-	linted_io_write_all(signal_pipe_writer, 0, &signo, sizeof signo);
+	linted_io_write_all(signal_pipe_writer, 0, &signo,
+	                    sizeof signo);
 }

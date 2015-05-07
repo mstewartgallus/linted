@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -25,14 +26,16 @@
  * Abstracts over various localizations of common text.
  */
 
-linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
+linted_error linted_locale_on_bad_option(linted_ko ko,
+                                         char const *process_name,
                                          char const *bad_option);
 
 linted_error linted_locale_try_for_more_help(linted_ko ko,
                                              char const *process_name,
                                              char const *help_option);
 
-linted_error linted_locale_version(linted_ko ko, char const *package_string,
+linted_error linted_locale_version(linted_ko ko,
+                                   char const *package_string,
                                    char const *copyright_year);
 
 #endif /* LINTED_LOCALE_H */

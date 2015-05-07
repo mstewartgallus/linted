@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -26,8 +27,8 @@
 #include <sys/stat.h>
 
 linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
-                                char const *pathname, unsigned long flags,
-                                mode_t mode)
+                                char const *pathname,
+                                unsigned long flags, mode_t mode)
 {
 	linted_error errnum;
 
@@ -54,7 +55,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	}
 
 	if ((flags & ~LINTED_FILE_RDONLY & ~LINTED_FILE_WRONLY &
-	     ~LINTED_FILE_RDWR & ~LINTED_FILE_SYNC & ~LINTED_FILE_EXCL) != 0U)
+	     ~LINTED_FILE_RDWR & ~LINTED_FILE_SYNC &
+	     ~LINTED_FILE_EXCL) != 0U)
 		return EINVAL;
 
 	bool file_rdonly = (flags & LINTED_FILE_RDONLY) != 0U;
@@ -80,7 +82,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	 */
 	int oflags = O_CLOEXEC | O_NONBLOCK | O_CREAT;
 
-	/* FIFO writers give ENXIO for nonblocking opens without partners */
+	/* FIFO writers give ENXIO for nonblocking opens without
+	 * partners */
 	if (!file_wronly)
 		oflags |= O_NONBLOCK;
 

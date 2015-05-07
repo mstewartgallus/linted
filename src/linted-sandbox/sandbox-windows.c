@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -96,17 +97,20 @@ static char const *const argstrs[] = {
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
-static unsigned char sandbox_start(char const *const process_name, size_t argc,
+static unsigned char sandbox_start(char const *const process_name,
+                                   size_t argc,
                                    char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-sandbox", .start = sandbox_start};
+    .canonical_process_name = PACKAGE_NAME "-sandbox",
+    .start = sandbox_start};
 
 /**
  * @todo Write stderr streams of the child to the system log.
  * @todo Pass full command line arguments to process.
  */
-static unsigned char sandbox_start(char const *const process_name, size_t argc,
+static unsigned char sandbox_start(char const *const process_name,
+                                   size_t argc,
                                    char const *const argv[])
 {
 	linted_error errnum;
@@ -141,7 +145,8 @@ static unsigned char sandbox_start(char const *const process_name, size_t argc,
 		char const *argument = argv[ii];
 
 		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs);
+		     ++jj) {
 			if (0 == strcmp(argument, argstrs[jj])) {
 				arg = jj;
 				break;
@@ -249,13 +254,16 @@ exit_loop:
 	}
 
 	if (bad_option != 0) {
-		linted_log(LINTED_LOG_ERROR, "bad option: %s", bad_option);
+		linted_log(LINTED_LOG_ERROR, "bad option: %s",
+		           bad_option);
 		return EXIT_FAILURE;
 	}
 
-	if ((fstab != 0 && 0 == chrootdir) || (0 == fstab && chrootdir != 0)) {
-		linted_log(LINTED_LOG_ERROR,
-		           "--chrootdir and --fstab are required together");
+	if ((fstab != 0 && 0 == chrootdir) ||
+	    (0 == fstab && chrootdir != 0)) {
+		linted_log(
+		    LINTED_LOG_ERROR,
+		    "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
 	}
 
@@ -265,29 +273,31 @@ exit_loop:
 		bool set;
 	};
 
-	struct setting const settings[] = {{"--chdir", chdir_path},
-	                                   {"--traceme", traceme},
-	                                   {"--nonewprivs", no_new_privs},
-	                                   {"--dropcaps", drop_caps},
-	                                   {"--fstab", fstab},
-	                                   {"--chrootdir", chrootdir != 0},
-	                                   {"--priority", priority != 0},
-	                                   {"--waiter", waiter != 0},
-	                                   {"--clone-newuser", clone_newuser},
-	                                   {"--clone-newpid", clone_newpid},
-	                                   {"--clone-newipc", clone_newipc},
-	                                   {"--clone-newnet", clone_newnet},
-	                                   {"--clone-newns", clone_newns},
-	                                   {"--clone-newuts", clone_newuts}};
+	struct setting const settings[] = {
+	    {"--chdir", chdir_path},
+	    {"--traceme", traceme},
+	    {"--nonewprivs", no_new_privs},
+	    {"--dropcaps", drop_caps},
+	    {"--fstab", fstab},
+	    {"--chrootdir", chrootdir != 0},
+	    {"--priority", priority != 0},
+	    {"--waiter", waiter != 0},
+	    {"--clone-newuser", clone_newuser},
+	    {"--clone-newpid", clone_newpid},
+	    {"--clone-newipc", clone_newipc},
+	    {"--clone-newnet", clone_newnet},
+	    {"--clone-newns", clone_newns},
+	    {"--clone-newuts", clone_newuts}};
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(settings); ++ii) {
 		struct setting const *setting = &settings[ii];
 		char const *name = setting->name;
 		bool set = setting->set;
 
 		if (set) {
-			linted_log(LINTED_LOG_ERROR, "the option `%s' is not "
-			                             "implemented on this "
-			                             "platform",
+			linted_log(LINTED_LOG_ERROR,
+			           "the option `%s' is not "
+			           "implemented on this "
+			           "platform",
 			           name);
 			return EXIT_FAILURE;
 		}
@@ -320,7 +330,8 @@ exit_loop:
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(binary, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -332,7 +343,8 @@ exit_loop:
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(binary_base, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -352,10 +364,12 @@ exit_loop:
 		startup_info.hStdError = LINTED_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
-		if (!CreateProcess(binary_utf2, binary_base_utf2, 0, 0, false,
-		                   creation_flags, 0, 0, &startup_info,
+		if (!CreateProcess(binary_utf2, binary_base_utf2, 0, 0,
+		                   false, creation_flags, 0, 0,
+		                   &startup_info,
 		                   &process_information)) {
-			linted_log(LINTED_LOG_ERROR, "CreateProcessW: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "CreateProcessW: %s",
 			           linted_error_string(GetLastError()));
 			return EXIT_FAILURE;
 		}

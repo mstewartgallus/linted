@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -31,8 +32,8 @@
 #include <sys/types.h>
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
-                               char const *pathname, unsigned long flags,
-                               mode_t mode)
+                               char const *pathname,
+                               unsigned long flags, mode_t mode)
 {
 	linted_error errnum;
 	int fildes = -1;
@@ -99,7 +100,8 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	linted_ko realdir;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, dirko, pathnamedir, oflags);
+		errnum =
+		    linted_ko_open(&xx, dirko, pathnamedir, oflags);
 		if (errnum != 0)
 			goto free_pathnamebase_buffer;
 		realdir = xx;
@@ -122,8 +124,8 @@ make_directory:
 
 open_directory : {
 	linted_ko xx;
-	errnum =
-	    linted_ko_open(&xx, realdir, pathnamebase, LINTED_KO_DIRECTORY);
+	errnum = linted_ko_open(&xx, realdir, pathnamebase,
+	                        LINTED_KO_DIRECTORY);
 	if (ENOENT == errnum)
 		goto make_directory;
 	if (errnum != 0)
@@ -146,7 +148,8 @@ free_pathnamedir_buffer:
 
 	if (errnum != 0) {
 		if (fildes != -1) {
-			linted_error close_errnum = linted_ko_close(fildes);
+			linted_error close_errnum =
+			    linted_ko_close(fildes);
 			assert(close_errnum != EBADF);
 		}
 		return errnum;

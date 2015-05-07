@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -30,7 +31,8 @@ struct linted_pid_task_waitid
 };
 
 linted_error
-linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp, void *data)
+linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
+                              void *data)
 {
 	linted_error errnum;
 	struct linted_pid_task_waitid *task;
@@ -44,8 +46,8 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp, void *data)
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(&xx, task,
-		                                   LINTED_ASYNCH_TASK_WAITID);
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_WAITID);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -85,5 +87,6 @@ linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task)
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-	linted_asynch_pool_complete(pool, task, LINTED_ERROR_UNIMPLEMENTED);
+	linted_asynch_pool_complete(pool, task,
+	                            LINTED_ERROR_UNIMPLEMENTED);
 }

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -49,8 +50,9 @@ int main(int argc, char *argv[])
 		linted_ko ko;
 		{
 			linted_ko xx;
-			errnum = linted_ko_open(&xx, LINTED_KO_CWD, "/dev/null",
-			                        LINTED_KO_RDWR);
+			errnum =
+			    linted_ko_open(&xx, LINTED_KO_CWD,
+			                   "/dev/null", LINTED_KO_RDWR);
 			if (errnum != 0)
 				return EXIT_FAILURE;
 			ko = xx;
@@ -79,7 +81,8 @@ int main(int argc, char *argv[])
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {
-		process_name = linted_start_config.canonical_process_name;
+		process_name =
+		    linted_start_config.canonical_process_name;
 		missing_name = true;
 	}
 
@@ -110,7 +113,8 @@ int main(int argc, char *argv[])
 	if (!linted_start_config.dont_handle_signals) {
 		errnum = linted_signal_init();
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_signal_init: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}

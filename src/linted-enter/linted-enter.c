@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -32,17 +33,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static uint_fast8_t enter_start(char const *const process_name, size_t argc,
-                                char const *const argv[]);
+static uint_fast8_t enter_start(char const *const process_name,
+                                size_t argc, char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-enter", .start = enter_start};
+    .canonical_process_name = PACKAGE_NAME "-enter",
+    .start = enter_start};
 
 /* Order of entering matters */
-static char const *const namespaces[] = {"user", "pid", "ipc", "mnt", "net"};
+static char const *const namespaces[] = {"user", "pid", "ipc", "mnt",
+                                         "net"};
 
-static uint_fast8_t enter_start(char const *const process_name, size_t argc,
-                                char const *const argv[])
+static uint_fast8_t enter_start(char const *const process_name,
+                                size_t argc, char const *const argv[])
 {
 	linted_error errnum = 0;
 
@@ -53,8 +56,10 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 
 	{
 		char proc_path[sizeof "/proc/" - 1U +
-		               LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
-		sprintf(proc_path, "/proc/%" PRIuMAX "", (uintmax_t)pid);
+		               LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+		               1U];
+		sprintf(proc_path, "/proc/%" PRIuMAX "",
+		        (uintmax_t)pid);
 		if (-1 == chdir(proc_path)) {
 			linted_log(LINTED_LOG_ERROR, "chdir: %s",
 			           linted_error_string(errno));
@@ -68,7 +73,8 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "ns",
 		                        LINTED_KO_DIRECTORY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -80,7 +86,8 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, ns, namespaces[ii], 0);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -114,6 +121,7 @@ static uint_fast8_t enter_start(char const *const process_name, size_t argc,
 	static const char *args[] = {"/bin/sh", 0};
 	execve(args[0U], (char *const *)args, environ);
 
-	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
+	linted_log(LINTED_LOG_ERROR, "execve: %s",
+	           linted_error_string(errno));
 	return EXIT_FAILURE;
 }

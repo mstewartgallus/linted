@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -36,7 +37,7 @@ typedef linted_ko linted_fifo;
 #define LINTED_FIFO_ONLY (1UL << 3U)
 
 linted_error linted_fifo_create(linted_fifo *fifop, linted_ko dirko,
-                                char const *pathname, unsigned long flags,
-                                mode_t mode);
+                                char const *pathname,
+                                unsigned long flags, mode_t mode);
 
 #endif /* LINTED_FIFO_H */

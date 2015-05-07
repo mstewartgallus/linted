@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -62,11 +63,12 @@ linted_error linted_sched_time(struct timespec *now)
 
 /* task_idle is just a fake */
 linted_error
-linted_sched_task_idle_create(struct linted_sched_task_idle **taskp, void *data)
+linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
+                              void *data)
 {
 	struct linted_asynch_task *xx;
-	linted_error errnum =
-	    linted_asynch_task_create(&xx, data, LINTED_ASYNCH_TASK_IDLE);
+	linted_error errnum = linted_asynch_task_create(
+	    &xx, data, LINTED_ASYNCH_TASK_IDLE);
 	if (errnum != 0)
 		return errnum;
 	*taskp = (struct linted_sched_task_idle *)xx;
@@ -139,8 +141,8 @@ void linted_sched_task_sleep_until_destroy(
 	linted_mem_free(task);
 }
 
-void *
-linted_sched_task_sleep_until_data(struct linted_sched_task_sleep_until *task)
+void *linted_sched_task_sleep_until_data(
+    struct linted_sched_task_sleep_until *task)
 {
 	return task->data;
 }
@@ -166,7 +168,8 @@ struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
 }
 
 struct linted_sched_task_sleep_until *
-linted_sched_task_sleep_until_from_asynch(struct linted_asynch_task *task)
+linted_sched_task_sleep_until_from_asynch(
+    struct linted_asynch_task *task)
 {
 	return linted_asynch_task_data(task);
 }
@@ -185,7 +188,8 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 	linted_error errnum = 0;
 
 	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
-	                          &task_sleep->request, &task_sleep->request)) {
+	                          &task_sleep->request,
+	                          &task_sleep->request)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -44,16 +45,20 @@ struct linted_gpu_update
 
 linted_error
 linted_gpu_context_create(struct linted_gpu_context **gpu_contextp);
-linted_error linted_gpu_context_destroy(struct linted_gpu_context *gpu_context);
+linted_error
+linted_gpu_context_destroy(struct linted_gpu_context *gpu_context);
 
-linted_error linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
-                                  linted_gpu_native_window native_window);
-linted_error linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context);
+linted_error
+linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
+                     linted_gpu_native_window native_window);
+linted_error
+linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context);
 
-void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
-                             struct linted_gpu_update const *gpu_update);
+void
+linted_gpu_update_state(struct linted_gpu_context *gpu_context,
+                        struct linted_gpu_update const *gpu_update);
 void linted_gpu_draw(struct linted_gpu_context *gpu_context);
-void linted_gpu_resize(struct linted_gpu_context *gpu_context, unsigned width,
-                       unsigned height);
+void linted_gpu_resize(struct linted_gpu_context *gpu_context,
+                       unsigned width, unsigned height);
 
 #endif /* LINTED_GPU_H */

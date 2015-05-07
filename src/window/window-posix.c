@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -42,7 +43,8 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 	return 0;
 }
 
-linted_error linted_window_read(linted_window window, uint_fast32_t *outp)
+linted_error linted_window_read(linted_window window,
+                                uint_fast32_t *outp)
 {
 	char buf[LINTED_RPC_UINT32_SIZE];
 
@@ -103,14 +105,17 @@ free_task:
 	return errnum;
 }
 
-void linted_window_task_watch_destroy(struct linted_window_task_watch *task)
+void
+linted_window_task_watch_destroy(struct linted_window_task_watch *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void linted_window_task_watch_prepare(struct linted_window_task_watch *task,
-                                      unsigned task_action, linted_ko notifier)
+void
+linted_window_task_watch_prepare(struct linted_window_task_watch *task,
+                                 unsigned task_action,
+                                 linted_ko notifier)
 {
 	linted_io_task_read_prepare(task->parent, task_action, notifier,
 	                            task->dummy, sizeof task->dummy);
@@ -119,23 +124,24 @@ void linted_window_task_watch_prepare(struct linted_window_task_watch *task,
 struct linted_window_task_watch *
 linted_window_task_watch_from_asynch(struct linted_asynch_task *task)
 {
-	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
+	return linted_io_task_read_data(
+	    linted_io_task_read_from_asynch(task));
 }
 
-struct linted_asynch_task *
-linted_window_task_watch_to_asynch(struct linted_window_task_watch *task)
+struct linted_asynch_task *linted_window_task_watch_to_asynch(
+    struct linted_window_task_watch *task)
 {
 	return linted_io_task_read_to_asynch(task->parent);
 }
 
-void *linted_window_task_watch_data(struct linted_window_task_watch *task)
+void *
+linted_window_task_watch_data(struct linted_window_task_watch *task)
 {
 	return task->data;
 }
 
-linted_error
-linted_window_task_notify_create(struct linted_window_task_notify **taskp,
-                                 void *data)
+linted_error linted_window_task_notify_create(
+    struct linted_window_task_notify **taskp, void *data)
 {
 	linted_error errnum;
 	struct linted_window_task_notify *task;
@@ -163,7 +169,8 @@ free_task:
 	return errnum;
 }
 
-void linted_window_task_notify_destroy(struct linted_window_task_notify *task)
+void linted_window_task_notify_destroy(
+    struct linted_window_task_notify *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
@@ -171,11 +178,12 @@ void linted_window_task_notify_destroy(struct linted_window_task_notify *task)
 
 static const char dummy[1U];
 
-void linted_window_task_notify_prepare(struct linted_window_task_notify *task,
-                                       unsigned task_action, linted_ko notifier)
+void linted_window_task_notify_prepare(
+    struct linted_window_task_notify *task, unsigned task_action,
+    linted_ko notifier)
 {
-	linted_io_task_write_prepare(task->parent, task_action, notifier, dummy,
-	                             sizeof dummy);
+	linted_io_task_write_prepare(task->parent, task_action,
+	                             notifier, dummy, sizeof dummy);
 }
 
 struct linted_window_task_notify *
@@ -185,13 +193,14 @@ linted_window_task_notify_from_asynch(struct linted_asynch_task *task)
 	    linted_io_task_write_from_asynch(task));
 }
 
-struct linted_asynch_task *
-linted_window_task_notify_to_asynch(struct linted_window_task_notify *task)
+struct linted_asynch_task *linted_window_task_notify_to_asynch(
+    struct linted_window_task_notify *task)
 {
 	return linted_io_task_write_to_asynch(task->parent);
 }
 
-void *linted_window_task_notify_data(struct linted_window_task_notify *task)
+void *
+linted_window_task_notify_data(struct linted_window_task_notify *task)
 {
 	return task->data;
 }

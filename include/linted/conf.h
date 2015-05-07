@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -51,21 +52,24 @@ struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
 linted_error linted_conf_create(struct linted_conf **unitp,
                                 char const *file_name);
 
-linted_error linted_conf_parse_file(struct linted_conf *conf, FILE *conf_file);
+linted_error linted_conf_parse_file(struct linted_conf *conf,
+                                    FILE *conf_file);
 
 void linted_conf_put(struct linted_conf *unit);
 
 char const *linted_conf_peek_name(struct linted_conf *unit);
 
 char const *const *linted_conf_find(struct linted_conf *unit,
-                                    char const *section, char const *field);
+                                    char const *section,
+                                    char const *field);
 
 linted_error linted_conf_add_section(struct linted_conf *unit,
                                      linted_conf_section *sectionp,
                                      char *section_name);
 
 linted_error linted_conf_add_setting(struct linted_conf *unit,
-                                     linted_conf_section section, char *field,
+                                     linted_conf_section section,
+                                     char *field,
                                      char const *const *value);
 
 #endif /* LINTED_CONF_H */

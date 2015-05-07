@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -45,9 +46,11 @@ typedef unsigned char linted_asynch_type;
 struct linted_asynch_task;
 struct linted_asynch_waiter;
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
-                                       unsigned max_tasks);
-linted_error linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
+linted_error
+linted_asynch_pool_create(struct linted_asynch_pool **poolp,
+                          unsigned max_tasks);
+linted_error
+linted_asynch_pool_destroy(struct linted_asynch_pool *pool);
 
 void linted_asynch_pool_submit(struct linted_asynch_pool *pool,
                                struct linted_asynch_task *task);
@@ -57,23 +60,28 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task,
                                  linted_error errnum);
 
-void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_waiter *waiter,
-                                     struct linted_asynch_task *task,
-                                     linted_ko ko, short flags);
+void
+linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
+                                struct linted_asynch_waiter *waiter,
+                                struct linted_asynch_task *task,
+                                linted_ko ko, short flags);
 
-linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completionp);
+linted_error
+linted_asynch_pool_wait(struct linted_asynch_pool *pool,
+                        struct linted_asynch_task **completionp);
 
-linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completionp);
+linted_error
+linted_asynch_pool_poll(struct linted_asynch_pool *pool,
+                        struct linted_asynch_task **completionp);
 
-linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp);
+linted_error
+linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp);
 void linted_asynch_waiter_destroy(struct linted_asynch_waiter *waiter);
 short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter);
 
-linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
-                                       void *data, linted_asynch_type type);
+linted_error
+linted_asynch_task_create(struct linted_asynch_task **taskp, void *data,
+                          linted_asynch_type type);
 void linted_asynch_task_destroy(struct linted_asynch_task *task);
 
 void linted_asynch_task_cancel(struct linted_asynch_task *task);

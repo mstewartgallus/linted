@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -32,7 +33,7 @@
 typedef linted_ko linted_dir;
 
 linted_error linted_dir_create(linted_dir *dirp, linted_ko dirko,
-                               char const *pathname, unsigned long flags,
-                               mode_t mode);
+                               char const *pathname,
+                               unsigned long flags, mode_t mode);
 
 #endif /* LINTED_DIR_H */

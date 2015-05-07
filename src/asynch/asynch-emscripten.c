@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -32,16 +33,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static linted_error poll_one(linted_ko ko, short events, short *reventsp);
+static linted_error poll_one(linted_ko ko, short events,
+                             short *reventsp);
 static void run_task(struct linted_asynch_pool *pool,
                      struct linted_asynch_task *task);
 
 struct completion_queue;
-static linted_error completion_queue_create(struct completion_queue **queuep);
+static linted_error
+completion_queue_create(struct completion_queue **queuep);
 static void complete_task(struct completion_queue *queue,
                           struct linted_asynch_task *task);
-static linted_error completion_try_recv(struct completion_queue *queue,
-                                        struct linted_asynch_task **taskp);
+static linted_error
+completion_try_recv(struct completion_queue *queue,
+                    struct linted_asynch_task **taskp);
 static void completion_queue_destroy(struct completion_queue *queue);
 
 /**
@@ -59,8 +63,9 @@ struct waiter_queue;
 static linted_error waiter_queue_create(struct waiter_queue **queuep);
 static void waiter_submit(struct waiter_queue *queue,
                           struct linted_asynch_waiter *waiter);
-static linted_error waiter_try_recv(struct waiter_queue *queue,
-                                    struct linted_asynch_waiter **waiterp);
+static linted_error
+waiter_try_recv(struct waiter_queue *queue,
+                struct linted_asynch_waiter **waiterp);
 static void waiter_queue_destroy(struct waiter_queue *queue);
 
 struct canceller
@@ -102,8 +107,9 @@ struct linted_asynch_waiter
 	short revents;
 };
 
-linted_error linted_asynch_pool_create(struct linted_asynch_pool **poolp,
-                                       unsigned max_tasks)
+linted_error
+linted_asynch_pool_create(struct linted_asynch_pool **poolp,
+                          unsigned max_tasks)
 {
 	linted_error errnum;
 
@@ -213,10 +219,11 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	complete_task(pool->completion_queue, task);
 }
 
-void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_waiter *waiter,
-                                     struct linted_asynch_task *task,
-                                     linted_ko ko, short flags)
+void
+linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
+                                struct linted_asynch_waiter *waiter,
+                                struct linted_asynch_task *task,
+                                linted_ko ko, short flags)
 {
 	assert(pool != 0);
 
@@ -233,15 +240,16 @@ void linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
 	waiter_submit(pool->waiter_queue, waiter);
 }
 
-linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completionp)
+linted_error
+linted_asynch_pool_wait(struct linted_asynch_pool *pool,
+                        struct linted_asynch_task **completionp)
 {
 	linted_error errnum = 0;
 
 	for (;;) {
 		/* Poll for completions */
-		errnum =
-		    completion_try_recv(pool->completion_queue, completionp);
+		errnum = completion_try_recv(pool->completion_queue,
+		                             completionp);
 		if (EAGAIN == errnum)
 			goto poll_for_jobs;
 		return errnum;
@@ -257,8 +265,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 		}
 
 		if (canceller_check(&task->canceller)) {
-			linted_asynch_pool_complete(pool, task,
-			                            LINTED_ERROR_CANCELLED);
+			linted_asynch_pool_complete(
+			    pool, task, LINTED_ERROR_CANCELLED);
 			continue;
 		}
 
@@ -272,7 +280,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 		struct linted_asynch_waiter *waiter;
 		{
 			struct linted_asynch_waiter *xx;
-			errnum = waiter_try_recv(pool->waiter_queue, &xx);
+			errnum =
+			    waiter_try_recv(pool->waiter_queue, &xx);
 			assert(errnum != EAGAIN);
 			waiter = xx;
 		}
@@ -305,8 +314,8 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 		if ((revents & POLLERR) != 0) {
 			int xx;
 			socklen_t yy = sizeof xx;
-			if (-1 ==
-			    getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &yy)) {
+			if (-1 == getsockopt(ko, SOL_SOCKET, SO_ERROR,
+			                     &xx, &yy)) {
 				errnum = errno;
 				goto complete_task;
 			}
@@ -329,21 +338,23 @@ linted_error linted_asynch_pool_wait(struct linted_asynch_pool *pool,
 		continue;
 
 	wait_on_poll:
-		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, flags);
+		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko,
+		                                flags);
 		continue;
 	}
 	}
 }
 
-linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
-                                     struct linted_asynch_task **completionp)
+linted_error
+linted_asynch_pool_poll(struct linted_asynch_pool *pool,
+                        struct linted_asynch_task **completionp)
 {
 	linted_error errnum = 0;
 
 	for (;;) {
 		/* Poll for completions */
-		errnum =
-		    completion_try_recv(pool->completion_queue, completionp);
+		errnum = completion_try_recv(pool->completion_queue,
+		                             completionp);
 		if (EAGAIN == errnum)
 			goto poll_for_jobs;
 		return errnum;
@@ -359,8 +370,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 		}
 
 		if (canceller_check(&task->canceller)) {
-			linted_asynch_pool_complete(pool, task,
-			                            LINTED_ERROR_CANCELLED);
+			linted_asynch_pool_complete(
+			    pool, task, LINTED_ERROR_CANCELLED);
 			continue;
 		}
 
@@ -374,7 +385,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 		struct linted_asynch_waiter *waiter;
 		{
 			struct linted_asynch_waiter *xx;
-			errnum = waiter_try_recv(pool->waiter_queue, &xx);
+			errnum =
+			    waiter_try_recv(pool->waiter_queue, &xx);
 			if (errnum != 0)
 				return errnum;
 			waiter = xx;
@@ -408,8 +420,8 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 		if ((revents & POLLERR) != 0) {
 			int xx;
 			socklen_t yy = sizeof xx;
-			if (-1 ==
-			    getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &yy)) {
+			if (-1 == getsockopt(ko, SOL_SOCKET, SO_ERROR,
+			                     &xx, &yy)) {
 				errnum = errno;
 				goto complete_task;
 			}
@@ -432,13 +444,15 @@ linted_error linted_asynch_pool_poll(struct linted_asynch_pool *pool,
 		continue;
 
 	wait_on_poll:
-		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, flags);
+		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko,
+		                                flags);
 		continue;
 	}
 	}
 }
 
-linted_error linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp)
+linted_error
+linted_asynch_waiter_create(struct linted_asynch_waiter **waiterp)
 {
 	linted_error errnum;
 	struct linted_asynch_waiter *waiter;
@@ -469,8 +483,9 @@ short linted_asynch_waiter_revents(struct linted_asynch_waiter *waiter)
 	return ev;
 }
 
-linted_error linted_asynch_task_create(struct linted_asynch_task **taskp,
-                                       void *data, linted_asynch_type type)
+linted_error
+linted_asynch_task_create(struct linted_asynch_task **taskp, void *data,
+                          linted_asynch_type type)
 {
 	linted_error errnum;
 	struct linted_asynch_task *task;
@@ -569,7 +584,8 @@ static void run_task(struct linted_asynch_pool *pool,
 	}
 }
 
-static linted_error poll_one(linted_ko ko, short events, short *reventsp)
+static linted_error poll_one(linted_ko ko, short events,
+                             short *reventsp)
 {
 	linted_error errnum;
 
@@ -595,7 +611,8 @@ poll_succeeded:
 }
 
 /* struct complete_queue is just a fake */
-static linted_error completion_queue_create(struct completion_queue **queuep)
+static linted_error
+completion_queue_create(struct completion_queue **queuep)
 {
 	struct linted_queue *xx;
 	linted_error errnum = linted_queue_create(&xx);
@@ -609,16 +626,19 @@ static void complete_task(struct completion_queue *queue,
                           struct linted_asynch_task *task)
 {
 	assert(queue != 0);
-	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue,
+	                  LINTED_UPCAST(task));
 }
 
-static linted_error completion_try_recv(struct completion_queue *queue,
-                                        struct linted_asynch_task **taskp)
+static linted_error
+completion_try_recv(struct completion_queue *queue,
+                    struct linted_asynch_task **taskp)
 {
 	linted_error errnum;
 	struct linted_queue_node *node;
 
-	errnum = linted_queue_try_recv((struct linted_queue *)queue, &node);
+	errnum =
+	    linted_queue_try_recv((struct linted_queue *)queue, &node);
 	if (errnum != 0)
 		return errnum;
 
@@ -643,11 +663,13 @@ static linted_error job_queue_create(struct job_queue **queuep)
 	return 0;
 }
 
-static void job_submit(struct job_queue *queue, struct linted_asynch_task *task)
+static void job_submit(struct job_queue *queue,
+                       struct linted_asynch_task *task)
 {
 	assert(queue != 0);
 	assert(task != 0);
-	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue,
+	                  LINTED_UPCAST(task));
 }
 
 static linted_error job_try_recv(struct job_queue *queue,
@@ -684,11 +706,13 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 static void waiter_submit(struct waiter_queue *queue,
                           struct linted_asynch_waiter *waiter)
 {
-	linted_queue_send((struct linted_queue *)queue, LINTED_UPCAST(waiter));
+	linted_queue_send((struct linted_queue *)queue,
+	                  LINTED_UPCAST(waiter));
 }
 
-static linted_error waiter_try_recv(struct waiter_queue *queue,
-                                    struct linted_asynch_waiter **waiterp)
+static linted_error
+waiter_try_recv(struct waiter_queue *queue,
+                struct linted_asynch_waiter **waiterp)
 {
 	struct linted_queue_node *node;
 

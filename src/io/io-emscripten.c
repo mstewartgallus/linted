@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -74,11 +75,12 @@ static void pipe_set_init(void);
 static sigset_t const *get_pipe_set(void);
 static linted_error eat_sigpipes(void);
 
-static linted_error poll_one(linted_ko ko, short events, short *revents);
+static linted_error poll_one(linted_ko ko, short events,
+                             short *revents);
 static linted_error check_for_poll_error(short revents);
 
-linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out, void *buf,
-                                size_t size)
+linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out,
+                                void *buf, size_t size)
 {
 	size_t bytes_read = 0U;
 	size_t bytes_left = size;
@@ -200,13 +202,15 @@ poll_for_writeability:
 	LINTED_ASSUME_UNREACHABLE();
 }
 
-linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
+linted_error linted_io_write_string(linted_ko ko,
+                                    size_t *bytes_wrote_out,
                                     char const *s)
 {
 	return linted_io_write_all(ko, bytes_wrote_out, s, strlen(s));
 }
 
-linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
+linted_error linted_io_write_format(linted_ko ko,
+                                    size_t *bytes_wrote_out,
                                     char const *format_str, ...)
 {
 	linted_error errnum = 0;
@@ -230,7 +234,8 @@ free_va_list:
 	return errnum;
 }
 
-static linted_error poll_one(linted_ko ko, short events, short *reventsp)
+static linted_error poll_one(linted_ko ko, short events,
+                             short *reventsp)
 {
 	linted_error errnum;
 
@@ -265,8 +270,9 @@ static linted_error check_for_poll_error(short revents)
 	return errnum;
 }
 
-linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
-                                        void *data)
+linted_error
+linted_io_task_poll_create(struct linted_io_task_poll **taskp,
+                           void *data)
 {
 	linted_error errnum;
 	struct linted_io_task_poll *task;
@@ -280,8 +286,8 @@ linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(&xx, task,
-		                                   LINTED_ASYNCH_TASK_POLL);
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_POLL);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -314,7 +320,8 @@ void linted_io_task_poll_destroy(struct linted_io_task_poll *task)
 }
 
 void linted_io_task_poll_prepare(struct linted_io_task_poll *task,
-                                 unsigned task_action, linted_ko ko, int flags)
+                                 unsigned task_action, linted_ko ko,
+                                 int flags)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 	task->ko = ko;
@@ -338,8 +345,9 @@ void *linted_io_task_poll_data(struct linted_io_task_poll *task)
 	return task->data;
 }
 
-linted_error linted_io_task_read_create(struct linted_io_task_read **taskp,
-                                        void *data)
+linted_error
+linted_io_task_read_create(struct linted_io_task_read **taskp,
+                           void *data)
 {
 	linted_error errnum;
 	struct linted_io_task_read *task;
@@ -353,8 +361,8 @@ linted_error linted_io_task_read_create(struct linted_io_task_read **taskp,
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(&xx, task,
-		                                   LINTED_ASYNCH_TASK_READ);
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_READ);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -389,8 +397,8 @@ void linted_io_task_read_destroy(struct linted_io_task_read *task)
 }
 
 void linted_io_task_read_prepare(struct linted_io_task_read *task,
-                                 unsigned task_action, linted_ko ko, char *buf,
-                                 size_t size)
+                                 unsigned task_action, linted_ko ko,
+                                 char *buf, size_t size)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 	task->ko = ko;
@@ -425,8 +433,9 @@ size_t linted_io_task_read_bytes_read(struct linted_io_task_read *task)
 	return task->bytes_read;
 }
 
-linted_error linted_io_task_write_create(struct linted_io_task_write **taskp,
-                                         void *data)
+linted_error
+linted_io_task_write_create(struct linted_io_task_write **taskp,
+                            void *data)
 {
 	linted_error errnum;
 	struct linted_io_task_write *task;
@@ -440,8 +449,8 @@ linted_error linted_io_task_write_create(struct linted_io_task_write **taskp,
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(&xx, task,
-		                                   LINTED_ASYNCH_TASK_WRITE);
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_WRITE);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -515,7 +524,8 @@ void linted_io_do_poll(struct linted_asynch_pool *pool,
 
 	short revents = linted_asynch_waiter_revents(waiter);
 	if (0 == revents) {
-		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko, events);
+		linted_asynch_pool_wait_on_poll(pool, waiter, task, ko,
+		                                events);
 		return;
 	}
 
@@ -599,7 +609,8 @@ void linted_io_do_write(struct linted_asynch_pool *pool,
 		/* Get EPIPEs */
 		/* SIGPIPE may not be blocked already */
 		sigset_t oldset;
-		errnum = pthread_sigmask(SIG_BLOCK, get_pipe_set(), &oldset);
+		errnum =
+		    pthread_sigmask(SIG_BLOCK, get_pipe_set(), &oldset);
 		if (errnum != 0)
 			goto complete_task;
 
@@ -651,8 +662,8 @@ submit_retry:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, task_write->waiter, task, ko,
-	                                POLLOUT);
+	linted_asynch_pool_wait_on_poll(pool, task_write->waiter, task,
+	                                ko, POLLOUT);
 }
 
 static struct timespec const zero_timeout = {0};

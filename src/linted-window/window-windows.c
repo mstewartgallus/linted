@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -55,9 +56,10 @@ static HINSTANCE get_current_module(void)
 	static char const dummy;
 
 	HINSTANCE xx;
-	GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-	                      GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-	                  (void *)&dummy, &xx);
+	GetModuleHandleEx(
+	    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+	        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	    (void *)&dummy, &xx);
 	return xx;
 }
 
@@ -67,7 +69,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-window", .start = window_start};
+    .canonical_process_name = PACKAGE_NAME "-window",
+    .start = window_start};
 
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
@@ -109,11 +112,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	HWND main_window = CreateWindowEx(
-	    WS_EX_APPWINDOW | WS_EX_COMPOSITED, (LPCTSTR)(uintptr_t) class_atom,
-	    L"" PACKAGE_NAME, WS_OVERLAPPED | WS_CAPTION | WS_THICKFRAME |
-	                          WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
-	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
-	    get_current_module(), 0);
+	    WS_EX_APPWINDOW | WS_EX_COMPOSITED,
+	    (LPCTSTR)(uintptr_t) class_atom, L"" PACKAGE_NAME,
+	    WS_OVERLAPPED | WS_CAPTION | WS_THICKFRAME |
+	        WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
+	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+	    0, 0, get_current_module(), 0);
 	if (0 == main_window) {
 		errnum = GetLastError();
 		assert(errnum != 0);
@@ -235,7 +239,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	for (;;) {
 		for (;;) {
 			MSG message;
-			switch (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
+			switch (
+			    PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
 			case -1:
 				return -1;
 
@@ -260,7 +265,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
-		HRESULT result = IDXGISwapChain_Present(swap_chain, 0, 0);
+		HRESULT result =
+		    IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
 			errnum = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
@@ -281,7 +287,8 @@ destroy_window:
 
 		for (;;) {
 			MSG message;
-			switch (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
+			switch (
+			    PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
 			case -1:
 			case 0:
 				goto window_destroyed;
@@ -300,21 +307,23 @@ report_exit_status:
 	return errnum;
 }
 
-static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
-                        LPARAM l_param);
+static LRESULT on_paint(HWND main_window, UINT message_type,
+                        WPARAM w_param, LPARAM l_param);
 
-static LRESULT on_destroy(HWND main_window, UINT message_type, WPARAM w_param,
-                          LPARAM l_param);
+static LRESULT on_destroy(HWND main_window, UINT message_type,
+                          WPARAM w_param, LPARAM l_param);
 
 LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
                                   WPARAM w_param, LPARAM l_param)
 {
 	switch (message_type) {
 	case WM_PAINT:
-		return on_paint(main_window, message_type, w_param, l_param);
+		return on_paint(main_window, message_type, w_param,
+		                l_param);
 
 	case WM_DESTROY:
-		return on_destroy(main_window, message_type, w_param, l_param);
+		return on_destroy(main_window, message_type, w_param,
+		                  l_param);
 
 	default:
 		return DefWindowProc(main_window, message_type, w_param,
@@ -322,8 +331,8 @@ LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
 	}
 }
 
-static LRESULT on_paint(HWND main_window, UINT message_type, WPARAM w_param,
-                        LPARAM l_param)
+static LRESULT on_paint(HWND main_window, UINT message_type,
+                        WPARAM w_param, LPARAM l_param)
 {
 	DWORD errnum = 0;
 
@@ -347,10 +356,11 @@ post_quit_message:
 	return 0;
 }
 
-static LRESULT on_destroy(HWND main_window, UINT message_type, WPARAM w_param,
-                          LPARAM l_param)
+static LRESULT on_destroy(HWND main_window, UINT message_type,
+                          WPARAM w_param, LPARAM l_param)
 {
 	PostQuitMessage(0);
 
-	return DefWindowProc(main_window, message_type, w_param, l_param);
+	return DefWindowProc(main_window, message_type, w_param,
+	                     l_param);
 }

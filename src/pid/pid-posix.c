@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -42,7 +43,8 @@ struct linted_pid_task_waitid
 };
 
 linted_error
-linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp, void *data)
+linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
+                              void *data)
 {
 	linted_error errnum;
 	struct linted_pid_task_waitid *task;
@@ -56,8 +58,8 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp, void *data)
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(&xx, task,
-		                                   LINTED_ASYNCH_TASK_WAITID);
+		errnum = linted_asynch_task_create(
+		    &xx, task, LINTED_ASYNCH_TASK_WAITID);
 		if (errnum != 0)
 			goto free_task;
 		parent = xx;
@@ -169,9 +171,11 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 {
 	linted_error errnum = 0;
 
-	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	char path[sizeof "/proc/" - 1U +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
 	          sizeof "/stat" - 1U + 1U];
-	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
+	if (-1 ==
+	    sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -180,8 +184,8 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                        LINTED_KO_RDONLY);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -283,16 +287,18 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	           ,
 	           &buf->state, &buf->ppid, &buf->pgrp, &buf->session,
 	           &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
-	           &buf->cminflt, &buf->majflt, &buf->cmajflt, &buf->utime,
-	           &buf->stime, &buf->cutime, &buf->cstime, &buf->priority,
-	           &buf->nice, &buf->num_threads, &buf->itrealvalue,
-	           &buf->starttime, &buf->vsize, &buf->rss, &buf->rsslim,
-	           &buf->startcode, &buf->endcode, &buf->startstack,
-	           &buf->kstkesp, &buf->kstkeip, &buf->signal, &buf->blocked,
-	           &buf->sigignore, &buf->sigcatch, &buf->wchan, &buf->nswap,
-	           &buf->cnswap, &buf->exit_signal, &buf->processor,
-	           &buf->rt_priority, &buf->policy, &buf->delayacct_blkio_ticks,
-	           &buf->guest_time, &buf->cguest_time)) {
+	           &buf->cminflt, &buf->majflt, &buf->cmajflt,
+	           &buf->utime, &buf->stime, &buf->cutime, &buf->cstime,
+	           &buf->priority, &buf->nice, &buf->num_threads,
+	           &buf->itrealvalue, &buf->starttime, &buf->vsize,
+	           &buf->rss, &buf->rsslim, &buf->startcode,
+	           &buf->endcode, &buf->startstack, &buf->kstkesp,
+	           &buf->kstkeip, &buf->signal, &buf->blocked,
+	           &buf->sigignore, &buf->sigcatch, &buf->wchan,
+	           &buf->nswap, &buf->cnswap, &buf->exit_signal,
+	           &buf->processor, &buf->rt_priority, &buf->policy,
+	           &buf->delayacct_blkio_ticks, &buf->guest_time,
+	           &buf->cguest_time)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		goto free_line;
@@ -310,14 +316,18 @@ free_line:
 	return errnum;
 }
 
-linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
+linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
+                                 size_t *lenp)
 {
 	linted_error errnum;
 
-	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
-	          sizeof "/task/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	char path[sizeof "/proc/" - 1U +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          sizeof "/task/" - 1U +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
 	          sizeof "/children" - 1U + 1U];
-	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX "/children",
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX
+	                        "/children",
 	                  (uintmax_t)pid, (uintmax_t)pid)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
@@ -327,8 +337,8 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 	linted_ko children_ko;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                        LINTED_KO_RDONLY);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -399,7 +409,8 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp, size_t *lenp)
 		{
 			void *xx;
 			errnum = linted_mem_realloc_array(
-			    &xx, children, ii + 1U, sizeof children[0U]);
+			    &xx, children, ii + 1U,
+			    sizeof children[0U]);
 			if (errnum != 0)
 				goto free_buf;
 			children = xx;

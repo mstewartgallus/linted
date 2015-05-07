@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -139,7 +140,8 @@ free_task:
 	return errnum;
 }
 
-void linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
+void
+linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
 {
 	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
@@ -156,8 +158,9 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 	return task->signo;
 }
 
-void linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                     unsigned task_action)
+void
+linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
+                                unsigned task_action)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 }
@@ -187,7 +190,8 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	for (;;) {
 		char dummy;
 		DWORD xx;
-		if (!ReadFile(sigpipe_reader, &dummy, sizeof dummy, &xx, 0)) {
+		if (!ReadFile(sigpipe_reader, &dummy, sizeof dummy, &xx,
+		              0)) {
 			errnum = GetLastError();
 			LINTED_ASSUME(errnum != 0);
 
@@ -202,12 +206,14 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	}
 	errnum = 0;
 
-	if (__atomic_fetch_and(&sigint_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (__atomic_fetch_and(&sigint_signalled, 0,
+	                       __ATOMIC_SEQ_CST)) {
 		signo = SIGINT;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigterm_signalled, 0, __ATOMIC_SEQ_CST)) {
+	if (__atomic_fetch_and(&sigterm_signalled, 0,
+	                       __ATOMIC_SEQ_CST)) {
 		signo = SIGTERM;
 		goto complete;
 	}
@@ -219,7 +225,8 @@ complete:
 
 	if (0 == errnum) {
 		char dummy = 0;
-		linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+		linted_io_write_all(sigpipe_writer, 0, &dummy,
+		                    sizeof dummy);
 	}
 
 	linted_asynch_pool_complete(pool, task, errnum);
@@ -230,8 +237,8 @@ resubmit:
 	return;
 
 wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, waiter, task, sigpipe_reader,
-	                                POLLIN);
+	linted_asynch_pool_wait_on_poll(pool, waiter, task,
+	                                sigpipe_reader, POLLIN);
 }
 
 char const *linted_signal_string(int signo)

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -55,7 +56,8 @@ int linted_start_show_command(void)
 	return show_command;
 }
 
-int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
+int WINAPI wWinMain(HINSTANCE program_instance,
+                    HINSTANCE prev_instance_unused,
                     wchar_t *command_line_unused, int show_command_arg)
 {
 	/* Cannot fail, return value is only the previous state */
@@ -80,8 +82,8 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 	char **argv;
 	{
 		void *xx;
-		errnum =
-		    linted_mem_alloc_array(&xx, argc + 1U, sizeof argv[0U]);
+		errnum = linted_mem_alloc_array(&xx, argc + 1U,
+		                                sizeof argv[0U]);
 		if (errnum != 0)
 			return EXIT_FAILURE;
 		argv = xx;
@@ -117,7 +119,8 @@ int WINAPI wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {
-		process_name = linted_start_config.canonical_process_name;
+		process_name =
+		    linted_start_config.canonical_process_name;
 		missing_name = true;
 	}
 

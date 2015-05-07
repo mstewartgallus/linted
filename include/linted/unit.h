@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -50,14 +51,17 @@ void linted_unit_db_destroy(struct linted_unit_db *units);
 linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
                                      struct linted_unit **unitp);
 size_t linted_unit_db_size(struct linted_unit_db *units);
-struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
-                                            size_t ii);
-struct linted_unit *linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
-                                                    char const *name);
+struct linted_unit *
+linted_unit_db_get_unit(struct linted_unit_db *units, size_t ii);
+struct linted_unit *
+linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
+                                char const *name);
 
-linted_error linted_unit_name(pid_t pid,
-                              char name[static LINTED_UNIT_NAME_MAX + 1U]);
-linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid, char const *name);
+linted_error
+linted_unit_name(pid_t pid,
+                 char name[static LINTED_UNIT_NAME_MAX + 1U]);
+linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
+                             char const *name);
 
 struct linted_unit
 {

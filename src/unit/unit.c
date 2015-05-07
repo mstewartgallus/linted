@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -110,35 +111,39 @@ size_t linted_unit_db_size(struct linted_unit_db *units)
 	return units->size;
 }
 
-struct linted_unit *linted_unit_db_get_unit(struct linted_unit_db *units,
-                                            size_t ii)
+struct linted_unit *
+linted_unit_db_get_unit(struct linted_unit_db *units, size_t ii)
 {
 	return &units->list[ii].common;
 }
 
 struct linted_unit *
-linted_unit_db_get_unit_by_name(struct linted_unit_db *units, char const *name)
+linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
+                                char const *name)
 {
 	for (size_t ii = 0U; ii < units->size; ++ii) {
 		struct linted_unit *unit = &units->list[ii].common;
 
-		if (0 == strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
+		if (0 ==
+		    strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
 			return unit;
 	}
 
 	return 0;
 }
 
-linted_error linted_unit_name(pid_t pid,
-                              char name[static LINTED_UNIT_NAME_MAX + 1U])
+linted_error
+linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 {
 	linted_error errnum;
 
 	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
 
-	char path[sizeof "/proc/" - 1U + LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	char path[sizeof "/proc/" - 1U +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
 	          sizeof "/environ" - 1U + 1U];
-	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ", (uintmax_t)pid)) {
+	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ",
+	                  (uintmax_t)pid)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;
@@ -147,8 +152,8 @@ linted_error linted_unit_name(pid_t pid,
 	linted_ko ko;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, path, LINTED_KO_RDONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                        LINTED_KO_RDONLY);
 		if (ENOENT == errnum)
 			return ESRCH;
 		if (errnum != 0)
@@ -226,7 +231,8 @@ free_buf:
 	return errnum;
 }
 
-linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid, char const *name)
+linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
+                             char const *name)
 {
 	linted_error errnum = 0;
 

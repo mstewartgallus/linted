@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -40,9 +41,8 @@ struct linted_updater_task_receive
 	             LINTED_RPC_UINT32_SIZE];
 };
 
-linted_error
-linted_updater_task_receive_create(struct linted_updater_task_receive **taskp,
-                                   void *data)
+linted_error linted_updater_task_receive_create(
+    struct linted_updater_task_receive **taskp, void *data)
 {
 	linted_error errnum;
 	struct linted_updater_task_receive *task;
@@ -70,34 +70,37 @@ free_task:
 	return errnum;
 }
 
-void
-linted_updater_task_receive_destroy(struct linted_updater_task_receive *task)
+void linted_updater_task_receive_destroy(
+    struct linted_updater_task_receive *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void
-linted_updater_task_receive_prepare(struct linted_updater_task_receive *task,
-                                    unsigned task_action, linted_ko updater)
+void linted_updater_task_receive_prepare(
+    struct linted_updater_task_receive *task, unsigned task_action,
+    linted_ko updater)
 {
 	linted_io_task_read_prepare(task->parent, task_action, updater,
-	                            task->message, sizeof task->message);
+	                            task->message,
+	                            sizeof task->message);
 }
 
 struct linted_updater_task_receive *
 linted_updater_task_receive_from_asynch(struct linted_asynch_task *task)
 {
-	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
+	return linted_io_task_read_data(
+	    linted_io_task_read_from_asynch(task));
 }
 
-struct linted_asynch_task *
-linted_updater_task_receive_to_asynch(struct linted_updater_task_receive *task)
+struct linted_asynch_task *linted_updater_task_receive_to_asynch(
+    struct linted_updater_task_receive *task)
 {
 	return linted_io_task_read_to_asynch(task->parent);
 }
 
-void *linted_updater_task_receive_data(struct linted_updater_task_receive *task)
+void *linted_updater_task_receive_data(
+    struct linted_updater_task_receive *task)
 {
 	return task->data;
 }
@@ -132,19 +135,20 @@ free_task:
 	return errnum;
 }
 
-void linted_updater_task_send_destroy(struct linted_updater_task_send *task)
+void
+linted_updater_task_send_destroy(struct linted_updater_task_send *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void
-linted_updater_task_send_prepare(struct linted_updater_task_send *task,
-                                 unsigned task_action, linted_ko updater,
-                                 struct linted_updater_update const *update)
+void linted_updater_task_send_prepare(
+    struct linted_updater_task_send *task, unsigned task_action,
+    linted_ko updater, struct linted_updater_update const *update)
 {
 	linted_io_task_write_prepare(task->parent, task_action, updater,
-	                             task->message, sizeof task->message);
+	                             task->message,
+	                             sizeof task->message);
 
 	char *tip = task->message;
 
@@ -170,19 +174,21 @@ linted_updater_task_send_from_asynch(struct linted_asynch_task *task)
 	    linted_io_task_write_from_asynch(task));
 }
 
-struct linted_asynch_task *
-linted_updater_task_send_to_asynch(struct linted_updater_task_send *task)
+struct linted_asynch_task *linted_updater_task_send_to_asynch(
+    struct linted_updater_task_send *task)
 {
 	return linted_io_task_write_to_asynch(task->parent);
 }
 
-void *linted_updater_task_send_data(struct linted_updater_task_send *task)
+void *
+linted_updater_task_send_data(struct linted_updater_task_send *task)
 {
 	return task->data;
 }
 
-void linted_updater_decode(struct linted_updater_task_receive const *task,
-                           struct linted_updater_update *update)
+void
+linted_updater_decode(struct linted_updater_task_receive const *task,
+                      struct linted_updater_update *update)
 {
 	char const *tip = task->message;
 

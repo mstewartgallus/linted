@@ -9,12 +9,13 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define ALLOW(XX)                                                              \
-	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),                \
+#define ALLOW(XX)                                                      \
+	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##XX, 0U, 1U),        \
 	    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
 static struct sock_filter const real_filter[] = {
@@ -22,7 +23,8 @@ static struct sock_filter const real_filter[] = {
                   offsetof(struct seccomp_data, arch)),
     /**/ BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, EM_386, 0U, 1U),
     /**/ BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
-    /**/ BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+    /**/ BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                  offsetof(struct seccomp_data, nr)),
     /**/ ALLOW(access),
     /**/ ALLOW(brk),
     /**/ ALLOW(capset),

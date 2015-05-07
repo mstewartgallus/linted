@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -59,8 +60,8 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 		if (errnum != 0)
 			goto free_channel;
 
-		errnum =
-		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+		errnum = pthread_mutexattr_settype(
+		    &attr, PTHREAD_MUTEX_ERRORCHECK);
 		assert(errnum != EINVAL);
 		if (errnum != 0)
 			goto destroy_attr;
@@ -70,7 +71,8 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 
 	destroy_attr:
 		;
-		linted_error dest_errnum = pthread_mutexattr_destroy(&attr);
+		linted_error dest_errnum =
+		    pthread_mutexattr_destroy(&attr);
 		if (0 == errnum)
 			errnum = dest_errnum;
 	} else {
@@ -115,7 +117,8 @@ void linted_channel_destroy(struct linted_channel *channel)
 	linted_mem_free(channel);
 }
 
-linted_error linted_channel_try_send(struct linted_channel *channel, void *node)
+linted_error linted_channel_try_send(struct linted_channel *channel,
+                                     void *node)
 {
 	linted_error errnum = 0;
 
@@ -141,7 +144,8 @@ linted_error linted_channel_try_send(struct linted_channel *channel, void *node)
 	pthread_cond_signal(&channel->filled);
 
 unlock_mutex : {
-	linted_error unlock_errnum = pthread_mutex_unlock(&channel->lock);
+	linted_error unlock_errnum =
+	    pthread_mutex_unlock(&channel->lock);
 	if (unlock_errnum != 0) {
 		assert(unlock_errnum != EPERM);
 		assert(false);
@@ -171,7 +175,8 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	channel->waiter = nodep;
 
 	do {
-		errnum = pthread_cond_wait(&channel->filled, &channel->lock);
+		errnum =
+		    pthread_cond_wait(&channel->filled, &channel->lock);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -29,19 +30,20 @@ struct linted_controller_task_send
 {
 	struct linted_io_task_write *parent;
 	void *data;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	char
+	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
 struct linted_controller_task_receive
 {
 	struct linted_io_task_read *parent;
 	void *data;
-	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	char
+	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
-linted_error
-linted_controller_task_send_create(struct linted_controller_task_send **taskp,
-                                   void *data)
+linted_error linted_controller_task_send_create(
+    struct linted_controller_task_send **taskp, void *data)
 {
 	linted_error errnum;
 	struct linted_controller_task_send *task;
@@ -69,15 +71,15 @@ free_task:
 	return errnum;
 }
 
-void
-linted_controller_task_send_destroy(struct linted_controller_task_send *task)
+void linted_controller_task_send_destroy(
+    struct linted_controller_task_send *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-struct linted_asynch_task *
-linted_controller_task_send_to_asynch(struct linted_controller_task_send *task)
+struct linted_asynch_task *linted_controller_task_send_to_asynch(
+    struct linted_controller_task_send *task)
 {
 	return linted_io_task_write_to_asynch(task->parent);
 }
@@ -89,7 +91,8 @@ linted_controller_task_send_from_asynch(struct linted_asynch_task *task)
 	    linted_io_task_write_from_asynch(task));
 }
 
-void *linted_controller_task_send_data(struct linted_controller_task_send *task)
+void *linted_controller_task_send_data(
+    struct linted_controller_task_send *task)
 {
 	return task->data;
 }
@@ -99,8 +102,9 @@ void linted_controller_task_send_prepare(
     linted_controller controller,
     struct linted_controller_message const *message)
 {
-	linted_io_task_write_prepare(task->parent, task_action, controller,
-	                             task->message, sizeof task->message);
+	linted_io_task_write_prepare(task->parent, task_action,
+	                             controller, task->message,
+	                             sizeof task->message);
 
 	char *tip = task->message;
 
@@ -161,13 +165,15 @@ struct linted_asynch_task *linted_controller_task_receive_to_asynch(
 }
 
 struct linted_controller_task_receive *
-linted_controller_task_receive_from_asynch(struct linted_asynch_task *task)
+linted_controller_task_receive_from_asynch(
+    struct linted_asynch_task *task)
 {
-	return linted_io_task_read_data(linted_io_task_read_from_asynch(task));
+	return linted_io_task_read_data(
+	    linted_io_task_read_from_asynch(task));
 }
 
-void *
-linted_controller_task_receive_data(struct linted_controller_task_receive *task)
+void *linted_controller_task_receive_data(
+    struct linted_controller_task_receive *task)
 {
 	return task->data;
 }
@@ -176,13 +182,14 @@ void linted_controller_task_receive_prepare(
     struct linted_controller_task_receive *task, unsigned task_action,
     linted_controller controller)
 {
-	linted_io_task_read_prepare(task->parent, task_action, controller,
-	                            task->message, sizeof task->message);
+	linted_io_task_read_prepare(task->parent, task_action,
+	                            controller, task->message,
+	                            sizeof task->message);
 }
 
-linted_error
-linted_controller_decode(struct linted_controller_task_receive const *task,
-                         struct linted_controller_message *message)
+linted_error linted_controller_decode(
+    struct linted_controller_task_receive const *task,
+    struct linted_controller_message *message)
 {
 	char const *tip = task->message;
 
@@ -195,8 +202,8 @@ linted_controller_decode(struct linted_controller_task_receive const *task,
 	unsigned char bitfield;
 	memcpy(&bitfield, tip, sizeof bitfield);
 
-	if ((bitfield & ~(1U | 1U << 1U | 1U << 2U | 1U << 3U | 1U << 4U)) !=
-	    0U)
+	if ((bitfield &
+	     ~(1U | 1U << 1U | 1U << 2U | 1U << 3U | 1U << 4U)) != 0U)
 		return EPROTO;
 
 	message->forward = bitfield & 1U;

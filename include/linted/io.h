@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -36,8 +37,8 @@ struct linted_io_task_write;
  * Abstracts over chunked input and output.
  */
 
-linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
-                                size_t count);
+linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote,
+                                void *buf, size_t count);
 
 /**
  * The linted_io_write_all function repeatedly writes to ko until of
@@ -53,7 +54,8 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
  *                    count bytes and at least zero bytes. If 0
  *                    then is not set.
  *
- * @param buf The buffer to be written from. Must be at least count bytes
+ * @param buf The buffer to be written from. Must be at least count
+ *bytes
  *            long.
  *
  * @param count The amount to write. No more than these many bytes is
@@ -87,19 +89,23 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote, void *buf,
 linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote,
                                  void const *buf, size_t count);
 
-linted_error linted_io_write_string(linted_ko ko, size_t *bytes_wrote_out,
+linted_error linted_io_write_string(linted_ko ko,
+                                    size_t *bytes_wrote_out,
                                     char const *s);
 
-linted_error linted_io_write_format(linted_ko ko, size_t *bytes_wrote_out,
+linted_error linted_io_write_format(linted_ko ko,
+                                    size_t *bytes_wrote_out,
                                     char const *s, ...)
     LINTED_FORMAT(__printf__, 3, 4);
 
-linted_error linted_io_write_va_list(linted_ko ko, size_t *bytes_wrote_out,
+linted_error linted_io_write_va_list(linted_ko ko,
+                                     size_t *bytes_wrote_out,
                                      char const *s, va_list list)
     LINTED_FORMAT(__printf__, 3, 0);
 
-linted_error linted_io_task_poll_create(struct linted_io_task_poll **taskp,
-                                        void *data);
+linted_error
+linted_io_task_poll_create(struct linted_io_task_poll **taskp,
+                           void *data);
 void linted_io_task_poll_destroy(struct linted_io_task_poll *task);
 
 struct linted_io_task_poll *
@@ -107,11 +113,13 @@ linted_io_task_poll_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *
 linted_io_task_poll_to_asynch(struct linted_io_task_poll *);
 void linted_io_task_poll_prepare(struct linted_io_task_poll *task,
-                                 unsigned task_action, linted_ko ko, int flags);
+                                 unsigned task_action, linted_ko ko,
+                                 int flags);
 void *linted_io_task_poll_data(struct linted_io_task_poll *task);
 
-linted_error linted_io_task_read_create(struct linted_io_task_read **taskp,
-                                        void *data);
+linted_error
+linted_io_task_read_create(struct linted_io_task_read **taskp,
+                           void *data);
 void linted_io_task_read_destroy(struct linted_io_task_read *task);
 
 struct linted_io_task_read *
@@ -119,14 +127,15 @@ linted_io_task_read_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *
 linted_io_task_read_to_asynch(struct linted_io_task_read *);
 void linted_io_task_read_prepare(struct linted_io_task_read *task,
-                                 unsigned task_action, linted_ko ko, char *buf,
-                                 size_t size);
+                                 unsigned task_action, linted_ko ko,
+                                 char *buf, size_t size);
 void *linted_io_task_read_data(struct linted_io_task_read *task);
 linted_ko linted_io_task_read_ko(struct linted_io_task_read *task);
 size_t linted_io_task_read_bytes_read(struct linted_io_task_read *task);
 
-linted_error linted_io_task_write_create(struct linted_io_task_write **taskp,
-                                         void *data);
+linted_error
+linted_io_task_write_create(struct linted_io_task_write **taskp,
+                            void *data);
 void linted_io_task_write_destroy(struct linted_io_task_write *task);
 
 struct linted_io_task_write *

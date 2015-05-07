@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -51,7 +52,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-init", .start = init_start};
+    .canonical_process_name = PACKAGE_NAME "-init",
+    .start = init_start};
 
 static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[])
@@ -92,7 +94,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(monitor, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -104,7 +107,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(monitor_base, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -112,7 +116,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		linted_io_write_format(LINTED_KO_STDERR, 0, "%s: spawning %s\n",
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: spawning %s\n",
 		                       process_name, monitor_base);
 
 		linted_ko monitor_handle;
@@ -128,13 +133,14 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			startup_info.hStdError = LINTED_KO_STDERR;
 
 			PROCESS_INFORMATION process_information;
-			if (!CreateProcess(monitor_utf2, monitor_base_utf2, 0,
-			                   0, false, creation_flags, 0, 0,
-			                   &startup_info,
-			                   &process_information)) {
+			if (!CreateProcess(
+			        monitor_utf2, monitor_base_utf2, 0, 0,
+			        false, creation_flags, 0, 0,
+			        &startup_info, &process_information)) {
 				linted_log(LINTED_LOG_ERROR,
 				           "CreateProcess: %s",
-				           linted_error_string(GetLastError()));
+				           linted_error_string(
+				               GetLastError()));
 				return EXIT_FAILURE;
 			}
 			monitor_handle = process_information.hProcess;
@@ -147,7 +153,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			break;
 
 		case WAIT_FAILED:
-			linted_log(LINTED_LOG_ERROR, "WaitForSingleObject: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "WaitForSingleObject: %s",
 			           linted_error_string(GetLastError()));
 			return EXIT_FAILURE;
 
@@ -161,7 +168,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			if (!GetExitCodeProcess(monitor_handle, &xx)) {
 				linted_log(LINTED_LOG_ERROR,
 				           "GetExitCodeProcess: %s",
-				           linted_error_string(GetLastError()));
+				           linted_error_string(
+				               GetLastError()));
 				return EXIT_FAILURE;
 			}
 			exit_status = xx;

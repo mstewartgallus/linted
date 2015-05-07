@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -27,8 +28,9 @@
 #include <stdio.h>
 #include <string.h>
 
-static linted_error valloc_sprintf(char **strbp, size_t *sizep, const char *fmt,
-                                   va_list ap) LINTED_FORMAT(__printf__, 3, 0);
+static linted_error valloc_sprintf(char **strbp, size_t *sizep,
+                                   const char *fmt, va_list ap)
+    LINTED_FORMAT(__printf__, 3, 0);
 
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize)
@@ -71,14 +73,15 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 	return 0;
 }
 
-linted_error linted_str_append_cstring(char **bufp, size_t *capp, size_t *sizep,
-                                       char const *str)
+linted_error linted_str_append_cstring(char **bufp, size_t *capp,
+                                       size_t *sizep, char const *str)
 {
 	return linted_str_append(bufp, capp, sizep, str, strlen(str));
 }
 
-linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
-                                      char const *fmt, ...)
+linted_error linted_str_append_format(char **bufp, size_t *capp,
+                                      size_t *sizep, char const *fmt,
+                                      ...)
 {
 	linted_error errnum = 0;
 	size_t strsize;
@@ -112,8 +115,8 @@ linted_error linted_str_append_format(char **bufp, size_t *capp, size_t *sizep,
 	return errnum;
 }
 
-static linted_error valloc_sprintf(char **strp, size_t *sizep, const char *fmt,
-                                   va_list ap)
+static linted_error valloc_sprintf(char **strp, size_t *sizep,
+                                   const char *fmt, va_list ap)
 {
 	linted_error errnum = 0;
 

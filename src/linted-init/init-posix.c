@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -43,7 +44,8 @@ static void delegate_signal(int signo);
 static linted_error set_child_subreaper(bool value);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-init", .start = init_start};
+    .canonical_process_name = PACKAGE_NAME "-init",
+    .start = init_start};
 
 static volatile sig_atomic_t monitor_pid = 0;
 
@@ -52,10 +54,12 @@ static unsigned char init_start(char const *process_name, size_t argc,
 {
 	linted_error errnum;
 
-	static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
+	static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT,
+	                                   SIGTERM};
 
 	/* Delegate the exit signal to the monitor child */
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
+	     ++ii) {
 		struct sigaction action = {0};
 		action.sa_handler = delegate_signal;
 		action.sa_flags = SA_RESTART;
@@ -104,7 +108,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	}
 
 	for (;;) {
-		linted_io_write_format(LINTED_KO_STDERR, 0, "%s: spawning %s\n",
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "%s: spawning %s\n",
 		                       process_name, monitor_base);
 
 		pid_t child;
@@ -114,7 +119,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			    &xx, LINTED_KO_CWD, monitor, 0, 0,
 			    (char const *const[]){monitor_base, 0}, 0);
 			if (errnum != 0) {
-				linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",
+				linted_log(LINTED_LOG_ERROR,
+				           "linted_spawn: %s",
 				           linted_error_string(errnum));
 				return EXIT_FAILURE;
 			}
@@ -128,7 +134,8 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		for (;;) {
 			{
 				siginfo_t info;
-				if (-1 == waitid(P_ALL, -1, &info, WEXITED))
+				if (-1 ==
+				    waitid(P_ALL, -1, &info, WEXITED))
 					goto waitid_failed;
 				pid = info.si_pid;
 				code = info.si_code;
@@ -156,16 +163,17 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			if (EXIT_SUCCESS == status)
 				goto exit_loop;
 
-			linted_io_write_format(LINTED_KO_STDERR, 0,
-			                       "monitor exited with %i\n",
-			                       status);
+			linted_io_write_format(
+			    LINTED_KO_STDERR, 0,
+			    "monitor exited with %i\n", status);
 			break;
 
 		case CLD_DUMPED:
 		case CLD_KILLED:
-			linted_io_write_format(LINTED_KO_STDERR, 0,
-			                       "monitor killed by %s\n",
-			                       linted_signal_string(status));
+			linted_io_write_format(
+			    LINTED_KO_STDERR, 0,
+			    "monitor killed by %s\n",
+			    linted_signal_string(status));
 			break;
 
 		default:
@@ -180,8 +188,8 @@ static linted_error set_child_subreaper(bool v)
 {
 	linted_error errnum;
 
-	if (-1 ==
-	    prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL, 0UL, 0UL)) {
+	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL,
+	                0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 		return errnum;

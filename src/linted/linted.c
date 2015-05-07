@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -68,15 +69,17 @@ enum { HELP, VERSION_OPTION };
 
 extern char **environ;
 
-static unsigned char main_start(char const *const process_name, size_t argc,
-                                char const *const *argv);
+static unsigned char main_start(char const *const process_name,
+                                size_t argc, char const *const *argv);
 
 static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name, char const *package_url,
+                            char const *package_name,
+                            char const *package_url,
                             char const *package_bugreport);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-linted", .start = main_start};
+    .canonical_process_name = PACKAGE_NAME "-linted",
+    .start = main_start};
 
 static struct envvar const default_envvars[] = {
     {"LINTED_PROCESS_NAME", "linted"},
@@ -97,22 +100,25 @@ static struct envvar const default_envvars[] = {
 static char const *const argstrs[] = {[HELP] = "--help",
                                       [VERSION_OPTION] = "--version"};
 
-static unsigned char main_start(char const *const process_name, size_t argc,
+static unsigned char main_start(char const *const process_name,
+                                size_t argc,
                                 char const *const *const argv)
 {
 	linted_error errnum = linted_linted_privilege_check();
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s should not be run with high privileges: %s",
-		           PACKAGE_NAME, linted_error_string(errnum));
+		linted_log(
+		    LINTED_LOG_ERROR,
+		    "%s should not be run with high privileges: %s",
+		    PACKAGE_NAME, linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars); ++ii) {
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars);
+	     ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 
-		errnum =
-		    linted_environment_set(envvar->key, envvar->value, false);
+		errnum = linted_environment_set(envvar->key,
+		                                envvar->value, false);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_set: %s",
@@ -122,10 +128,12 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	}
 
 	{
-		char pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+		char
+		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)getpid());
 
-		errnum = linted_environment_set("MANAGERPID", pid_str, true);
+		errnum =
+		    linted_environment_set("MANAGERPID", pid_str, true);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_set: %s",
@@ -157,7 +165,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		char const *argument = argv[ii];
 
 		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs);
+		     ++jj) {
 			if (0 == strcmp(argument, argstrs[jj])) {
 				arg = jj;
 				break;
@@ -186,10 +195,10 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(LINTED_KO_STDERR, process_name,
-		                            bad_option);
-		linted_locale_try_for_more_help(LINTED_KO_STDERR, process_name,
-		                                "--help");
+		linted_locale_on_bad_option(LINTED_KO_STDERR,
+		                            process_name, bad_option);
+		linted_locale_try_for_more_help(LINTED_KO_STDERR,
+		                                process_name, "--help");
 		return EXIT_FAILURE;
 	}
 
@@ -199,7 +208,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		return EXIT_SUCCESS;
 	}
 
-	linted_io_write_format(LINTED_KO_STDOUT, 0, "LINTED_PID=%" PRIuMAX "\n",
+	linted_io_write_format(LINTED_KO_STDOUT, 0,
+	                       "LINTED_PID=%" PRIuMAX "\n",
 	                       (uintmax_t)getpid());
 
 	char *init_dup = strdup(init);
@@ -216,7 +226,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(init, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -228,7 +239,8 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		wchar_t *xx;
 		errnum = linted_utf_1_to_2(init_base, &xx);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_utf_1_to_2: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_utf_1_to_2: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -248,10 +260,12 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 		startup_info.hStdError = LINTED_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
-		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0, false,
-		                   creation_flags, 0, 0, &startup_info,
+		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0,
+		                   false, creation_flags, 0, 0,
+		                   &startup_info,
 		                   &process_information)) {
-			linted_log(LINTED_LOG_ERROR, "CreateProcessW: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "CreateProcessW: %s",
 			           linted_error_string(GetLastError()));
 			return EXIT_FAILURE;
 		}
@@ -284,13 +298,15 @@ static unsigned char main_start(char const *const process_name, size_t argc,
 #else
 	char const *const init_argv[] = {init_base, 0};
 	execve(init, (char *const *)init_argv, environ);
-	linted_log(LINTED_LOG_ERROR, "execve: %s", linted_error_string(errno));
+	linted_log(LINTED_LOG_ERROR, "execve: %s",
+	           linted_error_string(errno));
 	return EXIT_FAILURE;
 #endif
 }
 
 static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name, char const *package_url,
+                            char const *package_name,
+                            char const *package_url,
                             char const *package_bugreport)
 {
 	linted_error errnum;

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -49,31 +50,32 @@
  * SE_UNSOLICITED_INPUT_NAME
  */
 
-static wchar_t const *const access_names[] = {SE_ASSIGNPRIMARYTOKEN_NAME,  /**/
-                                              SE_ASSIGNPRIMARYTOKEN_NAME,  /**/
-                                              SE_AUDIT_NAME,               /**/
-                                              SE_BACKUP_NAME,              /**/
-                                              SE_CREATE_PAGEFILE_NAME,     /**/
-                                              SE_CREATE_PERMANENT_NAME,    /**/
-                                              SE_CREATE_TOKEN_NAME,        /**/
-                                              SE_DEBUG_NAME,               /**/
-                                              SE_ENABLE_DELEGATION_NAME,   /**/
-                                              SE_INC_BASE_PRIORITY_NAME,   /**/
-                                              SE_INCREASE_QUOTA_NAME,      /**/
-                                              SE_LOCK_MEMORY_NAME,         /**/
-                                              SE_MACHINE_ACCOUNT_NAME,     /**/
-                                              SE_MANAGE_VOLUME_NAME,       /**/
-                                              SE_PROF_SINGLE_PROCESS_NAME, /**/
-                                              SE_RESTORE_NAME,             /**/
-                                              SE_SECURITY_NAME,            /**/
-                                              SE_SHUTDOWN_NAME,            /**/
-                                              SE_SYNC_AGENT_NAME,          /**/
-                                              SE_SYSTEM_ENVIRONMENT_NAME,  /**/
-                                              SE_SYSTEM_PROFILE_NAME,      /**/
-                                              SE_SYSTEMTIME_NAME,          /**/
-                                              SE_TAKE_OWNERSHIP_NAME,      /**/
-                                              SE_TCB_NAME,                 /**/
-                                              SE_UNDOCK_NAME};
+static wchar_t const *const access_names[] = {
+    SE_ASSIGNPRIMARYTOKEN_NAME,  /**/
+    SE_ASSIGNPRIMARYTOKEN_NAME,  /**/
+    SE_AUDIT_NAME,               /**/
+    SE_BACKUP_NAME,              /**/
+    SE_CREATE_PAGEFILE_NAME,     /**/
+    SE_CREATE_PERMANENT_NAME,    /**/
+    SE_CREATE_TOKEN_NAME,        /**/
+    SE_DEBUG_NAME,               /**/
+    SE_ENABLE_DELEGATION_NAME,   /**/
+    SE_INC_BASE_PRIORITY_NAME,   /**/
+    SE_INCREASE_QUOTA_NAME,      /**/
+    SE_LOCK_MEMORY_NAME,         /**/
+    SE_MACHINE_ACCOUNT_NAME,     /**/
+    SE_MANAGE_VOLUME_NAME,       /**/
+    SE_PROF_SINGLE_PROCESS_NAME, /**/
+    SE_RESTORE_NAME,             /**/
+    SE_SECURITY_NAME,            /**/
+    SE_SHUTDOWN_NAME,            /**/
+    SE_SYNC_AGENT_NAME,          /**/
+    SE_SYSTEM_ENVIRONMENT_NAME,  /**/
+    SE_SYSTEM_PROFILE_NAME,      /**/
+    SE_SYSTEMTIME_NAME,          /**/
+    SE_TAKE_OWNERSHIP_NAME,      /**/
+    SE_TCB_NAME,                 /**/
+    SE_UNDOCK_NAME};
 
 linted_error linted_linted_privilege_check(void)
 {
@@ -83,12 +85,14 @@ linted_error linted_linted_privilege_check(void)
 	{
 		DWORD PrivilegeCount;
 		DWORD Control;
-		LUID_AND_ATTRIBUTES Privilege[LINTED_ARRAY_SIZE(access_names)];
+		LUID_AND_ATTRIBUTES
+		Privilege[LINTED_ARRAY_SIZE(access_names)];
 	} privileges = {0};
 	privileges.PrivilegeCount = LINTED_ARRAY_SIZE(access_names);
 	privileges.Control = 0;
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(access_names); ++ii) {
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(access_names);
+	     ++ii) {
 		LUID xx;
 
 		if (!LookupPrivilegeValue(0, access_names[ii], &xx)) {
@@ -98,13 +102,15 @@ linted_error linted_linted_privilege_check(void)
 		}
 
 		privileges.Privilege[ii].Luid = xx;
-		privileges.Privilege[ii].Attributes = SE_PRIVILEGE_ENABLED;
+		privileges.Privilege[ii].Attributes =
+		    SE_PRIVILEGE_ENABLED;
 	}
 
 	HANDLE current_process_access_token;
 	{
 		HANDLE xx;
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &xx)) {
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY,
+		                      &xx)) {
 			errnum = GetLastError();
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
@@ -113,8 +119,8 @@ linted_error linted_linted_privilege_check(void)
 	}
 
 	BOOL result;
-	if (!PrivilegeCheck(current_process_access_token, (void *)&privileges,
-	                    &result)) {
+	if (!PrivilegeCheck(current_process_access_token,
+	                    (void *)&privileges, &result)) {
 		errnum = GetLastError();
 		LINTED_ASSUME(errnum != 0);
 	}

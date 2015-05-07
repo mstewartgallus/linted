@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -24,7 +25,8 @@
 
 #include <stddef.h>
 
-linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
+linted_error linted_locale_on_bad_option(linted_ko ko,
+                                         char const *process_name,
                                          char const *bad_option)
 {
 	linted_error errnum;
@@ -33,8 +35,8 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   process_name);
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -43,12 +45,13 @@ linted_error linted_locale_on_bad_option(linted_ko ko, char const *process_name,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, bad_option);
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   bad_option);
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "'\n");
+	errnum =
+	    linted_str_append_cstring(&buffer, &capacity, &size, "'\n");
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -71,21 +74,23 @@ linted_error linted_locale_try_for_more_help(linted_ko ko,
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "Try `");
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   "Try `");
+	if (errnum != 0)
+		goto free_buffer;
+
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   process_name);
 	if (errnum != 0)
 		goto free_buffer;
 
 	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, process_name);
+	    linted_str_append_cstring(&buffer, &capacity, &size, " ");
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size, " ");
-	if (errnum != 0)
-		goto free_buffer;
-
-	errnum =
-	    linted_str_append_cstring(&buffer, &capacity, &size, help_option);
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   help_option);
 	if (errnum != 0)
 		goto free_buffer;
 
@@ -103,7 +108,8 @@ free_buffer:
 	return errnum;
 }
 
-linted_error linted_locale_version(linted_ko ko, char const *package_string,
+linted_error linted_locale_version(linted_ko ko,
+                                   char const *package_string,
                                    char const *copyright_year)
 {
 	linted_error errnum;
@@ -117,7 +123,8 @@ linted_error linted_locale_version(linted_ko ko, char const *package_string,
 	if (errnum != 0)
 		goto free_buffer;
 
-	errnum = linted_str_append_cstring(&buffer, &capacity, &size, "\n\n");
+	errnum = linted_str_append_cstring(&buffer, &capacity, &size,
+	                                   "\n\n");
 	if (errnum != 0)
 		goto free_buffer;
 

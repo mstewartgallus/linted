@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -25,7 +26,8 @@
 #include <string.h>
 
 static char const invalid_error_string[] = "invalid error number";
-static char const out_of_memory_string[] = "cannot print error, out of memory";
+static char const out_of_memory_string[] =
+    "cannot print error, out of memory";
 
 char const *linted_error_string(linted_error errnum_to_print)
 {

@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -45,7 +46,8 @@ static void on_sigchld(int signo);
 static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-waiter", .start = waiter_start};
+    .canonical_process_name = PACKAGE_NAME "-waiter",
+    .start = waiter_start};
 
 static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 
@@ -72,7 +74,8 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		linted_mem_free(service);
 	}
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii) {
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
+	     ++ii) {
 		struct sigaction action = {0};
 		action.sa_handler = on_term;
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
@@ -116,7 +119,8 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 				if (errnum != 0) {
 					linted_log(LINTED_LOG_ERROR,
 					           "getline: %s",
-					           linted_error_string(errnum));
+					           linted_error_string(
+					               errnum));
 					return EXIT_FAILURE;
 				}
 			}
@@ -229,7 +233,8 @@ static linted_error set_name(char const *name)
 {
 	linted_error errnum;
 
-	if (-1 == prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
+	if (-1 ==
+	    prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 

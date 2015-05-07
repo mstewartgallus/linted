@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -66,8 +67,8 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 		if (errnum != 0)
 			goto free_queue;
 
-		errnum =
-		    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+		errnum = pthread_mutexattr_settype(
+		    &attr, PTHREAD_MUTEX_ERRORCHECK);
 		assert(errnum != EINVAL);
 		if (errnum != 0)
 			goto destroy_attr;
@@ -77,7 +78,8 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 
 	destroy_attr:
 		;
-		linted_error dest_errnum = pthread_mutexattr_destroy(&attr);
+		linted_error dest_errnum =
+		    pthread_mutexattr_destroy(&attr);
 		if (0 == errnum)
 			errnum = dest_errnum;
 	} else {
@@ -168,7 +170,8 @@ void linted_queue_recv(struct linted_queue *queue,
 		goto got_node;
 
 	do {
-		errnum = pthread_cond_wait(&queue->gains_member, &queue->lock);
+		errnum = pthread_cond_wait(&queue->gains_member,
+		                           &queue->lock);
 		if (errnum != 0) {
 			assert(errnum != EINVAL);
 			assert(false);

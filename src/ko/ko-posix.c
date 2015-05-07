@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -89,7 +90,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	 */
 	int oflags = O_CLOEXEC | O_NOCTTY;
 
-	/* FIFO writers give ENXIO for nonblocking opens without partners */
+	/* FIFO writers give ENXIO for nonblocking opens without
+	 * partners */
 	if (!ko_wronly)
 		oflags |= O_NONBLOCK;
 
@@ -143,7 +145,8 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	}
 
 	if (ko_wronly) {
-		if (-1 == fcntl(fildes, F_SETFL, (long)oflags | O_NONBLOCK)) {
+		if (-1 ==
+		    fcntl(fildes, F_SETFL, (long)oflags | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			goto close_file;
@@ -163,8 +166,10 @@ linted_error linted_ko_close(linted_ko ko)
 {
 	linted_error errnum;
 	/*
-	 * The state of a file descriptor after close gives an EINTR error
-	 * is unspecified by POSIX so this function avoids the problem by
+	 * The state of a file descriptor after close gives an EINTR
+	 * error
+	 * is unspecified by POSIX so this function avoids the problem
+	 * by
 	 * simply blocking all signals.
 	 */
 
@@ -186,7 +191,8 @@ linted_error linted_ko_close(linted_ko ko)
 		errnum = 0;
 	}
 
-	linted_error mask_errnum = pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	linted_error mask_errnum =
+	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
 	if (0 == errnum)
 		errnum = mask_errnum;
 

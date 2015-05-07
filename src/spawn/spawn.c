@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -96,8 +97,8 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 	linted_mem_free(attr);
 }
 
-linted_error
-linted_spawn_file_actions_init(struct linted_spawn_file_actions **file_actionsp)
+linted_error linted_spawn_file_actions_init(
+    struct linted_spawn_file_actions **file_actionsp)
 {
 	linted_error errnum;
 	struct linted_spawn_file_actions *file_actions;
@@ -145,10 +146,11 @@ void linted_spawn_file_actions_destroy(
 	linted_mem_free(file_actions);
 }
 
-linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
-                          struct linted_spawn_file_actions const *file_actions,
-                          struct linted_spawn_attr const *attr,
-                          char const *const argv[], char const *const envp[])
+linted_error
+linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
+             struct linted_spawn_file_actions const *file_actions,
+             struct linted_spawn_attr const *attr,
+             char const *const argv[], char const *const envp[])
 {
 	linted_error errnum = 0;
 
@@ -173,7 +175,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		err_writer = xx[1U];
 	}
 
-	/* Greater than standard input, standard output and standard error */
+	/* Greater than standard input, standard output and standard
+	 * error */
 	unsigned greatest = 4U;
 
 	/* Copy file descriptors in case they get overridden */
@@ -221,7 +224,8 @@ linted_error linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 			goto close_dirko_copy;
 
 		struct fork_args fork_args = {.sigset = child_mask,
-		                              .file_actions = file_actions,
+		                              .file_actions =
+		                                  file_actions,
 		                              .err_writer = err_writer,
 		                              .argv = argv,
 		                              .envp = envp,
@@ -255,7 +259,8 @@ close_err_pipes : {
 	{
 		size_t xx;
 		linted_error yy;
-		errnum = linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+		errnum =
+		    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
 		if (errnum != 0)
 			goto close_err_reader;
 
@@ -309,7 +314,8 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 			continue;
 
 		struct sigaction action;
-		if (-1 == syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
+		if (-1 ==
+		    syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
 			errnum = errno;
 			goto fail;
 		}
@@ -319,7 +325,8 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 
 		action.sa_handler = SIG_DFL;
 
-		if (-1 == syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
+		if (-1 ==
+		    syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
 			errnum = errno;
 			goto fail;
 		}
@@ -373,10 +380,11 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 		envp = (char const *const *)environ;
 
 	if (LINTED_KO_CWD == dirko) {
-		execve(binary, (char *const *)argv, (char *const *)envp);
+		execve(binary, (char *const *)argv,
+		       (char *const *)envp);
 	} else {
-		syscall(__NR_execveat, dirko, binary, (char *const *)argv,
-		        (char *const *)envp, 0);
+		syscall(__NR_execveat, dirko, binary,
+		        (char *const *)argv, (char *const *)envp, 0);
 	}
 	errnum = errno;
 

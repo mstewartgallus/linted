@@ -9,7 +9,8 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ *implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -63,7 +64,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task);
 static linted_error on_sent_notice(struct linted_asynch_task *task);
 
 struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-window", .start = window_start};
+    .canonical_process_name = PACKAGE_NAME "-window",
+    .start = window_start};
 
 static uint32_t const window_opts[] = {0};
 
@@ -73,7 +75,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_error errnum = 0;
 
 	if (argc < 4U) {
-		linted_log(LINTED_LOG_ERROR, "missing some of 3 file operands");
+		linted_log(LINTED_LOG_ERROR,
+		           "missing some of 3 file operands");
 		return EXIT_FAILURE;
 	}
 
@@ -85,10 +88,11 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko kill_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, kill_ko_path,
-		                        LINTED_KO_WRONLY);
+		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
+		                        kill_ko_path, LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -101,7 +105,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
 		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -111,10 +116,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko gui_notifier;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, gui_notifier_path,
-		                        LINTED_KO_WRONLY);
+		errnum =
+		    linted_ko_open(&xx, LINTED_KO_CWD,
+		                   gui_notifier_path, LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -125,9 +132,11 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        drawer_notifier_path, LINTED_KO_WRONLY);
+		                        drawer_notifier_path,
+		                        LINTED_KO_WRONLY);
 		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(errnum));
 			return EXIT_FAILURE;
 		}
@@ -189,8 +198,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	{
 		struct linted_window_task_notify *xx;
-		errnum =
-		    linted_window_task_notify_create(&xx, &gui_notice_data);
+		errnum = linted_window_task_notify_create(
+		    &xx, &gui_notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		gui_notice_task = xx;
@@ -198,8 +207,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	{
 		struct linted_window_task_notify *xx;
-		errnum =
-		    linted_window_task_notify_create(&xx, &drawer_notice_data);
+		errnum = linted_window_task_notify_create(
+		    &xx, &drawer_notice_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		drawer_notice_task = xx;
@@ -207,7 +216,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	{
 		struct linted_io_task_poll *xx;
-		errnum = linted_io_task_poll_create(&xx, &poll_conn_data);
+		errnum =
+		    linted_io_task_poll_create(&xx, &poll_conn_data);
 		if (errnum != 0)
 			goto destroy_pool;
 		poll_conn_task = xx;
@@ -251,9 +261,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		goto close_display;
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
-	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640,
-	    480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
-	    window_opts);
+	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0,
+	    0, 640, 480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+	    screen->root_visual, 0, window_opts);
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto close_display;
@@ -264,8 +274,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	if (errnum != 0)
 		goto destroy_window;
 
-	xcb_intern_atom_cookie_t delete_ck = xcb_intern_atom(
-	    connection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
+	xcb_intern_atom_cookie_t delete_ck =
+	    xcb_intern_atom(connection, 0, strlen("WM_DELETE_WINDOW"),
+	                    "WM_DELETE_WINDOW");
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
@@ -282,8 +293,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		xcb_generic_error_t *proto_err;
 		{
 			xcb_generic_error_t *xx = 0;
-			proto_reply = xcb_intern_atom_reply(connection,
-			                                    protocols_ck, &xx);
+			proto_reply = xcb_intern_atom_reply(
+			    connection, protocols_ck, &xx);
 			proto_err = xx;
 		}
 		errnum = linted_xcb_conn_error(connection);
@@ -306,8 +317,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		xcb_generic_error_t *delete_ck_err;
 		{
 			xcb_generic_error_t *xx = 0;
-			delete_ck_reply =
-			    xcb_intern_atom_reply(connection, delete_ck, &xx);
+			delete_ck_reply = xcb_intern_atom_reply(
+			    connection, delete_ck, &xx);
 			delete_ck_err = xx;
 		}
 		errnum = linted_xcb_conn_error(connection);
@@ -326,9 +337,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	{
 		xcb_atom_t xx = wm_delete_window_atom;
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U,
-		                    &xx);
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE,
+		                    window, wm_protocols_atom,
+		                    XCB_ATOM_ATOM, 32, 1U, &xx);
 	}
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
@@ -340,8 +351,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		xcb_generic_error_t *pid_ck_err;
 		{
 			xcb_generic_error_t *xx = 0;
-			pid_ck_reply =
-			    xcb_intern_atom_reply(connection, pid_ck, &xx);
+			pid_ck_reply = xcb_intern_atom_reply(
+			    connection, pid_ck, &xx);
 			pid_ck_err = xx;
 		}
 		errnum = linted_xcb_conn_error(connection);
@@ -360,7 +371,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
-	                    sizeof PACKAGE_TARNAME + sizeof PACKAGE_NAME,
+	                    sizeof PACKAGE_TARNAME +
+	                        sizeof PACKAGE_NAME,
 	                    PACKAGE_TARNAME "\0" PACKAGE_NAME);
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
@@ -385,9 +397,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		if (-1 == gethostname(buf, sizeof buf))
 			goto get_hostname_failed;
 
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    XCB_ATOM_WM_CLIENT_MACHINE, XCB_ATOM_STRING,
-		                    8, strlen(buf), buf);
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE,
+		                    window, XCB_ATOM_WM_CLIENT_MACHINE,
+		                    XCB_ATOM_STRING, 8, strlen(buf),
+		                    buf);
 		goto get_hostname_succeeded;
 	}
 
@@ -403,9 +416,9 @@ get_hostname_succeeded:
 
 	{
 		uint32_t xx = root_pid;
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
-		                    net_wm_pid_atom, XCB_ATOM_CARDINAL, 32, 1,
-		                    &xx);
+		xcb_change_property(connection, XCB_PROP_MODE_REPLACE,
+		                    window, net_wm_pid_atom,
+		                    XCB_ATOM_CARDINAL, 32, 1, &xx);
 	}
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
@@ -450,15 +463,16 @@ get_hostname_succeeded:
 	if (errnum != 0)
 		goto destroy_window;
 
-	linted_window_task_notify_prepare(gui_notice_task, ON_SENT_NOTICE,
-	                                  gui_notifier);
+	linted_window_task_notify_prepare(gui_notice_task,
+	                                  ON_SENT_NOTICE, gui_notifier);
 	linted_asynch_pool_submit(
 	    pool, linted_window_task_notify_to_asynch(gui_notice_task));
 
-	linted_window_task_notify_prepare(drawer_notice_task, ON_SENT_NOTICE,
-	                                  drawer_notifier);
+	linted_window_task_notify_prepare(
+	    drawer_notice_task, ON_SENT_NOTICE, drawer_notifier);
 	linted_asynch_pool_submit(
-	    pool, linted_window_task_notify_to_asynch(drawer_notice_task));
+	    pool,
+	    linted_window_task_notify_to_asynch(drawer_notice_task));
 
 	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
 	                            xcb_get_file_descriptor(connection),
@@ -499,7 +513,8 @@ stop_pool:
 		linted_error poll_errnum;
 		{
 			struct linted_asynch_task *xx;
-			poll_errnum = linted_asynch_pool_poll(pool, &xx);
+			poll_errnum =
+			    linted_asynch_pool_poll(pool, &xx);
 			if (LINTED_ERROR_AGAIN == poll_errnum)
 				break;
 			completed_task = xx;
@@ -507,7 +522,8 @@ stop_pool:
 
 		linted_error dispatch_errnum =
 		    linted_asynch_task_errnum(completed_task);
-		if (0 == errnum && dispatch_errnum != LINTED_ERROR_CANCELLED)
+		if (0 == errnum &&
+		    dispatch_errnum != LINTED_ERROR_CANCELLED)
 			errnum = dispatch_errnum;
 	}
 
@@ -543,7 +559,8 @@ destroy_pool : {
 	/* Tell the manager to exit everything */
 	if (0 == errnum) {
 		char const dummy = 0U;
-		errnum = linted_io_write_all(kill_ko, 0, &dummy, sizeof dummy);
+		errnum = linted_io_write_all(kill_ko, 0, &dummy,
+		                             sizeof dummy);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_io_task_write_all: %s",
@@ -557,7 +574,8 @@ destroy_pool : {
 	}
 
 	if (errnum != 0) {
-		linted_log(LINTED_LOG_ERROR, "%s", linted_error_string(errnum));
+		linted_log(LINTED_LOG_ERROR, "%s",
+		           linted_error_string(errnum));
 		return EXIT_FAILURE;
 	}
 
@@ -596,7 +614,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	bool *time_to_quitp = poll_conn_data->time_to_quit;
 
 	for (;;) {
-		xcb_generic_event_t *event = xcb_poll_for_event(connection);
+		xcb_generic_event_t *event =
+		    xcb_poll_for_event(connection);
 		if (0 == event)
 			break;
 
