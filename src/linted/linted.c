@@ -28,7 +28,6 @@
 #include "linted/log.h"
 #include "linted/start.h"
 #include "linted/str.h"
-#include "linted/utf.h"
 #include "linted/util.h"
 
 #include <assert.h>
