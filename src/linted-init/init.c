@@ -24,9 +24,7 @@
  * @todo Delegate exit signals to the monitor child on Windows.
  */
 
-#if defined HAVE_WINDOWS_API
-#include "init-windows.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "init-posix.c"
 #else
 #error no init implementation for this platform

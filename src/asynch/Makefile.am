@@ -18,11 +18,8 @@ noinst_LTLIBRARIES+=%D%/libasynch.la
 
 %C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
 EXTRA_%C%_libasynch_la_SOURCES=\
-  %D%/asynch-emscripten.c\
-  %D%/asynch-posix.c\
-  %D%/asynch-windows.c
+  %D%/asynch-posix.c
 %C%_libasynch_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
-  src/queue/libqueue.la\
-  $(WS2_32_LIBS)
+  src/queue/libqueue.la

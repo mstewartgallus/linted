@@ -17,16 +17,10 @@
 
 noinst_LTLIBRARIES+=%D%/libstart.la
 %C%_libstart_la_SOURCES=%D%/start.c include/linted/start.h
-EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
+EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c
 %C%_libstart_la_LIBADD=\
   src/environment/libenvironment.la\
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\
-  src/signal/libsignal.la\
-  \
-  $(WS2_32_LIBS)
-
-if WINDOWS_API
-%C%_libstart_la_LIBADD+=src/utf/libutf.la
-endif
+  src/signal/libsignal.la

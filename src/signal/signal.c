@@ -16,9 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "signal-windows.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "signal-posix.c"
 #else
 #error no signal waiting implementation for this platform

@@ -16,11 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "start-windows.c"
-#elif defined HAVE_EMSCRIPTEN_API
-#include "start-emscripten.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "start-posix.c"
 #else
 #error no startup implementation for this platform

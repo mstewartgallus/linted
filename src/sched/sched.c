@@ -16,9 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "sched-windows.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "sched-posix.c"
 #else
 #error no scheduling implementation for this platform

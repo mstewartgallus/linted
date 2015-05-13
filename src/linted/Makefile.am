@@ -20,9 +20,7 @@ bin_PROGRAMS+=%D%/linted
   %D%/linted.c\
   %D%/privilege.c %D%/privilege.h
 EXTRA_%C%_linted_SOURCES=\
-  %D%/privilege-emscripten.c\
-  %D%/privilege-posix.c\
-  %D%/privilege-windows.c
+  %D%/privilege-posix.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/dir/libdir.la\
@@ -31,10 +29,6 @@ EXTRA_%C%_linted_SOURCES=\
   src/locale/liblocale.la\
   src/log/liblog.la\
   src/start/libstart.la
-
-if WINDOWS_API
-%C%_linted_LDADD+=src/utf/libutf.la
-endif
 
 BUILT_SOURCES+=%D%/settings.h
 EXTRA_DIST+=%D%/settings.h.in

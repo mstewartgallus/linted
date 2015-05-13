@@ -80,11 +80,7 @@
  * @subsection dragonflybsd DragonFly BSD AIO
  */
 
-#if defined HAVE_WINDOWS_API
-#include "asynch-windows.c"
-#elif defined HAVE_EMSCRIPTEN_API
-#include "asynch-emscripten.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "asynch-posix.c"
 #else
 #error no asynchronous IO implementation for this platform

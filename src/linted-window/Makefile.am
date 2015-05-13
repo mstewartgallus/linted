@@ -17,7 +17,7 @@
 pkglibexec_PROGRAMS+=%D%/linted-window
 
 %C%_linted_window_SOURCES=%D%/window.c
-EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c %D%/window-windows.c
+EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
@@ -32,10 +32,6 @@ if X11_API
 %C%_linted_window_LDADD+=\
   src/xcb/libxcb.la\
   $(XCB_LIBS)
-endif
-
-if WINDOWS_API
-%C%_linted_window_LDADD+=$(D3D11_LIBS)
 endif
 
 %C%_linted_window_CPPFLAGS=

@@ -16,9 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "pid-windows.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "pid-posix.c"
 #else
 #error no process waiting implementation for this platform

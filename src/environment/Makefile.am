@@ -18,10 +18,6 @@
 noinst_LTLIBRARIES+=%D%/libenvironment.la
 %C%_libenvironment_la_SOURCES=%D%/environment.c include/linted/environment.h
 EXTRA_%C%_libenvironment_la_SOURCES=\
-  %D%/environment-posix.c\
-  %D%/environment-windows.c
+  %D%/environment-posix.c
 
 %C%_libenvironment_la_LIBADD=
-if WINDOWS_API
-%C%_libenvironment_la_LIBADD+=src/utf/libutf.la $(CRT_LIBS)
-endif

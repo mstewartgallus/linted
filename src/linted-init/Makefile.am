@@ -18,8 +18,7 @@ pkglibexec_PROGRAMS+=%D%/linted-init
 
 %C%_linted_init_SOURCES=%D%/init.c
 EXTRA_%C%_linted_init_SOURCES=\
-  %D%/init-posix.c\
-  %D%/init-windows.c
+  %D%/init-posix.c
 %C%_linted_init_LDADD=\
   src/start/libstart.la\
   \
@@ -32,8 +31,4 @@ EXTRA_%C%_linted_init_SOURCES=\
 
 if POSIX_API
 %C%_linted_init_LDADD+=src/spawn/libspawn.la
-endif
-
-if WINDOWS_API
-%C%_linted_init_LDADD+=src/utf/libutf.la
 endif

@@ -19,9 +19,7 @@
 
 #include "linted/error.h"
 
-#if defined HAVE_WINDOWS_API
-#include "ko-windows.h"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "ko-posix.h"
 #else
 #error kernel object support has not beeen implemented for this platform

@@ -18,6 +18,4 @@
 noinst_LTLIBRARIES+=%D%/libqueue.la
 %C%_libqueue_la_SOURCES=%D%/queue.c include/linted/queue.h
 EXTRA_%C%_libqueue_la_SOURCES=\
-  %D%/queue-emscripten.c\
-  %D%/queue-posix.c\
-  %D%/queue-windows.c
+  %D%/queue-posix.c

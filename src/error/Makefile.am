@@ -19,14 +19,9 @@ noinst_LTLIBRARIES+=%D%/liberror.la
 %C%_liberror_la_SOURCES=%D%/error.c include/linted/error.h
 EXTRA_%C%_liberror_la_SOURCES=\
   %D%/error-posix.c\
-  %D%/error-windows.c\
-  include/linted/error-posix.h\
-  include/linted/error-windows.h
+  include/linted/error-posix.h
 
 %C%_liberror_la_LIBADD=
-if WINDOWS_API
-%C%_liberror_la_LIBADD+=src/utf/libutf.la
-endif
 
 TESTS+=%D%/test_unknown_error
 

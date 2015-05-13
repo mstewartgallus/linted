@@ -16,11 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "privilege-windows.c"
-#elif defined HAVE_EMSCRIPTEN_API
-#include "privilege-emscripten.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "privilege-posix.c"
 #else
 #error no privilege checking implementation for this platform

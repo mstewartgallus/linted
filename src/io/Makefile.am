@@ -18,9 +18,6 @@
 noinst_LTLIBRARIES+=%D%/libio.la
 %C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
 EXTRA_%C%_libio_la_SOURCES=\
-  %D%/io-emscripten.c\
-  %D%/io-posix.c\
-  %D%/io-windows.c
+  %D%/io-posix.c
 %C%_libio_la_LIBADD=\
-  src/asynch/libasynch.la\
-  $(WS2_32_LIBS)
+  src/asynch/libasynch.la

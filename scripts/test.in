@@ -17,24 +17,12 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/updater/units\
 :${SRCDIR}/src/window/units\
-:${SRCDIR}/src/linted-simulator/units\
-:${SRCDIR}/src/linted-window/units\
-:${SRCDIR}/src/linted-gui/units\
-:${SRCDIR}/src/linted-drawer/units"}
+:${SRCDIR}/src/linted-window/units"}
 
 : ${LINTED_INIT:="${ROOT}/../src/linted-init/linted-init${EXEEXT}"}
 : ${LINTED_MONITOR:="${ROOT}/../src/linted-monitor/linted-monitor${EXEEXT}"}
 : ${LINTED_SANDBOX:="${ROOT}/../src/linted-sandbox/linted-sandbox${EXEEXT}"}
 : ${LINTED_WAITER:="${ROOT}/../src/linted-waiter/linted-waiter${EXEEXT}"}
-
-: ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/linted-simulator/simulator.fstab"}
-: ${LINTED_SIMULATOR:="${ROOT}/../src/linted-simulator/linted-simulator${EXEEXT}"}
-
-: ${LINTED_GUI_FSTAB:="${SRCDIR}/src/linted-gui/gui.fstab"}
-: ${LINTED_GUI:="${ROOT}/../src/linted-gui/linted-gui${EXEEXT}"}
-
-: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/linted-drawer/drawer.fstab"}
-: ${LINTED_DRAWER:="${ROOT}/../src/linted-drawer/linted-drawer${EXEEXT}"}
 
 : ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/linted-window/window.fstab"}
 : ${LINTED_WINDOW:="${ROOT}/../src/linted-window/linted-window${EXEEXT}"}
@@ -44,12 +32,6 @@ export LINTED_INIT
 export LINTED_MONITOR
 export LINTED_SANDBOX
 export LINTED_WAITER
-export LINTED_SIMULATOR_FSTAB
-export LINTED_SIMULATOR
-export LINTED_GUI_FSTAB
-export LINTED_GUI
-export LINTED_DRAWER_FSTAB
-export LINTED_DRAWER
 export LINTED_WINDOW_FSTAB
 export LINTED_WINDOW
 

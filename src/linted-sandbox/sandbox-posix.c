@@ -960,15 +960,15 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
 
-	if (-1 == dup2(logger_writer, LINTED_KO_STDOUT)) {
-		errnum = errno;
-		goto fail;
-	}
+	/* if (-1 == dup2(logger_writer, LINTED_KO_STDOUT)) { */
+	/* 	errnum = errno; */
+	/* 	goto fail; */
+	/* } */
 
-	if (-1 == dup2(logger_writer, LINTED_KO_STDERR)) {
-		errnum = errno;
-		goto fail;
-	}
+	/* if (-1 == dup2(logger_writer, LINTED_KO_STDERR)) { */
+	/* 	errnum = errno; */
+	/* 	goto fail; */
+	/* } */
 
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {

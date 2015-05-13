@@ -18,8 +18,6 @@
 noinst_LTLIBRARIES+=%D%/liblog.la
 %C%_liblog_la_SOURCES=%D%/log.c include/linted/log.h
 EXTRA_%C%_liblog_la_SOURCES=\
-  %D%/log-emscripten.c\
-  %D%/log-posix.c\
-  %D%/log-windows.c
+  %D%/log-posix.c
 %C%_liblog_la_LIBADD=\
   src/io/libio.la

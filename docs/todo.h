@@ -33,6 +33,8 @@
  *       - http://www.wildbunny.co.uk/blog/2011/04/06/physics-engines-for-dummies/
  *       - http://www.bulletphysics.com/ftp/pub/test/physics/papers/IterativeDynamics.pdf
  *
+ * @todo Add POSIXLY_CORRECT to the environment.
+ *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *

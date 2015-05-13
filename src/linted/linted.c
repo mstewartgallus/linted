@@ -16,19 +16,7 @@
  */
 #include "config.h"
 
-#ifdef HAVE_WINDOWS_API
-#ifndef UNICODE
-#define UNICODE
-#endif
-
-#define _UNICODE
-
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifdef HAVE_POSIX_API
 #define _POSIX_C_SOURCE 200809L
-#endif
 
 #include "privilege.h"
 #include "settings.h"
@@ -54,10 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifdef HAVE_WINDOWS_API
-#include <windows.h>
-#endif
 
 struct envvar
 {
@@ -220,88 +204,11 @@ static unsigned char main_start(char const *const process_name,
 	}
 	char *init_base = basename(init_dup);
 
-#ifdef HAVE_WINDOWS_API
-	wchar_t *init_utf2;
-	{
-		wchar_t *xx;
-		errnum = linted_utf_1_to_2(init, &xx);
-		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		init_utf2 = xx;
-	}
-
-	wchar_t *init_base_utf2;
-	{
-		wchar_t *xx;
-		errnum = linted_utf_1_to_2(init_base, &xx);
-		if (errnum != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
-			return EXIT_FAILURE;
-		}
-		init_base_utf2 = xx;
-	}
-
-	linted_ko monitor_handle;
-	linted_ko thread_handle;
-	{
-		DWORD creation_flags = 0U;
-		STARTUPINFO startup_info = {0};
-
-		startup_info.cb = sizeof startup_info;
-		startup_info.dwFlags = STARTF_USESTDHANDLES;
-		startup_info.hStdInput = LINTED_KO_STDIN;
-		startup_info.hStdOutput = LINTED_KO_STDOUT;
-		startup_info.hStdError = LINTED_KO_STDERR;
-
-		PROCESS_INFORMATION process_information;
-		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0,
-		                   false, creation_flags, 0, 0,
-		                   &startup_info,
-		                   &process_information)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "CreateProcessW: %s",
-			           linted_error_string(GetLastError()));
-			return EXIT_FAILURE;
-		}
-		monitor_handle = process_information.hProcess;
-		thread_handle = process_information.hThread;
-	}
-	linted_ko_close(thread_handle);
-
-	switch (WaitForSingleObject(monitor_handle, INFINITE)) {
-	case WAIT_OBJECT_0:
-		break;
-
-	case WAIT_FAILED:
-		linted_log(LINTED_LOG_ERROR, "WaitForSingleObject: %s",
-		           linted_error_string(GetLastError()));
-		return EXIT_FAILURE;
-
-	default:
-		assert(false);
-	}
-
-	DWORD xx;
-	if (!GetExitCodeProcess(monitor_handle, &xx)) {
-		linted_log(LINTED_LOG_ERROR, "GetExitCodeProcess: %s",
-		           linted_error_string(GetLastError()));
-		return EXIT_FAILURE;
-	}
-	return xx;
-
-#else
 	char const *const init_argv[] = {init_base, 0};
 	execve(init, (char *const *)init_argv, environ);
 	linted_log(LINTED_LOG_ERROR, "execve: %s",
 	           linted_error_string(errno));
 	return EXIT_FAILURE;
-#endif
 }
 
 static linted_error do_help(linted_ko ko, char const *process_name,

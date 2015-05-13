@@ -18,8 +18,6 @@
 
 #if defined HAVE_X11_API
 #include "window-x11.c"
-#elif defined HAVE_WINDOWS_API
-#include "window-windows.c"
 #else
 #error no window implementation for this platform
 #endif

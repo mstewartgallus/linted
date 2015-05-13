@@ -22,9 +22,7 @@
  * Sandbox binary.
  */
 
-#if defined HAVE_WINDOWS_API
-#include "sandbox-windows.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "sandbox-posix.c"
 #else
 #error no sandbox implementation for this platform

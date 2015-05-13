@@ -16,11 +16,7 @@
  */
 #include "config.h"
 
-#if defined HAVE_WINDOWS_API
-#include "log-windows.c"
-#elif defined HAVE_EMSCRIPTEN_API
-#include "log-emscripten.c"
-#elif defined HAVE_POSIX_API
+#if defined HAVE_POSIX_API
 #include "log-posix.c"
 #else
 #error no logging library implementation for this platform

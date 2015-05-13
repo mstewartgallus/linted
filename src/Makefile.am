@@ -20,19 +20,13 @@ EXTRA_DIST+=\
   include/linted/test.h\
   include/linted/util.h
 
-include %C%/linted-control/Makefile.am
-include %C%/linted-drawer/Makefile.am
-include %C%/linted-enter/Makefile.am
-include %C%/linted-gui/Makefile.am
 include %C%/linted-init/Makefile.am
 include %C%/linted-monitor/Makefile.am
 include %C%/linted-sandbox/Makefile.am
-include %C%/linted-simulator/Makefile.am
 include %C%/linted-waiter/Makefile.am
 include %C%/linted-window/Makefile.am
 include %C%/linted/Makefile.am
 
-include %C%/assets/Makefile.am
 include %C%/asynch/Makefile.am
 include %C%/channel/Makefile.am
 include %C%/conf/Makefile.am
@@ -41,7 +35,6 @@ include %C%/environment/Makefile.am
 include %C%/error/Makefile.am
 include %C%/file/Makefile.am
 include %C%/fifo/Makefile.am
-include %C%/gpu/Makefile.am
 include %C%/io/Makefile.am
 include %C%/ko/Makefile.am
 include %C%/locale/Makefile.am
@@ -51,21 +44,14 @@ include %C%/pid/Makefile.am
 include %C%/queue/Makefile.am
 include %C%/sched/Makefile.am
 include %C%/signal/Makefile.am
-include %C%/sim/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
 include %C%/unit/Makefile.am
-
-if WINDOWS_API
-include %C%/utf/Makefile.am
-endif
 
 if X11_API
 include %C%/xcb/Makefile.am
 endif
 
 include %C%/admin/Makefile.am
-include %C%/controller/Makefile.am
-include %C%/updater/Makefile.am
 include %C%/window/Makefile.am

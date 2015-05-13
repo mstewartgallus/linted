@@ -19,12 +19,4 @@ noinst_LTLIBRARIES+=%D%/libko.la
 %C%_libko_la_SOURCES=%D%/ko.c include/linted/ko.h
 EXTRA_%C%_libko_la_SOURCES=\
   %D%/ko-posix.c\
-  %D%/ko-emscripten.c\
-  %D%/ko-windows.c\
-  include/linted/ko-posix.h\
-  include/linted/ko-windows.h
-%C%_libko_la_LIBADD=$(WS2_32_LIBS)
-
-if WINDOWS_API
-%C%_libko_la_LIBADD+=src/utf/libutf.la
-endif
+  include/linted/ko-posix.h
