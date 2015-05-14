@@ -43,20 +43,10 @@ AS_IF([test "x${cross_compiling}" = "xno"], [
 dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
-[linted_windows_api_default=no]
-[linted_emscripten_api_default=no]
 dnl
 AS_IF([test "x${host_os}" = "xlinux-androideabi"], [[linted_posix_api_default=yes]])
 AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
 AS_IF([test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])
-dnl
-AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
-AS_IF([test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
-dnl
-AS_IF([test "x${CC}" = "xwinegcc"], [
-        [linted_windows_api_default=yes]
-        [linted_posix_api_default=no]
-])
 dnl
 AS_IF([test "x${linted_posix_api_default}" = "xyes"], [[linted_x11_api_default=yes]])
 dnl
@@ -80,49 +70,6 @@ AC_ARG_ENABLE(
                 [enable use of the X11 API]),
         [[enable_x11_api='yes']],
         [[enable_x11_api="$linted_x11_api_default"]])
-AC_ARG_ENABLE(
-        [windows-api],
-        AS_HELP_STRING(
-                [--enable-windows-api],
-                [enable use of the Microsoft Windows API]),
-                [[enable_windows_api='yes']],
-                [[enable_windows_api="$linted_windows_api_default"]])
-AC_ARG_ENABLE(
-        [emscripten-api],
-        AS_HELP_STRING(
-                [--enable-emscripten-api],
-                [enable use of Emscripten API]),
-                [[enable_emscripten_api='yes']],
-                [[enable_emscripten_ap="$linted_emscripten_api_default"]])
-dnl
-AM_CONDITIONAL([WINDOWS_API], [test "x${enable_windows_api}" = xyes])
-AS_IF([test "x${enable_windows_api}" = "xyes"], [
-dnl
-        AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
-dnl
-        LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
-                [-mwindows]dnl
-                [-municode]dnl
-        ])
-        [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
-dnl
-        LINTED_CHECK_LIB([CRT_LIBS], [-lmsvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
-                AC_MSG_ERROR([Unable to find a CRT library])
-        ])
-        LINTED_CHECK_LIB([WS2_32_LIBS], [-lws2_32], [WSAStartup], [#include <winsock.h>], [], [
-                AC_MSG_ERROR([Unable to find a Winsock library])
-        ])
-        LINTED_CHECK_LIB([D3D11_LIBS], [-ld3dx11_43], [D3D11CreateDevice], [#include <d3d11.h>], [], [
-                AC_MSG_WARN([Unable to find a DirectX 11 library])
-        ])
-dnl
-])
-dnl
-AM_CONDITIONAL([EMSCRIPTEN_API], [test "x${enable_emscripten_api}" = xyes])
-AS_IF([test "x${enable_emscripten_api}" = "xyes"], [
-dnl
-        AC_DEFINE([HAVE_EMSCRIPTEN_API], [1], [Define if the Emscripten API is being used.])
-])
 dnl
 AM_CONDITIONAL([POSIX_API], [test "x${enable_posix_api}" = xyes])
 AS_IF([test "x${enable_posix_api}" = "xyes"], [
@@ -200,24 +147,6 @@ dnl
         PKG_CHECK_MODULES(XCB, xcb, [], [
                 AC_MSG_ERROR([Unable to find an XCB library])
         ])
-        PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
-                AC_MSG_ERROR([Unable to find an xcb-xkb library])
-        ])
-dnl
-        PKG_CHECK_MODULES(XKB, xkbcommon, [], [
-                AC_MSG_ERROR([Unable to find an xkbcommon library])
-        ])
-        PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
-                AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
-        ])
-dnl
-        PKG_CHECK_MODULES(EGL, egl, [], [
-                AC_MSG_ERROR([Unable to find an EGL library])
-        ])
-        PKG_CHECK_MODULES(GLES, glesv2, [], [
-                AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
-        ])
-dnl
 ])
 dnl
 AC_SYS_LARGEFILE
@@ -269,11 +198,6 @@ AC_TYPE_SSIZE_T
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
-dnl
-LINTED_PROG_BLENDER
-AS_IF([test -z "${BLENDER}"],[
- AC_MSG_ERROR([Unable to find a Blender executable])
-])
 dnl
 LINTED_PROG_CLANG_FORMAT
 dnl
