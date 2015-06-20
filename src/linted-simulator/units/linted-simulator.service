@@ -16,13 +16,14 @@ Description=Linted-Simulator Game Simulator
 Documentation='man:linted-simulator(6)'
 
 [Service]
-ExecStart="${LINTED_SIMULATOR}" "/run/controller" "/run/updater"
+# ExecStart="${LINTED_SIMULATOR}" "/run/controller" "/run/updater"
+ExecStart="${LINTED_SIMULATOR}" "controller" "updater"
 
 NoNewPrivileges=true
-X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
+# X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
 
-X-LintedFstab="${LINTED_SIMULATOR_FSTAB}"
-WorkingDirectory=/var
+# X-LintedFstab="${LINTED_SIMULATOR_FSTAB}"
+# WorkingDirectory=/var
 
 
 
