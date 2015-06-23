@@ -811,10 +811,17 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 				b_ii_3 = b_ii.x[3U];
 			}
 
-			b_inverted.x[0U].x[ii] = b_ii_0;
-			b_inverted.x[1U].x[ii] = b_ii_1;
-			b_inverted.x[2U].x[ii] = b_ii_2;
-			b_inverted.x[3U].x[ii] = b_ii_3;
+			char *b_inverted_XX_ii = &((
+			    char *)&b_inverted)[ii * sizeof(GLfloat)];
+
+			*(GLfloat *)(b_inverted_XX_ii +
+			             0U * sizeof(union chunk)) = b_ii_0;
+			*(GLfloat *)(b_inverted_XX_ii +
+			             1U * sizeof(union chunk)) = b_ii_1;
+			*(GLfloat *)(b_inverted_XX_ii +
+			             2U * sizeof(union chunk)) = b_ii_2;
+			*(GLfloat *)(b_inverted_XX_ii +
+			             3U * sizeof(union chunk)) = b_ii_3;
 		} while (ii != 0U);
 	}
 
@@ -824,7 +831,19 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 	do {
 		--ii;
 
-		union chunk a_ii = a.x[ii];
+		GLfloat a_ii_0;
+		GLfloat a_ii_1;
+		GLfloat a_ii_2;
+		GLfloat a_ii_3;
+
+		{
+			union chunk a_ii = a.x[ii];
+
+			a_ii_0 = a_ii.x[0U];
+			a_ii_1 = a_ii.x[1U];
+			a_ii_2 = a_ii.x[2U];
+			a_ii_3 = a_ii.x[3U];
+		}
 
 		union chunk result_ii;
 
@@ -832,12 +851,31 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 		do {
 			--jj;
 
-			union chunk b_XX_jj = b_inverted.x[jj];
+			GLfloat result_ii_jj;
 
-			result_ii.x[jj] = (a_ii.x[0U] * b_XX_jj.x[0U] +
-			                   a_ii.x[1U] * b_XX_jj.x[1U]) +
-			                  (a_ii.x[2U] * b_XX_jj.x[2U] +
-			                   a_ii.x[3U] * b_XX_jj.x[3U]);
+			{
+				GLfloat b_0_jj;
+				GLfloat b_1_jj;
+				GLfloat b_2_jj;
+				GLfloat b_3_jj;
+
+				{
+					union chunk b_XX_jj =
+					    b_inverted.x[jj];
+
+					b_0_jj = b_XX_jj.x[0U];
+					b_1_jj = b_XX_jj.x[1U];
+					b_2_jj = b_XX_jj.x[2U];
+					b_3_jj = b_XX_jj.x[3U];
+				}
+
+				result_ii_jj =
+				    (a_ii_0 * b_0_jj +
+				     a_ii_1 * b_1_jj) +
+				    (a_ii_2 * b_2_jj + a_ii_3 * b_3_jj);
+			}
+
+			result_ii.x[jj] = result_ii_jj;
 		} while (jj != 0U);
 
 		result.x[ii] = result_ii;
