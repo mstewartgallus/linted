@@ -16,14 +16,12 @@ Description=Linted-Window Window Creator
 Documentation='man:linted-window(6)'
 
 [Service]
-# ExecStart="${LINTED_WINDOW}" "/run/kill" "/run/window" "/run/window-notifier-gui" "/run/window-notifier-drawer"
-
-ExecStart="${LINTED_WINDOW}" "kill" "window" "window-notifier-gui" "window-notifier-drawer"
+ExecStart="${LINTED_WINDOW}" "/run/kill" "/run/window" "/run/window-notifier-gui" "/run/window-notifier-drawer"
 
 NoNewPrivileges=true
-# X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
+X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
 
-# X-LintedFstab="${LINTED_WINDOW_FSTAB}"
-# WorkingDirectory=/var
+X-LintedFstab="${LINTED_WINDOW_FSTAB}"
+WorkingDirectory=/var
 
 X-LintedEnvironmentWhitelist=DISPLAY
