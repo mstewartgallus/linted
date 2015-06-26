@@ -36,33 +36,27 @@ typedef linted_ko linted_updater;
 typedef int_least32_t linted_updater_int;
 typedef uint_least32_t linted_updater_uint;
 
-typedef struct linted_updater__angle
-{
-	linted_updater_uint _value;
-} linted_updater_angle;
-
 #define LINTED_UPDATER_UINT_MAX UINT32_MAX
 
-static inline double
-linted_updater_angle_to_double(linted_updater_angle theta)
-{
-	uintmax_t above_max = ((uintmax_t)LINTED_UPDATER_UINT_MAX) + 1U;
-	return theta._value *
-	       (6.2831853071795864769252867665590 / above_max);
-}
+struct linted_updater__angle;
+typedef struct linted_updater__angle linted_updater_angle;
 
-struct linted_updater_update
-{
-	linted_updater_int x_position;
-	linted_updater_int y_position;
-	linted_updater_int z_position;
-
-	linted_updater_angle x_rotation;
-	linted_updater_angle y_rotation;
-};
-
+struct linted_updater_update;
 struct linted_updater_task_send;
 struct linted_updater_task_receive;
+
+/* Deliberately overflow in cases such as 1/1 */
+#define LINTED_UPDATER_ANGLE(X, Y)				       \
+	{                                                              \
+		._value =                                              \
+		    (linted_updater_uint)(                           \
+		        (((uintmax_t)LINTED_UPDATER_UINT_MAX) +      \
+		         1U) /                                         \
+		        (Y)) *                                         \
+		    (X)                                                \
+	}
+
+static double linted_updater_angle_to_double(linted_updater_angle theta);
 
 linted_error linted_updater_task_receive_create(
     struct linted_updater_task_receive **taskp, void *data);
@@ -99,5 +93,28 @@ linted_updater_task_send_data(struct linted_updater_task_send *task);
 void
 linted_updater_decode(struct linted_updater_task_receive const *task,
                       struct linted_updater_update *update);
+
+struct linted_updater__angle
+{
+	linted_updater_uint _value;
+};
+
+struct linted_updater_update
+{
+	linted_updater_int x_position;
+	linted_updater_int y_position;
+	linted_updater_int z_position;
+
+	linted_updater_angle x_rotation;
+	linted_updater_angle y_rotation;
+};
+
+static inline double
+linted_updater_angle_to_double(linted_updater_angle theta)
+{
+	uintmax_t above_max = ((uintmax_t)LINTED_UPDATER_UINT_MAX) + 1U;
+	return theta._value *
+	       (6.2831853071795864769252867665590 / above_max);
+}
 
 #endif /* LINTED_UPDATER_H */

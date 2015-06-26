@@ -45,11 +45,11 @@ typedef struct linted_simulator__angle linted_simulator_angle;
 		    (X)                                                \
 	}
 
-static inline linted_simulator_angle
+static linted_simulator_angle
 linted_simulator_angle_add(int sign, linted_simulator_angle theta,
                            linted_simulator_angle phi);
 
-static inline linted_simulator_angle linted_simulator_angle_add_clamped(
+static linted_simulator_angle linted_simulator_angle_add_clamped(
     int sign, linted_simulator_angle min, linted_simulator_angle max,
     linted_simulator_angle theta, linted_simulator_angle phi);
 
