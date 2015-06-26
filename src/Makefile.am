@@ -51,7 +51,6 @@ include %C%/pid/Makefile.am
 include %C%/queue/Makefile.am
 include %C%/sched/Makefile.am
 include %C%/signal/Makefile.am
-include %C%/sim/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am

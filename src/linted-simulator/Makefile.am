@@ -16,8 +16,9 @@
 # limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
-%C%_linted_simulator_SOURCES=%D%/simulator.c
+%C%_linted_simulator_SOURCES=%D%/simulator.c %D%/simulator.h
 %C%_linted_simulator_LDADD=\
+  -lm\
   src/start/libstart.la\
   \
   src/asynch/libasynch.la\
@@ -32,3 +33,12 @@ pkglibexec_PROGRAMS+=%D%/linted-simulator
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
+
+TESTS+=%D%/test_simulator_angle
+
+check_PROGRAMS+=%D%/test_simulator_angle
+%C%_test_simulator_angle_SOURCES=%D%/test_simulator_angle.c
+%C%_test_simulator_angle_LDADD=\
+  -lm\
+  src/asynch/libasynch.la\
+  src/io/libio.la

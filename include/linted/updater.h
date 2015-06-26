@@ -19,7 +19,8 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
-#include "linted/sim.h"
+
+#include <stdint.h>
 
 /**
  * @file
@@ -33,14 +34,32 @@
  */
 typedef linted_ko linted_updater;
 
+typedef int_least32_t linted_updater_int;
+typedef uint_least32_t linted_updater_uint;
+
+typedef struct linted_updater__angle
+{
+	linted_updater_uint _value;
+} linted_updater_angle;
+
+#define LINTED_UPDATER_UINT_MAX UINT32_MAX
+
+static inline double
+linted_updater_angle_to_double(linted_updater_angle theta)
+{
+	uintmax_t above_max = ((uintmax_t)LINTED_UPDATER_UINT_MAX) + 1U;
+	return theta._value *
+	       (6.2831853071795864769252867665590 / above_max);
+}
+
 struct linted_updater_update
 {
-	linted_sim_int x_position;
-	linted_sim_int y_position;
-	linted_sim_int z_position;
+	linted_updater_int x_position;
+	linted_updater_int y_position;
+	linted_updater_int z_position;
 
-	linted_sim_angle x_rotation;
-	linted_sim_angle y_rotation;
+	linted_updater_angle x_rotation;
+	linted_updater_angle y_rotation;
 };
 
 struct linted_updater_task_send;
