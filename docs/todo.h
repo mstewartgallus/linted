@@ -33,6 +33,9 @@
  *       - http://www.wildbunny.co.uk/blog/2011/04/06/physics-engines-for-dummies/
  *       - http://www.bulletphysics.com/ftp/pub/test/physics/papers/IterativeDynamics.pdf
  *
+ * @todo Once EGL_KHR_get_all_proc_addresses is supported by my Mesa
+ *       use it.
+ *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *

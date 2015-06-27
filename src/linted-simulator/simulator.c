@@ -165,7 +165,7 @@ linted_simulator_start(char const *const process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        updater_path, LINTED_KO_WRONLY);
+		                        updater_path, LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
@@ -489,12 +489,12 @@ maybe_update(linted_updater updater,
 		        linted_simulator_state->position[1U].value,
 		    .z_position =
 		        linted_simulator_state->position[2U].value,
-		    .x_rotation =
-		    LINTED_UPDATER_ANGLE(linted_simulator_state->x_rotation._value,
-					 LINTED_SIMULATOR_UINT_MAX),
-		    .y_rotation =
-		    LINTED_UPDATER_ANGLE(linted_simulator_state->y_rotation._value,
-					 LINTED_SIMULATOR_UINT_MAX)};
+		    .x_rotation = LINTED_UPDATER_ANGLE(
+		        linted_simulator_state->x_rotation._value,
+		        LINTED_SIMULATOR_UINT_MAX),
+		    .y_rotation = LINTED_UPDATER_ANGLE(
+		        linted_simulator_state->y_rotation._value,
+		        LINTED_SIMULATOR_UINT_MAX)};
 
 		linted_updater_task_send_prepare(updater_task,
 		                                 ON_SENT_UPDATER_EVENT,

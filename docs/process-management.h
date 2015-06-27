@@ -60,13 +60,17 @@
  * in and outside of sandboxes.
  *
  * Fifos give `POLLHUP` to poll and read zero bytes once a process has
- * written to the pipe once and there are no more open
- * writers. Therefore pipe readers that don't want this `POLLHUP` must
- * open in read and write mode.
+ * written to the pipe once and there are no more open writers.
  *
- * As well, fifos cannot be opened with write only permission
+ * As well, fifos give `EPIPE` to writers when a process writes to the
+ * pipe and there are no more open readeres.
+ *
+ * Moreover, fifos cannot be opened with write only permission
  * nonblockingly (they give `ENXIO` errors) when there are not open
  * readers.
+ *
+ * For these reasons most of our fifo users should open these fifos in
+ * read and write mode and not write only or read only mode.
  *
  * @subsection requirements Requirements
  * - Presents a security boundary.

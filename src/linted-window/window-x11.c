@@ -88,7 +88,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        kill_ko_path, LINTED_KO_WRONLY);
+		                        kill_ko_path, LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
@@ -102,7 +102,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
-		                        LINTED_KO_WRONLY);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
@@ -117,7 +117,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		linted_ko xx;
 		errnum =
 		    linted_ko_open(&xx, LINTED_KO_CWD,
-		                   gui_notifier_path, LINTED_KO_WRONLY);
+		                   gui_notifier_path, LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
@@ -132,7 +132,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		linted_ko xx;
 		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
 		                        drawer_notifier_path,
-		                        LINTED_KO_WRONLY);
+		                        LINTED_KO_RDWR);
 		if (errnum != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",

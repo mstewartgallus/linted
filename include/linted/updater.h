@@ -46,17 +46,17 @@ struct linted_updater_task_send;
 struct linted_updater_task_receive;
 
 /* Deliberately overflow in cases such as 1/1 */
-#define LINTED_UPDATER_ANGLE(X, Y)				       \
+#define LINTED_UPDATER_ANGLE(X, Y)                                     \
 	{                                                              \
 		._value =                                              \
-		    (linted_updater_uint)(                           \
-		        (((uintmax_t)LINTED_UPDATER_UINT_MAX) +      \
-		         1U) /                                         \
+		    (linted_updater_uint)(                             \
+		        (((uintmax_t)LINTED_UPDATER_UINT_MAX) + 1U) /  \
 		        (Y)) *                                         \
 		    (X)                                                \
 	}
 
-static double linted_updater_angle_to_double(linted_updater_angle theta);
+static double
+linted_updater_angle_to_double(linted_updater_angle theta);
 
 linted_error linted_updater_task_receive_create(
     struct linted_updater_task_receive **taskp, void *data);
