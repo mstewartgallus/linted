@@ -134,6 +134,7 @@ dnl
 dnl
         AC_CHECK_HEADERS([[arpa/inet.h]dnl
                           [mntent.h]dnl
+                          [sys/capability.h]dnl
                           [sys/mount.h]dnl
                           [sys/socket.h]dnl
                           [syslog.h]], [], [
