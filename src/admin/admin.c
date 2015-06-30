@@ -35,14 +35,14 @@ struct linted_admin_in_task_read
 {
 	struct linted_io_task_read *parent;
 	void *data;
-	char request[sizeof (union linted_admin_request)];
+	char request[sizeof(union linted_admin_request)];
 };
 
 struct linted_admin_out_task_write
 {
 	struct linted_io_task_write *data;
 	void *parent;
-	char reply[sizeof (union linted_admin_reply)];
+	char reply[sizeof(union linted_admin_reply)];
 };
 
 linted_error linted_admin_in_task_read_create(
@@ -94,8 +94,8 @@ linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task)
 }
 
 void linted_admin_in_task_read_request(
-	struct linted_admin_in_task_read *task,
-	union linted_admin_request *outp)
+    struct linted_admin_in_task_read *task,
+    union linted_admin_request *outp)
 {
 	memcpy(outp, &task->request, sizeof task->request);
 }

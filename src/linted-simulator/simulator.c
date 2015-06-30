@@ -491,10 +491,10 @@ maybe_update(linted_updater updater,
 		        linted_simulator_state->position[2U].value,
 		    .x_rotation = LINTED_UPDATER_ANGLE(
 		        linted_simulator_state->x_rotation._value,
-		        LINTED_SIMULATOR_UINT_MAX),
+		        (uintmax_t)LINTED_SIMULATOR_UINT_MAX + 1U),
 		    .y_rotation = LINTED_UPDATER_ANGLE(
 		        linted_simulator_state->y_rotation._value,
-		        LINTED_SIMULATOR_UINT_MAX)};
+		        (uintmax_t)LINTED_SIMULATOR_UINT_MAX + 1U)};
 
 		linted_updater_task_send_prepare(updater_task,
 		                                 ON_SENT_UPDATER_EVENT,

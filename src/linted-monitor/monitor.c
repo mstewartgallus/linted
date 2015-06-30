@@ -1589,7 +1589,8 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 	union linted_admin_request request;
 	{
 		union linted_admin_request xx;
-		linted_admin_in_task_read_request(admin_in_read_task, &xx);
+		linted_admin_in_task_read_request(admin_in_read_task,
+		                                  &xx);
 	}
 
 	union linted_admin_reply reply;
