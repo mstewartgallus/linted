@@ -24,19 +24,25 @@
 
 #include <errno.h>
 #include <stddef.h>
+#include <string.h>
+
+/**
+ * @todo Use proper marshalliing between structures and byte arrays
+ *       for linted_admin instead of just copying.
+ */
 
 struct linted_admin_in_task_read
 {
 	struct linted_io_task_read *parent;
 	void *data;
-	union linted_admin_request request;
+	char request[sizeof (union linted_admin_request)];
 };
 
 struct linted_admin_out_task_write
 {
 	struct linted_io_task_write *data;
 	void *parent;
-	union linted_admin_reply reply;
+	char reply[sizeof (union linted_admin_reply)];
 };
 
 linted_error linted_admin_in_task_read_create(
@@ -87,10 +93,11 @@ linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task)
 	return linted_io_task_read_ko(task->parent);
 }
 
-union linted_admin_request const *linted_admin_in_task_read_request(
-    struct linted_admin_in_task_read *task)
+void linted_admin_in_task_read_request(
+	struct linted_admin_in_task_read *task,
+	union linted_admin_request *outp)
 {
-	return &task->request;
+	memcpy(outp, &task->request, sizeof task->request);
 }
 
 void linted_admin_in_task_read_prepare(
@@ -98,7 +105,7 @@ void linted_admin_in_task_read_prepare(
     linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_action, ko,
-	                            (char *)&task->request,
+	                            task->request,
 	                            sizeof task->request);
 }
 
@@ -164,7 +171,7 @@ void linted_admin_out_task_write_prepare(
 	linted_io_task_write_prepare(task->parent, task_action, ko,
 	                             (char const *)&task->reply,
 	                             sizeof task->reply);
-	task->reply = *reply;
+	memcpy(task->reply, reply, sizeof *reply);
 }
 
 struct linted_asynch_task *linted_admin_out_task_write_to_asynch(

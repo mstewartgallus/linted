@@ -83,8 +83,11 @@ void linted_admin_in_task_read_destroy(
 
 linted_admin_in
 linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task);
-union linted_admin_request const *linted_admin_in_task_read_request(
-    struct linted_admin_in_task_read *task);
+
+void linted_admin_in_task_read_request(
+	struct linted_admin_in_task_read *task,
+	union linted_admin_request *outp);
+
 void *
 linted_admin_in_task_read_data(struct linted_admin_in_task_read *task);
 void linted_admin_in_task_read_prepare(

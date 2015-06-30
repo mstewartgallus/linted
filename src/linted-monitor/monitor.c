@@ -1586,18 +1586,22 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 
 	linted_ko admin_out = admin_in_read_data->admin_out;
 
-	union linted_admin_request const *request =
-	    linted_admin_in_task_read_request(admin_in_read_task);
+	union linted_admin_request request;
+	{
+		union linted_admin_request xx;
+		linted_admin_in_task_read_request(admin_in_read_task, &xx);
+	}
+
 	union linted_admin_reply reply;
 
-	switch (request->type) {
+	switch (request.type) {
 	case LINTED_ADMIN_STATUS:
 		errnum =
-		    on_status_request(manager_pid, request, &reply);
+		    on_status_request(manager_pid, &request, &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(manager_pid, request, &reply);
+		errnum = on_stop_request(manager_pid, &request, &reply);
 		break;
 
 	default:
