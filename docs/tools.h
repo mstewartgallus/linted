@@ -131,7 +131,7 @@
  * doesn't properly recognize the `-isystem` flag.
  *
  * Segfaults on some code.
- * </lib>
+ * </li>
  *
  * <li> [Frama-C](http://frama-c.com/
  * As of version Neon-20140301:

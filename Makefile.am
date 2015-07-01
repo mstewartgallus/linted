@@ -57,6 +57,6 @@ doxygen:
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
-	  $(srcdir)/Doxyfile.in | doxygen -
+	  $(srcdir)/Doxyfile.in | (unset POSIXLY_CORRECT; exec doxygen -)
 
 include src/Makefile.am
