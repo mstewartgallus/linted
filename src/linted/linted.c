@@ -38,9 +38,11 @@
 #include "linted/locale.h"
 #include "linted/log.h"
 #include "linted/start.h"
-#include "linted/str.h"
-#include "linted/utf.h"
 #include "linted/util.h"
+
+#ifdef HAVE_WINDOWS_API
+#include "linted/utf.h"
+#endif
 
 #include <assert.h>
 #include <errno.h>
