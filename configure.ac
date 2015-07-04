@@ -71,28 +71,52 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--enable-posix-api],
                 [enable use of the POSIX API]),
-        [[enable_posix_api='yes']],
+        [
+         [enable_posix_api=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_posix_api=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_posix_api=no]])
+         AS_IF([test "x${enable_posix_api}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --enable-posix-api])])
+        ],
         [[enable_posix_api="$linted_posix_api_default"]])
 AC_ARG_ENABLE(
         [x11-api],
         AS_HELP_STRING(
                 [--enable-x11-api],
                 [enable use of the X11 API]),
-        [[enable_x11_api='yes']],
+        [
+         [enable_x11_api=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_x11_api=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_x11_api=no]])
+         AS_IF([test "x${enable_x11_api}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --enable-x11-api])])
+        ],
         [[enable_x11_api="$linted_x11_api_default"]])
 AC_ARG_ENABLE(
         [windows-api],
         AS_HELP_STRING(
                 [--enable-windows-api],
                 [enable use of the Microsoft Windows API]),
-                [[enable_windows_api='yes']],
+        [
+         [enable_windows_api=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_windows_api=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_windows_api=no]])
+         AS_IF([test "x${enable_windows_api}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --enable-windows-api])])
+        ],
                 [[enable_windows_api="$linted_windows_api_default"]])
 AC_ARG_ENABLE(
         [emscripten-api],
         AS_HELP_STRING(
                 [--enable-emscripten-api],
                 [enable use of Emscripten API]),
-                [[enable_emscripten_api='yes']],
+        [
+         [enable_emscripten_api=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_emscripten_api=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_emscripten_api=no]])
+         AS_IF([test "x${enable_emscripten_api}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --enable-emscripten-api])])
+        ],
                 [[enable_emscripten_ap="$linted_emscripten_api_default"]])
 dnl
 AM_CONDITIONAL([WINDOWS_API], [test "x${enable_windows_api}" = xyes])

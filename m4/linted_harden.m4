@@ -15,7 +15,13 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--disable-harden],
                 [disable hardening flags (not advised)]),
-        [[enable_harden='no']],
+        [
+         [enable_harden_api=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_harden_api=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_harden_api=no]])
+         AS_IF([test "x${enable_harden_api}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-harden-api])])
+        ],
         [[enable_harden='yes']])
 dnl
 AS_IF([test "x${enable_harden}" != "xno"], [

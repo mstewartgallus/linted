@@ -15,7 +15,13 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--disable-optimize],
                 [disable optimization flags (useful for debugging, portability)]),
-        [[enable_optimize='no']],
+        [
+         [enable_optimize=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_optimize=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_optimize=no]])
+         AS_IF([test "x${enable_optimize}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-optimize])])
+        ],
         [[enable_optimize='yes']])
 dnl
 AS_IF([test "x${enable_optimize}" != "xno"], [

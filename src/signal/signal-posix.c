@@ -31,6 +31,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <stdio.h>
+
 enum { LINTED_SIGNAL_HUP,
        LINTED_SIGNAL_INT,
        LINTED_SIGNAL_TERM,
@@ -61,6 +63,8 @@ linted_error linted_signal_init(void)
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
+			assert(errnum != EFAULT);
+			assert(errnum != EINVAL);
 			return errnum;
 		}
 		reader = xx[0U];
@@ -78,19 +82,27 @@ linted_error linted_signal_init(void)
 		sigaddset(&signals, SIGTERM);
 		sigaddset(&signals, SIGQUIT);
 
-		pthread_sigmask(SIG_BLOCK, &signals, 0);
+		errnum = pthread_sigmask(SIG_BLOCK, &signals, 0);
+		assert(errnum != EFAULT);
+		assert(errnum != EINVAL);
+		assert(0 == errnum);
 	}
 
 	pthread_attr_t attr;
 
 	errnum = pthread_attr_init(&attr);
 	if (errnum != 0)
-		goto destroy_attr;
+		return errnum;
 
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	errnum =
+	    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (errnum != 0)
+		goto destroy_attr;
 
 	errnum = pthread_create(&sigaction_thread, 0,
 	                        sigaction_thread_routine, 0);
+	assert(errnum != EINVAL);
+	assert(errnum != EFAULT);
 
 destroy_attr:
 	pthread_attr_destroy(&attr);
@@ -189,8 +201,10 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	if (signo < 0) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
+		assert(errnum != EFAULT);
 		if (EINTR == errnum)
 			goto resubmit;
+		assert(0 == errnum);
 		goto complete;
 	}
 
@@ -239,6 +253,8 @@ void linted_signal_listen_to_sigterm(void)
 
 static void *sigaction_thread_routine(void *arg)
 {
+	linted_error errnum;
+
 	{
 		sigset_t signal_set;
 		sigemptyset(&signal_set);
@@ -247,15 +263,25 @@ static void *sigaction_thread_routine(void *arg)
 		sigaddset(&signal_set, SIGTERM);
 		sigaddset(&signal_set, SIGQUIT);
 
-		pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
+		errnum = pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
+		assert(errnum != EFAULT);
+		assert(errnum != EINVAL);
+		assert(0 == errnum);
 	}
 
 	for (;;) {
 		int signo;
 		{
 			int xx;
-			linted_io_read_all(signal_pipe_reader, 0, &xx,
-			                   sizeof xx);
+			errnum = linted_io_read_all(signal_pipe_reader,
+			                            0, &xx, sizeof xx);
+			assert(errnum != EBADF);
+			assert(errnum != EFAULT);
+			assert(errnum != EINVAL);
+			assert(errnum != EIO);
+			assert(errnum != EISDIR);
+			assert(0 == errnum);
+
 			signo = xx;
 		}
 
@@ -264,13 +290,35 @@ static void *sigaction_thread_routine(void *arg)
 			sigemptyset(&signal_set);
 			sigaddset(&signal_set, signo);
 
-			pthread_sigmask(SIG_BLOCK, &signal_set, 0);
+			errnum =
+			    pthread_sigmask(SIG_BLOCK, &signal_set, 0);
+			assert(errnum != EFAULT);
+			assert(errnum != EINVAL);
+			assert(0 == errnum);
 		}
 	}
+
+	return 0;
 }
 
 static void listen_to_signal(int signo)
 {
-	linted_io_write_all(signal_pipe_writer, 0, &signo,
-	                    sizeof signo);
+	linted_error errnum;
+
+	{
+		int xx = signo;
+		errnum = linted_io_write_all(signal_pipe_writer, 0, &xx,
+		                             sizeof xx);
+	}
+	assert(errnum != EBADF);
+	assert(errnum != EDESTADDRREQ);
+	assert(errnum != EDQUOT);
+	assert(errnum != EFAULT);
+	assert(errnum != EFBIG);
+	assert(errnum != EINTR);
+	assert(errnum != EINVAL);
+	assert(errnum != EIO);
+	assert(errnum != ENOSPC);
+	assert(errnum != EPIPE);
+	assert(0 == errnum);
 }
