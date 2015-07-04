@@ -60,8 +60,8 @@ void linted_sched_task_sleep_until_destroy(
 void linted_sched_task_sleep_until_prepare(
     struct linted_sched_task_sleep_until *task, unsigned task_action,
     struct timespec const *req);
-void linted_sched_task_sleep_until_request(
-    struct linted_sched_task_sleep_until *task, struct timespec *req);
+void linted_sched_task_sleep_until_time(
+    struct linted_sched_task_sleep_until *task, struct timespec *time);
 
 void *linted_sched_task_sleep_until_data(
     struct linted_sched_task_sleep_until *task);

@@ -32,7 +32,7 @@ struct linted_sched_task_sleep_until
 {
 	struct linted_asynch_task *parent;
 	void *data;
-	struct timespec request;
+	struct timespec time;
 };
 
 linted_error linted_sched_getpriority(linted_sched_priority *priorityp)
@@ -146,18 +146,18 @@ void *linted_sched_task_sleep_until_data(
 	return task->data;
 }
 
-void linted_sched_task_sleep_until_request(
-    struct linted_sched_task_sleep_until *task, struct timespec *req)
+void linted_sched_task_sleep_until_time(
+    struct linted_sched_task_sleep_until *task, struct timespec *xx)
 {
-	*req = task->request;
+	*xx = task->time;
 }
 
 void linted_sched_task_sleep_until_prepare(
     struct linted_sched_task_sleep_until *task, unsigned task_action,
-    struct timespec const *req)
+    struct timespec const *xx)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
-	task->request = *req;
+	task->time = *xx;
 }
 
 struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
@@ -187,8 +187,8 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 	linted_error errnum = 0;
 
 	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
-	                          &task_sleep->request,
-	                          &task_sleep->request)) {
+	                          &task_sleep->time,
+	                          &task_sleep->time)) {
 		errnum = errno;
 		LINTED_ASSUME(errnum != 0);
 	}

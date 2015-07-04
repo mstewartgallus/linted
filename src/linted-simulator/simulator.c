@@ -113,10 +113,12 @@ static void maybe_update(linted_updater updater,
 
 static void simulate_tick(struct simulator_state *simulator_state,
                           struct action_state const *action_state);
-static void simulate_rotation(linted_simulator_angle *rotation,
-                              linted_simulator_int tilt);
-static void simulate_clamped_rotation(linted_simulator_angle *rotation,
-                                      linted_simulator_int tilt);
+static linted_simulator_angle
+tilt_rotation(linted_simulator_angle rotation,
+              linted_simulator_int tilt);
+static linted_simulator_angle
+tilt_clamped_rotation(linted_simulator_angle rotation,
+                      linted_simulator_int tilt);
 
 static linted_simulator_uint absolute(linted_simulator_int x);
 static linted_simulator_int min_int(linted_simulator_int x,
@@ -356,32 +358,31 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 	struct simulator_state *simulator_state =
 	    timer_data->simulator_state;
 
-	time_t requested_sec;
-	long requested_nsec;
-
+	struct timespec last_tick_time;
 	{
-		struct timespec request;
-		linted_sched_task_sleep_until_request(timer_task,
-		                                      &request);
-		requested_sec = request.tv_sec;
-		requested_nsec = request.tv_nsec;
+		struct timespec xx;
+		linted_sched_task_sleep_until_time(timer_task, &xx);
+		last_tick_time = xx;
 	}
+	time_t last_tick_sec = last_tick_time.tv_sec;
+	long last_tick_nsec = last_tick_time.tv_nsec;
 
 	long const second = 1000000000;
-	requested_nsec += second / 60;
-	if (requested_nsec >= second) {
-		requested_nsec -= second;
-		requested_sec += 1;
+
+	time_t next_tick_sec = last_tick_sec;
+	long next_tick_nsec = last_tick_nsec + (second / 60) / 2;
+	if (next_tick_nsec >= second) {
+		next_tick_nsec -= second;
+		next_tick_sec += 1;
 	}
 
+	struct timespec next_tick_time = {.tv_sec = next_tick_sec,
+	                                  .tv_nsec = next_tick_nsec};
+
 	{
-		struct timespec request;
-
-		request.tv_sec = requested_sec;
-		request.tv_nsec = requested_nsec;
-
+		struct timespec xx = next_tick_time;
 		linted_sched_task_sleep_until_prepare(
-		    timer_task, ON_READ_TIMER, &request);
+		    timer_task, ON_READ_TIMER, &xx);
 	}
 	linted_asynch_pool_submit(pool, task);
 
@@ -417,13 +418,21 @@ on_controller_receive(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	action_state->x = message.right - message.left;
-	action_state->z = message.back - message.forward;
+	signed int x = message.right - message.left;
+	signed int z = message.back - message.forward;
 
-	action_state->x_tilt = -message.x_tilt;
-	action_state->y_tilt = -message.y_tilt;
+	linted_simulator_int x_tilt = -message.x_tilt;
+	linted_simulator_int y_tilt = -message.y_tilt;
 
-	action_state->jumping = message.jumping;
+	bool jumping = message.jumping;
+
+	action_state->x = x;
+	action_state->z = z;
+
+	action_state->x_tilt = x_tilt;
+	action_state->y_tilt = y_tilt;
+
+	action_state->jumping = jumping;
 
 	return 0;
 }
@@ -518,6 +527,8 @@ static void simulate_tick(struct simulator_state *simulator_state,
 {
 
 	linted_simulator_angle x_rotation = simulator_state->x_rotation;
+	linted_simulator_angle y_rotation = simulator_state->y_rotation;
+
 	struct differentiable *positions = simulator_state->position;
 	size_t dimensions =
 	    LINTED_ARRAY_SIZE(simulator_state->position);
@@ -525,6 +536,8 @@ static void simulate_tick(struct simulator_state *simulator_state,
 	linted_simulator_int x = action_state->x;
 	linted_simulator_int z = action_state->z;
 	linted_simulator_int jumping = action_state->jumping;
+	linted_simulator_int x_tilt = action_state->x_tilt;
+	linted_simulator_int y_tilt = action_state->y_tilt;
 
 	linted_simulator_int cos_x =
 	    downscale(linted_simulator_cos(x_rotation));
@@ -578,48 +591,49 @@ static void simulate_tick(struct simulator_state *simulator_state,
 		pos->old = position;
 	}
 
-	simulate_rotation(&simulator_state->x_rotation,
-	                  action_state->x_tilt);
-	simulate_clamped_rotation(&simulator_state->y_rotation,
-	                          action_state->y_tilt);
+	linted_simulator_angle new_x_rotation =
+	    tilt_rotation(x_rotation, x_tilt);
+	linted_simulator_angle new_y_rotation =
+	    tilt_clamped_rotation(y_rotation, y_tilt);
+
+	simulator_state->x_rotation = new_x_rotation;
+	simulator_state->y_rotation = new_y_rotation;
 
 	simulator_state->update_pending = true;
 }
 
-static void simulate_rotation(linted_simulator_angle *rotation,
-                              linted_simulator_int tilt)
+static linted_simulator_angle
+tilt_rotation(linted_simulator_angle rotation,
+              linted_simulator_int tilt)
 {
 
 	linted_simulator_angle increment =
 	    LINTED_SIMULATOR_ANGLE(1, ROTATION_SPEED);
 
-	*rotation = linted_simulator_angle_add(
-	    (absolute(tilt) > DEAD_ZONE) * sign(tilt), *rotation,
-	    increment);
+	return linted_simulator_angle_add((absolute(tilt) > DEAD_ZONE) *
+	                                      sign(tilt),
+	                                  rotation, increment);
 }
 
-static void simulate_clamped_rotation(linted_simulator_angle *rotation,
-                                      linted_simulator_int tilt)
+static linted_simulator_angle
+tilt_clamped_rotation(linted_simulator_angle rotation,
+                      linted_simulator_int tilt)
 {
 	linted_simulator_int tilt_sign = sign(tilt);
 
-	linted_simulator_angle new_rotation;
-
 	if (absolute(tilt) <= DEAD_ZONE) {
-		new_rotation = *rotation;
-	} else {
-		linted_simulator_angle minimum =
-		    LINTED_SIMULATOR_ANGLE(15U, 16U);
-		linted_simulator_angle maximum =
-		    LINTED_SIMULATOR_ANGLE(3U, 16U);
-		linted_simulator_angle increment =
-		    LINTED_SIMULATOR_ANGLE(1U, ROTATION_SPEED);
-
-		new_rotation = linted_simulator_angle_add_clamped(
-		    tilt_sign, minimum, maximum, *rotation, increment);
+		return rotation;
 	}
 
-	*rotation = new_rotation;
+	linted_simulator_angle minimum =
+	    LINTED_SIMULATOR_ANGLE(15U, 16U);
+	linted_simulator_angle maximum =
+	    LINTED_SIMULATOR_ANGLE(3U, 16U);
+	linted_simulator_angle increment =
+	    LINTED_SIMULATOR_ANGLE(1U, ROTATION_SPEED);
+
+	return linted_simulator_angle_add_clamped(
+	    tilt_sign, minimum, maximum, rotation, increment);
 }
 
 static linted_simulator_int min_int(linted_simulator_int x,
@@ -635,8 +649,11 @@ static linted_simulator_int sign(linted_simulator_int x)
 
 static linted_simulator_uint absolute(linted_simulator_int x)
 {
-	/* The implicit cast to unsigned is okay, obviously */
-	return LINTED_SIMULATOR_INT_MIN == x
-	           ? -(int_fast64_t)LINTED_SIMULATOR_INT_MIN
-	           : imaxabs(x);
+	if (LINTED_SIMULATOR_INT_MIN == x) {
+		return -(intmax_t)LINTED_SIMULATOR_INT_MIN;
+	} else if (x < 0) {
+		return -x;
+	} else {
+		return x;
+	}
 }
