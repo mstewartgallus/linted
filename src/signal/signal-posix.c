@@ -239,6 +239,8 @@ void linted_signal_listen_to_sigterm(void)
 
 static void *sigaction_thread_routine(void *arg)
 {
+	linted_error errnum;
+
 	{
 		sigset_t signal_set;
 		sigemptyset(&signal_set);
@@ -247,15 +249,25 @@ static void *sigaction_thread_routine(void *arg)
 		sigaddset(&signal_set, SIGTERM);
 		sigaddset(&signal_set, SIGQUIT);
 
-		pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
+		errnum = pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
+		assert(errnum != EFAULT);
+		assert(errnum != EINVAL);
+		assert(errnum != 0);
 	}
 
 	for (;;) {
 		int signo;
 		{
 			int xx;
-			linted_io_read_all(signal_pipe_reader, 0, &xx,
-			                   sizeof xx);
+			errnum = linted_io_read_all(signal_pipe_reader,
+			                            0, &xx, sizeof xx);
+			assert(errnum != EBADF);
+			assert(errnum != EFAULT);
+			assert(errnum != EINVAL);
+			assert(errnum != EIO);
+			assert(errnum != EISDIR);
+			assert(errnum != 0);
+
 			signo = xx;
 		}
 
@@ -264,9 +276,15 @@ static void *sigaction_thread_routine(void *arg)
 			sigemptyset(&signal_set);
 			sigaddset(&signal_set, signo);
 
-			pthread_sigmask(SIG_BLOCK, &signal_set, 0);
+			errnum =
+			    pthread_sigmask(SIG_BLOCK, &signal_set, 0);
+			assert(errnum != EFAULT);
+			assert(errnum != EINVAL);
+			assert(errnum != 0);
 		}
 	}
+
+	return 0;
 }
 
 static void listen_to_signal(int signo)

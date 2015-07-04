@@ -15,7 +15,13 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--disable-fast-build],
                 [disable adjustments for speeding up the build]),
-        [[enable_fast_build='no']],
+        [
+         [enable_fast_build=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_fast_build=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_fast_build=no]])
+         AS_IF([test "x${enable_fast_build}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-fast-build])])
+        ],
         [[enable_fast_build='yes']])
 dnl
 AS_IF([test "x${enable_fast_build}" != "xno"], [

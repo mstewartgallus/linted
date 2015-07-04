@@ -15,7 +15,13 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--disable-debug-info],
                 [disable debug info]),
-        [[enable_debug_info='no']],
+        [
+         [enable_debug_info=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_debug_info=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_debug_info=no]])
+         AS_IF([test "x${enable_debug_info}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-debug-info])])
+        ],
         [[enable_debug_info='yes']])
 dnl
 AS_IF([test "x${enable_debug_info}" != "xno"], [

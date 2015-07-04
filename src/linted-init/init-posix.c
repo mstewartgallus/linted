@@ -150,6 +150,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			assert(errnum != EINVAL);
 			assert(errnum != ECHILD);
 			assert(0 == errnum);
+			LINTED_ASSUME_UNREACHABLE();
 
 		waitid_succeeded:
 			if (child == pid)

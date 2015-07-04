@@ -15,10 +15,15 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--disable-assert],
                 [disable assertions (still secure)]),
-        [[enable_assert='no']],
-        [[enable_assert='yes']])
+        [
+         [enable_assert=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_assert=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_assert=no]])
+         AS_IF([test "x${enable_assert}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-assert])])
+        ], [[enable_assert='yes']])
 dnl
-AS_IF([test "x${enable_assert}" != "xno"], [],[
+AS_IF([test "x${enable_assert}" = "xno"], [],[
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG],[dnl
         [-DNDEBUG]dnl
 ])
