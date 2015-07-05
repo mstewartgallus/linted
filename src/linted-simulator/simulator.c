@@ -650,7 +650,10 @@ static linted_simulator_int sign(linted_simulator_int x)
 static linted_simulator_uint absolute(linted_simulator_int x)
 {
 	if (LINTED_SIMULATOR_INT_MIN == x) {
-		return -(intmax_t)LINTED_SIMULATOR_INT_MIN;
+		/* Avoid tricky arithmetic overflow possibilities */
+		return ((linted_simulator_uint) -
+		        (LINTED_SIMULATOR_INT_MIN + 1)) +
+		       1U;
 	} else if (x < 0) {
 		return -x;
 	} else {
