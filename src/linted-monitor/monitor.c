@@ -117,6 +117,9 @@ static unsigned char monitor_start(char const *process_name,
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path);
+static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
+                                       linted_ko cwd,
+                                       char const *dir_name);
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
                                    struct linted_conf_db *conf_db,
                                    char const *sandbox,
@@ -1925,7 +1928,7 @@ reply:
 	return 0;
 }
 
-static char const *default_envvars[] = {
+static char const *const default_envvars[] = {
     "MANAGERPID", "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
                                                       "XDG_SESSION_ID",
     "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
@@ -1948,8 +1951,12 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 	for (;;) {
 		char const *dirend = strchr(dirstart, ':');
 
-		size_t len =
-		    0 == dirend ? strlen(dirstart) : dirend - dirstart;
+		size_t len;
+		if (0 == dirend) {
+			len = strlen(dirstart);
+		} else {
+			len = dirend - dirstart;
+		}
 
 		char *dir_name = strndup(dirstart, len);
 		if (0 == dir_name) {
@@ -1958,208 +1965,13 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			goto free_units;
 		}
 
-		linted_ko units_ko;
-		{
-			linted_ko xx;
-			errnum = linted_ko_open(&xx, cwd, dir_name,
-			                        LINTED_KO_DIRECTORY);
-			if (errnum != 0)
-				goto free_dir_name;
-			units_ko = xx;
-		}
+		errnum = add_unit_dir_to_db(db, cwd, dir_name);
 
-		DIR *units_dir = fdopendir(units_ko);
-		if (0 == units_dir) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-
-			linted_ko_close(units_ko);
-		}
-
-	free_dir_name:
 		linted_mem_free(dir_name);
 
-		if (ENOENT == errnum) {
-			errnum = 0;
-			goto next_dir;
-		}
-
 		if (errnum != 0)
 			goto free_units;
 
-		size_t files_count = 0U;
-		char **files = 0;
-		for (;;) {
-			errno = 0;
-			struct dirent const *entry = readdir(units_dir);
-			if (0 == entry) {
-				errnum = errno;
-				if (0 == errnum)
-					break;
-
-				goto free_file_names;
-			}
-
-			char const *name = entry->d_name;
-
-			if (0 == strcmp(".", name))
-				continue;
-
-			if (0 == strcmp("..", name))
-				continue;
-
-			char *name_copy = strdup(name);
-			if (0 == name_copy) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-				goto free_file_names;
-			}
-
-			size_t new_files_count = files_count + 1U;
-			char **new_files;
-			{
-				void *xx;
-				errnum = linted_mem_realloc_array(
-				    &xx, files, new_files_count,
-				    sizeof files[0U]);
-				if (errnum != 0)
-					goto free_file_name;
-				new_files = xx;
-			}
-			new_files[files_count] = name_copy;
-
-			files = new_files;
-			files_count = new_files_count;
-
-			if (errnum != 0) {
-			free_file_name:
-				linted_mem_free(name_copy);
-				goto free_file_names;
-			}
-		}
-
-		for (size_t ii = 0U; ii < files_count; ++ii) {
-			char const *file_name = files[ii];
-
-			linted_ko unit_fd;
-			{
-				linted_ko xx;
-				errnum = linted_ko_open(
-				    &xx, units_ko, file_name,
-				    LINTED_KO_RDONLY);
-				if (errnum != 0)
-					goto free_file_names;
-				unit_fd = xx;
-			}
-
-			FILE *unit_file = fdopen(unit_fd, "r");
-			if (0 == unit_file) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-
-				linted_ko_close(unit_fd);
-
-				goto free_file_names;
-			}
-
-			struct linted_conf *conf = 0;
-			{
-				struct linted_conf *xx;
-				errnum =
-				    linted_conf_create(&xx, file_name);
-				if (errnum != 0)
-					goto close_unit_file;
-				conf = xx;
-			}
-
-			char const *dot = strchr(file_name, '.');
-
-			char const *suffix = dot + 1U;
-
-			if (0 == strcmp(suffix, "socket")) {
-				/* Okay but we have no defaults for this
-				 */
-			} else if (0 == strcmp(suffix, "service")) {
-				char *section_name = strdup("Service");
-				if (0 == section_name) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-					goto close_unit_file;
-				}
-
-				char *env_whitelist = strdup(
-				    "X-LintedEnvironmentWhitelist");
-				if (0 == env_whitelist) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-					linted_mem_free(section_name);
-					goto close_unit_file;
-				}
-
-				linted_conf_section service;
-				{
-					linted_conf_section xx;
-					errnum =
-					    linted_conf_add_section(
-					        conf, &xx,
-					        section_name);
-					if (errnum != 0) {
-						linted_mem_free(
-						    env_whitelist);
-						linted_mem_free(
-						    section_name);
-						goto close_unit_file;
-					}
-					service = xx;
-				}
-
-				errnum = linted_conf_add_setting(
-				    conf, service, env_whitelist,
-				    default_envvars);
-				if (errnum != 0)
-					goto close_unit_file;
-
-			} else {
-				errnum = LINTED_ERROR_INVALID_PARAMETER;
-				goto close_unit_file;
-			}
-
-			errnum =
-			    linted_conf_parse_file(conf, unit_file);
-
-		close_unit_file:
-			if (EOF == fclose(unit_file)) {
-				if (0 == errnum) {
-					errnum = errno;
-					LINTED_ASSUME(errnum != 0);
-				}
-			}
-
-			if (errnum != 0)
-				goto free_unit;
-
-			errnum = linted_conf_db_add_conf(db, conf);
-
-		free_unit:
-			if (errnum != 0)
-				linted_conf_put(conf);
-		}
-
-	free_file_names:
-		for (size_t ii = 0U; ii < files_count; ++ii)
-			linted_mem_free(files[ii]);
-		linted_mem_free(files);
-
-		if (-1 == closedir(units_dir)) {
-			if (0 == errnum) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
-			}
-		}
-		if (errnum != 0)
-			goto free_units;
-
-	next_dir:
 		if (0 == dirend)
 			break;
 
@@ -2176,6 +1988,202 @@ free_units:
 	*dbp = db;
 
 	return 0;
+}
+
+static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
+                                       linted_ko cwd,
+                                       char const *dir_name)
+{
+	linted_error errnum;
+
+	linted_ko units_ko;
+	{
+		linted_ko xx;
+		errnum = linted_ko_open(&xx, cwd, dir_name,
+		                        LINTED_KO_DIRECTORY);
+		if (errnum != 0)
+			return errnum;
+		units_ko = xx;
+	}
+
+	DIR *units_dir = fdopendir(units_ko);
+	if (0 == units_dir) {
+		errnum = errno;
+		LINTED_ASSUME(errnum != 0);
+
+		linted_ko_close(units_ko);
+	}
+
+	if (ENOENT == errnum)
+		return 0;
+
+	if (errnum != 0)
+		return errnum;
+
+	size_t files_count = 0U;
+	char **files = 0;
+	for (;;) {
+		errno = 0;
+		struct dirent const *entry = readdir(units_dir);
+		if (0 == entry) {
+			errnum = errno;
+			if (0 == errnum)
+				break;
+
+			goto free_file_names;
+		}
+
+		char const *name = entry->d_name;
+
+		if (0 == strcmp(".", name))
+			continue;
+
+		if (0 == strcmp("..", name))
+			continue;
+
+		char *name_copy = strdup(name);
+		if (0 == name_copy) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+			goto free_file_names;
+		}
+
+		size_t new_files_count = files_count + 1U;
+		char **new_files;
+		{
+			void *xx;
+			errnum = linted_mem_realloc_array(
+			    &xx, files, new_files_count,
+			    sizeof files[0U]);
+			if (errnum != 0)
+				goto free_file_name;
+			new_files = xx;
+		}
+		new_files[files_count] = name_copy;
+
+		files = new_files;
+		files_count = new_files_count;
+
+		if (errnum != 0) {
+		free_file_name:
+			linted_mem_free(name_copy);
+			goto free_file_names;
+		}
+	}
+
+	for (size_t ii = 0U; ii < files_count; ++ii) {
+		char const *file_name = files[ii];
+
+		linted_ko unit_fd;
+		{
+			linted_ko xx;
+			errnum = linted_ko_open(
+			    &xx, units_ko, file_name, LINTED_KO_RDONLY);
+			if (errnum != 0)
+				goto free_file_names;
+			unit_fd = xx;
+		}
+
+		FILE *unit_file = fdopen(unit_fd, "r");
+		if (0 == unit_file) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+
+			linted_ko_close(unit_fd);
+
+			goto free_file_names;
+		}
+
+		struct linted_conf *conf = 0;
+		{
+			struct linted_conf *xx;
+			errnum = linted_conf_create(&xx, file_name);
+			if (errnum != 0)
+				goto close_unit_file;
+			conf = xx;
+		}
+
+		char const *dot = strchr(file_name, '.');
+
+		char const *suffix = dot + 1U;
+
+		if (0 == strcmp(suffix, "socket")) {
+			/* Okay but we have no defaults for this
+			 */
+		} else if (0 == strcmp(suffix, "service")) {
+			char *section_name = strdup("Service");
+			if (0 == section_name) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				goto close_unit_file;
+			}
+
+			char *env_whitelist =
+			    strdup("X-LintedEnvironmentWhitelist");
+			if (0 == env_whitelist) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+				linted_mem_free(section_name);
+				goto close_unit_file;
+			}
+
+			linted_conf_section service;
+			{
+				linted_conf_section xx;
+				errnum = linted_conf_add_section(
+				    conf, &xx, section_name);
+				if (errnum != 0) {
+					linted_mem_free(env_whitelist);
+					linted_mem_free(section_name);
+					goto close_unit_file;
+				}
+				service = xx;
+			}
+
+			errnum = linted_conf_add_setting(
+			    conf, service, env_whitelist,
+			    default_envvars);
+			if (errnum != 0)
+				goto close_unit_file;
+
+		} else {
+			errnum = LINTED_ERROR_INVALID_PARAMETER;
+			goto close_unit_file;
+		}
+
+		errnum = linted_conf_parse_file(conf, unit_file);
+
+	close_unit_file:
+		if (EOF == fclose(unit_file)) {
+			if (0 == errnum) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
+		}
+
+		if (errnum != 0)
+			goto free_unit;
+
+		errnum = linted_conf_db_add_conf(db, conf);
+
+	free_unit:
+		if (errnum != 0)
+			linted_conf_put(conf);
+	}
+
+free_file_names:
+	for (size_t ii = 0U; ii < files_count; ++ii)
+		linted_mem_free(files[ii]);
+	linted_mem_free(files);
+
+	if (-1 == closedir(units_dir)) {
+		if (0 == errnum) {
+			errnum = errno;
+			LINTED_ASSUME(errnum != 0);
+		}
+	}
+
+	return errnum;
 }
 
 static linted_error service_children_terminate(pid_t pid)
@@ -2329,16 +2337,17 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child,
 {
 	linted_error errnum;
 
-	pid_t ppid;
+	struct linted_pid_stat pid_stat;
 	{
-		struct linted_pid_stat buf;
+		struct linted_pid_stat xx;
 
-		errnum = linted_pid_stat(child, &buf);
+		errnum = linted_pid_stat(child, &xx);
 		if (errnum != 0)
 			return errnum;
 
-		ppid = buf.ppid;
+		pid_stat = xx;
 	}
+	pid_t ppid = pid_stat.ppid;
 
 	*isp = ppid == parent;
 
