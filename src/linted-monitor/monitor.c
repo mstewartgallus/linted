@@ -61,6 +61,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/* 2^(bits - 1) - 1 */
+/* Sadly, this assumes a twos complement implementation */
+#define PID_MAX ((1L << (long)(sizeof(pid_t) * CHAR_BIT - 1)))
+
 enum { WAITID,
        SIGNAL_WAIT,
        ADMIN_IN_READ,
@@ -362,12 +366,7 @@ static unsigned char monitor_start(char const *process_name,
 			goto on_error;
 		}
 
-		/* 2^(bits - 1) - 1 */
-		/* Sadly, this assumes a twos complement implementation
-		 */
-		pid_t pid_max =
-		    (1L << (long)(sizeof(pid_t) * CHAR_BIT - 1)) - 1;
-		if (yy > pid_max) {
+		if (yy > PID_MAX) {
 			errnum = ERANGE;
 			goto on_error;
 		}
@@ -1864,7 +1863,9 @@ on_status_request(pid_t manager_pid,
 	linted_error errnum = 0;
 	bool is_up;
 
-	errnum = linted_unit_pid(0, manager_pid, request->status.name);
+	char const *unit_name = request->status.name;
+
+	errnum = linted_unit_pid(0, manager_pid, unit_name);
 	if (errnum != 0) {
 		errnum = 0;
 		is_up = false;
@@ -1893,11 +1894,12 @@ on_stop_request(pid_t manager_pid,
 	linted_error errnum = 0;
 	bool was_up;
 
+	char const *unit_name = request->status.name;
+
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = linted_unit_pid(&xx, manager_pid,
-		                         request->status.name);
+		errnum = linted_unit_pid(&xx, manager_pid, unit_name);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -2354,11 +2356,9 @@ static linted_error pid_is_child_of(pid_t parent, pid_t child,
 	struct linted_pid_stat pid_stat;
 	{
 		struct linted_pid_stat xx;
-
 		errnum = linted_pid_stat(child, &xx);
 		if (errnum != 0)
 			return errnum;
-
 		pid_stat = xx;
 	}
 	pid_t ppid = pid_stat.ppid;
