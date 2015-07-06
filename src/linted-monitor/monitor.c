@@ -2072,7 +2072,23 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 	}
 
 	for (size_t ii = 0U; ii < files_count; ++ii) {
-		char const *file_name = files[ii];
+		char *file_name = files[ii];
+
+		linted_unit_type unit_type;
+		{
+			char const *dot = strchr(file_name, '.');
+
+			char const *suffix = dot + 1U;
+
+			if (0 == strcmp(suffix, "socket")) {
+				unit_type = LINTED_UNIT_TYPE_SOCKET;
+			} else if (0 == strcmp(suffix, "service")) {
+				unit_type = LINTED_UNIT_TYPE_SERVICE;
+			} else {
+				errnum = LINTED_ERROR_INVALID_PARAMETER;
+				goto free_file_names;
+			}
+		}
 
 		linted_ko unit_fd;
 		{
@@ -2103,14 +2119,14 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			conf = xx;
 		}
 
-		char const *dot = strchr(file_name, '.');
+		files[ii] = 0;
 
-		char const *suffix = dot + 1U;
+		switch (unit_type) {
+		case LINTED_UNIT_TYPE_SOCKET:
+			/* Okay but we have no defaults for this */
+			break;
 
-		if (0 == strcmp(suffix, "socket")) {
-			/* Okay but we have no defaults for this
-			 */
-		} else if (0 == strcmp(suffix, "service")) {
+		case LINTED_UNIT_TYPE_SERVICE: {
 			char *section_name = strdup("Service");
 			if (0 == section_name) {
 				errnum = errno;
@@ -2145,10 +2161,8 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			    default_envvars);
 			if (errnum != 0)
 				goto close_unit_file;
-
-		} else {
-			errnum = LINTED_ERROR_INVALID_PARAMETER;
-			goto close_unit_file;
+			break;
+		}
 		}
 
 		errnum = linted_conf_parse_file(conf, unit_file);

@@ -342,28 +342,20 @@ struct conf_setting_bucket
 	struct conf_setting *settings;
 };
 
-linted_error linted_conf_create(struct linted_conf **confp,
-                                char const *name)
+linted_error linted_conf_create(struct linted_conf **confp, char *name)
 {
 	linted_error errnum = 0;
+
 	struct linted_conf *conf;
-
-	char *name_copy = strdup(name);
-	if (0 == name_copy) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
-	}
-
 	{
 		void *xx;
 		errnum = linted_mem_alloc(&xx, sizeof *conf);
 		if (errnum != 0)
-			goto free_name_copy;
+			return errnum;
 		conf = xx;
 	}
 
-	conf->name = name_copy;
+	conf->name = name;
 	conf->refcount = 1;
 
 	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
@@ -371,12 +363,6 @@ linted_error linted_conf_create(struct linted_conf **confp,
 
 		bucket->sections_size = 0U;
 		bucket->sections = 0;
-	}
-
-free_name_copy:
-	if (errnum != 0) {
-		linted_mem_free(name_copy);
-		return errnum;
 	}
 
 	*confp = conf;
