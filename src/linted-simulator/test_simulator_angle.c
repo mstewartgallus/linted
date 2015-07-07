@@ -23,7 +23,7 @@
 #include <stdlib.h>
 
 /*
- * LINTED_SIMULATOR_UINT_MAX / 4U
+ * LINTED_SIM_UINT_MAX / 4U
  * / \
  *  |
  *  |
@@ -44,118 +44,96 @@
 int main(void)
 {
 	{
-		linted_simulator_angle zero =
-		    LINTED_SIMULATOR_ANGLE(0U, 4U);
-		linted_simulator_int sin_zero =
-		    linted_simulator_sin(zero);
+		linted_sim_angle zero = LINTED_SIM_ANGLE(0U, 4U);
+		linted_sim_int sin_zero = linted_sim_sin(zero);
 		if (sin_zero != 0) {
-			LINTED_TEST_FAILURE("linted_simulator_sin(zero)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+			LINTED_TEST_FAILURE("linted_sim_sin(zero)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    sin_zero);
 		}
 
-		linted_simulator_angle quarter =
-		    LINTED_SIMULATOR_ANGLE(1U, 4U);
-		linted_simulator_int sin_quarter =
-		    linted_simulator_sin(quarter);
-		if (sin_quarter != LINTED_SIMULATOR_INT_MAX) {
+		linted_sim_angle quarter = LINTED_SIM_ANGLE(1U, 4U);
+		linted_sim_int sin_quarter = linted_sim_sin(quarter);
+		if (sin_quarter != LINTED_SIM_INT_MAX) {
 			LINTED_TEST_FAILURE(
-			    "linted_simulator_sin(quarter) == "
-			    "%" LINTED_SIMULATOR_Id "\n",
+			    "linted_sim_sin(quarter) == "
+			    "%" LINTED_SIM_Id "\n",
 			    sin_quarter);
 		}
 
 		/* TODO This isn't totally correct */
-		linted_simulator_angle half =
-		    LINTED_SIMULATOR_ANGLE(1U, 2U);
-		linted_simulator_int sin_half =
-		    linted_simulator_sin(half);
+		linted_sim_angle half = LINTED_SIM_ANGLE(1U, 2U);
+		linted_sim_int sin_half = linted_sim_sin(half);
 		if (sin_half != 0) {
-			LINTED_TEST_FAILURE("linted_simulator_sin(half)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+			LINTED_TEST_FAILURE("linted_sim_sin(half)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    sin_half);
 		}
 
-		linted_simulator_angle three_quarters =
-		    LINTED_SIMULATOR_ANGLE(3U, 4U);
-		linted_simulator_int sin_three_quarters =
-		    linted_simulator_sin(three_quarters);
-		if (sin_three_quarters != -LINTED_SIMULATOR_INT_MAX) {
+		linted_sim_angle three_quarters =
+		    LINTED_SIM_ANGLE(3U, 4U);
+		linted_sim_int sin_three_quarters =
+		    linted_sim_sin(three_quarters);
+		if (sin_three_quarters != -LINTED_SIM_INT_MAX) {
 			LINTED_TEST_FAILURE(
-			    "linted_simulator_sin(three_"
-			    "quarters) == %" LINTED_SIMULATOR_Id "\n",
+			    "linted_sim_sin(three_"
+			    "quarters) == %" LINTED_SIM_Id "\n",
 			    sin_three_quarters);
 		}
 
-		linted_simulator_angle full =
-		    LINTED_SIMULATOR_ANGLE(1U, 1U);
-		linted_simulator_int sin_full =
-		    linted_simulator_sin(full);
+		linted_sim_angle full = LINTED_SIM_ANGLE(1U, 1U);
+		linted_sim_int sin_full = linted_sim_sin(full);
 		if (sin_full != 0) {
-			LINTED_TEST_FAILURE("linted_simulator_sin(full)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+			LINTED_TEST_FAILURE("linted_sim_sin(full)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    sin_full);
 		}
 	}
 
 	{
-		linted_simulator_angle zero =
-		    LINTED_SIMULATOR_ANGLE(0U, 4U);
-		linted_simulator_int cos_zero =
-		    linted_simulator_cos(zero);
-		if (cos_zero != LINTED_SIMULATOR_INT_MAX) {
-			LINTED_TEST_FAILURE("linted_simulator_cos(zero)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+		linted_sim_angle zero = LINTED_SIM_ANGLE(0U, 4U);
+		linted_sim_int cos_zero = linted_sim_cos(zero);
+		if (cos_zero != LINTED_SIM_INT_MAX) {
+			LINTED_TEST_FAILURE("linted_sim_cos(zero)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    cos_zero);
 		}
 
 		/* TODO This isn't totally correct */
-		linted_simulator_angle quarter =
-		    LINTED_SIMULATOR_ANGLE(1U, 4U);
-		linted_simulator_int cos_quarter =
-		    linted_simulator_cos(quarter);
+		linted_sim_angle quarter = LINTED_SIM_ANGLE(1U, 4U);
+		linted_sim_int cos_quarter = linted_sim_cos(quarter);
 		if (cos_quarter != 0) {
 			LINTED_TEST_FAILURE(
-			    "linted_simulator_cos(quarter) == "
-			    "%" LINTED_SIMULATOR_Id "\n",
+			    "linted_sim_cos(quarter) == "
+			    "%" LINTED_SIM_Id "\n",
 			    cos_quarter);
 		}
 
-		linted_simulator_angle half =
-		    LINTED_SIMULATOR_ANGLE(1U, 2U);
-		linted_simulator_int cos_half =
-		    linted_simulator_cos(half);
-		if (cos_half != -LINTED_SIMULATOR_INT_MAX) {
-			LINTED_TEST_FAILURE("linted_simulator_cos(half)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+		linted_sim_angle half = LINTED_SIM_ANGLE(1U, 2U);
+		linted_sim_int cos_half = linted_sim_cos(half);
+		if (cos_half != -LINTED_SIM_INT_MAX) {
+			LINTED_TEST_FAILURE("linted_sim_cos(half)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    cos_half);
 		}
 
 		/* TODO This isn't totally correct */
-		linted_simulator_angle three_quarters =
-		    LINTED_SIMULATOR_ANGLE(3U, 4U);
-		linted_simulator_int cos_three_quarters =
-		    linted_simulator_cos(three_quarters);
+		linted_sim_angle three_quarters =
+		    LINTED_SIM_ANGLE(3U, 4U);
+		linted_sim_int cos_three_quarters =
+		    linted_sim_cos(three_quarters);
 		if (cos_three_quarters != 0) {
 			LINTED_TEST_FAILURE(
-			    "linted_simulator_cos(three_"
-			    "quarters) == %" LINTED_SIMULATOR_Id "\n",
+			    "linted_sim_cos(three_"
+			    "quarters) == %" LINTED_SIM_Id "\n",
 			    cos_three_quarters);
 		}
 
-		linted_simulator_angle full =
-		    LINTED_SIMULATOR_ANGLE(1U, 1U);
-		linted_simulator_int cos_full =
-		    linted_simulator_cos(full);
-		if (cos_full != LINTED_SIMULATOR_INT_MAX) {
-			LINTED_TEST_FAILURE("linted_simulator_cos(full)"
-			                    " == %" LINTED_SIMULATOR_Id
-			                    "\n",
+		linted_sim_angle full = LINTED_SIM_ANGLE(1U, 1U);
+		linted_sim_int cos_full = linted_sim_cos(full);
+		if (cos_full != LINTED_SIM_INT_MAX) {
+			LINTED_TEST_FAILURE("linted_sim_cos(full)"
+			                    " == %" LINTED_SIM_Id "\n",
 			                    cos_full);
 		}
 	}

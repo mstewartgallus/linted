@@ -1165,7 +1165,11 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 				fifo = xx;
 			}
 
-			fcntl(fifo, F_SETPIPE_SZ, fifo_size);
+			if (-1 ==
+			    fcntl(fifo, F_SETPIPE_SZ, fifo_size)) {
+				errnum = errno;
+				LINTED_ASSUME(errnum != 0);
+			}
 
 			linted_ko_close(fifo);
 		} else
