@@ -291,17 +291,15 @@ on_window_read_err:
 			xcb_generic_error_t *error;
 			xcb_get_geometry_reply_t *reply;
 			{
-				xcb_generic_error_t *xx;
+				xcb_generic_error_t *xx = 0;
 				reply = xcb_get_geometry_reply(
 				    connection, geom_ck, &xx);
-
-				errnum =
-				    linted_xcb_conn_error(connection);
-				if (errnum != 0)
-					return errnum;
-
 				error = xx;
 			}
+
+			errnum = linted_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
 
 			if (error != 0) {
 				errnum = linted_xcb_error(error);
@@ -481,9 +479,6 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	for (;;) {
 		xcb_generic_event_t *event =
 		    xcb_poll_for_event(connection);
-		if (0 == event)
-			break;
-
 		switch (event->response_type & ~0x80) {
 		case XCB_CONFIGURE_NOTIFY: {
 			xcb_configure_notify_event_t const *
@@ -609,8 +604,8 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		window = xx;
 	}
 
-	xcb_change_window_attributes(connection, window,
-	                             XCB_CW_EVENT_MASK, window_opts);
+	xcb_change_window_attributes_checked(
+	    connection, window, XCB_CW_EVENT_MASK, window_opts);
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto reset_notice;
@@ -626,16 +621,15 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		xcb_generic_error_t *error;
 		xcb_get_geometry_reply_t *reply;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = 0;
 			reply = xcb_get_geometry_reply(connection,
 			                               geom_ck, &xx);
-
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				goto reset_notice;
-
 			error = xx;
 		}
+
+		errnum = linted_xcb_conn_error(connection);
+		if (errnum != 0)
+			goto reset_notice;
 
 		if (error != 0) {
 			errnum = linted_xcb_error(error);

@@ -334,15 +334,29 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		linted_mem_free(delete_ck_reply);
 	}
 
+	xcb_void_cookie_t change_ck;
 	{
 		xcb_atom_t xx = wm_delete_window_atom;
-		xcb_change_property(connection, XCB_PROP_MODE_REPLACE,
-		                    window, wm_protocols_atom,
-		                    XCB_ATOM_ATOM, 32, 1U, &xx);
+		change_ck = xcb_change_property_checked(
+		    connection, XCB_PROP_MODE_REPLACE, window,
+		    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U, &xx);
 	}
 	errnum = linted_xcb_conn_error(connection);
 	if (errnum != 0)
 		goto destroy_window;
+
+	xcb_generic_error_t *change_err =
+	    xcb_request_check(connection, change_ck);
+
+	errnum = linted_xcb_conn_error(connection);
+	if (errnum != 0)
+		goto destroy_window;
+
+	if (change_err != 0) {
+		errnum = linted_xcb_error(change_err);
+		linted_mem_free(change_err);
+		goto destroy_window;
+	}
 
 	xcb_atom_t net_wm_pid_atom;
 	{

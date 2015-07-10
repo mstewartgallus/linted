@@ -270,15 +270,15 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		xcb_generic_error_t *error;
 		xcb_xkb_get_device_info_reply_t *reply;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = 0;
 			reply = xcb_xkb_get_device_info_reply(
 			    connection, device_info_ck, &xx);
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				goto destroy_keyboard_ctx;
-
 			error = xx;
 		}
+
+		errnum = linted_xcb_conn_error(connection);
+		if (errnum != 0)
+			goto destroy_keyboard_ctx;
 
 		if (error != 0) {
 			errnum = linted_xcb_error(error);
@@ -363,17 +363,15 @@ on_window_read_err:
 			xcb_generic_error_t *error;
 			xcb_get_geometry_reply_t *reply;
 			{
-				xcb_generic_error_t *xx;
+				xcb_generic_error_t *xx = 0;
 				reply = xcb_get_geometry_reply(
 				    connection, geom_ck, &xx);
-
-				errnum =
-				    linted_xcb_conn_error(connection);
-				if (errnum != 0)
-					return errnum;
-
 				error = xx;
 			}
+
+			errnum = linted_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
 
 			if (error != 0) {
 				errnum = linted_xcb_error(error);
@@ -392,17 +390,15 @@ on_window_read_err:
 			xcb_generic_error_t *error;
 			xcb_query_pointer_reply_t *reply;
 			{
-				xcb_generic_error_t *xx;
+				xcb_generic_error_t *xx = 0;
 				reply = xcb_query_pointer_reply(
 				    connection, point_ck, &xx);
-
-				errnum =
-				    linted_xcb_conn_error(connection);
-				if (errnum != 0)
-					return errnum;
-
 				error = xx;
 			}
+
+			errnum = linted_xcb_conn_error(connection);
+			if (errnum != 0)
+				return errnum;
 
 			if (error != 0) {
 				errnum = linted_xcb_error(error);
@@ -804,16 +800,15 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		xcb_generic_error_t *error;
 		xcb_get_geometry_reply_t *reply;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = 0;
 			reply = xcb_get_geometry_reply(connection,
 			                               geom_ck, &xx);
-
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				goto reset_notice;
-
 			error = xx;
 		}
+
+		errnum = linted_xcb_conn_error(connection);
+		if (errnum != 0)
+			goto reset_notice;
 
 		if (error != 0) {
 			errnum = linted_xcb_error(error);
@@ -832,16 +827,15 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 		xcb_generic_error_t *error;
 		xcb_query_pointer_reply_t *reply;
 		{
-			xcb_generic_error_t *xx;
+			xcb_generic_error_t *xx = 0;
 			reply = xcb_query_pointer_reply(connection,
 			                                point_ck, &xx);
-
-			errnum = linted_xcb_conn_error(connection);
-			if (errnum != 0)
-				goto reset_notice;
-
 			error = xx;
 		}
+
+		errnum = linted_xcb_conn_error(connection);
+		if (errnum != 0)
+			goto reset_notice;
 
 		if (error != 0) {
 			errnum = linted_xcb_error(error);
@@ -950,8 +944,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 }
 
 static linted_error get_mouse_position(xcb_connection_t *connection,
-                                       xcb_window_t window, int *x,
-                                       int *y)
+                                       xcb_window_t window, int *xp,
+                                       int *yp)
 {
 	linted_error errnum;
 
@@ -964,15 +958,13 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 	xcb_generic_error_t *error;
 	xcb_query_pointer_reply_t *reply;
 	{
-		xcb_generic_error_t *xx;
+		xcb_generic_error_t *xx = 0;
 		reply = xcb_query_pointer_reply(connection, ck, &xx);
-
-		errnum = linted_xcb_conn_error(connection);
-		if (errnum != 0)
-			return errnum;
-
 		error = xx;
 	}
+	errnum = linted_xcb_conn_error(connection);
+	if (errnum != 0)
+		return errnum;
 
 	if (error != 0) {
 		errnum = linted_xcb_error(error);
@@ -981,10 +973,13 @@ static linted_error get_mouse_position(xcb_connection_t *connection,
 		return errnum;
 	}
 
-	*x = reply->win_x;
-	*y = reply->win_y;
+	int x = reply->win_x;
+	int y = reply->win_x;
 
 	linted_mem_free(reply);
+
+	*xp = x;
+	*yp = y;
 
 	return 0;
 }
