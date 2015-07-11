@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,9 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.  See the License for the specific language governing
+# permissions and limitations under the License.
 pkgconfdir=$(sysconfdir)/$(PACKAGE)
 pkgdefaultconfdir=$(datadir)/factory/$(PACKAGE)/etc
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
@@ -47,16 +47,11 @@ AM_CPPFLAGS=-I$(srcdir)/include
 
 .PHONY: indent
 indent: $(SOURCES)
+	echo $(SOURCES)
 	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^
 
 linted_CLANG_FORMATFLAGS=-i
 
-.PHONY: doxygen
-doxygen:
-	sed \
-	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
-	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
-	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
-	  $(srcdir)/Doxyfile.in | (unset POSIXLY_CORRECT; exec doxygen -)
-
+include docs/Makefile.am
+include scripts/Makefile.am
 include src/Makefile.am

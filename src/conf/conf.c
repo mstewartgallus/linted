@@ -301,9 +301,12 @@ linted_error linted_conf_db_create(struct linted_conf_db **dbp)
 
 void linted_conf_db_destroy(struct linted_conf_db *db)
 {
-	for (size_t ii = 0U; ii < db->size; ++ii)
-		linted_conf_put(db->confs[ii]);
-	linted_mem_free(db->confs);
+	size_t size = db->size;
+	struct linted_conf **confs = db->confs;
+
+	for (size_t ii = 0U; ii < size; ++ii)
+		linted_conf_put(confs[ii]);
+	linted_mem_free(confs);
 
 	linted_mem_free(db);
 }

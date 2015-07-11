@@ -120,8 +120,11 @@ struct linted_unit *
 linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
                                 char const *name)
 {
-	for (size_t ii = 0U; ii < units->size; ++ii) {
-		struct linted_unit *unit = &units->list[ii].common;
+	size_t size = units->size;
+	union unit_union *list = units->list;
+
+	for (size_t ii = 0U; ii < size; ++ii) {
+		struct linted_unit *unit = &list[ii].common;
 
 		if (0 ==
 		    strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))

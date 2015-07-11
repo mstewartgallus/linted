@@ -35,7 +35,7 @@ dnl
 AC_CANONICAL_HOST
 dnl
 AS_IF([test "x${cross_compiling}" = "xno"], [
-        AC_MSG_ERROR([dnl
+        AC_MSG_WARN([dnl
 [Native and cross builds do not result in the exact same binaries.]
 [Explicitly set the --host and --build options and do not use native builds.]dnl
 ])
