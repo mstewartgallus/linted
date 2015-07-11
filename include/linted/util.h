@@ -115,4 +115,7 @@
 #define LINTED_NO_SANITIZE_ADDRESS
 #endif
 
+#define LINTED_STATIC_ASSERT(...)		\
+	static char _static_assertion_dummy[2U * ((_Bool) __VA_ARGS__) + 1U]
+
 #endif /* LINTED_UTIL_H */

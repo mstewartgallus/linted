@@ -52,6 +52,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
+
 #if defined HAVE_POSIX_API
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
@@ -1868,8 +1870,14 @@ on_status_request(pid_t manager_pid,
 	bool is_up;
 
 	char const *unit_name = request->status.name;
+	size_t name_size = request->status.size;
 
-	errnum = linted_unit_pid(0, manager_pid, unit_name);
+	{
+		char xx[LINTED_UNIT_NAME_MAX + 1U] = {0};
+		memcpy(xx, unit_name, name_size);
+
+		errnum = linted_unit_pid(0, manager_pid, xx);
+	}
 	if (errnum != 0) {
 		errnum = 0;
 		is_up = false;
@@ -1898,12 +1906,16 @@ on_stop_request(pid_t manager_pid,
 	linted_error errnum = 0;
 	bool was_up;
 
-	char const *unit_name = request->status.name;
+	char const *unit_name = request->stop.name;
+	size_t name_size = request->stop.size;
 
 	pid_t pid;
 	{
 		pid_t xx;
-		errnum = linted_unit_pid(&xx, manager_pid, unit_name);
+		char yy[LINTED_UNIT_NAME_MAX + 1U] = {0};
+		memcpy(yy, unit_name, name_size);
+
+		errnum = linted_unit_pid(&xx, manager_pid, yy);
 		if (errnum != 0)
 			goto pid_find_failure;
 		pid = xx;

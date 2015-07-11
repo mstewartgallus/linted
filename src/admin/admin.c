@@ -31,11 +31,25 @@
  *       for linted_admin instead of just copying.
  */
 
+#define CHUNK_SIZE 512U
+
+LINTED_STATIC_ASSERT(
+    LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, size) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, name) <
+    CHUNK_SIZE);
+
+LINTED_STATIC_ASSERT(
+    LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, size) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, name) <
+    CHUNK_SIZE);
+
 struct linted_admin_in_task_read
 {
 	struct linted_io_task_read *parent;
 	void *data;
-	char request[sizeof(union linted_admin_request)];
+	char request[CHUNK_SIZE];
 };
 
 struct linted_admin_out_task_write
@@ -97,7 +111,127 @@ void linted_admin_in_task_read_request(
     struct linted_admin_in_task_read *task,
     union linted_admin_request *outp)
 {
-	memcpy(outp, &task->request, sizeof task->request);
+	char raw[CHUNK_SIZE] = {0};
+	memcpy(raw, task->request, sizeof raw);
+
+	char *tip = raw;
+
+	linted_admin_type type;
+	memcpy(&type, tip, sizeof type);
+	tip += sizeof type;
+
+	switch (type) {
+	case LINTED_ADMIN_STATUS: {
+		struct linted_admin_status_request *status =
+		    (void *)outp;
+		char *namep = status->name;
+
+		size_t size;
+		char name[LINTED_UNIT_NAME_MAX];
+
+		memcpy(&size, tip, sizeof size);
+		tip += sizeof size;
+
+		memcpy(name, tip, size);
+
+		status->type = type;
+		status->size = size;
+		memcpy(namep, name, size);
+		break;
+	}
+
+	case LINTED_ADMIN_STOP: {
+		struct linted_admin_stop_request *stop = (void *)outp;
+		char *namep = stop->name;
+
+		size_t size;
+		char name[LINTED_UNIT_NAME_MAX];
+
+		memcpy(&size, tip, sizeof size);
+		tip += sizeof size;
+
+		memcpy(name, tip, size);
+
+		stop->type = type;
+		stop->size = size;
+		memcpy(namep, name, size);
+		break;
+	}
+
+	default:
+		assert(0);
+	}
+}
+
+linted_error
+linted_admin_in_write(linted_admin_in admin,
+                      union linted_admin_request const *request)
+{
+	linted_admin_type type = request->type;
+
+	char raw[CHUNK_SIZE] = {0};
+	switch (type) {
+	case LINTED_ADMIN_STATUS: {
+		struct linted_admin_status_request const *status =
+		    (void *)request;
+		char const *namep = status->name;
+
+		size_t size;
+		char name[LINTED_UNIT_NAME_MAX];
+
+		size = status->size;
+		if (size > LINTED_UNIT_NAME_MAX)
+			return EINVAL;
+
+		memcpy(name, namep, size);
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		memcpy(tip, &size, sizeof size);
+		tip += sizeof size;
+
+		memcpy(tip, name, size);
+		break;
+	}
+
+	case LINTED_ADMIN_STOP: {
+		struct linted_admin_stop_request const *stop =
+		    (void *)request;
+		char const *namep = stop->name;
+
+		size_t size;
+		char name[LINTED_UNIT_NAME_MAX];
+
+		size = stop->size;
+		if (size > LINTED_UNIT_NAME_MAX)
+			return EINVAL;
+
+		memcpy(name, namep, size);
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		memcpy(tip, &size, sizeof size);
+		tip += sizeof size;
+
+		memcpy(tip, name, size);
+		break;
+	}
+
+	default:
+		return EINVAL;
+	}
+
+	{
+		char xx[CHUNK_SIZE];
+		memcpy(xx, raw, sizeof xx);
+		return linted_io_write_all(admin, 0, xx, sizeof xx);
+	}
 }
 
 void linted_admin_in_task_read_prepare(
@@ -185,13 +319,6 @@ linted_admin_out_task_write_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_io_task_write_data(
 	    linted_io_task_write_from_asynch(task));
-}
-
-linted_error
-linted_admin_in_write(linted_admin_in admin,
-                      union linted_admin_request const *request)
-{
-	return linted_io_write_all(admin, 0, request, sizeof *request);
 }
 
 linted_error linted_admin_out_read(linted_admin_out admin,

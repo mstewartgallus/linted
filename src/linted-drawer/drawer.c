@@ -479,13 +479,18 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	for (;;) {
 		xcb_generic_event_t *event =
 		    xcb_poll_for_event(connection);
+		if (0 == event)
+			break;
+
 		switch (event->response_type & ~0x80) {
 		case XCB_CONFIGURE_NOTIFY: {
 			xcb_configure_notify_event_t const *
 			    configure_event = (void *)event;
-			linted_gpu_resize(gpu_context,
-			                  configure_event->width,
-			                  configure_event->height);
+
+			unsigned width = configure_event->width;
+			unsigned height = configure_event->height;
+
+			linted_gpu_resize(gpu_context, width, height);
 			break;
 		}
 
