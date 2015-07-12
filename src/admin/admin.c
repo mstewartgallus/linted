@@ -23,6 +23,7 @@
 #include "linted/mem.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -40,9 +41,19 @@ LINTED_STATIC_ASSERT(
     CHUNK_SIZE);
 
 LINTED_STATIC_ASSERT(
-    LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, size) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, name) <
+    LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, type) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, size) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, name) <
+    CHUNK_SIZE);
+
+LINTED_STATIC_ASSERT(
+    LINTED_FIELD_SIZEOF(struct linted_admin_status_reply, type) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_status_reply, is_up) <
+    CHUNK_SIZE);
+
+LINTED_STATIC_ASSERT(
+    LINTED_FIELD_SIZEOF(struct linted_admin_stop_reply, type) +
+        LINTED_FIELD_SIZEOF(struct linted_admin_stop_reply, was_up) <
     CHUNK_SIZE);
 
 struct linted_admin_in_task_read
@@ -56,7 +67,7 @@ struct linted_admin_out_task_write
 {
 	struct linted_io_task_write *data;
 	void *parent;
-	char reply[sizeof(union linted_admin_reply)];
+	char reply[CHUNK_SIZE];
 };
 
 linted_error linted_admin_in_task_read_create(
@@ -288,10 +299,45 @@ void linted_admin_out_task_write_prepare(
     struct linted_admin_out_task_write *task, unsigned task_action,
     linted_ko ko, union linted_admin_reply const *reply)
 {
+	linted_admin_type type = reply->type;
+
+	char raw[CHUNK_SIZE] = {0};
+	switch (type) {
+	case LINTED_ADMIN_STATUS: {
+		struct linted_admin_status_reply const *status =
+		    (void *)reply;
+		bool is_up = status->is_up;
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		memcpy(tip, &is_up, sizeof is_up);
+		break;
+	}
+
+	case LINTED_ADMIN_STOP: {
+		struct linted_admin_stop_reply const *stop =
+		    (void *)reply;
+		bool was_up = stop->was_up;
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		memcpy(tip, &was_up, sizeof was_up);
+		break;
+	}
+
+	default:
+		assert(0);
+	}
+
 	linted_io_task_write_prepare(task->parent, task_action, ko,
-	                             (char const *)&task->reply,
-	                             sizeof task->reply);
-	memcpy(task->reply, reply, sizeof *reply);
+	                             task->reply, sizeof task->reply);
+	memcpy(task->reply, raw, sizeof raw);
 }
 
 struct linted_asynch_task *linted_admin_out_task_write_to_asynch(
@@ -312,19 +358,23 @@ linted_error linted_admin_out_read(linted_admin_out admin,
 {
 	linted_error errnum;
 
+	char chunk[CHUNK_SIZE] = {0};
+
 	size_t size;
 	{
 		size_t xx;
-		errnum = linted_io_read_all(admin, &xx, reply,
-		                            sizeof *reply);
+		errnum =
+		    linted_io_read_all(admin, &xx, chunk, sizeof chunk);
 		if (errnum != 0)
 			return errnum;
 		size = xx;
 	}
 
 	/* Sent malformed input */
-	if (size != sizeof *reply)
+	if (size != sizeof chunk)
 		return EPROTO;
+
+	memcpy(reply, chunk, sizeof *reply);
 
 	return 0;
 }

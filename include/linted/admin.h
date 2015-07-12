@@ -45,6 +45,7 @@ struct linted_admin_status_request
 
 struct linted_admin_status_reply
 {
+	linted_admin_type type;
 	_Bool is_up;
 };
 
@@ -57,6 +58,7 @@ struct linted_admin_stop_request
 
 struct linted_admin_stop_reply
 {
+	linted_admin_type type;
 	_Bool was_up;
 };
 
@@ -69,6 +71,7 @@ union linted_admin_request
 
 union linted_admin_reply
 {
+	linted_admin_type type;
 	struct linted_admin_status_reply status;
 	struct linted_admin_stop_reply stop;
 };

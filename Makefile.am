@@ -47,7 +47,6 @@ AM_CPPFLAGS=-I$(srcdir)/include
 
 .PHONY: indent
 indent: $(SOURCES)
-	echo $(SOURCES)
 	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^
 
 linted_CLANG_FORMATFLAGS=-i

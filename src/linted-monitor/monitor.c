@@ -1894,6 +1894,7 @@ reply:
 	if (errnum != 0)
 		return errnum;
 
+	reply->type = LINTED_ADMIN_STATUS;
 	reply->status.is_up = is_up;
 	return 0;
 }
@@ -1942,6 +1943,7 @@ reply:
 	if (errnum != 0)
 		return errnum;
 
+	reply->type = LINTED_ADMIN_STOP;
 	reply->stop.was_up = was_up;
 	return 0;
 }
