@@ -127,16 +127,14 @@ void linted_admin_in_task_read_request(
 		char *namep = status->name;
 
 		size_t size;
-		char name[LINTED_UNIT_NAME_MAX];
 
 		memcpy(&size, tip, sizeof size);
 		tip += sizeof size;
 
-		memcpy(name, tip, size);
+		memcpy(namep, tip, size);
 
 		status->type = type;
 		status->size = size;
-		memcpy(namep, name, size);
 		break;
 	}
 
@@ -145,16 +143,14 @@ void linted_admin_in_task_read_request(
 		char *namep = stop->name;
 
 		size_t size;
-		char name[LINTED_UNIT_NAME_MAX];
 
 		memcpy(&size, tip, sizeof size);
 		tip += sizeof size;
 
-		memcpy(name, tip, size);
+		memcpy(namep, tip, size);
 
 		stop->type = type;
 		stop->size = size;
-		memcpy(namep, name, size);
 		break;
 	}
 
@@ -177,13 +173,10 @@ linted_admin_in_write(linted_admin_in admin,
 		char const *namep = status->name;
 
 		size_t size;
-		char name[LINTED_UNIT_NAME_MAX];
 
 		size = status->size;
 		if (size > LINTED_UNIT_NAME_MAX)
 			return EINVAL;
-
-		memcpy(name, namep, size);
 
 		char *tip = raw;
 
@@ -193,7 +186,7 @@ linted_admin_in_write(linted_admin_in admin,
 		memcpy(tip, &size, sizeof size);
 		tip += sizeof size;
 
-		memcpy(tip, name, size);
+		memcpy(tip, namep, size);
 		break;
 	}
 
@@ -203,13 +196,10 @@ linted_admin_in_write(linted_admin_in admin,
 		char const *namep = stop->name;
 
 		size_t size;
-		char name[LINTED_UNIT_NAME_MAX];
 
 		size = stop->size;
 		if (size > LINTED_UNIT_NAME_MAX)
 			return EINVAL;
-
-		memcpy(name, namep, size);
 
 		char *tip = raw;
 
@@ -219,7 +209,7 @@ linted_admin_in_write(linted_admin_in admin,
 		memcpy(tip, &size, sizeof size);
 		tip += sizeof size;
 
-		memcpy(tip, name, size);
+		memcpy(tip, namep, size);
 		break;
 	}
 
@@ -227,11 +217,7 @@ linted_admin_in_write(linted_admin_in admin,
 		return EINVAL;
 	}
 
-	{
-		char xx[CHUNK_SIZE];
-		memcpy(xx, raw, sizeof xx);
-		return linted_io_write_all(admin, 0, xx, sizeof xx);
-	}
+	return linted_io_write_all(admin, 0, raw, sizeof raw);
 }
 
 void linted_admin_in_task_read_prepare(

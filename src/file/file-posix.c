@@ -47,6 +47,8 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 		if (-1 == mknodat(dirfd, pathname, mode | S_IFREG, 0)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
+			if (EEXIST == errnum)
+				return 0;
 			return errnum;
 		}
 
