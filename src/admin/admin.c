@@ -22,6 +22,7 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

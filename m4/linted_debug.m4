@@ -15,7 +15,13 @@ AC_ARG_ENABLE(
         AS_HELP_STRING(
                 [--enable-debug],
                 [enable debug mode (possibly insecure!)]),
-        [[enable_debug='yes']],
+        [
+         [enable_debug=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_debug=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_debug=no]])
+         AS_IF([test "x${enable_debug_info}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --enable-debug])])
+        ],
         [[enable_debug='no']])
 
 dnl
