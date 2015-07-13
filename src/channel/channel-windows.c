@@ -70,7 +70,8 @@ void linted_channel_destroy(struct linted_channel *channel)
 	linted_mem_free(channel);
 }
 
-linted_error linted_channel_try_send(struct linted_channel *channel, void *node)
+linted_error linted_channel_try_send(struct linted_channel *channel,
+                                     void *node)
 {
 	linted_error errnum = 0;
 
@@ -111,9 +112,8 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	channel->waiter = nodep;
 
 	do {
-		if (!SleepConditionVariableCS(&channel->filled,
-						      &channel->lock,
-						      INFINITE)) {
+		if (!SleepConditionVariableCS(
+		        &channel->filled, &channel->lock, INFINITE)) {
 			assert(false);
 		}
 	} while (0 == *nodep);

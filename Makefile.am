@@ -46,8 +46,9 @@ AM_LDFLAGS=-Xcompiler '\
 AM_CPPFLAGS=-I$(srcdir)/include
 
 .PHONY: indent
-indent: $(SOURCES)
-	$(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) $^
+indent:
+	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
+	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
 linted_CLANG_FORMATFLAGS=-i
 

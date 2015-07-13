@@ -53,7 +53,8 @@ int main(int argc, char *argv[])
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {
-		process_name = linted_start_config.canonical_process_name;
+		process_name =
+		    linted_start_config.canonical_process_name;
 		missing_name = true;
 	}
 

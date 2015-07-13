@@ -26,14 +26,14 @@
  * Implements common test functionality.
  */
 
-#define LINTED_TEST_FAILURE(format_string, ...)                               \
-    do {                                                                       \
-	extern void abort(void);					\
-        linted_io_write_format(LINTED_KO_STDERR, 0, "\
-impossible error in file %s, function %s, and line %i: " format_string,        \
-                               __FILE__, __func__, __LINE__, __VA_ARGS__);     \
-        abort();                                                               \
-    } while (0)
-
+#define LINTED_TEST_FAILURE(format_string, ...)                         \
+	do {                                                            \
+		extern void abort(void);                                \
+		linted_io_write_format(LINTED_KO_STDERR, 0, "\
+impossible error in file %s, function %s, and line %i: " format_string, \
+		                       __FILE__, __func__, __LINE__,    \
+		                       __VA_ARGS__);                    \
+		abort();                                                \
+	} while (0)
 
 #endif /* LINTED_TEST_H */

@@ -29,7 +29,7 @@
  * Various utility macroes and functions.
  */
 
-#if defined __GNUC__ && ! defined __clang__ && !defined __CHECKER__
+#if defined __GNUC__ && !defined __clang__ && !defined __CHECKER__
 #define LINTED__IS_GCC 1
 #else
 #define LINTED__IS_GCC 0
@@ -49,19 +49,22 @@
 
 #define LINTED_FIELD_SIZEOF(type, member) (sizeof((type *)0)->member)
 
-#define LINTED_ARRAY_SIZE(...) ((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
+#define LINTED_ARRAY_SIZE(...)                                         \
+	((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
 #define LINTED_UPCAST(X) (&(X)->parent)
-#define LINTED_DOWNCAST(T, X) ((T *)(((char *)(X)) - offsetof(T, parent)))
+#define LINTED_DOWNCAST(T, X)                                          \
+	((T *)(((char *)(X)) - offsetof(T, parent)))
 
-#define LINTED_NUMBER_TYPE_STRING_SIZE(T) ((CHAR_BIT * sizeof (T) - 1U) / 3U + 2U)
+#define LINTED_NUMBER_TYPE_STRING_SIZE(T)                              \
+	((CHAR_BIT * sizeof(T) - 1U) / 3U + 2U)
 
 #ifndef NDEBUG
 
-#define LINTED_ASSUME_UNREACHABLE()		\
-	do {					\
-		extern void abort(void);	\
-		abort();			\
+#define LINTED_ASSUME_UNREACHABLE()                                    \
+	do {                                                           \
+		extern void abort(void);                               \
+		abort();                                               \
 	} while (0)
 #define LINTED_ASSUME(X) assert(X)
 
@@ -70,52 +73,54 @@
 #if LINTED_UTIL_HAS_BUILTIN(__builtin_unreachable) || LINTED__IS_GCC
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
 #else
-#define LINTED_ASSUME_UNREACHABLE()		\
-	do {					\
+#define LINTED_ASSUME_UNREACHABLE()                                    \
+	do {                                                           \
 	} while (0)
 #endif
 
 #if LINTED_UTIL_HAS_BUILTIN(__builtin_assume)
 #define LINTED_ASSUME(X) __builtin_assume(X)
 #elif LINTED__IS_GCC
-#define LINTED_ASSUME(X)				\
-	do {						\
-		if (!(X))				\
-			LINTED_ASSUME_UNREACHABLE();	\
-	} while(0)
+#define LINTED_ASSUME(X)                                               \
+	do {                                                           \
+		if (!(X))                                              \
+			LINTED_ASSUME_UNREACHABLE();                   \
+	} while (0)
 #else
-#define LINTED_ASSUME(X)			\
-	do {					\
+#define LINTED_ASSUME(X)                                               \
+	do {                                                           \
 	} while (0)
 #endif
 
 #endif
 
 #if LINTED_UTIL_HAS_ATTRIBUTE(__format__) || LINTED__IS_GCC
-#define LINTED_FORMAT(X, Y, Z) __attribute__ ((__format__ (X, Y, Z)))
+#define LINTED_FORMAT(X, Y, Z) __attribute__((__format__(X, Y, Z)))
 #else
 #define LINTED_FORMAT(X, Y, Z)
 #endif
 
 #if LINTED_UTIL_HAS_ATTRIBUTE(__noclone__) || LINTED__IS_GCC
-#define LINTED_NOCLONE __attribute__ ((__noclone__))
+#define LINTED_NOCLONE __attribute__((__noclone__))
 #else
 #define LINTED_NOCLONE
 #endif
 
 #if LINTED_UTIL_HAS_ATTRIBUTE(__noinline__) || LINTED__IS_GCC
-#define LINTED_NOINLINE __attribute__ ((__noinline__))
+#define LINTED_NOINLINE __attribute__((__noinline__))
 #else
 #define LINTED_NOINLINE
 #endif
 
 #if LINTED_UTIL_HAS_ATTRIBUTE(__no_sanitize_address__) || LINTED__IS_GCC
-#define LINTED_NO_SANITIZE_ADDRESS __attribute__ ((__no_sanitize_address__))
+#define LINTED_NO_SANITIZE_ADDRESS                                     \
+	__attribute__((__no_sanitize_address__))
 #else
 #define LINTED_NO_SANITIZE_ADDRESS
 #endif
 
-#define LINTED_STATIC_ASSERT(...)		\
-	static char _static_assertion_dummy[2U * ((_Bool) __VA_ARGS__) + 1U]
+#define LINTED_STATIC_ASSERT(...)                                      \
+	static char                                                    \
+	    _static_assertion_dummy[2U * ((_Bool)__VA_ARGS__) + 1U]
 
 #endif /* LINTED_UTIL_H */
