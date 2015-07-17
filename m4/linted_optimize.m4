@@ -44,6 +44,8 @@ dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl
         [-fuse-linker-plugin]dnl
         [-Wl,-O1]dnl
+        [-Wl,-X] [-Wl,--discard-locals]dnl Remove compiler generated
+                                       dnl symbols
         [-Wl,--sort-common]dnl
         [-Wl,--hash-style=gnu]dnl
         [-Wl,--as-needed]dnl

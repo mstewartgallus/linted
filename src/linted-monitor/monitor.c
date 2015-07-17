@@ -152,11 +152,11 @@ static linted_error on_kill_read(struct linted_asynch_task *task);
 
 static linted_error
 on_status_request(pid_t manager_pid,
-                  union linted_admin_request const *request,
+		  struct linted_admin_status_request const *request,
                   union linted_admin_reply *reply);
 static linted_error
 on_stop_request(pid_t manager_pid,
-                union linted_admin_request const *request,
+		struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply);
 
 static linted_error on_child_trapped(char const *process_name,
@@ -1205,7 +1205,7 @@ static linted_error service_activate(char const *process_name,
 {
 	linted_error errnum = 0;
 
-	char const *name = unit->name;
+	char const *unit_name = unit->name;
 
 	struct linted_unit_service *unit_service = (void *)unit;
 
@@ -1215,7 +1215,7 @@ static linted_error service_activate(char const *process_name,
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = linted_unit_pid(&xx, manager_pid, name);
+		errnum = linted_unit_pid(&xx, manager_pid, unit_name);
 		if (errnum != 0)
 			goto service_not_found;
 		child = xx;
@@ -1223,7 +1223,7 @@ static linted_error service_activate(char const *process_name,
 
 	linted_io_write_format(LINTED_KO_STDERR, 0,
 	                       "%s: ptracing %" PRIiMAX " %s\n",
-	                       process_name, (intmax_t)child, name);
+	                       process_name, (intmax_t)child, unit_name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1253,7 +1253,7 @@ spawn_service:
 		{
 			linted_ko xx;
 			errnum = linted_dir_create(&xx, LINTED_KO_CWD,
-			                           name, 0U, S_IRWXU);
+			                           unit_name, 0U, S_IRWXU);
 			if (errnum != 0)
 				return errnum;
 			name_dir = xx;
@@ -1295,7 +1295,7 @@ spawn_service:
 	char *chrootdir;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/chroot", name)) {
+		if (-1 == asprintf(&xx, "%s/chroot", unit_name)) {
 			errnum = errno;
 			LINTED_ASSUME(errnum != 0);
 			return errnum;
@@ -1315,7 +1315,7 @@ spawn_service:
 	char *service_name_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", name))
+		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", unit_name))
 			goto service_asprintf_failed;
 		service_name_setting = xx;
 		goto service_asprintf_succeeded;
@@ -1377,11 +1377,15 @@ envvar_allocate_succeeded:
 	size_t num_options = 0U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
 		struct my_option option = options[ii];
-		if (!option.flag)
+
+		char const *value = option.value;
+		bool flag = option.flag;
+
+		if (!flag)
 			continue;
 
 		++num_options;
-		if (option.value != 0)
+		if (value != 0)
 			++num_options;
 	}
 
@@ -1400,12 +1404,17 @@ envvar_allocate_succeeded:
 	size_t ix = 1U;
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
 		struct my_option option = options[ii];
-		if (!option.flag)
+
+		char const *name = option.name;
+		char const *value = option.value;
+		bool flag = option.flag;
+
+		if (!flag)
 			continue;
 
-		args[ix++] = option.name;
-		if (option.value != 0)
-			args[ix++] = option.value;
+		args[ix++] = name;
+		if (value != 0)
+			args[ix++] = value;
 	}
 
 	args[1U + num_options] = "--";
@@ -1606,11 +1615,11 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 	switch (request.type) {
 	case LINTED_ADMIN_STATUS:
 		errnum =
-		    on_status_request(manager_pid, &request, &reply);
+			on_status_request(manager_pid, (void*)&request, &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(manager_pid, &request, &reply);
+		errnum = on_stop_request(manager_pid, (void*)&request, &reply);
 		break;
 
 	default:
@@ -1863,14 +1872,14 @@ static linted_error on_child_about_to_clone(pid_t pid)
 
 static linted_error
 on_status_request(pid_t manager_pid,
-                  union linted_admin_request const *request,
+                  struct linted_admin_status_request const *request,
                   union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
 	bool is_up;
 
-	char const *unit_name = request->status.name;
-	size_t name_size = request->status.size;
+	char const *unit_name = request->name;
+	size_t name_size = request->size;
 
 	{
 		char xx[LINTED_UNIT_NAME_MAX + 1U] = {0};
@@ -1901,14 +1910,14 @@ reply:
 
 static linted_error
 on_stop_request(pid_t manager_pid,
-                union linted_admin_request const *request,
+		struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
 	bool was_up;
 
-	char const *unit_name = request->stop.name;
-	size_t name_size = request->stop.size;
+	char const *unit_name = request->name;
+	size_t name_size = request->size;
 
 	pid_t pid;
 	{
