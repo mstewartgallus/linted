@@ -126,9 +126,11 @@ dnl
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mwindows]dnl
+        ])
+        LINTED_CHECK_CFLAGS([linted_CFLAGS_UNICODE], [
                 [-municode]dnl
         ])
-        [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
+        AC_SUBST([linted_CFLAGS_UNICODE])
 dnl
         LINTED_CHECK_LIB([CRT_LIBS], [-lmsvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
                 AC_MSG_ERROR([Unable to find a CRT library])

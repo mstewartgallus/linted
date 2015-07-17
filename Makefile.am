@@ -35,6 +35,11 @@ MOSTLYCLEANFILES=
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
+AM_CFLAGS=
+if WINDOWS_API
+AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
+endif
+
 AM_LDFLAGS=-Xcompiler '\
   $(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
