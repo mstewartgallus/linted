@@ -53,12 +53,12 @@ linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 {
 	extern void *malloc(size_t size);
 
-	linted_error errnum;
+	linted_error err;
 
 	size_t total;
-	errnum = linted_mem_safe_multiply(nmemb, size, &total);
-	if (errnum != 0)
-		return errnum;
+	err = linted_mem_safe_multiply(nmemb, size, &total);
+	if (err != 0)
+		return err;
 
 	void *memory = malloc(total);
 	if (total > 0U && 0 == memory)
@@ -115,12 +115,12 @@ static inline linted_error linted_mem_realloc_array(void **memp,
 {
 	extern void *realloc(void *ptr, size_t size);
 
-	linted_error errnum;
+	linted_error err;
 
 	size_t total;
-	errnum = linted_mem_safe_multiply(nmemb, size, &total);
-	if (errnum != 0)
-		return errnum;
+	err = linted_mem_safe_multiply(nmemb, size, &total);
+	if (err != 0)
+		return err;
 
 	void *new_memory = realloc(memory, total);
 	if (total > 0U && 0 == new_memory)

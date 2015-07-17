@@ -37,7 +37,7 @@
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (LINTED_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
@@ -84,8 +84,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	/*
-	 * Always, be safe for execs and use O_NONBLOCK because asynch
-	 * functions handle that anyways and open may block otherwise.
+	 * Always, be safe for execs and terminals.
 	 */
 	int oflags = O_CLOEXEC | O_NOCTTY;
 
@@ -112,64 +111,62 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (ko_directory)
 		oflags |= O_DIRECTORY;
 
-	int fildes;
+	int fd;
 	do {
-		fildes = openat(dirko, pathname, oflags);
-		if (-1 == fildes) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		fd = openat(dirko, pathname, oflags);
+		if (-1 == fd) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		} else {
-			errnum = 0;
+			err = 0;
 		}
-	} while (EINTR == errnum);
-	if (errnum != 0)
-		return errnum;
+	} while (EINTR == err);
+	if (err != 0)
+		return err;
 
 	if (ko_fifo) {
 		mode_t mode;
 		{
 			struct stat buf;
-			if (-1 == fstat(fildes, &buf)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+			if (-1 == fstat(fd, &buf)) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
 				goto close_file;
 			}
 			mode = buf.st_mode;
 		}
 
 		if (!S_ISFIFO(mode)) {
-			errnum = LINTED_ERROR_INVALID_PARAMETER;
+			err = LINTED_ERROR_INVALID_PARAMETER;
 			goto close_file;
 		}
 	}
 
 	if (ko_wronly) {
 		if (-1 ==
-		    fcntl(fildes, F_SETFL, (long)oflags | O_NONBLOCK)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		    fcntl(fd, F_SETFL, (long)oflags | O_NONBLOCK)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto close_file;
 		}
 	}
 
-	*kop = fildes;
+	*kop = fd;
 
 	return 0;
 
 close_file:
-	linted_ko_close(fildes);
-	return errnum;
+	linted_ko_close(fd);
+	return err;
 }
 
 linted_error linted_ko_close(linted_ko ko)
 {
-	linted_error errnum;
+	linted_error err;
 	/*
 	 * The state of a file descriptor after close gives an EINTR
-	 * error
-	 * is unspecified by POSIX so this function avoids the problem
-	 * by
-	 * simply blocking all signals.
+	 * error is unspecified by POSIX so this function avoids the
+	 * problem by simply blocking all signals.
 	 */
 
 	sigset_t sigset;
@@ -177,23 +174,23 @@ linted_error linted_ko_close(linted_ko ko)
 	/* First use the signal set for the full set */
 	sigfillset(&sigset);
 
-	errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
-	if (errnum != 0)
-		return errnum;
+	err = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+	if (err != 0)
+		return err;
 
 	/* Then reuse the signal set for the old set */
 
 	if (-1 == close(ko)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	} else {
-		errnum = 0;
+		err = 0;
 	}
 
-	linted_error mask_errnum =
+	linted_error mask_err =
 	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
-	if (0 == errnum)
-		errnum = mask_errnum;
+	if (0 == err)
+		err = mask_err;
 
-	return errnum;
+	return err;
 }

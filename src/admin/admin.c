@@ -74,20 +74,20 @@ struct linted_admin_out_task_write
 linted_error linted_admin_in_task_read_create(
     struct linted_admin_in_task_read **taskp, void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_admin_in_task_read *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_io_task_read *parent;
 	{
 		struct linted_io_task_read *xx;
-		errnum = linted_io_task_read_create(&xx, task);
-		if (errnum != 0)
+		err = linted_io_task_read_create(&xx, task);
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -97,7 +97,7 @@ linted_error linted_admin_in_task_read_create(
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_admin_in_task_read_destroy(
@@ -257,20 +257,20 @@ linted_admin_in_task_read_from_asynch(struct linted_asynch_task *task)
 linted_error linted_admin_out_task_write_create(
     struct linted_admin_out_task_write **taskp, void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_admin_out_task_write *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_io_task_write *parent;
 	{
 		struct linted_io_task_write *xx;
-		errnum = linted_io_task_write_create(&xx, task);
-		if (errnum != 0)
+		err = linted_io_task_write_create(&xx, task);
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -280,7 +280,7 @@ linted_error linted_admin_out_task_write_create(
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_admin_out_task_write_destroy(
@@ -357,17 +357,17 @@ linted_admin_out_task_write_from_asynch(struct linted_asynch_task *task)
 linted_error linted_admin_out_read(linted_admin_out admin,
                                    union linted_admin_reply *reply)
 {
-	linted_error errnum;
+	linted_error err;
 
 	char chunk[CHUNK_SIZE] = {0};
 
 	size_t size;
 	{
 		size_t xx;
-		errnum =
+		err =
 		    linted_io_read_all(admin, &xx, chunk, sizeof chunk);
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 		size = xx;
 	}
 

@@ -23,20 +23,20 @@
 
 int main(void)
 {
-	linted_error errnum;
+	linted_error err;
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, 0U, 0U);
-		if (errnum != 0)
-			LINTED_TEST_FAILURE("errnum == %i\n", errnum);
+		err = linted_mem_alloc_array(&xx, 0U, 0U);
+		if (err != 0)
+			LINTED_TEST_FAILURE("err == %i\n", err);
 		linted_mem_free(xx);
 	}
 
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, 0, 0U, 0U);
-		if (errnum != 0)
-			LINTED_TEST_FAILURE("errnum == %i\n", errnum);
+		err = linted_mem_realloc_array(&xx, 0, 0U, 0U);
+		if (err != 0)
+			LINTED_TEST_FAILURE("err == %i\n", err);
 		linted_mem_free(xx);
 	}
 

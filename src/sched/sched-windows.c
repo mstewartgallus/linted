@@ -42,10 +42,10 @@ linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
                               void *data)
 {
 	struct linted_asynch_task *xx;
-	linted_error errnum = linted_asynch_task_create(
+	linted_error err = linted_asynch_task_create(
 	    &xx, data, LINTED_ASYNCH_TASK_IDLE);
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 	*taskp = (struct linted_sched_task_idle *)xx;
 
 	return 0;
@@ -82,21 +82,21 @@ void linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
 linted_error linted_sched_task_sleep_until_create(
     struct linted_sched_task_sleep_until **taskp, void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_sched_task_sleep_until *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SLEEP_UNTIL);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -106,7 +106,7 @@ linted_error linted_sched_task_sleep_until_create(
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_sched_task_sleep_until_destroy(

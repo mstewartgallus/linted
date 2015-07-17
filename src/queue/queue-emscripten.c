@@ -36,13 +36,13 @@ void linted_queue_node(struct linted_queue_node *node)
 
 linted_error linted_queue_create(struct linted_queue **queuep)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_queue *queue;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *queue);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *queue);
+		if (err != 0)
+			return err;
 		queue = xx;
 	}
 
@@ -63,7 +63,7 @@ void linted_queue_destroy(struct linted_queue *queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
-	linted_error errnum;
+	linted_error err;
 
 	assert(queue != 0);
 	assert(node != 0);

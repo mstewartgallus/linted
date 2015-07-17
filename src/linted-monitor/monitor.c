@@ -206,23 +206,23 @@ static unsigned char monitor_start(char const *process_name,
                                    size_t argc,
                                    char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = set_death_sig(SIGKILL);
-	if (errnum != 0) {
+	err = set_death_sig(SIGKILL);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "set_death_sig: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	char const *manager_pid_str;
 	{
 		char *xx;
-		errnum = linted_environment_get("MANAGERPID", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("MANAGERPID", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		manager_pid_str = xx;
@@ -231,12 +231,11 @@ static unsigned char monitor_start(char const *process_name,
 	char const *unit_path;
 	{
 		char *xx;
-		errnum =
-		    linted_environment_get("LINTED_UNIT_PATH", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_UNIT_PATH", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		unit_path = xx;
@@ -245,11 +244,11 @@ static unsigned char monitor_start(char const *process_name,
 	char const *sandbox;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_SANDBOX", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_SANDBOX", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		sandbox = xx;
@@ -258,11 +257,11 @@ static unsigned char monitor_start(char const *process_name,
 	char const *waiter;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_WAITER", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_WAITER", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		waiter = xx;
@@ -271,11 +270,11 @@ static unsigned char monitor_start(char const *process_name,
 	char const *data_dir_path;
 	{
 		char *xx;
-		errnum = linted_environment_get("XDG_DATA_HOME", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("XDG_DATA_HOME", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		data_dir_path = xx;
@@ -284,11 +283,11 @@ static unsigned char monitor_start(char const *process_name,
 	char const *runtime_dir_path;
 	{
 		char *xx;
-		errnum = linted_environment_get("XDG_RUNTIME_DIR", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("XDG_RUNTIME_DIR", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		runtime_dir_path = xx;
@@ -344,7 +343,7 @@ static unsigned char monitor_start(char const *process_name,
 	char start = manager_pid_str[0U];
 	if ('\0' == start || '+' == start || '-' == start ||
 	    isspace(start)) {
-		errnum = EINVAL;
+		err = EINVAL;
 	} else {
 		char *endptr;
 
@@ -353,23 +352,23 @@ static unsigned char monitor_start(char const *process_name,
 		{
 			char *xx;
 			yy = strtol(manager_pid_str, &xx, 10);
-			errnum = errno;
-			if (errnum != 0)
+			err = errno;
+			if (err != 0)
 				goto on_error;
 			endptr = xx;
 		}
 		if (endptr[0U] != '\0') {
-			errnum = EINVAL;
+			err = EINVAL;
 			goto on_error;
 		}
 
 		if (yy < 0) {
-			errnum = ERANGE;
+			err = ERANGE;
 			goto on_error;
 		}
 
 		if (yy > PID_MAX) {
-			errnum = ERANGE;
+			err = ERANGE;
 			goto on_error;
 		}
 
@@ -377,9 +376,9 @@ static unsigned char monitor_start(char const *process_name,
 	}
 
 on_error:
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "strtol: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -433,47 +432,47 @@ on_error:
 		process_data_dir_path = xx;
 	}
 
-	errnum = linted_dir_create(
-	    0, LINTED_KO_CWD, package_runtime_dir_path, 0U, S_IRWXU);
-	if (errnum != 0) {
+	err = linted_dir_create(0, LINTED_KO_CWD,
+	                        package_runtime_dir_path, 0U, S_IRWXU);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_dir_create(0, LINTED_KO_CWD,
-	                           package_data_dir_path, 0U, S_IRWXU);
-	if (errnum != 0) {
+	err = linted_dir_create(0, LINTED_KO_CWD, package_data_dir_path,
+	                        0U, S_IRWXU);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_dir_create(
-	    0, LINTED_KO_CWD, process_runtime_dir_path, 0U, S_IRWXU);
-	if (errnum != 0) {
+	err = linted_dir_create(0, LINTED_KO_CWD,
+	                        process_runtime_dir_path, 0U, S_IRWXU);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_dir_create(0, LINTED_KO_CWD,
-	                           process_data_dir_path, 0U, S_IRWXU);
-	if (errnum != 0) {
+	err = linted_dir_create(0, LINTED_KO_CWD, process_data_dir_path,
+	                        0U, S_IRWXU);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	linted_ko cwd;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, ".",
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD, ".",
+		                     LINTED_KO_DIRECTORY);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		cwd = xx;
@@ -496,13 +495,13 @@ on_error:
 	linted_admin_in admin_in;
 	{
 		linted_admin_in xx;
-		errnum = linted_fifo_create(
-		    &xx, LINTED_KO_CWD, "admin-in", LINTED_FIFO_RDWR,
-		    S_IRUSR | S_IWUSR);
-		if (errnum != 0) {
+		err = linted_fifo_create(&xx, LINTED_KO_CWD, "admin-in",
+		                         LINTED_FIFO_RDWR,
+		                         S_IRUSR | S_IWUSR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_fifo_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		admin_in = xx;
@@ -511,13 +510,13 @@ on_error:
 	linted_admin_out admin_out;
 	{
 		linted_admin_out xx;
-		errnum = linted_fifo_create(
-		    &xx, LINTED_KO_CWD, "admin-out", LINTED_FIFO_RDWR,
-		    S_IRUSR | S_IWUSR);
-		if (errnum != 0) {
+		err = linted_fifo_create(&xx, LINTED_KO_CWD,
+		                         "admin-out", LINTED_FIFO_RDWR,
+		                         S_IRUSR | S_IWUSR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_fifo_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		admin_out = xx;
@@ -526,13 +525,13 @@ on_error:
 	linted_fifo kill_fifo;
 	{
 		linted_admin_out xx;
-		errnum = linted_fifo_create(&xx, LINTED_KO_CWD, "kill",
-		                            LINTED_FIFO_RDWR,
-		                            S_IRUSR | S_IWUSR);
-		if (errnum != 0) {
+		err = linted_fifo_create(&xx, LINTED_KO_CWD, "kill",
+		                         LINTED_FIFO_RDWR,
+		                         S_IRUSR | S_IWUSR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_fifo_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		kill_fifo = xx;
@@ -541,11 +540,11 @@ on_error:
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0) {
+		err = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_asynch_pool_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		pool = xx;
@@ -567,12 +566,12 @@ on_error:
 
 	{
 		struct linted_signal_task_wait *xx;
-		errnum = linted_signal_task_wait_create(
-		    &xx, &signal_wait_data);
-		if (errnum != 0) {
+		err = linted_signal_task_wait_create(&xx,
+		                                     &signal_wait_data);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_io_task_read_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		signal_wait_task = xx;
@@ -580,12 +579,11 @@ on_error:
 
 	{
 		struct linted_pid_task_waitid *xx;
-		errnum =
-		    linted_pid_task_waitid_create(&xx, &sandbox_data);
-		if (errnum != 0) {
+		err = linted_pid_task_waitid_create(&xx, &sandbox_data);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_pid_task_waitid_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		sandbox_task = xx;
@@ -593,13 +591,13 @@ on_error:
 
 	{
 		struct linted_admin_in_task_read *xx;
-		errnum = linted_admin_in_task_read_create(
+		err = linted_admin_in_task_read_create(
 		    &xx, &admin_in_read_data);
-		if (errnum != 0) {
+		if (err != 0) {
 			linted_log(
 			    LINTED_LOG_ERROR,
 			    "linted_admin_in_task_read_create: %s",
-			    linted_error_string(errnum));
+			    linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		admin_in_read_task = xx;
@@ -607,13 +605,13 @@ on_error:
 
 	{
 		struct linted_admin_out_task_write *xx;
-		errnum = linted_admin_out_task_write_create(
+		err = linted_admin_out_task_write_create(
 		    &xx, &admin_out_write_data);
-		if (errnum != 0) {
+		if (err != 0) {
 			linted_log(
 			    LINTED_LOG_ERROR,
 			    "linted_admin_out_task_write_create: %s",
-			    linted_error_string(errnum));
+			    linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		write_task = xx;
@@ -621,12 +619,11 @@ on_error:
 
 	{
 		struct linted_io_task_read *xx;
-		errnum =
-		    linted_io_task_read_create(&xx, &kill_read_data);
-		if (errnum != 0) {
+		err = linted_io_task_read_create(&xx, &kill_read_data);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_io_task_read_create: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		kill_read_task = xx;
@@ -635,11 +632,11 @@ on_error:
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
-		errnum = conf_db_from_path(&xx, cwd, unit_path);
-		if (errnum != 0) {
+		err = conf_db_from_path(&xx, cwd, unit_path);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "conf_db_from_path: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		conf_db = xx;
@@ -648,11 +645,11 @@ on_error:
 	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
-		errnum = create_unit_db(&xx, conf_db, sandbox, waiter);
-		if (errnum != 0) {
+		err = create_unit_db(&xx, conf_db, sandbox, waiter);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "create_unit_db: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		unit_db = xx;
@@ -661,9 +658,8 @@ on_error:
 	/**
 	 * @todo Warn about unactivated unit_db.
 	 */
-	errnum =
-	    activate_unit_db(process_name, unit_db, manager_pid, cwd);
-	if (errnum != 0)
+	err = activate_unit_db(process_name, unit_db, manager_pid, cwd);
+	if (err != 0)
 		goto kill_procs;
 
 	signal_wait_data.time_to_exit = &time_to_exit;
@@ -729,14 +725,14 @@ on_error:
 			completed_task = xx;
 		}
 
-		errnum = dispatch(completed_task);
-		if (errnum != 0)
+		err = dispatch(completed_task);
+		if (err != 0)
 			goto cancel_tasks;
 	}
 
 cancel_tasks:
-	if (LINTED_ERROR_CANCELLED == errnum)
-		errnum = 0;
+	if (LINTED_ERROR_CANCELLED == err)
+		err = 0;
 
 	linted_asynch_task_cancel(
 	    linted_pid_task_waitid_to_asynch(sandbox_task));
@@ -754,8 +750,8 @@ cancel_tasks:
 		}
 
 		linted_error dispatch_error = dispatch(completed_task);
-		if (0 == errnum)
-			errnum = dispatch_error;
+		if (0 == err)
+			err = dispatch_error;
 	}
 
 kill_procs:
@@ -763,18 +759,18 @@ kill_procs:
 
 	linted_conf_db_destroy(conf_db);
 
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
+	linted_error destroy_err = linted_asynch_pool_destroy(pool);
+	if (0 == err)
+		err = destroy_err;
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
 	(void)sandbox_task;
 	(void)admin_in_read_task;
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -786,14 +782,14 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
                                    char const *sandbox,
                                    char const *waiter)
 {
-	linted_error errnum;
+	linted_error err;
 
 	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
-		errnum = linted_unit_db_create(&xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_unit_db_create(&xx);
+		if (err != 0)
+			return err;
 		unit_db = xx;
 	}
 
@@ -802,8 +798,8 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		struct linted_unit *unit;
 		{
 			struct linted_unit *xx;
-			errnum = linted_unit_db_add_unit(unit_db, &xx);
-			if (errnum != 0)
+			err = linted_unit_db_add_unit(unit_db, &xx);
+			if (err != 0)
 				goto destroy_unit_db;
 			unit = xx;
 		}
@@ -823,14 +819,14 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		} else if (0 == strcmp(suffix, "service")) {
 			unit_type = LINTED_UNIT_TYPE_SERVICE;
 		} else {
-			errnum = LINTED_ERROR_INVALID_PARAMETER;
+			err = LINTED_ERROR_INVALID_PARAMETER;
 			goto destroy_unit_db;
 		}
 
 		char *unit_name = strndup(file_name, dot - file_name);
 		if (0 == unit_name) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto destroy_unit_db;
 		}
 
@@ -841,9 +837,8 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		case LINTED_UNIT_TYPE_SERVICE: {
 			struct linted_unit_service *s = (void *)unit;
 
-			errnum =
-			    service_create(s, conf, sandbox, waiter);
-			if (errnum != 0)
+			err = service_create(s, conf, sandbox, waiter);
+			if (err != 0)
 				goto destroy_unit_db;
 			break;
 		}
@@ -851,8 +846,8 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		case LINTED_UNIT_TYPE_SOCKET: {
 			struct linted_unit_socket *s = (void *)unit;
 
-			errnum = socket_create(s, conf);
-			if (errnum != 0)
+			err = socket_create(s, conf);
+			if (err != 0)
 				goto destroy_unit_db;
 			break;
 		}
@@ -861,11 +856,11 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 
 	*unit_dbp = unit_db;
 
-	return errnum;
+	return err;
 
 destroy_unit_db:
 	linted_unit_db_destroy(unit_db);
-	return errnum;
+	return err;
 }
 
 static linted_error service_create(struct linted_unit_service *unit,
@@ -873,7 +868,7 @@ static linted_error service_create(struct linted_unit_service *unit,
                                    char const *sandbox,
                                    char const *waiter)
 {
-	linted_error errnum;
+	linted_error err;
 
 	char const *const *types =
 	    linted_conf_find(conf, "Service", "Type");
@@ -893,9 +888,9 @@ static linted_error service_create(struct linted_unit_service *unit,
 	char const *type;
 	{
 		char const *xx;
-		errnum = str_from_strs(types, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(types, &xx);
+		if (err != 0)
+			return err;
 		type = xx;
 	}
 
@@ -905,27 +900,27 @@ static linted_error service_create(struct linted_unit_service *unit,
 	char const *no_new_privs;
 	{
 		char const *xx;
-		errnum = str_from_strs(no_new_privss, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(no_new_privss, &xx);
+		if (err != 0)
+			return err;
 		no_new_privs = xx;
 	}
 
 	char const *fstab;
 	{
 		char const *xx;
-		errnum = str_from_strs(fstabs, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(fstabs, &xx);
+		if (err != 0)
+			return err;
 		fstab = xx;
 	}
 
 	char const *chdir_path;
 	{
 		char const *xx;
-		errnum = str_from_strs(chdir_paths, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(chdir_paths, &xx);
+		if (err != 0)
+			return err;
 		chdir_path = xx;
 	}
 
@@ -967,9 +962,9 @@ static linted_error service_create(struct linted_unit_service *unit,
 	bool no_new_privs_value = false;
 	if (no_new_privs != 0) {
 		bool xx;
-		errnum = bool_from_cstring(no_new_privs, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = bool_from_cstring(no_new_privs, &xx);
+		if (err != 0)
+			return err;
 		no_new_privs_value = xx;
 	}
 
@@ -995,7 +990,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf)
 {
-	linted_error errnum;
+	linted_error err;
 
 	char const *const *listen_dirs =
 	    linted_conf_find(conf, "Socket", "ListenDirectory");
@@ -1012,36 +1007,36 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 	char const *listen_dir;
 	{
 		char const *xx;
-		errnum = str_from_strs(listen_dirs, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(listen_dirs, &xx);
+		if (err != 0)
+			return err;
 		listen_dir = xx;
 	}
 
 	char const *listen_file;
 	{
 		char const *xx;
-		errnum = str_from_strs(listen_files, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(listen_files, &xx);
+		if (err != 0)
+			return err;
 		listen_file = xx;
 	}
 
 	char const *listen_fifo;
 	{
 		char const *xx;
-		errnum = str_from_strs(listen_fifos, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(listen_fifos, &xx);
+		if (err != 0)
+			return err;
 		listen_fifo = xx;
 	}
 
 	char const *fifo_size;
 	{
 		char const *xx;
-		errnum = str_from_strs(fifo_sizes, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = str_from_strs(fifo_sizes, &xx);
+		if (err != 0)
+			return err;
 		fifo_size = xx;
 	}
 
@@ -1097,7 +1092,7 @@ static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
                                      pid_t manager_pid, linted_ko cwd)
 {
-	linted_error errnum;
+	linted_error err;
 
 	size_t db_size = linted_unit_db_size(unit_db);
 
@@ -1108,9 +1103,9 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
 			continue;
 
-		errnum = socket_activate((void *)unit);
-		if (errnum != 0)
-			return errnum;
+		err = socket_activate((void *)unit);
+		if (err != 0)
+			return err;
 	}
 
 	for (size_t ii = 0U; ii < db_size; ++ii) {
@@ -1120,10 +1115,10 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
-		errnum = service_activate(process_name, unit,
-		                          manager_pid, cwd, true);
-		if (errnum != 0)
-			return errnum;
+		err = service_activate(process_name, unit, manager_pid,
+		                       cwd, true);
+		if (err != 0)
+			return err;
 	}
 
 	return 0;
@@ -1131,20 +1126,20 @@ static linted_error activate_unit_db(char const *process_name,
 
 static linted_error socket_activate(struct linted_unit_socket *unit)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	linted_unit_type type = unit->type;
 	char const *path = unit->path;
 
 	switch (type) {
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		errnum = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
-		                           S_IRWXU);
+		err = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
+		                        S_IRWXU);
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		errnum = linted_file_create(0, LINTED_KO_CWD, path, 0U,
-		                            S_IRWXU);
+		err = linted_file_create(0, LINTED_KO_CWD, path, 0U,
+		                         S_IRWXU);
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
@@ -1155,35 +1150,35 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			linted_ko fifo;
 			{
 				linted_ko xx;
-				errnum = linted_fifo_create(
+				err = linted_fifo_create(
 				    &xx, LINTED_KO_CWD, path,
 				    LINTED_FIFO_RDWR, S_IRWXU);
-				if (errnum != 0)
-					return errnum;
+				if (err != 0)
+					return err;
 				fifo = xx;
 			}
 
 			if (-1 ==
 			    fcntl(fifo, F_SETPIPE_SZ, fifo_size)) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+				err = errno;
+				LINTED_ASSUME(err != 0);
 			}
 
 			linted_error close_err = linted_ko_close(fifo);
-			if (0 == errnum)
-				errnum = close_err;
+			if (0 == err)
+				err = close_err;
 		} else
 #endif
 		{
-			errnum = linted_fifo_create(0, LINTED_KO_CWD,
-			                            path, 0U, S_IRWXU);
+			err = linted_fifo_create(0, LINTED_KO_CWD, path,
+			                         0U, S_IRWXU);
 		}
 
 		break;
 	}
 	}
 
-	return errnum;
+	return err;
 }
 
 struct my_option
@@ -1198,7 +1193,7 @@ static linted_error service_activate(char const *process_name,
                                      pid_t manager_pid, linted_ko cwd,
                                      bool check)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	char const *unit_name = unit->name;
 
@@ -1210,8 +1205,8 @@ static linted_error service_activate(char const *process_name,
 	pid_t child;
 	{
 		pid_t xx;
-		errnum = linted_unit_pid(&xx, manager_pid, unit_name);
-		if (errnum != 0)
+		err = linted_unit_pid(&xx, manager_pid, unit_name);
+		if (err != 0)
 			goto service_not_found;
 		child = xx;
 	}
@@ -1223,8 +1218,8 @@ static linted_error service_activate(char const *process_name,
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
 service_not_found:
-	if (errnum != ESRCH)
-		return errnum;
+	if (err != ESRCH)
+		return err;
 spawn_service:
 	;
 	char const *const *exec_start = unit_service->exec_start;
@@ -1247,20 +1242,20 @@ spawn_service:
 		linted_ko name_dir;
 		{
 			linted_ko xx;
-			errnum = linted_dir_create(
-			    &xx, LINTED_KO_CWD, unit_name, 0U, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
+			err = linted_dir_create(&xx, LINTED_KO_CWD,
+			                        unit_name, 0U, S_IRWXU);
+			if (err != 0)
+				return err;
 			name_dir = xx;
 		}
 
-		errnum = linted_dir_create(0, name_dir, "chroot", 0U,
-		                           S_IRWXU);
+		err = linted_dir_create(0, name_dir, "chroot", 0U,
+		                        S_IRWXU);
 
 		linted_ko_close(name_dir);
 
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 	}
 
 	if (fstab != 0 && !clone_newns)
@@ -1271,9 +1266,9 @@ spawn_service:
 	linted_sched_priority current_priority;
 	{
 		linted_sched_priority xx;
-		errnum = linted_sched_getpriority(&xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_sched_getpriority(&xx);
+		if (err != 0)
+			return err;
 		current_priority = xx;
 	}
 
@@ -1291,9 +1286,9 @@ spawn_service:
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%s/chroot", unit_name)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 		chrootdir = xx;
 	}
@@ -1301,8 +1296,8 @@ spawn_service:
 	char **envvars;
 	{
 		char **xx;
-		errnum = filter_envvars(&xx, env_whitelist);
-		if (errnum != 0)
+		err = filter_envvars(&xx, env_whitelist);
+		if (err != 0)
 			goto free_chrootdir;
 		envvars = xx;
 	}
@@ -1316,8 +1311,8 @@ spawn_service:
 		goto service_asprintf_succeeded;
 	}
 service_asprintf_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
+	err = errno;
+	LINTED_ASSUME(err != 0);
 	goto free_envvars;
 
 service_asprintf_succeeded:
@@ -1327,9 +1322,9 @@ service_asprintf_succeeded:
 	size_t new_size = envvars_size + 2U;
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(
-		    &xx, envvars, new_size, sizeof envvars[0U]);
-		if (errnum != 0)
+		err = linted_mem_realloc_array(&xx, envvars, new_size,
+		                               sizeof envvars[0U]);
+		if (err != 0)
 			goto envvar_allocate_failed;
 		envvars = xx;
 		goto envvar_allocate_succeeded;
@@ -1344,8 +1339,8 @@ envvar_allocate_succeeded:
 
 	char *sandbox_dup = strdup(sandbox);
 	if (0 == sandbox_dup) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 		goto free_envvars;
 	}
 	char *sandbox_base = basename(sandbox_dup);
@@ -1388,9 +1383,9 @@ envvar_allocate_succeeded:
 	size_t args_size = 1U + num_options + 1U + exec_start_size;
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, args_size + 1U,
-		                                sizeof exec_start[0U]);
-		if (errnum != 0)
+		err = linted_mem_alloc_array(&xx, args_size + 1U,
+		                             sizeof exec_start[0U]);
+		if (err != 0)
 			goto free_sandbox_dup;
 		args = xx;
 	}
@@ -1417,8 +1412,8 @@ envvar_allocate_succeeded:
 		args[1U + num_options + 1U + ii] = exec_start[ii];
 	args[args_size] = 0;
 
-	errnum = linted_spawn(0, cwd, sandbox, 0, 0, args,
-	                      (char const *const *)envvars);
+	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
+	                   (char const *const *)envvars);
 
 	/* Let the child be leaked, we'll get the wait later */
 
@@ -1435,7 +1430,7 @@ free_envvars:
 free_chrootdir:
 	linted_mem_free(chrootdir);
 
-	return errnum;
+	return err;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task)
@@ -1463,15 +1458,15 @@ static linted_error dispatch(struct linted_asynch_task *task)
 
 static linted_error on_process_wait(struct linted_asynch_task *task)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (LINTED_ERROR_CANCELLED == errnum)
+	err = linted_asynch_task_err(task);
+	if (LINTED_ERROR_CANCELLED == err)
 		return 0;
-	if (ECHILD == errnum)
+	if (ECHILD == err)
 		return LINTED_ERROR_CANCELLED;
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	struct linted_pid_task_waitid *sandbox_task =
 	    linted_pid_task_waitid_from_asynch(task);
@@ -1504,9 +1499,9 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		break;
 
 	case CLD_TRAPPED:
-		errnum = on_child_trapped(process_name, time_to_exit,
-		                          pid, exit_status, manager_pid,
-		                          cwd, unit_db);
+		err = on_child_trapped(process_name, time_to_exit, pid,
+		                       exit_status, manager_pid, cwd,
+		                       unit_db);
 		break;
 
 	default:
@@ -1515,18 +1510,18 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	return errnum;
+	return err;
 }
 
 static linted_error on_signal(struct linted_asynch_task *task)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (LINTED_ERROR_CANCELLED == errnum)
+	err = linted_asynch_task_err(task);
+	if (LINTED_ERROR_CANCELLED == err)
 		return 0;
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	struct linted_signal_task_wait *wait_task =
 	    linted_signal_task_wait_from_asynch(task);
@@ -1552,22 +1547,22 @@ static linted_error on_signal(struct linted_asynch_task *task)
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum =
+			linted_error pid_err =
 			    linted_unit_pid(&xx, manager_pid, name);
-			if (ESRCH == pid_errnum)
+			if (ESRCH == pid_err)
 				continue;
-			if (pid_errnum != 0) {
-				if (0 == errnum)
-					errnum = pid_errnum;
+			if (pid_err != 0) {
+				if (0 == err)
+					err = pid_err;
 				continue;
 			}
 			pid = xx;
 		}
-		linted_error kill_errnum = linted_pid_kill(pid, signo);
-		if (kill_errnum != ESRCH) {
-			assert(kill_errnum != EINVAL);
-			assert(kill_errnum != EPERM);
-			assert(0 == errnum);
+		linted_error kill_err = linted_pid_kill(pid, signo);
+		if (kill_err != ESRCH) {
+			assert(kill_err != EINVAL);
+			assert(kill_err != EPERM);
+			assert(0 == err);
 		}
 	}
 
@@ -1580,13 +1575,13 @@ static linted_error on_signal(struct linted_asynch_task *task)
 
 static linted_error on_admin_in_read(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
+	err = linted_asynch_task_err(task);
 
 	/* Assume the other end did something bad and don't exit with
 	 * an error. */
-	if (errnum != 0)
+	if (err != 0)
 		return 0;
 
 	struct linted_admin_in_task_read *admin_in_read_task =
@@ -1612,13 +1607,13 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 
 	switch (request.type) {
 	case LINTED_ADMIN_STATUS:
-		errnum = on_status_request(manager_pid,
-		                           (void *)&request, &reply);
+		err = on_status_request(manager_pid, (void *)&request,
+		                        &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(manager_pid, (void *)&request,
-		                         &reply);
+		err = on_stop_request(manager_pid, (void *)&request,
+		                      &reply);
 		break;
 
 	default:
@@ -1630,13 +1625,13 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 	linted_asynch_pool_submit(
 	    pool, linted_admin_out_task_write_to_asynch(write_task));
 
-	return errnum;
+	return err;
 }
 
 static linted_error on_admin_out_write(struct linted_asynch_task *task)
 {
-	linted_error errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
+	linted_error err = linted_asynch_task_err(task);
+	if (err != 0)
 		return 0;
 
 	struct linted_admin_out_task_write *admin_out_write_task =
@@ -1659,13 +1654,13 @@ static linted_error on_admin_out_write(struct linted_asynch_task *task)
 
 static linted_error on_kill_read(struct linted_asynch_task *task)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (LINTED_ERROR_CANCELLED == errnum)
+	err = linted_asynch_task_err(task);
+	if (LINTED_ERROR_CANCELLED == err)
 		return 0;
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	struct linted_io_task_read *kill_read_task =
 	    linted_io_task_read_from_asynch(task);
@@ -1690,23 +1685,22 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum =
+			linted_error pid_err =
 			    linted_unit_pid(&xx, manager_pid, name);
-			if (ESRCH == pid_errnum)
+			if (ESRCH == pid_err)
 				continue;
-			if (pid_errnum != 0) {
-				if (0 == errnum)
-					errnum = pid_errnum;
+			if (pid_err != 0) {
+				if (0 == err)
+					err = pid_err;
 				continue;
 			}
 			pid = xx;
 		}
-		linted_error kill_errnum =
-		    linted_pid_kill(pid, SIGTERM);
-		if (kill_errnum != ESRCH) {
-			assert(kill_errnum != EINVAL);
-			assert(kill_errnum != EPERM);
-			assert(0 == errnum);
+		linted_error kill_err = linted_pid_kill(pid, SIGTERM);
+		if (kill_err != ESRCH) {
+			assert(kill_err != EINVAL);
+			assert(kill_err != EPERM);
+			assert(0 == err);
 		}
 	}
 
@@ -1747,7 +1741,7 @@ static linted_error on_child_trapped(char const *process_name,
 static linted_error on_child_signaled(char const *process_name,
                                       pid_t pid, int signo)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	switch (signo) {
 	default:
@@ -1759,31 +1753,31 @@ static linted_error on_child_signaled(char const *process_name,
 		pid_t self = getpid();
 		{
 			bool xx;
-			errnum = pid_is_child_of(self, pid, &xx);
-			if (errnum != 0)
+			err = pid_is_child_of(self, pid, &xx);
+			if (err != 0)
 				break;
 			if (xx)
 				goto on_stopped_child;
 		}
 
 		char name[LINTED_UNIT_NAME_MAX + 1U];
-		errnum = linted_unit_name(pid, name);
-		if (errnum != 0)
-			return errnum;
+		err = linted_unit_name(pid, name);
+		if (err != 0)
+			return err;
 
 		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: ptracing %" PRIiMAX " %s\n",
 		                       process_name, (intmax_t)pid,
 		                       name);
 
-		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+		err = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
 	}
 
 	on_stopped_child:
-		errnum = ptrace_setoptions(
-		    pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
-		             PTRACE_O_TRACEVFORK);
+		err = ptrace_setoptions(pid, PTRACE_O_TRACECLONE |
+		                                 PTRACE_O_TRACEFORK |
+		                                 PTRACE_O_TRACEVFORK);
 		break;
 
 	case SIGTRAP:
@@ -1791,11 +1785,11 @@ static linted_error on_child_signaled(char const *process_name,
 		break;
 	}
 
-	linted_error cont_errnum = ptrace_cont(pid, signo);
-	if (0 == errnum)
-		errnum = cont_errnum;
+	linted_error cont_err = ptrace_cont(pid, signo);
+	if (0 == err)
+		err = cont_err;
 
-	return errnum;
+	return err;
 }
 
 static linted_error
@@ -1804,25 +1798,25 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
                        struct linted_unit_db *unit_db)
 {
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 	struct linted_unit *unit = 0;
 
-	errnum = service_children_terminate(pid);
-	if (errnum != 0)
+	err = service_children_terminate(pid);
+	if (err != 0)
 		goto detach_from_process;
 
 	unsigned long status;
 	{
 		unsigned long xx;
-		errnum = ptrace_geteventmsg(pid, &xx);
-		if (errnum != 0)
+		err = ptrace_geteventmsg(pid, &xx);
+		if (err != 0)
 			goto detach_from_process;
 		status = xx;
 	}
 
 	char name[LINTED_UNIT_NAME_MAX + 1U];
-	errnum = linted_unit_name(pid, name);
-	if (errnum != 0)
+	err = linted_unit_name(pid, name);
+	if (err != 0)
 		goto detach_from_process;
 
 	if (WIFEXITED(status)) {
@@ -1849,20 +1843,20 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
 	unit = linted_unit_db_get_unit_by_name(unit_db, name);
 
 detach_from_process:
-	errnum = ptrace_detach(pid, 0);
-	if (errnum != 0)
-		return errnum;
+	err = ptrace_detach(pid, 0);
+	if (err != 0)
+		return err;
 
 	if (time_to_exit)
-		return errnum;
+		return err;
 
 	if (0 == unit)
-		return errnum;
+		return err;
 
-	errnum = service_activate(process_name, unit, manager_pid, cwd,
-	                          false);
+	err = service_activate(process_name, unit, manager_pid, cwd,
+	                       false);
 
-	return errnum;
+	return err;
 }
 
 /* A sandbox creator is creating a sandbox */
@@ -1876,7 +1870,7 @@ on_status_request(pid_t manager_pid,
                   struct linted_admin_status_request const *request,
                   union linted_admin_reply *reply)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 	bool is_up;
 
 	char const *unit_name = request->name;
@@ -1886,10 +1880,10 @@ on_status_request(pid_t manager_pid,
 		char xx[LINTED_UNIT_NAME_MAX + 1U] = {0};
 		memcpy(xx, unit_name, name_size);
 
-		errnum = linted_unit_pid(0, manager_pid, xx);
+		err = linted_unit_pid(0, manager_pid, xx);
 	}
-	if (errnum != 0) {
-		errnum = 0;
+	if (err != 0) {
+		err = 0;
 		is_up = false;
 		goto reply;
 	}
@@ -1901,8 +1895,8 @@ on_status_request(pid_t manager_pid,
 	is_up = true;
 
 reply:
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	reply->type = LINTED_ADMIN_STATUS;
 	reply->status.is_up = is_up;
@@ -1914,7 +1908,7 @@ on_stop_request(pid_t manager_pid,
                 struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 	bool was_up;
 
 	char const *unit_name = request->name;
@@ -1926,23 +1920,23 @@ on_stop_request(pid_t manager_pid,
 		char yy[LINTED_UNIT_NAME_MAX + 1U] = {0};
 		memcpy(yy, unit_name, name_size);
 
-		errnum = linted_unit_pid(&xx, manager_pid, yy);
-		if (errnum != 0)
+		err = linted_unit_pid(&xx, manager_pid, yy);
+		if (err != 0)
 			goto pid_find_failure;
 		pid = xx;
 		goto found_pid;
 	}
 pid_find_failure:
-	errnum = 0;
+	err = 0;
 	was_up = false;
 	goto reply;
 
 found_pid:
-	errnum = linted_pid_terminate(pid);
-	assert(errnum != EINVAL);
-	if (errnum != 0) {
-		if (ESRCH == errnum)
-			errnum = 0;
+	err = linted_pid_terminate(pid);
+	assert(err != EINVAL);
+	if (err != 0) {
+		if (ESRCH == err)
+			err = 0;
 
 		was_up = false;
 	} else {
@@ -1950,8 +1944,8 @@ found_pid:
 	}
 
 reply:
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	reply->type = LINTED_ADMIN_STOP;
 	reply->stop.was_up = was_up;
@@ -1966,14 +1960,14 @@ static char const *const default_envvars[] = {
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	struct linted_conf_db *db;
 	{
 		struct linted_conf_db *xx;
-		errnum = linted_conf_db_create(&xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_conf_db_create(&xx);
+		if (err != 0)
+			return err;
 		db = xx;
 	}
 
@@ -1990,16 +1984,16 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 
 		char *dir_name = strndup(dirstart, len);
 		if (0 == dir_name) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto free_units;
 		}
 
-		errnum = add_unit_dir_to_db(db, cwd, dir_name);
+		err = add_unit_dir_to_db(db, cwd, dir_name);
 
 		linted_mem_free(dir_name);
 
-		if (errnum != 0)
+		if (err != 0)
 			goto free_units;
 
 		if (0 == dirend)
@@ -2009,10 +2003,10 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 	}
 
 free_units:
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_conf_db_destroy(db);
 
-		return errnum;
+		return err;
 	}
 
 	*dbp = db;
@@ -2024,31 +2018,31 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name)
 {
-	linted_error errnum;
+	linted_error err;
 
 	linted_ko units_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, cwd, dir_name,
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0)
-			return errnum;
+		err = linted_ko_open(&xx, cwd, dir_name,
+		                     LINTED_KO_DIRECTORY);
+		if (err != 0)
+			return err;
 		units_ko = xx;
 	}
 
 	DIR *units_dir = fdopendir(units_ko);
 	if (0 == units_dir) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 
 		linted_ko_close(units_ko);
 	}
 
-	if (ENOENT == errnum)
+	if (ENOENT == err)
 		return 0;
 
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	size_t files_count = 0U;
 	char **files = 0;
@@ -2056,8 +2050,8 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		errno = 0;
 		struct dirent const *entry = readdir(units_dir);
 		if (0 == entry) {
-			errnum = errno;
-			if (0 == errnum)
+			err = errno;
+			if (0 == err)
 				break;
 
 			goto free_file_names;
@@ -2073,8 +2067,8 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 
 		char *name_copy = strdup(name);
 		if (0 == name_copy) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto free_file_names;
 		}
 
@@ -2082,10 +2076,10 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		char **new_files;
 		{
 			void *xx;
-			errnum = linted_mem_realloc_array(
+			err = linted_mem_realloc_array(
 			    &xx, files, new_files_count,
 			    sizeof files[0U]);
-			if (errnum != 0)
+			if (err != 0)
 				goto free_file_name;
 			new_files = xx;
 		}
@@ -2094,7 +2088,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		files = new_files;
 		files_count = new_files_count;
 
-		if (errnum != 0) {
+		if (err != 0) {
 		free_file_name:
 			linted_mem_free(name_copy);
 			goto free_file_names;
@@ -2115,7 +2109,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			} else if (0 == strcmp(suffix, "service")) {
 				unit_type = LINTED_UNIT_TYPE_SERVICE;
 			} else {
-				errnum = LINTED_ERROR_INVALID_PARAMETER;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 				goto free_file_names;
 			}
 		}
@@ -2123,17 +2117,17 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		linted_ko unit_fd;
 		{
 			linted_ko xx;
-			errnum = linted_ko_open(
-			    &xx, units_ko, file_name, LINTED_KO_RDONLY);
-			if (errnum != 0)
+			err = linted_ko_open(&xx, units_ko, file_name,
+			                     LINTED_KO_RDONLY);
+			if (err != 0)
 				goto free_file_names;
 			unit_fd = xx;
 		}
 
 		FILE *unit_file = fdopen(unit_fd, "r");
 		if (0 == unit_file) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 
 			linted_ko_close(unit_fd);
 
@@ -2143,8 +2137,8 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		struct linted_conf *conf = 0;
 		{
 			struct linted_conf *xx;
-			errnum = linted_conf_create(&xx, file_name);
-			if (errnum != 0)
+			err = linted_conf_create(&xx, file_name);
+			if (err != 0)
 				goto close_unit_file;
 			conf = xx;
 		}
@@ -2159,16 +2153,16 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		case LINTED_UNIT_TYPE_SERVICE: {
 			char *section_name = strdup("Service");
 			if (0 == section_name) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+				err = errno;
+				LINTED_ASSUME(err != 0);
 				goto close_unit_file;
 			}
 
 			char *env_whitelist =
 			    strdup("X-LintedEnvironmentWhitelist");
 			if (0 == env_whitelist) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+				err = errno;
+				LINTED_ASSUME(err != 0);
 				linted_mem_free(section_name);
 				goto close_unit_file;
 			}
@@ -2176,9 +2170,9 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			linted_conf_section service;
 			{
 				linted_conf_section xx;
-				errnum = linted_conf_add_section(
+				err = linted_conf_add_section(
 				    conf, &xx, section_name);
-				if (errnum != 0) {
+				if (err != 0) {
 					linted_mem_free(env_whitelist);
 					linted_mem_free(section_name);
 					goto close_unit_file;
@@ -2186,32 +2180,32 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 				service = xx;
 			}
 
-			errnum = linted_conf_add_setting(
-			    conf, service, env_whitelist,
-			    default_envvars);
-			if (errnum != 0)
+			err = linted_conf_add_setting(conf, service,
+			                              env_whitelist,
+			                              default_envvars);
+			if (err != 0)
 				goto close_unit_file;
 			break;
 		}
 		}
 
-		errnum = linted_conf_parse_file(conf, unit_file);
+		err = linted_conf_parse_file(conf, unit_file);
 
 	close_unit_file:
 		if (EOF == fclose(unit_file)) {
-			if (0 == errnum) {
-				errnum = errno;
-				LINTED_ASSUME(errnum != 0);
+			if (0 == err) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
 			}
 		}
 
-		if (errnum != 0)
+		if (err != 0)
 			goto free_unit;
 
-		errnum = linted_conf_db_add_conf(db, conf);
+		err = linted_conf_db_add_conf(db, conf);
 
 	free_unit:
-		if (errnum != 0)
+		if (err != 0)
 			linted_conf_put(conf);
 	}
 
@@ -2221,58 +2215,58 @@ free_file_names:
 	linted_mem_free(files);
 
 	if (-1 == closedir(units_dir)) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		if (0 == err) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 	}
 
-	return errnum;
+	return err;
 }
 
 static linted_error service_children_terminate(pid_t pid)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	pid_t *children;
 	size_t len;
 	{
 		pid_t *xx;
 		size_t yy;
-		errnum = linted_pid_children(pid, &xx, &yy);
-		if (errnum != 0)
-			return errnum;
+		err = linted_pid_children(pid, &xx, &yy);
+		if (err != 0)
+			return err;
 		children = xx;
 		len = yy;
 	}
 
 	for (size_t ii = 0U; ii < len; ++ii) {
-		errnum = linted_pid_terminate(children[ii]);
-		if (errnum != 0)
+		err = linted_pid_terminate(children[ii]);
+		if (err != 0)
 			goto free_children;
 	}
 
 free_children:
 	linted_mem_free(children);
 
-	return errnum;
+	return err;
 }
 
 static linted_error filter_envvars(char ***result_envvarsp,
                                    char const *const *allowed_envvars)
 {
 	char **result_envvars;
-	linted_error errnum;
+	linted_error err;
 
 	size_t allowed_envvars_size = null_list_size(allowed_envvars);
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(
-		    &xx, allowed_envvars_size + 1U,
-		    sizeof result_envvars[0U]);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc_array(&xx,
+		                             allowed_envvars_size + 1U,
+		                             sizeof result_envvars[0U]);
+		if (err != 0)
+			return err;
 		result_envvars = xx;
 	}
 
@@ -2283,9 +2277,8 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char *envvar_value;
 		{
 			char *xx;
-			errnum =
-			    linted_environment_get(envvar_name, &xx);
-			if (errnum != 0)
+			err = linted_environment_get(envvar_name, &xx);
+			if (err != 0)
 				goto free_result_envvars;
 			envvar_value = xx;
 		}
@@ -2297,13 +2290,13 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		if (-1 ==
 		    asprintf(&result_envvars[result_envvars_size - 1U],
 		             "%s=%s", envvar_name, envvar_value)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 
 		linted_mem_free(envvar_value);
 
-		if (errnum != 0)
+		if (err != 0)
 			goto free_result_envvars;
 	}
 	result_envvars[result_envvars_size] = 0;
@@ -2316,7 +2309,7 @@ free_result_envvars:
 	for (size_t ii = 0U; ii < result_envvars_size; ++ii)
 		linted_mem_free(result_envvars[ii]);
 	linted_mem_free(result_envvars);
-	return errnum;
+	return err;
 }
 
 static size_t null_list_size(char const *const *list)
@@ -2379,32 +2372,32 @@ return_result:
 static linted_error pid_is_child_of(pid_t parent, pid_t child,
                                     bool *isp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	struct linted_pid_stat pid_stat;
 	{
 		struct linted_pid_stat xx;
-		errnum = linted_pid_stat(child, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_pid_stat(child, &xx);
+		if (err != 0)
+			return err;
 		pid_stat = xx;
 	}
 	pid_t ppid = pid_stat.ppid;
 
 	*isp = ppid == parent;
 
-	return errnum;
+	return err;
 }
 
 static linted_error set_death_sig(int signum)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL,
 	                0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -2412,13 +2405,13 @@ static linted_error set_death_sig(int signum)
 
 static linted_error ptrace_detach(pid_t pid, int signo)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == ptrace(PTRACE_DETACH, pid, (void *)0,
 	                 (void *)(intptr_t) signo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -2426,13 +2419,13 @@ static linted_error ptrace_detach(pid_t pid, int signo)
 
 static linted_error ptrace_setoptions(pid_t pid, unsigned options)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)0,
 	                 (void *)(uintptr_t) options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -2440,13 +2433,13 @@ static linted_error ptrace_setoptions(pid_t pid, unsigned options)
 
 static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)0,
 	                 (void *)(uintptr_t) msg)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -2454,13 +2447,13 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 
 static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)0,
 	                 (void *)(uintptr_t) options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -2468,13 +2461,13 @@ static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 
 static linted_error ptrace_cont(pid_t pid, int signo)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == ptrace(PTRACE_CONT, pid, (void *)0,
 	                 (void *)(intptr_t) signo)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;

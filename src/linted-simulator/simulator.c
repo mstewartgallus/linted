@@ -130,7 +130,7 @@ static unsigned char linted_sim_start(char const *const process_name,
                                       size_t argc,
                                       char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (argc < 3U) {
 		linted_log(LINTED_LOG_ERROR,
@@ -144,13 +144,12 @@ static unsigned char linted_sim_start(char const *const process_name,
 	linted_controller controller;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD, controller_path,
-		                   LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     controller_path, LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		controller = xx;
@@ -159,12 +158,12 @@ static unsigned char linted_sim_start(char const *const process_name,
 	linted_ko updater;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        updater_path, LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
+		                     LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		updater = xx;
@@ -185,8 +184,8 @@ static unsigned char linted_sim_start(char const *const process_name,
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
+		err = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (err != 0)
 			goto exit;
 		pool = xx;
 	}
@@ -201,27 +200,27 @@ static unsigned char linted_sim_start(char const *const process_name,
 
 	{
 		struct linted_sched_task_sleep_until *xx;
-		errnum = linted_sched_task_sleep_until_create(
-		    &xx, &timer_data);
-		if (errnum != 0)
+		err = linted_sched_task_sleep_until_create(&xx,
+		                                           &timer_data);
+		if (err != 0)
 			goto destroy_pool;
 		tick_task = xx;
 	}
 
 	{
 		struct linted_controller_task_receive *xx;
-		errnum = linted_controller_task_receive_create(
+		err = linted_controller_task_receive_create(
 		    &xx, &controller_data);
-		if (errnum != 0)
+		if (err != 0)
 			goto destroy_pool;
 		controller_task = xx;
 	}
 
 	{
 		struct linted_updater_task_send *xx;
-		errnum =
+		err =
 		    linted_updater_task_send_create(&xx, &updater_data);
-		if (errnum != 0)
+		if (err != 0)
 			goto destroy_pool;
 		updater_task = xx;
 	}
@@ -237,8 +236,8 @@ static unsigned char linted_sim_start(char const *const process_name,
 
 	{
 		struct timespec now;
-		errnum = linted_sched_time(&now);
-		if (errnum != 0)
+		err = linted_sched_time(&now);
+		if (err != 0)
 			goto stop_pool;
 
 		linted_sched_task_sleep_until_prepare(
@@ -262,8 +261,8 @@ static unsigned char linted_sim_start(char const *const process_name,
 			completed_task = xx;
 		}
 
-		errnum = dispatch(completed_task);
-		if (errnum != 0)
+		err = dispatch(completed_task);
+		if (err != 0)
 			goto stop_pool;
 	}
 
@@ -277,27 +276,25 @@ stop_pool:
 
 	for (;;) {
 		struct linted_asynch_task *task;
-		linted_error poll_errnum;
+		linted_error poll_err;
 		{
 			struct linted_asynch_task *xx;
-			poll_errnum =
-			    linted_asynch_pool_poll(pool, &xx);
-			if (LINTED_ERROR_AGAIN == poll_errnum)
+			poll_err = linted_asynch_pool_poll(pool, &xx);
+			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
 			task = xx;
 		}
 
-		linted_error dispatch_errnum =
-		    linted_asynch_task_errnum(task);
-		if (0 == errnum &&
-		    dispatch_errnum != LINTED_ERROR_CANCELLED)
-			errnum = dispatch_errnum;
+		linted_error dispatch_err =
+		    linted_asynch_task_err(task);
+		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
+			err = dispatch_err;
 	}
 
 destroy_pool : {
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
+	linted_error destroy_err = linted_asynch_pool_destroy(pool);
+	if (0 == err)
+		err = destroy_err;
 }
 
 	/* Insure that the tasks are in proper scope until they are
@@ -307,9 +304,9 @@ destroy_pool : {
 	(void)updater_task;
 
 exit:
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -335,11 +332,11 @@ static linted_error dispatch(struct linted_asynch_task *completed_task)
 
 static linted_error on_read_timer(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
+	err = linted_asynch_task_err(task);
+	if (err != 0)
+		return err;
 
 	struct linted_sched_task_sleep_until *timer_task =
 	    linted_sched_task_sleep_until_from_asynch(task);
@@ -392,11 +389,11 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 static linted_error
 on_controller_receive(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
+	err = linted_asynch_task_err(task);
+	if (err != 0)
+		return err;
 
 	struct linted_controller_task_receive *controller_task =
 	    linted_controller_task_receive_from_asynch(task);
@@ -408,9 +405,9 @@ on_controller_receive(struct linted_asynch_task *task)
 	    controller_data->action_state;
 
 	struct linted_controller_message message;
-	errnum = linted_controller_decode(controller_task, &message);
-	if (errnum != 0)
-		return errnum;
+	err = linted_controller_decode(controller_task, &message);
+	if (err != 0)
+		return err;
 
 	linted_asynch_pool_submit(pool, task);
 
@@ -435,15 +432,15 @@ on_controller_receive(struct linted_asynch_task *task)
 
 static linted_error on_sent_update(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (ENOENT == errnum)
-		errnum = 0;
-	if (ECONNREFUSED == errnum)
-		errnum = 0;
-	if (errnum != 0)
-		return errnum;
+	err = linted_asynch_task_err(task);
+	if (ENOENT == err)
+		err = 0;
+	if (ECONNREFUSED == err)
+		err = 0;
+	if (err != 0)
+		return err;
 
 	struct linted_updater_task_send *updater_task =
 	    linted_updater_task_send_from_asynch(task);

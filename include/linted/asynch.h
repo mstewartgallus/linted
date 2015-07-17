@@ -57,7 +57,7 @@ void linted_asynch_pool_resubmit(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task);
 void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
                                  struct linted_asynch_task *task,
-                                 linted_error errnum);
+                                 linted_error err);
 
 void
 linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
@@ -87,7 +87,7 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task);
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
                                 unsigned task_action);
 unsigned linted_asynch_task_action(struct linted_asynch_task *task);
-linted_error linted_asynch_task_errnum(struct linted_asynch_task *task);
+linted_error linted_asynch_task_err(struct linted_asynch_task *task);
 
 void *linted_asynch_task_data(struct linted_asynch_task *task);
 

@@ -46,13 +46,13 @@ void linted_queue_node(struct linted_queue_node *node)
 
 linted_error linted_queue_create(struct linted_queue **queuep)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_queue *queue;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *queue);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *queue);
+		if (err != 0)
+			return err;
 		queue = xx;
 	}
 
@@ -62,35 +62,35 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 	if (ENABLE_ERRORCHECK) {
 		pthread_mutexattr_t attr;
 
-		errnum = pthread_mutexattr_init(&attr);
-		if (errnum != 0)
+		err = pthread_mutexattr_init(&attr);
+		if (err != 0)
 			goto free_queue;
 
-		errnum = pthread_mutexattr_settype(
+		err = pthread_mutexattr_settype(
 		    &attr, PTHREAD_MUTEX_ERRORCHECK);
-		assert(errnum != EINVAL);
-		if (errnum != 0)
+		assert(err != EINVAL);
+		if (err != 0)
 			goto destroy_attr;
 
-		errnum = pthread_mutex_init(&queue->lock, &attr);
-		assert(errnum != EINVAL);
+		err = pthread_mutex_init(&queue->lock, &attr);
+		assert(err != EINVAL);
 
 	destroy_attr:
 		;
-		linted_error dest_errnum =
+		linted_error dest_err =
 		    pthread_mutexattr_destroy(&attr);
-		if (0 == errnum)
-			errnum = dest_errnum;
+		if (0 == err)
+			err = dest_err;
 	} else {
-		errnum = pthread_mutex_init(&queue->lock, 0);
-		assert(errnum != EINVAL);
+		err = pthread_mutex_init(&queue->lock, 0);
+		assert(err != EINVAL);
 	}
-	if (errnum != 0)
+	if (err != 0)
 		goto free_queue;
 
-	errnum = pthread_cond_init(&queue->gains_member, 0);
-	if (errnum != 0) {
-		assert(errnum != EINVAL);
+	err = pthread_cond_init(&queue->gains_member, 0);
+	if (err != 0) {
+		assert(err != EINVAL);
 		assert(false);
 	}
 
@@ -101,22 +101,22 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 free_queue:
 	linted_mem_free(queue);
 
-	return errnum;
+	return err;
 }
 
 void linted_queue_destroy(struct linted_queue *queue)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = pthread_cond_destroy(&queue->gains_member);
-	if (errnum != 0) {
-		assert(errnum != EBUSY);
+	err = pthread_cond_destroy(&queue->gains_member);
+	if (err != 0) {
+		assert(err != EBUSY);
 		assert(false);
 	}
 
-	errnum = pthread_mutex_destroy(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EBUSY);
+	err = pthread_mutex_destroy(&queue->lock);
+	if (err != 0) {
+		assert(err != EBUSY);
 		assert(false);
 	}
 
@@ -127,14 +127,14 @@ void linted_queue_destroy(struct linted_queue *queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
-	linted_error errnum;
+	linted_error err;
 
 	/* Guard against double insertions */
 	assert(0 == node->next);
 
-	errnum = pthread_mutex_lock(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
+	err = pthread_mutex_lock(&queue->lock);
+	if (err != 0) {
+		assert(err != EDEADLK);
 		assert(false);
 	}
 
@@ -144,9 +144,9 @@ void linted_queue_send(struct linted_queue *queue,
 
 	pthread_cond_signal(&queue->gains_member);
 
-	errnum = pthread_mutex_unlock(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
+	err = pthread_mutex_unlock(&queue->lock);
+	if (err != 0) {
+		assert(err != EPERM);
 		assert(false);
 	}
 }
@@ -155,11 +155,11 @@ void linted_queue_send(struct linted_queue *queue,
 void linted_queue_recv(struct linted_queue *queue,
                        struct linted_queue_node **nodep)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = pthread_mutex_lock(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
+	err = pthread_mutex_lock(&queue->lock);
+	if (err != 0) {
+		assert(err != EDEADLK);
 		assert(false);
 	}
 
@@ -169,10 +169,10 @@ void linted_queue_recv(struct linted_queue *queue,
 		goto got_node;
 
 	do {
-		errnum = pthread_cond_wait(&queue->gains_member,
-		                           &queue->lock);
-		if (errnum != 0) {
-			assert(errnum != EINVAL);
+		err = pthread_cond_wait(&queue->gains_member,
+		                        &queue->lock);
+		if (err != 0) {
+			assert(err != EINVAL);
 			assert(false);
 		}
 
@@ -187,9 +187,9 @@ got_node:
 
 	/* The fast path doesn't bother with the handler */
 
-	errnum = pthread_mutex_unlock(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EPERM);
+	err = pthread_mutex_unlock(&queue->lock);
+	if (err != 0) {
+		assert(err != EPERM);
 		assert(false);
 	}
 
@@ -202,11 +202,11 @@ got_node:
 linted_error linted_queue_try_recv(struct linted_queue *queue,
                                    struct linted_queue_node **nodep)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = pthread_mutex_lock(&queue->lock);
-	if (errnum != 0) {
-		assert(errnum != EDEADLK);
+	err = pthread_mutex_lock(&queue->lock);
+	if (err != 0) {
+		assert(err != EDEADLK);
 		assert(false);
 	}
 
@@ -215,7 +215,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	/* The nodes next to the tip are the head */
 	struct linted_queue_node *removed = queue->head;
 	if (0 == removed) {
-		errnum = LINTED_ERROR_AGAIN;
+		err = LINTED_ERROR_AGAIN;
 		goto unlock_mutex;
 	}
 
@@ -225,19 +225,19 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	queue->head = removed->next;
 
 unlock_mutex : {
-	linted_error unlock_errnum = pthread_mutex_unlock(&queue->lock);
-	if (unlock_errnum != 0) {
-		assert(unlock_errnum != EPERM);
+	linted_error unlock_err = pthread_mutex_unlock(&queue->lock);
+	if (unlock_err != 0) {
+		assert(unlock_err != EPERM);
 		assert(false);
 	}
 }
 
-	if (0 == errnum) {
+	if (0 == err) {
 		/* Refresh the node for reuse later */
 		linted_queue_node(removed);
 
 		*nodep = removed;
 	}
 
-	return errnum;
+	return err;
 }

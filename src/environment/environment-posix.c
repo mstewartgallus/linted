@@ -32,23 +32,23 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	pthread_mutex_lock(&mutex);
 
 	if (-1 == setenv(key, value, overwrite)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	}
 
 	pthread_mutex_unlock(&mutex);
 
-	return errnum;
+	return err;
 }
 
 linted_error linted_environment_get(char const *key, char **valuep)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	pthread_mutex_lock(&mutex);
 
@@ -62,8 +62,8 @@ linted_error linted_environment_get(char const *key, char **valuep)
 
 		value_dup = strdup(value);
 		if (0 == value_dup) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 	}
 
@@ -71,5 +71,5 @@ unlock_mutex:
 	pthread_mutex_unlock(&mutex);
 
 	*valuep = value_dup;
-	return errnum;
+	return err;
 }

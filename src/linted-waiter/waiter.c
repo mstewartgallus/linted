@@ -53,23 +53,23 @@ static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 static unsigned char waiter_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	char *service;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_SERVICE", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_SERVICE", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		service = xx;
 	}
 	if (service != 0) {
-		errnum = set_name(service);
-		assert(errnum != EINVAL);
+		err = set_name(service);
+		assert(err != EINVAL);
 		linted_mem_free(service);
 	}
 
@@ -110,16 +110,16 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 				n = yy;
 			}
 			if (-1 == zz) {
-				errnum = errno;
-				if (0 == errnum)
+				err = errno;
+				if (0 == err)
 					break;
-				if (EINTR == errnum)
+				if (EINTR == err)
 					continue;
-				if (errnum != 0) {
-					linted_log(LINTED_LOG_ERROR,
-					           "getline: %s",
-					           linted_error_string(
-					               errnum));
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "getline: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
 			}
@@ -148,12 +148,12 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 			wait_status = waitid(P_ALL, -1, &info, WEXITED);
 		}
 		if (-1 == wait_status) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 
-			if (ECHILD == errnum)
+			if (ECHILD == err)
 				break;
-			if (EINTR == errnum)
+			if (EINTR == err)
 				continue;
 
 			assert(false);
@@ -165,11 +165,11 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 
 static void on_term(int signo)
 {
-	linted_error old_errnum = errno;
+	linted_error old_err = errno;
 
 	if (-1 == kill(-getpgrp(), signo)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
 		assert(false);
 	}
 
@@ -184,20 +184,20 @@ static void on_term(int signo)
 	for (;;) {
 		siginfo_t info;
 		if (-1 == sigtimedwait(&exitset, &info, &timeout)) {
-			linted_error errnum = errno;
-			if (EINTR == errnum)
+			linted_error err = errno;
+			if (EINTR == err)
 				continue;
-			assert(EAGAIN == errnum);
+			assert(EAGAIN == err);
 			break;
 		}
 	}
 
-	errno = old_errnum;
+	errno = old_err;
 }
 
 static void on_sigchld(int signo)
 {
-	linted_error old_errnum = errno;
+	linted_error old_err = errno;
 
 	for (;;) {
 		pid_t pid;
@@ -210,12 +210,12 @@ static void on_sigchld(int signo)
 			pid = info.si_pid;
 		}
 		if (-1 == wait_status) {
-			linted_error errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			linted_error err = errno;
+			LINTED_ASSUME(err != 0);
 
-			if (ECHILD == errnum)
+			if (ECHILD == err)
 				break;
-			if (EINTR == errnum)
+			if (EINTR == err)
 				continue;
 
 			assert(false);
@@ -225,21 +225,21 @@ static void on_sigchld(int signo)
 			break;
 	}
 
-	errno = old_errnum;
+	errno = old_err;
 }
 
 static linted_error set_name(char const *name)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 ==
 	    prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 
-		assert(errnum != EINVAL);
+		assert(err != EINVAL);
 
-		return errnum;
+		return err;
 	}
 	return 0;
 }

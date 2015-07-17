@@ -172,7 +172,7 @@ static unsigned char sandbox_start(char const *const process_name,
                                    size_t argc,
                                    char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
 	size_t arguments_length = argc;
 
@@ -383,12 +383,12 @@ exit_loop:
 			errno = 0;
 			struct mntent *entry = getmntent(fstab_file);
 			if (0 == entry) {
-				errnum = errno;
-				if (errnum != 0) {
-					linted_log(LINTED_LOG_ERROR,
-					           "getmntent: %s",
-					           linted_error_string(
-					               errnum));
+				err = errno;
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "getmntent: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
 				break;
@@ -416,14 +416,13 @@ exit_loop:
 				bool zz;
 				unsigned long ww;
 				char const *uu;
-				errnum = parse_mount_opts(
-				    opts, &xx, &yy, &zz, &ww, &uu);
-				if (errnum != 0) {
+				err = parse_mount_opts(opts, &xx, &yy,
+				                       &zz, &ww, &uu);
+				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
 					    "parse_mount_opts: %s",
-					    linted_error_string(
-					        errnum));
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
 				mkdir_flag = xx;
@@ -437,16 +436,16 @@ exit_loop:
 			    mount_args_size + 1U;
 			{
 				void *xx;
-				errnum = linted_mem_realloc_array(
+				err = linted_mem_realloc_array(
 				    &xx, mount_args,
 				    new_mount_args_size,
 				    sizeof mount_args[0U]);
-				if (errnum != 0) {
-					linted_log(LINTED_LOG_ERROR,
-					           "linted_mem_realloc_"
-					           "array: %s",
-					           linted_error_string(
-					               errnum));
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "linted_mem_realloc_"
+					    "array: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
 				mount_args = xx;
@@ -589,10 +588,10 @@ exit_loop:
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
-		errnum = set_no_new_privs(true);
-		if (errnum != 0) {
+		err = set_no_new_privs(true);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "prctl: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -620,10 +619,10 @@ exit_loop:
 	}
 
 	if (clone_newuser) {
-		errnum = set_id_maps(uid_map, gid_map);
-		if (errnum != 0) {
+		err = set_id_maps(uid_map, gid_map);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "set_id_maps: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -697,21 +696,21 @@ exit_loop:
 	{
 		size_t xx;
 		linted_error yy;
-		errnum =
+		err =
 		    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
-		if (errnum != 0)
+		if (err != 0)
 			goto close_err_reader;
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
 		if (xx == sizeof yy)
-			errnum = yy;
+			err = yy;
 	}
 close_err_reader:
 	linted_ko_close(err_reader);
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "spawning: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -744,26 +743,26 @@ close_err_reader:
 static linted_error set_id_maps(char const *uid_map,
                                 char const *gid_map)
 {
-	linted_error errnum;
+	linted_error err;
 
 	linted_ko set_groups;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/self/setgroups",
-		                        LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     "/proc/self/setgroups",
+		                     LINTED_KO_WRONLY);
+		if (err != 0)
+			return err;
 		set_groups = xx;
 	}
 
-	errnum = linted_io_write_string(set_groups, 0, "deny");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(set_groups, 0, "deny");
+	if (err != 0)
+		return err;
 
-	errnum = linted_ko_close(set_groups);
-	if (errnum != 0)
-		return errnum;
+	err = linted_ko_close(set_groups);
+	if (err != 0)
+		return err;
 
 	/* Note that writing to uid_map and gid_map will fail if the
 	 * binary is not dumpable.  DON'T set the process dumpable and
@@ -774,40 +773,40 @@ static linted_error set_id_maps(char const *uid_map,
 	linted_ko uid_file;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/self/uid_map",
-		                        LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     "/proc/self/uid_map",
+		                     LINTED_KO_WRONLY);
+		if (err != 0)
+			return err;
 		uid_file = xx;
 	}
 
-	errnum = linted_io_write_string(uid_file, 0, uid_map);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(uid_file, 0, uid_map);
+	if (err != 0)
+		return err;
 
-	errnum = linted_ko_close(uid_file);
-	if (errnum != 0)
-		return errnum;
+	err = linted_ko_close(uid_file);
+	if (err != 0)
+		return err;
 
 	linted_ko gid_file;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        "/proc/self/gid_map",
-		                        LINTED_KO_WRONLY);
-		if (errnum != 0)
-			return errnum;
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     "/proc/self/gid_map",
+		                     LINTED_KO_WRONLY);
+		if (err != 0)
+			return err;
 		gid_file = xx;
 	}
 
-	errnum = linted_io_write_string(gid_file, 0, gid_map);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(gid_file, 0, gid_map);
+	if (err != 0)
+		return err;
 
-	errnum = linted_ko_close(gid_file);
-	if (errnum != 0)
-		return errnum;
+	err = linted_ko_close(gid_file);
+	if (err != 0)
+		return err;
 
 	return 0;
 }
@@ -815,7 +814,7 @@ static linted_error set_id_maps(char const *uid_map,
 LINTED_NO_SANITIZE_ADDRESS static int
 first_fork_routine(void *void_args)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	struct first_fork_args const *first_fork_args = void_args;
 
@@ -843,7 +842,7 @@ first_fork_routine(void *void_args)
 	/* So we don't need to explicitly set that there is no
 	 * controlling terminal. */
 	if (-1 == setsid()) {
-		errnum = errno;
+		err = errno;
 		goto fail;
 	}
 
@@ -851,14 +850,14 @@ first_fork_routine(void *void_args)
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
 	if (mount_args_size > 0U) {
-		errnum = mount_directories(mount_args, mount_args_size);
-		if (errnum != 0)
+		err = mount_directories(mount_args, mount_args_size);
+		if (err != 0)
 			goto fail;
 	}
 
 	if (chdir_path != 0) {
 		if (-1 == chdir(chdir_path)) {
-			errnum = errno;
+			err = errno;
 			goto fail;
 		}
 	}
@@ -867,8 +866,8 @@ first_fork_routine(void *void_args)
 	 * This isn't needed if CLONE_NEWPID was used but it doesn't
 	 * hurt,
 	 */
-	errnum = set_child_subreaper(true);
-	if (errnum != 0)
+	err = set_child_subreaper(true);
+	if (err != 0)
 		goto fail;
 
 	/* Drop all capabilities I might possibly have. Note that
@@ -879,7 +878,7 @@ first_fork_routine(void *void_args)
 
 	if (caps != 0) {
 		if (-1 == cap_set_proc(caps)) {
-			errnum = errno;
+			err = errno;
 			goto fail;
 		}
 	}
@@ -889,7 +888,7 @@ first_fork_routine(void *void_args)
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			errnum = errno;
+			err = errno;
 			goto fail;
 		}
 		vfork_err_reader = xx[0U];
@@ -907,7 +906,7 @@ first_fork_routine(void *void_args)
 		grand_child = safe_vfork(second_fork_routine, &args);
 	}
 	if (-1 == grand_child) {
-		errnum = errno;
+		err = errno;
 		goto fail;
 	}
 
@@ -916,21 +915,21 @@ first_fork_routine(void *void_args)
 	{
 		size_t xx;
 		linted_error yy;
-		errnum = linted_io_read_all(vfork_err_reader, &xx, &yy,
-		                            sizeof yy);
-		if (errnum != 0)
+		err = linted_io_read_all(vfork_err_reader, &xx, &yy,
+		                         sizeof yy);
+		if (err != 0)
 			goto fail;
 
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
 		if (xx == sizeof yy)
-			errnum = yy;
+			err = yy;
 	}
-	if (errnum != 0)
+	if (err != 0)
 		goto fail;
 
 	if (-1 == dup2(logger_reader, LINTED_KO_STDIN)) {
-		errnum = errno;
+		err = errno;
 		goto fail;
 	}
 
@@ -938,10 +937,10 @@ first_fork_routine(void *void_args)
 		char const *arguments[] = {waiter_base, 0};
 		execve(waiter, (char *const *)arguments, environ);
 	}
-	errnum = errno;
+	err = errno;
 
 fail : {
-	linted_error xx = errnum;
+	linted_error xx = err;
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 	return EXIT_FAILURE;
@@ -949,7 +948,7 @@ fail : {
 
 LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 {
-	linted_error errnum;
+	linted_error err;
 
 	struct second_fork_args const *args = arg;
 
@@ -960,12 +959,12 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	bool use_seccomp = args->use_seccomp;
 
 	if (-1 == dup2(logger_writer, LINTED_KO_STDOUT)) {
-		errnum = errno;
+		err = errno;
 		goto fail;
 	}
 
 	if (-1 == dup2(logger_writer, LINTED_KO_STDERR)) {
-		errnum = errno;
+		err = errno;
 		goto fail;
 	}
 
@@ -974,19 +973,19 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 		if (-1 == prctl(PR_SET_SECCOMP,
 		                (unsigned long)SECCOMP_MODE_FILTER,
 		                &default_filter, 0UL, 0UL)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 
-			assert(errnum != EINVAL);
+			assert(err != EINVAL);
 			goto fail;
 		}
 	}
 
 	execve(binary, (char *const *)argv, environ);
-	errnum = errno;
+	err = errno;
 
 fail : {
-	linted_error xx = errnum;
+	linted_error xx = err;
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 	return EXIT_FAILURE;
@@ -995,7 +994,7 @@ fail : {
 LINTED_NO_SANITIZE_ADDRESS static linted_error
 mount_directories(struct mount_args const *mount_args, size_t size)
 {
-	linted_error errnum;
+	linted_error err;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct mount_args const *arg = &mount_args[ii];
@@ -1009,15 +1008,15 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 		unsigned long mountflags = arg->mountflags;
 
 		if (mkdir_flag) {
-			errnum = linted_dir_create(0, LINTED_KO_CWD,
-			                           dir, 0U, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
+			err = linted_dir_create(0, LINTED_KO_CWD, dir,
+			                        0U, S_IRWXU);
+			if (err != 0)
+				return err;
 		} else if (touch_flag) {
-			errnum = linted_file_create(0, LINTED_KO_CWD,
-			                            dir, 0U, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
+			err = linted_file_create(0, LINTED_KO_CWD, dir,
+			                         0U, S_IRWXU);
+			if (err != 0)
+				return err;
 		}
 
 		if (nomount_flag)
@@ -1063,9 +1062,9 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 	if (-1 == fchdir(old_root))
 		return errno;
 
-	errnum = linted_ko_close(old_root);
-	if (errnum != 0)
-		return errnum;
+	err = linted_ko_close(old_root);
+	if (err != 0)
+		return err;
 
 	if (-1 == umount2(".", MNT_DETACH))
 		return errno;
@@ -1111,7 +1110,7 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
                  bool *nomount_flagp, unsigned long *mountflagsp,
                  char const **leftoversp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	bool nomount_flag = false;
 	bool touch_flag = false;
@@ -1129,9 +1128,9 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
 
 	char *subopts_str = strdup(opts);
 	if (0 == subopts_str) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	char *subopts = subopts_str;
@@ -1279,13 +1278,13 @@ free_subopts_str:
 LINTED_NO_SANITIZE_ADDRESS static linted_error
 set_child_subreaper(bool v)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL,
 	                0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -1293,14 +1292,14 @@ set_child_subreaper(bool v)
 
 static linted_error set_no_new_privs(bool b)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL,
 	                0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		assert(errnum != EINVAL);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		assert(err != EINVAL);
+		return err;
 	}
 
 	return 0;

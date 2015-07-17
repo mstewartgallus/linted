@@ -43,16 +43,16 @@ static void do_nothing(int signo);
 
 int main(int argc, char *argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	for (;;) {
 		linted_ko ko;
 		{
 			linted_ko xx;
-			errnum =
+			err =
 			    linted_ko_open(&xx, LINTED_KO_CWD,
 			                   "/dev/null", LINTED_KO_RDWR);
-			if (errnum != 0)
+			if (err != 0)
 				return EXIT_FAILURE;
 			ko = xx;
 		}
@@ -70,8 +70,8 @@ int main(int argc, char *argv[])
 	char const *service;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_SERVICE", &xx);
-		if (errnum != 0)
+		err = linted_environment_get("LINTED_SERVICE", &xx);
+		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;
 	}
@@ -110,11 +110,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (!linted_start_config.dont_handle_signals) {
-		errnum = linted_signal_init();
-		if (errnum != 0) {
+		err = linted_signal_init();
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_signal_init: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}

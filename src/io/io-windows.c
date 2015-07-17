@@ -121,7 +121,7 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out,
 	size_t bytes_read = 0U;
 	size_t bytes_left = size;
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 restart_reading:
 	;
@@ -130,18 +130,18 @@ restart_reading:
 		DWORD xx;
 		if (!ReadFile(ko, (char *)buf + bytes_read, bytes_left,
 		              &xx, 0)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
 
-			if (ERROR_HANDLE_EOF == errnum) {
-				errnum = 0;
+			if (ERROR_HANDLE_EOF == err) {
+				err = 0;
 				goto finish_reading;
 			}
 
-			if (WSAEINTR == errnum)
+			if (WSAEINTR == err)
 				goto restart_reading;
 
-			if (WSAEWOULDBLOCK == errnum)
+			if (WSAEWOULDBLOCK == err)
 				goto poll_for_readability;
 
 			goto finish_reading;
@@ -158,23 +158,23 @@ restart_reading:
 finish_reading:
 	if (bytes_read_out != 0)
 		*bytes_read_out = bytes_read;
-	return errnum;
+	return err;
 
 poll_for_readability:
 	;
 	short revents;
 	{
 		short xx;
-		errnum = poll_one(ko, POLLIN, &xx);
-		if (WSAEINTR == errnum)
+		err = poll_one(ko, POLLIN, &xx);
+		if (WSAEINTR == err)
 			goto poll_for_readability;
-		if (errnum != 0)
+		if (err != 0)
 			goto finish_reading;
 		revents = xx;
 	}
 
-	errnum = check_for_poll_error(revents);
-	if (errnum != 0)
+	err = check_for_poll_error(revents);
+	if (err != 0)
 		goto finish_reading;
 
 	if ((revents & POLLIN) != 0)
@@ -189,7 +189,7 @@ poll_for_readability:
 linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
                                  void const *buf, size_t size)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 	size_t bytes_wrote = 0U;
 	size_t bytes_left = size;
 
@@ -200,16 +200,16 @@ restart_writing:
 		DWORD xx;
 		if (!WriteFile(ko, (char const *)buf + bytes_wrote,
 		               bytes_left, &xx, 0)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
 
-			if (WSAEINTR == errnum)
+			if (WSAEINTR == err)
 				goto restart_writing;
 
-			if (WSAEWOULDBLOCK == errnum)
+			if (WSAEWOULDBLOCK == err)
 				goto poll_for_writeability;
 
-			if (errnum != 0)
+			if (err != 0)
 				goto write_bytes_wrote;
 
 			goto write_bytes_wrote;
@@ -225,23 +225,23 @@ restart_writing:
 write_bytes_wrote:
 	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes_wrote;
-	return errnum;
+	return err;
 
 poll_for_writeability:
 	;
 	short revents;
 	{
 		short xx;
-		errnum = poll_one(ko, POLLOUT, &xx);
-		if (WSAEINTR == errnum)
+		err = poll_one(ko, POLLOUT, &xx);
+		if (WSAEINTR == err)
 			goto poll_for_writeability;
-		if (errnum != 0)
+		if (err != 0)
 			goto write_bytes_wrote;
 		revents = xx;
 	}
 
-	errnum = check_for_poll_error(revents);
-	if (errnum != 0)
+	err = check_for_poll_error(revents);
+	if (err != 0)
 		goto write_bytes_wrote;
 
 	if ((revents & POLLOUT) != 0)
@@ -264,12 +264,12 @@ linted_error linted_io_write_format(linted_ko ko,
 	va_list ap;
 	va_start(ap, format_str);
 
-	linted_error errnum = linted_io_write_va_list(
-	    ko, bytes_wrote_out, format_str, ap);
+	linted_error err = linted_io_write_va_list(ko, bytes_wrote_out,
+	                                           format_str, ap);
 
 	va_end(ap);
 
-	return errnum;
+	return err;
 }
 
 linted_error linted_io_write_va_list(linted_ko ko,
@@ -277,7 +277,7 @@ linted_error linted_io_write_va_list(linted_ko ko,
                                      char const *format_str,
                                      va_list list)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	int maybe_bytes = vsprintf_s(0, 0U, format_str, list);
 	if (maybe_bytes < 0)
@@ -288,53 +288,53 @@ linted_error linted_io_write_va_list(linted_ko ko,
 	char *str;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, bytes + 1U);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, bytes + 1U);
+		if (err != 0)
+			return err;
 		str = xx;
 	}
 	str[bytes] = 0U;
 
 	if (vsprintf_s(str, bytes + 1U, format_str, list) < 0) {
-		errnum = LINTED_ERROR_INVALID_PARAMETER;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto free_str;
 	}
 
-	errnum = linted_io_write_all(ko, bytes_wrote_out, str, bytes);
+	err = linted_io_write_all(ko, bytes_wrote_out, str, bytes);
 
 free_str:
 	linted_mem_free(str);
 
-	return errnum;
+	return err;
 }
 
 linted_error
 linted_io_task_poll_create(struct linted_io_task_poll **taskp,
                            void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_io_task_poll *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_POLL);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
 		struct linted_asynch_waiter *xx;
-		errnum = linted_asynch_waiter_create(&xx);
-		if (errnum != 0)
+		err = linted_asynch_waiter_create(&xx);
+		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
 	}
@@ -347,7 +347,7 @@ free_parent:
 	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_io_task_poll_destroy(struct linted_io_task_poll *task)
@@ -387,29 +387,29 @@ linted_error
 linted_io_task_read_create(struct linted_io_task_read **taskp,
                            void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_io_task_read *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_READ);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
 		struct linted_asynch_waiter *xx;
-		errnum = linted_asynch_waiter_create(&xx);
-		if (errnum != 0)
+		err = linted_asynch_waiter_create(&xx);
+		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
 	}
@@ -424,7 +424,7 @@ free_parent:
 	linted_mem_free(parent);
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_io_task_read_destroy(struct linted_io_task_read *task)
@@ -475,29 +475,29 @@ linted_error
 linted_io_task_write_create(struct linted_io_task_write **taskp,
                             void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_io_task_write *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_WRITE);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
 		struct linted_asynch_waiter *xx;
-		errnum = linted_asynch_waiter_create(&xx);
-		if (errnum != 0)
+		err = linted_asynch_waiter_create(&xx);
+		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
 	}
@@ -513,7 +513,7 @@ free_parent:
 
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_io_task_write_destroy(struct linted_io_task_write *task)
@@ -584,25 +584,25 @@ void linted_ko_do_read(struct linted_asynch_pool *pool,
 
 	struct linted_asynch_waiter *waiter = task_read->waiter;
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	size_t bytes_read_delta;
 	{
 		DWORD xx;
 		if (!ReadFile(ko, buf + bytes_read, bytes_left, &xx,
 		              0)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
 
-			if (ERROR_HANDLE_EOF == errnum) {
-				errnum = 0;
+			if (ERROR_HANDLE_EOF == err) {
+				err = 0;
 				goto complete_task;
 			}
 
-			if (WSAEINTR == errnum)
+			if (WSAEINTR == err)
 				goto submit_retry;
 
-			if (WSAEWOULDBLOCK == errnum)
+			if (WSAEWOULDBLOCK == err)
 				goto wait_on_poll;
 
 			goto complete_task;
@@ -620,7 +620,7 @@ complete_task:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = 0U;
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 	return;
 
 submit_retry:
@@ -641,7 +641,7 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 	size_t bytes_wrote = task_write->current_position;
 	size_t bytes_left = task_write->size - bytes_wrote;
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	linted_ko ko = task_write->ko;
 	char const *buf = task_write->buf;
@@ -651,16 +651,16 @@ void linted_ko_do_write(struct linted_asynch_pool *pool,
 		DWORD xx;
 		if (!WriteFile(ko, buf + bytes_wrote, bytes_left, &xx,
 		               0)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
 
-			if (WSAEINTR == errnum)
+			if (WSAEINTR == err)
 				goto submit_retry;
 
-			if (WSAEWOULDBLOCK == errnum)
+			if (WSAEWOULDBLOCK == err)
 				goto wait_on_poll;
 
-			if (errnum != 0)
+			if (err != 0)
 				goto complete_task;
 
 			goto complete_task;
@@ -677,7 +677,7 @@ complete_task:
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = 0U;
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 	return;
 
 submit_retry:
@@ -695,7 +695,7 @@ wait_on_poll:
 static linted_error poll_one(linted_ko ko, short events,
                              short *reventsp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	short revents;
 	{
@@ -710,9 +710,9 @@ static linted_error poll_one(linted_ko ko, short events,
 	}
 
 poll_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
-	return errnum;
+	err = errno;
+	LINTED_ASSUME(err != 0);
+	return err;
 
 poll_succeeded:
 	*reventsp = revents;
@@ -721,10 +721,10 @@ poll_succeeded:
 
 static linted_error check_for_poll_error(short revents)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	if ((revents & POLLNVAL) != 0)
-		errnum = LINTED_ERROR_INVALID_KO;
+		err = LINTED_ERROR_INVALID_KO;
 
-	return errnum;
+	return err;
 }

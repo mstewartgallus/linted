@@ -33,21 +33,21 @@ linted_error
 linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
                               void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_pid_task_waitid *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_WAITID);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -57,7 +57,7 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task)

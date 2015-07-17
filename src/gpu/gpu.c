@@ -106,25 +106,25 @@ static linted_error get_egl_error(void);
 linted_error
 linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	struct linted_gpu_context *gpu_context;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *gpu_context);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *gpu_context);
+		if (err != 0)
+			return err;
 		gpu_context = xx;
 	}
 
 	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 	if (EGL_NO_DISPLAY == display) {
-		errnum = get_egl_error();
+		err = get_egl_error();
 		goto release_thread;
 	}
 
 	if (EGL_FALSE == eglInitialize(display, 0, 0)) {
-		errnum = get_egl_error();
+		err = get_egl_error();
 		goto destroy_display;
 	}
 
@@ -140,7 +140,7 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 	}
 
 choose_config_failed:
-	errnum = get_egl_error();
+	err = get_egl_error();
 	goto destroy_display;
 
 choose_config_succeeded:
@@ -169,50 +169,50 @@ choose_config_succeeded:
 
 destroy_display:
 	if (EGL_FALSE == eglTerminate(display)) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
 release_thread:
 	if (EGL_FALSE == eglReleaseThread()) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
 	linted_mem_free(gpu_context);
 
-	return errnum;
+	return err;
 }
 
 linted_error
 linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
 
 	if (gpu_context->has_gl_context)
-		errnum = destroy_contexts(gpu_context);
+		err = destroy_contexts(gpu_context);
 
 	if (EGL_FALSE == eglDestroySurface(display, surface)) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
 	if (EGL_FALSE == eglTerminate(display)) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
 	if (EGL_FALSE == eglReleaseThread()) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
 	linted_mem_free(gpu_context);
 
-	return errnum;
+	return err;
 }
 
 linted_error
@@ -259,13 +259,13 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context,
 
 void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 {
-	linted_error errnum;
+	linted_error err;
 
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
 
-	errnum = assure_gl_context(gpu_context);
-	if (errnum != 0)
+	err = assure_gl_context(gpu_context);
+	if (err != 0)
 		return;
 
 	if (gpu_context->buffer_commands) {
@@ -273,9 +273,9 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 		gpu_context->buffer_commands = false;
 	} else {
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
-			errnum = get_egl_error();
+			err = get_egl_error();
 
-			char const *error = linted_error_string(errnum);
+			char const *error = linted_error_string(err);
 			linted_log(LINTED_LOG_ERROR,
 			           "eglSwapBuffers: %s", error);
 			linted_error_string_free(error);
@@ -284,7 +284,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 		}
 	}
 
-	if (errnum != 0) {
+	if (err != 0) {
 		destroy_contexts(gpu_context);
 		gpu_context->has_gl_context = false;
 	}
@@ -293,7 +293,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 static linted_error
 destroy_contexts(struct linted_gpu_context *gpu_context)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	EGLDisplay display = gpu_context->display;
 	EGLContext context = gpu_context->context;
@@ -312,20 +312,20 @@ destroy_contexts(struct linted_gpu_context *gpu_context)
 
 	if (EGL_FALSE == eglMakeCurrent(display, EGL_NO_SURFACE,
 	                                EGL_NO_SURFACE, EGL_NO_CONTEXT))
-		errnum = get_egl_error();
+		err = get_egl_error();
 
 	if (EGL_FALSE == eglDestroyContext(display, context)) {
-		if (0 == errnum)
-			errnum = get_egl_error();
+		if (0 == err)
+			err = get_egl_error();
 	}
 
-	return errnum;
+	return err;
 }
 
 static linted_error
 assure_gl_context(struct linted_gpu_context *gpu_context)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (gpu_context->has_gl_context)
 		return 0;
@@ -344,7 +344,7 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 
 	if (EGL_FALSE ==
 	    eglMakeCurrent(display, surface, surface, context)) {
-		errnum = get_egl_error();
+		err = get_egl_error();
 		goto destroy_context;
 	}
 
@@ -360,14 +360,14 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 	flush_gl_errors();
 	GLuint program = glCreateProgram();
 	if (0 == program) {
-		errnum = get_gl_error();
+		err = get_gl_error();
 		goto use_no_context;
 	}
 
 	flush_gl_errors();
 	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	if (0 == fragment_shader) {
-		errnum = get_gl_error();
+		err = get_gl_error();
 		goto cleanup_program;
 	}
 	glAttachShader(program, fragment_shader);
@@ -385,7 +385,7 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		fragment_is_valid = xx;
 	}
 	if (!fragment_is_valid) {
-		errnum = EINVAL;
+		err = EINVAL;
 
 		size_t info_log_length;
 		{
@@ -398,9 +398,9 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_errnum =
+			linted_error mem_err =
 			    linted_mem_alloc(&xx, info_log_length);
-			if (mem_errnum != 0)
+			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
 		}
@@ -414,7 +414,7 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 	flush_gl_errors();
 	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 	if (0 == vertex_shader) {
-		errnum = get_gl_error();
+		err = get_gl_error();
 		goto cleanup_program;
 	}
 	glAttachShader(program, vertex_shader);
@@ -432,7 +432,7 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		vertex_is_valid = xx;
 	}
 	if (!vertex_is_valid) {
-		errnum = EINVAL;
+		err = EINVAL;
 
 		size_t info_log_length = 0;
 		{
@@ -445,9 +445,9 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_errnum =
+			linted_error mem_err =
 			    linted_mem_alloc(&xx, info_log_length);
-			if (mem_errnum != 0)
+			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
 		}
@@ -470,7 +470,7 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		program_is_valid = xx;
 	}
 	if (!program_is_valid) {
-		errnum = EINVAL;
+		err = EINVAL;
 
 		size_t info_log_length;
 		{
@@ -483,9 +483,9 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_errnum =
+			linted_error mem_err =
 			    linted_mem_alloc(&xx, info_log_length);
-			if (mem_errnum != 0)
+			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
 		}
@@ -512,21 +512,21 @@ assure_gl_context(struct linted_gpu_context *gpu_context)
 	GLint maybe_mvp_matrix = glGetUniformLocation(
 	    program, "model_view_projection_matrix");
 	if (-1 == maybe_mvp_matrix) {
-		errnum = EINVAL;
+		err = EINVAL;
 		goto cleanup_buffers;
 	}
 	GLuint mvp_matrix = maybe_mvp_matrix;
 
 	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
-		errnum = EINVAL;
+		err = EINVAL;
 		goto cleanup_buffers;
 	}
 	GLuint vertex = maybe_vertex;
 
 	GLint maybe_normal = glGetAttribLocation(program, "normal");
 	if (maybe_normal < 0) {
-		errnum = EINVAL;
+		err = EINVAL;
 		goto cleanup_buffers;
 	}
 	GLuint normal = maybe_normal;
@@ -598,7 +598,7 @@ use_no_context:
 destroy_context:
 	eglDestroyContext(display, context);
 
-	return errnum;
+	return err;
 }
 
 static void real_draw(struct linted_gpu_context *gpu_context)

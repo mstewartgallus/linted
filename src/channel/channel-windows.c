@@ -43,13 +43,13 @@ struct linted_channel
 
 linted_error linted_channel_create(struct linted_channel **channelp)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_channel *channel;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *channel);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *channel);
+		if (err != 0)
+			return err;
 		channel = xx;
 	}
 
@@ -73,7 +73,7 @@ void linted_channel_destroy(struct linted_channel *channel)
 linted_error linted_channel_try_send(struct linted_channel *channel,
                                      void *node)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	assert(channel != 0);
 	assert(node != 0);
@@ -82,7 +82,7 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 
 	void **waiter = channel->waiter;
 	if (0 == waiter) {
-		errnum = LINTED_ERROR_AGAIN;
+		err = LINTED_ERROR_AGAIN;
 		goto unlock_mutex;
 	}
 
@@ -95,7 +95,7 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 unlock_mutex:
 	LeaveCriticalSection(&channel->lock);
 
-	return errnum;
+	return err;
 }
 
 /* Remove from the head */

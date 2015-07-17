@@ -45,21 +45,21 @@ linted_error
 linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
                               void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_pid_task_waitid *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_WAITID);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -69,7 +69,7 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task)
@@ -117,23 +117,23 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 	struct linted_pid_task_waitid *task_wait =
 	    linted_asynch_task_data(task);
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	idtype_t idtype = task_wait->idtype;
 	id_t id = task_wait->id;
 	int options = task_wait->options;
 
 	if (-1 == waitid(idtype, id, &task_wait->info, options)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	}
 
-	if (EINTR == errnum) {
+	if (EINTR == err) {
 		linted_asynch_pool_resubmit(pool, task);
 		return;
 	}
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 }
 
 linted_error linted_pid_kill(pid_t pid, int signo)
@@ -144,9 +144,9 @@ linted_error linted_pid_kill(pid_t pid, int signo)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (-1 == kill(pid, signo)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -158,9 +158,9 @@ linted_error linted_pid_terminate(pid_t pid)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (-1 == kill(pid, SIGKILL)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -168,38 +168,38 @@ linted_error linted_pid_terminate(pid_t pid)
 
 linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	char path[sizeof "/proc/" - 1U +
 	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
 	          sizeof "/stat" - 1U + 1U];
 	if (-1 ==
 	    sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	linted_ko stat_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                        LINTED_KO_RDONLY);
-		if (ENOENT == errnum)
+		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                     LINTED_KO_RDONLY);
+		if (ENOENT == err)
 			return ESRCH;
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 		stat_ko = xx;
 	}
 
 	FILE *file = fdopen(stat_ko, "r");
 	if (0 == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 
 		linted_ko_close(stat_ko);
 
-		return errnum;
+		return err;
 	}
 
 	memset(buf, 0, sizeof *buf);
@@ -215,8 +215,8 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	}
 
 	if (-1 == zz) {
-		errnum = errno;
-		/* errnum may be zero */
+		err = errno;
+		/* err may be zero */
 		goto free_line;
 	}
 
@@ -224,8 +224,8 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	if (EOF == sscanf(line, "%d (" /* pid */
 	                  ,
 	                  &buf->pid)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 		goto free_line;
 	}
 
@@ -298,8 +298,8 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	           &buf->processor, &buf->rt_priority, &buf->policy,
 	           &buf->delayacct_blkio_ticks, &buf->guest_time,
 	           &buf->cguest_time)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 		goto free_line;
 	}
 
@@ -307,18 +307,18 @@ free_line:
 	linted_mem_free(line);
 
 	if (EOF == fclose(file)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
-	return errnum;
+	return err;
 }
 
 linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
                                  size_t *lenp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	char path[sizeof "/proc/" - 1U +
 	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
@@ -328,31 +328,31 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX
 	                        "/children",
 	                  (uintmax_t)pid, (uintmax_t)pid)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	linted_ko children_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                        LINTED_KO_RDONLY);
-		if (ENOENT == errnum)
+		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                     LINTED_KO_RDONLY);
+		if (ENOENT == err)
 			return ESRCH;
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 		children_ko = xx;
 	}
 
 	FILE *file = fdopen(children_ko, "r");
 	if (0 == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 
 		linted_ko_close(children_ko);
 
-		return errnum;
+		return err;
 	}
 
 	/* Get the child all at once to avoid raciness. */
@@ -369,21 +369,21 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
 	}
 
 	if (-1 == zz) {
-		errnum = errno;
+		err = errno;
 		/* May be zero */
 		eof = true;
 	}
 
 	if (EOF == fclose(file)) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		if (0 == err) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 	}
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_mem_free(buf);
-		return errnum;
+		return err;
 	}
 
 	if (eof) {
@@ -401,16 +401,16 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
 	for (;;) {
 		errno = 0;
 		pid_t child = strtol(start, 0, 10);
-		errnum = errno;
-		if (errnum != 0)
+		err = errno;
+		if (err != 0)
 			goto free_buf;
 
 		{
 			void *xx;
-			errnum = linted_mem_realloc_array(
+			err = linted_mem_realloc_array(
 			    &xx, children, ii + 1U,
 			    sizeof children[0U]);
-			if (errnum != 0)
+			if (err != 0)
 				goto free_buf;
 			children = xx;
 		}
@@ -434,14 +434,14 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
 free_buf:
 	linted_mem_free(buf);
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_mem_free(children);
-		return errnum;
+		return err;
 	}
 
 finish:
 	*lenp = ii;
 	*childrenp = children;
 
-	return errnum;
+	return err;
 }

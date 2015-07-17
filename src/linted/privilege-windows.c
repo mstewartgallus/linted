@@ -78,7 +78,7 @@ static wchar_t const *const access_names[] = {
 
 linted_error linted_linted_privilege_check(void)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	struct
 	{
@@ -95,9 +95,9 @@ linted_error linted_linted_privilege_check(void)
 		LUID xx;
 
 		if (!LookupPrivilegeValue(0, access_names[ii], &xx)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 
 		privileges.Privilege[ii].Luid = xx;
@@ -110,9 +110,9 @@ linted_error linted_linted_privilege_check(void)
 		HANDLE xx;
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY,
 		                      &xx)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 		current_process_access_token = xx;
 	}
@@ -120,14 +120,14 @@ linted_error linted_linted_privilege_check(void)
 	BOOL result;
 	if (!PrivilegeCheck(current_process_access_token,
 	                    (void *)&privileges, &result)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
 	}
 
 	CloseHandle(current_process_access_token);
 
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	if (result)
 		return LINTED_ERROR_PERMISSION;

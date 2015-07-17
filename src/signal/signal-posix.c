@@ -54,18 +54,18 @@ static int signal_pipe_writer;
 
 linted_error linted_signal_init(void)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	linted_ko reader;
 	linted_ko writer;
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			assert(errnum != EFAULT);
-			assert(errnum != EINVAL);
-			return errnum;
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			assert(err != EFAULT);
+			assert(err != EINVAL);
+			return err;
 		}
 		reader = xx[0U];
 		writer = xx[1U];
@@ -82,53 +82,53 @@ linted_error linted_signal_init(void)
 		sigaddset(&signals, SIGTERM);
 		sigaddset(&signals, SIGQUIT);
 
-		errnum = pthread_sigmask(SIG_BLOCK, &signals, 0);
-		assert(errnum != EFAULT);
-		assert(errnum != EINVAL);
-		assert(0 == errnum);
+		err = pthread_sigmask(SIG_BLOCK, &signals, 0);
+		assert(err != EFAULT);
+		assert(err != EINVAL);
+		assert(0 == err);
 	}
 
 	pthread_attr_t attr;
 
-	errnum = pthread_attr_init(&attr);
-	if (errnum != 0)
-		return errnum;
+	err = pthread_attr_init(&attr);
+	if (err != 0)
+		return err;
 
-	errnum =
+	err =
 	    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	if (errnum != 0)
+	if (err != 0)
 		goto destroy_attr;
 
-	errnum = pthread_create(&sigaction_thread, 0,
-	                        sigaction_thread_routine, 0);
-	assert(errnum != EINVAL);
-	assert(errnum != EFAULT);
+	err = pthread_create(&sigaction_thread, 0,
+	                     sigaction_thread_routine, 0);
+	assert(err != EINVAL);
+	assert(err != EFAULT);
 
 destroy_attr:
 	pthread_attr_destroy(&attr);
 
-	return errnum;
+	return err;
 }
 
 linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
                                void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_signal_task_wait *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SIGNAL_WAIT);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -139,7 +139,7 @@ linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
 
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void
@@ -183,7 +183,7 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 {
 	struct linted_signal_task_wait *task_wait =
 	    linted_asynch_task_data(task);
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	int signo = -1;
 	{
@@ -199,19 +199,19 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 		signo = sigwaitinfo(&signals, &xx);
 	}
 	if (signo < 0) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		assert(errnum != EFAULT);
-		if (EINTR == errnum)
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		assert(err != EFAULT);
+		if (EINTR == err)
 			goto resubmit;
-		assert(0 == errnum);
+		assert(0 == err);
 		goto complete;
 	}
 
 complete:
 	task_wait->signo = signo;
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 	return;
 
 resubmit:
@@ -253,7 +253,7 @@ void linted_signal_listen_to_sigterm(void)
 
 static void *sigaction_thread_routine(void *arg)
 {
-	linted_error errnum;
+	linted_error err;
 
 	{
 		sigset_t signal_set;
@@ -263,24 +263,24 @@ static void *sigaction_thread_routine(void *arg)
 		sigaddset(&signal_set, SIGTERM);
 		sigaddset(&signal_set, SIGQUIT);
 
-		errnum = pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
-		assert(errnum != EFAULT);
-		assert(errnum != EINVAL);
-		assert(0 == errnum);
+		err = pthread_sigmask(SIG_UNBLOCK, &signal_set, 0);
+		assert(err != EFAULT);
+		assert(err != EINVAL);
+		assert(0 == err);
 	}
 
 	for (;;) {
 		int signo;
 		{
 			int xx;
-			errnum = linted_io_read_all(signal_pipe_reader,
-			                            0, &xx, sizeof xx);
-			assert(errnum != EBADF);
-			assert(errnum != EFAULT);
-			assert(errnum != EINVAL);
-			assert(errnum != EIO);
-			assert(errnum != EISDIR);
-			assert(0 == errnum);
+			err = linted_io_read_all(signal_pipe_reader, 0,
+			                         &xx, sizeof xx);
+			assert(err != EBADF);
+			assert(err != EFAULT);
+			assert(err != EINVAL);
+			assert(err != EIO);
+			assert(err != EISDIR);
+			assert(0 == err);
 
 			signo = xx;
 		}
@@ -290,11 +290,11 @@ static void *sigaction_thread_routine(void *arg)
 			sigemptyset(&signal_set);
 			sigaddset(&signal_set, signo);
 
-			errnum =
+			err =
 			    pthread_sigmask(SIG_BLOCK, &signal_set, 0);
-			assert(errnum != EFAULT);
-			assert(errnum != EINVAL);
-			assert(0 == errnum);
+			assert(err != EFAULT);
+			assert(err != EINVAL);
+			assert(0 == err);
 		}
 	}
 
@@ -303,22 +303,22 @@ static void *sigaction_thread_routine(void *arg)
 
 static void listen_to_signal(int signo)
 {
-	linted_error errnum;
+	linted_error err;
 
 	{
 		int xx = signo;
-		errnum = linted_io_write_all(signal_pipe_writer, 0, &xx,
-		                             sizeof xx);
+		err = linted_io_write_all(signal_pipe_writer, 0, &xx,
+		                          sizeof xx);
 	}
-	assert(errnum != EBADF);
-	assert(errnum != EDESTADDRREQ);
-	assert(errnum != EDQUOT);
-	assert(errnum != EFAULT);
-	assert(errnum != EFBIG);
-	assert(errnum != EINTR);
-	assert(errnum != EINVAL);
-	assert(errnum != EIO);
-	assert(errnum != ENOSPC);
-	assert(errnum != EPIPE);
-	assert(0 == errnum);
+	assert(err != EBADF);
+	assert(err != EDESTADDRREQ);
+	assert(err != EDQUOT);
+	assert(err != EFAULT);
+	assert(err != EFBIG);
+	assert(err != EINTR);
+	assert(err != EINVAL);
+	assert(err != EIO);
+	assert(err != ENOSPC);
+	assert(err != EPIPE);
+	assert(0 == err);
 }

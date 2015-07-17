@@ -46,7 +46,7 @@
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY &
 	     ~LINTED_KO_RDWR & ~LINTED_KO_APPEND & ~LINTED_KO_SYNC &
@@ -93,23 +93,23 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	wchar_t *pathname_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(pathname, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_utf_1_to_2(pathname, &xx);
+		if (err != 0)
+			return err;
 		pathname_utf2 = xx;
 	}
 
 	linted_ko ko = CreateFile(pathname_utf2, desired_access, 0, 0,
 	                          OPEN_EXISTING, 0, 0);
 	if (INVALID_HANDLE_VALUE == ko) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
 	}
 
 	linted_mem_free(pathname_utf2);
 
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	*kop = ko;
 
@@ -118,19 +118,19 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 
 linted_error linted_ko_close(linted_ko ko)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (SOCKET_ERROR == closesocket((uintptr_t)ko)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		if (errnum != WSAENOTSOCK)
-			return errnum;
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
+		if (err != WSAENOTSOCK)
+			return err;
 	}
 
 	if (!CloseHandle(ko)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;

@@ -40,9 +40,9 @@ linted_error linted_sched_getpriority(linted_sched_priority *priorityp)
 	errno = 0;
 	int priority = getpriority(PRIO_PROCESS, 0);
 	if (-1 == priority) {
-		linted_error errnum = errno;
-		if (errnum != 0)
-			return errnum;
+		linted_error err = errno;
+		if (err != 0)
+			return err;
 	}
 
 	*priorityp = priority;
@@ -52,9 +52,9 @@ linted_error linted_sched_getpriority(linted_sched_priority *priorityp)
 linted_error linted_sched_time(struct timespec *now)
 {
 	if (-1 == clock_gettime(CLOCK_MONOTONIC, now)) {
-		linted_error errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -66,10 +66,10 @@ linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
                               void *data)
 {
 	struct linted_asynch_task *xx;
-	linted_error errnum = linted_asynch_task_create(
+	linted_error err = linted_asynch_task_create(
 	    &xx, data, LINTED_ASYNCH_TASK_IDLE);
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 	*taskp = (struct linted_sched_task_idle *)xx;
 
 	return 0;
@@ -106,21 +106,21 @@ void linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
 linted_error linted_sched_task_sleep_until_create(
     struct linted_sched_task_sleep_until **taskp, void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_sched_task_sleep_until *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SLEEP_UNTIL);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -130,7 +130,7 @@ linted_error linted_sched_task_sleep_until_create(
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_sched_task_sleep_until_destroy(
@@ -184,19 +184,19 @@ void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
 {
 	struct linted_sched_task_sleep_until *task_sleep =
 	    linted_asynch_task_data(task);
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	if (-1 == clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
 	                          &task_sleep->time,
 	                          &task_sleep->time)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	}
 
-	if (EINTR == errnum) {
+	if (EINTR == err) {
 		linted_asynch_pool_resubmit(pool, task);
 		return;
 	}
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 }

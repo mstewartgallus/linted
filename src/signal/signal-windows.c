@@ -76,16 +76,16 @@ static void (*const sighandlers[NUM_SIGS])(
 
 linted_error linted_signal_init(void)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	linted_ko reader;
 	linted_ko writer;
 	{
 		int xx[2U];
 		if (-1 == _pipe(xx, 4096U, 0)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 		reader = (linted_ko)_get_osfhandle(xx[0U]);
 		writer = (linted_ko)_get_osfhandle(xx[1U]);
@@ -101,29 +101,29 @@ linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
                                void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_signal_task_wait *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_asynch_task *parent;
 	{
 		struct linted_asynch_task *xx;
-		errnum = linted_asynch_task_create(
+		err = linted_asynch_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SIGNAL_WAIT);
-		if (errnum != 0)
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 	struct linted_asynch_waiter *waiter;
 	{
 		struct linted_asynch_waiter *xx;
-		errnum = linted_asynch_waiter_create(&xx);
-		if (errnum != 0)
+		err = linted_asynch_waiter_create(&xx);
+		if (err != 0)
 			goto free_parent;
 		waiter = xx;
 	}
@@ -136,7 +136,7 @@ free_parent:
 	linted_asynch_task_destroy(parent);
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void
@@ -181,7 +181,7 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 {
 	struct linted_signal_task_wait *task_wait =
 	    linted_asynch_task_data(task);
-	linted_error errnum = 0;
+	linted_error err = 0;
 	struct linted_asynch_waiter *waiter = task_wait->waiter;
 
 	int signo = -1;
@@ -191,19 +191,19 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 		DWORD xx;
 		if (!ReadFile(sigpipe_reader, &dummy, sizeof dummy, &xx,
 		              0)) {
-			errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
+			err = GetLastError();
+			LINTED_ASSUME(err != 0);
 
-			if (WSAEWOULDBLOCK == errnum)
+			if (WSAEWOULDBLOCK == err)
 				break;
 
-			if (WSAEINTR == errnum)
+			if (WSAEINTR == err)
 				goto resubmit;
 
 			goto complete;
 		}
 	}
-	errnum = 0;
+	err = 0;
 
 	if (__atomic_fetch_and(&sigint_signalled, 0,
 	                       __ATOMIC_SEQ_CST)) {
@@ -222,13 +222,13 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 complete:
 	task_wait->signo = signo;
 
-	if (0 == errnum) {
+	if (0 == err) {
 		char dummy = 0;
 		linted_io_write_all(sigpipe_writer, 0, &dummy,
 		                    sizeof dummy);
 	}
 
-	linted_asynch_pool_complete(pool, task, errnum);
+	linted_asynch_pool_complete(pool, task, err);
 	return;
 
 resubmit:
@@ -288,12 +288,12 @@ void linted_signal_listen_to_sigterm(void)
 
 static void listen_to_signal(size_t ii)
 {
-	linted_error errnum;
+	linted_error err;
 	int signo = signals[ii];
 	void (*handler)(int) = sighandlers[ii];
 	if (SIG_ERR == signal(signo, handler)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 		assert(false);
 	}
 }
@@ -302,18 +302,18 @@ static char const dummy;
 
 static void report_sigint(int signo)
 {
-	linted_error errnum = errno;
+	linted_error err = errno;
 	signal(SIGINT, report_sigint);
 	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
-	errno = errnum;
+	errno = err;
 }
 
 static void report_sigterm(int signo)
 {
-	linted_error errnum = errno;
+	linted_error err = errno;
 	signal(SIGTERM, report_sigterm);
 	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
 	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
-	errno = errnum;
+	errno = err;
 }

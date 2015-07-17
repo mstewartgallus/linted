@@ -47,22 +47,22 @@ static void unlock(void);
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	wchar_t *key_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(key, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_utf_1_to_2(key, &xx);
+		if (err != 0)
+			return err;
 		key_utf2 = xx;
 	}
 
 	wchar_t *value_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(value, &xx);
-		if (errnum != 0)
+		err = linted_utf_1_to_2(value, &xx);
+		if (err != 0)
 			goto free_key;
 		value_utf2 = xx;
 	}
@@ -81,7 +81,7 @@ linted_error linted_environment_set(char const *key, char const *value,
 	}
 
 	if (_wputenv_s(key_utf2, value_utf2) != 0)
-		errnum = LINTED_ERROR_OUT_OF_MEMORY;
+		err = LINTED_ERROR_OUT_OF_MEMORY;
 
 unlock:
 	unlock();
@@ -90,19 +90,19 @@ unlock:
 
 free_key:
 	linted_mem_free(key_utf2);
-	return errnum;
+	return err;
 }
 
 linted_error linted_environment_get(char const *key, char **valuep)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	wchar_t *key_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(key, &xx);
-		if (errnum != 0)
-			return errnum;
+		err = linted_utf_1_to_2(key, &xx);
+		if (err != 0)
+			return err;
 		key_utf2 = xx;
 	}
 
@@ -123,7 +123,7 @@ linted_error linted_environment_get(char const *key, char **valuep)
 			break;
 
 		default:
-			errnum = LINTED_ERROR_OUT_OF_MEMORY;
+			err = LINTED_ERROR_OUT_OF_MEMORY;
 			goto unlock;
 		}
 		buffer = xx;
@@ -134,7 +134,7 @@ unlock:
 
 	linted_mem_free(key_utf2);
 
-	if (errnum != 0)
+	if (err != 0)
 		goto free_buffer;
 
 	char *value;
@@ -142,8 +142,8 @@ unlock:
 		value = 0;
 	} else {
 		char *xx;
-		errnum = linted_utf_2_to_1(buffer, &xx);
-		if (errnum != 0)
+		err = linted_utf_2_to_1(buffer, &xx);
+		if (err != 0)
 			goto free_buffer;
 		value = xx;
 	}
@@ -153,7 +153,7 @@ unlock:
 free_buffer:
 	linted_mem_free(buffer);
 
-	return errnum;
+	return err;
 }
 
 static INIT_ONCE mutex_init_once = INIT_ONCE_STATIC_INIT;

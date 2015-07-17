@@ -29,7 +29,7 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
                                 char const *pathname,
                                 unsigned long flags, mode_t mode)
 {
-	linted_error errnum;
+	linted_error err;
 
 	int dirfd;
 	if (LINTED_KO_CWD == dirko) {
@@ -45,11 +45,11 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 			return EINVAL;
 
 		if (-1 == mknodat(dirfd, pathname, mode | S_IFREG, 0)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			if (EEXIST == errnum)
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			if (EEXIST == err)
 				return 0;
-			return errnum;
+			return err;
 		}
 
 		return 0;
@@ -103,29 +103,29 @@ linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
 	if (file_excl)
 		oflags |= O_EXCL;
 
-	int fildes;
+	int fd;
 	do {
-		fildes = openat(dirfd, pathname, oflags, mode);
-		if (-1 == fildes) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		fd = openat(dirfd, pathname, oflags, mode);
+		if (-1 == fd) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		} else {
-			errnum = 0;
+			err = 0;
 		}
-	} while (EINTR == errnum);
-	if (errnum != 0)
-		return errnum;
+	} while (EINTR == err);
+	if (err != 0)
+		return err;
 
 	if (file_wronly) {
-		if (-1 == fcntl(fildes, F_SETFL, O_NONBLOCK | oflags)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			linted_ko_close(fildes);
-			return errnum;
+		if (-1 == fcntl(fd, F_SETFL, O_NONBLOCK | oflags)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			linted_ko_close(fd);
+			return err;
 		}
 	}
 
-	*kop = fildes;
+	*kop = fd;
 
 	return 0;
 }

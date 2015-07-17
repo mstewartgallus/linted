@@ -35,25 +35,25 @@ static char const invalid_error_string[] = "invalid error number";
 static char const out_of_memory_string[] =
     "cannot print error, out of memory";
 
-char const *linted_error_string(linted_error errnum_to_print)
+char const *linted_error_string(linted_error err_to_print)
 {
-	linted_error errnum;
+	linted_error err;
 
-	if (errnum_to_print > UINT32_MAX)
+	if (err_to_print > UINT32_MAX)
 		return invalid_error_string;
 
 	wchar_t *message;
 	if (0 == FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
 	                           FORMAT_MESSAGE_FROM_SYSTEM,
-	                       0, errnum_to_print, 0, (void *)&message,
-	                       0, 0))
+	                       0, err_to_print, 0, (void *)&message, 0,
+	                       0))
 		return out_of_memory_string;
 
 	char *buffer;
 	{
 		char *xx;
-		errnum = linted_utf_2_to_1(message, &xx);
-		if (errnum != 0)
+		err = linted_utf_2_to_1(message, &xx);
+		if (err != 0)
 			goto free_message;
 		buffer = xx;
 	}

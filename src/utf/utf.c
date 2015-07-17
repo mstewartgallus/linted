@@ -34,35 +34,35 @@
 
 linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	size_t buffer_size = WideCharToMultiByte(
 	    CP_UTF8, WC_ERR_INVALID_CHARS, input, -1, 0, 0, 0, 0);
 	if (0 == buffer_size) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	char *buffer;
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, buffer_size,
-		                                sizeof buffer[0U]);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc_array(&xx, buffer_size,
+		                             sizeof buffer[0U]);
+		if (err != 0)
+			return err;
 		buffer = xx;
 	}
 
 	if (0 == WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
 	                             input, -1, buffer, buffer_size, 0,
 	                             0)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
 
 		linted_mem_free(buffer);
 
-		return errnum;
+		return err;
 	}
 
 	*outputp = buffer;
@@ -72,34 +72,34 @@ linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 
 linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	size_t buffer_size = MultiByteToWideChar(
 	    CP_UTF8, MB_ERR_INVALID_CHARS, input, -1, 0, 0);
 	if (0 == buffer_size) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	wchar_t *buffer;
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, buffer_size,
-		                                sizeof buffer[0U]);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc_array(&xx, buffer_size,
+		                             sizeof buffer[0U]);
+		if (err != 0)
+			return err;
 		buffer = xx;
 	}
 
 	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
 	                             input, -1, buffer, buffer_size)) {
-		errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
 
 		linted_mem_free(buffer);
 
-		return errnum;
+		return err;
 	}
 
 	*outputp = buffer;

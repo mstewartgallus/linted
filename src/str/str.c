@@ -34,7 +34,7 @@ static linted_error valloc_sprintf(char **strbp, size_t *sizep,
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize)
 {
-	linted_error errnum;
+	linted_error err;
 	char *buf = *bufp;
 	size_t cap = *capp;
 	size_t size = *sizep;
@@ -51,9 +51,9 @@ linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
 		char *new_buf;
 		{
 			void *xx;
-			errnum = linted_mem_realloc(&xx, buf, new_cap);
-			if (errnum != 0)
-				return errnum;
+			err = linted_mem_realloc(&xx, buf, new_cap);
+			if (err != 0)
+				return err;
 			new_buf = xx;
 		}
 		buf = new_buf;
@@ -82,7 +82,7 @@ linted_error linted_str_append_format(char **bufp, size_t *capp,
                                       size_t *sizep, char const *fmt,
                                       ...)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 	size_t strsize;
 	char *str;
 
@@ -93,8 +93,8 @@ linted_error linted_str_append_format(char **bufp, size_t *capp,
 		{
 			char *xx;
 			size_t yy;
-			errnum = valloc_sprintf(&xx, &yy, fmt, ap);
-			if (errnum != 0)
+			err = valloc_sprintf(&xx, &yy, fmt, ap);
+			if (err != 0)
 				goto free_ap;
 			str = xx;
 			strsize = yy;
@@ -103,29 +103,29 @@ linted_error linted_str_append_format(char **bufp, size_t *capp,
 	free_ap:
 		va_end(ap);
 
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 	}
 
-	errnum = linted_str_append(bufp, capp, sizep, str, strsize);
+	err = linted_str_append(bufp, capp, sizep, str, strsize);
 
 	linted_mem_free(str);
 
-	return errnum;
+	return err;
 }
 
 static linted_error valloc_sprintf(char **strp, size_t *sizep,
                                    const char *fmt, va_list ap)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	va_list ap_copy;
 	va_copy(ap_copy, ap);
 
 	int bytes_should_write = vsnprintf(0, 0, fmt, ap);
 	if (bytes_should_write < 0) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 		goto free_ap_copy;
 	}
 
@@ -135,8 +135,8 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 		char *string;
 		{
 			void *xx;
-			errnum = linted_mem_alloc(&xx, string_size);
-			if (errnum != 0)
+			err = linted_mem_alloc(&xx, string_size);
+			if (err != 0)
 				goto free_ap_copy;
 			string = xx;
 		}
@@ -144,8 +144,8 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 		if (vsnprintf(string, string_size, fmt, ap_copy) < 0) {
 			linted_mem_free(string);
 
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto free_ap_copy;
 		}
 
@@ -156,5 +156,5 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 free_ap_copy:
 	va_end(ap_copy);
 
-	return errnum;
+	return err;
 }

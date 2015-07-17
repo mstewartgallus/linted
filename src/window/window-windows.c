@@ -45,9 +45,9 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 	overlapped.OffsetHigh = 0;
 
 	if (!WriteFile(window, buf, sizeof buf, 0, &overlapped)) {
-		linted_error errnum = GetLastError();
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		linted_error err = GetLastError();
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -67,9 +67,9 @@ linted_error linted_window_read(linted_window window,
 
 		if (!ReadFile(window, buf, sizeof buf, &xx,
 		              &overlapped)) {
-			linted_error errnum = GetLastError();
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			linted_error err = GetLastError();
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 		bytes_read = xx;
 	}
@@ -98,20 +98,20 @@ linted_error
 linted_window_task_watch_create(struct linted_window_task_watch **taskp,
                                 void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_window_task_watch *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_io_task_read *parent;
 	{
 		struct linted_io_task_read *xx;
-		errnum = linted_io_task_read_create(&xx, task);
-		if (errnum != 0)
+		err = linted_io_task_read_create(&xx, task);
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -121,7 +121,7 @@ linted_window_task_watch_create(struct linted_window_task_watch **taskp,
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void
@@ -162,20 +162,20 @@ linted_window_task_watch_data(struct linted_window_task_watch *task)
 linted_error linted_window_task_notify_create(
     struct linted_window_task_notify **taskp, void *data)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_window_task_notify *task;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *task);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *task);
+		if (err != 0)
+			return err;
 		task = xx;
 	}
 	struct linted_io_task_write *parent;
 	{
 		struct linted_io_task_write *xx;
-		errnum = linted_io_task_write_create(&xx, task);
-		if (errnum != 0)
+		err = linted_io_task_write_create(&xx, task);
+		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
@@ -185,7 +185,7 @@ linted_error linted_window_task_notify_create(
 	return 0;
 free_task:
 	linted_mem_free(task);
-	return errnum;
+	return err;
 }
 
 void linted_window_task_notify_destroy(

@@ -28,12 +28,12 @@ static char const invalid_error_string[] = "invalid error number";
 static char const out_of_memory_string[] =
     "cannot print error, out of memory";
 
-char const *linted_error_string(linted_error errnum_to_print)
+char const *linted_error_string(linted_error err_to_print)
 {
-	if (errnum_to_print > INT_MAX)
+	if (err_to_print > INT_MAX)
 		return invalid_error_string;
 
-	linted_error errnum;
+	linted_error err;
 
 	char *buf = 0;
 	size_t buf_size = 0U;
@@ -42,31 +42,31 @@ char const *linted_error_string(linted_error errnum_to_print)
 		buf_size = 2U * buf_size + 1U;
 		{
 			void *xx;
-			errnum = linted_mem_realloc(&xx, buf, buf_size);
-			if (errnum != 0)
+			err = linted_mem_realloc(&xx, buf, buf_size);
+			if (err != 0)
 				break;
 			buf = xx;
 		}
 
-		errnum = strerror_r(errnum_to_print, buf, buf_size);
-		if (0 == errnum)
+		err = strerror_r(err_to_print, buf, buf_size);
+		if (0 == err)
 			break;
 
-		if (errnum != ERANGE)
+		if (err != ERANGE)
 			break;
 	}
 
-	if (0 == errnum) {
+	if (0 == err) {
 		void *xx;
-		errnum = linted_mem_realloc(&xx, buf, strlen(buf) + 1U);
-		if (0 == errnum)
+		err = linted_mem_realloc(&xx, buf, strlen(buf) + 1U);
+		if (0 == err)
 			buf = xx;
 	}
 
-	if (errnum != 0)
+	if (err != 0)
 		linted_mem_free(buf);
 
-	switch (errnum) {
+	switch (err) {
 	case 0:
 		return buf;
 

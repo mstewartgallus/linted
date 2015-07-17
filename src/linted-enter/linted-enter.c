@@ -46,7 +46,7 @@ static char const *const namespaces[] = {"user", "pid", "ipc", "mnt",
 static uint_fast8_t enter_start(char const *const process_name,
                                 size_t argc, char const *const argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	if (argc < 2U)
 		return EXIT_FAILURE;
@@ -69,12 +69,12 @@ static uint_fast8_t enter_start(char const *const process_name,
 	linted_ko ns;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, "ns",
-		                        LINTED_KO_DIRECTORY);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD, "ns",
+		                     LINTED_KO_DIRECTORY);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		ns = xx;
@@ -83,11 +83,11 @@ static uint_fast8_t enter_start(char const *const process_name,
 	linted_ko fds[LINTED_ARRAY_SIZE(namespaces)];
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(namespaces); ++ii) {
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, ns, namespaces[ii], 0);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, ns, namespaces[ii], 0);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 

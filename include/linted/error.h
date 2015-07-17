@@ -30,7 +30,7 @@
  * Abstracts over the system's basic error type.
  */
 
-char const *linted_error_string(linted_error errnum);
+char const *linted_error_string(linted_error err);
 
 void linted_error_string_free(char const *str);
 

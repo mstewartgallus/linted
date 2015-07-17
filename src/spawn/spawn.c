@@ -76,14 +76,14 @@ static linted_error duplicate_to(linted_ko new, linted_ko old);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_spawn_attr *attr;
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *attr);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *attr);
+		if (err != 0)
+			return err;
 		attr = xx;
 	}
 
@@ -99,14 +99,14 @@ void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 linted_error linted_spawn_file_actions_init(
     struct linted_spawn_file_actions **file_actionsp)
 {
-	linted_error errnum;
+	linted_error err;
 	struct linted_spawn_file_actions *file_actions;
 
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *file_actions);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *file_actions);
+		if (err != 0)
+			return err;
 		file_actions = xx;
 	}
 
@@ -151,7 +151,7 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
              struct linted_spawn_attr const *attr,
              char const *const argv[], char const *const envp[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	if (LINTED_KO_CWD != dirko && dirko > INT_MAX)
 		return EBADF;
@@ -166,9 +166,9 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			return errnum;
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
 		}
 		err_reader = xx[0U];
 		err_writer = xx[1U];
@@ -183,8 +183,8 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		int err_writer_copy =
 		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == err_writer_copy) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto close_err_pipes;
 		}
 
@@ -200,8 +200,8 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 	} else if (file_actions != 0 && dirko < greatest) {
 		int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == fd) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			goto close_err_pipes;
 		}
 		dirko_copy = fd;
@@ -218,8 +218,8 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		if (0 == child_mask)
 			child_mask = &sigset;
 
-		errnum = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
-		if (errnum != 0)
+		err = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+		if (err != 0)
 			goto close_dirko_copy;
 
 		struct fork_args fork_args = {.sigset = child_mask,
@@ -232,14 +232,14 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		                              .binary = binary};
 		child = safe_vfork(fork_routine, &fork_args);
 		if (-1 == child) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 
-		linted_error mask_errnum =
+		linted_error mask_err =
 		    pthread_sigmask(SIG_SETMASK, &sigset, 0);
-		if (0 == errnum)
-			errnum = mask_errnum;
+		if (0 == err)
+			err = mask_err;
 	}
 
 close_dirko_copy:
@@ -247,38 +247,38 @@ close_dirko_copy:
 		linted_ko_close(dirko_copy);
 
 close_err_pipes : {
-	linted_error close_errnum = linted_ko_close(err_writer);
-	if (0 == errnum)
-		errnum = close_errnum;
+	linted_error close_err = linted_ko_close(err_writer);
+	if (0 == err)
+		err = close_err;
 }
 
-	if (errnum != 0)
+	if (err != 0)
 		goto close_err_reader;
 
 	{
 		size_t xx;
 		linted_error yy;
-		errnum =
+		err =
 		    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
-		if (errnum != 0)
+		if (err != 0)
 			goto close_err_reader;
 
 		/* If bytes_read is zero then a succesful exec
 		 * occured */
 		if (xx == sizeof yy) {
-			errnum = yy;
-			LINTED_ASSUME(errnum != 0);
+			err = yy;
+			LINTED_ASSUME(err != 0);
 		}
 	}
 
 close_err_reader : {
-	linted_error close_errnum = linted_ko_close(err_reader);
-	if (0 == errnum)
-		errnum = close_errnum;
+	linted_error close_err = linted_ko_close(err_reader);
+	if (0 == err)
+		err = close_err;
 }
 
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	if (childp != 0)
 		*childp = child;
@@ -298,7 +298,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	linted_ko dirko = args->dirko;
 	char const *binary = args->binary;
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	/*
 	 * Get rid of signal handlers so that they can't be called
@@ -315,7 +315,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 		struct sigaction action;
 		if (-1 ==
 		    syscall(__NR_rt_sigaction, ii, 0, &action, 8U)) {
-			errnum = errno;
+			err = errno;
 			goto fail;
 		}
 
@@ -326,13 +326,13 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 
 		if (-1 ==
 		    syscall(__NR_rt_sigaction, ii, &action, 0, 8U)) {
-			errnum = errno;
+			err = errno;
 			goto fail;
 		}
 	}
 
-	errnum = pthread_sigmask(SIG_SETMASK, sigset, 0);
-	if (errnum != 0)
+	err = pthread_sigmask(SIG_SETMASK, sigset, 0);
+	if (err != 0)
 		goto fail;
 
 	linted_ko new_stdin;
@@ -358,20 +358,20 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	}
 
 	if (set_stdin) {
-		errnum = duplicate_to(new_stdin, STDIN_FILENO);
-		if (errnum != 0)
+		err = duplicate_to(new_stdin, STDIN_FILENO);
+		if (err != 0)
 			goto fail;
 	}
 
 	if (set_stdout) {
-		errnum = duplicate_to(new_stdout, STDOUT_FILENO);
-		if (errnum != 0)
+		err = duplicate_to(new_stdout, STDOUT_FILENO);
+		if (err != 0)
 			goto fail;
 	}
 
 	if (set_stderr) {
-		errnum = duplicate_to(new_stderr, STDERR_FILENO);
-		if (errnum != 0)
+		err = duplicate_to(new_stderr, STDERR_FILENO);
+		if (err != 0)
 			goto fail;
 	}
 
@@ -385,10 +385,10 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 		syscall(__NR_execveat, dirko, binary,
 		        (char *const *)argv, (char *const *)envp, 0);
 	}
-	errnum = errno;
+	err = errno;
 
 fail : {
-	linted_error xx = errnum;
+	linted_error xx = err;
 	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 

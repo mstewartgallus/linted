@@ -34,7 +34,7 @@ char const linted_start__useme;
 
 int main(int argc, char *argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	char const *process_name = 0;
 
@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
 	char const *service;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_SERVICE", &xx);
-		if (errnum != 0)
+		err = linted_environment_get("LINTED_SERVICE", &xx);
+		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;
 	}

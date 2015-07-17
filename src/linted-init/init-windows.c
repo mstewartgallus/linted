@@ -57,16 +57,16 @@ struct linted_start_config const linted_start_config = {
 static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
 	char const *monitor;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_MONITOR", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_MONITOR", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor = xx;
@@ -91,11 +91,11 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	wchar_t *monitor_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(monitor, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(monitor, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor_utf2 = xx;
@@ -104,11 +104,11 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	wchar_t *monitor_base_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(monitor_base, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(monitor_base, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor_base_utf2 = xx;

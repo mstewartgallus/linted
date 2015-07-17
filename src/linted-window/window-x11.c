@@ -71,7 +71,7 @@ static uint32_t const window_opts[] = {0};
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	if (argc < 4U) {
 		linted_log(LINTED_LOG_ERROR,
@@ -87,12 +87,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko kill_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        kill_ko_path, LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD, kill_ko_path,
+		                     LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		kill_ko = xx;
@@ -101,12 +101,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko window_ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
-		                        LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
+		                     LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		window_ko = xx;
@@ -115,13 +115,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko gui_notifier;
 	{
 		linted_ko xx;
-		errnum =
-		    linted_ko_open(&xx, LINTED_KO_CWD,
-		                   gui_notifier_path, LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     gui_notifier_path, LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		gui_notifier = xx;
@@ -130,13 +129,13 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	linted_ko drawer_notifier;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD,
-		                        drawer_notifier_path,
-		                        LINTED_KO_RDWR);
-		if (errnum != 0) {
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     drawer_notifier_path,
+		                     LINTED_KO_RDWR);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		drawer_notifier = xx;
@@ -145,11 +144,11 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	char const *root;
 	{
 		char *xx;
-		errnum = linted_environment_get("MANAGERPID", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("MANAGERPID", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		root = xx;
@@ -163,27 +162,27 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	errno = 0;
 	long int root_pid = strtol(root, 0, 10);
-	errnum = errno;
-	if (0 == errnum) {
+	err = errno;
+	if (0 == err) {
 		if (root_pid < 1) {
-			errnum = ERANGE;
+			err = ERANGE;
 		}
 		if (root_pid > INT_MAX) {
-			errnum = ERANGE;
+			err = ERANGE;
 		}
 	}
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "strtol: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	struct linted_asynch_pool *pool;
 	{
 		struct linted_asynch_pool *xx;
-		errnum = linted_asynch_pool_create(&xx, MAX_TASKS);
-		if (errnum != 0)
-			return errnum;
+		err = linted_asynch_pool_create(&xx, MAX_TASKS);
+		if (err != 0)
+			return err;
 		pool = xx;
 	}
 
@@ -197,27 +196,26 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	{
 		struct linted_window_task_notify *xx;
-		errnum = linted_window_task_notify_create(
+		err = linted_window_task_notify_create(
 		    &xx, &gui_notice_data);
-		if (errnum != 0)
+		if (err != 0)
 			goto destroy_pool;
 		gui_notice_task = xx;
 	}
 
 	{
 		struct linted_window_task_notify *xx;
-		errnum = linted_window_task_notify_create(
+		err = linted_window_task_notify_create(
 		    &xx, &drawer_notice_data);
-		if (errnum != 0)
+		if (err != 0)
 			goto destroy_pool;
 		drawer_notice_task = xx;
 	}
 
 	{
 		struct linted_io_task_poll *xx;
-		errnum =
-		    linted_io_task_poll_create(&xx, &poll_conn_data);
-		if (errnum != 0)
+		err = linted_io_task_poll_create(&xx, &poll_conn_data);
+		if (err != 0)
 			goto destroy_pool;
 		poll_conn_task = xx;
 	}
@@ -229,7 +227,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		int xx;
 		connection = xcb_connect(0, &xx);
 		if (0 == connection) {
-			errnum = LINTED_ERROR_UNIMPLEMENTED;
+			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_pool;
 		}
 		screen_number = (unsigned)xx;
@@ -247,7 +245,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		}
 
 		if (0 == iter.rem) {
-			errnum = EINVAL;
+			err = EINVAL;
 			goto close_display;
 		}
 
@@ -255,35 +253,35 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 	xcb_window_t window = xcb_generate_id(connection);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto close_display;
 
 	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
 	    connection, XCB_COPY_FROM_PARENT, window, screen->root, 0,
 	    0, 640, 480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
 	    screen->root_visual, 0, window_opts);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto close_display;
 
 	xcb_intern_atom_cookie_t protocols_ck = xcb_intern_atom(
 	    connection, 1, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t delete_ck =
 	    xcb_intern_atom(connection, 0, strlen("WM_DELETE_WINDOW"),
 	                    "WM_DELETE_WINDOW");
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_intern_atom_cookie_t pid_ck = xcb_intern_atom(
 	    connection, 0, strlen("_NET_WM_PID"), "_NET_WM_PID");
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_atom_t wm_protocols_atom;
@@ -296,12 +294,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			    connection, protocols_ck, &xx);
 			proto_err = xx;
 		}
-		errnum = linted_xcb_conn_error(connection);
-		if (errnum != 0)
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
 			goto destroy_window;
 
 		if (proto_err != 0) {
-			errnum = linted_xcb_error(proto_err);
+			err = linted_xcb_error(proto_err);
 			linted_mem_free(proto_err);
 			goto destroy_window;
 		}
@@ -320,12 +318,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			    connection, delete_ck, &xx);
 			delete_ck_err = xx;
 		}
-		errnum = linted_xcb_conn_error(connection);
-		if (errnum != 0)
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
 			goto destroy_window;
 
 		if (delete_ck_err != 0) {
-			errnum = linted_xcb_error(delete_ck_err);
+			err = linted_xcb_error(delete_ck_err);
 			linted_mem_free(delete_ck_err);
 			goto destroy_window;
 		}
@@ -341,19 +339,19 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		    connection, XCB_PROP_MODE_REPLACE, window,
 		    wm_protocols_atom, XCB_ATOM_ATOM, 32, 1U, &xx);
 	}
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *change_err =
 	    xcb_request_check(connection, change_ck);
 
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	if (change_err != 0) {
-		errnum = linted_xcb_error(change_err);
+		err = linted_xcb_error(change_err);
 		linted_mem_free(change_err);
 		goto destroy_window;
 	}
@@ -368,12 +366,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			    connection, pid_ck, &xx);
 			pid_ck_err = xx;
 		}
-		errnum = linted_xcb_conn_error(connection);
-		if (errnum != 0)
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
 			goto destroy_window;
 
 		if (pid_ck_err != 0) {
-			errnum = linted_xcb_error(pid_ck_err);
+			err = linted_xcb_error(pid_ck_err);
 			linted_mem_free(pid_ck_err);
 			goto destroy_window;
 		}
@@ -387,22 +385,22 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	                    sizeof PACKAGE_TARNAME +
 	                        sizeof PACKAGE_NAME,
 	                    PACKAGE_TARNAME "\0" PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_NAME), PACKAGE_NAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	{
@@ -418,13 +416,13 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	}
 
 get_hostname_failed:
-	errnum = errno;
-	LINTED_ASSUME(errnum != 0);
+	err = errno;
+	LINTED_ASSUME(err != 0);
 	goto destroy_window;
 
 get_hostname_succeeded:
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	{
@@ -433,32 +431,32 @@ get_hostname_succeeded:
 		                    window, net_wm_pid_atom,
 		                    XCB_ATOM_CARDINAL, 32, 1, &xx);
 	}
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
 	                    XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8,
 	                    strlen(PACKAGE_TARNAME), PACKAGE_TARNAME);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_map_window(connection, window);
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_generic_error_t *create_win_err =
 	    xcb_request_check(connection, create_win_ck);
 	if (create_win_err != 0) {
-		errnum = linted_xcb_error(create_win_err);
+		err = linted_xcb_error(create_win_err);
 		linted_mem_free(create_win_err);
 		goto destroy_window;
 	}
 
-	errnum = linted_xcb_conn_error(connection);
-	if (errnum != 0)
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
 		goto destroy_window;
 
 	xcb_flush(connection);
@@ -472,8 +470,8 @@ get_hostname_succeeded:
 	poll_conn_data.pool = pool;
 	poll_conn_data.connection = connection;
 
-	errnum = linted_window_write(window_ko, window);
-	if (errnum != 0)
+	err = linted_window_write(window_ko, window);
+	if (err != 0)
 		goto destroy_window;
 
 	linted_window_task_notify_prepare(gui_notice_task,
@@ -500,13 +498,13 @@ get_hostname_succeeded:
 		struct linted_asynch_task *completed_task;
 		{
 			struct linted_asynch_task *xx;
-			errnum = linted_asynch_pool_wait(pool, &xx);
-			if (errnum != 0)
+			err = linted_asynch_pool_wait(pool, &xx);
+			if (err != 0)
 				goto stop_pool;
 			completed_task = xx;
 		}
-		errnum = dispatch(completed_task);
-		if (errnum != 0)
+		err = dispatch(completed_task);
+		if (err != 0)
 			goto stop_pool;
 
 		if (time_to_quit)
@@ -523,35 +521,33 @@ stop_pool:
 
 	for (;;) {
 		struct linted_asynch_task *completed_task;
-		linted_error poll_errnum;
+		linted_error poll_err;
 		{
 			struct linted_asynch_task *xx;
-			poll_errnum =
-			    linted_asynch_pool_poll(pool, &xx);
-			if (LINTED_ERROR_AGAIN == poll_errnum)
+			poll_err = linted_asynch_pool_poll(pool, &xx);
+			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
 			completed_task = xx;
 		}
 
-		linted_error dispatch_errnum =
-		    linted_asynch_task_errnum(completed_task);
-		if (0 == errnum &&
-		    dispatch_errnum != LINTED_ERROR_CANCELLED)
-			errnum = dispatch_errnum;
+		linted_error dispatch_err =
+		    linted_asynch_task_err(completed_task);
+		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
+			err = dispatch_err;
 	}
 
 destroy_window : {
 	xcb_void_cookie_t destroy_ck =
 	    xcb_destroy_window_checked(connection, window);
-	if (0 == errnum)
-		errnum = linted_xcb_conn_error(connection);
+	if (0 == err)
+		err = linted_xcb_conn_error(connection);
 
 	xcb_generic_error_t *destroy_err =
 	    xcb_request_check(connection, destroy_ck);
-	if (0 == errnum)
-		errnum = linted_xcb_conn_error(connection);
-	if (0 == errnum && destroy_err != 0)
-		errnum = linted_xcb_error(destroy_err);
+	if (0 == err)
+		err = linted_xcb_conn_error(connection);
+	if (0 == err && destroy_err != 0)
+		err = linted_xcb_error(destroy_err);
 	linted_mem_free(destroy_err);
 }
 
@@ -559,9 +555,9 @@ close_display:
 	xcb_disconnect(connection);
 
 destroy_pool : {
-	linted_error destroy_errnum = linted_asynch_pool_destroy(pool);
-	if (0 == errnum)
-		errnum = destroy_errnum;
+	linted_error destroy_err = linted_asynch_pool_destroy(pool);
+	if (0 == err)
+		err = destroy_err;
 }
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
@@ -570,14 +566,14 @@ destroy_pool : {
 	(void)poll_conn_task;
 
 	/* Tell the manager to exit everything */
-	if (0 == errnum) {
+	if (0 == err) {
 		char const dummy = 0U;
-		errnum = linted_io_write_all(kill_ko, 0, &dummy,
-		                             sizeof dummy);
-		if (errnum != 0) {
+		err = linted_io_write_all(kill_ko, 0, &dummy,
+		                          sizeof dummy);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_io_task_write_all: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 
@@ -586,13 +582,13 @@ destroy_pool : {
 			pause();
 	}
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
-	return errnum;
+	return err;
 }
 
 static linted_error dispatch(struct linted_asynch_task *task)
@@ -611,11 +607,11 @@ static linted_error dispatch(struct linted_asynch_task *task)
 
 static linted_error on_poll_conn(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
+	err = linted_asynch_task_err(task);
+	if (err != 0)
+		return err;
 
 	struct linted_io_task_poll *poll_conn_task =
 	    linted_io_task_poll_from_asynch(task);
@@ -666,11 +662,11 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 static linted_error on_sent_notice(struct linted_asynch_task *task)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_asynch_task_errnum(task);
-	if (errnum != 0)
-		return errnum;
+	err = linted_asynch_task_err(task);
+	if (err != 0)
+		return err;
 
 	return 0;
 }

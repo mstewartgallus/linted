@@ -112,7 +112,7 @@ static unsigned char sandbox_start(char const *const process_name,
                                    size_t argc,
                                    char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
 	size_t arguments_length = argc;
 
@@ -327,11 +327,11 @@ exit_loop:
 	wchar_t *binary_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(binary, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(binary, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		binary_utf2 = xx;
@@ -340,11 +340,11 @@ exit_loop:
 	wchar_t *binary_base_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(binary_base, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(binary_base, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		binary_base_utf2 = xx;
@@ -377,9 +377,9 @@ exit_loop:
 	}
 	linted_ko_close(thread_handle);
 
-	if (errnum != 0) {
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "spawning: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 

@@ -64,7 +64,7 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 
 	show_command = show_command_arg;
 
-	linted_error errnum;
+	linted_error err;
 
 	wchar_t *raw_command_line = GetCommandLineW();
 
@@ -81,16 +81,16 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 	char **argv;
 	{
 		void *xx;
-		errnum = linted_mem_alloc_array(&xx, argc + 1U,
-		                                sizeof argv[0U]);
-		if (errnum != 0)
+		err = linted_mem_alloc_array(&xx, argc + 1U,
+		                             sizeof argv[0U]);
+		if (err != 0)
 			return EXIT_FAILURE;
 		argv = xx;
 	}
 
 	for (size_t ii = 0U; ii < argc; ++ii) {
-		errnum = linted_utf_2_to_1(wide_argv[ii], &argv[ii]);
-		if (errnum != 0)
+		err = linted_utf_2_to_1(wide_argv[ii], &argv[ii]);
+		if (err != 0)
 			return EXIT_FAILURE;
 	}
 
@@ -108,8 +108,8 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 	char const *service;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_SERVICE", &xx);
-		if (errnum != 0)
+		err = linted_environment_get("LINTED_SERVICE", &xx);
+		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;
 	}
@@ -135,10 +135,10 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 		return EXIT_FAILURE;
 	}
 
-	errnum = linted_signal_init();
-	if (errnum != 0) {
+	err = linted_signal_init();
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 

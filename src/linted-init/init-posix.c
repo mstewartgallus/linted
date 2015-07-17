@@ -51,7 +51,7 @@ static volatile sig_atomic_t monitor_pid = 0;
 static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[])
 {
-	linted_error errnum;
+	linted_error err;
 
 	static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT,
 	                                   SIGTERM};
@@ -73,11 +73,11 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	char const *monitor;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_MONITOR", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_MONITOR", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor = xx;
@@ -99,10 +99,10 @@ static unsigned char init_start(char const *process_name, size_t argc,
 
 	char *monitor_base = basename(monitor_dup);
 
-	errnum = set_child_subreaper(true);
-	if (errnum != 0) {
+	err = set_child_subreaper(true);
+	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "set_child_subreaper: %s",
-		           linted_error_string(errnum));
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -114,13 +114,13 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		pid_t child;
 		{
 			pid_t xx;
-			errnum = linted_spawn(
+			err = linted_spawn(
 			    &xx, LINTED_KO_CWD, monitor, 0, 0,
 			    (char const *const[]){monitor_base, 0}, 0);
-			if (errnum != 0) {
+			if (err != 0) {
 				linted_log(LINTED_LOG_ERROR,
 				           "linted_spawn: %s",
-				           linted_error_string(errnum));
+				           linted_error_string(err));
 				return EXIT_FAILURE;
 			}
 			child = xx;
@@ -142,14 +142,14 @@ static unsigned char init_start(char const *process_name, size_t argc,
 				goto waitid_succeeded;
 			}
 		waitid_failed:
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
-			if (EINTR == errnum)
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			if (EINTR == err)
 				continue;
 
-			assert(errnum != EINVAL);
-			assert(errnum != ECHILD);
-			assert(0 == errnum);
+			assert(err != EINVAL);
+			assert(err != ECHILD);
+			assert(0 == err);
 			LINTED_ASSUME_UNREACHABLE();
 
 		waitid_succeeded:
@@ -186,13 +186,13 @@ exit_loop:
 
 static linted_error set_child_subreaper(bool v)
 {
-	linted_error errnum;
+	linted_error err;
 
 	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL,
 	                0UL, 0UL)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	return 0;
@@ -200,9 +200,9 @@ static linted_error set_child_subreaper(bool v)
 
 static void delegate_signal(int signo)
 {
-	linted_error old_errnum = errno;
+	linted_error old_err = errno;
 
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	/* All signals are blocked here. */
 
@@ -220,14 +220,14 @@ static void delegate_signal(int signo)
 			siginfo_t info = {0};
 			if (-1 == waitid(P_PID, the_pid, &info,
 			                 WEXITED | WNOWAIT | WNOHANG))
-				errnum = errno;
+				err = errno;
 
-			if (ECHILD == errnum)
+			if (ECHILD == err)
 				goto restore_errno;
-			if (errnum != 0) {
-				assert(errnum != EINTR);
-				assert(errnum != EINVAL);
-				assert(0 == errnum);
+			if (err != 0) {
+				assert(err != EINTR);
+				assert(err != EINVAL);
+				assert(0 == err);
 			}
 
 			/* The process was killed and is waitable */
@@ -240,5 +240,5 @@ static void delegate_signal(int signo)
 	}
 
 restore_errno:
-	errno = old_errnum;
+	errno = old_err;
 }

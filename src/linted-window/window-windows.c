@@ -74,19 +74,19 @@ struct linted_start_config const linted_start_config = {
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[])
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	HGDIOBJ arrow_cursor = LoadCursor(0, IDC_ARROW);
 	if (0 == arrow_cursor) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto report_exit_status;
 	}
 
 	HGDIOBJ white_brush = GetStockObject(WHITE_BRUSH);
 	if (0 == white_brush) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto report_exit_status;
 	}
 
@@ -105,8 +105,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		class_atom = RegisterClass(&window_class);
 	}
 	if (0 == class_atom) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto report_exit_status;
 	}
 
@@ -118,15 +118,15 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 	    0, 0, get_current_module(), 0);
 	if (0 == main_window) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto destroy_window;
 	}
 
 	switch (ShowWindow(main_window, linted_start_show_command())) {
 	case -1: {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto destroy_window;
 	}
 
@@ -152,7 +152,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		    feature_levels, LINTED_ARRAY_SIZE(feature_levels),
 		    D3D11_SDK_VERSION, &xx, &yy, &zz);
 		if (FAILED(result)) {
-			errnum = LINTED_ERROR_UNIMPLEMENTED;
+			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
 		}
 		device = xx;
@@ -167,7 +167,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result = ID3D11Device_QueryInterface(
 			    device, &uuidof_IDXGIDevice, &xx);
 			if (FAILED(result)) {
-				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
 			dxgi_device = xx;
@@ -179,7 +179,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result =
 			    IDXGIDevice_GetAdapter(dxgi_device, &xx);
 			if (FAILED(result)) {
-				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
 			adapter = xx;
@@ -190,7 +190,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result = IDXGIAdapter_GetParent(
 			    adapter, &uuidof_IDXGIFactory1, &xx);
 			if (FAILED(result)) {
-				errnum = LINTED_ERROR_UNIMPLEMENTED;
+				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
 			dxgi_factory = xx;
@@ -218,7 +218,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		HRESULT result = IDXGIFactory1_CreateSwapChain(
 		    dxgi_factory, (IUnknown *)device, &desc, &xx);
 		if (FAILED(result)) {
-			errnum = LINTED_ERROR_UNIMPLEMENTED;
+			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_device;
 		}
 		swap_chain = xx;
@@ -230,8 +230,8 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	IDXGIFactory1_Release(dxgi_factory);
 
 	if (0 == UpdateWindow(main_window)) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto release_swap_chain;
 	}
 
@@ -248,12 +248,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 			default:
 				if (WM_QUIT == message.message) {
-					errnum = message.wParam;
+					err = message.wParam;
 					goto release_swap_chain;
 				}
 
 				if (-1 == TranslateMessage(&message)) {
-					errnum = GetLastError();
+					err = GetLastError();
 					goto release_swap_chain;
 				}
 
@@ -267,7 +267,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		HRESULT result =
 		    IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
-			errnum = LINTED_ERROR_UNIMPLEMENTED;
+			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
 		}
 	}
@@ -281,7 +281,7 @@ destroy_device:
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
-	if (errnum != 0) {
+	if (err != 0) {
 		DestroyWindow(main_window);
 
 		for (;;) {
@@ -303,7 +303,7 @@ window_destroyed:
 report_exit_status:
 	/* I'm too lazy to bother with getting and printing the text
 	 * for the error code right now. */
-	return errnum;
+	return err;
 }
 
 static LRESULT on_paint(HWND main_window, UINT message_type,
@@ -333,24 +333,24 @@ LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
 static LRESULT on_paint(HWND main_window, UINT message_type,
                         WPARAM w_param, LPARAM l_param)
 {
-	DWORD errnum = 0;
+	DWORD err = 0;
 
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(main_window, &ps);
 	if (0 == hdc) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 		goto post_quit_message;
 	}
 
 	if (0 == EndPaint(main_window, &ps)) {
-		errnum = GetLastError();
-		assert(errnum != 0);
+		err = GetLastError();
+		assert(err != 0);
 	}
 
 post_quit_message:
-	if (errnum != 0)
-		PostQuitMessage(errnum);
+	if (err != 0)
+		PostQuitMessage(err);
 
 	return 0;
 }

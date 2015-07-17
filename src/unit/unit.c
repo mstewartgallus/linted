@@ -47,14 +47,14 @@ struct linted_unit_db
 
 linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
 {
-	linted_error errnum;
+	linted_error err;
 
 	struct linted_unit_db *units;
 	{
 		void *xx;
-		errnum = linted_mem_alloc(&xx, sizeof *units);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_alloc(&xx, sizeof *units);
+		if (err != 0)
+			return err;
 		units = xx;
 	}
 
@@ -69,7 +69,7 @@ linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
 linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
                                      struct linted_unit **unitp)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	union unit_union *list = units->list;
 	size_t old_size = units->size;
@@ -77,10 +77,10 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 	size_t new_size = old_size + 1U;
 	{
 		void *xx;
-		errnum = linted_mem_realloc_array(&xx, list, new_size,
-		                                  sizeof list[0U]);
-		if (errnum != 0)
-			return errnum;
+		err = linted_mem_realloc_array(&xx, list, new_size,
+		                               sizeof list[0U]);
+		if (err != 0)
+			return err;
 		list = xx;
 	}
 
@@ -90,7 +90,7 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 	units->list = list;
 	units->size = new_size;
 
-	return errnum;
+	return err;
 }
 
 void linted_unit_db_destroy(struct linted_unit_db *units)
@@ -137,7 +137,7 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
 linted_error
 linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 {
-	linted_error errnum;
+	linted_error err;
 
 	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
 
@@ -146,31 +146,31 @@ linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 	          sizeof "/environ" - 1U + 1U];
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ",
 	                  (uintmax_t)pid)) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
-		return errnum;
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
 	}
 
 	linted_ko ko;
 	{
 		linted_ko xx;
-		errnum = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                        LINTED_KO_RDONLY);
-		if (ENOENT == errnum)
+		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
+		                     LINTED_KO_RDONLY);
+		if (ENOENT == err)
 			return ESRCH;
-		if (errnum != 0)
-			return errnum;
+		if (err != 0)
+			return err;
 		ko = xx;
 	}
 
 	FILE *file = fdopen(ko, "r");
 	if (0 == file) {
-		errnum = errno;
-		LINTED_ASSUME(errnum != 0);
+		err = errno;
+		LINTED_ASSUME(err != 0);
 
 		linted_ko_close(ko);
 
-		return errnum;
+		return err;
 	}
 
 	/* Get the buffer all at once to avoid raciness. */
@@ -187,19 +187,19 @@ linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 	}
 
 	if (-1 == zz) {
-		errnum = errno;
+		err = errno;
 		/* May be zero */
 		eof = true;
 	}
 
 	if (EOF == fclose(file)) {
-		if (0 == errnum) {
-			errnum = errno;
-			LINTED_ASSUME(errnum != 0);
+		if (0 == err) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 	}
 
-	if (errnum != 0)
+	if (err != 0)
 		goto free_buf;
 
 	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
@@ -217,7 +217,7 @@ linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 		}
 		iter = strchr(iter, '\0');
 		if (0 == iter) {
-			errnum = EINVAL;
+			err = EINVAL;
 			break;
 		}
 		++iter;
@@ -230,22 +230,22 @@ linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
 free_buf:
 	linted_mem_free(buf);
 
-	return errnum;
+	return err;
 }
 
 linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
                              char const *name)
 {
-	linted_error errnum = 0;
+	linted_error err = 0;
 
 	pid_t *children;
 	size_t len;
 	{
 		pid_t *xx;
 		size_t yy;
-		errnum = linted_pid_children(manager_pid, &xx, &yy);
-		if (errnum != 0)
-			return errnum;
+		err = linted_pid_children(manager_pid, &xx, &yy);
+		if (err != 0)
+			return err;
 		children = xx;
 		len = yy;
 	}
@@ -257,8 +257,8 @@ linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
 		pid_t child = children[ii];
 
 		char other_name[LINTED_UNIT_NAME_MAX + 1U];
-		errnum = linted_unit_name(child, other_name);
-		if (errnum != 0)
+		err = linted_unit_name(child, other_name);
+		if (err != 0)
 			goto free_buf;
 
 		if (0 == strcmp(name, other_name)) {
@@ -270,8 +270,8 @@ linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
 free_buf:
 	linted_mem_free(children);
 
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
 	if (-1 == pid)
 		return ESRCH;

@@ -105,12 +105,12 @@ static unsigned char main_start(char const *const process_name,
                                 size_t argc,
                                 char const *const *const argv)
 {
-	linted_error errnum = linted_linted_privilege_check();
-	if (errnum != 0) {
+	linted_error err = linted_linted_privilege_check();
+	if (err != 0) {
 		linted_log(
 		    LINTED_LOG_ERROR,
 		    "%s should not be run with high privileges: %s",
-		    PACKAGE_NAME, linted_error_string(errnum));
+		    PACKAGE_NAME, linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -118,12 +118,12 @@ static unsigned char main_start(char const *const process_name,
 	     ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 
-		errnum = linted_environment_set(envvar->key,
-		                                envvar->value, false);
-		if (errnum != 0) {
+		err = linted_environment_set(envvar->key, envvar->value,
+		                             false);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_set: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -133,12 +133,12 @@ static unsigned char main_start(char const *const process_name,
 		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)getpid());
 
-		errnum =
+		err =
 		    linted_environment_set("MANAGERPID", pid_str, true);
-		if (errnum != 0) {
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_set: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -146,11 +146,11 @@ static unsigned char main_start(char const *const process_name,
 	char const *init;
 	{
 		char *xx;
-		errnum = linted_environment_get("LINTED_INIT", &xx);
-		if (errnum != 0) {
+		err = linted_environment_get("LINTED_INIT", &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_environment_get: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init = xx;
@@ -225,11 +225,11 @@ static unsigned char main_start(char const *const process_name,
 	wchar_t *init_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(init, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(init, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init_utf2 = xx;
@@ -238,11 +238,11 @@ static unsigned char main_start(char const *const process_name,
 	wchar_t *init_base_utf2;
 	{
 		wchar_t *xx;
-		errnum = linted_utf_1_to_2(init_base, &xx);
-		if (errnum != 0) {
+		err = linted_utf_1_to_2(init_base, &xx);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_utf_1_to_2: %s",
-			           linted_error_string(errnum));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init_base_utf2 = xx;
@@ -310,39 +310,39 @@ static linted_error do_help(linted_ko ko, char const *process_name,
                             char const *package_url,
                             char const *package_bugreport)
 {
-	linted_error errnum;
+	linted_error err;
 
-	errnum = linted_io_write_string(ko, 0, "Usage: ");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "Usage: ");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, process_name);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, process_name);
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, " [OPTIONS]\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, " [OPTIONS]\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "Play the game.\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "Play the game.\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "\
+	err = linted_io_write_string(ko, 0, "\
   --help              display this help and exit\n\
   --version           display version information and exit\n");
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "\
+	err = linted_io_write_string(ko, 0, "\
   LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
   LINTED_LOGGER_FSTAB the location of the logger fstab\n\
   LINTED_LOGGER       the location of the logger executable\n\
@@ -350,40 +350,40 @@ static linted_error do_help(linted_ko ko, char const *process_name,
   LINTED_GUI          the location of the GUI executable\n\
   LINTED_SIMULATOR_FSTAB the location of the simulator fstab\n\
   LINTED_SIMULATOR    the location of the simulator executable\n");
-	if (errnum != 0)
-		return errnum;
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, "Report bugs to <");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, "Report bugs to <");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, package_bugreport);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, package_bugreport);
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, ">\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, ">\n");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, package_name);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, package_name);
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, " home page: <");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, " home page: <");
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, package_url);
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, package_url);
+	if (err != 0)
+		return err;
 
-	errnum = linted_io_write_string(ko, 0, ">\n");
-	if (errnum != 0)
-		return errnum;
+	err = linted_io_write_string(ko, 0, ">\n");
+	if (err != 0)
+		return err;
 
 	return 0;
 }
