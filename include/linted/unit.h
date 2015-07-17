@@ -74,7 +74,6 @@ struct linted_unit_socket
 	char const *path;
 	int fifo_size;
 	linted_unit_socket_type type;
-	_Bool is_open : 1U;
 };
 
 struct linted_unit_service

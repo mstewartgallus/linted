@@ -152,11 +152,11 @@ static linted_error on_kill_read(struct linted_asynch_task *task);
 
 static linted_error
 on_status_request(pid_t manager_pid,
-		  struct linted_admin_status_request const *request,
+                  struct linted_admin_status_request const *request,
                   union linted_admin_reply *reply);
 static linted_error
 on_stop_request(pid_t manager_pid,
-		struct linted_admin_stop_request const *request,
+                struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply);
 
 static linted_error on_child_trapped(char const *process_name,
@@ -850,7 +850,6 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 
 		case LINTED_UNIT_TYPE_SOCKET: {
 			struct linted_unit_socket *s = (void *)unit;
-			s->is_open = false;
 
 			errnum = socket_create(s, conf);
 			if (errnum != 0)
@@ -1100,8 +1099,9 @@ static linted_error activate_unit_db(char const *process_name,
 {
 	linted_error errnum;
 
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db);
-	     ii < size; ++ii) {
+	size_t db_size = linted_unit_db_size(unit_db);
+
+	for (size_t ii = 0U; ii < db_size; ++ii) {
 		struct linted_unit *unit =
 		    linted_unit_db_get_unit(unit_db, ii);
 
@@ -1113,8 +1113,7 @@ static linted_error activate_unit_db(char const *process_name,
 			return errnum;
 	}
 
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db);
-	     ii < size; ++ii) {
+	for (size_t ii = 0U; ii < db_size; ++ii) {
 		struct linted_unit *unit =
 		    linted_unit_db_get_unit(unit_db, ii);
 
@@ -1132,23 +1131,20 @@ static linted_error activate_unit_db(char const *process_name,
 
 static linted_error socket_activate(struct linted_unit_socket *unit)
 {
-	linted_error errnum;
+	linted_error errnum = 0;
 
-	switch (unit->type) {
+	linted_unit_type type = unit->type;
+	char const *path = unit->path;
+
+	switch (type) {
 	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		errnum = linted_dir_create(0, LINTED_KO_CWD, unit->path,
-		                           0U, S_IRWXU);
-		if (errnum != 0)
-			return errnum;
-		unit->is_open = false;
+		errnum = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
+		                           S_IRWXU);
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		errnum = linted_file_create(0, LINTED_KO_CWD,
-		                            unit->path, 0U, S_IRWXU);
-		if (errnum != 0)
-			return errnum;
-		unit->is_open = false;
+		errnum = linted_file_create(0, LINTED_KO_CWD, path, 0U,
+		                            S_IRWXU);
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
@@ -1160,7 +1156,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 			{
 				linted_ko xx;
 				errnum = linted_fifo_create(
-				    &xx, LINTED_KO_CWD, unit->path,
+				    &xx, LINTED_KO_CWD, path,
 				    LINTED_FIFO_RDWR, S_IRWXU);
 				if (errnum != 0)
 					return errnum;
@@ -1173,22 +1169,21 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 				LINTED_ASSUME(errnum != 0);
 			}
 
-			linted_ko_close(fifo);
+			linted_error close_err = linted_ko_close(fifo);
+			if (0 == errnum)
+				errnum = close_err;
 		} else
 #endif
 		{
-			errnum = linted_fifo_create(
-			    0, LINTED_KO_CWD, unit->path, 0U, S_IRWXU);
-			if (errnum != 0)
-				return errnum;
+			errnum = linted_fifo_create(0, LINTED_KO_CWD,
+			                            path, 0U, S_IRWXU);
 		}
 
-		unit->is_open = false;
 		break;
 	}
 	}
 
-	return 0;
+	return errnum;
 }
 
 struct my_option
@@ -1221,9 +1216,9 @@ static linted_error service_activate(char const *process_name,
 		child = xx;
 	}
 
-	linted_io_write_format(LINTED_KO_STDERR, 0,
-	                       "%s: ptracing %" PRIiMAX " %s\n",
-	                       process_name, (intmax_t)child, unit_name);
+	linted_io_write_format(
+	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIiMAX " %s\n",
+	    process_name, (intmax_t)child, unit_name);
 
 	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
@@ -1252,8 +1247,8 @@ spawn_service:
 		linted_ko name_dir;
 		{
 			linted_ko xx;
-			errnum = linted_dir_create(&xx, LINTED_KO_CWD,
-			                           unit_name, 0U, S_IRWXU);
+			errnum = linted_dir_create(
+			    &xx, LINTED_KO_CWD, unit_name, 0U, S_IRWXU);
 			if (errnum != 0)
 				return errnum;
 			name_dir = xx;
@@ -1543,19 +1538,22 @@ static linted_error on_signal(struct linted_asynch_task *task)
 	pid_t manager_pid = data->manager_pid;
 	int signo = linted_signal_task_wait_signo(wait_task);
 
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db);
-	     ii < size; ++ii) {
+	size_t db_size = linted_unit_db_size(unit_db);
+	for (size_t ii = 0U; ii < db_size; ++ii) {
 		struct linted_unit *unit =
 		    linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
+		char const *name = unit->name;
+		linted_unit_type type = unit->type;
+
+		if (type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum = linted_unit_pid(
-			    &xx, manager_pid, unit->name);
+			linted_error pid_errnum =
+			    linted_unit_pid(&xx, manager_pid, name);
 			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
@@ -1614,12 +1612,13 @@ static linted_error on_admin_in_read(struct linted_asynch_task *task)
 
 	switch (request.type) {
 	case LINTED_ADMIN_STATUS:
-		errnum =
-			on_status_request(manager_pid, (void*)&request, &reply);
+		errnum = on_status_request(manager_pid,
+		                           (void *)&request, &reply);
 		break;
 
 	case LINTED_ADMIN_STOP:
-		errnum = on_stop_request(manager_pid, (void*)&request, &reply);
+		errnum = on_stop_request(manager_pid, (void *)&request,
+		                         &reply);
 		break;
 
 	default:
@@ -1677,19 +1676,22 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 	struct linted_asynch_pool *pool = kill_read_data->pool;
 	pid_t manager_pid = kill_read_data->manager_pid;
 
-	for (size_t ii = 0U, size = linted_unit_db_size(unit_db);
-	     ii < size; ++ii) {
+	size_t db_size = linted_unit_db_size(unit_db);
+	for (size_t ii = 0U; ii < db_size; ++ii) {
 		struct linted_unit *unit =
 		    linted_unit_db_get_unit(unit_db, ii);
 
-		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
+		char const *name = unit->name;
+		linted_unit_type type = unit->type;
+
+		if (type != LINTED_UNIT_TYPE_SERVICE)
 			continue;
 
 		pid_t pid;
 		{
 			pid_t xx;
-			linted_error pid_errnum = linted_unit_pid(
-			    &xx, manager_pid, unit->name);
+			linted_error pid_errnum =
+			    linted_unit_pid(&xx, manager_pid, name);
 			if (ESRCH == pid_errnum)
 				continue;
 			if (pid_errnum != 0) {
@@ -1755,20 +1757,13 @@ static linted_error on_child_signaled(char const *process_name,
 		signo = 0;
 
 		pid_t self = getpid();
-		bool is;
 		{
 			bool xx;
 			errnum = pid_is_child_of(self, pid, &xx);
 			if (errnum != 0)
 				break;
-			is = xx;
-		}
-		if (is) {
-			errnum = ptrace_setoptions(
-			    pid, PTRACE_O_TRACECLONE |
-			             PTRACE_O_TRACEFORK |
-			             PTRACE_O_TRACEVFORK);
-			break;
+			if (xx)
+				goto on_stopped_child;
 		}
 
 		char name[LINTED_UNIT_NAME_MAX + 1U];
@@ -1784,6 +1779,12 @@ static linted_error on_child_signaled(char const *process_name,
 		errnum = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 		break;
 	}
+
+	on_stopped_child:
+		errnum = ptrace_setoptions(
+		    pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
+		             PTRACE_O_TRACEVFORK);
+		break;
 
 	case SIGTRAP:
 		signo = 0;
@@ -1910,7 +1911,7 @@ reply:
 
 static linted_error
 on_stop_request(pid_t manager_pid,
-		struct linted_admin_stop_request const *request,
+                struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply)
 {
 	linted_error errnum = 0;
