@@ -28,7 +28,7 @@ struct linted_sched_task_sleep_until
 {
 	struct linted_asynch_task *parent;
 	void *data;
-	struct timespec request;
+	struct timespec time;
 };
 
 linted_error linted_sched_time(struct timespec *now)
@@ -122,10 +122,10 @@ void *linted_sched_task_sleep_until_data(
 	return task->data;
 }
 
-void linted_sched_task_sleep_until_request(
-    struct linted_sched_task_sleep_until *task, struct timespec *req)
+void linted_sched_task_sleep_until_time(
+    struct linted_sched_task_sleep_until *task, struct timespec *xx)
 {
-	*req = task->request;
+	*xx = task->time;
 }
 
 void linted_sched_task_sleep_until_prepare(
@@ -133,7 +133,7 @@ void linted_sched_task_sleep_until_prepare(
     struct timespec const *req)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
-	task->request = *req;
+	task->time = *req;
 }
 
 struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
