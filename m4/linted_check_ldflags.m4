@@ -18,7 +18,28 @@ AC_LANG_PUSH([C])
 m4_foreach_w([linted_the_flag], $2, [
          AC_MSG_CHECKING([for linker flag linted_the_flag])
          [LDFLAGS=']linted_the_flag[']
-         AC_LINK_IFELSE([AC_LANG_SOURCE([[int main() { return 0; }]])], [
+         AC_LINK_IFELSE([AC_LANG_SOURCE([
+[#if defined _WIN32]
+[#define WIN32_LEAN_AND_MEAN]
+[#define _UNICODE]
+[#include <windows.h>]
+[#if defined UNICODE]
+[int WINAPI wWinMain(HINSTANCE program_instance,]
+[                    HINSTANCE prev_instance_unused,]
+[                    wchar_t *command_line_unused, int show_command_arg)]
+[{]
+[#else]
+[int WINAPI winMain(HINSTANCE program_instance,]
+[                   HINSTANCE prev_instance_unused,]
+[                   char_t *command_line_unused, int show_command_arg)]
+[{]
+[#endif]
+[#else]
+[int main(void) {]
+[#endif]
+[        return 0;]
+[}]
+])], [
                  AC_MSG_RESULT([yes])
                  $1[="$]$1[ $LDFLAGS"]
          ], [

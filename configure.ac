@@ -208,6 +208,17 @@ dnl
                 AC_MSG_ERROR([Unable to find function ${ac_func}])
         ])
 dnl
+        AC_CHECK_FUNCS([[dup2]dnl
+                        [memmove]dnl
+                        [memset]dnl
+                        [mkdir]dnl
+                        [strdup]dnl
+                        [strrchr]dnl
+                        [strstr]dnl
+                        [strtol]], [], [
+         AC_MSG_ERROR([Unable to find function ${ac_func}])
+        ])
+dnl
         AC_CHECK_HEADERS([[sys/auxv.h]])
         AC_CHECK_FUNCS([[getauxval]])
 dnl
@@ -269,17 +280,6 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
 dnl
 LINTED_CHECK_LIB([MATH_LIBS], [-lm], [sin], [#include <math.h>], [], [
    AC_MSG_ERROR([Unable to find a math library])
-])
-dnl
-AC_CHECK_FUNCS([[dup2]dnl
-                [memmove]dnl
-                [memset]dnl
-                [mkdir]dnl
-                [strdup]dnl
-                [strrchr]dnl
-                [strstr]dnl
-                [strtol]], [], [
- AC_MSG_ERROR([Unable to find function ${ac_func}])
 ])
 dnl
 AC_TYPE_MODE_T
