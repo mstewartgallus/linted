@@ -135,10 +135,13 @@ dnl
         LINTED_CHECK_LIB([CRT_LIBS], [-lmsvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
                 AC_MSG_ERROR([Unable to find a CRT library])
         ])
+        LINTED_CHECK_LIB([GDI_LIBS], [-lgdi32], [GetStockObject], [#include <windows.h>], [], [
+                AC_MSG_WARN([Unable to find a GDI library])
+        ])
         LINTED_CHECK_LIB([WS2_32_LIBS], [-lws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])
         ])
-        LINTED_CHECK_LIB([D3D11_LIBS], [-ld3dx11_43], [D3D11CreateDevice], [#include <d3d11.h>], [], [
+        LINTED_CHECK_LIB([D3D11_LIBS], [-ld3dx11], [D3D11CreateDevice], [#include <d3d11.h>], [], [
                 AC_MSG_WARN([Unable to find a DirectX 11 library])
         ])
 dnl

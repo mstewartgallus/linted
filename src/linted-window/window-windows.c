@@ -135,6 +135,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		break;
 	}
 
+#if 0
 	static D3D_FEATURE_LEVEL const feature_levels[] = {
 	    D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
 	    D3D_FEATURE_LEVEL_10_0,
@@ -228,7 +229,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	                                    DXGI_MWA_NO_ALT_ENTER);
 
 	IDXGIFactory1_Release(dxgi_factory);
-
+#endif
 	if (0 == UpdateWindow(main_window)) {
 		err = GetLastError();
 		assert(err != 0);
@@ -264,20 +265,24 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
+#if 0
 		HRESULT result =
 		    IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
 			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
 		}
+#endif
 	}
 
 release_swap_chain:
+#if 0
 	IDXGISwapChain_Release(swap_chain);
 
 destroy_device:
 	ID3D11Device_Release(device);
 	ID3D11DeviceContext_Release(device_context);
+#endif
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
