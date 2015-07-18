@@ -261,10 +261,10 @@ static unsigned char main_start(char const *const process_name,
 		startup_info.hStdError = LINTED_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
-		if (!CreateProcess(init_utf2, init_base_utf2, 0, 0,
-		                   false, creation_flags, 0, 0,
-		                   &startup_info,
-		                   &process_information)) {
+		if (!CreateProcessW(init_utf2, init_base_utf2, 0, 0,
+		                    false, creation_flags, 0, 0,
+		                    &startup_info,
+		                    &process_information)) {
 			linted_log(LINTED_LOG_ERROR,
 			           "CreateProcessW: %s",
 			           linted_error_string(GetLastError()));

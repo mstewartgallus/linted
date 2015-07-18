@@ -132,12 +132,12 @@ static unsigned char init_start(char const *process_name, size_t argc,
 			startup_info.hStdError = LINTED_KO_STDERR;
 
 			PROCESS_INFORMATION process_information;
-			if (!CreateProcess(
+			if (!CreateProcessW(
 			        monitor_utf2, monitor_base_utf2, 0, 0,
 			        false, creation_flags, 0, 0,
 			        &startup_info, &process_information)) {
 				linted_log(LINTED_LOG_ERROR,
-				           "CreateProcess: %s",
+				           "CreateProcessW: %s",
 				           linted_error_string(
 				               GetLastError()));
 				return EXIT_FAILURE;
