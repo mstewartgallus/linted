@@ -46,12 +46,14 @@ dnl
 [linted_windows_api_default=no]
 [linted_emscripten_api_default=no]
 dnl
-AS_IF([test "x${host_os}" = "xlinux-androideabi"], [[linted_posix_api_default=yes]])
-AS_IF([test "x${host_os}" = "xlinux-gnu"], [[linted_posix_api_default=yes]])
-AS_IF([test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])
+AS_IF([test "x${host_os}" = "xlinux-androideabi" ||
+       test "x${host_os}" = "xlinux-gnu" ||
+       test "x${host_os}" = "xlinux-gnueabi" ||
+       test "x${host_os}" = "xlinux-gnueabihf" ||
+       test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])
 dnl
-AS_IF([test "x${host_os}" = "xmingw32"], [[linted_windows_api_default=yes]])
-AS_IF([test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
+AS_IF([test "x${host_os}" = "xmingw32" ||
+       test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
 dnl
 AS_IF([test "x${CC}" = "xwinegcc"], [
         [linted_windows_api_default=yes]
@@ -163,11 +165,14 @@ dnl
 dnl
         AC_CHECK_HEADERS([[arpa/inet.h]dnl
                           [mntent.h]dnl
-                          [sys/capability.h]dnl
                           [sys/mount.h]dnl
                           [sys/socket.h]dnl
                           [syslog.h]], [], [
           AC_MSG_ERROR([Unable to find header ${ac_header}])
+        ], [])
+dnl
+        AC_CHECK_HEADERS([[sys/capability.h]], [], [
+          AC_MSG_WARN([Unable to find header ${ac_header}])
         ], [])
 dnl
 dnl     First try to see if realtime functionality is included by default
