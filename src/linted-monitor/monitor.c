@@ -1417,8 +1417,15 @@ free_sandbox_dup:
 	linted_mem_free(sandbox_dup);
 
 free_envvars:
-	for (char **envp = envvars; *envp != 0; ++envp)
-		linted_mem_free(*envp);
+	for (char **envp = envvars;;) {
+		char *env = *envp;
+		if (0 == env)
+			break;
+
+		linted_mem_free(env);
+
+		++envp;
+	}
 	linted_mem_free(envvars);
 
 free_chrootdir:

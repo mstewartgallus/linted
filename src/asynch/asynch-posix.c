@@ -119,8 +119,8 @@ static bool canceller_check_and_unregister(struct canceller *canceller);
 
 struct canceller {
 	pthread_t owner;
-	spinlock lock;
 	bool *cancel_replier;
+	spinlock lock;
 	bool owned : 1U;
 	bool in_flight : 1U;
 };
@@ -849,9 +849,9 @@ struct wait_manager {
 
 	size_t poller_count;
 
-	bool stopped : 1U;
-
 	pthread_t master_thread;
+
+	bool stopped : 1U;
 
 	struct poller pollers[];
 };
@@ -973,10 +973,17 @@ static linted_error wait_manager_create(
 			    &manager->pollers[created_threads];
 
 			poller->pool = asynch_pool;
-			err = pthread_create(&poller->thread, &attr,
-			                     poller_routine, poller);
-			if (err != 0)
-				break;
+
+			pthread_t new_thread;
+			{
+				pthread_t xx;
+				err = pthread_create(
+				    &xx, &attr, poller_routine, poller);
+				if (err != 0)
+					break;
+				new_thread = xx;
+			}
+			poller->thread = new_thread;
 		}
 
 		linted_error destroy_err = pthread_attr_destroy(&attr);

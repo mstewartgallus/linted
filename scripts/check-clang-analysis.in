@@ -50,14 +50,33 @@ DISABLED=$(
     # Warn on uses of the 'vfork' function
     printf '%s\n' 'security.insecureAPI.vfork'
 
-    # Way too many false positives
-    # Check for cast from non-struct pointer to struct pointer
-    printf '%s\n' 'alpha.core.CastToStruct'
+    # Check unreachable code
+    # Too many false positives on code of the form
+
+    # #define LINTED_ASSUME_UNREACHABLE() \
+    # do {                                \
+    #         extern void abort(void);    \
+    #         abort();                    \
+    # } while (0)
+
+    # for the while (0)
+
+    printf '%s\n' 'alpha.deadcode.UnreachableCode'
 )
 
 ENABLED=$(
+    # Way too many false positives
+    # Check for cast from non-struct pointer to struct pointer
+    printf '%s\n' 'alpha.core.CastToStruct'
+
     # Warn about assigning non-{0,1} values to Boolean variables
     printf '%s\n' 'alpha.core.BoolAssignment'
+
+    # Check for logical errors for function calls and Objective-C
+    # message expressions (e.g., uninitialized arguments, null
+    # function pointers, and pointer to undefined variables)
+    printf '%s\n' 'alpha.core.CallAndMessageUnInitRefArg'
+
     # Check when casting a malloc'ed type T, whether the size is a
     # multiple of the size of T
     printf '%s\n' 'alpha.core.CastSize'
@@ -73,14 +92,14 @@ ENABLED=$(
     printf '%s\n' 'alpha.core.PointerSub'
     # Warn about unintended use of sizeof() on pointer expressions
     printf '%s\n' 'alpha.core.SizeofPtr'
-    # Check for memory leaks. Traces memory managed by new/delete.
-    printf '%s\n' 'alpha.cplusplus.NewDeleteLeaks'
+
+    # Check for division by variable that is later compared against
+    # 0. Either the comparison is useless or there is division by
+    # zero.
+    printf '%s\n' 'alpha.core.TestAfterDivZero'
+
     # Check virtual function calls during construction or destruction
     printf '%s\n' 'alpha.cplusplus.VirtualCall'
-
-    # Check unreachable code
-    # Unfortunately this is too buggy currently
-    # printf '%s\n' 'alpha.deadcode.UnreachableCode'
 
     # Warn about Objective-C classes that lack a correct implementation of
     # -dealloc
@@ -96,6 +115,7 @@ ENABLED=$(
     # Check that the invalidation methods are present in classes that
     # contain invalidatable instance variables
     printf '%s\n' 'alpha.osx.cocoa.MissingInvalidationMethod'
+
     # Warn about buffer overflows (older checker)
     printf '%s\n' 'alpha.security.ArrayBound'
     # Warn about buffer overflows (newer checker)
@@ -106,6 +126,7 @@ ENABLED=$(
     printf '%s\n' 'alpha.security.ReturnPtrRange'
     # Generate taint information used by other checkers
     printf '%s\n' 'alpha.security.taint.TaintPropagation'
+
     # Check improper use of chroot
     printf '%s\n' 'alpha.unix.Chroot'
     # Check for memory leaks, double free, and use-after-free
@@ -162,7 +183,11 @@ ENABLED=$(
     # managed by new/delete.
     printf '%s\n' 'cplusplus.NewDelete'
 
-    # Check for values stored to variables that are never read afterwards
+    # Check for memory leaks. Traces memory managed by new/delete.
+    printf '%s\n' 'cplusplus.NewDeleteLeaks'
+
+    # Check for values stored to variables that are never read
+    # afterwards
     printf '%s\n' 'deadcode.DeadStores'
 
     # Check code for LLVM codebase conventions
@@ -181,7 +206,7 @@ ENABLED=$(
     # Improved modeling of loops using Cocoa collection types
     printf '%s\n' 'osx.cocoa.Loops'
     # Warn about Objective-C methods that lack a necessary call to super
-    # printf '%s\n' 'osx.cocoa.MissingSuperCall'
+    printf '%s\n' 'osx.cocoa.MissingSuperCall'
     # Warn for suboptimal uses of NSAutoreleasePool in Objective-C GC mode
     printf '%s\n' 'osx.cocoa.NSAutoreleasePool'
     # Check usage of NSError** parameters
@@ -215,6 +240,7 @@ ENABLED=$(
     # Warn on using a floating point value as a loop counter (CERT:
     # FLP30-C, FLP30-CPP)
     printf '%s\n' 'security.FloatLoopCounter'
+
     # Warn on uses of functions whose return values must be always checked
     printf '%s\n' 'security.insecureAPI.UncheckedReturn'
     # Warn on uses of the 'getpw' function
