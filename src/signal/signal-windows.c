@@ -26,7 +26,6 @@
 #include "linted/signal.h"
 
 #include "linted/asynch.h"
-#include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -59,6 +58,8 @@ struct linted_signal_task_wait {
 	void *data;
 	int signo;
 };
+
+static void write_one(linted_ko ko);
 
 static void report_sigint(int signo);
 static void report_sigterm(int signo);
@@ -221,9 +222,7 @@ complete:
 	task_wait->signo = signo;
 
 	if (0 == err) {
-		char dummy = 0;
-		linted_io_write_all(sigpipe_writer, 0, &dummy,
-		                    sizeof dummy);
+		write_one(sigpipe_writer);
 	}
 
 	linted_asynch_pool_complete(pool, task, err);
@@ -296,14 +295,12 @@ static void listen_to_signal(size_t ii)
 	}
 }
 
-static char const dummy;
-
 static void report_sigint(int signo)
 {
 	linted_error err = errno;
 	signal(SIGINT, report_sigint);
 	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
 }
 
@@ -312,6 +309,40 @@ static void report_sigterm(int signo)
 	linted_error err = errno;
 	signal(SIGTERM, report_sigterm);
 	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
+}
+
+static void write_one(linted_ko ko)
+{
+	static char const dummy;
+
+	linted_error err = 0;
+
+	for (;;) {
+		size_t result;
+		{
+			DWORD xx = 0;
+			if (!WriteFile(ko, &dummy, 1U, &xx, 0)) {
+				err = GetLastError();
+				LINTED_ASSUME(err != 0);
+			}
+			result = xx;
+		}
+		if (0 == result)
+			continue;
+
+		if (err != WSAEINTR)
+			break;
+	}
+	/* WSAEWOULDBLOCK is okay it means the pipe is full and that's
+	 * fine.
+	 */
+	if (WSAEWOULDBLOCK == err)
+		err = 0;
+	assert(err != ERROR_INVALID_USER_BUFFER);
+	assert(err != ERROR_NOT_ENOUGH_MEMORY);
+	assert(err != ERROR_NOT_ENOUGH_QUOTA);
+	assert(err != ERROR_BROKEN_PIPE);
+	assert(0 == err);
 }

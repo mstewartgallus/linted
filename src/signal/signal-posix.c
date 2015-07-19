@@ -18,7 +18,6 @@
 #include "linted/signal.h"
 
 #include "linted/asynch.h"
-#include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -356,7 +355,14 @@ static void write_one(linted_ko ko)
 		if (err != EINTR)
 			break;
 	}
-	/* Consume SIGPIPEs */
+	/* EAGAIN and EWOULDBLOCK are okay, they mean the pipe is full
+	 * and that's fine.
+	 */
+	if (EAGAIN == err)
+		err = 0;
+	if (EWOULDBLOCK == err)
+		err = 0;
+
 	assert(err != EBADF);
 	assert(err != EDESTADDRREQ);
 	assert(err != EDQUOT);
@@ -365,9 +371,9 @@ static void write_one(linted_ko ko)
 	assert(err != EINVAL);
 	assert(err != EIO);
 	assert(err != ENOSPC);
-	assert(err != EPIPE);
-	/* EAGAIN and EWOULDBLOCK are okay, they mean the pipe is full
-	 * and that's fine.
-	 */
+
 	/* EPIPE should never happen because SIGPIPE is blocked */
+	assert(err != EPIPE);
+
+	assert(0 == err);
 }
