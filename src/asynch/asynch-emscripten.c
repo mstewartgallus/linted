@@ -67,8 +67,7 @@ waiter_try_recv(struct waiter_queue *queue,
                 struct linted_asynch_waiter **waiterp);
 static void waiter_queue_destroy(struct waiter_queue *queue);
 
-struct canceller
-{
+struct canceller {
 	bool cancelled;
 	bool in_flight : 1U;
 };
@@ -79,16 +78,14 @@ static void canceller_stop(struct canceller *canceller);
 static void canceller_cancel(struct canceller *canceller);
 static bool canceller_check(struct canceller *canceller);
 
-struct linted_asynch_pool
-{
+struct linted_asynch_pool {
 	struct job_queue *worker_queue;
 
 	struct waiter_queue *waiter_queue;
 	struct completion_queue *completion_queue;
 };
 
-struct linted_asynch_task
-{
+struct linted_asynch_task {
 	struct linted_queue_node parent;
 	struct canceller canceller;
 	void *data;
@@ -97,8 +94,7 @@ struct linted_asynch_task
 	linted_asynch_type type;
 };
 
-struct linted_asynch_waiter
-{
+struct linted_asynch_waiter {
 	struct linted_queue_node parent;
 	struct linted_asynch_task *task;
 	linted_ko ko;
@@ -218,11 +214,10 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	complete_task(pool->completion_queue, task);
 }
 
-void
-linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
-                                struct linted_asynch_waiter *waiter,
-                                struct linted_asynch_task *task,
-                                linted_ko ko, short flags)
+void linted_asynch_pool_wait_on_poll(
+    struct linted_asynch_pool *pool,
+    struct linted_asynch_waiter *waiter,
+    struct linted_asynch_task *task, linted_ko ko, short flags)
 {
 	assert(pool != 0);
 

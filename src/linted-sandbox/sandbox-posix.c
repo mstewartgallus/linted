@@ -78,8 +78,7 @@ enum { STOP_OPTIONS,
        NEWNS_ARG,
        NEWUTS_ARG };
 
-struct mount_args
-{
+struct mount_args {
 	char const *fsname;
 	char const *dir;
 	char const *type;
@@ -114,8 +113,7 @@ static char const *const argstrs[] = {
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
-struct first_fork_args
-{
+struct first_fork_args {
 	char const *chdir_path;
 	cap_t caps;
 	struct mount_args *mount_args;
@@ -130,8 +128,7 @@ struct first_fork_args
 	bool use_seccomp : 1U;
 };
 
-struct second_fork_args
-{
+struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
 	linted_ko err_writer;

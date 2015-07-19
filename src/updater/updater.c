@@ -22,8 +22,7 @@
 #include "linted/mem.h"
 #include "linted/rpc.h"
 
-struct linted_updater_task_send
-{
+struct linted_updater_task_send {
 	struct linted_io_task_write *parent;
 	void *data;
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
@@ -31,8 +30,7 @@ struct linted_updater_task_send
 	             LINTED_RPC_UINT32_SIZE];
 };
 
-struct linted_updater_task_receive
-{
+struct linted_updater_task_receive {
 	struct linted_io_task_read *parent;
 	void *data;
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
@@ -134,8 +132,8 @@ free_task:
 	return err;
 }
 
-void
-linted_updater_task_send_destroy(struct linted_updater_task_send *task)
+void linted_updater_task_send_destroy(
+    struct linted_updater_task_send *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
@@ -185,9 +183,9 @@ linted_updater_task_send_data(struct linted_updater_task_send *task)
 	return task->data;
 }
 
-void
-linted_updater_decode(struct linted_updater_task_receive const *task,
-                      struct linted_updater_update *update)
+void linted_updater_decode(
+    struct linted_updater_task_receive const *task,
+    struct linted_updater_update *update)
 {
 	char const *tip = task->message;
 

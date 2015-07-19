@@ -42,8 +42,7 @@ enum { LINTED_SIGNAL_HUP,
 static linted_ko sigpipe_reader = (linted_ko)-1;
 static linted_ko sigpipe_writer = (linted_ko)-1;
 
-struct linted_signal_task_wait
-{
+struct linted_signal_task_wait {
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;
@@ -136,8 +135,8 @@ free_task:
 	return err;
 }
 
-void
-linted_signal_task_wait_destroy(struct linted_signal_task_wait *task)
+void linted_signal_task_wait_destroy(
+    struct linted_signal_task_wait *task)
 {
 	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
@@ -154,9 +153,8 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 	return task->signo;
 }
 
-void
-linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                unsigned task_action)
+void linted_signal_task_wait_prepare(
+    struct linted_signal_task_wait *task, unsigned task_action)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 }

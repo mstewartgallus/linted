@@ -34,8 +34,7 @@
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
 
-struct linted_gpu_context
-{
+struct linted_gpu_context {
 	EGLDisplay display;
 	EGLSurface surface;
 	EGLConfig config;
@@ -60,25 +59,23 @@ struct linted_gpu_context
 	bool update_pending : 1U;
 };
 
-union chunk
-{
+union chunk {
 	GLfloat x[4U];
 	long double __force_alignment;
 };
 
-struct matrix
-{
+struct matrix {
 	union chunk x[4U];
 };
 
 static EGLint const attr_list[] = {
-    EGL_CONFORMANT,        EGL_OPENGL_ES3_BIT_KHR, /**/
-    EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES3_BIT_KHR, /**/
-    EGL_DEPTH_SIZE,        16,                     /**/
-    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,         /**/
-    EGL_RED_SIZE,          5,                      /**/
-    EGL_GREEN_SIZE,        5,                      /**/
-    EGL_BLUE_SIZE,         3,                      /**/
+    EGL_CONFORMANT, EGL_OPENGL_ES3_BIT_KHR,      /**/
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR, /**/
+    EGL_DEPTH_SIZE, 16,                          /**/
+    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,       /**/
+    EGL_RED_SIZE, 5,                             /**/
+    EGL_GREEN_SIZE, 5,                           /**/
+    EGL_BLUE_SIZE, 3,                            /**/
     EGL_NONE};
 
 static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,

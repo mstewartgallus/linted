@@ -266,8 +266,7 @@ exit_loop:
 		return EXIT_FAILURE;
 	}
 
-	struct setting
-	{
+	struct setting {
 		char const *name;
 		bool set;
 	};

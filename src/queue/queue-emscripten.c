@@ -23,8 +23,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-struct linted_queue
-{
+struct linted_queue {
 	struct linted_queue_node *head;
 	struct linted_queue_node **tailp;
 };

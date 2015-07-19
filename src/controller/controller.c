@@ -25,16 +25,14 @@
 #include <stdint.h>
 #include <string.h>
 
-struct linted_controller_task_send
-{
+struct linted_controller_task_send {
 	struct linted_io_task_write *parent;
 	void *data;
 	char
 	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
-struct linted_controller_task_receive
-{
+struct linted_controller_task_receive {
 	struct linted_io_task_read *parent;
 	void *data;
 	char

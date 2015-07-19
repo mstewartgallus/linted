@@ -32,7 +32,7 @@ linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 	if (size > 0U && ((size_t)-1) / size < nmemb)
 		return LINTED_ERROR_OUT_OF_MEMORY;
 
-	*resultp = nmemb * size;
+	*resultp = nmemb *size;
 	return 0;
 }
 

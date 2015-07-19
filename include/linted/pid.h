@@ -40,8 +40,7 @@ struct linted_asynch_task;
 
 struct linted_pid_task_waitid;
 
-struct linted_pid_stat
-{
+struct linted_pid_stat {
 	pid_t pid;
 	char comm[LINTED_PID_COMM_MAX + 1U];
 	char state;
@@ -91,8 +90,8 @@ struct linted_pid_stat
 linted_error
 linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
                               void *data);
-void
-linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task);
+void linted_pid_task_waitid_destroy(
+    struct linted_pid_task_waitid *task);
 
 #if defined HAVE_POSIX_API
 void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,

@@ -43,13 +43,12 @@ linted_error linted_window_write(linted_window window,
 linted_error
 linted_window_task_watch_create(struct linted_window_task_watch **taskp,
                                 void *data);
-void
-linted_window_task_watch_destroy(struct linted_window_task_watch *task);
+void linted_window_task_watch_destroy(
+    struct linted_window_task_watch *task);
 
-void
-linted_window_task_watch_prepare(struct linted_window_task_watch *task,
-                                 unsigned task_action,
-                                 linted_ko notifier);
+void linted_window_task_watch_prepare(
+    struct linted_window_task_watch *task, unsigned task_action,
+    linted_ko notifier);
 struct linted_window_task_watch *
 linted_window_task_watch_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *linted_window_task_watch_to_asynch(

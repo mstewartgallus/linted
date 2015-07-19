@@ -31,8 +31,7 @@
 #define ENABLE_ERRORCHECK 1
 #endif
 
-struct linted_channel
-{
+struct linted_channel {
 	pthread_mutex_t lock;
 	pthread_cond_t filled;
 	void **waiter;

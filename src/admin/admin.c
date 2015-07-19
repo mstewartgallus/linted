@@ -57,15 +57,13 @@ LINTED_STATIC_ASSERT(
         LINTED_FIELD_SIZEOF(struct linted_admin_stop_reply, was_up) <
     CHUNK_SIZE);
 
-struct linted_admin_in_task_read
-{
+struct linted_admin_in_task_read {
 	struct linted_io_task_read *parent;
 	void *data;
 	char request[CHUNK_SIZE];
 };
 
-struct linted_admin_out_task_write
-{
+struct linted_admin_out_task_write {
 	struct linted_io_task_write *data;
 	void *parent;
 	char reply[CHUNK_SIZE];

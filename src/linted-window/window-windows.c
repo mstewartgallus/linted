@@ -112,7 +112,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	HWND main_window = CreateWindowEx(
 	    WS_EX_APPWINDOW | WS_EX_COMPOSITED,
-	    (LPCTSTR)(uintptr_t) class_atom, L"" PACKAGE_NAME,
+	    (LPCTSTR)(uintptr_t)class_atom, L"" PACKAGE_NAME,
 	    WS_OVERLAPPED | WS_CAPTION | WS_THICKFRAME |
 	        WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
 	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,

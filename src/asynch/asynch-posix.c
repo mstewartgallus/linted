@@ -117,8 +117,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
                                         pthread_t self);
 static bool canceller_check_and_unregister(struct canceller *canceller);
 
-struct canceller
-{
+struct canceller {
 	pthread_t owner;
 	spinlock lock;
 	bool *cancel_replier;
@@ -126,8 +125,7 @@ struct canceller
 	bool in_flight : 1U;
 };
 
-struct linted_asynch_pool
-{
+struct linted_asynch_pool {
 	struct wait_manager *wait_manager;
 	struct worker_pool *worker_pool;
 
@@ -136,8 +134,7 @@ struct linted_asynch_pool
 	struct completion_queue *completion_queue;
 };
 
-struct linted_asynch_task
-{
+struct linted_asynch_task {
 	struct linted_queue_node parent;
 	struct canceller canceller;
 	void *data;
@@ -147,8 +144,7 @@ struct linted_asynch_task
 	bool thread_canceller : 1U;
 };
 
-struct linted_asynch_waiter
-{
+struct linted_asynch_waiter {
 	struct linted_queue_node parent;
 	struct linted_asynch_task *task;
 	linted_ko ko;
@@ -314,11 +310,10 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	complete_task(pool->completion_queue, task);
 }
 
-void
-linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
-                                struct linted_asynch_waiter *waiter,
-                                struct linted_asynch_task *task,
-                                linted_ko ko, short flags)
+void linted_asynch_pool_wait_on_poll(
+    struct linted_asynch_pool *pool,
+    struct linted_asynch_waiter *waiter,
+    struct linted_asynch_task *task, linted_ko ko, short flags)
 {
 	assert(pool != 0);
 	assert(waiter != 0);
@@ -462,15 +457,13 @@ static void run_task(struct linted_asynch_pool *pool,
 
 struct worker_pool;
 
-struct worker
-{
+struct worker {
 	struct linted_asynch_pool *pool;
 	struct worker_queue *queue;
 	pthread_t thread;
 };
 
-struct worker_pool
-{
+struct worker_pool {
 	struct linted_asynch_pool *asynch_pool;
 	struct job_queue *job_queue;
 	struct worker_queue **worker_queues;
@@ -841,15 +834,13 @@ static void poller_queue_destroy(struct poller_queue *queue);
 
 struct wait_manager;
 
-struct poller
-{
+struct poller {
 	struct linted_asynch_pool *pool;
 	struct poller_queue *queue;
 	pthread_t thread;
 };
 
-struct wait_manager
-{
+struct wait_manager {
 	struct linted_asynch_pool *asynch_pool;
 	struct waiter_queue *waiter_queue;
 

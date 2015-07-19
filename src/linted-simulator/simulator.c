@@ -44,8 +44,7 @@ enum { ON_READ_TIMER,
        ON_SENT_UPDATER_EVENT,
        MAX_TASKS };
 
-struct action_state
-{
+struct action_state {
 	linted_sim_int x_tilt;
 	linted_sim_int y_tilt;
 
@@ -55,14 +54,12 @@ struct action_state
 	bool jumping : 1U;
 };
 
-struct differentiable
-{
+struct differentiable {
 	linted_sim_int value;
 	linted_sim_int old;
 };
 
-struct sim_state
-{
+struct sim_state {
 	struct differentiable position[3U];
 
 	linted_sim_angle x_rotation;
@@ -72,8 +69,7 @@ struct sim_state
 	bool write_in_progress : 1U;
 };
 
-struct tick_data
-{
+struct tick_data {
 	struct linted_asynch_pool *pool;
 	struct linted_updater_task_send *updater_task;
 	struct action_state const *action_state;
@@ -81,14 +77,12 @@ struct tick_data
 	linted_ko updater;
 };
 
-struct controller_data
-{
+struct controller_data {
 	struct linted_asynch_pool *pool;
 	struct action_state *action_state;
 };
 
-struct updater_data
-{
+struct updater_data {
 	struct sim_state *sim_state;
 	struct linted_asynch_pool *pool;
 	linted_ko updater;

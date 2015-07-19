@@ -24,8 +24,7 @@
  * Implements common startup functionality.
  */
 
-struct linted_start_config
-{
+struct linted_start_config {
 	char const *canonical_process_name;
 	unsigned char (*start)(char const *process_name, size_t argc,
 	                       char const *const argv[]);

@@ -42,8 +42,7 @@
 
 extern char **environ;
 
-struct linted_spawn_file_actions
-{
+struct linted_spawn_file_actions {
 	linted_ko new_stdin;
 	linted_ko new_stdout;
 	linted_ko new_stderr;
@@ -52,13 +51,11 @@ struct linted_spawn_file_actions
 	bool set_stderr : 1U;
 };
 
-struct linted_spawn_attr
-{
+struct linted_spawn_attr {
 	char dummy;
 };
 
-struct fork_args
-{
+struct fork_args {
 	sigset_t const *sigset;
 	struct linted_spawn_file_actions const *file_actions;
 	char const *const *argv;

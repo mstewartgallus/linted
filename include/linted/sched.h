@@ -41,8 +41,8 @@ linted_error linted_sched_time(struct timespec *data);
 linted_error
 linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
                               void *data);
-void
-linted_sched_task_idle_destroy(struct linted_sched_task_idle *task);
+void linted_sched_task_idle_destroy(
+    struct linted_sched_task_idle *task);
 
 void *linted_sched_task_idle_data(struct linted_sched_task_idle *task);
 struct linted_asynch_task *

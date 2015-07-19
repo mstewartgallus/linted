@@ -36,8 +36,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-struct linted_io_task_poll
-{
+struct linted_io_task_poll {
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;
@@ -46,8 +45,7 @@ struct linted_io_task_poll
 	short revents;
 };
 
-struct linted_io_task_read
-{
+struct linted_io_task_read {
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;
@@ -58,8 +56,7 @@ struct linted_io_task_read
 	linted_ko ko;
 };
 
-struct linted_io_task_write
-{
+struct linted_io_task_write {
 	struct linted_asynch_task *parent;
 	struct linted_asynch_waiter *waiter;
 	void *data;

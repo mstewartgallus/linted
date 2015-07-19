@@ -31,8 +31,7 @@
 #define ENABLE_ERRORCHECK 1
 #endif
 
-struct linted_queue
-{
+struct linted_queue {
 	pthread_mutex_t lock;
 	pthread_cond_t gains_member;
 	struct linted_queue_node *head;

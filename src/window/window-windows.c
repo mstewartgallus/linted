@@ -81,14 +81,12 @@ linted_error linted_window_read(linted_window window,
 	return 0;
 }
 
-struct linted_window_task_notify
-{
+struct linted_window_task_notify {
 	struct linted_io_task_write *parent;
 	void *data;
 };
 
-struct linted_window_task_watch
-{
+struct linted_window_task_watch {
 	struct linted_io_task_read *parent;
 	void *data;
 	char dummy[1U];
@@ -124,17 +122,16 @@ free_task:
 	return err;
 }
 
-void
-linted_window_task_watch_destroy(struct linted_window_task_watch *task)
+void linted_window_task_watch_destroy(
+    struct linted_window_task_watch *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void
-linted_window_task_watch_prepare(struct linted_window_task_watch *task,
-                                 unsigned task_action,
-                                 linted_ko notifier)
+void linted_window_task_watch_prepare(
+    struct linted_window_task_watch *task, unsigned task_action,
+    linted_ko notifier)
 {
 	linted_io_task_read_prepare(task->parent, task_action, notifier,
 	                            task->dummy, sizeof task->dummy);

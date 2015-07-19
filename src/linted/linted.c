@@ -60,8 +60,7 @@
 #include <windows.h>
 #endif
 
-struct envvar
-{
+struct envvar {
 	char const *key;
 	char const *value;
 };

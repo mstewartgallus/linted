@@ -29,8 +29,7 @@
 
 typedef linted_ko linted_controller;
 
-struct linted_controller_message
-{
+struct linted_controller_message {
 	int_fast32_t x_tilt;
 	int_fast32_t y_tilt;
 

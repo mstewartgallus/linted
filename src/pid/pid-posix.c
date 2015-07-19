@@ -31,8 +31,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-struct linted_pid_task_waitid
-{
+struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
 	void *data;
 	siginfo_t info;

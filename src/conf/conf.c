@@ -245,8 +245,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 	return err;
 }
 
-struct linted_conf_db
-{
+struct linted_conf_db {
 	struct linted_conf **confs;
 	size_t size;
 };
@@ -324,23 +323,20 @@ struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
 
 struct conf_setting;
 
-struct conf_section_bucket
-{
+struct conf_section_bucket {
 	size_t sections_size;
 	struct conf_section *sections;
 };
 
 #define SECTION_BUCKETS_SIZE 1024U
 
-struct linted_conf
-{
+struct linted_conf {
 	char *name;
 	unsigned long refcount;
 	struct conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
 };
 
-struct conf_setting_bucket
-{
+struct conf_setting_bucket {
 	size_t settings_size;
 	struct conf_setting *settings;
 };
@@ -406,8 +402,7 @@ char const *linted_conf_peek_name(struct linted_conf *conf)
 
 #define SETTING_BUCKETS_SIZE 1024U
 
-struct conf_section
-{
+struct conf_section {
 	unsigned long refcount;
 	char *name;
 	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
@@ -520,8 +515,7 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 	return 0;
 }
 
-struct conf_setting
-{
+struct conf_setting {
 	char *field;
 	char **value;
 };

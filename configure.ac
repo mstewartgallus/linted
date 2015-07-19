@@ -48,6 +48,7 @@ dnl
 dnl
 AS_IF([test "x${host_os}" = "xlinux-androideabi" ||
        test "x${host_os}" = "xlinux-gnu" ||
+       test "x${host_os}" = "xlinux-gnux32" ||
        test "x${host_os}" = "xlinux-gnueabi" ||
        test "x${host_os}" = "xlinux-gnueabihf" ||
        test "x${host_os}" = "xlinux-musl"], [[linted_posix_api_default=yes]])

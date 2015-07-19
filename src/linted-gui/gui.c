@@ -59,14 +59,12 @@ static uint32_t const window_opts[] = {
 
 struct controller_data;
 
-struct window_model
-{
+struct window_model {
 	unsigned width;
 	unsigned height;
 };
 
-struct poll_conn_data
-{
+struct poll_conn_data {
 	xcb_connection_t *connection;
 	struct window_model *window_model;
 	struct linted_asynch_pool *pool;
@@ -79,22 +77,19 @@ struct poll_conn_data
 	struct xkb_keymap *keymap;
 };
 
-struct controller_data
-{
+struct controller_data {
 	struct linted_controller_message update;
 	bool update_pending : 1U;
 	bool update_in_progress : 1U;
 };
 
-struct controller_task_data
-{
+struct controller_task_data {
 	struct controller_data *controller_data;
 	struct linted_asynch_pool *pool;
 	linted_ko controller;
 };
 
-struct notice_data
-{
+struct notice_data {
 	struct linted_asynch_pool *pool;
 	xcb_connection_t *connection;
 	struct window_model *window_model;

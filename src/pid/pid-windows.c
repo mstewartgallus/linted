@@ -22,8 +22,7 @@
 #include <signal.h>
 #include <sys/types.h>
 
-struct linted_pid_task_waitid
-{
+struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
 	void *data;
 	int options;

@@ -74,16 +74,14 @@ enum { WAITID,
        KILL_READ,
        MAX_TASKS };
 
-struct signal_wait_data
-{
+struct signal_wait_data {
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
 	struct linted_asynch_pool *pool;
 	pid_t manager_pid;
 };
 
-struct wait_service_data
-{
+struct wait_service_data {
 	char const *process_name;
 	struct linted_asynch_pool *pool;
 	char const *sandbox;
@@ -94,23 +92,20 @@ struct wait_service_data
 	linted_ko cwd;
 };
 
-struct admin_in_read_data
-{
+struct admin_in_read_data {
 	struct linted_asynch_pool *pool;
 	struct linted_admin_out_task_write *write_task;
 	linted_admin_out admin_out;
 	pid_t manager_pid;
 };
 
-struct admin_out_write_data
-{
+struct admin_out_write_data {
 	struct linted_asynch_pool *pool;
 	struct linted_admin_in_task_read *read_task;
 	linted_admin_in admin_in;
 };
 
-struct kill_read_data
-{
+struct kill_read_data {
 	bool *time_to_exit;
 	struct linted_unit_db *unit_db;
 	struct linted_asynch_pool *pool;
@@ -1181,8 +1176,7 @@ static linted_error socket_activate(struct linted_unit_socket *unit)
 	return err;
 }
 
-struct my_option
-{
+struct my_option {
 	char const *name;
 	char const *value;
 	bool flag : 1U;
@@ -2408,7 +2402,7 @@ static linted_error ptrace_detach(pid_t pid, int signo)
 	linted_error err;
 
 	if (-1 == ptrace(PTRACE_DETACH, pid, (void *)0,
-	                 (void *)(intptr_t) signo)) {
+	                 (void *)(intptr_t)signo)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;
@@ -2422,7 +2416,7 @@ static linted_error ptrace_setoptions(pid_t pid, unsigned options)
 	linted_error err;
 
 	if (-1 == ptrace(PTRACE_SETOPTIONS, pid, (void *)0,
-	                 (void *)(uintptr_t) options)) {
+	                 (void *)(uintptr_t)options)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;
@@ -2436,7 +2430,7 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg)
 	linted_error err;
 
 	if (-1 == ptrace(PTRACE_GETEVENTMSG, pid, (void *)0,
-	                 (void *)(uintptr_t) msg)) {
+	                 (void *)(uintptr_t)msg)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;
@@ -2450,7 +2444,7 @@ static linted_error ptrace_seize(pid_t pid, uint_fast32_t options)
 	linted_error err;
 
 	if (-1 == ptrace(PTRACE_SEIZE, pid, (void *)0,
-	                 (void *)(uintptr_t) options)) {
+	                 (void *)(uintptr_t)options)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;
@@ -2464,7 +2458,7 @@ static linted_error ptrace_cont(pid_t pid, int signo)
 	linted_error err;
 
 	if (-1 == ptrace(PTRACE_CONT, pid, (void *)0,
-	                 (void *)(intptr_t) signo)) {
+	                 (void *)(intptr_t)signo)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;

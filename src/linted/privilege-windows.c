@@ -80,8 +80,7 @@ linted_error linted_linted_privilege_check(void)
 {
 	linted_error err = 0;
 
-	struct
-	{
+	struct {
 		DWORD PrivilegeCount;
 		DWORD Control;
 		LUID_AND_ATTRIBUTES

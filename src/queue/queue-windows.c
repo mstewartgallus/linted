@@ -35,8 +35,7 @@
 
 #include <windows.h>
 
-struct linted_queue
-{
+struct linted_queue {
 	CRITICAL_SECTION lock;
 	CONDITION_VARIABLE gains_member;
 	struct linted_queue_node *head;

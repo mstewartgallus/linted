@@ -50,21 +50,18 @@ enum { ON_IDLE,
        ON_RECEIVE_NOTICE,
        MAX_TASKS };
 
-struct window_model
-{
+struct window_model {
 	bool viewable : 1U;
 };
 
-struct idle_data
-{
+struct idle_data {
 	struct linted_gpu_context *gpu_context;
 	struct linted_asynch_pool *pool;
 	struct window_model *window_model;
 	bool idle_in_progress : 1U;
 };
 
-struct poll_conn_data
-{
+struct poll_conn_data {
 	struct linted_gpu_context *gpu_context;
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
@@ -73,14 +70,12 @@ struct poll_conn_data
 	struct linted_sched_task_idle *idle_task;
 };
 
-struct updater_data
-{
+struct updater_data {
 	struct linted_gpu_context *gpu_context;
 	struct linted_asynch_pool *pool;
 };
 
-struct notice_data
-{
+struct notice_data {
 	xcb_connection_t *connection;
 
 	struct window_model *window_model;

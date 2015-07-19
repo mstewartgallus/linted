@@ -34,8 +34,7 @@
 
 #include <windows.h>
 
-struct linted_channel
-{
+struct linted_channel {
 	CRITICAL_SECTION lock;
 	CONDITION_VARIABLE filled;
 	void **waiter;

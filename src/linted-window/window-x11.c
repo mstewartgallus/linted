@@ -43,15 +43,13 @@
 
 enum { ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
-struct poll_conn_data
-{
+struct poll_conn_data {
 	xcb_connection_t *connection;
 	struct linted_asynch_pool *pool;
 	bool *time_to_quit;
 };
 
-struct notice_data
-{
+struct notice_data {
 	struct linted_asynch_pool *pool;
 };
 

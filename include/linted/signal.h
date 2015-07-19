@@ -36,12 +36,11 @@ linted_error linted_signal_init(void);
 linted_error
 linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
                                void *data);
-void
-linted_signal_task_wait_destroy(struct linted_signal_task_wait *task);
+void linted_signal_task_wait_destroy(
+    struct linted_signal_task_wait *task);
 
-void
-linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                unsigned task_action);
+void linted_signal_task_wait_prepare(
+    struct linted_signal_task_wait *task, unsigned task_action);
 
 void *
 linted_signal_task_wait_data(struct linted_signal_task_wait *task);

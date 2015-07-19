@@ -28,8 +28,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-struct linted_sched_task_sleep_until
-{
+struct linted_sched_task_sleep_until {
 	struct linted_asynch_task *parent;
 	void *data;
 	struct timespec time;

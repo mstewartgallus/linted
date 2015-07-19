@@ -97,8 +97,7 @@ static linted_error wait_manager_create(
     struct linted_asynch_pool *pool, unsigned max_pollers);
 static void wait_manager_destroy(struct wait_manager *manager);
 
-struct canceller
-{
+struct canceller {
 	linted_ko owner;
 	CRITICAL_SECTION lock;
 	bool *cancel_replier;
@@ -114,8 +113,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
                                         linted_ko self);
 static bool canceller_check_and_unregister(struct canceller *canceller);
 
-struct linted_asynch_pool
-{
+struct linted_asynch_pool {
 	struct wait_manager *wait_manager;
 	struct worker_pool *worker_pool;
 
@@ -124,8 +122,7 @@ struct linted_asynch_pool
 	struct completion_queue *completion_queue;
 };
 
-struct linted_asynch_task
-{
+struct linted_asynch_task {
 	struct linted_queue_node parent;
 	struct canceller canceller;
 	void *data;
@@ -135,8 +132,7 @@ struct linted_asynch_task
 	bool thread_canceller : 1U;
 };
 
-struct linted_asynch_waiter
-{
+struct linted_asynch_waiter {
 	struct linted_queue_node parent;
 	struct linted_asynch_task *task;
 	linted_ko ko;
@@ -293,11 +289,10 @@ void linted_asynch_pool_complete(struct linted_asynch_pool *pool,
 	complete_task(pool->completion_queue, task);
 }
 
-void
-linted_asynch_pool_wait_on_poll(struct linted_asynch_pool *pool,
-                                struct linted_asynch_waiter *waiter,
-                                struct linted_asynch_task *task,
-                                linted_ko ko, short flags)
+void linted_asynch_pool_wait_on_poll(
+    struct linted_asynch_pool *pool,
+    struct linted_asynch_waiter *waiter,
+    struct linted_asynch_task *task, linted_ko ko, short flags)
 {
 	assert(pool != 0);
 
@@ -427,15 +422,13 @@ static void run_task(struct linted_asynch_pool *pool,
 
 struct worker_pool;
 
-struct worker
-{
+struct worker {
 	struct linted_asynch_pool *pool;
 	struct worker_queue *queue;
 	linted_ko thread;
 };
 
-struct worker_pool
-{
+struct worker_pool {
 	struct linted_asynch_pool *asynch_pool;
 	struct job_queue *job_queue;
 	struct worker_queue **worker_queues;
@@ -737,15 +730,13 @@ static void poller_queue_destroy(struct poller_queue *queue);
 
 struct wait_manager;
 
-struct poller
-{
+struct poller {
 	struct linted_asynch_pool *pool;
 	struct poller_queue *queue;
 	linted_ko thread;
 };
 
-struct wait_manager
-{
+struct wait_manager {
 	struct linted_asynch_pool *asynch_pool;
 	struct waiter_queue *waiter_queue;
 
@@ -1474,8 +1465,7 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 #define MS_VC_EXCEPTION 0x406D1388
 
 #pragma pack(push, 8)
-typedef struct tagTHREADNAME_INFO
-{
+typedef struct tagTHREADNAME_INFO {
 	DWORD dwType;
 	LPCSTR szName;
 	DWORD dwThreadID;

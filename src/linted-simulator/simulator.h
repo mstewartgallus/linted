@@ -60,8 +60,7 @@ static linted_sim_int linted_sim_isatadd(linted_sim_int x,
 
 static linted_sim_int linted_sim__saturate(int_fast64_t x);
 
-struct linted_sim__angle
-{
+struct linted_sim__angle {
 	linted_sim_uint _value;
 };
 

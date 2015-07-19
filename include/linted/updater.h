@@ -77,8 +77,8 @@ void *linted_updater_task_receive_data(
 linted_error
 linted_updater_task_send_create(struct linted_updater_task_send **taskp,
                                 void *data);
-void
-linted_updater_task_send_destroy(struct linted_updater_task_send *task);
+void linted_updater_task_send_destroy(
+    struct linted_updater_task_send *task);
 
 void linted_updater_task_send_prepare(
     struct linted_updater_task_send *task, unsigned task_action,
@@ -90,17 +90,15 @@ linted_updater_task_send_from_asynch(struct linted_asynch_task *task);
 void *
 linted_updater_task_send_data(struct linted_updater_task_send *task);
 
-void
-linted_updater_decode(struct linted_updater_task_receive const *task,
-                      struct linted_updater_update *update);
+void linted_updater_decode(
+    struct linted_updater_task_receive const *task,
+    struct linted_updater_update *update);
 
-struct linted_updater__angle
-{
+struct linted_updater__angle {
 	linted_updater_uint _value;
 };
 
-struct linted_updater_update
-{
+struct linted_updater_update {
 	linted_updater_int x_position;
 	linted_updater_int y_position;
 	linted_updater_int z_position;

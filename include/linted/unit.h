@@ -62,22 +62,19 @@ linted_unit_name(pid_t pid,
 linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
                              char const *name);
 
-struct linted_unit
-{
+struct linted_unit {
 	char *name;
 	linted_unit_type type;
 };
 
-struct linted_unit_socket
-{
+struct linted_unit_socket {
 	struct linted_unit common;
 	char const *path;
 	int fifo_size;
 	linted_unit_socket_type type;
 };
 
-struct linted_unit_service
-{
+struct linted_unit_service {
 	struct linted_unit common;
 
 	char const *const *exec_start;

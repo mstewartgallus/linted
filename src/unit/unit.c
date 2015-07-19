@@ -32,15 +32,13 @@
 #include <sys/types.h>
 #include <string.h>
 
-union unit_union
-{
+union unit_union {
 	struct linted_unit common;
 	struct linted_unit_service service;
 	struct linted_unit_socket socket;
 };
 
-struct linted_unit_db
-{
+struct linted_unit_db {
 	size_t size;
 	union unit_union *list;
 };

@@ -36,41 +36,35 @@ typedef linted_ko linted_admin_out;
 
 enum { LINTED_ADMIN_STATUS, LINTED_ADMIN_STOP };
 typedef unsigned char linted_admin_type;
-struct linted_admin_status_request
-{
+struct linted_admin_status_request {
 	linted_admin_type type;
 	size_t size;
 	char name[LINTED_UNIT_NAME_MAX];
 };
 
-struct linted_admin_status_reply
-{
+struct linted_admin_status_reply {
 	linted_admin_type type;
 	_Bool is_up;
 };
 
-struct linted_admin_stop_request
-{
+struct linted_admin_stop_request {
 	linted_admin_type type;
 	size_t size;
 	char name[LINTED_UNIT_NAME_MAX];
 };
 
-struct linted_admin_stop_reply
-{
+struct linted_admin_stop_reply {
 	linted_admin_type type;
 	_Bool was_up;
 };
 
-union linted_admin_request
-{
+union linted_admin_request {
 	linted_admin_type type;
 	struct linted_admin_status_request status;
 	struct linted_admin_stop_request stop;
 };
 
-union linted_admin_reply
-{
+union linted_admin_reply {
 	linted_admin_type type;
 	struct linted_admin_status_reply status;
 	struct linted_admin_stop_reply stop;
