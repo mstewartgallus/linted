@@ -247,34 +247,14 @@ wait_on_poll:
 
 char const *linted_signal_string(int signo)
 {
-	switch (signo) {
-	case SIGABRT:
-		return "sigabrt";
+	extern const char * const sys_siglist[];
 
-	case SIGFPE:
-		return "sigfpe";
-
-	case SIGILL:
-		return "sigill";
-
-	case SIGINT:
-		return "sigint";
-
-	case SIGHUP:
-		return "sighup";
-
-	case SIGQUIT:
-		return "sigquit";
-
-	case SIGSEGV:
-		return "sigsegv";
-
-	case SIGTERM:
-		return "sigterm";
-
-	default:
+	if (signo >= _NSIG)
 		return 0;
-	}
+	if (signo < 0)
+		return 0;
+
+	return sys_siglist[signo];
 }
 
 static void listen_to_signal(size_t ii);
