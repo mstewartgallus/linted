@@ -49,6 +49,8 @@ struct linted_signal_task_wait {
 	int signo;
 };
 
+static void write_one(linted_ko ko);
+
 static void report_sighup(int signo);
 static void report_sigint(int signo);
 static void report_sigquit(int signo);
@@ -228,9 +230,7 @@ complete:
 	task_wait->signo = signo;
 
 	if (0 == err) {
-		char dummy = 0;
-		linted_io_write_all(sigpipe_writer, 0, &dummy,
-		                    sizeof dummy);
+		write_one(sigpipe_writer);
 	}
 
 	linted_asynch_pool_complete(pool, task, err);
@@ -310,7 +310,13 @@ static void listen_to_signal(size_t ii)
 	action.sa_handler = handler;
 	action.sa_flags = 0;
 
-	sigfillset(&action.sa_mask);
+	/*
+	 * We cannot block all signals as that may lead to bad
+	 * situations when things like stack overflows happen.
+	 */
+	sigemptyset(&action.sa_mask);
+	/* Block SIGPIPEs to get EPIPEs */
+	sigaddset(&action.sa_mask, SIGPIPE);
 
 	if (-1 == sigaction(signo, &action, 0)) {
 		err = errno;
@@ -319,13 +325,11 @@ static void listen_to_signal(size_t ii)
 	}
 }
 
-static char const dummy;
-
 static void report_sighup(int signo)
 {
 	linted_error err = errno;
 	__atomic_store_n(&sighup_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
 }
 
@@ -333,7 +337,7 @@ static void report_sigint(int signo)
 {
 	linted_error err = errno;
 	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
 }
 
@@ -341,7 +345,7 @@ static void report_sigquit(int signo)
 {
 	linted_error err = errno;
 	__atomic_store_n(&sigquit_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
 }
 
@@ -349,6 +353,41 @@ static void report_sigterm(int signo)
 {
 	linted_error err = errno;
 	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
-	linted_io_write_all(sigpipe_writer, 0, &dummy, sizeof dummy);
+	write_one(sigpipe_writer);
 	errno = err;
+}
+
+static void write_one(linted_ko ko)
+{
+	linted_error err = 0;
+
+	static char const dummy;
+
+	for (;;) {
+		ssize_t result = write(ko, &dummy, 1U);
+		if (-1 == result) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+		}
+
+		if (0 == result)
+			continue;
+
+		if (err != EINTR)
+			break;
+	}
+	/* Consume SIGPIPEs */
+	assert(err != EBADF);
+	assert(err != EDESTADDRREQ);
+	assert(err != EDQUOT);
+	assert(err != EFAULT);
+	assert(err != EFBIG);
+	assert(err != EINVAL);
+	assert(err != EIO);
+	assert(err != ENOSPC);
+	assert(err != EPIPE);
+	/* EAGAIN and EWOULDBLOCK are okay, they mean the pipe is full
+	 * and that's fine.
+	 */
+	/* EPIPE should never happen because SIGPIPE is blocked */
 }
