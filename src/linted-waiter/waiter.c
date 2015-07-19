@@ -170,6 +170,9 @@ static void on_term(int signo)
 	if (-1 == kill(-getpgrp(), signo)) {
 		linted_error err = errno;
 		LINTED_ASSUME(err != 0);
+		assert(err != EINVAL);
+		assert(err != EPERM);
+		assert(err != ESRCH);
 		assert(false);
 	}
 
