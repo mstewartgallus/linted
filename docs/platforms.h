@@ -44,24 +44,26 @@
  * libxdmcp-dev
  * libxkbcommon-dev
  * libxkbcommon-x11-dev
+ * linux-libc-dev
  * x11proto-damage-dev
  * x11proto-kb-dev
  * x11proto-xf86vidmode-dev
- * linux-libc-dev
  *
  * Indirect:
+ * libdrm2
+ * libffi6
+ * libgbm1
+ * libglapi-mesa
  * libwayland-client0
+ * libwayland-server0
  * libx11-6
+ * libx11-dev
+ * libx11-xcb1
+ * libxau6
  * libxcb-dri2-0
  * libxcb-xfixes0
- * libgbm1
- * libwayland-server0
- * libdrm2
- * libxau6
  * libxdmcp6
- * libffi6
- * libx11-xcb1
- * libglapi-mesa
+ * x11proto-core-dev
  *
  * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/
