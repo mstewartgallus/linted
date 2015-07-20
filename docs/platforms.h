@@ -23,6 +23,37 @@
  *
  * @subsection runtime Runtime Dependencies
  *
+ * Build-Depends
+ * binutils-multiarch
+ * cpio
+ * file
+ * gawk
+ * libc6
+ * libcap-dev
+ * libegl1-mesa
+ * libegl1-mesa-dev
+ * libfakechroot
+ * libfakeroot
+ * libgl1-mesa-glx
+ * libgles2-mesa-dev
+ * libglib2.0-0
+ * libmagic1
+ * libmirclientplatform-mesa
+ * libpopt0
+ * libpthread-stubs0-dev
+ * libsigsegv2
+ * libxau-dev
+ * libxcb1-dev
+ * libxcb-xkb-dev
+ * libxdmcp-dev
+ * libxkbcommon-dev
+ * libxkbcommon-x11-dev
+ * mime-support
+ * pkg-config
+ * x11proto-damage-dev
+ * x11proto-kb-dev
+ * x11proto-xf86vidmode-dev
+ *
  * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/
  *   - Binaries
