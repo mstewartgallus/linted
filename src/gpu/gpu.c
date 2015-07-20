@@ -13,8 +13,6 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _GNU_SOURCE
-
 #include "config.h"
 
 #include "linted/assets.h"
@@ -92,9 +90,6 @@ static linted_error destroy_gl(struct linted_gpu_context *gpu_context);
 
 static linted_error
 destroy_egl_surface(struct linted_gpu_context *gpu_context);
-
-static linted_error
-assure_current_egl_context(struct linted_gpu_context *gpu_context);
 
 static linted_error setup_gl(struct linted_gpu_context *gpu_context);
 
@@ -330,12 +325,31 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 {
 	linted_error err;
 
-	err = assure_current_egl_context(gpu_context);
-	if (err != 0)
-		return;
-
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
+	EGLSurface context = gpu_context->context;
+
+	switch (gpu_context->gl_state) {
+	case NO_EGL_SURFACE:
+		/* No window, can't do anything */
+		return;
+
+	case HAS_EGL_SURFACE:
+		/* Try to upgrade to setup  */
+		if (EGL_FALSE == eglMakeCurrent(display, surface,
+		                                surface, context)) {
+			return;
+		}
+
+		err = setup_gl(gpu_context);
+		if (err != 0)
+			goto make_nothing_current;
+
+		gpu_context->gl_state = HAS_SETUP_GL;
+
+	case HAS_SETUP_GL:
+		break;
+	}
 
 	if (gpu_context->buffer_commands) {
 		real_draw(gpu_context);
@@ -348,14 +362,22 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			linted_log(LINTED_LOG_ERROR,
 			           "eglSwapBuffers: %s", error);
 			linted_error_string_free(error);
-		} else {
-			gpu_context->buffer_commands = true;
+
+			/* Assume the worst */
+			goto destroy_egl_surface;
 		}
+
+		gpu_context->buffer_commands = true;
 	}
 
-	if (err != 0) {
-		destroy_egl_surface(gpu_context);
-	}
+	return;
+
+destroy_egl_surface:
+	destroy_egl_surface(gpu_context);
+
+make_nothing_current:
+	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+	               EGL_NO_CONTEXT);
 }
 
 static linted_error destroy_gl(struct linted_gpu_context *gpu_context)
@@ -397,45 +419,6 @@ destroy_egl_surface(struct linted_gpu_context *gpu_context)
 
 	gpu_context->gl_state = NO_EGL_SURFACE;
 	return 0;
-}
-
-static linted_error
-assure_current_egl_context(struct linted_gpu_context *gpu_context)
-{
-	linted_error err;
-
-	if (HAS_SETUP_GL == gpu_context->gl_state)
-		return 0;
-
-	EGLDisplay display = gpu_context->display;
-	EGLSurface surface = gpu_context->surface;
-	EGLSurface context = gpu_context->context;
-
-	if (EGL_NO_SURFACE == surface)
-		return 0;
-
-	if (EGL_FALSE ==
-	    eglMakeCurrent(display, surface, surface, context)) {
-		err = get_egl_error();
-		goto destroy_context;
-	}
-
-	err = setup_gl(gpu_context);
-	if (err != 0)
-		goto use_no_context;
-
-	gpu_context->context = context;
-
-	return 0;
-
-use_no_context:
-	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-	               EGL_NO_CONTEXT);
-
-destroy_context:
-	eglDestroyContext(display, context);
-
-	return err;
 }
 
 static linted_error setup_gl(struct linted_gpu_context *gpu_context)
