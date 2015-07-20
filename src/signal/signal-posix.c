@@ -246,7 +246,7 @@ wait_on_poll:
 
 char const *linted_signal_string(int signo)
 {
-	extern const char * const sys_siglist[];
+	extern const char *const sys_siglist[];
 
 	if (signo >= _NSIG)
 		return 0;
