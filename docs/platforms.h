@@ -39,6 +39,7 @@
  * libpthread-stubs0-dev
  * libsigsegv2
  * libxau-dev
+ * libxcb1
  * libxcb1-dev
  * libxcb-xkb-dev
  * libxdmcp-dev
