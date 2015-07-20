@@ -23,17 +23,13 @@
  *
  * @subsection runtime Runtime Dependencies
  *
- * Build-Depends
- * binutils-multiarch
- * cpio
- * file
- * gawk
+ * Direct Library Deps:
+ *
  * libc6
+ * libc6-dev
  * libcap-dev
  * libegl1-mesa
  * libegl1-mesa-dev
- * libfakechroot
- * libfakeroot
  * libgl1-mesa-glx
  * libgles2-mesa-dev
  * libglib2.0-0
@@ -48,11 +44,24 @@
  * libxdmcp-dev
  * libxkbcommon-dev
  * libxkbcommon-x11-dev
- * mime-support
- * pkg-config
  * x11proto-damage-dev
  * x11proto-kb-dev
  * x11proto-xf86vidmode-dev
+ * linux-libc-dev
+ *
+ * Indirect:
+ * libwayland-client0
+ * libx11-6
+ * libxcb-dri2-0
+ * libxcb-xfixes0
+ * libgbm1
+ * libwayland-server0
+ * libdrm2
+ * libxau6
+ * libxdmcp6
+ * libffi6
+ * libx11-xcb1
+ * libglapi-mesa
  *
  * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/

@@ -65,7 +65,7 @@
 
 /* 2^(bits - 1) - 1 */
 /* Sadly, this assumes a twos complement implementation */
-#define PID_MAX ((1L << (long)(sizeof(pid_t) * CHAR_BIT - 1)))
+#define PID_MAX ((pid_t)((1UL << (unsigned long)(sizeof(pid_t) * CHAR_BIT - 1)) - 1))
 
 enum { WAITID,
        SIGNAL_WAIT,
@@ -363,6 +363,9 @@ static unsigned char monitor_start(char const *process_name,
 		}
 
 		if (yy > PID_MAX) {
+			linted_log(LINTED_LOG_ERROR, "strtol: %li %li",
+				   yy, PID_MAX);
+
 			err = ERANGE;
 			goto on_error;
 		}
