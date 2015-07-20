@@ -34,6 +34,9 @@
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
 
+enum { NO_EGL_SURFACE, HAS_EGL_SURFACE, HAS_SETUP_GL };
+typedef unsigned char linted_gl_state;
+
 struct linted_gpu_context {
 	EGLDisplay display;
 	EGLSurface surface;
@@ -55,10 +58,9 @@ struct linted_gpu_context {
 
 	GLuint model_view_projection_matrix;
 
+	linted_gl_state gl_state;
+
 	bool buffer_commands : 1U;
-	bool has_egl_context : 1U;
-	bool has_egl_surface : 1U;
-	bool has_setup_gl : 1U;
 	bool resize_pending : 1U;
 	bool update_pending : 1U;
 };
@@ -89,10 +91,10 @@ static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
 static linted_error destroy_gl(struct linted_gpu_context *gpu_context);
 
 static linted_error
-destroy_egl_context(struct linted_gpu_context *gpu_context);
+destroy_egl_surface(struct linted_gpu_context *gpu_context);
 
 static linted_error
-assure_egl_context(struct linted_gpu_context *gpu_context);
+assure_current_egl_context(struct linted_gpu_context *gpu_context);
 
 static linted_error setup_gl(struct linted_gpu_context *gpu_context);
 
@@ -149,6 +151,14 @@ choose_config_failed:
 	goto destroy_display;
 
 choose_config_succeeded:
+	;
+	EGLContext context = eglCreateContext(
+	    display, config, EGL_NO_CONTEXT, context_attr);
+	if (EGL_NO_CONTEXT == context) {
+		err = get_egl_error();
+		goto destroy_display;
+	}
+
 	gpu_context->update.x_rotation = 0;
 	gpu_context->update.y_rotation = 0;
 
@@ -165,11 +175,11 @@ choose_config_succeeded:
 	gpu_context->window = 0;
 	gpu_context->display = display;
 	gpu_context->config = config;
+	gpu_context->context = context;
 	gpu_context->surface = EGL_NO_SURFACE;
 	gpu_context->buffer_commands = true;
-	gpu_context->has_egl_context = false;
-	gpu_context->has_egl_surface = false;
-	gpu_context->has_setup_gl = false;
+
+	gpu_context->gl_state = NO_EGL_SURFACE;
 
 	*gpu_contextp = gpu_context;
 
@@ -198,21 +208,31 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 	linted_error err = 0;
 
 	EGLDisplay display = gpu_context->display;
+	EGLContext context = gpu_context->context;
 	EGLSurface surface = gpu_context->surface;
 
-	if (gpu_context->has_setup_gl) {
+	switch (gpu_context->gl_state) {
+	case HAS_SETUP_GL:
 		err = destroy_gl(gpu_context);
-		gpu_context->has_setup_gl = false;
+
+	case HAS_EGL_SURFACE:
+		if (EGL_FALSE == eglDestroySurface(display, surface)) {
+			if (0 == err)
+				err = get_egl_error();
+		}
+		break;
+
+	case NO_EGL_SURFACE:
+		break;
 	}
 
-	if (gpu_context->has_egl_context) {
-		linted_error des_err = destroy_egl_context(gpu_context);
-		if (0 == err)
-			err = des_err;
-		gpu_context->has_egl_context = false;
-	}
+	gpu_context->gl_state = NO_EGL_SURFACE;
 
-	if (EGL_FALSE == eglDestroySurface(display, surface)) {
+	if (EGL_FALSE == eglMakeCurrent(display, EGL_NO_SURFACE,
+	                                EGL_NO_SURFACE, EGL_NO_CONTEXT))
+		err = get_egl_error();
+
+	if (EGL_FALSE == eglDestroyContext(display, context)) {
 		if (0 == err)
 			err = get_egl_error();
 	}
@@ -236,6 +256,8 @@ linted_error
 linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
                      linted_gpu_native_window new_window)
 {
+	linted_error err = 0;
+
 	if (new_window > UINT32_MAX)
 		return EINVAL;
 
@@ -244,15 +266,22 @@ linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 	EGLSurface surface = gpu_context->surface;
 	linted_gpu_native_window window = gpu_context->window;
 
-	if (gpu_context->has_egl_surface) {
+	switch (gpu_context->gl_state) {
+	case HAS_SETUP_GL:
+		err = destroy_gl(gpu_context);
+		gpu_context->gl_state = HAS_EGL_SURFACE;
+
+	case HAS_EGL_SURFACE:
 		if (window == new_window)
 			return 0;
 
 		if (EGL_FALSE == eglDestroySurface(display, surface))
 			return get_egl_error();
 
-		gpu_context->has_egl_context = false;
-		gpu_context->has_setup_gl = false;
+		gpu_context->gl_state = NO_EGL_SURFACE;
+
+	case NO_EGL_SURFACE:
+		break;
 	}
 
 	EGLSurface new_surface =
@@ -262,7 +291,7 @@ linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 
 	gpu_context->surface = new_surface;
 	gpu_context->window = new_window;
-	gpu_context->has_egl_surface = true;
+	gpu_context->gl_state = HAS_EGL_SURFACE;
 
 	return 0;
 }
@@ -276,8 +305,7 @@ linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context)
 	if (EGL_FALSE == eglDestroySurface(display, surface))
 		return get_egl_error();
 
-	gpu_context->has_egl_surface = false;
-	gpu_context->has_setup_gl = false;
+	gpu_context->gl_state = NO_EGL_SURFACE;
 
 	return 0;
 }
@@ -302,7 +330,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 {
 	linted_error err;
 
-	err = assure_egl_context(gpu_context);
+	err = assure_current_egl_context(gpu_context);
 	if (err != 0)
 		return;
 
@@ -326,9 +354,7 @@ void linted_gpu_draw(struct linted_gpu_context *gpu_context)
 	}
 
 	if (err != 0) {
-		destroy_gl(gpu_context);
-		destroy_egl_context(gpu_context);
-		gpu_context->has_egl_context = false;
+		destroy_egl_surface(gpu_context);
 	}
 }
 
@@ -351,44 +377,42 @@ static linted_error destroy_gl(struct linted_gpu_context *gpu_context)
 }
 
 static linted_error
-destroy_egl_context(struct linted_gpu_context *gpu_context)
+destroy_egl_surface(struct linted_gpu_context *gpu_context)
 {
-	linted_error err = 0;
-
 	EGLDisplay display = gpu_context->display;
-	EGLContext context = gpu_context->context;
+	EGLSurface surface = gpu_context->surface;
 
-	if (EGL_FALSE == eglMakeCurrent(display, EGL_NO_SURFACE,
-	                                EGL_NO_SURFACE, EGL_NO_CONTEXT))
-		err = get_egl_error();
+	switch (gpu_context->gl_state) {
+	case NO_EGL_SURFACE:
+		return EINVAL;
 
-	if (EGL_FALSE == eglDestroyContext(display, context)) {
-		if (0 == err)
-			err = get_egl_error();
+	case HAS_SETUP_GL:
+		destroy_gl(gpu_context);
+
+	case HAS_EGL_SURFACE:
+		if (EGL_FALSE == eglDestroySurface(display, surface))
+			return get_egl_error();
+		break;
 	}
 
-	return err;
+	gpu_context->gl_state = NO_EGL_SURFACE;
+	return 0;
 }
 
 static linted_error
-assure_egl_context(struct linted_gpu_context *gpu_context)
+assure_current_egl_context(struct linted_gpu_context *gpu_context)
 {
 	linted_error err;
 
-	if (gpu_context->has_egl_context)
+	if (HAS_SETUP_GL == gpu_context->gl_state)
 		return 0;
 
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;
-	EGLConfig config = gpu_context->config;
+	EGLSurface context = gpu_context->context;
 
 	if (EGL_NO_SURFACE == surface)
 		return 0;
-
-	EGLContext context = eglCreateContext(
-	    display, config, EGL_NO_CONTEXT, context_attr);
-	if (EGL_NO_CONTEXT == context)
-		return get_egl_error();
 
 	if (EGL_FALSE ==
 	    eglMakeCurrent(display, surface, surface, context)) {
@@ -638,17 +662,17 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	             linted_assets_indices, GL_STATIC_DRAW);
 	/* Leave bound for DrawElements */
 
-	gpu_context->has_setup_gl = true;
 	gpu_context->program = program;
 	gpu_context->vertex_buffer = vertex_buffer;
 	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
 	gpu_context->buffer_commands = true;
-	gpu_context->has_egl_context = true;
 
 	gpu_context->update_pending = true;
 	gpu_context->resize_pending = true;
+
+	gpu_context->gl_state = HAS_SETUP_GL;
 
 	return 0;
 
