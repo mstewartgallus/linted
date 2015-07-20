@@ -9,12 +9,12 @@ dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
 AC_INIT([Linted], [0.0], [sstewartgallus00@mylangara.bc.ca],,
-                  [https://www.gitorious.org/linted])
+                  [https://gitlab.com/linted])
 dnl
 dnl Other software uses a shell command to get the date but that
 dnl prevents deterministic builds.
 AC_DEFINE([COPYRIGHT_YEAR], ["2015"], [year in copyright message])
-AC_DEFINE([PACKAGE_NAME_SPACE], ["org.gitorious.sstewartgallus.linted"],
+AC_DEFINE([PACKAGE_NAME_SPACE], ["com.gitlab.sstewartgallus.linted"],
                                [package hierarchical name space])
 dnl
 AC_CONFIG_AUX_DIR([build-aux])
