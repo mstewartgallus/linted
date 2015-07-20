@@ -77,6 +77,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 	     ++ii) {
 		struct sigaction action = {0};
 		action.sa_handler = on_term;
+		sigemptyset(&action.sa_mask);
 		if (-1 == sigaction(exit_signals[ii], &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
@@ -88,6 +89,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		struct sigaction action = {0};
 		action.sa_handler = on_sigchld;
 		action.sa_flags = SA_NOCLDSTOP;
+		sigemptyset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
@@ -134,6 +136,7 @@ static unsigned char waiter_start(char const *process_name, size_t argc,
 		struct sigaction action = {0};
 		action.sa_handler = SIG_DFL;
 		action.sa_flags = SA_NOCLDSTOP;
+		sigemptyset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
 			           linted_error_string(errno));
@@ -170,13 +173,18 @@ static void on_term(int signo)
 	if (-1 == kill(-getpgrp(), signo)) {
 		linted_error err = errno;
 		LINTED_ASSUME(err != 0);
+
+		/* This is fine */
+		if (ESRCH == err)
+			goto prevent_looping;
+
 		assert(err != EINVAL);
 		assert(err != EPERM);
-		assert(err != ESRCH);
 		assert(false);
 	}
 
-	/* Prevent looping */
+prevent_looping:
+	;
 	sigset_t exitset;
 	sigemptyset(&exitset);
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals); ++ii)
