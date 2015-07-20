@@ -251,8 +251,6 @@ linted_error
 linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
                      linted_gpu_native_window new_window)
 {
-	linted_error err = 0;
-
 	if (new_window > UINT32_MAX)
 		return EINVAL;
 
@@ -261,15 +259,15 @@ linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 	EGLSurface surface = gpu_context->surface;
 	linted_gpu_native_window window = gpu_context->window;
 
+	if (window == new_window)
+		return 0;
+
 	switch (gpu_context->gl_state) {
 	case HAS_SETUP_GL:
-		err = destroy_gl(gpu_context);
+		destroy_gl(gpu_context);
 		gpu_context->gl_state = HAS_EGL_SURFACE;
 
 	case HAS_EGL_SURFACE:
-		if (window == new_window)
-			return 0;
-
 		if (EGL_FALSE == eglDestroySurface(display, surface))
 			return get_egl_error();
 
