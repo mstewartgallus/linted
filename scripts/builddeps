@@ -28,9 +28,12 @@ deps() {
     printf '%s\n' "libglib2.0-0:${ARCH}"
     printf '%s\n' "libxcb1:${ARCH}"
     printf '%s\n' "libxcb1-dev:${ARCH}"
+    printf '%s\n' "libxcb-xkb1:${ARCH}"
     printf '%s\n' "libxcb-xkb-dev:${ARCH}"
     printf '%s\n' "libxdmcp-dev:${ARCH}"
+    printf '%s\n' "libxkbcommon0:${ARCH}"
     printf '%s\n' "libxkbcommon-dev:${ARCH}"
+    printf '%s\n' "libxkbcommon-x11-0:${ARCH}"
     printf '%s\n' "libxkbcommon-x11-dev:${ARCH}"
     printf '%s\n' "linux-libc-dev:${ARCH}"
 
