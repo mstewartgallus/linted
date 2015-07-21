@@ -366,8 +366,9 @@ static unsigned char monitor_start(char const *process_name,
 		}
 
 		if (yy > PID_MAX) {
-			linted_log(LINTED_LOG_ERROR, "strtol: %li %li",
-			           yy, PID_MAX);
+			linted_log(LINTED_LOG_ERROR,
+			           "strtol: %li %" PRIuMAX, yy,
+			           (uintmax_t)PID_MAX);
 
 			err = ERANGE;
 			goto on_error;
