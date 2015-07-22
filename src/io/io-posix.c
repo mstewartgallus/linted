@@ -649,36 +649,12 @@ void linted_io_do_write(struct linted_asynch_pool *pool,
 
 	char const *buf_offset = buf + bytes_wrote;
 
-	ssize_t result;
-	linted_error mask_err;
-	{
-		/* Get EPIPEs */
-		/* SIGPIPE may not be blocked already */
-		sigset_t oldset;
-		{
-			sigset_t pipe_set = get_pipe_set();
-			err = pthread_sigmask(SIG_BLOCK, &pipe_set,
-			                      &oldset);
-		}
-		if (err != 0)
-			goto complete_task;
-
-		result = write(ko, buf_offset, bytes_left);
-		if (-1 == result) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto reset_sigmask;
-		}
-
-		linted_error eat_err = eat_sigpipes();
-		if (0 == err)
-			err = eat_err;
-
-	reset_sigmask:
-		mask_err = pthread_sigmask(SIG_SETMASK, &oldset, 0);
+	/* We can assume that SIGPIPEs are blocked here. */
+	ssize_t result = write(ko, buf_offset, bytes_left);
+	if (-1 == result) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	}
-	if (0 == err)
-		err = mask_err;
 
 	if (EINTR == err)
 		goto submit_retry;

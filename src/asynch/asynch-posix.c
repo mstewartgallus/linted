@@ -586,8 +586,28 @@ static linted_error worker_pool_create(
 			    &pool->workers[created_threads];
 
 			worker->pool = asynch_pool;
+
+			/* Get EPIPEs */
+			/* SIGPIPE may not be blocked already */
+			sigset_t oldset;
+			{
+				sigset_t pipe_set;
+				sigemptyset(&pipe_set);
+				sigaddset(&pipe_set, SIGPIPE);
+				err = pthread_sigmask(
+				    SIG_BLOCK, &pipe_set, &oldset);
+				if (err != 0)
+					break;
+			}
+
 			err = pthread_create(&worker->thread, &attr,
 			                     worker_routine, worker);
+
+			linted_error mask_err =
+			    pthread_sigmask(SIG_SETMASK, &oldset, 0);
+			if (0 == err)
+				err = mask_err;
+
 			if (err != 0)
 				break;
 		}
