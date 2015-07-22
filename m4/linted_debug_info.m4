@@ -34,9 +34,6 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
         [-ggdb]dnl
         [-fvar-tracking-assignments]dnl
         dnl
-        dnl Separate out the debug info for linking speed
-        [-gsplit-dwarf]dnl
-        dnl
         dnl Allow better backtraces
         [-rdynamic]dnl
 ])
