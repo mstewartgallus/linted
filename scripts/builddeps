@@ -11,48 +11,83 @@ set -u
 
 # Use the sysroot C compiler option to use this like a sandbox
 
+: ${OS:='linux'}
+: ${ABI:='gnu'}
+
 if test "x${ARCH}" = x
 then
     exit 1
 fi
 
-deps() {
-    printf '%s\n' "libc6:${ARCH}"
-    printf '%s\n' "libc6-dev:${ARCH}"
-    printf '%s\n' "libcap-dev:${ARCH}"
-    printf '%s\n' "libegl1-mesa:${ARCH}"
-    printf '%s\n' "libegl1-mesa-dev:${ARCH}"
-    printf '%s\n' "libgl1-mesa-glx:${ARCH}"
-    printf '%s\n' "libgles2-mesa:${ARCH}"
-    printf '%s\n' "libgles2-mesa-dev:${ARCH}"
-    printf '%s\n' "libglib2.0-0:${ARCH}"
-    printf '%s\n' "libxcb1:${ARCH}"
-    printf '%s\n' "libxcb1-dev:${ARCH}"
-    printf '%s\n' "libxcb-xkb1:${ARCH}"
-    printf '%s\n' "libxcb-xkb-dev:${ARCH}"
-    printf '%s\n' "libxdmcp-dev:${ARCH}"
-    printf '%s\n' "libxkbcommon0:${ARCH}"
-    printf '%s\n' "libxkbcommon-dev:${ARCH}"
-    printf '%s\n' "libxkbcommon-x11-0:${ARCH}"
-    printf '%s\n' "libxkbcommon-x11-dev:${ARCH}"
-    printf '%s\n' "linux-libc-dev:${ARCH}"
+case "${OS}"-"${ABI}" in
+    'w64-mingw')
+	case "${ARCH}" in
+	    'amd64')
+		deps() {
+		    printf '%s\0' "mingw-w64-x86-64-dev"
+		}
+		;;
+	    'i386')
+		deps() {
+		    printf '%s\0' "mingw-w64-i686-dev"
+		}
+		;;
+	    *)
+		exit 1
+		;;
+	esac
+	;;
 
-    printf '%s\n' "libdrm2:${ARCH}"
-    printf '%s\n' "libffi6:${ARCH}"
-    printf '%s\n' "libgbm1:${ARCH}"
-    printf '%s\n' "libglapi-mesa:${ARCH}"
-    printf '%s\n' "libwayland-client0:${ARCH}"
-    printf '%s\n' "libwayland-server0:${ARCH}"
-    printf '%s\n' "libx11-6:${ARCH}"
-    printf '%s\n' "libx11-dev:${ARCH}"
-    printf '%s\n' "libx11-xcb1:${ARCH}"
-    printf '%s\n' "libxcb-dri2-0:${ARCH}"
-    printf '%s\n' "libxcb-xfixes0:${ARCH}"
-    printf '%s\n' "x11proto-core-dev"
-}
+    'linux-musl')
+	deps() {
+	    printf '%s\0' "musl-dev:${ARCH}"
+	}
+	;;
+
+    'linux-gnu')
+	deps() {
+	    printf '%s\0' "libc6:${ARCH}"
+	    printf '%s\0' "libc6-dev:${ARCH}"
+	    printf '%s\0' "libcap-dev:${ARCH}"
+	    printf '%s\0' "libegl1-mesa:${ARCH}"
+	    printf '%s\0' "libegl1-mesa-dev:${ARCH}"
+	    printf '%s\0' "libgl1-mesa-glx:${ARCH}"
+	    printf '%s\0' "libgles2-mesa:${ARCH}"
+	    printf '%s\0' "libgles2-mesa-dev:${ARCH}"
+	    printf '%s\0' "libglib2.0-0:${ARCH}"
+	    printf '%s\0' "libxcb1:${ARCH}"
+	    printf '%s\0' "libxcb1-dev:${ARCH}"
+	    printf '%s\0' "libxcb-xkb1:${ARCH}"
+	    printf '%s\0' "libxcb-xkb-dev:${ARCH}"
+	    printf '%s\0' "libxdmcp-dev:${ARCH}"
+	    printf '%s\0' "libxkbcommon0:${ARCH}"
+	    printf '%s\0' "libxkbcommon-dev:${ARCH}"
+	    printf '%s\0' "libxkbcommon-x11-0:${ARCH}"
+	    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
+	    printf '%s\0' "linux-libc-dev:${ARCH}"
+
+	    printf '%s\0' "libdrm2:${ARCH}"
+	    printf '%s\0' "libffi6:${ARCH}"
+	    printf '%s\0' "libgbm1:${ARCH}"
+	    printf '%s\0' "libglapi-mesa:${ARCH}"
+	    printf '%s\0' "libwayland-client0:${ARCH}"
+	    printf '%s\0' "libwayland-server0:${ARCH}"
+	    printf '%s\0' "libx11-6:${ARCH}"
+	    printf '%s\0' "libx11-dev:${ARCH}"
+	    printf '%s\0' "libx11-xcb1:${ARCH}"
+	    printf '%s\0' "libxcb-dri2-0:${ARCH}"
+	    printf '%s\0' "libxcb-xfixes0:${ARCH}"
+	    printf '%s\0' "x11proto-core-dev"
+	}
+	;;
+
+    *)
+	exit 1
+	;;
+esac
 
 mkdir -p var/cache/builddeps
-(cd var/cache/builddeps && apt-get download $(deps))
+(cd var/cache/builddeps && deps | xargs -0 -- apt-get download) || :
 
 for II in var/cache/builddeps/*.deb
 do
