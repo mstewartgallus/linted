@@ -27,11 +27,17 @@ dnl
 AS_IF([test "x${enable_debug_info}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
+        dnl Get as much debug info as possible
         [-fno-omit-frame-pointer]dnl
         [-g]dnl
         [-g3]dnl
         [-ggdb]dnl
         [-fvar-tracking-assignments]dnl
+        dnl
+        dnl Separate out the debug info for linking speed
+        [-gsplit-dwarf]dnl
+        dnl
+        dnl Allow better backtraces
         [-rdynamic]dnl
 ])
 dnl
